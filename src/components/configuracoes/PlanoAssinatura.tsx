@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
 import { CreditCard, Check, Star, Zap, Loader2, ExternalLink, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -204,15 +204,16 @@ export default function PlanoAssinatura() {
 
   if (loading) {
     return (
-      <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
-        <div className="flex items-center gap-2 mb-4">
-          <CreditCard className="w-5 h-5 text-muted-foreground" />
-          <h2 className="text-sm font-semibold">Plano & Assinatura</h2>
+      <section className="rounded-lg border border-border bg-card p-6 shadow-sm" role="status" aria-busy="true">
+        <span className="sr-only">Carregando planos</span>
+        <div className="mb-4 flex items-center gap-2">
+          <CreditCard className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+          <h2 className="text-lg font-semibold text-foreground">Plano & Assinatura</h2>
         </div>
-        <div className="animate-pulse space-y-4">
-          <div className="h-10 bg-muted rounded-lg w-full max-w-md" />
-          <div className="grid md:grid-cols-3 gap-4">
-            {[1, 2, 3].map((i) => <div key={i} className="h-64 bg-muted rounded-xl" />)}
+        <div className="space-y-4">
+          <Skeleton className="mx-auto h-11 w-full max-w-md" />
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-64 w-full rounded-lg" />)}
           </div>
         </div>
       </section>
@@ -226,18 +227,18 @@ export default function PlanoAssinatura() {
       ref={sectionRef}
       id="planos"
       className={cn(
-        'bg-card rounded-xl border p-5 shadow-sm transition-all duration-700',
-        highlight ? 'border-accent ring-2 ring-accent/40 shadow-lg' : 'border-border/50'
+        'rounded-lg border bg-card p-6 shadow-sm transition-all duration-700',
+        highlight ? 'border-primary ring-2 ring-ring' : 'border-border'
       )}
     >
-      <div className="flex items-center justify-between mb-5">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <CreditCard className="w-5 h-5 text-muted-foreground" />
-          <h2 className="text-sm font-semibold">Plano & Assinatura</h2>
+          <CreditCard className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+          <h2 className="text-lg font-semibold text-foreground">Plano & Assinatura</h2>
         </div>
         {subscription?.subscribed && (
-          <Button size="sm" variant="outline" onClick={handleManageSubscription} disabled={managingPortal}>
-            {managingPortal ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Settings className="w-3.5 h-3.5 mr-1.5" />}
+          <Button variant="outline" onClick={handleManageSubscription} disabled={managingPortal}>
+            {managingPortal ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Settings aria-hidden="true" />}
             Gerenciar Assinatura
           </Button>
         )}
@@ -245,11 +246,11 @@ export default function PlanoAssinatura() {
 
       {/* Active subscription banner */}
       {subscription?.subscribed && activePlanSlug && (
-        <div className="mb-5 p-3 rounded-lg bg-success/10 border border-success/20 flex items-center gap-3">
-          <Check className="w-5 h-5 text-success flex-shrink-0" />
+        <div className="mb-6 flex items-center gap-3 rounded-lg border border-success-line bg-success-tint p-4 text-success-ink">
+          <Check className="h-5 w-5 shrink-0" aria-hidden="true" />
           <div>
-            <p className="text-sm font-semibold text-success">Assinatura ativa</p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-base font-semibold">Assinatura ativa</p>
+            <p className="text-sm">
               Plano {activePlanSlug.charAt(0).toUpperCase() + activePlanSlug.slice(1)}
               {subscription.subscription_end && ` • Renova em ${new Date(subscription.subscription_end).toLocaleDateString('pt-BR')}`}
             </p>
@@ -258,39 +259,35 @@ export default function PlanoAssinatura() {
       )}
 
       {/* Cycle selector */}
-      <div className="flex items-center justify-center mb-6">
-        <div className="inline-flex bg-muted rounded-lg p-1 gap-1">
+      <div className="mb-6 flex items-center justify-center">
+        <div className="inline-flex flex-wrap gap-1 rounded-md bg-muted p-1" role="group" aria-label="Ciclo de cobrança">
           {(Object.keys(cycleConfig) as BillingCycle[]).map((key) => {
             const active = cycle === key;
             const cfg = cycleConfig[key];
             return (
-              <button
+              <Button
                 key={key}
+                type="button"
+                variant={active ? 'default' : 'ghost'}
+                size="sm"
+                aria-pressed={active}
                 onClick={() => setCycle(key)}
-                className={cn(
-                  'relative px-4 py-2 rounded-md text-xs font-semibold transition-all duration-200',
-                  active
-                    ? 'bg-accent text-accent-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
+                className="relative"
               >
                 {cfg.label}
                 {cfg.discount > 0 && (
-                  <span className={cn(
-                    'absolute -top-2 -right-2 text-xs font-bold px-1.5 py-0.5 rounded-full',
-                    active ? 'bg-success text-success-foreground' : 'bg-success/20 text-success'
-                  )}>
+                  <Badge variant="success" className="absolute -right-2 -top-2 px-1.5 py-0">
                     -{cfg.discount * 100}%
-                  </span>
+                  </Badge>
                 )}
-              </button>
+              </Button>
             );
           })}
         </div>
       </div>
 
       {/* Plans grid */}
-      <div className="grid md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {planos.map((plano) => {
           const price = getPrice(plano.preco_mensal);
           const isHighlight = plano.destaque;
@@ -301,59 +298,59 @@ export default function PlanoAssinatura() {
             <div
               key={plano.id}
               className={cn(
-                'relative rounded-xl border p-5 flex flex-col transition-all duration-300',
+                'relative flex flex-col rounded-lg border bg-card p-6 transition-colors',
                 isActive
-                  ? 'border-success ring-1 ring-success/30 shadow-lg'
+                  ? 'border-success'
                   : isHighlight
-                    ? 'border-accent shadow-lg ring-1 ring-accent/30 scale-[1.02]'
-                    : 'border-border/50 hover:border-accent/40 hover:shadow-md'
+                    ? 'border-primary'
+                    : 'border-border hover:border-primary/40'
               )}
             >
               {isActive && (
-                <Badge className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-success text-success-foreground text-xs gap-1">
-                  <Check className="w-3 h-3" /> Seu Plano
+                <Badge variant="success" className="absolute -top-3 left-1/2 -translate-x-1/2 gap-1">
+                  <Check className="h-4 w-4" aria-hidden="true" /> Seu Plano
                 </Badge>
               )}
               {!isActive && isHighlight && (
-                <Badge className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-accent text-accent-foreground text-xs gap-1">
-                  <Star className="w-3 h-3" /> Mais popular
+                <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 gap-1">
+                  <Star className="h-4 w-4" aria-hidden="true" /> Mais popular
                 </Badge>
               )}
 
-              <h3 className="text-base font-bold mb-1">{plano.nome}</h3>
-              <p className="text-xs text-muted-foreground mb-4 min-h-[32px]">{plano.descricao}</p>
+              <h3 className="mb-1 text-lg font-semibold text-foreground">{plano.nome}</h3>
+              <p className="mb-4 min-h-10 text-sm text-muted-foreground">{plano.descricao}</p>
 
               <div className="mb-4">
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-2xl font-extrabold tracking-tight">{formatCurrency(price.monthly)}</span>
-                  <span className="text-xs text-muted-foreground">/mês</span>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-[2rem] font-bold leading-10 tabular-nums text-foreground">{formatCurrency(price.monthly)}</span>
+                  <span className="text-sm text-muted-foreground">/mês</span>
                 </div>
                 {cycle !== 'mensal' && (
-                  <div className="mt-1 space-y-0.5">
-                    <p className="text-xs text-muted-foreground">
-                      Total: <span className="font-semibold text-foreground">{formatCurrency(price.total)}</span> / {cycleConfig[cycle].label.toLowerCase()}
+                  <div className="mt-1 space-y-1">
+                    <p className="text-sm text-muted-foreground">
+                      Total: <span className="font-semibold tabular-nums text-foreground">{formatCurrency(price.total)}</span> / {cycleConfig[cycle].label.toLowerCase()}
                     </p>
-                    <p className="text-xs text-success font-medium flex items-center gap-1">
-                      <Zap className="w-3 h-3" />
+                    <p className="flex items-center gap-1 text-sm font-medium text-success">
+                      <Zap className="h-4 w-4" aria-hidden="true" />
                       Economia de {formatCurrency(price.saved)}
                     </p>
                   </div>
                 )}
                 {cycle === 'mensal' && (
-                  <p className="text-xs text-muted-foreground mt-1">Sem fidelidade</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Sem fidelidade</p>
                 )}
               </div>
 
-              <div className="flex gap-3 mb-4 text-xs text-muted-foreground">
+              <div className="mb-4 flex gap-3 text-sm text-muted-foreground">
                 <span>{plano.limite_licitacoes === -1 ? '∞' : plano.limite_licitacoes} licitações</span>
                 <span>•</span>
                 <span>{plano.limite_usuarios === -1 ? '∞' : plano.limite_usuarios} {(plano.limite_usuarios ?? 1) === 1 ? 'usuário' : 'usuários'}</span>
               </div>
 
-              <ul className="space-y-2 flex-1 mb-5">
+              <ul className="mb-6 flex-1 space-y-2">
                 {plano.recursos?.map((r, i) => (
-                  <li key={i} className="flex items-start gap-2 text-xs">
-                    <Check className="w-3.5 h-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
+                  <li key={i} className="flex items-start gap-2 text-sm text-foreground">
+                    <Check className="mt-1 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
                     <span>{r}</span>
                   </li>
                 ))}
@@ -364,17 +361,16 @@ export default function PlanoAssinatura() {
                 variant={isActive ? 'outline' : isHighlight ? 'default' : 'outline'}
                 className={cn(
                   'w-full truncate',
-                  isActive && 'border-success text-success hover:bg-success/10',
-                  !isActive && isHighlight && 'bg-accent hover:bg-accent/90 text-accent-foreground'
+                  isActive && 'border-success text-success-ink hover:bg-success-tint',
                 )}
                 disabled={isLoading || managingPortal}
               >
                 {isLoading ? (
-                  <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Redirecionando...</>
+                  <><Loader2 className="animate-spin" aria-hidden="true" /> Redirecionando...</>
                 ) : isActive ? (
-                  <><Settings className="w-4 h-4 mr-2" /> Gerenciar</>
+                  <><Settings aria-hidden="true" /> Gerenciar</>
                 ) : (
-                  <><ExternalLink className="w-4 h-4 mr-2 flex-shrink-0" /> <span className="truncate">Assinar {plano.nome}</span></>
+                  <><ExternalLink aria-hidden="true" /> <span className="truncate">Assinar {plano.nome}</span></>
                 )}
               </Button>
             </div>
@@ -383,10 +379,10 @@ export default function PlanoAssinatura() {
       </div>
 
       <div className="mt-4 space-y-1">
-        <p className="text-xs text-muted-foreground text-center">
+        <p className="text-center text-xs text-muted-foreground">
           Pagamento seguro via <strong>Cartão de Crédito</strong> ou <strong>Boleto Bancário</strong> processado pelo Stripe.
         </p>
-        <p className="text-xs text-muted-foreground text-center">
+        <p className="text-center text-xs text-muted-foreground">
           Cancele a qualquer momento pelo portal de gerenciamento.
         </p>
       </div>

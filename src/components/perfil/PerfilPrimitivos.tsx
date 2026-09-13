@@ -11,7 +11,7 @@ import type { ReactNode } from 'react';
  */
 
 export function GradeHub({ children }: { children: ReactNode }) {
-  return <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2 xl:grid-cols-3">{children}</div>;
+  return <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">{children}</div>;
 }
 
 export function CampoHub({
@@ -27,13 +27,13 @@ export function CampoHub({
 }) {
   return (
     <label className="block min-w-0">
-      <span className="flex items-center gap-1.5 text-sm font-medium mb-1.5">
-        <Icone className="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
+      <span className="mb-2 flex items-center gap-2 text-sm font-medium text-foreground">
+        <Icone className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
         {rotulo}
       </span>
       {children}
       {dica && (
-        <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">{dica}</p>
+        <p className="mt-2 text-xs leading-4 text-muted-foreground">{dica}</p>
       )}
     </label>
   );
@@ -41,7 +41,7 @@ export function CampoHub({
 
 export function RodapeHub({ children }: { children: ReactNode }) {
   return (
-    <div className="mt-7 pt-5 border-t border-border flex flex-wrap items-center gap-x-4 gap-y-2">
+    <div className="mt-8 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border pt-6">
       {children}
     </div>
   );
@@ -51,8 +51,8 @@ export function RodapeHub({ children }: { children: ReactNode }) {
 export function TituloHub({ titulo, descricao }: { titulo: string; descricao: string }) {
   return (
     <div className="mb-6">
-      <h2 className="text-xl font-bold tracking-tight">{titulo}</h2>
-      <p className="text-sm text-muted-foreground mt-1">{descricao}</p>
+      <h2 className="text-lg font-semibold text-foreground">{titulo}</h2>
+      <p className="mt-1 text-sm text-muted-foreground">{descricao}</p>
     </div>
   );
 }

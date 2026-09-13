@@ -164,18 +164,19 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="flex items-center gap-2 mb-2">
-        <ShieldCheck className="w-5 h-5 text-accent" />
-        <h3 className="text-sm font-semibold">
+      <div className="mb-2 flex items-center gap-2">
+        <ShieldCheck className="h-5 w-5 text-primary" aria-hidden="true" />
+        <h3 className="text-lg font-semibold text-foreground">
           {mode === 'login' ? 'Acessar com Certificado Digital' : 'Cadastrar Empresa'}
         </h3>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
-          <Label className="text-xs">CNPJ / CPF *</Label>
-          <div className="flex gap-2 mt-1">
+          <Label htmlFor="cert-cnpj">CNPJ / CPF *</Label>
+          <div className="mt-1 flex gap-2">
             <Input
+              id="cert-cnpj"
               value={cnpj}
               onChange={e => setCnpj(e.target.value)}
               placeholder="00.000.000/0001-00"
@@ -188,19 +189,20 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
               onClick={handleBuscarCNPJ}
               disabled={buscando || cnpj.replace(/\D/g, '').length < 14}
               title="Buscar dados na Receita Federal e SINTEGRA"
-              className="shrink-0"
+              aria-label="Buscar dados na Receita Federal e SINTEGRA"
+              className="h-11 w-11 shrink-0"
             >
-              {buscando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+              {buscando ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Search aria-hidden="true" />}
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="mt-1 text-xs text-muted-foreground">
             {buscandoSintegra ? 'Consultando SINTEGRA...' : 'Clique na lupa para preencher automaticamente'}
           </p>
         </div>
         <div>
-          <Label className="text-xs">Tipo de Certificado</Label>
+          <Label htmlFor="cert-tipo">Tipo de Certificado</Label>
           <Select value={certTipo} onValueChange={(v: 'e-cnpj' | 'e-cpf') => setCertTipo(v)}>
-            <SelectTrigger className="mt-1">
+            <SelectTrigger id="cert-tipo" className="mt-1">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -211,108 +213,111 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
-          <Label className="text-xs">Nome do Certificado (referência)</Label>
+          <Label htmlFor="cert-nome">Nome do Certificado (referência)</Label>
           <Input
+            id="cert-nome"
             value={certNome}
             onChange={e => setCertNome(e.target.value)}
             placeholder="Ex: e-CNPJ A1 - Certisign 2025"
             className="mt-1"
           />
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="mt-1 text-xs text-muted-foreground">
             Apenas identificação — o certificado permanece no seu computador/VPS
           </p>
         </div>
         <div>
-          <Label className="text-xs">Validade do Certificado</Label>
-          <Input type="date" value={validade} onChange={e => setValidade(e.target.value)} className="mt-1" />
+          <Label htmlFor="cert-validade">Validade do Certificado</Label>
+          <Input id="cert-validade" type="date" value={validade} onChange={e => setValidade(e.target.value)} className="mt-1" />
         </div>
       </div>
 
-      <div className="bg-accent/5 border border-accent/20 rounded-lg p-3">
-        <button
+      <div className="rounded-lg border border-border bg-primary-tint p-4">
+        <Button
           type="button"
-          className="flex items-center gap-1.5 text-xs text-accent hover:underline"
+          variant="link"
+          className="h-auto gap-2 p-0 text-sm"
           onClick={() => setShowSeguranca(!showSeguranca)}
+          aria-expanded={showSeguranca}
         >
-          <Info className="w-3.5 h-3.5" />
+          <Info aria-hidden="true" />
           {showSeguranca ? 'Ocultar' : 'Como configurar'} o certificado digital com segurança?
-        </button>
+        </Button>
         {showSeguranca && (
-          <div className="mt-3">
+          <div className="mt-4">
             <CertificadoModoSeguranca />
           </div>
         )}
       </div>
 
       <div>
-        <Label className="text-xs">Razão Social *</Label>
-        <Input value={razaoSocial} onChange={e => setRazaoSocial(e.target.value)} placeholder="Nome da empresa" className="mt-1" required />
+        <Label htmlFor="cert-razao">Razão Social *</Label>
+        <Input id="cert-razao" value={razaoSocial} onChange={e => setRazaoSocial(e.target.value)} placeholder="Nome da empresa" className="mt-1" required />
       </div>
 
       <div>
-        <Label className="text-xs">Nome Fantasia</Label>
-        <Input value={nomeFantasia} onChange={e => setNomeFantasia(e.target.value)} placeholder="Nome fantasia (opcional)" className="mt-1" />
+        <Label htmlFor="cert-fantasia">Nome Fantasia</Label>
+        <Input id="cert-fantasia" value={nomeFantasia} onChange={e => setNomeFantasia(e.target.value)} placeholder="Nome fantasia (opcional)" className="mt-1" />
       </div>
 
       <div>
-        <Label className="text-xs">CNAE Principal</Label>
-        <Input value={cnaePrincipal} onChange={e => setCnaePrincipal(e.target.value)} placeholder="Ex: 6201500 - Desenvolvimento de software" className="mt-1" />
+        <Label htmlFor="cert-cnae">CNAE Principal</Label>
+        <Input id="cert-cnae" value={cnaePrincipal} onChange={e => setCnaePrincipal(e.target.value)} placeholder="Ex: 6201500 - Desenvolvimento de software" className="mt-1" />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
-          <Label className="text-xs">Telefone</Label>
-          <Input value={telefone} onChange={e => setTelefone(e.target.value)} placeholder="(XX) XXXXX-XXXX" className="mt-1" />
+          <Label htmlFor="cert-telefone">Telefone</Label>
+          <Input id="cert-telefone" value={telefone} onChange={e => setTelefone(e.target.value)} placeholder="(XX) XXXXX-XXXX" className="mt-1" />
         </div>
         <div>
-          <Label className="text-xs">E-mail</Label>
-          <Input value={email} onChange={e => setEmail(e.target.value)} placeholder="contato@empresa.com" className="mt-1" />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-3 gap-4">
-        <div>
-          <Label className="text-xs">CEP</Label>
-          <Input value={cep} onChange={e => setCep(e.target.value)} placeholder="00000-000" className="mt-1" />
-        </div>
-        <div className="col-span-2">
-          <Label className="text-xs">Endereço (Logradouro, Nº)</Label>
-          <Input value={endereco} onChange={e => setEndereco(e.target.value)} placeholder="Rua, nº - Bairro" className="mt-1" />
+          <Label htmlFor="cert-email">E-mail</Label>
+          <Input id="cert-email" value={email} onChange={e => setEmail(e.target.value)} placeholder="contato@empresa.com" className="mt-1" />
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <div>
-          <Label className="text-xs">Complemento</Label>
-          <Input value={complemento} onChange={e => setComplemento(e.target.value)} placeholder="Sala, Andar, etc." className="mt-1" />
+          <Label htmlFor="cert-cep">CEP</Label>
+          <Input id="cert-cep" value={cep} onChange={e => setCep(e.target.value)} placeholder="00000-000" className="mt-1" />
         </div>
-        <div>
-          <Label className="text-xs">Bairro</Label>
-          <Input value={bairro} onChange={e => setBairro(e.target.value)} placeholder="Bairro" className="mt-1" />
-        </div>
-        <div>
-          <Label className="text-xs">Inscrição Estadual</Label>
-          <Input value={inscricaoEstadual} onChange={e => setInscricaoEstadual(e.target.value)} placeholder="ISENTO ou nº" className="mt-1" />
+        <div className="md:col-span-2">
+          <Label htmlFor="cert-endereco">Endereço (Logradouro, Nº)</Label>
+          <Input id="cert-endereco" value={endereco} onChange={e => setEndereco(e.target.value)} placeholder="Rua, nº - Bairro" className="mt-1" />
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <div>
-          <Label className="text-xs">Município</Label>
-          <Input value={municipio} onChange={e => setMunicipio(e.target.value)} placeholder="São Paulo" className="mt-1" />
+          <Label htmlFor="cert-complemento">Complemento</Label>
+          <Input id="cert-complemento" value={complemento} onChange={e => setComplemento(e.target.value)} placeholder="Sala, Andar, etc." className="mt-1" />
         </div>
         <div>
-          <Label className="text-xs">UF</Label>
-          <Input value={uf} onChange={e => setUf(e.target.value)} placeholder="SP" className="mt-1" maxLength={2} />
+          <Label htmlFor="cert-bairro">Bairro</Label>
+          <Input id="cert-bairro" value={bairro} onChange={e => setBairro(e.target.value)} placeholder="Bairro" className="mt-1" />
+        </div>
+        <div>
+          <Label htmlFor="cert-ie">Inscrição Estadual</Label>
+          <Input id="cert-ie" value={inscricaoEstadual} onChange={e => setInscricaoEstadual(e.target.value)} placeholder="ISENTO ou nº" className="mt-1" />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div>
+          <Label htmlFor="cert-municipio">Município</Label>
+          <Input id="cert-municipio" value={municipio} onChange={e => setMunicipio(e.target.value)} placeholder="São Paulo" className="mt-1" />
+        </div>
+        <div>
+          <Label htmlFor="cert-uf">UF</Label>
+          <Input id="cert-uf" value={uf} onChange={e => setUf(e.target.value)} placeholder="SP" className="mt-1" maxLength={2} />
         </div>
       </div>
 
       <div>
-        <Label className="text-xs">Regime Tributário *</Label>
+        <Label htmlFor="cert-regime">Regime Tributário *</Label>
         <Select value={regimeTributario} onValueChange={setRegimeTributario}>
-          <SelectTrigger className="mt-1">
+          <SelectTrigger id="cert-regime" className="mt-1">
             <SelectValue placeholder="Selecione o regime tributário" />
           </SelectTrigger>
           <SelectContent>
@@ -323,8 +328,8 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
         </Select>
       </div>
 
-      <Button type="submit" disabled={loading || !regimeTributario} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
-        {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Building2 className="w-4 h-4 mr-2" />}
+      <Button type="submit" disabled={loading || !regimeTributario} className="w-full">
+        {loading ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Building2 aria-hidden="true" />}
         {mode === 'login' ? 'Acessar' : 'Cadastrar Empresa'}
       </Button>
     </form>

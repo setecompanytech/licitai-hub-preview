@@ -1,9 +1,10 @@
 import AppLayout from '@/components/layout/AppLayout';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import { useMetasEmTempoReal } from '@/hooks/useMetasComercial';
 import { useSearchParams } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Target, SlidersHorizontal, LayoutDashboard, Lock, FileText , Users } from 'lucide-react';
+import { Target, LayoutDashboard, Lock, FileText, Users } from 'lucide-react';
 import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
 import EquipeMetas from '@/components/metas/EquipeMetas';
 import PainelMetas from '@/components/metas/PainelMetas';
@@ -37,32 +38,28 @@ export default function MetasComercial() {
 
   return (
     <AppLayout>
-      <div className="mb-4">
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-          <Target className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground" />
-          Metas do Comercial
-        </h1>
-        <p className="text-base text-muted-foreground mt-1">
-          Metas mensais por colaborador, com valores-alvo e alertas configuráveis
-        </p>
-      </div>
+      <CabecalhoPagina
+        icone={<Target />}
+        titulo="Metas do Comercial"
+        descricao="Metas mensais por colaborador, com valores-alvo e alertas configuráveis"
+      />
 
       {/* ?tab= permite entrar direto na parametrização — é por onde o
           administrador chega, vindo do cartão Administração do Painel. */}
       <Tabs value={aba} onValueChange={trocarAba} className="space-y-4">
         <TabsList>
-          <TabsTrigger value="painel" className="gap-1.5">
-            <LayoutDashboard className="w-3.5 h-3.5" /> Painel
+          <TabsTrigger value="painel" className="gap-2">
+            <LayoutDashboard className="w-4 h-4" /> Painel
           </TabsTrigger>
           {/* Leitura de gestão: a equipe inteira lado a lado. Painel e
               Relatórios continuam servindo ao acompanhamento individual. */}
           {isAdmin && (
-            <TabsTrigger value="equipe" className="gap-1.5">
-              <Users className="w-3.5 h-3.5" /> Equipe
+            <TabsTrigger value="equipe" className="gap-2">
+              <Users className="w-4 h-4" /> Equipe
             </TabsTrigger>
           )}
-          <TabsTrigger value="relatorios" className="gap-1.5">
-            <FileText className="w-3.5 h-3.5" /> Relatórios
+          <TabsTrigger value="relatorios" className="gap-2">
+            <FileText className="w-4 h-4" /> Relatórios
           </TabsTrigger>
         </TabsList>
 
@@ -75,9 +72,11 @@ export default function MetasComercial() {
             <EquipeMetas />
           ) : (
             <Card className="p-12 text-center">
-              <Lock className="w-10 h-10 mx-auto text-muted-foreground/30 mb-3" />
-              <p className="text-base font-medium text-muted-foreground">Acesso restrito</p>
-              <p className="text-base text-muted-foreground mt-1">
+              <div aria-hidden="true" className="w-12 h-12 mx-auto rounded-full bg-muted text-muted-foreground flex items-center justify-center mb-4">
+                <Lock className="w-6 h-6" />
+              </div>
+              <p className="text-lg font-semibold text-foreground">Acesso restrito</p>
+              <p className="text-base text-muted-foreground mt-1 max-w-md mx-auto">
                 O cumprimento de meta da equipe é visão do administrador. Seu próprio
                 acompanhamento está na aba Painel.
               </p>

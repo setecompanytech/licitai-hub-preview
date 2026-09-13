@@ -328,12 +328,24 @@ Formato: texto estruturado com tópicos numerados.`;
     }
   };
 
+  // A cor vem do vocabulário semântico do app, não da paleta crua que
+  // `getTratamentoLabel` carrega (green-600, orange-100…): o rótulo continua
+  // sendo dele, a família do badge é decidida aqui.
+  const TRATAMENTO_VARIANT: Record<TratamentoICMS, 'success' | 'warning' | 'info' | 'danger'> = {
+    ISENTO: 'success',
+    ST: 'warning',
+    REDUCAO_BC: 'info',
+    DIFERIDO: 'info',
+    ALIQUOTA_CHEIA: 'danger',
+    ALIQUOTA_ESPECIAL: 'warning',
+  };
+
   const TratamentoBadge = ({ tratamento, aliquota }: { tratamento: TratamentoICMS; aliquota: number }) => {
-    const { label, cor } = getTratamentoLabel(tratamento);
+    const { label } = getTratamentoLabel(tratamento);
     return (
-      <Badge className={`text-xs font-medium border ${cor}`}>
-        {tratamento === 'ISENTO' && <CheckCircle2 className="w-3 h-3 mr-1" />}
-        {tratamento === 'ST' && <AlertTriangle className="w-3 h-3 mr-1" />}
+      <Badge variant={TRATAMENTO_VARIANT[tratamento] ?? 'info'} className="font-medium">
+        {tratamento === 'ISENTO' && <CheckCircle2 className="w-3 h-3 mr-1" aria-hidden="true" />}
+        {tratamento === 'ST' && <AlertTriangle className="w-3 h-3 mr-1" aria-hidden="true" />}
         {label} {aliquota > 0 ? `(${aliquota}%)` : ''}
       </Badge>
     );
@@ -342,25 +354,25 @@ Formato: texto estruturado com tópicos numerados.`;
   return (
     <div className="space-y-4">
       {/* ── Header ── */}
-      <div className="bg-card rounded-xl border border-border/50 p-5">
-        <div className="flex items-center justify-between mb-3">
+      <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
           <div className="flex items-center gap-2">
-            <Scale className="w-5 h-5 text-muted-foreground" />
-            <h3 className="font-semibold text-sm">
+            <Scale className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+            <h3 className="text-lg font-semibold">
               Análise de Regime Tributário — {ufCalculo}
             </h3>
           </div>
-          <Badge variant="outline" className="text-xs">
-            <ShieldCheck className="w-3 h-3 mr-1" /> IA Tributária
+          <Badge variant="muted">
+            <ShieldCheck className="w-3 h-3 mr-1" aria-hidden="true" /> IA Tributária
           </Badge>
         </div>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           Identifica automaticamente o tratamento tributário (isenção, ST, redução de BC, diferimento) para cada item com base no NCM, UF e regime.
         </p>
 
         {/* Legislation info */}
         {temDados && ufData && (
-          <div className="mt-3 bg-muted/30 rounded-lg p-3 space-y-1">
+          <div className="mt-3 bg-muted rounded-lg p-3 space-y-1">
             <p className="text-xs text-muted-foreground">
               <strong className="text-foreground">Base legal:</strong> {ufData.legislacao_base}
             </p>
@@ -380,44 +392,46 @@ Formato: texto estruturado com tópicos numerados.`;
 
       {/* ── Panorama tributário do estado ── */}
       {temDados && (
-        <div className="bg-card rounded-xl border border-border/50 p-5">
+        <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
           <button
+            type="button"
             onClick={() => setPanoramaOpen(!panoramaOpen)}
-            className="w-full flex items-center justify-between group"
+            aria-expanded={panoramaOpen}
+            className="w-full flex items-center justify-between group rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
-            <h4 className="text-sm font-semibold flex items-center gap-2">
-              <FileText className="w-4 h-4 text-muted-foreground" />
+            <h4 className="text-lg font-semibold flex items-center gap-2">
+              <FileText className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
               Panorama Tributário — {ufCalculo} ({ufNome})
             </h4>
-            <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${panoramaOpen ? 'rotate-0' : '-rotate-90'}`} />
+            <ChevronDown className={`w-5 h-5 text-muted-foreground transition-transform duration-200 ${panoramaOpen ? 'rotate-0' : '-rotate-90'}`} aria-hidden="true" />
           </button>
           {panoramaOpen && (
-            <div className="overflow-x-auto rounded-lg border border-border/50 mt-3">
+            <div className="overflow-x-auto rounded-lg border border-border mt-3">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead className="text-xs font-semibold h-8">Categoria</TableHead>
-                    <TableHead className="text-xs font-semibold h-8">Tratamento</TableHead>
-                    <TableHead className="text-xs font-semibold h-8 text-right">Alíq. Efetiva</TableHead>
-                    <TableHead className="text-xs font-semibold h-8">Fundamentação</TableHead>
+                  <TableRow className="bg-muted">
+                    <TableHead className="text-sm font-semibold h-10">Categoria</TableHead>
+                    <TableHead className="text-sm font-semibold h-10">Tratamento</TableHead>
+                    <TableHead className="text-sm font-semibold h-10 text-right">Alíq. Efetiva</TableHead>
+                    <TableHead className="text-sm font-semibold h-10">Fundamentação</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {regrasUF.filter(r => !r.categoria.startsWith('servicos_')).map((regra, idx) => (
                     <TableRow key={idx}>
-                      <TableCell className="text-xs py-1.5 font-medium">
+                      <TableCell className="text-sm py-2 font-medium">
                         {getCategoriaLabel(regra.categoria)}
                       </TableCell>
-                      <TableCell className="text-xs py-1.5">
+                      <TableCell className="text-sm py-2">
                         <TratamentoBadge tratamento={regra.tratamento} aliquota={regra.aliquota_efetiva} />
                       </TableCell>
-                      <TableCell className="text-xs py-1.5 text-right font-bold">
+                      <TableCell className="text-sm py-2 text-right font-bold tabular-nums">
                         {regra.aliquota_efetiva === 0 ? 'Isento' : `${regra.aliquota_efetiva}%`}
                         {regra.aliquota_st_mva && (
                           <span className="text-muted-foreground ml-1">(MVA {regra.aliquota_st_mva}%)</span>
                         )}
                       </TableCell>
-                      <TableCell className="text-xs py-1.5 text-muted-foreground max-w-[200px] truncate">
+                      <TableCell className="text-sm py-2 text-muted-foreground max-w-[200px] truncate">
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger className="text-left">
@@ -443,20 +457,18 @@ Formato: texto estruturado com tópicos numerados.`;
 
       {/* ── NCM Input por Item ── */}
       {itens.some(i => i.descricao.trim()) && (
-        <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
+        <div className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <h4 className="text-sm font-semibold flex items-center gap-2">
-              <Search className="w-4 h-4 text-muted-foreground" />
+            <h4 className="text-lg font-semibold flex items-center gap-2">
+              <Search className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
               Classificação NCM dos Itens
             </h4>
             <Button
               variant="outline"
-              size="sm"
               onClick={analisarComIA}
               disabled={loading}
-              className="gap-1.5 text-xs"
             >
-              {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Bot className="w-3.5 h-3.5" />}
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Bot className="w-4 h-4" aria-hidden="true" />}
               Analisar com IA
             </Button>
           </div>
@@ -468,27 +480,28 @@ Formato: texto estruturado com tópicos numerados.`;
             const autoLoading = ncmAutoLoading[idx];
 
             return (
-              <div key={idx} className="bg-muted/20 rounded-lg p-3 space-y-2">
-                <div className="flex items-center gap-3">
-                  <span className="text-xs font-medium text-foreground flex-1 truncate">
+              <div key={idx} className="bg-muted rounded-lg p-3 space-y-2">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="text-sm font-medium text-foreground flex-1 min-w-[160px] truncate">
                     {item.descricao}
                   </span>
-                  <div className="w-40 relative">
+                  <div className="w-full sm:w-44 relative">
                     <Input
+                      aria-label={`NCM do item ${item.descricao}`}
                       value={ncmInputs[idx] || ''}
                       onChange={e => updateNcm(idx, e.target.value)}
                       placeholder="NCM: 0000.00.00"
-                      className="h-7 text-xs pr-7"
+                      className="h-9 text-sm pr-8"
                     />
                     {autoLoading && (
-                      <Loader2 className="w-3 h-3 animate-spin absolute right-2 top-2 text-muted-foreground" />
+                      <Loader2 className="w-4 h-4 animate-spin absolute right-2 top-2.5 text-muted-foreground" aria-hidden="true" />
                     )}
                   </div>
                 </div>
 
                 {/* Resultado auto-search NCM (portais oficiais + IA) */}
                 {autoResult && !resultadoIA && (
-                  <div className="bg-background/50 rounded-lg p-3 space-y-2 border border-border/30">
+                  <div className="bg-card rounded-lg p-3 space-y-2 border border-border">
                     <div className="flex items-center gap-2 mb-1">
                       <Globe className="w-3.5 h-3.5 text-muted-foreground" />
                       <span className="text-xs font-semibold text-foreground">
@@ -513,13 +526,16 @@ Formato: texto estruturado com tópicos numerados.`;
                       <div className="space-y-1">
                         <p className="text-xs font-medium text-foreground">Sugestões de NCM:</p>
                         {autoResult.sugestoes_ncm.map((sug, sIdx) => (
-                          <button
+                          <Button
                             key={sIdx}
+                            type="button"
+                            variant="ghost"
+                            size="sm"
                             onClick={() => updateNcm(idx, sug.codigo)}
-                            className="block w-full text-left text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded px-2 py-1 transition-colors"
+                            className="h-auto w-full justify-start whitespace-normal px-2 py-1 text-left text-xs font-normal text-muted-foreground"
                           >
-                            <strong>{sug.codigo}</strong> — {sug.descricao}
-                          </button>
+                            <span><strong>{sug.codigo}</strong> — {sug.descricao}</span>
+                          </Button>
                         ))}
                       </div>
                     )}
@@ -528,7 +544,7 @@ Formato: texto estruturado com tópicos numerados.`;
                     {(autoResult.icms || autoResult.ipi || autoResult.pis_cofins) && (
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                         {autoResult.icms && (
-                          <div className="bg-muted/30 rounded p-2">
+                          <div className="bg-muted rounded-md p-2">
                             <p className="text-xs font-semibold text-muted-foreground uppercase">ICMS</p>
                             <p className="text-xs font-bold text-foreground">
                               {autoResult.icms.isento ? 'Isento' : `${autoResult.icms.aliquota_interna || 0}%`}
@@ -539,13 +555,13 @@ Formato: texto estruturado com tópicos numerados.`;
                           </div>
                         )}
                         {autoResult.ipi && (
-                          <div className="bg-muted/30 rounded p-2">
+                          <div className="bg-muted rounded-md p-2">
                             <p className="text-xs font-semibold text-muted-foreground uppercase">IPI</p>
                             <p className="text-xs font-bold text-foreground">{autoResult.ipi.aliquota ?? 0}%</p>
                           </div>
                         )}
                         {autoResult.pis_cofins && (
-                          <div className="bg-muted/30 rounded p-2">
+                          <div className="bg-muted rounded-md p-2">
                             <p className="text-xs font-semibold text-muted-foreground uppercase">PIS/COFINS</p>
                             <p className="text-xs font-bold text-foreground">
                               {(autoResult.pis_cofins.pis ?? 0)}% / {(autoResult.pis_cofins.cofins ?? 0)}%
@@ -553,9 +569,9 @@ Formato: texto estruturado com tópicos numerados.`;
                           </div>
                         )}
                         {autoResult.st?.aplicavel && (
-                          <div className="bg-destructive/10 rounded p-2 border border-destructive/20">
-                            <p className="text-xs font-semibold text-destructive uppercase">ST</p>
-                            <p className="text-xs font-bold text-destructive">
+                          <div className="bg-destructive-tint rounded-md p-2 border border-destructive-line">
+                            <p className="text-xs font-semibold text-destructive-ink uppercase">ST</p>
+                            <p className="text-xs font-bold text-destructive-ink">
                               MVA: {autoResult.st.mva ?? '—'}%
                             </p>
                             {autoResult.cest && (
@@ -625,9 +641,9 @@ Formato: texto estruturado com tópicos numerados.`;
                               href={ref.url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="flex items-center gap-1 text-accent hover:underline"
+                              className="flex items-center gap-1 text-primary hover:underline"
                             >
-                              <ExternalLink className="w-2.5 h-2.5" />
+                              <ExternalLink className="w-3 h-3" aria-hidden="true" />
                               {ref.nome}
                             </a>
                           ))}
@@ -654,7 +670,7 @@ Formato: texto estruturado com tópicos numerados.`;
                       <Badge variant="outline" className="text-xs">NCM: {resultadoIA.ncm}</Badge>
                       <Badge variant="outline" className="text-xs">{resultadoIA.categoria}</Badge>
                       {resultadoIA.st_mva && (
-                        <Badge variant="outline" className="text-xs text-destructive">MVA: {resultadoIA.st_mva}%</Badge>
+                        <Badge variant="danger">MVA: {resultadoIA.st_mva}%</Badge>
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground">
@@ -672,36 +688,35 @@ Formato: texto estruturado com tópicos numerados.`;
       )}
 
       {/* ── Consulta manual NCM/Produto ── */}
-      <div className="bg-card rounded-xl border border-border/50 p-5 space-y-3">
-        <h4 className="text-sm font-semibold flex items-center gap-2">
-          <Bot className="w-4 h-4 text-muted-foreground" />
+      <div className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-3">
+        <h4 className="text-lg font-semibold flex items-center gap-2">
+          <Bot className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
           Consulta Tributária por NCM/Produto
         </h4>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           Consulte o tratamento tributário específico de qualquer produto ou NCM no estado {ufCalculo}, incluindo ST, isenções, reduções de BC e fundamentação legal.
         </p>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Input
+            aria-label="NCM ou produto a consultar"
             value={consultaManual}
             onChange={e => setConsultaManual(e.target.value)}
             placeholder="Ex: Notebook NCM 8471.30 ou 'cimento Portland'"
-            className="flex-1"
+            className="flex-1 min-w-[200px]"
             onKeyDown={e => e.key === 'Enter' && consultarManual()}
           />
           <Button
             onClick={consultarManual}
             disabled={loadingManual}
-            size="sm"
-            className="gap-1.5"
           >
-            {loadingManual ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
+            {loadingManual ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Search className="w-4 h-4" aria-hidden="true" />}
             Consultar
           </Button>
         </div>
 
         {resultadoManual && (
-          <div className="bg-muted/30 rounded-lg p-4 space-y-2 max-h-80 overflow-y-auto">
-            <div className="prose prose-sm max-w-none dark:prose-invert text-xs whitespace-pre-wrap">
+          <div className="bg-muted rounded-lg p-4 space-y-2 max-h-80 overflow-y-auto">
+            <div className="prose prose-sm max-w-none dark:prose-invert text-sm whitespace-pre-wrap">
               {resultadoManual}
             </div>
           </div>
@@ -709,8 +724,8 @@ Formato: texto estruturado com tópicos numerados.`;
       </div>
 
       {/* ── Notas legais ── */}
-      <div className="bg-muted/20 rounded-lg p-3 flex items-start gap-2">
-        <Info className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+      <div className="bg-muted rounded-lg p-3 flex items-start gap-2">
+        <Info className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" aria-hidden="true" />
         <div className="text-xs text-muted-foreground space-y-1">
           <p>
             <strong>Aviso:</strong> Esta análise é baseada na legislação vigente e em dados públicos dos RICMS estaduais e Convênios CONFAZ. 

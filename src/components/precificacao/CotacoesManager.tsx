@@ -4,13 +4,16 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import { MoneyInput } from '@/components/ui/money-input';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import {
-  FileText, Plus, Trash2, Loader2, Download, Eye, ClipboardList,
+  FileText, Plus, Trash2, Download, ClipboardList,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -181,7 +184,8 @@ export default function CotacoesManager() {
         i.fonte || '', i.fornecedor || '', i.uf || '',
       ]),
       styles: { fontSize: 7 },
-      headStyles: { fillColor: [59, 130, 246] },
+      // Cor do cabeçalho do PDF exportado (documento, não interface): navy da marca.
+      headStyles: { fillColor: [16, 42, 67] },
     });
 
     const total = items.reduce((s, i) => s + (i.total || 0), 0);
@@ -195,30 +199,39 @@ export default function CotacoesManager() {
   const totalQuot = items.reduce((s, i) => s + (i.total || 0), 0);
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <ClipboardList className="w-5 h-5 text-muted-foreground" />
-          <h3 className="font-semibold">Cotações</h3>
-          <Badge variant="outline">{quotations.length}</Badge>
+          <ClipboardList className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+          <h3 className="text-lg font-semibold">Cotações</h3>
+          <Badge variant="info">{quotations.length} {quotations.length === 1 ? 'cotação' : 'cotações'}</Badge>
         </div>
-        <Button size="sm" onClick={() => setShowCreate(true)}>
-          <Plus className="w-4 h-4 mr-1" /> Nova Cotação
+        <Button onClick={() => setShowCreate(true)}>
+          <Plus className="w-4 h-4" aria-hidden="true" /> Nova Cotação
         </Button>
       </div>
 
       {showCreate && (
-        <div className="bg-muted/30 border border-border/40 rounded-lg p-4 space-y-3">
-          <Input placeholder="Nome da cotação *" value={newQuot.nome} onChange={e => setNewQuot(p => ({ ...p, nome: e.target.value }))} />
-          <div className="grid grid-cols-2 gap-2">
-            <Input placeholder="Órgão" value={newQuot.orgao} onChange={e => setNewQuot(p => ({ ...p, orgao: e.target.value }))} />
-            <Input placeholder="Nº Processo" value={newQuot.processo} onChange={e => setNewQuot(p => ({ ...p, processo: e.target.value }))} />
+        <div className="space-y-3 rounded-lg border border-border bg-muted p-4">
+          <div>
+            <Label htmlFor="cotacao-nome" className="text-sm">Nome da cotação *</Label>
+            <Input id="cotacao-nome" placeholder="Ex.: Cotação PE 12/2026" value={newQuot.nome} onChange={e => setNewQuot(p => ({ ...p, nome: e.target.value }))} className="mt-1" />
           </div>
-          <div className="flex gap-2">
-            <Button size="sm" onClick={createQuotation} disabled={creating || !newQuot.nome.trim()}>
-              {creating ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Plus className="w-4 h-4 mr-1" />} Criar
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor="cotacao-orgao" className="text-sm">Órgão</Label>
+              <Input id="cotacao-orgao" placeholder="Opcional" value={newQuot.orgao} onChange={e => setNewQuot(p => ({ ...p, orgao: e.target.value }))} className="mt-1" />
+            </div>
+            <div>
+              <Label htmlFor="cotacao-processo" className="text-sm">Nº Processo</Label>
+              <Input id="cotacao-processo" placeholder="Opcional" value={newQuot.processo} onChange={e => setNewQuot(p => ({ ...p, processo: e.target.value }))} className="mt-1" />
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={createQuotation} disabled={creating || !newQuot.nome.trim()}>
+              <Plus className="w-4 h-4" aria-hidden="true" /> {creating ? 'Criando...' : 'Criar'}
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => setShowCreate(false)}>Cancelar</Button>
+            <Button variant="ghost" onClick={() => setShowCreate(false)}>Cancelar</Button>
           </div>
         </div>
       )}
@@ -227,29 +240,49 @@ export default function CotacoesManager() {
         {/* List */}
         <div className="lg:col-span-1 space-y-2">
           {loading ? (
-            <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+            <div className="space-y-2" role="status" aria-label="Carregando cotações">
+              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-20 w-full" />
+            </div>
           ) : quotations.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">Nenhuma cotação criada.</p>
           ) : (
-            quotations.map(q => (
-              <button
-                key={q.id}
-                onClick={() => openQuotation(q)}
-                className={`w-full text-left p-3 rounded-lg border transition-colors ${selectedQuot?.id === q.id ? 'border-primary bg-primary/5' : 'border-border/40 hover:bg-muted/30'}`}
-              >
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium truncate">{q.nome}</p>
-                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={e => { e.stopPropagation(); deleteQuotation(q.id); }}>
-                    <Trash2 className="w-3.5 h-3.5 text-destructive" />
+            quotations.map(q => {
+              const ativa = selectedQuot?.id === q.id;
+              return (
+                <div
+                  key={q.id}
+                  className={cn(
+                    'relative rounded-lg border transition-colors',
+                    ativa ? 'border-primary bg-primary-tint' : 'border-border bg-card hover:bg-muted',
+                  )}
+                >
+                  <button
+                    type="button"
+                    onClick={() => openQuotation(q)}
+                    aria-pressed={ativa}
+                    className="w-full rounded-lg p-3 pr-12 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  >
+                    <p className="text-sm font-medium truncate">{q.nome}</p>
+                    {q.orgao && <p className="text-xs text-muted-foreground mt-1">{q.orgao}</p>}
+                    <div className="flex flex-wrap items-center justify-between gap-2 mt-2">
+                      <Badge variant="muted">{q.status}</Badge>
+                      <span className="text-xs font-medium tabular-nums">{formatCurrency(q.valor_total)}</span>
+                    </div>
+                  </button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="absolute right-2 top-2 h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive-tint"
+                    aria-label={`Excluir cotação ${q.nome}`}
+                    onClick={() => deleteQuotation(q.id)}
+                  >
+                    <Trash2 className="w-4 h-4" aria-hidden="true" />
                   </Button>
                 </div>
-                {q.orgao && <p className="text-xs text-muted-foreground mt-0.5">{q.orgao}</p>}
-                <div className="flex items-center justify-between mt-1">
-                  <Badge variant="secondary" className="text-xs">{q.status}</Badge>
-                  <span className="text-xs font-medium">{formatCurrency(q.valor_total)}</span>
-                </div>
-              </button>
-            ))
+              );
+            })
           )}
         </div>
 
@@ -257,76 +290,113 @@ export default function CotacoesManager() {
         <div className="lg:col-span-2">
           {selectedQuot ? (
             <div className="space-y-3">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <h4 className="text-sm font-semibold">{selectedQuot.nome}</h4>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline" onClick={() => setShowAddItem(true)}>
-                    <Plus className="w-3.5 h-3.5 mr-1" /> Item
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h4 className="text-lg font-semibold">{selectedQuot.nome}</h4>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" onClick={() => setShowAddItem(true)}>
+                    <Plus className="w-4 h-4" aria-hidden="true" /> Item
                   </Button>
-                  <Button size="sm" variant="outline" onClick={exportXLSX} disabled={items.length === 0}>
-                    <Download className="w-3.5 h-3.5 mr-1" /> XLSX
+                  <Button variant="outline" onClick={exportXLSX} disabled={items.length === 0}>
+                    <Download className="w-4 h-4" aria-hidden="true" /> XLSX
                   </Button>
-                  <Button size="sm" variant="outline" onClick={exportPDF} disabled={items.length === 0}>
-                    <FileText className="w-3.5 h-3.5 mr-1" /> PDF
+                  <Button variant="outline" onClick={exportPDF} disabled={items.length === 0}>
+                    <FileText className="w-4 h-4" aria-hidden="true" /> PDF
                   </Button>
                 </div>
               </div>
 
               {showAddItem && (
-                <div className="bg-muted/30 border border-border/40 rounded-lg p-3 grid grid-cols-3 gap-2">
-                  <Input placeholder="Descrição *" value={newItem.descricao} onChange={e => setNewItem(p => ({ ...p, descricao: e.target.value }))} className="col-span-2" />
-                  <Input placeholder="Marca" value={newItem.marca} onChange={e => setNewItem(p => ({ ...p, marca: e.target.value }))} />
-                  <Input placeholder="Unidade" value={newItem.unidade} onChange={e => setNewItem(p => ({ ...p, unidade: e.target.value }))} />
-                  <Input type="number" placeholder="Qtd" value={newItem.quantidade} onChange={e => setNewItem(p => ({ ...p, quantidade: e.target.value }))} />
-                  <MoneyInput placeholder="Preço unitário *" value={Number(newItem.preco_unitario) || 0} onValueChange={v => setNewItem(p => ({ ...p, preco_unitario: String(v) }))} />
-                  <MoneyInput placeholder="Frete" value={Number(newItem.frete) || 0} onValueChange={v => setNewItem(p => ({ ...p, frete: String(v) }))} />
-                  <Input placeholder="Fonte" value={newItem.fonte} onChange={e => setNewItem(p => ({ ...p, fonte: e.target.value }))} />
-                  <Input placeholder="Fornecedor" value={newItem.fornecedor} onChange={e => setNewItem(p => ({ ...p, fornecedor: e.target.value }))} />
-                  <Input placeholder="UF" value={newItem.uf} onChange={e => setNewItem(p => ({ ...p, uf: e.target.value }))} />
-                  <Input placeholder="URL" value={newItem.url} onChange={e => setNewItem(p => ({ ...p, url: e.target.value }))} className="col-span-2" />
-                  <Input placeholder="Observações" value={newItem.observacoes} onChange={e => setNewItem(p => ({ ...p, observacoes: e.target.value }))} />
-                  <div className="col-span-3 flex gap-2">
-                    <Button size="sm" onClick={addItem} disabled={!newItem.descricao.trim() || !newItem.preco_unitario}>Adicionar</Button>
-                    <Button size="sm" variant="ghost" onClick={() => setShowAddItem(false)}>Cancelar</Button>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 rounded-lg border border-border bg-muted p-4">
+                  <div className="sm:col-span-2">
+                    <Label htmlFor="qi-descricao" className="text-sm">Descrição *</Label>
+                    <Input id="qi-descricao" placeholder="Descrição do item" value={newItem.descricao} onChange={e => setNewItem(p => ({ ...p, descricao: e.target.value }))} className="mt-1" />
+                  </div>
+                  <div>
+                    <Label htmlFor="qi-marca" className="text-sm">Marca</Label>
+                    <Input id="qi-marca" placeholder="Opcional" value={newItem.marca} onChange={e => setNewItem(p => ({ ...p, marca: e.target.value }))} className="mt-1" />
+                  </div>
+                  <div>
+                    <Label htmlFor="qi-unidade" className="text-sm">Unidade</Label>
+                    <Input id="qi-unidade" placeholder="UN" value={newItem.unidade} onChange={e => setNewItem(p => ({ ...p, unidade: e.target.value }))} className="mt-1" />
+                  </div>
+                  <div>
+                    <Label htmlFor="qi-quantidade" className="text-sm">Qtd</Label>
+                    <Input id="qi-quantidade" type="number" placeholder="1" value={newItem.quantidade} onChange={e => setNewItem(p => ({ ...p, quantidade: e.target.value }))} className="mt-1" />
+                  </div>
+                  <div>
+                    <Label htmlFor="qi-preco" className="text-sm">Preço unitário *</Label>
+                    <MoneyInput id="qi-preco" placeholder="0,00" value={Number(newItem.preco_unitario) || 0} onValueChange={v => setNewItem(p => ({ ...p, preco_unitario: String(v) }))} className="mt-1" />
+                  </div>
+                  <div>
+                    <Label htmlFor="qi-frete" className="text-sm">Frete</Label>
+                    <MoneyInput id="qi-frete" placeholder="0,00" value={Number(newItem.frete) || 0} onValueChange={v => setNewItem(p => ({ ...p, frete: String(v) }))} className="mt-1" />
+                  </div>
+                  <div>
+                    <Label htmlFor="qi-fonte" className="text-sm">Fonte</Label>
+                    <Input id="qi-fonte" placeholder="Opcional" value={newItem.fonte} onChange={e => setNewItem(p => ({ ...p, fonte: e.target.value }))} className="mt-1" />
+                  </div>
+                  <div>
+                    <Label htmlFor="qi-fornecedor" className="text-sm">Fornecedor</Label>
+                    <Input id="qi-fornecedor" placeholder="Opcional" value={newItem.fornecedor} onChange={e => setNewItem(p => ({ ...p, fornecedor: e.target.value }))} className="mt-1" />
+                  </div>
+                  <div>
+                    <Label htmlFor="qi-uf" className="text-sm">UF</Label>
+                    <Input id="qi-uf" placeholder="UF" value={newItem.uf} onChange={e => setNewItem(p => ({ ...p, uf: e.target.value }))} className="mt-1" />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <Label htmlFor="qi-url" className="text-sm">URL</Label>
+                    <Input id="qi-url" placeholder="https://" value={newItem.url} onChange={e => setNewItem(p => ({ ...p, url: e.target.value }))} className="mt-1" />
+                  </div>
+                  <div>
+                    <Label htmlFor="qi-obs" className="text-sm">Observações</Label>
+                    <Input id="qi-obs" placeholder="Opcional" value={newItem.observacoes} onChange={e => setNewItem(p => ({ ...p, observacoes: e.target.value }))} className="mt-1" />
+                  </div>
+                  <div className="sm:col-span-3 flex flex-wrap gap-2">
+                    <Button onClick={addItem} disabled={!newItem.descricao.trim() || !newItem.preco_unitario}>Adicionar</Button>
+                    <Button variant="ghost" onClick={() => setShowAddItem(false)}>Cancelar</Button>
                   </div>
                 </div>
               )}
 
               {loadingItems ? (
-                <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+                <div className="space-y-2" role="status" aria-label="Carregando itens da cotação">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
               ) : items.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-8">Cotação vazia.</p>
               ) : (
                 <>
-                  <div className="overflow-x-auto">
+                  <div className="overflow-x-auto rounded-lg border border-border">
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="text-xs">#</TableHead>
-                          <TableHead className="text-xs">Descrição</TableHead>
-                          <TableHead className="text-xs text-center">Qtd</TableHead>
-                          <TableHead className="text-xs text-right">Preço Un.</TableHead>
-                          <TableHead className="text-xs text-right">Frete</TableHead>
-                          <TableHead className="text-xs text-right">Total</TableHead>
-                          <TableHead className="text-xs">Fonte</TableHead>
-                          <TableHead className="text-xs">Fornecedor</TableHead>
-                          <TableHead className="text-xs w-10"></TableHead>
+                          <TableHead className="text-sm font-semibold">#</TableHead>
+                          <TableHead className="text-sm font-semibold">Descrição</TableHead>
+                          <TableHead className="text-sm font-semibold text-center">Qtd</TableHead>
+                          <TableHead className="text-sm font-semibold text-right">Preço Un.</TableHead>
+                          <TableHead className="text-sm font-semibold text-right">Frete</TableHead>
+                          <TableHead className="text-sm font-semibold text-right">Total</TableHead>
+                          <TableHead className="text-sm font-semibold">Fonte</TableHead>
+                          <TableHead className="text-sm font-semibold">Fornecedor</TableHead>
+                          <TableHead className="w-10 text-sm font-semibold"><span className="sr-only">Ações</span></TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {items.map((item, idx) => (
                           <TableRow key={item.id}>
-                            <TableCell className="text-xs">{idx + 1}</TableCell>
+                            <TableCell className="text-sm tabular-nums">{idx + 1}</TableCell>
                             <TableCell className="text-sm max-w-[200px] truncate">{item.descricao}</TableCell>
-                            <TableCell className="text-center text-sm">{item.quantidade}</TableCell>
-                            <TableCell className="text-right text-sm">{formatCurrency(item.preco_unitario)}</TableCell>
-                            <TableCell className="text-right text-sm">{formatCurrency(item.frete)}</TableCell>
-                            <TableCell className="text-right text-sm font-medium">{formatCurrency(item.total)}</TableCell>
-                            <TableCell className="text-xs text-muted-foreground">{item.fonte || '—'}</TableCell>
-                            <TableCell className="text-xs text-muted-foreground">{item.fornecedor || '—'}</TableCell>
+                            <TableCell className="text-center text-sm tabular-nums">{item.quantidade}</TableCell>
+                            <TableCell className="text-right text-sm tabular-nums">{formatCurrency(item.preco_unitario)}</TableCell>
+                            <TableCell className="text-right text-sm tabular-nums">{formatCurrency(item.frete)}</TableCell>
+                            <TableCell className="text-right text-sm font-medium tabular-nums">{formatCurrency(item.total)}</TableCell>
+                            <TableCell className="text-sm text-muted-foreground">{item.fonte || '—'}</TableCell>
+                            <TableCell className="text-sm text-muted-foreground">{item.fornecedor || '—'}</TableCell>
                             <TableCell>
-                              <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => deleteItem(item.id)}>
-                                <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                              <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive-tint" aria-label={`Remover ${item.descricao}`} onClick={() => deleteItem(item.id)}>
+                                <Trash2 className="w-4 h-4" aria-hidden="true" />
                               </Button>
                             </TableCell>
                           </TableRow>
@@ -334,16 +404,19 @@ export default function CotacoesManager() {
                       </TableBody>
                     </Table>
                   </div>
-                  <div className="flex justify-end pt-2 border-t border-border/30">
-                    <p className="text-sm font-bold">Total: {formatCurrency(totalQuot)}</p>
+                  <div className="flex justify-end pt-2 border-t border-border">
+                    <p className="text-sm font-bold tabular-nums">Total: {formatCurrency(totalQuot)}</p>
                   </div>
                 </>
               )}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-              <ClipboardList className="w-8 h-8 mb-2 opacity-50" />
-              <p className="text-sm">Selecione uma cotação para visualizar</p>
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
+                <ClipboardList className="w-6 h-6" aria-hidden="true" />
+              </span>
+              <p className="mt-4 text-base font-semibold">Nenhuma cotação selecionada</p>
+              <p className="mt-1 text-sm text-muted-foreground">Selecione uma cotação para visualizar.</p>
             </div>
           )}
         </div>

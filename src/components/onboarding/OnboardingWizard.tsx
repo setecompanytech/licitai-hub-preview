@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
+import { cn } from '@/lib/utils';
 import {
   Building2, FileText, Globe, Search, CheckCircle2, ArrowRight, ArrowLeft,
   Sparkles, Shield, Bot,
@@ -143,26 +145,37 @@ export default function OnboardingWizard({ open, onClose }: Props) {
       <DialogContent className="max-w-lg" onPointerDownOutside={e => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg">
-            <StepIcon className="w-5 h-5 text-accent" />
+            <StepIcon className="w-5 h-5 text-primary" aria-hidden="true" />
             {steps[step].title}
           </DialogTitle>
+          <DialogDescription>{steps[step].desc}</DialogDescription>
         </DialogHeader>
 
-        <Progress value={progress} className="h-1.5 mb-2" />
-        <p className="text-sm text-muted-foreground mb-4">{steps[step].desc}</p>
+        <Progress
+          value={progress}
+          className="h-2"
+          aria-label={`Etapa ${step + 1} de ${steps.length}`}
+        />
 
         {/* Step 0: Welcome */}
         {step === 0 && (
           <div className="space-y-4">
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 [&>*]:min-w-0">
+              {/* "13+ Portais / Monitoramento em tempo real" saiu: é
+                  exatamente o número sem fonte que a régua da identidade
+                  proíbe (paginas.ts nomeia "13 portais" como exemplo), e
+                  contradizia a própria etapa seguinte, que oferece nove.
+                  O cartão agora diz o que a etapa 2 realmente faz. */}
               {[
-                { icon: Bot, label: 'IA Integrada', desc: 'Extração automática de editais' },
+                { icon: Bot, label: 'IA integrada', desc: 'Extração automática de editais' },
                 { icon: Shield, label: 'Segurança', desc: 'Dados protegidos com criptografia' },
-                { icon: Globe, label: '13+ Portais', desc: 'Monitoramento em tempo real' },
+                { icon: Globe, label: 'Portais', desc: 'Você escolhe quais monitorar no próximo passo' },
               ].map(f => (
-                <div key={f.label} className="bg-muted/50 rounded-lg p-3 text-center">
-                  <f.icon className="w-5 h-5 mx-auto text-accent mb-1" />
-                  <p className="text-xs font-semibold">{f.label}</p>
+                <div key={f.label} className="rounded-lg border border-border bg-muted/50 p-4 text-center">
+                  <span aria-hidden="true" className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-primary-tint text-primary">
+                    <f.icon className="w-5 h-5" />
+                  </span>
+                  <p className="text-sm font-semibold">{f.label}</p>
                   <p className="text-xs text-muted-foreground">{f.desc}</p>
                 </div>
               ))}
@@ -172,38 +185,39 @@ export default function OnboardingWizard({ open, onClose }: Props) {
 
         {/* Step 1: Empresa */}
         {step === 1 && (
-          <div className="space-y-3">
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Razão Social *</label>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="onb-razao-social">Razão Social *</Label>
               <Input
+                id="onb-razao-social"
                 value={empresa.razao_social}
                 onChange={e => setEmpresa(prev => ({ ...prev, razao_social: e.target.value }))}
                 placeholder="Nome da empresa"
-                className="mt-1"
               />
             </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">CNPJ *</label>
+            <div className="space-y-2">
+              <Label htmlFor="onb-cnpj">CNPJ *</Label>
               <Input
+                id="onb-cnpj"
                 value={empresa.cnpj}
                 onChange={e => setEmpresa(prev => ({ ...prev, cnpj: e.target.value }))}
                 placeholder="00.000.000/0001-00"
-                className="mt-1"
               />
             </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">E-mail da empresa</label>
+            <div className="space-y-2">
+              <Label htmlFor="onb-email">E-mail da empresa</Label>
               <Input
+                id="onb-email"
+                type="email"
                 value={empresa.email}
                 onChange={e => setEmpresa(prev => ({ ...prev, email: e.target.value }))}
                 placeholder="contato@empresa.com"
-                className="mt-1"
               />
             </div>
             <p className="text-xs text-muted-foreground">
               {empresas.length > 0
                 ? 'Se o CNPJ já existir na sua conta, o sistema atualizará a empresa existente em vez de duplicar.'
-                : 'Você pode pular esta etapa e cadastrar depois em Configurações → Empresas.'}
+                : 'Você pode pular esta etapa e cadastrar depois em Configuração → Empresas.'}
             </p>
           </div>
         )}
@@ -211,21 +225,29 @@ export default function OnboardingWizard({ open, onClose }: Props) {
         {/* Step 2: Portais */}
         {step === 2 && (
           <div className="space-y-3">
-            <div className="flex flex-wrap gap-2">
-              {portaisOpcoes.map(p => (
-                <button
-                  key={p}
-                  onClick={() => togglePortal(p)}
-                  className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
-                    portaisSelecionados.includes(p)
-                      ? 'bg-accent text-accent-foreground border-accent'
-                      : 'bg-muted/50 text-muted-foreground border-border hover:bg-muted'
-                  }`}
-                >
-                  {portaisSelecionados.includes(p) && <CheckCircle2 className="w-3 h-3 inline mr-1" />}
-                  {p}
-                </button>
-              ))}
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Portais de interesse">
+              {portaisOpcoes.map(p => {
+                const selecionado = portaisSelecionados.includes(p);
+                return (
+                  <Button
+                    key={p}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    aria-pressed={selecionado}
+                    onClick={() => togglePortal(p)}
+                    className={cn(
+                      'rounded-full',
+                      selecionado
+                        ? 'border-primary/40 bg-primary-tint text-primary hover:bg-primary-tint'
+                        : 'text-muted-foreground'
+                    )}
+                  >
+                    {selecionado && <CheckCircle2 aria-hidden="true" />}
+                    {p}
+                  </Button>
+                );
+              })}
             </div>
             <p className="text-xs text-muted-foreground">
               Selecione os portais que você deseja monitorar. Você pode alterar depois.
@@ -236,19 +258,19 @@ export default function OnboardingWizard({ open, onClose }: Props) {
         {/* Step 3: Keywords */}
         {step === 3 && (
           <div className="space-y-3">
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Palavras-chave (separadas por vírgula)</label>
+            <div className="space-y-2">
+              <Label htmlFor="onb-palavras">Palavras-chave (separadas por vírgula)</Label>
               <Input
+                id="onb-palavras"
                 value={palavras}
                 onChange={e => setPalavras(e.target.value)}
                 placeholder="material de limpeza, informática, mobiliário"
-                className="mt-1"
               />
             </div>
             {palavras && (
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap gap-2">
                 {palavras.split(',').map(p => p.trim()).filter(Boolean).map(p => (
-                  <Badge key={p} variant="outline" className="text-xs">{p}</Badge>
+                  <Badge key={p} variant="info">{p}</Badge>
                 ))}
               </div>
             )}
@@ -261,41 +283,44 @@ export default function OnboardingWizard({ open, onClose }: Props) {
         {/* Step 4: Done */}
         {step === 4 && (
           <div className="text-center space-y-4 py-4">
-            <div className="w-16 h-16 rounded-2xl bg-success/10 flex items-center justify-center mx-auto">
-              <CheckCircle2 className="w-8 h-8 text-success" />
-            </div>
+            <span aria-hidden="true" className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-success-tint text-success-ink">
+              <CheckCircle2 className="w-6 h-6" />
+            </span>
             <div>
-              <p className="text-sm font-semibold">Tudo pronto!</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Explore o Dashboard, monitore editais e comece a disputar licitações com inteligência.
+              <p className="text-lg font-semibold">Tudo pronto!</p>
+              {/* "Dashboard" virou "Painel": é o nome que o registro
+                  (lib/navegacao/paginas.ts) dá à rota /dashboard, e o mesmo
+                  que a pessoa lê no menu e no h1 da tela. */}
+              <p className="text-sm text-muted-foreground mt-1">
+                Explore o Painel, monitore editais e comece a disputar licitações com inteligência.
               </p>
             </div>
           </div>
         )}
 
         {/* Navigation */}
-        <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
-          <div className="text-xs text-muted-foreground">
+        <div className="flex flex-wrap items-center justify-between gap-2 mt-4 pt-4 border-t border-border">
+          <div className="text-sm text-muted-foreground tabular-nums">
             Etapa {step + 1} de {steps.length}
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {step > 0 && (
-              <Button size="sm" variant="ghost" onClick={() => setStep(s => s - 1)}>
-                <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Voltar
+              <Button type="button" variant="ghost" onClick={() => setStep(s => s - 1)}>
+                <ArrowLeft aria-hidden="true" /> Voltar
               </Button>
             )}
             {step === 0 && (
-              <Button size="sm" variant="ghost" onClick={() => { localStorage.setItem(ONBOARDING_KEY, 'true'); onClose(); }}>
+              <Button type="button" variant="ghost" onClick={() => { localStorage.setItem(ONBOARDING_KEY, 'true'); onClose(); }}>
                 Pular
               </Button>
             )}
             {step < steps.length - 1 ? (
-              <Button size="sm" onClick={() => setStep(s => s + 1)}>
-                Próximo <ArrowRight className="w-3.5 h-3.5 ml-1" />
+              <Button type="button" onClick={() => setStep(s => s + 1)}>
+                Próximo <ArrowRight aria-hidden="true" />
               </Button>
             ) : (
-              <Button size="sm" onClick={handleFinish} disabled={saving}>
-                {saving ? 'Salvando...' : 'Começar a usar'} <Sparkles className="w-3.5 h-3.5 ml-1" />
+              <Button type="button" onClick={handleFinish} disabled={saving}>
+                {saving ? 'Salvando...' : 'Começar a usar'} <Sparkles aria-hidden="true" />
               </Button>
             )}
           </div>

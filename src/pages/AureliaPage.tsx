@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Send, Loader2, FileText, ClipboardCheck, DollarSign, Target, Scale, Zap, FolderOpen } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Send, Loader2, FileText, ClipboardCheck, DollarSign, Target, Scale, Zap, FolderOpen, Sparkles } from 'lucide-react';
 import { streamAIChat, ChatMessage } from '@/lib/ai-stream';
 import { sanitizeAureliaOutput } from '@/prompts/aurelia-system-prompt';
 import { useProcessoAtivo } from '@/hooks/useProcessoAtivo';
@@ -71,20 +72,27 @@ export default function AureliaPage() {
   return (
     <AppLayout>
       <div className="max-w-4xl mx-auto min-h-[calc(100vh-120px)] flex flex-col">
+        <CabecalhoPagina
+          icone={<Sparkles />}
+          titulo="AURÉLIA"
+          descricao="Sua consultora sênior em licitações públicas — Praefectus Intelligence"
+        />
+
         {showWelcome ? (
           <div className="flex-1 flex flex-col items-center justify-center py-12">
-            {/* Logo */}
-            <div className="w-20 h-20 rounded-full bg-accent flex items-center justify-center mb-6 shadow-lg" style={{ boxShadow: '0 4px 24px hsl(var(--accent) / 0.3)' }}>
-              <span className="text-2xl font-bold text-white tracking-wider">AU</span>
+            {/* Avatar da consultora */}
+            <div aria-hidden="true" className="w-20 h-20 rounded-full bg-primary-tint text-primary flex items-center justify-center mb-6">
+              <span className="text-2xl font-bold tracking-wider">AU</span>
             </div>
-            <h1 className="text-2xl font-bold text-foreground mb-1">AURÉLIA</h1>
-            <p className="text-sm text-muted-foreground mb-2">Sua consultora sênior em licitações públicas</p>
-            <p className="text-xs text-muted-foreground mb-4">Powered by PRAEFECTUS Intelligence</p>
+            <h2 className="text-lg font-semibold text-foreground mb-1">Como posso ajudar hoje?</h2>
+            <p className="text-base text-muted-foreground mb-6 text-center max-w-md">
+              Pergunte sobre editais, habilitação, propostas, estratégia de lance ou a Lei 14.133/2021.
+            </p>
 
             {processo && (
-              <div className="mb-6 px-3 py-1.5 rounded-full bg-accent/10 border border-accent/30 text-xs flex items-center gap-2">
-                <FolderOpen className="w-3 h-3 text-accent" />
-                <span className="text-accent font-medium">Analisando: {processo.numero || 'S/N'}</span>
+              <div className="mb-6 px-3 py-1.5 rounded-full bg-primary-tint border border-border text-xs flex items-center gap-2 max-w-full">
+                <FolderOpen className="w-4 h-4 text-primary shrink-0" />
+                <span className="text-primary font-medium">Analisando: {processo.numero || 'S/N'}</span>
                 <span className="text-muted-foreground truncate max-w-[200px]">— {processo.orgao}</span>
               </div>
             )}
@@ -92,31 +100,36 @@ export default function AureliaPage() {
             {/* Quick Actions */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 w-full max-w-xl mb-8">
               {quickActions.map((qa) => (
-                <button
+                <Button
                   key={qa.label}
+                  variant="outline"
                   onClick={() => handleSend(qa.prompt)}
-                  className="flex flex-col items-center gap-2 p-4 rounded-xl border border-border bg-card hover:bg-muted transition-all text-center group"
+                  className="h-auto flex-col gap-2 p-4 rounded-lg whitespace-normal text-center"
                 >
-                  <qa.icon className="w-5 h-5 text-accent group-hover:scale-110 transition-transform" />
+                  <qa.icon className="w-5 h-5 text-primary" />
                   <span className="text-xs font-medium text-foreground">{qa.label}</span>
-                </button>
+                </Button>
               ))}
             </div>
 
             {/* Input */}
             <div className="w-full max-w-xl">
               <div className="flex gap-2">
-                <input
+                <label htmlFor="aurelia-pergunta" className="sr-only">Pergunta para a AURÉLIA</label>
+                <Input
+                  id="aurelia-pergunta"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                   placeholder="Pergunte sobre editais, habilitação, propostas…"
-                  className="flex-1 rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent transition-all"
+                  className="flex-1"
                 />
                 <Button
                   onClick={() => handleSend()}
                   disabled={!input.trim()}
-                  className="bg-accent hover:bg-accent/90 text-accent-foreground h-auto px-4 rounded-xl"
+                  size="icon"
+                  className="h-11 w-11 shrink-0"
+                  aria-label="Enviar pergunta"
                 >
                   <Send className="w-4 h-4" />
                 </Button>
@@ -130,12 +143,12 @@ export default function AureliaPage() {
               {messages.map((msg, i) => (
                 <div key={i} className={cn("flex gap-3", msg.role === 'user' ? 'justify-end' : 'justify-start')}>
                   {msg.role === 'assistant' && (
-                    <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center shrink-0 mt-1">
-                      <span className="text-xs font-bold text-white">AU</span>
+                    <div aria-hidden="true" className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center shrink-0 mt-1">
+                      <span className="text-xs font-bold">AU</span>
                     </div>
                   )}
                   <div className={cn(
-                    "max-w-[80%] rounded-xl px-4 py-3 text-sm",
+                    "max-w-[80%] rounded-lg px-4 py-3 text-sm",
                     msg.role === 'user'
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-card border border-border text-foreground'
@@ -148,11 +161,11 @@ export default function AureliaPage() {
               ))}
               {isLoading && messages[messages.length - 1]?.role === 'user' && (
                 <div className="flex gap-3">
-                  <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center shrink-0">
-                    <span className="text-xs font-bold text-white">AU</span>
+                  <div aria-hidden="true" className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center shrink-0">
+                    <span className="text-xs font-bold">AU</span>
                   </div>
-                  <div className="bg-card border border-border rounded-xl px-4 py-3 text-sm text-muted-foreground flex items-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin text-accent" />
+                  <div className="bg-card border border-border rounded-lg px-4 py-3 text-sm text-muted-foreground flex items-center gap-2" role="status">
+                    <Loader2 className="w-4 h-4 animate-spin text-primary" />
                     AURÉLIA está analisando…
                   </div>
                 </div>
@@ -163,18 +176,22 @@ export default function AureliaPage() {
             {/* Input bar */}
             <div className="sticky bottom-0 py-4 bg-background">
               <div className="flex gap-2">
-                <input
+                <label htmlFor="aurelia-continuar" className="sr-only">Continue a conversa</label>
+                <Input
+                  id="aurelia-continuar"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                   placeholder="Continue a conversa…"
-                  className="flex-1 rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent transition-all"
+                  className="flex-1"
                   disabled={isLoading}
                 />
                 <Button
                   onClick={() => handleSend()}
                   disabled={!input.trim() || isLoading}
-                  className="bg-accent hover:bg-accent/90 text-accent-foreground h-auto px-4 rounded-xl"
+                  size="icon"
+                  className="h-11 w-11 shrink-0"
+                  aria-label="Enviar mensagem"
                 >
                   {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                 </Button>

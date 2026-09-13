@@ -317,8 +317,8 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
       <ContratoEficacia contratoId={contratoId} />
 
       {entregaUnicaEmAndamento && (
-        <div className="rounded-xl p-4 border bg-info/5 border-info/30 nao-imprime">
-          <p className="text-xs font-semibold text-info flex items-center gap-1.5">
+        <div className="rounded-lg p-4 border bg-muted border-border nao-imprime">
+          <p className="text-sm font-semibold text-foreground flex items-center gap-1.5">
             <CheckCircle2 className="w-4 h-4" /> Entrega única — fornecimento integral pedido, entrega em andamento
           </p>
           <p className="text-xs text-muted-foreground mt-1">
@@ -330,8 +330,8 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
       )}
 
       {entregaUnicaConcluida && (
-        <div className="rounded-xl p-4 border bg-success/5 border-success/30 nao-imprime">
-          <p className="text-xs font-semibold text-success flex items-center gap-1.5">
+        <div className="rounded-lg p-4 border bg-success-tint border-success-line nao-imprime">
+          <p className="text-xs font-semibold text-success-ink flex items-center gap-1.5">
             <CheckCircle2 className="w-4 h-4" /> Entrega única concluída
           </p>
           <p className="text-xs text-muted-foreground mt-1">
@@ -343,7 +343,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
       )}
 
       {perguntarFormaFornecimento && (
-        <div className="rounded-xl p-4 border bg-muted/40 border-border nao-imprime">
+        <div className="rounded-lg p-4 border border-border bg-muted nao-imprime">
           <button type="button" className="w-full flex items-center justify-between gap-2 text-left"
             onClick={() => setPerguntaAberta((v) => !v)}
             title={perguntaAberta ? 'Recolher' : 'Expandir'}>
@@ -376,11 +376,11 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
 
       {(alertasSaldoVisiveis.length > 0 || vigencia.vencido || vigencia.vencendo || fisicoParado || reajusteDevido) && (
         <SecaoDoDocumento numero="1" titulo="Alertas">
-        <div className={`rounded-xl p-4 space-y-2 border ${vigencia.vencido ? 'bg-destructive/5 border-destructive/30' : 'bg-warning/5 border-warning/30'}`}>
+        <div className={`rounded-lg p-4 space-y-2 border ${vigencia.vencido ? 'bg-destructive-tint border-destructive-line' : 'bg-warning-tint border-warning-line'}`}>
           <button type="button" className="w-full flex items-center justify-between gap-2 text-left"
             onClick={() => setAlertasAbertos((v) => !v)}
             title={alertasAbertos ? 'Recolher os alertas' : 'Expandir os alertas'}>
-            <h4 className={`text-xs font-semibold flex items-center gap-1.5 ${vigencia.vencido ? 'text-destructive' : 'text-warning'}`}>
+            <h4 className={`text-xs font-semibold flex items-center gap-1.5 ${vigencia.vencido ? 'text-destructive-ink' : 'text-warning-ink'}`}>
               <AlertTriangle className="w-4 h-4" /> Alertas
             </h4>
             {alertasAbertos
@@ -389,19 +389,19 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
           </button>
           {alertasAbertos && (<>
           {vigencia.vencido && (
-            <p className="text-xs text-destructive/90">
+            <p className="text-xs text-destructive-ink">
               <strong>{vigencia.frase}</strong> (em {c.data_fim ? new Date(`${c.data_fim}T12:00:00`).toLocaleDateString('pt-BR') : '—'}).
               {' '}Se houve prorrogação, registre o aditivo de prazo para a vigência voltar a valer.
             </p>
           )}
-          {!vigencia.vencido && vigencia.vencendo && <p className="text-xs text-warning/80">{vigencia.frase}</p>}
+          {!vigencia.vencido && vigencia.vencendo && <p className="text-xs text-warning-ink">{vigencia.frase}</p>}
           {decenal && (decenal.ultrapassa || !decenal.ultimaProrrogacaoAnualCabe) && (
-            <p className={`text-xs ${decenal.ultrapassa ? 'text-destructive' : 'text-warning/80'}`}>
+            <p className={`text-xs ${decenal.ultrapassa ? 'text-destructive-ink' : 'text-warning-ink'}`}>
               <strong>Teto decenal:</strong> {decenal.frase}
             </p>
           )}
           {fisicoParado && (
-            <p className="text-xs text-warning/80">
+            <p className="text-xs text-warning-ink">
               <strong>Consumo financeiro sem lastro físico:</strong> há contratos derivados somando
               valor, mas nenhum quilo foi baixado dos itens da ata. Abra o contrato derivado →
               Itens/Lotes e preencha as quantidades (o lápis edita).
@@ -420,11 +420,11 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
           {excesso.excede && (
             <div className={`rounded-md border p-2.5 ${
               excesso.cabeNoArt125
-                ? 'border-warning/40 bg-warning/5'
-                : 'border-destructive/40 bg-destructive/5'
+                ? 'border-warning-line bg-warning-tint'
+                : 'border-destructive-line bg-destructive-tint'
             }`}>
               <p className={`text-xs font-semibold ${
-                excesso.cabeNoArt125 ? 'text-warning' : 'text-destructive'
+                excesso.cabeNoArt125 ? 'text-warning-ink' : 'text-destructive-ink'
               }`}>
                 {excesso.cabeNoArt125
                   ? 'Execução além do contratado — regularizável por aditivo'
@@ -437,7 +437,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
             </div>
           )}
           {reajusteDevido && reajuste && (
-            <p className="text-xs text-warning/80">
+            <p className="text-xs text-warning-ink">
               <strong>Reajuste por índice devido</strong> desde{' '}
               {new Date(reajuste.aniversario + 'T12:00:00').toLocaleDateString('pt-BR')}
               {(c as any)?.indice_reajuste ? ` (${(c as any).indice_reajuste})` : ''} — o interregno de 1 ano
@@ -446,7 +446,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
             </p>
           )}
           {alertasSaldoVisiveis.map((i: any) => (
-            <p key={i.id} className="text-xs text-warning/80"><strong>{i.descricao}</strong>: saldo baixo (restam {i.saldo_quantitativo_efetivo ?? i.saldo_quantitativo} {i.unidade})</p>
+            <p key={i.id} className="text-xs text-warning-ink"><strong>{i.descricao}</strong>: saldo baixo (restam {i.saldo_quantitativo_efetivo ?? i.saldo_quantitativo} {i.unidade})</p>
           ))}
           </>)}
         </div>
@@ -498,12 +498,12 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
         </Card>
         <Card className="p-4">
           <div className="flex items-center gap-1.5 text-muted-foreground text-xs mb-1"><TrendingUp className="w-3.5 h-3.5" /> Saldo</div>
-          <p className={`text-lg font-bold ${(c.saldo_remanescente || 0) > 0 ? 'text-success' : 'text-destructive'}`}>{fmt(c.saldo_remanescente || 0)}</p>
+          <p className={`text-lg font-bold ${(c.saldo_remanescente || 0) > 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>{fmt(c.saldo_remanescente || 0)}</p>
         </Card>
         <Card className="p-4">
           <div className="flex items-center gap-1.5 text-muted-foreground text-xs mb-1"><Package className="w-3.5 h-3.5" /> Itens</div>
           <p className="text-lg font-bold">{data!.itens.length}</p>
-          {itensAlertaSaldo.length > 0 && <Badge className="text-xs bg-warning/10 text-warning mt-1">{itensAlertaSaldo.length} em alerta</Badge>}
+          {itensAlertaSaldo.length > 0 && <Badge className="text-xs bg-warning-tint text-warning-ink mt-1">{itensAlertaSaldo.length} em alerta</Badge>}
         </Card>
         <Card className="p-4">
           <div className="flex items-center gap-1.5 text-muted-foreground text-xs mb-1"><ShoppingCart className="w-3.5 h-3.5" /> {isAtaSrp ? 'Empenhos diretos' : 'Pedidos'}</div>
@@ -553,19 +553,19 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
                 <div className="space-y-0.5">
                   {derivados.slice(0, 3).map(d => (
                     <Link key={d.id} to={`/gestao-contratos?contrato=${d.id}`}
-                      className="block text-xs font-medium hover:text-accent hover:underline truncate nao-imprime">
+                      className="block text-xs font-medium hover:text-primary hover:underline truncate nao-imprime">
                       {d.numero_contrato || '(sem número)'} · {fmt(d.valor_global)}
                     </Link>
                   ))}
                   {derivados.length > 3 && (
-                    <p className="text-[11px] text-muted-foreground">+{derivados.length - 3} — aba Contratos derivados</p>
+                    <p className="text-xs text-muted-foreground">+{derivados.length - 3} — aba Contratos derivados</p>
                   )}
                 </div>
               )}
             </Card>
             <Card className={`p-4 border-l-4 ${saldoAta > 0.005 ? 'border-l-success' : 'border-l-destructive'}`}>
               <div className="text-xs text-muted-foreground mb-1">Saldo da ata</div>
-              <p className={`text-lg font-bold ${saldoAta > 0.005 ? 'text-success' : saldoAta < -0.005 ? 'text-destructive' : ''}`}>{fmt(saldoAta)}</p>
+              <p className={`text-lg font-bold ${saldoAta > 0.005 ? 'text-success-ink' : saldoAta < -0.005 ? 'text-destructive-ink' : ''}`}>{fmt(saldoAta)}</p>
               <p className="text-xs text-muted-foreground">registrado − derivados − empenhos diretos</p>
             </Card>
           </div>
@@ -582,7 +582,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
           </Card>
           <Card className="p-4 border-l-4 border-l-destructive">
             <div className="text-xs text-muted-foreground mb-1">Custos Totais</div>
-            <p className="text-lg font-bold text-destructive">{fmt(totalCustos)}</p>
+            <p className="text-lg font-bold text-destructive-ink">{fmt(totalCustos)}</p>
             {/* Um cartão, a quebra embaixo. Margem é o que se olha de relance;
                 dois cartões competindo pelo mesmo olhar confundem.
 
@@ -594,7 +594,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
               <p className="text-xs text-muted-foreground">Pago: {fmt(custoPago)}</p>
             )}
             {custoComprometido > 0 && (
-              <p className="text-xs text-warning">A pagar: {fmt(custoComprometido)}</p>
+              <p className="text-xs text-warning-ink">A pagar: {fmt(custoComprometido)}</p>
             )}
             {custoPedidos > 0 && (
               <p className="text-xs text-muted-foreground">Custos pedidos: {fmt(custoPedidos)}</p>
@@ -602,12 +602,12 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
           </Card>
           <Card className={`p-4 border-l-4 ${lucroBruto >= 0 ? 'border-l-success' : 'border-l-destructive'}`}>
             <div className="text-xs text-muted-foreground mb-1">Lucro Bruto</div>
-            <p className={`text-lg font-bold ${lucroBruto >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(lucroBruto)}</p>
+            <p className={`text-lg font-bold ${lucroBruto >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>{fmt(lucroBruto)}</p>
             <p className="text-xs text-muted-foreground">Margem: {margemBruta.toFixed(1)}%</p>
           </Card>
           <Card className={`p-4 border-l-4 ${lucroLiquido >= 0 ? 'border-l-success' : 'border-l-destructive'}`}>
             <div className="text-xs text-muted-foreground mb-1">Lucro Líquido</div>
-            <p className={`text-lg font-bold ${lucroLiquido >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(lucroLiquido)}</p>
+            <p className={`text-lg font-bold ${lucroLiquido >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>{fmt(lucroLiquido)}</p>
             <p className="text-xs text-muted-foreground">Margem: {margemLiquida.toFixed(1)}%</p>
           </Card>
         </div>
@@ -625,7 +625,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
       {!isAtaSrp && podeVerCustos && custoPrevistoDoEntregue > 0 && (
         <Card className="p-4">
           <div className="flex items-center justify-between mb-2">
-            <h4 className="text-xs font-semibold">Custo previsto × realizado</h4>
+            <h4 className="text-lg font-semibold">Custo previsto × realizado</h4>
             <span className="text-xs text-muted-foreground">sobre o que já foi entregue</span>
           </div>
           <div className="grid grid-cols-3 gap-3 text-sm">
@@ -643,7 +643,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
                   09/09). O número diz o afastamento; a palavra diz o LADO —
                   economia ou estouro — e ninguém precisa decifrar convenção. */}
               <p className={`font-semibold tabular-nums ${
-                desvioDeCusto === null ? '' : desvioDeCusto > 0 ? 'text-destructive' : 'text-success'
+                desvioDeCusto === null ? '' : desvioDeCusto > 0 ? 'text-destructive-ink' : 'text-success-ink'
               }`}>
                 {desvioDeCusto === null
                   ? '—'
@@ -657,7 +657,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
               pedido de reequilíbrio — e ele exige demonstrar o desequilíbrio
               com números, não com impressão. */}
           {desvioDeCusto !== null && desvioDeCusto > 10 && (
-            <p className="text-xs text-warning mt-2">
+            <p className="text-xs text-warning-ink mt-2">
               O custo está {desvioDeCusto.toFixed(1)}% acima do previsto na proposta. Se a causa for
               externa e imprevisível, é a base para pedir reequilíbrio econômico-financeiro
               (art. 124, II, “d” da Lei 14.133/2021) — que exige demonstrar o desequilíbrio com números.
@@ -691,7 +691,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
       {podeVerCustos && totalCustos > 0 && (
         <SecaoDoDocumento numero="3" titulo="Composição de custos">
         <Card className="p-4">
-          <h4 className="text-xs font-semibold mb-3 flex items-center gap-1.5"><Receipt className="w-4 h-4 text-muted-foreground" /> Composição de Custos</h4>
+          <h4 className="text-lg font-semibold mb-3 flex items-center gap-1.5"><Receipt className="w-4 h-4 text-muted-foreground" /> Composição de Custos</h4>
           <div className="space-y-2">
             {[
               { label: 'Custos Diretos (Pedidos)', valor: custoPedidos, color: 'bg-primary' },
@@ -749,7 +749,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
       <SecaoDoDocumento numero="5" titulo="Vigência">
       <Card className="p-4">
         <div className="flex items-center justify-between mb-2">
-          <h4 className="text-xs font-semibold flex items-center gap-1.5"><Calendar className="w-4 h-4 text-muted-foreground" /> Vigência</h4>
+          <h4 className="text-lg font-semibold flex items-center gap-1.5"><Calendar className="w-4 h-4 text-muted-foreground" /> Vigência</h4>
           {!editandoVigencia && (
             <Button variant="ghost" size="icon" className="h-5 w-5"
               onClick={() => {
@@ -768,7 +768,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
             vigência ficava em traços SEM caminho para preencher. Sem data de
             fim, o contrato não entra em aviso de vencimento nenhum. */}
         {!editandoVigencia && !c.data_fim && (
-          <p className="text-xs text-warning mb-2">
+          <p className="text-xs text-warning-ink mb-2">
             O documento não trouxe as datas. Informe-as no lápis — sem data de fim,
             este contrato fica fora dos avisos de vencimento.
           </p>
@@ -808,10 +808,10 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
           <div><span className="text-muted-foreground">Assinatura:</span><p className="font-medium">{c.data_assinatura ? new Date(`${c.data_assinatura.slice(0, 10)}T12:00:00`).toLocaleDateString('pt-BR') : '—'}</p></div>
           <div><span className="text-muted-foreground">Início:</span><p className="font-medium">{c.data_inicio ? new Date(`${c.data_inicio.slice(0, 10)}T12:00:00`).toLocaleDateString('pt-BR') : '—'}</p></div>
-          <div><span className="text-muted-foreground">Fim:</span><p className={`font-medium ${vigencia.vencido ? 'text-destructive' : vigencia.vencendo ? 'text-warning' : ''}`}>{c.data_fim ? new Date(`${c.data_fim.slice(0, 10)}T12:00:00`).toLocaleDateString('pt-BR') : '—'}</p></div>
+          <div><span className="text-muted-foreground">Fim:</span><p className={`font-medium ${vigencia.vencido ? 'text-destructive-ink' : vigencia.vencendo ? 'text-warning-ink' : ''}`}>{c.data_fim ? new Date(`${c.data_fim.slice(0, 10)}T12:00:00`).toLocaleDateString('pt-BR') : '—'}</p></div>
           <div>
             <span className="text-muted-foreground">{vigencia.vencido ? 'Situação:' : 'Dias restantes:'}</span>
-            <p className={`font-medium ${vigencia.vencido ? 'text-destructive font-bold' : vigencia.vencendo ? 'text-warning font-bold' : ''}`}>
+            <p className={`font-medium ${vigencia.vencido ? 'text-destructive-ink font-bold' : vigencia.vencendo ? 'text-warning-ink font-bold' : ''}`}>
               {vigencia.frase ?? '—'}
             </p>
           </div>

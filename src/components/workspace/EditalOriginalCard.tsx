@@ -1,7 +1,7 @@
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, RefreshCw, AlertTriangle, CheckCircle2, Calculator, ExternalLink } from 'lucide-react';
+import { Loader2, RefreshCw, Calculator, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { useProcessoAutoPrepare } from '@/hooks/useProcessoAutoPrepare';
 
@@ -49,49 +49,43 @@ export default function EditalOriginalCard({ licitacaoId, urlEdital, onVerItens,
   const unavailable = !prepared && !running && !temItens;
 
   return (
-    <Card className="px-4 py-3">
-      <div className="flex items-center gap-3 flex-wrap">
-        <span className="text-sm font-semibold">Preparação automática</span>
+    <Card className="p-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <h2 className="text-lg font-semibold">Preparação automática</h2>
 
         {temItens && (
-          <Badge variant="outline" className="gap-1 text-xs">
-            <CheckCircle2 className="w-3 h-3 text-success" />
-            {itensProntos} itens prontos · espelho PNCP
-          </Badge>
+          <Badge variant="success">{itensProntos} itens prontos · espelho PNCP</Badge>
         )}
         {!temItens && running && (
-          <Badge variant="outline" className="gap-1 text-xs">
-            <Loader2 className="w-3 h-3 animate-spin" /> Extraindo itens do edital…
+          <Badge variant="info" className="gap-1">
+            <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Extraindo itens do edital…
           </Badge>
         )}
         {!temItens && prepared && (
-          <Badge variant="outline" className="gap-1 text-xs">
-            <CheckCircle2 className="w-3 h-3 text-success" />
+          <Badge variant="success">
             {totalItens != null && totalItens > 0 ? `${totalItens} itens extraídos` : 'Pronto'}
           </Badge>
         )}
         {unavailable && (
-          <Badge variant="outline" className="gap-1 text-xs">
-            <AlertTriangle className="w-3 h-3 text-warning" /> Itens não extraídos
-          </Badge>
+          <Badge variant="warning">Itens não extraídos</Badge>
         )}
 
-        <div className="flex items-center gap-1.5 ml-auto">
+        <div className="ml-auto flex flex-wrap items-center gap-2">
           {(temItens || (prepared && totalItens != null && totalItens > 0)) && onVerItens && (
-            <Button size="sm" variant="outline" className="h-7" onClick={onVerItens}>
-              <Calculator className="w-3.5 h-3.5 mr-1.5" /> Ver na Precificação
+            <Button size="sm" variant="outline" onClick={onVerItens}>
+              <Calculator className="w-4 h-4" aria-hidden="true" /> Ver na Precificação
             </Button>
           )}
           {unavailable && urlEdital && (
-            <Button asChild size="sm" variant="ghost" className="h-7">
+            <Button asChild size="sm" variant="ghost">
               <a href={urlEdital} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="w-3.5 h-3.5 mr-1.5" /> Portal de origem
+                <ExternalLink className="w-4 h-4" aria-hidden="true" /> Portal de origem
               </a>
             </Button>
           )}
           {!temItens && (
-            <Button size="sm" variant="ghost" className="h-7" onClick={handleReprocess} disabled={running}>
-              <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${running ? 'animate-spin' : ''}`} />
+            <Button size="sm" variant="ghost" onClick={handleReprocess} disabled={running}>
+              <RefreshCw className={`w-4 h-4 ${running ? 'animate-spin' : ''}`} aria-hidden="true" />
               {prepared ? 'Reprocessar' : 'Tentar novamente'}
             </Button>
           )}

@@ -233,29 +233,28 @@ export default function VncWebViewer({ abrirEm = 0 }: Props) {
   };
 
   return (
-    <div ref={caixaRef} className="border border-border/50 rounded-lg overflow-hidden scroll-mt-4">
+    <div ref={caixaRef} className="rounded-lg border border-border bg-card shadow-sm overflow-hidden scroll-mt-4">
       {/* Header */}
-      <div className="flex items-center justify-between bg-muted/30 px-4 py-3">
-        <div className="flex items-center gap-2">
-          <Monitor className="w-4 h-4 text-muted-foreground" />
-          <h4 className="text-sm font-semibold">Acesso Remoto — VNC Web</h4>
-          <Badge variant="outline" className="text-xs ml-1">noVNC</Badge>
+      <div className="flex flex-wrap items-center justify-between gap-2 bg-muted px-6 py-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <Monitor className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+          <h3 className="text-lg font-semibold">Acesso Remoto — VNC Web</h3>
+          <Badge variant="muted">noVNC</Badge>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1">
           {/* Antes dos ícones e com rótulo escrito: numa barra de botõezinhos
               iguais, o freio viraria mais um quadradinho. */}
           {sessaoViva && (
             <Button
-              size="sm"
               variant="destructive"
-              className="h-7 text-xs gap-1.5 mr-1"
+              className="mr-1"
               disabled={parando}
               onClick={pararAgora}
             >
               {parando ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
               ) : (
-                <Square className="w-3.5 h-3.5" />
+                <Square className="w-4 h-4" aria-hidden="true" />
               )}
               {/* Com mais de uma sessão o rótulo NOMEIA qual vai parar. "Parar
                   robô" com três pregões rodando não diz o suficiente para uma
@@ -268,42 +267,43 @@ export default function VncWebViewer({ abrirEm = 0 }: Props) {
               <Button
                 size="icon"
                 variant="ghost"
-                className="h-7 w-7"
                 onClick={handleRefresh}
                 title="Reconectar"
+                aria-label="Reconectar"
               >
-                <RefreshCw className="w-3.5 h-3.5" />
+                <RefreshCw className="w-4 h-4" aria-hidden="true" />
               </Button>
               <Button
                 size="icon"
                 variant="ghost"
-                className="h-7 w-7"
                 onClick={() => setExpanded(!expanded)}
                 title={expanded ? 'Reduzir' : 'Expandir'}
+                aria-label={expanded ? 'Reduzir' : 'Expandir'}
               >
                 {expanded ? (
-                  <Minimize2 className="w-3.5 h-3.5" />
+                  <Minimize2 className="w-4 h-4" aria-hidden="true" />
                 ) : (
-                  <Maximize2 className="w-3.5 h-3.5" />
+                  <Maximize2 className="w-4 h-4" aria-hidden="true" />
                 )}
               </Button>
               <Button
                 size="icon"
                 variant="ghost"
-                className="h-7 w-7"
                 onClick={handleOpenExternal}
                 title="Abrir em nova aba"
+                aria-label="Abrir em nova aba"
               >
-                <ExternalLink className="w-3.5 h-3.5" />
+                <ExternalLink className="w-4 h-4" aria-hidden="true" />
               </Button>
               <Button
                 size="icon"
                 variant="ghost"
-                className="h-7 w-7 text-destructive hover:text-destructive"
+                className="text-destructive hover:text-destructive"
                 onClick={handleClose}
                 title="Fechar"
+                aria-label="Fechar tela remota"
               >
-                <X className="w-3.5 h-3.5" />
+                <X className="w-4 h-4" aria-hidden="true" />
               </Button>
             </>
           )}
@@ -318,22 +318,22 @@ export default function VncWebViewer({ abrirEm = 0 }: Props) {
           Existe porque o agente aguenta 8 sessões simultâneas e a tela mostrava
           uma. Quem opera precisa saber quantas rodam antes de apertar o freio. */}
       {sessoesVivas.length > 1 && (
-        <div className="border-t border-border/50 bg-muted/20 px-4 py-3">
-          <div className="flex items-center gap-1.5 mb-2">
+        <div className="border-t border-border bg-card px-6 py-4">
+          <div className="flex flex-wrap items-center gap-2 mb-2">
             <span className="relative flex h-2 w-2" aria-hidden="true">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-70" />
               <span className="relative inline-flex rounded-full h-2 w-2 bg-success" />
             </span>
-            <span className="text-xs font-medium">
+            <span className="text-sm font-medium">
               {sessoesVivas.length} pregões ao vivo
             </span>
             {/* O contador de quem precisa de gente vem ANTES da lista: com oito
                 sessões, o que importa primeiro é "alguma me chama?", não
                 "quais existem". */}
             {sessoesQuePedem.size > 0 && (
-              <span className="text-xs text-warning bg-warning/10 border border-warning/25 rounded-full px-2 py-0.5 font-medium">
+              <Badge variant="warning">
                 {sessoesQuePedem.size} esperando você
-              </span>
+              </Badge>
             )}
           </div>
 
@@ -359,31 +359,32 @@ export default function VncWebViewer({ abrirEm = 0 }: Props) {
                       ? 'Em exibição. É esta que o botão de parar vai interromper.'
                       : `Trazer ${s.edital} para a frente da tela`
                   }
-                  className={`group text-left rounded-lg border px-2.5 py-1.5 transition-all min-w-[7.5rem] ${
+                  className={`group text-left rounded-md border px-3 py-2 transition-colors min-w-[7.5rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                     ativa
-                      ? 'border-accent bg-accent/10 ring-1 ring-accent/40'
-                      : 'border-border/60 hover:border-border hover:bg-muted/60'
+                      ? 'border-primary bg-primary-tint ring-1 ring-primary/40'
+                      : 'border-border hover:bg-muted'
                   } ${focandoEsta ? 'opacity-60' : ''}`}
                 >
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-2">
                     {focandoEsta ? (
-                      <Loader2 className="w-3 h-3 animate-spin text-muted-foreground shrink-0" />
+                      <Loader2 className="w-3 h-3 animate-spin text-muted-foreground shrink-0" aria-hidden="true" />
                     ) : pede ? (
                       // Só quem chama ganha ícone. Ícone em todos vira ruído e
                       // o urgente deixa de saltar.
-                      <AlertTriangle className="w-3 h-3 text-warning shrink-0" />
+                      <AlertTriangle className="w-3 h-3 text-warning shrink-0" aria-hidden="true" />
                     ) : (
                       <Monitor
-                        className={`w-3 h-3 shrink-0 ${ativa ? 'text-accent' : 'text-muted-foreground'}`}
+                        aria-hidden="true"
+                        className={`w-3 h-3 shrink-0 ${ativa ? 'text-primary' : 'text-muted-foreground'}`}
                       />
                     )}
                     <span
-                      className={`text-xs font-mono truncate ${ativa ? 'font-semibold' : ''}`}
+                      className={`text-sm font-mono truncate ${ativa ? 'font-semibold' : ''}`}
                     >
                       {s.edital}
                     </span>
                   </div>
-                  <span className="block text-[10px] text-muted-foreground truncate mt-0.5">
+                  <span className="block text-xs text-muted-foreground truncate mt-0.5">
                     {ativa ? 'em exibição' : nomeDoPortal(s.portal_id)}
                   </span>
                 </button>
@@ -395,7 +396,7 @@ export default function VncWebViewer({ abrirEm = 0 }: Props) {
               aqui pede ao servidor que traga aquela janela para a frente — é
               uma tela só, alternando, não duas lado a lado. Dizer isso evita a
               expectativa de ver dois pregões ao mesmo tempo. */}
-          <p className="text-[11px] text-muted-foreground mt-2">
+          <p className="text-xs text-muted-foreground mt-2">
             A escolha traz o pregão para a frente e define qual sessão o botão de parar interrompe.
             É uma tela só, alternando entre os pregões.
           </p>
@@ -404,13 +405,13 @@ export default function VncWebViewer({ abrirEm = 0 }: Props) {
 
       {/* Content */}
       {!showViewer ? (
-        <div className="p-5 space-y-4">
+        <div className="p-6 space-y-4">
           <div className="text-center space-y-3">
-            <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center mx-auto">
-              <Monitor className="w-6 h-6 text-muted-foreground" />
+            <div className="w-12 h-12 rounded-full bg-primary-tint text-primary flex items-center justify-center mx-auto">
+              <Monitor className="w-6 h-6" aria-hidden="true" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground max-w-md mx-auto">
+              <p className="text-sm text-muted-foreground max-w-md mx-auto">
                 Acesse a tela do servidor diretamente pelo navegador para resolver
                 desafios de <strong>2FA</strong>, <strong>Captcha</strong> ou <strong>código de acesso gov.br</strong>,
                 sem precisar instalar programas adicionais.
@@ -418,10 +419,10 @@ export default function VncWebViewer({ abrirEm = 0 }: Props) {
             </div>
           </div>
 
-          <div className="bg-warning/10 border border-warning/20 rounded-lg p-3">
+          <div className="bg-warning-tint border border-warning-line rounded-lg p-4">
             <div className="flex items-start gap-2">
-              <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
-              <div className="text-xs text-muted-foreground space-y-1">
+              <AlertTriangle className="w-4 h-4 text-warning-ink shrink-0 mt-0.5" aria-hidden="true" />
+              <div className="text-sm text-muted-foreground space-y-1">
                 {/* A ordem importa e não é óbvia: uma sessão que falha dura
                     ~13 segundos, medidos. Quem dispara primeiro e vai abrir a
                     tela depois chega sempre atrasado. */}
@@ -446,47 +447,49 @@ export default function VncWebViewer({ abrirEm = 0 }: Props) {
           <div className="flex flex-col sm:flex-row gap-2">
             <Button
               onClick={handleOpenViewer}
-              className="flex-1 bg-accent hover:bg-accent/90 text-accent-foreground text-xs gap-2"
+              className="flex-1"
             >
-              <Monitor className="w-4 h-4" />
+              <Monitor className="w-4 h-4" aria-hidden="true" />
               Abrir VNC Integrado
             </Button>
             <Button
               variant="outline"
               onClick={handleOpenExternal}
-              className="flex-1 text-xs gap-2"
+              className="flex-1"
             >
-              <ExternalLink className="w-4 h-4" />
+              <ExternalLink className="w-4 h-4" aria-hidden="true" />
               Abrir em Nova Aba
             </Button>
           </div>
 
-          <div className="flex items-center gap-2 text-xs text-muted-foreground justify-center">
-            <ShieldCheck className="w-3.5 h-3.5 text-success" />
+          <div className="flex items-center gap-2 text-sm text-muted-foreground justify-center">
+            <ShieldCheck className="w-4 h-4 text-success" aria-hidden="true" />
             <span>Conexão segura via HTTPS — sem necessidade de instalar software</span>
           </div>
         </div>
       ) : (
-        <div className={`relative bg-black ${expanded ? 'h-[600px]' : 'h-[400px]'} transition-all duration-300`}>
+        /* Área escura de propósito: é a tela do servidor remoto, não uma
+           superfície do tema. Navy da marca no lugar de preto cru. */
+        <div className={`relative bg-navy ${expanded ? 'h-[600px]' : 'h-[400px]'} transition-all duration-300`}>
           {loading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-10">
+            <div className="absolute inset-0 flex items-center justify-center bg-navy/80 z-10">
               <div className="text-center space-y-2">
-                <Loader2 className="w-6 h-6 animate-spin text-white/90 mx-auto" />
-                <p className="text-xs text-white/70">Conectando ao servidor VPS...</p>
+                <Loader2 className="w-6 h-6 animate-spin text-white/90 mx-auto" aria-hidden="true" />
+                <p className="text-sm text-white/70">Conectando ao servidor VPS...</p>
               </div>
             </div>
           )}
           {/* Só quando há pedido de clique. Fora disso o VNC não ganha faixa
               nenhuma — aviso permanente vira paisagem e ninguém lê. */}
           {pedidoDeClique && !loading && (
-            <div className="absolute top-0 left-0 right-0 z-20 bg-accent text-accent-foreground px-4 py-3 shadow-lg animate-pulse-glow">
+            <div className="absolute top-0 left-0 right-0 z-20 bg-primary text-primary-foreground px-4 py-3 shadow-md animate-pulse-glow">
               <p className="text-sm font-semibold">
                 👆 Esta é a tela do robô — e o seu clique aqui funciona
                 {editalDoPedido && (
                   <span className="font-mono font-normal opacity-90"> · {editalDoPedido}</span>
                 )}
               </p>
-              <p className="text-xs opacity-90 mt-0.5 leading-snug">{pedidoDeClique.mensagem}</p>
+              <p className="text-xs opacity-90 mt-0.5">{pedidoDeClique.mensagem}</p>
             </div>
           )}
           <iframe
@@ -503,14 +506,14 @@ export default function VncWebViewer({ abrirEm = 0 }: Props) {
               atrapalhe quem precisa clicar no VNC para resolver um captcha. */}
           {!loading && sessoesAtivas === 0 && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="bg-black/75 rounded-xl px-6 py-5 max-w-md text-center space-y-2">
-                <Monitor className="w-7 h-7 text-white/50 mx-auto" />
-                <p className="text-sm font-medium text-white/90">Nenhuma sessão ativa</p>
-                <p className="text-xs text-white/60">
+              <div className="bg-navy/90 rounded-lg px-6 py-5 max-w-md text-center space-y-2">
+                <Monitor className="w-7 h-7 text-white/50 mx-auto" aria-hidden="true" />
+                <p className="text-base font-medium text-white/90">Nenhuma sessão ativa</p>
+                <p className="text-sm text-white/60">
                   A tela do servidor está vazia porque o robô não está operando agora.
                   Isso não é falha da conexão.
                 </p>
-                <p className="text-xs text-white/60">
+                <p className="text-sm text-white/60">
                   Deixe esta tela aberta e clique em <strong>Enviar ao robô</strong> na aba
                   Disputar — a janela dele aparece aqui em poucos segundos.
                 </p>

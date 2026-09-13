@@ -2,17 +2,21 @@ import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { Loader2, Search, FileText, AlertTriangle, Package, Sparkles } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Search, FileText, AlertTriangle, Package, Sparkles } from 'lucide-react';
 import LimparItensExtraidosButton from '@/components/licitacoes/LimparItensExtraidosButton';
 
 type ProcessoComItens = {
@@ -163,49 +167,60 @@ export default function HistoricoExtracoes() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <h2 className="text-base font-semibold flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-accent" />
-            Histórico de Extrações por Processo
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="flex items-center gap-2 text-lg font-semibold">
+            <Sparkles className="h-5 w-5 text-primary" aria-hidden="true" />
+            Histórico de extrações por processo
           </h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
+          <p className="mt-1 text-sm text-muted-foreground">
             Auditoria centralizada de itens extraídos pelo Robô, Precificação e Proposta. Limpe processos com dados incorretos.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+          <div className="relative w-full sm:w-72">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar por número, órgão ou objeto..."
-              className="pl-8 h-8 text-xs w-64"
+              aria-label="Buscar por número, órgão ou objeto"
+              className="pl-9"
             />
           </div>
           <Button
-            size="sm"
+            type="button"
             variant={filtro === 'inconsistentes' ? 'destructive' : 'outline'}
+            aria-pressed={filtro === 'inconsistentes'}
             onClick={() => setFiltro((f) => (f === 'inconsistentes' ? 'todos' : 'inconsistentes'))}
-            className="gap-1.5 h-8"
           >
-            <AlertTriangle className="w-3.5 h-3.5" />
+            <AlertTriangle aria-hidden="true" />
             Inconsistentes ({totalInconsistentes})
           </Button>
         </div>
       </div>
 
       {loading ? (
-        <div className="flex items-center gap-2 py-8 justify-center text-muted-foreground text-sm">
-          <Loader2 className="w-4 h-4 animate-spin" /> Carregando histórico...
+        <div className="space-y-2" role="status" aria-live="polite">
+          <span className="sr-only">Carregando histórico…</span>
+          {[0, 1, 2].map((i) => (
+            <Card key={i} className="space-y-2 p-4">
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-5 w-20" />
+              </div>
+              <Skeleton className="h-4 w-2/3" />
+              <Skeleton className="h-4 w-1/3" />
+            </Card>
+          ))}
         </div>
       ) : filtered.length === 0 ? (
-        <Card className="p-8 text-center">
-          <Package className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
-          <p className="text-sm font-medium">Nenhum histórico de extração encontrado</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Quando você extrair itens em qualquer módulo, o histórico aparecerá aqui.
-          </p>
+        <Card>
+          <EstadoVazio
+            icone={<Package />}
+            titulo="Nenhum histórico de extração encontrado"
+            descricao="Quando você extrair itens em qualquer módulo, o histórico aparecerá aqui."
+          />
         </Card>
       ) : (
         <Accordion type="multiple" className="space-y-2">
@@ -213,50 +228,59 @@ export default function HistoricoExtracoes() {
             <AccordionItem
               key={p.id}
               value={p.id}
-              className={`border rounded-lg px-3 ${p.possivel_inconsistencia ? 'border-destructive/40 bg-destructive/5' : 'border-border/50'}`}
+              className={cn(
+                'rounded-lg border px-4 shadow-sm',
+                p.possivel_inconsistencia ? 'border-destructive-line bg-destructive-tint' : 'border-border bg-card',
+              )}
             >
-              <AccordionTrigger className="hover:no-underline py-3">
-                <div className="flex items-start justify-between gap-3 w-full pr-2">
-                  <div className="text-left flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs font-mono text-muted-foreground">{p.numero || '—'}</span>
+              <AccordionTrigger className="py-3 hover:no-underline">
+                <div className="flex w-full flex-wrap items-start justify-between gap-3 pr-2">
+                  <div className="min-w-0 flex-1 text-left">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs text-muted-foreground tabular-nums">{p.numero || '—'}</span>
                       {p.possivel_inconsistencia && (
-                        <Badge variant="destructive" className="text-xs gap-1">
-                          <AlertTriangle className="w-2.5 h-2.5" /> Possível incoerência
+                        <Badge variant="danger" className="gap-1">
+                          <AlertTriangle className="h-3 w-3" aria-hidden="true" /> Possível incoerência
                         </Badge>
                       )}
-                      <Badge variant="outline" className="text-xs">{p.status}</Badge>
+                      <Badge variant="muted">{p.status}</Badge>
                     </div>
-                    <p className="text-xs font-medium mt-1 line-clamp-1">{p.objeto || '(sem objeto)'}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{p.orgao}</p>
+                    <p className="mt-1 text-sm font-medium line-clamp-1">{p.objeto || '(sem objeto)'}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground line-clamp-1">{p.orgao}</p>
                   </div>
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    {p.total_itens > 0 && <Badge variant="outline" className="text-xs">Edital: {p.total_itens}</Badge>}
-                    {p.total_precificados > 0 && <Badge variant="outline" className="text-xs">Precif.: {p.total_precificados}</Badge>}
-                    {p.total_composicoes > 0 && <Badge variant="outline" className="text-xs">Prop.: {p.total_composicoes}</Badge>}
+                  <div className="flex flex-shrink-0 flex-wrap items-center gap-2">
+                    {p.total_itens > 0 && <Badge variant="outline" className="tabular-nums">Edital: {p.total_itens}</Badge>}
+                    {p.total_precificados > 0 && <Badge variant="outline" className="tabular-nums">Precif.: {p.total_precificados}</Badge>}
+                    {p.total_composicoes > 0 && <Badge variant="outline" className="tabular-nums">Prop.: {p.total_composicoes}</Badge>}
                   </div>
                 </div>
               </AccordionTrigger>
-              <AccordionContent className="pb-3 space-y-3">
+              <AccordionContent className="space-y-3 pb-4">
                 {p.possivel_inconsistencia && (
-                  <div className="rounded-md border border-destructive/30 bg-destructive/5 p-2 text-xs flex gap-2">
-                    <AlertTriangle className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-medium text-destructive">Atenção: itens podem não pertencer a este processo.</p>
-                      <p className="text-muted-foreground mt-0.5">
+                  /* Alert de ui em vez do bloco montado à mão. Fica na superfície
+                     clara (variante padrão) porque a própria linha já está
+                     tingida de destrutivo: tinta sobre tinta apagaria a
+                     separação entre o aviso e o cartão que o contém. */
+                  <Alert className="border-destructive-line">
+                    <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+                    <AlertTitle className="text-destructive-ink">
+                      Atenção: itens podem não pertencer a este processo
+                    </AlertTitle>
+                    <AlertDescription>
+                      <p className="text-muted-foreground">
                         O <strong>objeto</strong> da licitação não compartilha palavras-chave com a primeira descrição extraída.
                         Considere limpar e reextrair.
                       </p>
-                      <p className="mt-1.5 text-xs">
+                      <p className="mt-2 text-xs">
                         <strong>Objeto:</strong> {p.objeto?.slice(0, 160)}<br />
                         <strong>1º item:</strong> {p.primeira_descricao?.slice(0, 160)}
                       </p>
-                    </div>
-                  </div>
+                    </AlertDescription>
+                  </Alert>
                 )}
-                <div className="flex items-center justify-between gap-2">
-                  <div className="text-xs text-muted-foreground flex items-center gap-1.5">
-                    <FileText className="w-3.5 h-3.5" />
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <FileText className="h-4 w-4" aria-hidden="true" />
                     {p.total_geral} registro(s) somando todas as fontes deste processo.
                   </div>
                   <LimparItensExtraidosButton

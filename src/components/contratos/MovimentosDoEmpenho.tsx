@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MoneyInput } from '@/components/ui/money-input';
+import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
@@ -208,10 +209,10 @@ export default function MovimentosDoEmpenho({ empenho, onFechar, onMudou }: Prop
               reforcos: vigente.reforcos,
               anulacoes: vigente.anulacoes,
             }) && (
-              <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-2.5">
-                <Ban className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+              <div className="flex items-start gap-2 rounded-md border border-destructive-line bg-destructive-tint p-3" role="alert">
+                <Ban className="w-4 h-4 text-destructive-ink shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-sm font-semibold text-destructive">Empenho cancelado</p>
+                  <p className="text-sm font-semibold text-destructive-ink">Empenho cancelado</p>
                   <p className="text-xs text-muted-foreground">
                     A anulação cobre todo o valor empenhado. Ele não autoriza mais nenhuma entrega —
                     e entregar sob empenho cancelado é despesa sem cobertura (Lei 4.320/64, art. 60).
@@ -228,13 +229,13 @@ export default function MovimentosDoEmpenho({ empenho, onFechar, onMudou }: Prop
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Reforços</p>
-                  <p className="font-medium tabular-nums text-success whitespace-nowrap">
+                  <p className="font-medium tabular-nums text-success-ink whitespace-nowrap">
                     {vigente.reforcos > 0 ? `+ ${brl(vigente.reforcos)}` : '—'}
                   </p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Anulações</p>
-                  <p className="font-medium tabular-nums text-warning whitespace-nowrap">
+                  <p className="font-medium tabular-nums text-warning-ink whitespace-nowrap">
                     {vigente.anulacoes > 0 ? `− ${brl(vigente.anulacoes)}` : '—'}
                   </p>
                 </div>
@@ -245,46 +246,49 @@ export default function MovimentosDoEmpenho({ empenho, onFechar, onMudou }: Prop
               </div>
             )}
 
-            <div className="flex items-center justify-between">
-              <h4 className="text-xs font-semibold">Movimentos ({movimentos.length})</h4>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h4 className="text-lg font-semibold">Movimentos ({movimentos.length})</h4>
               {!criando && (
-                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setCriando(true)}>
-                  <Plus className="w-3 h-3 mr-1" /> Lançar reforço ou anulação
+                <Button size="sm" variant="outline" onClick={() => setCriando(true)}>
+                  <Plus className="w-4 h-4" /> Lançar reforço ou anulação
                 </Button>
               )}
             </div>
 
             {carregando ? (
-              <div className="flex justify-center py-4"><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /></div>
+              <div className="space-y-2" aria-busy="true" aria-label="Carregando movimentos">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
             ) : movimentos.length === 0 ? (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 Nenhum movimento registrado. O empenho vale o da nota original.
               </p>
             ) : (
               <div className="space-y-1.5">
                 {movimentos.map(m => (
-                  <div key={m.id} className="flex items-center gap-2 text-xs border rounded-md p-2">
+                  <div key={m.id} className="flex flex-wrap items-center gap-2 text-sm border border-border rounded-md p-2">
                     {m.tipo === 'anulacao'
-                      ? <TrendingDown className="w-3.5 h-3.5 text-warning shrink-0" />
-                      : <TrendingUp className="w-3.5 h-3.5 text-success shrink-0" />}
-                    <Badge variant="outline" className="text-[11px] shrink-0">{ROTULO[m.tipo] ?? m.tipo}</Badge>
+                      ? <TrendingDown className="w-4 h-4 text-warning-ink shrink-0" />
+                      : <TrendingUp className="w-4 h-4 text-success-ink shrink-0" />}
+                    <Badge variant="outline" className="shrink-0">{ROTULO[m.tipo] ?? m.tipo}</Badge>
                     {m.numero && <span className="tabular-nums shrink-0">{m.numero}</span>}
                     <span className="text-muted-foreground shrink-0">{dataBr(m.data_movimento)}</span>
                     {m.observacao && <span className="text-muted-foreground truncate" title={m.observacao}>{m.observacao}</span>}
                     <span className={`ml-auto font-medium tabular-nums shrink-0 ${
-                      m.tipo === 'anulacao' ? 'text-warning' : 'text-success'
+                      m.tipo === 'anulacao' ? 'text-warning-ink' : 'text-success-ink'
                     }`}>
                       {m.tipo === 'anulacao' ? '−' : '+'} {brl(m.valor)}
                     </span>
                     {m.arquivo_id && (
-                      <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0"
-                        title="Ver a nota" onClick={() => abrirNota(m.arquivo_id!)}>
-                        <FileText className="w-3 h-3 text-primary" />
+                      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0"
+                        title="Ver a nota" aria-label="Ver a nota" onClick={() => abrirNota(m.arquivo_id!)}>
+                        <FileText className="w-4 h-4 text-primary" />
                       </Button>
                     )}
-                    <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0"
-                      onClick={() => excluir(m.id)}>
-                      <Trash2 className="w-3 h-3 text-destructive" />
+                    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0"
+                      title="Excluir movimento" aria-label="Excluir movimento" onClick={() => excluir(m.id)}>
+                      <Trash2 className="w-4 h-4 text-destructive-ink" />
                     </Button>
                   </div>
                 ))}
@@ -295,53 +299,53 @@ export default function MovimentosDoEmpenho({ empenho, onFechar, onMudou }: Prop
               <div className="border-t pt-3 space-y-3">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
-                    <Label className="text-xs">O que houve</Label>
+                    <Label>O que houve</Label>
                     <Select value={tipo} onValueChange={v => setTipo(v as 'reforco' | 'anulacao')}>
-                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="reforco" className="text-xs">Reforço — acresce ao empenhado</SelectItem>
-                        <SelectItem value="anulacao" className="text-xs">Anulação — devolve ao orçamento</SelectItem>
+                        <SelectItem value="reforco">Reforço — acresce ao empenhado</SelectItem>
+                        <SelectItem value="anulacao">Anulação — devolve ao orçamento</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div>
-                    <Label className="text-xs">Nº da nota</Label>
+                    <Label>Nº da nota</Label>
                     <Input value={numero} onChange={e => setNumero(e.target.value)}
-                      placeholder="2025NE000210" className="h-8 text-xs" />
+                      placeholder="2025NE000210" />
                   </div>
                   <div>
-                    <Label className="text-xs">Data</Label>
-                    <Input type="date" value={data} onChange={e => setData(e.target.value)} className="h-8 text-xs" />
+                    <Label>Data</Label>
+                    <Input type="date" value={data} onChange={e => setData(e.target.value)} />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <Label className="text-xs">Valor</Label>
-                    <MoneyInput value={valor} onValueChange={setValor} className="h-8 text-xs" />
+                    <Label>Valor</Label>
+                    <MoneyInput value={valor} onValueChange={setValor} />
                     {/* O sinal vem do TIPO, nunca do número digitado. */}
-                    <p className="text-[11px] text-muted-foreground mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                       Sempre positivo — {tipo === 'anulacao' ? 'a anulação subtrai' : 'o reforço soma'} pelo tipo.
                     </p>
                   </div>
                   <div>
-                    <Label className="text-xs">Observação</Label>
+                    <Label>Observação</Label>
                     <Input value={observacao} onChange={e => setObservacao(e.target.value)}
                       placeholder={tipo === 'anulacao' ? 'Encerramento do exercício' : ''}
-                      className="h-8 text-xs" />
+                      />
                   </div>
                 </div>
 
                 <div>
-                  <Label className="text-xs">A nota (recomendado)</Label>
+                  <Label>A nota (recomendado)</Label>
                   <input ref={entradaDoArquivo} type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png"
                     onChange={e => { setArquivo(e.target.files?.[0] ?? null); e.target.value = ''; }} />
                   <div className="flex items-center gap-2 mt-1 flex-wrap">
-                    <Button type="button" size="sm" variant="outline" className="h-7 text-xs"
+                    <Button type="button" size="sm" variant="outline"
                       onClick={() => entradaDoArquivo.current?.click()}>
                       {arquivo ? 'Trocar arquivo' : 'Escolher arquivo'}
                     </Button>
-                    <span className="text-[11px] text-muted-foreground">
+                    <span className="text-xs text-muted-foreground">
                       {arquivo
                         ? `${arquivo.name} · guardado ao registrar`
                         : 'Reforço e anulação são notas próprias — é ela que se apresenta.'}
@@ -349,11 +353,11 @@ export default function MovimentosDoEmpenho({ empenho, onFechar, onMudou }: Prop
                   </div>
                 </div>
 
-                <div className="flex gap-2">
-                  <Button size="sm" className="h-8 text-xs" onClick={salvar} disabled={salvando}>
-                    {salvando && <Loader2 className="w-3 h-3 animate-spin mr-1" />} Registrar
+                <div className="flex flex-wrap gap-2">
+                  <Button onClick={salvar} disabled={salvando}>
+                    {salvando && <Loader2 className="w-4 h-4 animate-spin" />} Registrar
                   </Button>
-                  <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={limpar}>Cancelar</Button>
+                  <Button variant="ghost" onClick={limpar}>Cancelar</Button>
                 </div>
               </div>
             )}

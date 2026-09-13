@@ -4,10 +4,13 @@ type Props = {
   data: { mes: string; vitorias: number; derrotas: number; propostas: number }[];
 };
 
+/* As cores das séries e dos eixos são atributos SVG do Recharts e por isso
+   ficam como `hsl(var(--token))` — todas apontam para tokens do tema
+   (--success, --destructive, --chart-1, --border, --card, --muted-foreground). */
 export default function LicitacoesChart({ data }: Props) {
   return (
-    <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
-      <h3 className="text-sm font-semibold mb-4">Desempenho Mensal</h3>
+    <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+      <h3 className="text-lg font-semibold mb-4">Desempenho Mensal</h3>
       <ResponsiveContainer width="100%" height={260}>
         <BarChart data={data} barGap={4}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -17,7 +20,7 @@ export default function LicitacoesChart({ data }: Props) {
             contentStyle={{
               background: 'hsl(var(--card))',
               border: '1px solid hsl(var(--border))',
-              borderRadius: '8px',
+              borderRadius: '10px',
               fontSize: 12,
             }}
           />

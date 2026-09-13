@@ -34,7 +34,7 @@ export default function EstruturaDocumentoCard({ contratoId }: { contratoId: str
         <div className="flex items-start gap-2">
           <Sparkles className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
           <div className="space-y-0.5">
-            <p className="text-xs font-semibold flex items-center gap-2">
+            <p className="text-sm font-semibold flex flex-wrap items-center gap-2">
               Estrutura do documento
               <Badge variant="outline" className="text-xs font-normal">
                 Atual: {c.tipo_estrutura === 'lotes' ? 'Lotes (agrupados)' : 'Itens (individuais)'}
@@ -47,7 +47,7 @@ export default function EstruturaDocumentoCard({ contratoId }: { contratoId: str
                   <> · {Math.round((c.tipo_estrutura_confianca || 0) * 100)}% confiança</>
                 )}
                 {c.tipo_estrutura_detectado_ia !== c.tipo_estrutura && (
-                  <span className="ml-2 text-warning font-medium">⚠ Diverge da estrutura atual</span>
+                  <span className="ml-2 text-warning-ink font-medium">⚠ Diverge da estrutura atual</span>
                 )}
               </p>
             )}
@@ -64,7 +64,7 @@ export default function EstruturaDocumentoCard({ contratoId }: { contratoId: str
               load();
             }}
           >
-            <SelectTrigger className="h-8 w-[140px] text-xs"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-[160px]" aria-label="Estrutura do documento"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="itens">Itens</SelectItem>
               <SelectItem value="lotes">Lotes</SelectItem>

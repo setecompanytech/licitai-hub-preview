@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -258,29 +258,29 @@ export default function EditLicitacaoDialog({ licitacao, open, onOpenChange, onS
           rolar sozinha: sem ele a linha do grid cresce com o conteúdo e a
           rolagem volta a ser do modal inteiro. */}
       <DialogContent className="max-w-6xl w-[calc(100vw-2rem)] max-h-[92vh] p-0 gap-0 flex flex-col overflow-hidden">
-        <DialogHeader className="px-6 pt-5 pb-4 border-b border-border/50 shrink-0">
-          <DialogTitle className="text-lg">Editar Processo</DialogTitle>
-          <DialogDescription className="text-sm truncate">
+        <DialogHeader className="shrink-0 border-b border-border px-6 pb-4 pt-5">
+          <DialogTitle>Editar processo</DialogTitle>
+          <DialogDescription className="truncate text-sm">
             {[form.numero, form.orgao].filter(Boolean).join(' · ') || 'Dados do processo e análise da Aurélia'}
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 min-h-0 overflow-y-auto lg:overflow-hidden lg:grid lg:grid-cols-[26rem_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]">
           {/* Coluna 1 — o formulário */}
-          <div className="px-6 py-5 space-y-4 lg:min-h-0 lg:overflow-y-auto lg:border-r border-border/50">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-sm">Número</Label>
+          <div className="space-y-4 border-border px-6 py-5 lg:min-h-0 lg:overflow-y-auto lg:border-r">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="edit-lic-numero">Número</Label>
               <Input
+                id="edit-lic-numero"
                 value={form.numero}
                 onChange={e => setForm(f => ({ ...f, numero: e.target.value }))}
-                className="h-9 text-sm"
               />
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm">Status</Label>
+            <div className="space-y-2">
+              <Label htmlFor="edit-lic-status">Status</Label>
               <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v }))}>
-                <SelectTrigger className="h-9 text-sm">
+                <SelectTrigger id="edit-lic-status">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -292,28 +292,30 @@ export default function EditLicitacaoDialog({ licitacao, open, onOpenChange, onS
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-sm">Órgão</Label>
+          <div className="space-y-2">
+            <Label htmlFor="edit-lic-orgao">Órgão</Label>
             <Input
+              id="edit-lic-orgao"
               value={form.orgao}
               onChange={e => setForm(f => ({ ...f, orgao: e.target.value }))}
-              className="h-9 text-sm"
             />
           </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-sm">Objeto</Label>
+          <div className="space-y-2">
+            <Label htmlFor="edit-lic-objeto">Objeto</Label>
             <Textarea
+              id="edit-lic-objeto"
               value={form.objeto}
               onChange={e => setForm(f => ({ ...f, objeto: e.target.value }))}
-              className="text-sm min-h-[110px]"
+              className="min-h-[110px]"
             />
           </div>
 
-          <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,0.7fr)_minmax(0,1fr)] gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-sm">Valor Estimado (R$)</Label>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,0.7fr)_minmax(0,1fr)]">
+            <div className="space-y-2">
+              <Label htmlFor="edit-lic-valor">Valor Estimado (R$)</Label>
               <Input
+                id="edit-lic-valor"
                 type="text"
                 inputMode="decimal"
                 value={form.valor_estimado}
@@ -324,14 +326,14 @@ export default function EditLicitacaoDialog({ licitacao, open, onOpenChange, onS
                   const cents = parseInt(raw, 10);
                   setForm(f => ({ ...f, valor_estimado: formatBRL(cents) }));
                 }}
-                className="h-9 text-sm"
+                className="tabular-nums"
                 placeholder="0,00"
               />
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm">UF</Label>
+            <div className="space-y-2">
+              <Label htmlFor="edit-lic-uf">UF</Label>
               <Select value={form.uf || 'none'} onValueChange={v => setForm(f => ({ ...f, uf: v === 'none' ? '' : v }))}>
-                <SelectTrigger className="h-9 text-sm">
+                <SelectTrigger id="edit-lic-uf">
                   <SelectValue placeholder="UF" />
                 </SelectTrigger>
                 <SelectContent>
@@ -342,39 +344,40 @@ export default function EditLicitacaoDialog({ licitacao, open, onOpenChange, onS
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm">Município</Label>
+            <div className="space-y-2">
+              <Label htmlFor="edit-lic-municipio">Município</Label>
               <Input
+                id="edit-lic-municipio"
                 value={form.municipio}
                 onChange={e => setForm(f => ({ ...f, municipio: e.target.value }))}
-                className="h-9 text-sm"
               />
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-sm">Data de Encerramento</Label>
+          <div className="space-y-2">
+            <Label htmlFor="edit-lic-data">Data de Encerramento</Label>
             <Input
+              id="edit-lic-data"
               type="date"
               value={form.data_encerramento}
               onChange={e => setForm(f => ({ ...f, data_encerramento: e.target.value }))}
-              className="h-9 text-sm"
             />
           </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-sm">Observações</Label>
+          <div className="space-y-2">
+            <Label htmlFor="edit-lic-obs">Observações</Label>
             <Textarea
+              id="edit-lic-obs"
               value={form.observacoes}
               onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))}
-              className="text-sm min-h-[90px]"
+              className="min-h-[90px]"
               placeholder="Anotações sobre o processo..."
             />
           </div>
           </div>
 
           {/* Coluna 2 — AURÉLIA, com a altura toda e largura de leitura */}
-          <div className="px-6 py-5 min-w-0 lg:min-h-0 lg:overflow-y-auto bg-muted/20">
+          <div className="min-w-0 bg-muted/30 px-6 py-5 lg:min-h-0 lg:overflow-y-auto">
             <AureliaEditalPanel
               colunas={1}
               edital={{
@@ -389,26 +392,25 @@ export default function EditLicitacaoDialog({ licitacao, open, onOpenChange, onS
           </div>
         </div>
 
-        <div className="px-6 py-4 border-t border-border/50 bg-muted/30 shrink-0 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-1">
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-border bg-muted/30 px-6 py-4">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="ghost"
-              size="sm"
-              className="gap-1.5 text-xs text-muted-foreground"
+              className="text-muted-foreground"
               onClick={handleArquivar}
               disabled={arquivando}
             >
               {arquivando
-                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ? <Loader2 className="animate-spin" aria-hidden="true" />
                 : licitacao.arquivado_em
-                ? <ArchiveRestore className="w-3.5 h-3.5" />
-                : <Archive className="w-3.5 h-3.5" />}
+                ? <ArchiveRestore aria-hidden="true" />
+                : <Archive aria-hidden="true" />}
               {licitacao.arquivado_em ? 'Restaurar' : 'Arquivar'}
             </Button>
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1.5 text-xs">
-                  <Trash2 className="w-3.5 h-3.5" />
+                <Button variant="ghost" className="text-destructive hover:bg-destructive-tint hover:text-destructive">
+                  <Trash2 aria-hidden="true" />
                   Excluir
                 </Button>
               </AlertDialogTrigger>
@@ -426,26 +428,25 @@ export default function EditLicitacaoDialog({ licitacao, open, onOpenChange, onS
                   <AlertDialogAction
                     onClick={handleDelete}
                     disabled={deleting}
-                    className="bg-destructive hover:bg-destructive/90"
+                    className={buttonVariants({ variant: 'destructive' })}
                   >
-                    {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Excluir'}
+                    {deleting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : 'Excluir'}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
           </div>
 
-          <div className="flex gap-2">
-            <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
             <Button
-              size="sm"
               onClick={handleSave}
               disabled={saving}
-              className="gap-1.5 min-w-24"
+              className="min-w-24"
             >
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Salvar'}
+              {saving ? <Loader2 className="animate-spin" aria-hidden="true" /> : 'Salvar'}
             </Button>
           </div>
         </div>

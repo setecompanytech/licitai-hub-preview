@@ -1,5 +1,6 @@
-import { Shield, Monitor, Server, Globe, ExternalLink, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Shield, Monitor, Server, Globe, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const MODOS = [
   {
@@ -24,7 +25,7 @@ const MODOS = [
     seguranca: 'Alta',
     badge: 'Prático',
     icon: Monitor,
-    cor: 'text-accent',
+    cor: 'text-primary',
     detalhes: [
       'Instale a extensão PRAEFECTUS no Chrome/Edge',
       'O certificado A1 deve estar instalado no navegador',
@@ -52,65 +53,61 @@ const MODOS = [
 export default function CertificadoModoSeguranca() {
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 mb-1">
-        <Shield className="w-5 h-5 text-accent" />
-        <h3 className="text-sm font-semibold">Segurança do Certificado Digital</h3>
+      <div className="mb-1 flex items-center gap-2">
+        <Shield className="h-5 w-5 text-primary" aria-hidden="true" />
+        <h3 className="text-lg font-semibold text-foreground">Segurança do Certificado Digital</h3>
       </div>
 
-      <div className="bg-success/10 border border-success/20 rounded-lg p-3">
-        <p className="text-xs text-success flex items-center gap-1.5">
-          <CheckCircle2 className="w-4 h-4 shrink-0" />
-          <span>
-            <strong>Política de segurança:</strong> o PRAEFECTUS <strong>não armazena</strong> certificados
-            digitais na nuvem. O certificado permanece exclusivamente na sua infraestrutura local.
-          </span>
-        </p>
-      </div>
+      <Alert variant="success">
+        <CheckCircle2 className="h-4 w-4" />
+        <AlertDescription>
+          <strong>Política de segurança:</strong> o PRAEFECTUS <strong>não armazena</strong> certificados
+          digitais na nuvem. O certificado permanece exclusivamente na sua infraestrutura local.
+        </AlertDescription>
+      </Alert>
 
       <div className="space-y-3">
         {MODOS.map((modo) => (
           <div
             key={modo.id}
-            className="bg-card rounded-xl border border-border/50 p-4 shadow-sm"
+            className="rounded-lg border border-border bg-card p-4 shadow-sm"
           >
             <div className="flex items-start gap-3">
-              <div className={`w-10 h-10 rounded-lg bg-muted/50 flex items-center justify-center shrink-0 ${modo.cor}`}>
-                <modo.icon className="w-5 h-5" />
+              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-muted ${modo.cor}`}>
+                <modo.icon className="h-5 w-5" aria-hidden="true" />
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h4 className="font-semibold text-sm">{modo.nome}</h4>
-                  <Badge variant="outline" className="text-xs">{modo.badge}</Badge>
-                  <Badge variant="secondary" className="text-xs">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h4 className="text-base font-semibold text-foreground">{modo.nome}</h4>
+                  <Badge variant="info">{modo.badge}</Badge>
+                  <Badge variant="muted">
                     Segurança: {modo.seguranca}
                   </Badge>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">{modo.descricao}</p>
-                <div className="mt-3 space-y-1.5">
+                <p className="mt-1 text-sm text-muted-foreground">{modo.descricao}</p>
+                <ol className="mt-3 space-y-2">
                   {modo.detalhes.map((d, i) => (
-                    <div key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
-                      <span className="text-accent font-bold shrink-0">{i + 1}.</span>
+                    <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+                      <span className="shrink-0 font-bold text-primary">{i + 1}.</span>
                       <span>{d}</span>
-                    </div>
+                    </li>
                   ))}
-                </div>
+                </ol>
               </div>
             </div>
           </div>
         ))}
       </div>
 
-      <div className="bg-warning/10 border border-warning/20 rounded-lg p-3">
-        <p className="text-xs text-warning flex items-start gap-1.5">
-          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-          <span>
-            <strong>Por que não fazemos upload?</strong> Plataformas líderes como Compras.gov.br, Effecti e
-            BLL nunca armazenam certificados em servidores centrais. O padrão do mercado é execução local
-            (via extensão de navegador ou agente dedicado no VPS do cliente), garantindo que a chave privada
-            permaneça sob controle exclusivo do titular.
-          </span>
-        </p>
-      </div>
+      <Alert variant="warning">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertDescription>
+          <strong>Por que não fazemos upload?</strong> Plataformas líderes como Compras.gov.br, Effecti e
+          BLL nunca armazenam certificados em servidores centrais. O padrão do mercado é execução local
+          (via extensão de navegador ou agente dedicado no VPS do cliente), garantindo que a chave privada
+          permaneça sob controle exclusivo do titular.
+        </AlertDescription>
+      </Alert>
     </div>
   );
 }

@@ -1,9 +1,11 @@
+import { Skeleton } from '@/components/ui/skeleton';
 import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { toast } from 'sonner';
 import {
   Activity, CheckCircle2, XCircle, Loader2, RefreshCw, Clock, AlertTriangle, Square,
@@ -38,6 +40,8 @@ type Sessao = {
   updated_at: string;
 };
 
+type BadgeVariant = 'success' | 'warning' | 'danger' | 'info' | 'muted';
+
 /**
  * A aparência de cada status, e o que ele significa em português.
  *
@@ -45,30 +49,30 @@ type Sessao = {
  * chegou ao portal" de "entrou e não achou o processo" — e essas duas têm
  * consertos diferentes. O motivo real vem em `erro`, e é sempre exibido.
  */
-const APARENCIA: Record<string, { rotulo: string; classe: string; Icone: typeof Activity }> = {
+const APARENCIA: Record<string, { rotulo: string; variante: BadgeVariant; Icone: typeof Activity }> = {
   ativo: {
     rotulo: 'Em operação',
-    classe: 'bg-success/10 text-success border-success/30',
+    variante: 'success',
     Icone: Activity,
   },
   enviando: {
     rotulo: 'Entrando no portal',
-    classe: 'bg-info/10 text-info border-info/30',
+    variante: 'info',
     Icone: Loader2,
   },
   encerrado: {
     rotulo: 'Encerrada',
-    classe: 'bg-muted text-muted-foreground border-border',
+    variante: 'muted',
     Icone: CheckCircle2,
   },
   erro: {
     rotulo: 'Falhou',
-    classe: 'bg-destructive/10 text-destructive border-destructive/30',
+    variante: 'danger',
     Icone: XCircle,
   },
   pausado: {
     rotulo: 'Pausada',
-    classe: 'bg-warning/10 text-warning border-warning/30',
+    variante: 'warning',
     Icone: Clock,
   },
 };
@@ -190,58 +194,64 @@ export default function SessoesDoRobo() {
   };
 
   return (
-    <div className="border border-border rounded-xl bg-card">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-        <div className="flex items-center gap-2">
-          <Activity className="w-4 h-4 text-accent" />
-          <h3 className="text-sm font-semibold">Sessões do Robô</h3>
-          <span className="text-xs text-muted-foreground">
+    <div className="rounded-lg border border-border bg-card shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-6 py-4 border-b border-border">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <Activity className="w-5 h-5 text-primary" aria-hidden="true" />
+          <h3 className="text-lg font-semibold">Sessões do Robô</h3>
+          <span className="text-sm text-muted-foreground">
             o que aconteceu, mesmo depois de a tela remota fechar
           </span>
         </div>
         <Button
           variant="ghost"
-          size="sm"
-          className="h-7 text-xs"
           onClick={() => refetch()}
           disabled={isFetching}
         >
-          <RefreshCw className={`w-3.5 h-3.5 mr-1 ${isFetching ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} aria-hidden="true" />
           Atualizar
         </Button>
       </div>
 
       {isLoading ? (
-        <div className="p-6 text-center">
-          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground mx-auto" />
+        <div className="p-6 space-y-3" role="status" aria-busy="true">
+          <span className="sr-only">Carregando sessões</span>
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="flex items-center gap-3">
+              <Skeleton className="h-4 w-4 rounded-full shrink-0" />
+              <Skeleton className="h-4 flex-1 max-w-[240px]" />
+              <Skeleton className="h-5 w-20 rounded-full ml-auto shrink-0" />
+            </div>
+          ))}
         </div>
       ) : sessoes.length === 0 ? (
-        <div className="p-6 text-center space-y-1">
-          <Activity className="w-7 h-7 text-muted-foreground/30 mx-auto" />
-          <p className="text-xs text-muted-foreground">Nenhuma sessão enviada ao robô ainda.</p>
-          <p className="text-xs text-muted-foreground">
-            Crie uma disputa e use <strong>Enviar ao robô</strong> — o resultado aparece aqui.
-          </p>
-        </div>
+        <EstadoVazio
+          icone={<Activity />}
+          titulo="Nenhuma sessão enviada ao robô ainda"
+          descricao={<>Crie uma disputa e use <strong>Enviar ao robô</strong> — o resultado aparece aqui.</>}
+          tamanho="compacto"
+        />
       ) : (
         <div className="divide-y divide-border">
           {sessoes.map((s) => {
             const ap = APARENCIA[s.status] || {
               rotulo: s.status,
-              classe: 'bg-muted text-muted-foreground border-border',
+              variante: 'muted' as BadgeVariant,
               Icone: AlertTriangle,
             };
             const aberta = expandida === s.id;
             const viva = s.status === 'ativo' || s.status === 'enviando';
 
             return (
-              <div key={s.id} className="px-4 py-3">
+              <div key={s.id} className="px-6 py-3">
                 <button
                   type="button"
                   onClick={() => setExpandida(aberta ? null : s.id)}
-                  className="w-full flex items-center gap-3 text-left"
+                  aria-expanded={aberta}
+                  className="w-full flex items-center gap-3 text-left rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
                   <ap.Icone
+                    aria-hidden="true"
                     className={`w-4 h-4 shrink-0 ${
                       s.status === 'erro'
                         ? 'text-destructive'
@@ -259,20 +269,20 @@ export default function SessoesDoRobo() {
                     {/* A causa aparece na linha, sem precisar abrir: erro que
                         exige clique para ser lido é erro que ninguém lê. */}
                     {s.erro && (
-                      <p className="text-xs text-destructive/90 truncate mt-0.5">{s.erro}</p>
+                      <p className="text-xs text-destructive truncate mt-0.5">{s.erro}</p>
                     )}
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
                     {s.rodada_atual ? (
-                      <span className="text-xs text-muted-foreground tabular-nums">
+                      <span className="text-xs text-muted-foreground tabular-nums hidden sm:inline">
                         rodada {s.rodada_atual}
                       </span>
                     ) : null}
-                    <Badge variant="outline" className={`text-xs ${ap.classe}`}>
+                    <Badge variant={ap.variante}>
                       {ap.rotulo}
                     </Badge>
-                    <span className="text-xs text-muted-foreground w-16 text-right">
+                    <span className="text-xs text-muted-foreground w-16 text-right hidden sm:inline">
                       {quando(s.created_at)}
                     </span>
                   </div>
@@ -286,14 +296,13 @@ export default function SessoesDoRobo() {
                     <Button
                       size="sm"
                       variant="destructive"
-                      className="h-8 text-xs gap-1.5"
                       disabled={parando === s.id}
                       onClick={() => pararSessao(s.id, s.edital)}
                     >
                       {parando === s.id ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
                       ) : (
-                        <Square className="w-3.5 h-3.5" />
+                        <Square className="w-4 h-4" aria-hidden="true" />
                       )}
                       Parar robô nesta disputa
                     </Button>
@@ -301,7 +310,7 @@ export default function SessoesDoRobo() {
                 )}
 
                 {aberta && (
-                  <div className="mt-2 pl-7 text-xs text-muted-foreground space-y-1">
+                  <div className="mt-2 pl-7 text-sm text-muted-foreground space-y-1">
                     <p>
                       Início: {new Date(s.created_at).toLocaleString('pt-BR')}
                       {s.updated_at !== s.created_at && (
@@ -309,7 +318,7 @@ export default function SessoesDoRobo() {
                       )}
                     </p>
                     {s.valor_atual != null && (
-                      <p>
+                      <p className="tabular-nums">
                         Último valor lido:{' '}
                         {s.valor_atual.toLocaleString('pt-BR', {
                           style: 'currency',
@@ -317,7 +326,7 @@ export default function SessoesDoRobo() {
                         })}
                       </p>
                     )}
-                    {s.erro && <p className="text-destructive/90">Motivo: {s.erro}</p>}
+                    {s.erro && <p className="text-destructive">Motivo: {s.erro}</p>}
                     {!s.erro && s.status === 'encerrado' && (
                       <p>A sessão terminou sem erro registrado.</p>
                     )}
@@ -329,7 +338,7 @@ export default function SessoesDoRobo() {
         </div>
       )}
 
-      <p className="px-4 py-2 text-xs text-muted-foreground border-t border-border">
+      <p className="px-6 py-3 text-sm text-muted-foreground border-t border-border">
         A tela remota (VNC) mostra o robô <strong>enquanto</strong> ele trabalha e some quando
         ele termina — às vezes em segundos. Esta lista guarda o que aconteceu.
       </p>

@@ -6,8 +6,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import { toast } from 'sonner';
 import { streamAIChat } from '@/lib/ai-stream';
 import ReactMarkdown from 'react-markdown';
@@ -736,78 +740,78 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
           ficam OCULTOS quando aberto via deep-link (/apoio-juridico/redigir/:id),
           para que a nova aba mostre apenas a redação do modelo escolhido. */}
       {!inlineMode && (<>
-      {/* ── Cabeçalho condensado: KPIs + ações rápidas (1 linha) ── */}
-      <div className="bg-card rounded-lg border border-border/60 shadow-sm p-3 flex items-center gap-3 flex-wrap">
+      {/* ── Barra de ferramentas: contadores + ações rápidas (1 linha) ── */}
+      <div className="rounded-lg border border-border bg-card p-4 shadow-sm flex items-center gap-3 flex-wrap">
         <div className="flex items-center gap-2 min-w-0">
-          <div className="w-8 h-8 rounded-md bg-muted flex items-center justify-center shrink-0">
-            <FolderOpen className="w-4 h-4 text-muted-foreground" />
+          <div className="w-10 h-10 rounded-md bg-primary-tint text-primary flex items-center justify-center shrink-0">
+            <FolderOpen className="w-5 h-5" aria-hidden="true" />
           </div>
           <div className="min-w-0">
-            <p className="text-[13px] font-semibold leading-tight">Apoio Jurídico</p>
-            <p className="text-xs text-muted-foreground leading-tight truncate">
+            <p className="text-sm font-semibold">Acervo de modelos</p>
+            <p className="text-xs text-muted-foreground truncate tabular-nums">
               {modelos.length} modelos · {pedidos.length} documentos · Lei 14.133/2021
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 ml-auto flex-wrap">
+        <div className="flex items-center gap-2 ml-auto flex-wrap">
           {processo?.numero && (
-            <Badge variant="outline" className="text-xs gap-1 shrink-0 h-6 px-2">
-              <FileText className="w-2.5 h-2.5" /> Processo {processo.numero}
+            <Badge variant="info" className="gap-1 shrink-0">
+              <FileText className="w-3 h-3" aria-hidden="true" /> Processo {processo.numero}
             </Badge>
           )}
           <Button
-            size="sm" variant="outline" className="h-7 text-xs gap-1.5"
+            variant="outline"
             onClick={() => editalFileRef.current?.click()}
             disabled={extractingEdital}
           >
-            <Upload className="w-3 h-3" /> Edital (IA)
+            <Upload aria-hidden="true" /> Edital (IA)
           </Button>
           <input
             ref={editalFileRef} type="file" accept=".pdf,.doc,.docx,.txt"
-            className="hidden" onChange={handleEditalUpload}
+            className="hidden" onChange={handleEditalUpload} aria-hidden="true" tabIndex={-1}
           />
           <Button
-            size="sm" variant={showPedidos ? 'default' : 'outline'}
-            className="h-7 text-xs gap-1.5"
+            variant={showPedidos ? 'default' : 'outline'}
+            aria-expanded={showPedidos}
             onClick={() => setShowPedidos(s => !s)}
           >
-            <Hash className="w-3 h-3" /> Documentos ({pedidos.length})
-            {showPedidos ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            <Hash aria-hidden="true" /> Documentos ({pedidos.length})
+            {showPedidos ? <ChevronUp aria-hidden="true" /> : <ChevronDown aria-hidden="true" />}
           </Button>
         </div>
       </div>
 
       {/* Edital Upload Status — barra slim */}
       {editalUploadFile && (
-        <div className="bg-card rounded-lg border border-border/60 p-2.5 flex items-center gap-3 flex-wrap">
-          <div className="w-7 h-7 rounded bg-muted flex items-center justify-center shrink-0">
-            <FileText className="w-3.5 h-3.5 text-muted-foreground" />
+        <div className="rounded-md border border-border bg-card p-3 flex items-center gap-3 flex-wrap">
+          <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center shrink-0">
+            <FileText className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold truncate">{editalUploadFile.name}</p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm font-semibold truncate">{editalUploadFile.name}</p>
+            <p className="text-xs text-muted-foreground tabular-nums">
               {(editalUploadFile.size / 1024).toFixed(0)} KB
               {editalExtracted && (
-                <span className="ml-2 inline-flex items-center gap-0.5 text-success">
-                  <CheckCircle className="w-2.5 h-2.5" /> Extraído
+                <span className="ml-2 inline-flex items-center gap-1 text-success">
+                  <CheckCircle className="w-3 h-3" aria-hidden="true" /> Extraído
                 </span>
               )}
               {extractingEdital && (
-                <span className="ml-2 inline-flex items-center gap-0.5 text-muted-foreground animate-pulse">
-                  <Loader2 className="w-2.5 h-2.5 animate-spin" /> Analisando…
+                <span className="ml-2 inline-flex items-center gap-1 text-muted-foreground" role="status">
+                  <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" /> Analisando…
                 </span>
               )}
             </p>
           </div>
-          <div className="flex gap-1.5 shrink-0">
+          <div className="flex gap-2 shrink-0">
             {!editalExtracted && (
-              <Button size="sm" onClick={handleExtractEdital} disabled={extractingEdital} className="h-7 text-xs bg-accent hover:bg-accent/90 text-accent-foreground">
-                <Sparkles className="w-3 h-3 mr-1" /> Extrair
+              <Button size="sm" onClick={handleExtractEdital} disabled={extractingEdital}>
+                <Sparkles aria-hidden="true" /> Extrair
               </Button>
             )}
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={removeEditalUpload}>
-              <X className="w-3.5 h-3.5" />
+            <Button variant="ghost" size="sm" className="h-9 w-9 p-0" onClick={removeEditalUpload} aria-label="Remover edital enviado">
+              <X aria-hidden="true" />
             </Button>
           </div>
         </div>
@@ -815,12 +819,15 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
 
       {/* ── Meus Documentos (colapsável; só aparece o conteúdo quando ativado) ── */}
       {showPedidos && (
-        <div className="bg-card rounded-lg border border-border/60 shadow-sm p-3 space-y-2">
+        <div className="rounded-lg border border-border bg-card p-4 shadow-sm space-y-2">
           {pedidos.length === 0 ? (
-            <div className="flex items-center gap-3 py-3 px-2">
-              <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
-              <p className="text-xs text-muted-foreground">
-                Nenhum documento gerado ainda. Selecione um modelo abaixo para começar — cada documento recebe numeração híbrida e versionamento automático.
+            <div className="flex flex-col items-center text-center py-6 gap-3">
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
+                <FileText className="w-6 h-6" aria-hidden="true" />
+              </span>
+              <p className="text-base font-semibold">Nenhum documento gerado ainda</p>
+              <p className="text-sm text-muted-foreground max-w-md">
+                Selecione um modelo abaixo para começar — cada documento recebe numeração híbrida e versionamento automático.
               </p>
             </div>
           ) : (
@@ -839,11 +846,11 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
            A propriedade `zoom` escala todo o conteúdo (texto, ícones, paddings) de
            forma proporcional, respeitando a preferência do usuário em localStorage. */}
       <div
-        className="bg-card rounded-lg border border-border/60 shadow-sm p-3 space-y-2.5 max-w-full overflow-x-hidden"
+        className="rounded-lg border border-border bg-card p-4 shadow-sm space-y-3 max-w-full overflow-x-hidden"
         style={{ zoom: filterFontScale }}
       >
         {/* Controle de tamanho da fonte dos filtros */}
-        <div className="flex items-center justify-end gap-1 -mb-1 flex-wrap">
+        <div className="flex items-center justify-end gap-1 flex-wrap">
           <span className="text-xs text-muted-foreground mr-1 hidden sm:inline">Tamanho da fonte</span>
           {isFontCapped && (
             <span
@@ -856,88 +863,93 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
           <Button
             variant="outline"
             size="sm"
-            className="h-6 w-6 p-0 shrink-0"
+            className="h-8 w-8 p-0 shrink-0"
             disabled={filterFontStep <= 0}
             onClick={() => setFilterFontStep(s => Math.max(0, s - 1))}
             title="Diminuir tamanho da fonte dos filtros"
             aria-label="Diminuir tamanho da fonte dos filtros"
           >
-            <AArrowDown className="w-3.5 h-3.5" />
+            <AArrowDown aria-hidden="true" />
           </Button>
-          <span className="text-xs tabular-nums text-muted-foreground w-9 text-center">
+          <span className="text-xs tabular-nums text-muted-foreground w-10 text-center" aria-live="polite">
             {Math.round(filterFontScale * 100)}%
           </span>
           <Button
             variant="outline"
             size="sm"
-            className="h-6 w-6 p-0"
+            className="h-8 w-8 p-0"
             disabled={filterFontStep >= FILTER_FONT_SCALES.length - 1}
             onClick={() => setFilterFontStep(s => Math.min(FILTER_FONT_SCALES.length - 1, s + 1))}
             title="Aumentar tamanho da fonte dos filtros"
             aria-label="Aumentar tamanho da fonte dos filtros"
           >
-            <AArrowUp className="w-3.5 h-3.5" />
+            <AArrowUp aria-hidden="true" />
           </Button>
           {filterFontStep !== 1 && (
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 w-6 p-0 text-muted-foreground"
+              className="h-8 w-8 p-0 text-muted-foreground"
               onClick={() => setFilterFontStep(1)}
               title="Restaurar tamanho padrão"
               aria-label="Restaurar tamanho padrão"
             >
-              <RotateCcw className="w-3 h-3" />
+              <RotateCcw aria-hidden="true" />
             </Button>
           )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
           <div className="md:col-span-5 relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <Label htmlFor="modelos-busca" className="sr-only">Buscar modelo, categoria ou fundamentação</Label>
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
             <Input
+              id="modelos-busca"
               placeholder="Buscar modelo, categoria ou fundamentação..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="pl-8 h-9 text-xs"
+              className="pl-9"
             />
           </div>
           <div className="md:col-span-3">
+            <Label htmlFor="modelos-modalidade" className="sr-only">Modalidade</Label>
             <Select value={modalidadeId || '__none__'} onValueChange={v => { setModalidadeId(v === '__none__' ? null : v); setEtapaFiltro(null); setCriterioFiltro(null); }}>
-              <SelectTrigger className="h-9 text-xs">
-                <Landmark className="w-3 h-3 mr-1 text-muted-foreground shrink-0" />
+              <SelectTrigger id="modelos-modalidade">
+                <Landmark className="w-4 h-4 mr-1 text-muted-foreground shrink-0" aria-hidden="true" />
                 <SelectValue placeholder="Modalidade…" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__none__" className="text-xs">Sem modalidade</SelectItem>
+                <SelectItem value="__none__">Sem modalidade</SelectItem>
                 {MODALIDADES.map(m => (
-                  <SelectItem key={m.id} value={m.id} className="text-xs">{m.nome}</SelectItem>
+                  <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div className="md:col-span-2">
+            <Label htmlFor="modelos-etapa" className="sr-only">Etapa</Label>
             <Select value={etapaFiltro || '__all__'} onValueChange={v => setEtapaFiltro(v === '__all__' ? null : v)} disabled={!modalidade}>
-              <SelectTrigger className="h-9 text-xs">
+              <SelectTrigger id="modelos-etapa">
                 <SelectValue placeholder="Etapa" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__all__" className="text-xs">Todas as etapas</SelectItem>
+                <SelectItem value="__all__">Todas as etapas</SelectItem>
                 {modalidade?.etapas.map(e => (
-                  <SelectItem key={e.nome} value={e.nome} className="text-xs">{e.ordem}. {e.nome}</SelectItem>
+                  <SelectItem key={e.nome} value={e.nome}>{e.ordem}. {e.nome}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div className="md:col-span-2">
+            <Label htmlFor="modelos-criterio" className="sr-only">Critério de julgamento</Label>
             <Select value={criterioFiltro || '__all__'} onValueChange={v => setCriterioFiltro(v === '__all__' ? null : v)} disabled={!modalidade}>
-              <SelectTrigger className="h-9 text-xs">
+              <SelectTrigger id="modelos-criterio">
                 <SelectValue placeholder="Critério" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__all__" className="text-xs">Todos critérios</SelectItem>
+                <SelectItem value="__all__">Todos critérios</SelectItem>
                 {modalidade?.criteriosJulgamento.map(c => (
-                  <SelectItem key={c.id} value={c.id} className="text-xs">{c.nome}</SelectItem>
+                  <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -945,46 +957,59 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
         </div>
 
         {/* Chips de categoria (substituem o painel de filtros pesado) */}
-        <div className="flex flex-wrap gap-2 items-center pt-2 border-t border-border/40">
-          <Badge
+        <div className="flex flex-wrap gap-2 items-center pt-3 border-t border-border">
+          <Button
+            type="button"
+            size="sm"
             variant={catFilter === null ? 'default' : 'outline'}
-            className="cursor-pointer text-[13px] h-7 px-3 font-medium"
+            aria-pressed={catFilter === null}
+            className="h-8 px-3 text-xs"
             onClick={() => setCatFilter(null)}
           >
             Todos · {modelos.length}
-          </Badge>
+          </Button>
           {categorias.map(cat => {
             const count = modelos.filter(m => m.categoria === cat).length;
             const docCount = pedidos.filter(p => p.categoria === cat).length;
+            const ativo = catFilter === cat;
             return (
-              <Badge
+              <Button
                 key={cat}
-                variant={catFilter === cat ? 'default' : 'outline'}
-                className="cursor-pointer text-[13px] h-7 px-3 gap-1.5 font-medium"
-                onClick={() => setCatFilter(catFilter === cat ? null : cat)}
+                type="button"
+                size="sm"
+                variant={ativo ? 'default' : 'outline'}
+                aria-pressed={ativo}
+                className="h-8 px-3 text-xs gap-2"
+                onClick={() => setCatFilter(ativo ? null : cat)}
               >
                 {cat} · {count}
                 {docCount > 0 && (
-                  <span className={`inline-block px-1.5 rounded text-xs font-semibold ${catFilter === cat ? 'bg-primary-foreground/20' : 'bg-muted text-foreground'}`}>{docCount}</span>
+                  <span
+                    className={`inline-block px-1.5 rounded-full text-xs font-semibold tabular-nums ${ativo ? 'bg-primary-hover text-primary-foreground' : 'bg-muted text-foreground'}`}
+                    title={`${docCount} documento(s) emitido(s)`}
+                  >
+                    {docCount}
+                  </span>
                 )}
-              </Badge>
+              </Button>
             );
           })}
           {(search || catFilter) && (
             <Button
-              variant="ghost" size="sm" className="h-7 px-2 text-[12px] text-muted-foreground ml-auto"
+              variant="ghost" size="sm" className="h-8 px-2 text-xs text-muted-foreground ml-auto"
               onClick={() => { setSearch(''); setCatFilter(null); }}
             >
-              <X className="w-3 h-3 mr-1" /> Limpar ({filteredModelos.length})
+              <X aria-hidden="true" /> Limpar ({filteredModelos.length})
             </Button>
           )}
           {modalidade && (
             <Button
               variant="ghost" size="sm"
-              className="h-7 px-2 text-[12px] text-muted-foreground"
+              className="h-8 px-2 text-xs text-muted-foreground"
+              aria-expanded={showModalidadeInfo}
               onClick={() => setShowModalidadeInfo(!showModalidadeInfo)}
             >
-              <Info className="w-3 h-3 mr-1" />
+              <Info aria-hidden="true" />
               {showModalidadeInfo ? 'Ocultar detalhes' : 'Detalhes da modalidade'}
             </Button>
           )}
@@ -992,21 +1017,21 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
 
         {/* Detalhes da modalidade (colapsável, opcional) */}
         {modalidade && showModalidadeInfo && (
-          <div className="mt-2 p-3 rounded-md bg-muted/30 space-y-3 text-xs border border-border/40">
+          <div className="p-4 rounded-md bg-muted/50 space-y-3 text-sm border border-border">
             <div>
               <p className="font-semibold text-foreground">{modalidade.nome}</p>
               <p className="text-muted-foreground mt-1">{modalidade.descricao}</p>
-              <Badge variant="outline" className="text-xs mt-1">{modalidade.fundamentacao}</Badge>
+              <Badge variant="info" className="mt-2">{modalidade.fundamentacao}</Badge>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <p className="font-semibold flex items-center gap-1"><ListChecks className="w-3 h-3 text-muted-foreground" /> Etapas do Processo</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <p className="font-semibold flex items-center gap-1"><ListChecks className="w-4 h-4 text-muted-foreground" aria-hidden="true" /> Etapas do Processo</p>
                 <div className="space-y-1">
                   {modalidade.etapas.map(e => (
-                    <div key={e.ordem} className={`flex items-start gap-2 p-1.5 rounded ${etapaFiltro === e.nome ? 'bg-accent/10 border border-accent/30' : ''}`}>
-                      <span className="w-4 h-4 rounded-full bg-muted text-foreground flex items-center justify-center flex-shrink-0 text-xs font-bold">{e.ordem}</span>
+                    <div key={e.ordem} className={`flex items-start gap-2 p-2 rounded-md ${etapaFiltro === e.nome ? 'bg-primary-tint border border-primary/40' : ''}`}>
+                      <span className="w-5 h-5 rounded-full bg-muted text-foreground flex items-center justify-center flex-shrink-0 text-xs font-bold tabular-nums">{e.ordem}</span>
                       <div>
-                        <p className="font-medium text-xs">{e.nome}</p>
+                        <p className="font-medium text-sm">{e.nome}</p>
                         <p className="text-muted-foreground text-xs">{e.descricao}</p>
                       </div>
                     </div>
@@ -1014,29 +1039,29 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                 </div>
               </div>
               <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <p className="font-semibold flex items-center gap-1"><Target className="w-3 h-3 text-muted-foreground" /> Critérios de Julgamento</p>
+                <div className="space-y-2">
+                  <p className="font-semibold flex items-center gap-1"><Target className="w-4 h-4 text-muted-foreground" aria-hidden="true" /> Critérios de Julgamento</p>
                   {modalidade.criteriosJulgamento.map(c => (
-                    <div key={c.id} className={`p-1.5 rounded ${criterioFiltro === c.id ? 'bg-accent/10 border border-accent/30' : ''}`}>
-                      <p className="font-medium text-xs">{c.nome} <span className="text-muted-foreground">({c.fundamentacao})</span></p>
+                    <div key={c.id} className={`p-2 rounded-md ${criterioFiltro === c.id ? 'bg-primary-tint border border-primary/40' : ''}`}>
+                      <p className="font-medium text-sm">{c.nome} <span className="text-muted-foreground">({c.fundamentacao})</span></p>
                       <p className="text-muted-foreground text-xs">{c.descricao}</p>
-                      {c.obrigatorio && <Badge variant="default" className="text-xs mt-0.5">Obrigatório</Badge>}
+                      {c.obrigatorio && <Badge variant="success" className="mt-1">Obrigatório</Badge>}
                     </div>
                   ))}
                 </div>
-                <div className="space-y-1.5">
-                  <p className="font-semibold flex items-center gap-1"><Award className="w-3 h-3 text-muted-foreground" /> Modos de Disputa</p>
+                <div className="space-y-2">
+                  <p className="font-semibold flex items-center gap-1"><Award className="w-4 h-4 text-muted-foreground" aria-hidden="true" /> Modos de Disputa</p>
                   {modalidade.modosDisputa.map(m => (
-                    <div key={m.id} className="p-1.5 rounded">
-                      <p className="font-medium text-xs">{m.nome} <span className="text-muted-foreground">({m.fundamentacao})</span></p>
+                    <div key={m.id} className="p-2 rounded-md">
+                      <p className="font-medium text-sm">{m.nome} <span className="text-muted-foreground">({m.fundamentacao})</span></p>
                       <p className="text-muted-foreground text-xs">{m.descricao}</p>
-                      {m.padrao && <Badge variant="secondary" className="text-xs mt-0.5">Padrão</Badge>}
+                      {m.padrao && <Badge variant="muted" className="mt-1">Padrão</Badge>}
                     </div>
                   ))}
                 </div>
-                <div className="space-y-1.5">
-                  <p className="font-semibold flex items-center gap-1"><Shield className="w-3 h-3 text-muted-foreground" /> Preferência ME/EPP</p>
-                  <Badge variant={modalidade.preferenciaMeEpp.aplicavel ? 'default' : 'secondary'} className="text-xs">
+                <div className="space-y-2">
+                  <p className="font-semibold flex items-center gap-1"><Shield className="w-4 h-4 text-muted-foreground" aria-hidden="true" /> Preferência ME/EPP</p>
+                  <Badge variant={modalidade.preferenciaMeEpp.aplicavel ? 'success' : 'muted'}>
                     {modalidade.preferenciaMeEpp.aplicavel ? 'Aplicável' : 'Não aplicável'}
                   </Badge>
                   <p className="text-muted-foreground">{modalidade.preferenciaMeEpp.descricao}</p>
@@ -1057,114 +1082,110 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
       {inlineMode && activeModelo ? (
         <section
           aria-label={`Redigir: ${activeModelo.titulo}`}
-          className="bg-background border border-border/50 rounded-lg shadow-sm overflow-hidden flex flex-col"
+          className="bg-background border border-border rounded-lg shadow-sm overflow-hidden flex flex-col"
           style={{ minHeight: 'calc(100vh - 180px)' }}
         >
           {activeModelo && (
             <>
-              <header className="px-6 pt-6 pb-4 border-b border-border/50 shrink-0">
-                <div className="flex items-center gap-2 mb-3">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 gap-1.5 text-xs"
-                    onClick={resetGeneration}
-                  >
-                    <ArrowLeft className="w-3.5 h-3.5" />
-                    Voltar para a lista de modelos
-                  </Button>
-                  <Button
-                    variant={mostrarPreview ? 'default' : 'outline'}
-                    size="sm"
-                    className="h-8 gap-1.5 text-xs ml-auto"
-                    onClick={() => setMostrarPreview((v) => !v)}
-                  >
-                    <Eye className="w-3.5 h-3.5" />
-                    {mostrarPreview ? 'Ocultar preview ABNT' : 'Preview ABNT em tempo real'}
-                    {!mostrarPreview && resultado && (
-                      <Badge className="ml-1 text-xs gap-1 bg-success/10 text-success border-success/30">
-                        <CheckCircle className="w-2.5 h-2.5" /> pronto
-                      </Badge>
-                    )}
-                  </Button>
-                </div>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <h2 className="flex items-center gap-2 text-base font-semibold">
-                      <Sparkles className="w-5 h-5 text-muted-foreground shrink-0" />
-                      <span className="truncate">{activeModelo.titulo}</span>
-                    </h2>
-                    <p className="text-xs mt-1 text-muted-foreground">
-                      {activeModelo.descricao}
-                    </p>
-                    <div className="flex items-center gap-1.5 flex-wrap mt-2">
-                      <Badge variant="outline" className="text-xs shrink-0">{activeModelo.fundamentacao}</Badge>
-                      {modalidade && <Badge variant="secondary" className="text-xs shrink-0">{modalidade.nome}</Badge>}
-                      {etapaFiltro && <Badge variant="secondary" className="text-xs shrink-0">{etapaFiltro}</Badge>}
-                      {selectedEmpresa && (
-                        <Badge variant="secondary" className="text-xs shrink-0 max-w-[200px] truncate">
-                          {selectedEmpresa.razao_social}
+              {/* Rota dedicada (/apoio-juridico/redigir/:id): este é o único h1
+                  da página — o CabecalhoPagina da lista fica em ApoioJuridico. */}
+              <CabecalhoPagina
+                className="px-6 pt-6 pb-4 mb-0 border-b border-border shrink-0"
+                trilha={[
+                  { rotulo: 'Apoio Jurídico', para: '/apoio-juridico' },
+                  { rotulo: activeModelo.titulo },
+                ]}
+                icone={<Sparkles />}
+                titulo={activeModelo.titulo}
+                descricao={activeModelo.descricao}
+                acoes={
+                  <>
+                    <Button variant="outline" onClick={resetGeneration}>
+                      <ArrowLeft aria-hidden="true" />
+                      Voltar para a lista de modelos
+                    </Button>
+                    <Button
+                      variant={mostrarPreview ? 'default' : 'outline'}
+                      aria-pressed={mostrarPreview}
+                      onClick={() => setMostrarPreview((v) => !v)}
+                    >
+                      <Eye aria-hidden="true" />
+                      {mostrarPreview ? 'Ocultar preview ABNT' : 'Preview ABNT em tempo real'}
+                      {!mostrarPreview && resultado && (
+                        <Badge variant="success" className="ml-1 gap-1">
+                          <CheckCircle className="w-3 h-3" aria-hidden="true" /> pronto
                         </Badge>
                       )}
-                      {pedidoAtivo && (
-                        <Badge className="text-xs gap-1 bg-muted text-foreground border-border hover:bg-muted shrink-0">
-                          <Hash className="w-2.5 h-2.5" /> {pedidoAtivo.numero_formatado} · v{pedidoAtivo.versoes_count}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
+                    </Button>
+                  </>
+                }
+              >
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Badge variant="info" className="shrink-0">{activeModelo.fundamentacao}</Badge>
+                  {modalidade && <Badge variant="muted" className="shrink-0">{modalidade.nome}</Badge>}
+                  {etapaFiltro && <Badge variant="muted" className="shrink-0">{etapaFiltro}</Badge>}
+                  {selectedEmpresa && (
+                    <Badge variant="muted" truncate className="shrink-0 max-w-[200px]">
+                      {selectedEmpresa.razao_social}
+                    </Badge>
+                  )}
+                  {pedidoAtivo && (
+                    <Badge variant="info" className="gap-1 shrink-0 tabular-nums">
+                      <Hash className="w-3 h-3" aria-hidden="true" /> {pedidoAtivo.numero_formatado} · v{pedidoAtivo.versoes_count}
+                    </Badge>
+                  )}
                 </div>
-              </header>
+              </CabecalhoPagina>
 
               {/* Layout 2 colunas: formulário + preview live */}
               <div className={`flex-1 grid grid-cols-1 overflow-hidden ${mostrarPreview ? 'lg:grid-cols-[minmax(0,420px)_1fr]' : ''}`}>
                 {/* Coluna esquerda: formulário com scroll. Sem preview, ocupa a
                     largura toda (centrado) — mais espaço para preencher o pedido. */}
-                <div className={`overflow-y-auto px-6 py-4 space-y-4 bg-muted/10 ${mostrarPreview ? 'border-r border-border/50' : 'w-full max-w-5xl mx-auto'}`}>
-                  <div className="bg-card rounded-lg border border-border/50 p-4 space-y-4 shadow-sm">
+                <div className={`overflow-y-auto px-6 py-4 space-y-4 bg-muted/30 ${mostrarPreview ? 'border-r border-border' : 'w-full max-w-5xl mx-auto'}`}>
+                  <div className="rounded-lg border border-border bg-card p-6 space-y-4 shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div className="flex items-center gap-2 flex-wrap">
-              <Sparkles className="w-5 h-5 text-muted-foreground" />
-              <h3 className="text-sm font-semibold">Gerar: {activeModelo.titulo}</h3>
-              <Badge variant="outline" className="text-xs">{activeModelo.fundamentacao}</Badge>
-              {modalidade && <Badge variant="secondary" className="text-xs">{modalidade.nome}</Badge>}
-              {etapaFiltro && <Badge variant="secondary" className="text-xs">{etapaFiltro}</Badge>}
-              {criterioFiltro && <Badge variant="secondary" className="text-xs">{modalidade?.criteriosJulgamento.find(c => c.id === criterioFiltro)?.nome}</Badge>}
-              {selectedEmpresa && <Badge variant="secondary" className="text-xs">{selectedEmpresa.razao_social.slice(0, 30)}</Badge>}
+              <Sparkles className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+              <h3 className="text-lg font-semibold">Gerar: {activeModelo.titulo}</h3>
+              <Badge variant="info">{activeModelo.fundamentacao}</Badge>
+              {modalidade && <Badge variant="muted">{modalidade.nome}</Badge>}
+              {etapaFiltro && <Badge variant="muted">{etapaFiltro}</Badge>}
+              {criterioFiltro && <Badge variant="muted">{modalidade?.criteriosJulgamento.find(c => c.id === criterioFiltro)?.nome}</Badge>}
+              {selectedEmpresa && <Badge variant="muted">{selectedEmpresa.razao_social.slice(0, 30)}</Badge>}
               {pedidoAtivo && (
-                <Badge variant="default" className="text-xs gap-1 bg-muted text-foreground border-border hover:bg-muted">
-                  <Hash className="w-2.5 h-2.5" /> {pedidoAtivo.numero_formatado} · v{pedidoAtivo.versoes_count}
+                <Badge variant="info" className="gap-1 tabular-nums">
+                  <Hash className="w-3 h-3" aria-hidden="true" /> {pedidoAtivo.numero_formatado} · v{pedidoAtivo.versoes_count}
                 </Badge>
               )}
             </div>
-            <Button variant="ghost" size="sm" onClick={resetGeneration}>
-              <X className="w-4 h-4" />
+            <Button variant="ghost" size="sm" className="h-9 w-9 p-0" onClick={resetGeneration} aria-label="Fechar e voltar para a lista de modelos">
+              <X aria-hidden="true" />
             </Button>
           </div>
 
           {/* Empresa & Representante Legal Selector */}
-          <div className="bg-muted/30 rounded-lg border border-border/50 p-4 space-y-3">
+          <div className="rounded-md border border-border bg-muted/50 p-4 space-y-3">
             <div className="flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-muted-foreground" />
-              <h4 className="text-xs font-semibold">Dados Cadastrais da Empresa</h4>
+              <Building2 className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+              <h4 className="text-base font-semibold">Dados Cadastrais da Empresa</h4>
             </div>
 
             {empresas.length === 0 ? (
-              <p className="text-xs text-muted-foreground italic">
+              <p className="text-sm text-muted-foreground italic">
                 Nenhuma empresa cadastrada. Acesse Configurações → Empresas para cadastrar.
               </p>
             ) : (
               <div className="space-y-3">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">Empresa</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="modelo-empresa">Empresa</Label>
                     <Select value={selectedEmpresaId || ''} onValueChange={v => setSelectedEmpresaId(v || null)}>
-                      <SelectTrigger className="h-9 text-xs">
+                      <SelectTrigger id="modelo-empresa">
                         <SelectValue placeholder="Selecione a empresa..." />
                       </SelectTrigger>
                       <SelectContent>
                         {empresas.map(e => (
-                          <SelectItem key={e.empresa_id} value={e.empresa_id} className="text-xs">
+                          <SelectItem key={e.empresa_id} value={e.empresa_id}>
                             {e.empresa.razao_social} ({e.empresa.cnpj})
                           </SelectItem>
                         ))}
@@ -1172,34 +1193,30 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                     </Select>
                   </div>
                   <div className="flex items-end gap-4 flex-wrap">
-                    <label className="flex items-center gap-1.5 text-xs cursor-pointer whitespace-nowrap">
-                      <input
-                        type="checkbox"
+                    <label className="flex items-center gap-2 text-sm cursor-pointer whitespace-nowrap">
+                      <Checkbox
                         checked={incluirDadosEmpresa}
-                        onChange={e => setIncluirDadosEmpresa(e.target.checked)}
-                        className="rounded border-border"
+                        onCheckedChange={v => setIncluirDadosEmpresa(v === true)}
                       />
-                      <Building2 className="w-3 h-3 text-muted-foreground" />
+                      <Building2 className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
                       Dados da Empresa
                     </label>
-                    <label className="flex items-center gap-1.5 text-xs cursor-pointer whitespace-nowrap">
-                      <input
-                        type="checkbox"
+                    <label className="flex items-center gap-2 text-sm cursor-pointer whitespace-nowrap">
+                      <Checkbox
                         checked={incluirRepresentante}
-                        onChange={e => setIncluirRepresentante(e.target.checked)}
-                        className="rounded border-border"
+                        onCheckedChange={v => setIncluirRepresentante(v === true)}
                       />
-                      <User className="w-3 h-3 text-muted-foreground" />
+                      <User className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
                       Representante Legal
                     </label>
                   </div>
                 </div>
 
                 {selectedEmpresa && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-muted-foreground bg-background/50 rounded-md p-3 border border-border/30">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-muted-foreground bg-background rounded-md p-3 border border-border">
                     {incluirDadosEmpresa && (
-                      <div className="space-y-0.5">
-                        <p className="font-semibold text-foreground text-xs flex items-center gap-1"><Building2 className="w-3 h-3 text-muted-foreground" /> Empresa</p>
+                      <div className="space-y-1">
+                        <p className="font-semibold text-foreground text-sm flex items-center gap-1"><Building2 className="w-4 h-4 text-muted-foreground" aria-hidden="true" /> Empresa</p>
                         <p><strong>Razão Social:</strong> {selectedEmpresa.razao_social}</p>
                         <p><strong>CNPJ:</strong> {selectedEmpresa.cnpj}</p>
                         {selectedEmpresa.endereco && <p><strong>Endereço:</strong> {selectedEmpresa.endereco}{selectedEmpresa.bairro ? `, ${selectedEmpresa.bairro}` : ''}</p>}
@@ -1211,8 +1228,8 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                       </div>
                     )}
                     {incluirRepresentante && (
-                      <div className="space-y-0.5">
-                        <p className="font-semibold text-foreground text-xs flex items-center gap-1"><User className="w-3 h-3 text-muted-foreground" /> Representante Legal</p>
+                      <div className="space-y-1">
+                        <p className="font-semibold text-foreground text-sm flex items-center gap-1"><User className="w-4 h-4 text-muted-foreground" aria-hidden="true" /> Representante Legal</p>
                         {selectedEmpresa.rep_nome ? (
                           <>
                             <p><strong>Nome:</strong> {selectedEmpresa.rep_nome}</p>
@@ -1234,9 +1251,9 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs text-muted-foreground">Nº do Edital / Contrato</label>
-              <Input value={editalNum} onChange={e => setEditalNum(e.target.value)} placeholder="PE-001/2026 ou CT-001/2026" className="mt-1" />
+            <div className="space-y-2">
+              <Label htmlFor="modelo-edital-num">Nº do Edital / Contrato</Label>
+              <Input id="modelo-edital-num" value={editalNum} onChange={e => setEditalNum(e.target.value)} placeholder="PE-001/2026 ou CT-001/2026" />
             </div>
           </div>
 
@@ -1253,25 +1270,26 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
               ) : (
                 <>
                   {fatosPeticao.length > 0 ? (
-                    <div className="bg-muted/30 border border-border/50 rounded-lg p-4 space-y-2">
-                      <div className="flex items-center justify-between">
+                    <div className="rounded-md border border-border bg-muted/50 p-4 space-y-3">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
                         <div className="flex items-center gap-2">
-                          <CheckCircle className="w-4 h-4 text-success" />
-                          <h4 className="text-xs font-semibold">{fatosPeticao.length} fato(s)/irregularidade(s) extraído(s) dos documentos</h4>
+                          <CheckCircle className="w-4 h-4 text-success" aria-hidden="true" />
+                          <h4 className="text-base font-semibold">{fatosPeticao.length} fato(s)/irregularidade(s) extraído(s) dos documentos</h4>
                         </div>
-                        <Button variant="ghost" size="sm" onClick={() => setShowPeticaoUploader(true)} className="text-xs text-accent">
+                        <Button variant="ghost" size="sm" onClick={() => setShowPeticaoUploader(true)} className="text-primary hover:text-primary">
                           Reanalisar documentos
                         </Button>
                       </div>
-                      <div className="flex flex-wrap gap-1.5 mt-2">
+                      <div className="flex flex-wrap gap-2">
                         {fatosPeticao.map((fato, idx) => (
                           <Badge
                             key={fato.id}
-                            variant="outline"
-                            className={`text-xs ${fato.gravidade === 'alta' ? 'border-destructive/40 text-destructive' : fato.gravidade === 'media' ? 'border-warning/40 text-warning' : 'border-info/40 text-info'}`}
+                            variant={fato.gravidade === 'alta' ? 'danger' : fato.gravidade === 'media' ? 'warning' : 'info'}
+                            truncate
+                            className="max-w-full"
                           >
                             {idx + 1}. {fato.descricao.slice(0, 50)}{fato.descricao.length > 50 ? '...' : ''}
-                            {fato.origem === 'manual' && ' ✏️'}
+                            {fato.origem === 'manual' && ' (manual)'}
                           </Badge>
                         ))}
                       </div>
@@ -1282,10 +1300,10 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                       // O Button nasce whitespace-nowrap: este rótulo comprido
                       // vazava da caixa tracejada na coluna estreita (08/09).
                       // whitespace-normal + h-auto deixam o texto quebrar DENTRO.
-                      className="w-full border-dashed border-accent/30 text-accent hover:bg-accent/5 gap-2 h-auto min-h-10 py-2 whitespace-normal"
+                      className="w-full border-dashed border-primary/40 text-primary hover:text-primary hover:bg-primary-tint gap-2 h-auto min-h-11 py-3 whitespace-normal"
                       onClick={() => setShowPeticaoUploader(true)}
                     >
-                      <Upload className="w-4 h-4 shrink-0" />
+                      <Upload className="shrink-0" aria-hidden="true" />
                       Anexar Peças Jurídicas para Extração de Fatos com IA
                     </Button>
                   )}
@@ -1294,11 +1312,12 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
             </>
           )}
 
-          <div>
-            <label className="text-xs text-muted-foreground">
+          <div className="space-y-2">
+            <Label htmlFor="modelo-contexto">
               {isPeticaoType && fatosPeticao.length > 0 ? 'Contexto Adicional (opcional)' : 'Contexto / Fatos / Fundamentação'}
-            </label>
+            </Label>
             <Textarea
+              id="modelo-contexto"
               value={contexto}
               onChange={e => setContexto(e.target.value)}
               placeholder={
@@ -1308,7 +1327,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                     ? 'Descreva a decisão contestada, os fatos e fundamentos jurídicos...'
                     : 'Descreva o contexto, fatos relevantes e objetivo do documento...'
               }
-              className="mt-1 min-h-[100px]"
+              className="min-h-[100px]"
             />
           </div>
 
@@ -1383,29 +1402,29 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                 {/* Coluna direita: preview live ABNT — sob demanda */}
                 {mostrarPreview && (
                 <div className="flex flex-col overflow-hidden bg-background">
-                  <div className="flex items-center justify-between gap-2 px-6 py-3 border-b border-border/50 shrink-0 flex-wrap">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Eye className="w-4 h-4 text-muted-foreground shrink-0" />
-                      <h4 className="text-xs font-semibold whitespace-nowrap">Preview ABNT em tempo real</h4>
+                  <div className="flex items-center justify-between gap-3 px-6 py-3 border-b border-border shrink-0 flex-wrap">
+                    <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                      <Eye className="w-5 h-5 text-muted-foreground shrink-0" aria-hidden="true" />
+                      <h4 className="text-base font-semibold whitespace-nowrap">Preview ABNT em tempo real</h4>
                       {gerando && (
-                        <Badge className="text-xs gap-1 bg-muted text-muted-foreground border-border shrink-0">
-                          <Loader2 className="w-2.5 h-2.5 animate-spin" /> Gerando…
+                        <Badge variant="muted" className="gap-1 shrink-0" role="status">
+                          <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" /> Gerando…
                         </Badge>
                       )}
                       {!gerando && resultado && (
-                        <Badge className="text-xs gap-1 bg-success/10 text-success border-success/30 shrink-0">
-                          <CheckCircle className="w-2.5 h-2.5" /> Pronto
+                        <Badge variant="success" className="gap-1 shrink-0">
+                          <CheckCircle className="w-3 h-3" aria-hidden="true" /> Pronto
                         </Badge>
                       )}
                     </div>
-                    <div className="flex flex-wrap gap-1.5 shrink-0">
+                    <div className="flex flex-wrap gap-2 shrink-0">
                       <Button
                         size="sm"
                         onClick={handleGerar}
                         disabled={gerando}
-                        className="bg-accent hover:bg-accent/90 text-accent-foreground h-8 text-xs shrink-0"
+                        className="shrink-0"
                       >
-                        {gerando ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Sparkles className="w-3 h-3 mr-1" />}
+                        {gerando ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Sparkles aria-hidden="true" />}
                         {resultado && !gerando ? 'Regerar' : 'Gerar'}
                       </Button>
                       {resultado && !gerando && (
@@ -1445,19 +1464,19 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                                 }
                               }}
                               disabled={arquivandoPeca}
-                              className="h-8 text-xs shrink-0 gap-1"
+                              className="shrink-0"
                             >
-                              {arquivandoPeca ? <Loader2 className="w-3 h-3 animate-spin" /> : <FolderPlus className="w-3 h-3" />}
+                              {arquivandoPeca ? <Loader2 className="animate-spin" aria-hidden="true" /> : <FolderPlus aria-hidden="true" />}
                               Salvar na pasta do processo
                             </Button>
                           )}
-                          <Button size="sm" variant="outline" onClick={copyToClipboard} className="h-8 text-xs shrink-0">
-                            <Copy className="w-3 h-3 mr-1" /> Copiar
+                          <Button size="sm" variant="outline" onClick={copyToClipboard} className="shrink-0">
+                            <Copy aria-hidden="true" /> Copiar
                           </Button>
                           <Button
                             size="sm"
                             variant="outline"
-                            className="gap-1 h-8 text-xs shrink-0"
+                            className="shrink-0"
                             onClick={async () => {
                               const meta = {
                                 empresa: selectedEmpresa?.razao_social,
@@ -1475,12 +1494,12 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                               toast.success('PDF ABNT gerado!');
                             }}
                           >
-                            <Download className="w-3 h-3" /> PDF
+                            <Download aria-hidden="true" /> PDF
                           </Button>
                           <Button
                             size="sm"
                             variant="outline"
-                            className="gap-1 h-8 text-xs shrink-0"
+                            className="shrink-0"
                             onClick={() => {
                               const meta = {
                                 empresa: selectedEmpresa?.razao_social,
@@ -1498,21 +1517,21 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                               toast.success('Word ABNT gerado!');
                             }}
                           >
-                            <Download className="w-3 h-3" /> Word
+                            <Download aria-hidden="true" /> Word
                           </Button>
                         </>
                       )}
                     </div>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto bg-muted/20 p-6">
+                  <div className="flex-1 overflow-y-auto bg-muted/30 p-6">
                     {!resultado && !gerando && (
-                      <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground gap-3 max-w-md mx-auto">
-                        <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
-                          <FileCode className="w-6 h-6 text-muted-foreground" />
-                        </div>
-                        <p className="text-sm font-medium">Preview do documento aparecerá aqui</p>
-                        <p className="text-xs">
+                      <div className="h-full flex flex-col items-center justify-center text-center gap-3 max-w-md mx-auto">
+                        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
+                          <FileCode className="w-6 h-6" aria-hidden="true" />
+                        </span>
+                        <p className="text-base font-semibold">Preview do documento aparecerá aqui</p>
+                        <p className="text-sm text-muted-foreground">
                           Preencha o contexto à esquerda e clique em <strong>Gerar</strong>.
                           O texto é renderizado em tempo real conforme a IA escreve, com formatação ABNT
                           (margens 3cm/2cm, espaçamento 1,5, citações recuadas).
@@ -1521,19 +1540,19 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                     )}
 
                     {(resultado || gerando) && (
-                      <div className="bg-background mx-auto rounded-md shadow-md border border-border/40 max-w-[210mm] min-h-[297mm] p-12">
-                        <div className="prose prose-sm max-w-none dark:prose-invert text-sm leading-[1.6]">
+                      <div className="bg-background mx-auto rounded-md shadow-md border border-border max-w-[210mm] min-h-[297mm] p-6 sm:p-12">
+                        <div className="prose prose-sm max-w-none dark:prose-invert text-sm">
                           <ReactMarkdown>{resultado || ''}</ReactMarkdown>
                           {gerando && (
-                            <span className="inline-block w-2 h-4 bg-foreground animate-pulse align-middle ml-0.5" />
+                            <span className="inline-block w-2 h-4 bg-foreground animate-pulse align-middle ml-0.5" aria-hidden="true" />
                           )}
                         </div>
                       </div>
                     )}
                   </div>
 
-                  <div className="flex items-center gap-2 px-6 py-2 border-t border-border/50 bg-muted/10 shrink-0">
-                    <Info className="w-3 h-3 text-muted-foreground shrink-0" />
+                  <div className="flex items-center gap-2 px-6 py-2 border-t border-border bg-muted/30 shrink-0">
+                    <Info className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
                     <p className="text-xs text-muted-foreground truncate">
                       ABNT NBR 14724 · Times New Roman 12pt · Entrelinhas 1,5 · Citações recuadas 4cm · Margens 3cm/2cm
                     </p>
@@ -1551,19 +1570,18 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
             className="w-full sm:max-w-none sm:w-[95vw] lg:w-[90vw] xl:w-[1400px] p-0 overflow-hidden flex flex-col"
           >
             {activeModelo && (
-              <SheetHeader className="px-6 pt-6 pb-4 border-b border-border/50 shrink-0">
-                <SheetTitle className="flex items-center gap-2 text-base">
-                  <Sparkles className="w-5 h-5 text-muted-foreground shrink-0" />
+              <SheetHeader className="px-6 pt-6 pb-4 border-b border-border shrink-0">
+                <SheetTitle className="flex items-center gap-2 text-lg">
+                  <Sparkles className="w-5 h-5 text-muted-foreground shrink-0" aria-hidden="true" />
                   <span className="truncate">{activeModelo.titulo}</span>
                 </SheetTitle>
-                <SheetDescription className="text-xs mt-1">
+                <SheetDescription className="text-sm mt-1">
                   Carregando editor de redação completo…
                 </SheetDescription>
-                <p className="text-xs text-muted-foreground mt-2">
+                <p className="text-sm text-muted-foreground mt-2">
                   Para a melhor experiência, abra este modelo em página dedicada:
                 </p>
                 <Button
-                  size="sm"
                   className="mt-2 w-fit"
                   onClick={() => { resetGeneration(); navigate(`/apoio-juridico/redigir/${activeModelo.id}`); }}
                 >
@@ -1578,39 +1596,38 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
       {!inlineMode && (<>
       {/* ── Acervo de Modelos – Layout Forense (estilo Vade Mecum) ── */}
       {filteredModelos.length === 0 ? (
-        <div className="bg-card rounded-xl border border-dashed border-border/50 p-10 text-center">
-          <Filter className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-          <p className="text-sm text-muted-foreground">Nenhum modelo encontrado para os filtros aplicados.</p>
-          <Button variant="link" size="sm" onClick={() => { setSearch(''); setCatFilter(null); }}>
+        <div className="rounded-lg border border-dashed border-border bg-card p-10 flex flex-col items-center text-center gap-3">
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
+            <Filter className="w-6 h-6" aria-hidden="true" />
+          </span>
+          <p className="text-base font-semibold">Nenhum modelo encontrado</p>
+          <p className="text-sm text-muted-foreground">Nenhum modelo corresponde aos filtros aplicados.</p>
+          <Button variant="outline" onClick={() => { setSearch(''); setCatFilter(null); }}>
             Limpar filtros
           </Button>
         </div>
       ) : (
-        <div className="bg-card border border-border/60 rounded-md overflow-hidden shadow-sm">
+        <div className="rounded-lg border border-border bg-card overflow-hidden shadow-sm">
           {/* Cabeçalho institucional */}
-          <div className="px-4 py-3 border-b-2 border-border bg-gradient-to-b from-muted/40 to-transparent">
+          <div className="px-4 py-3 border-b-2 border-border bg-muted/50">
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div className="min-w-0">
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground font-semibold">
+                <p className="text-xs uppercase tracking-widest text-muted-foreground font-semibold">
                   Praefectus · Acervo Jurídico
                 </p>
-                <h2 className="text-sm font-bold text-foreground leading-tight mt-0.5">
+                <h2 className="text-lg font-semibold text-foreground mt-0.5">
                   Compêndio de Modelos Processuais e Administrativos
                 </h2>
               </div>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground tabular-nums shrink-0">
-                <span className="px-1.5 py-0.5 border border-border/60 rounded-sm bg-background/60">
-                  Lei nº 14.133/2021
-                </span>
-                <span className="px-1.5 py-0.5 border border-border/60 rounded-sm bg-background/60">
-                  {filteredModelos.length} peças
-                </span>
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                <Badge variant="info">Lei nº 14.133/2021</Badge>
+                <Badge variant="info" className="tabular-nums">{filteredModelos.length} peças</Badge>
               </div>
             </div>
           </div>
 
           {/* Capítulos por categoria */}
-          <div className="divide-y divide-border/60">
+          <div className="divide-y divide-border">
             {categorias.map((cat, catIdx) => {
               const items = filteredModelos.filter(m => m.categoria === cat);
               if (items.length === 0) return null;
@@ -1623,14 +1640,15 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                       Tipografia e espaçamento uniformes em todos os breakpoints.
                       Contraste AA garantido: bg-secondary + text-secondary-foreground
                       (par de tokens validado em light/dark). Fallback sólido antes
-                      do blur para navegadores sem backdrop-filter. */}
-                  <header className="sticky top-0 z-[1] flex items-center justify-between gap-3 px-4 py-2 bg-secondary supports-[backdrop-filter]:bg-secondary/95 backdrop-blur-sm border-y border-border text-secondary-foreground shadow-[inset_3px_0_0_0_hsl(var(--accent))]">
+                      do blur para navegadores sem backdrop-filter. O filete à
+                      esquerda é a primária (era hsl() literal em sombra inset). */}
+                  <header className="sticky top-0 z-[1] flex items-center justify-between gap-3 px-4 py-2 bg-secondary supports-[backdrop-filter]:bg-secondary/95 backdrop-blur-sm border-y border-border border-l-4 border-l-primary text-secondary-foreground">
                     <div className="flex items-baseline gap-2.5 min-w-0">
                       <span className="text-xs font-bold text-secondary-foreground tabular-nums tracking-wider shrink-0">
                         CAP. {romano}
                       </span>
                       <span className="w-px h-3.5 bg-secondary-foreground/30 shrink-0" aria-hidden="true" />
-                      <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-secondary-foreground truncate">
+                      <h3 className="text-xs font-bold uppercase tracking-widest text-secondary-foreground truncate">
                         {cat}
                       </h3>
                       <span className="text-xs text-secondary-foreground/75 tabular-nums shrink-0">
@@ -1638,8 +1656,8 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                       </span>
                     </div>
                     {catCount > 0 && (
-                      <Badge className="text-xs gap-1 bg-background text-foreground border-border shrink-0 h-5 px-2 tabular-nums">
-                        <FileText className="w-3 h-3" /> {catCount} emitida{catCount === 1 ? '' : 's'}
+                      <Badge variant="info" className="gap-1 shrink-0 tabular-nums">
+                        <FileText className="w-3 h-3" aria-hidden="true" /> {catCount} emitida{catCount === 1 ? '' : 's'}
                       </Badge>
                     )}
                   </header>
@@ -1671,7 +1689,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
           </div>
 
           {/* Rodapé institucional */}
-          <div className="px-4 py-2 border-t border-border/60 bg-muted/20 flex items-center justify-between gap-2 flex-wrap">
+          <div className="px-4 py-2 border-t border-border bg-muted/50 flex items-center justify-between gap-2 flex-wrap">
             <p className="text-xs text-muted-foreground">
               Documento gerado em conformidade com a NBR 14.724 · ABNT
             </p>
@@ -1701,41 +1719,48 @@ function DataSelector<T>({
   );
 
   return (
-    <div className="space-y-2">
-      <label className="text-xs text-muted-foreground flex items-center gap-1">
-        {icon} {label} ({selected.length} selecionado{selected.length !== 1 ? 's' : ''})
-      </label>
+    <fieldset className="space-y-2">
+      <legend className="text-sm font-medium flex items-center gap-1 mb-2">
+        <span className="text-muted-foreground [&>svg]:w-4 [&>svg]:h-4" aria-hidden="true">{icon}</span>
+        {label} ({selected.length} selecionado{selected.length !== 1 ? 's' : ''})
+      </legend>
       {items.length > 5 && (
         <Input
+          aria-label={`Buscar ${label.toLowerCase()}`}
           placeholder={`Buscar ${label.toLowerCase()}...`}
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
-          className="h-7 text-xs"
         />
       )}
-      <div className="flex flex-wrap gap-1.5 max-h-[100px] overflow-y-auto p-2 rounded-md bg-muted/30">
+      <div className="flex flex-wrap gap-2 max-h-[120px] overflow-y-auto p-2 rounded-md bg-muted/50">
         {loading ? (
-          <p className="text-xs text-muted-foreground flex items-center gap-1">
-            <Loader2 className="w-3 h-3 animate-spin" /> Carregando...
-          </p>
+          <div className="flex flex-wrap gap-2" role="status" aria-label="Carregando">
+            <Skeleton className="h-8 w-28 rounded-md" />
+            <Skeleton className="h-8 w-36 rounded-md" />
+            <Skeleton className="h-8 w-24 rounded-md" />
+          </div>
         ) : filtered.length === 0 ? (
-          <p className="text-xs text-muted-foreground">Nenhum item encontrado</p>
+          <p className="text-sm text-muted-foreground">Nenhum item encontrado</p>
         ) : (
           filtered.map(item => {
             const id = getId(item);
+            const selecionado = selected.includes(id);
             return (
-              <Badge
+              <Button
                 key={id}
-                variant={selected.includes(id) ? 'default' : 'outline'}
-                className="cursor-pointer text-xs transition-colors"
+                type="button"
+                size="sm"
+                variant={selecionado ? 'default' : 'outline'}
+                aria-pressed={selecionado}
+                className="h-8 px-3 text-xs font-medium"
                 onClick={() => onToggle(id)}
               >
                 {renderItem(item)}
-              </Badge>
+              </Button>
             );
           })
         )}
       </div>
-    </div>
+    </fieldset>
   );
 }

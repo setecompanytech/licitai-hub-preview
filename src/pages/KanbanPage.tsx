@@ -1,12 +1,17 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { normalizarStatus as normalizeStatus, STATUS_DECIDIDOS } from '@/lib/licitacao/status';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { identidadeDoProcesso, objetoLegivel } from '@/lib/licitacao/identidade-do-processo';
-import { MapPin, Calendar, GripVertical, Plus, Pencil, LayoutDashboard, ListChecks, History, ChevronRight, Search } from 'lucide-react';
+import { MapPin, Calendar, GripVertical, Pencil, LayoutDashboard, ListChecks, History, ChevronRight, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
@@ -43,21 +48,27 @@ const colunaDe = (lic: { status: string; arquivado_em: string | null }): string 
 type Column = {
   id: string;
   title: string;
-  color: string;
   description: string;
+  /**
+   * Cor do estado em classes de token (identidade 12/09): a barra superior da
+   * coluna, o ponto ao lado do título e a lavagem leve do fundo. Antes a cor
+   * entrava por `style` inline — cor escrita à mão dentro do .tsx.
+   */
+  cor: { topo: string; ponto: string; lavagem: string };
 };
 
 const columns: Column[] = [
-  { id: 'Monitorando', title: 'Monitorando', color: 'hsl(var(--info))', description: 'Editais sendo acompanhados' },
-  { id: 'Em Análise', title: 'Analisando', color: 'hsl(var(--warning))', description: 'Análise de viabilidade' },
-  { id: 'Proposta Enviada', title: 'Proposta', color: 'hsl(var(--primary))', description: 'Proposta elaborada e enviada' },
-  { id: 'Em Disputa', title: 'Em Disputa', color: 'hsl(var(--accent))', description: 'Disputa/pregão em andamento' },
-  { id: 'Vencida', title: 'Vencida', color: 'hsl(var(--success))', description: 'Licitação arrematada' },
-  // Único desvio de token do arquivo (auditoria de cor): azul cru vira o
-  // token neutro — azul deixou de ser cor de estado no sistema.
-  { id: 'Homologada', title: 'Homologada', color: 'hsl(var(--info))', description: 'Resultado homologado' },
-  { id: 'Perdida', title: 'Perdida', color: 'hsl(var(--destructive))', description: 'Não arrematada' },
-  { id: 'Arquivada', title: 'Arquivada', color: 'hsl(var(--muted-foreground))', description: 'Processos encerrados' },
+  { id: 'Monitorando', title: 'Monitorando', description: 'Editais sendo acompanhados', cor: { topo: 'border-t-info', ponto: 'bg-info', lavagem: 'bg-info/5' } },
+  { id: 'Em Análise', title: 'Analisando', description: 'Análise de viabilidade', cor: { topo: 'border-t-warning', ponto: 'bg-warning', lavagem: 'bg-warning/5' } },
+  { id: 'Proposta Enviada', title: 'Proposta', description: 'Proposta elaborada e enviada', cor: { topo: 'border-t-primary', ponto: 'bg-primary', lavagem: 'bg-primary/5' } },
+  // `--accent` e `--primary` são o mesmo verde nos dois temas: a coluna fica
+  // idêntica à de antes, agora pelo token de ação em vez do de hover.
+  { id: 'Em Disputa', title: 'Em Disputa', description: 'Disputa/pregão em andamento', cor: { topo: 'border-t-primary', ponto: 'bg-primary', lavagem: 'bg-primary/5' } },
+  { id: 'Vencida', title: 'Vencida', description: 'Licitação arrematada', cor: { topo: 'border-t-success', ponto: 'bg-success', lavagem: 'bg-success/5' } },
+  // Azul deixou de ser cor de estado no sistema: Homologada usa o token neutro.
+  { id: 'Homologada', title: 'Homologada', description: 'Resultado homologado', cor: { topo: 'border-t-info', ponto: 'bg-info', lavagem: 'bg-info/5' } },
+  { id: 'Perdida', title: 'Perdida', description: 'Não arrematada', cor: { topo: 'border-t-destructive', ponto: 'bg-destructive', lavagem: 'bg-destructive/5' } },
+  { id: 'Arquivada', title: 'Arquivada', description: 'Processos encerrados', cor: { topo: 'border-t-muted-foreground', ponto: 'bg-muted-foreground', lavagem: 'bg-muted/60' } },
 ];
 
 // A normalização mora em @/lib/licitacao/status — este arquivo tinha a sua
@@ -374,30 +385,64 @@ export default function KanbanPage() {
 
   return (
     <AppLayout>
-      <div className="mb-4">
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Gestão de Licitações</h1>
-        <p className="text-base text-muted-foreground mt-1">
-          Kanban e Compromissos sincronizados com o Monitoramento de Editais • {items.length} processos • {formatCurrency(totalValor)} estimados
-        </p>
-      </div>
-
-      <Tabs value={abaAtiva} onValueChange={mudarAba} className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="kanban" className="gap-1.5"><LayoutDashboard className="w-3.5 h-3.5" /> Kanban</TabsTrigger>
-          <TabsTrigger value="compromissos" className="gap-1.5"><ListChecks className="w-3.5 h-3.5" /> Compromissos</TabsTrigger>
-          <TabsTrigger value="historico" className="gap-1.5"><History className="w-3.5 h-3.5" /> Histórico de Extrações</TabsTrigger>
-        </TabsList>
+      {/* O Tabs envolve o cabeçalho porque a fila de abas mora DENTRO dele
+          (entre título e conteúdo) e o Radix exige a lista sob a mesma raiz
+          que os painéis. A aba ativa continua na URL, como antes. */}
+      <Tabs value={abaAtiva} onValueChange={mudarAba}>
+        {/* Título, descrição, ícone e trilha vêm de `lib/navegacao/paginas.ts`
+            pela rota atual — a tela não repete o que já está padronizado. Os
+            contadores, que antes moravam dentro da descrição, viraram a linha
+            de apoio abaixo dela. */}
+        <CabecalhoPagina>
+          <div className="flex flex-col gap-3">
+            <p className="text-sm text-muted-foreground">
+              <span className="font-medium text-foreground tabular-nums">{items.length}</span> processos
+              {' · '}
+              <span className="font-medium text-foreground tabular-nums">{formatCurrency(totalValor)}</span> estimados
+            </p>
+            <TabsList>
+              <TabsTrigger value="kanban" className="gap-2">
+                <LayoutDashboard className="h-4 w-4 shrink-0" aria-hidden="true" /> Kanban
+              </TabsTrigger>
+              <TabsTrigger value="compromissos" className="gap-2">
+                <ListChecks className="h-4 w-4 shrink-0" aria-hidden="true" /> Compromissos
+              </TabsTrigger>
+              <TabsTrigger value="historico" className="gap-2">
+                <History className="h-4 w-4 shrink-0" aria-hidden="true" /> Histórico de extrações
+              </TabsTrigger>
+            </TabsList>
+          </div>
+        </CabecalhoPagina>
 
         <TabsContent value="kanban">
           {loading ? (
-            <p className="text-base text-muted-foreground">Carregando...</p>
+            <div className="flex gap-2 overflow-x-auto pb-4" role="status" aria-live="polite">
+              <span className="sr-only">Carregando processos…</span>
+              {columns.slice(0, 4).map((c) => (
+                <div key={c.id} className="flex-1 min-w-48 space-y-2 rounded-lg border border-border bg-card p-3">
+                  <Skeleton className="h-5 w-24" />
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                </div>
+              ))}
+            </div>
           ) : items.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <Plus className="w-12 h-12 text-muted-foreground/30 mb-4" />
-              <h3 className="text-lg font-semibold mb-1">Nenhum processo no Kanban</h3>
-              <p className="text-base text-muted-foreground max-w-md">
-                Vá até o <strong>Monitoramento de Editais</strong> → aba <strong>Licitações</strong> e clique em <strong>"Iniciar"</strong> para converter um edital em processo gerenciado.
-              </p>
+            <div className="rounded-lg border border-border bg-card shadow-sm">
+              <EstadoVazio
+                icone={<LayoutDashboard />}
+                titulo="Nenhum processo no Kanban"
+                descricao={
+                  <>
+                    Vá até o <strong>Monitoramento de Editais</strong> → aba <strong>Licitações</strong> e clique em <strong>"Iniciar"</strong> para converter um edital em processo gerenciado.
+                  </>
+                }
+                acao={
+                  <Button asChild variant="outline">
+                    <Link to="/monitoramento-editais">Ir para o Monitoramento</Link>
+                  </Button>
+                }
+              />
             </div>
           ) : (
             <>
@@ -406,35 +451,32 @@ export default function KanbanPage() {
                 Os botões "Compartilhar", "Gerar .xlsx" e "Imprimir" do desenho
                 NÃO vieram: no protótipo eles não fazem nada, e botão que não
                 faz nada num board de processo é pior que botão ausente. */}
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-3 min-w-0">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex min-w-0 flex-wrap items-center gap-3">
                 {vazias > 0 && (
-                  <button
-                    onClick={() => setMostrarVazias(v => !v)}
-                    className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
-                  >
+                  <Button type="button" variant="ghost" onClick={() => setMostrarVazias(v => !v)}>
                     {mostrarVazias
                       ? 'Recolher colunas vazias'
                       : `Mostrar ${vazias} coluna(s) vazia(s)`}
-                  </button>
+                  </Button>
                 )}
                 {filtro && (
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-sm text-muted-foreground tabular-nums">
                     {itensFiltrados.length} de {items.length} processos
                   </span>
                 )}
               </div>
 
-              <label className="relative w-full sm:w-[250px]">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" aria-hidden="true" />
-                <input
+              <div className="relative w-full sm:w-64">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+                <Input
                   value={filtro}
                   onChange={(e) => setFiltro(e.target.value)}
                   placeholder="Filtrar no board..."
                   aria-label="Filtrar processos no board"
-                  className="w-full h-8 pl-9 pr-3 text-sm rounded-lg border border-border bg-card focus:border-accent focus:outline-none transition-colors"
+                  className="pl-9"
                 />
-              </label>
+              </div>
             </div>
             <div className={cn('flex gap-2 overflow-x-auto pb-4', isDragging && 'select-none')}>
               {columns.map((col) => {
@@ -451,50 +493,45 @@ export default function KanbanPage() {
                     title={recolhida ? `${col.title} — vazia. Clique para expandir.` : undefined}
                     // A cor de cada estado saía num pontinho de 10px — o
                     // financeiro veste a coluna inteira, e a paridade foi
-                    // pedida. Barra superior na cor + lavagem a 7%: identidade
+                    // pedida. Barra superior na cor + lavagem leve: identidade
                     // sem gritar sobre os cards.
-                    style={{
-                      borderTop: `3px solid ${col.color}`,
-                      background: `color-mix(in srgb, ${col.color} 7%, transparent)`,
-                    }}
                     className={cn(
-                      'rounded-xl border border-border/40 transition-all',
+                      'rounded-lg border border-border border-t-4 transition-all',
+                      col.cor.topo,
+                      col.cor.lavagem,
                       // Coluna vazia vira uma faixa estreita em vez de ocupar a
                       // largura de uma cheia. São oito colunas: em notebook de
                       // 1.366px elas nunca caberiam abertas, e a última saía
                       // cortada. Recolher as vazias devolve o espaço a quem tem
                       // trabalho — e elas continuam recebendo cartão arrastado.
                       recolhida
-                        ? 'w-11 flex-shrink-0 p-2 cursor-pointer hover:bg-muted/40'
-                        : 'flex-1 min-w-[190px] p-3',
-                      isOver && isDragging && 'ring-2 ring-accent/60 bg-accent/5'
+                        ? 'w-12 flex-shrink-0 p-2 cursor-pointer hover:bg-muted'
+                        : 'flex-1 min-w-48 p-3',
+                      isOver && isDragging && 'ring-2 ring-ring bg-primary-tint'
                     )}
                   >
                     {recolhida ? (
                       <div className="flex flex-col items-center gap-2 py-1">
-                        <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: col.color }} />
-                        <span
-                          className="text-[11px] font-semibold text-muted-foreground whitespace-nowrap"
-                          style={{ writingMode: 'vertical-rl' }}
-                        >
+                        <span className={cn('h-2.5 w-2.5 flex-shrink-0 rounded-full', col.cor.ponto)} aria-hidden="true" />
+                        <span className="whitespace-nowrap text-xs font-semibold text-muted-foreground [writing-mode:vertical-rl]">
                           {col.title}
                         </span>
-                        <span className="text-[11px] text-muted-foreground tabular-nums">0</span>
+                        <span className="text-xs text-muted-foreground tabular-nums">0</span>
                       </div>
                     ) : (
                     <>
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: col.color }} />
-                      <h3 className="text-xs font-semibold leading-tight">{col.title}</h3>
-                      <Badge variant="outline" className="text-xs ml-auto px-1.5 py-0">{colItems.length}</Badge>
+                    <div className="mb-3 flex items-center gap-2">
+                      <span className={cn('h-2.5 w-2.5 flex-shrink-0 rounded-full', col.cor.ponto)} aria-hidden="true" />
+                      <h3 className="text-sm font-semibold leading-tight">{col.title}</h3>
+                      <Badge variant="muted" className="ml-auto tabular-nums">{colItems.length}</Badge>
                     </div>
-                    <p className="text-xs text-muted-foreground mb-3 leading-tight line-clamp-2">{col.description}</p>
+                    <p className="mb-3 text-xs text-muted-foreground line-clamp-2">{col.description}</p>
 
-                    <div className="space-y-2 min-h-[120px]">
+                    <div className="min-h-32 space-y-2">
                       {colItems.length === 0 && (
                         <div className={cn(
-                          'border-2 border-dashed border-border/30 rounded-lg py-8 text-center transition-colors',
-                          isOver && isDragging && 'border-accent/40 bg-accent/5'
+                          'rounded-lg border-2 border-dashed border-border py-8 text-center transition-colors',
+                          isOver && isDragging && 'border-primary/40 bg-primary-tint'
                         )}>
                           <p className="text-xs text-muted-foreground">
                             {isOver && isDragging ? 'Solte aqui' : 'Vazio'}
@@ -514,11 +551,11 @@ export default function KanbanPage() {
                           tabIndex={0}
                           aria-expanded={aberto}
                           className={cn(
-                            'bg-card rounded-lg border border-border/50 p-2.5 shadow-sm transition-[box-shadow,opacity] hover:shadow-md select-none touch-none',
-                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60',
+                            'rounded-lg border border-border bg-card p-3 shadow-sm transition-[box-shadow,opacity] hover:shadow-md select-none touch-none',
+                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                             draggedId === lic.id ? 'opacity-30 cursor-grabbing' : 'cursor-pointer',
-                            aberto && 'border-accent/40',
-                            lic.id === focoId && 'ring-2 ring-accent border-accent/50'
+                            aberto && 'border-primary/40',
+                            lic.id === focoId && 'ring-2 ring-ring border-primary/50'
                           )}
                           onPointerDown={(e) => handlePointerDown(e, lic.id)}
                           /* Três gestos no mesmo card, sem conflito:
@@ -547,29 +584,29 @@ export default function KanbanPage() {
                           }}
                           title={aberto ? 'Clique para recolher · duplo clique abre o processo' : 'Clique para ver mais · duplo clique abre o processo'}
                         >
-                          <div className="flex items-start gap-1.5">
-                            <GripVertical className="w-3.5 h-3.5 text-muted-foreground/30 mt-0.5 flex-shrink-0" aria-hidden="true" />
-                            <div className="flex-1 min-w-0">
+                          <div className="flex items-start gap-2">
+                            <GripVertical className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground/40" aria-hidden="true" />
+                            <div className="min-w-0 flex-1">
                               {/* Linha 1 — identidade à esquerda, VALOR à direita.
                                   O valor fica nos dois estados: é critério de
                                   varredura, não detalhe. */}
-                              <div className="flex items-center justify-between gap-1.5 min-w-0">
-                                <span className="text-xs font-semibold tabular-nums truncate"
+                              <div className="flex min-w-0 items-center justify-between gap-2">
+                                <span className="truncate text-sm font-semibold tabular-nums"
                                   title={lic.modalidade ?? undefined}>
                                   {identidadeDoProcesso(lic)}
                                 </span>
                                 {lic.valor_estimado ? (
-                                  <span className="text-xs font-semibold tabular-nums shrink-0">{formatCurrency(lic.valor_estimado)}</span>
+                                  <span className="shrink-0 text-sm font-semibold tabular-nums">{formatCurrency(lic.valor_estimado)}</span>
                                 ) : null}
                               </div>
 
                               {/* Linha 2 — órgão à esquerda, DATA à direita. */}
-                              <div className="flex items-center justify-between gap-1.5 min-w-0">
-                                <p className="text-[11px] text-muted-foreground truncate" title={lic.orgao ?? undefined}>
+                              <div className="flex min-w-0 items-center justify-between gap-2">
+                                <p className="truncate text-xs text-muted-foreground" title={lic.orgao ?? undefined}>
                                   {lic.orgao || '—'}
                                 </p>
                                 {!aberto && dataCurta && (
-                                  <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">{dataCurta}</span>
+                                  <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{dataCurta}</span>
                                 )}
                               </div>
 
@@ -578,58 +615,62 @@ export default function KanbanPage() {
                                   {/* Aberto, o objeto vem INTEIRO — o card
                                       já está expandido; clamp aqui seria
                                       esconder de quem acabou de pedir. */}
-                                  <p className="text-sm font-medium mt-1.5 leading-snug [overflow-wrap:anywhere]">
+                                  <p className="mt-2 text-sm font-medium [overflow-wrap:anywhere]">
                                     {objetoLegivel(lic.objeto)}
                                   </p>
                                   {lic.arquivado_em && STATUS_DECIDIDOS.includes(normalizeStatus(lic.status) as never) && (
-                                    <span className="inline-block mt-1 text-xs text-muted-foreground">
+                                    <span className="mt-1 inline-block text-xs text-muted-foreground">
                                       desfecho: <span className="font-medium text-foreground">{normalizeStatus(lic.status)}</span>
                                     </span>
                                   )}
-                                  <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground flex-wrap">
+                                  <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                                     {lic.municipio && lic.uf && (
-                                      <span className="flex items-center gap-0.5">
-                                        <MapPin className="w-2.5 h-2.5" />
+                                      <span className="flex items-center gap-1">
+                                        <MapPin className="h-4 w-4" aria-hidden="true" />
                                         {lic.municipio}/{lic.uf}
                                       </span>
                                     )}
                                     {lic.data_encerramento && (
-                                      <span className="flex items-center gap-0.5">
-                                        <Calendar className="w-2.5 h-2.5" />
+                                      <span className="flex items-center gap-1">
+                                        <Calendar className="h-4 w-4" aria-hidden="true" />
                                         {new Date(lic.data_encerramento).toLocaleDateString('pt-BR')}
                                       </span>
                                     )}
                                   </div>
 
                                   {/* Ações do card aberto. Eram dois ícones a 40%
-                                      de opacidade no canto — ninguém achava. */}
-                                  <div className="flex items-center gap-1.5 mt-2.5 pt-2 border-t border-border/50">
-                                    <button
+                                      de opacidade no canto — ninguém achava.
+                                      O menu "Mover" é a alternativa acessível ao
+                                      arrasto: fica sempre. */}
+                                  <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
+                                    <Button
                                       type="button"
+                                      size="sm"
                                       onPointerDown={(e) => e.stopPropagation()}
                                       onClick={(e) => { e.stopPropagation(); handleEdit(lic); }}
-                                      className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
                                     >
-                                      <Pencil className="w-3 h-3" />
+                                      <Pencil aria-hidden="true" />
                                       Abrir processo
-                                    </button>
+                                    </Button>
                                     <DropdownMenu>
                                       <DropdownMenuTrigger asChild>
-                                        <button
+                                        <Button
                                           type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          className="text-muted-foreground"
                                           onPointerDown={(e) => e.stopPropagation()}
                                           onClick={(e) => e.stopPropagation()}
-                                          className="inline-flex items-center gap-1 h-7 px-2 rounded-md text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
                                           title="Mover para outra etapa"
                                         >
                                           Mover
-                                          <ChevronRight className="w-3 h-3" />
-                                        </button>
+                                          <ChevronRight aria-hidden="true" />
+                                        </Button>
                                       </DropdownMenuTrigger>
                                       <DropdownMenuContent align="start" className="w-44">
                                         {columns.filter(c => c.id !== colunaDe(lic)).map(c => (
                                           <DropdownMenuItem key={c.id} onClick={() => moverCard(lic.id, c.id)}>
-                                            <div className="w-2 h-2 rounded-full mr-2 shrink-0" style={{ background: c.color }} />
+                                            <span className={cn('mr-2 h-2 w-2 shrink-0 rounded-full', c.cor.ponto)} aria-hidden="true" />
                                             {c.title}
                                           </DropdownMenuItem>
                                         ))}
@@ -661,19 +702,19 @@ export default function KanbanPage() {
       {/* Ghost card que segue o cursor durante o drag */}
       {isDragging && draggedItem && ds && (
         <div
-          className="fixed pointer-events-none z-[9999] rotate-1 opacity-95"
-          style={{ left: ghostPos.x - ds.offsetX, top: ghostPos.y - ds.offsetY, width: 240 }}
+          className="pointer-events-none fixed z-[9999] w-60 rotate-1 opacity-95"
+          style={{ left: ghostPos.x - ds.offsetX, top: ghostPos.y - ds.offsetY }}
         >
-          <div className="bg-card rounded-lg border-2 border-accent/60 p-3 shadow-2xl">
-            <p className="text-xs font-semibold tabular-nums truncate">{identidadeDoProcesso(draggedItem)}</p>
-            <p className="text-sm font-medium mt-0.5 leading-snug line-clamp-1 [overflow-wrap:anywhere]">{objetoLegivel(draggedItem.objeto)}</p>
+          <div className="rounded-lg border-2 border-primary/60 bg-card p-3 shadow-md">
+            <p className="truncate text-sm font-semibold tabular-nums">{identidadeDoProcesso(draggedItem)}</p>
+            <p className="mt-0.5 text-sm font-medium line-clamp-1 [overflow-wrap:anywhere]">{objetoLegivel(draggedItem.objeto)}</p>
             {draggedItem.municipio && draggedItem.uf && (
-              <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-0.5">
-                <MapPin className="w-2.5 h-2.5" />{draggedItem.municipio}/{draggedItem.uf}
+              <p className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
+                <MapPin className="h-4 w-4" aria-hidden="true" />{draggedItem.municipio}/{draggedItem.uf}
               </p>
             )}
             {draggedItem.valor_estimado && (
-              <p className="text-sm font-semibold text-foreground mt-1">{formatCurrency(draggedItem.valor_estimado)}</p>
+              <p className="mt-1 text-sm font-semibold text-foreground tabular-nums">{formatCurrency(draggedItem.valor_estimado)}</p>
             )}
           </div>
         </div>

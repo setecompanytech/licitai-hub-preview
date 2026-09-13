@@ -3,12 +3,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { humanizarValorAuditoria } from '@/lib/contratos/auditoriaTexto';
 import { statusEfetivo } from '@/lib/contratos/vigencia';
 
 const resumir = (t: string) => (t.length > 260 ? `${t.slice(0, 260)}…` : t);
-import { Loader2, FileText, Sparkles, Calculator, AlertTriangle, ScrollText, ArrowRight, Package, FileSignature } from 'lucide-react';
+import { FileText, Sparkles, Calculator, AlertTriangle, ScrollText, ArrowRight, Package, FileSignature } from 'lucide-react';
 
 const CAMPO_LABELS: Record<string, string> = {
   saldo_item_ata: 'Saldo de Item da ATA',
@@ -171,8 +172,10 @@ export default function EventoAuditoriaDetalheDialog({
 
         <ScrollArea className="flex-1 pr-3">
           {loading ? (
-            <div className="py-12 text-center text-sm text-muted-foreground">
-              <Loader2 className="h-5 w-5 animate-spin inline mr-2" /> Carregando contexto…
+            <div className="space-y-3 py-2" aria-busy="true" aria-label="Carregando contexto">
+              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-24 w-full" />
+              <Skeleton className="h-16 w-full" />
             </div>
           ) : (
             <div className="space-y-5 pb-2">
@@ -202,11 +205,11 @@ export default function EventoAuditoriaDetalheDialog({
                   <div className="hidden md:flex items-center justify-center text-muted-foreground">
                     <ArrowRight className="h-5 w-5" />
                   </div>
-                  <div className={`border rounded-md p-3 min-w-0 ${isAlerta ? 'bg-destructive/10 border-destructive/40' : 'bg-muted/50 border-border'}`}>
+                  <div className={`border rounded-md p-3 min-w-0 ${isAlerta ? 'bg-destructive-tint border-destructive-line' : 'bg-muted/50 border-border'}`}>
                     <div className="text-xs text-muted-foreground mb-1">
                       {isAlerta ? 'Situação detectada' : 'Estado atual'}
                     </div>
-                    <div className={`text-sm break-words ${isAlerta ? 'text-destructive font-semibold' : 'text-foreground font-medium'}`}>
+                    <div className={`text-sm break-words ${isAlerta ? 'text-destructive-ink font-semibold' : 'text-foreground font-medium'}`}>
                       {resumir(humanizarValorAuditoria(evento.campo, evento.valor_novo, evento.origem))}
                     </div>
                   </div>
@@ -313,8 +316,8 @@ export default function EventoAuditoriaDetalheDialog({
                           <span className="text-muted-foreground text-xs">{fmtDate(a.created_at)}</span>
                         </div>
                         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 text-xs">
-                          {Number(a.valor_acrescimo) > 0 && <div><span className="text-muted-foreground">+ Valor: </span><span className="text-success">{fmtBRL(a.valor_acrescimo)}</span></div>}
-                          {Number(a.valor_supressao) > 0 && <div><span className="text-muted-foreground">− Valor: </span><span className="text-destructive">{fmtBRL(a.valor_supressao)}</span></div>}
+                          {Number(a.valor_acrescimo) > 0 && <div><span className="text-muted-foreground">+ Valor: </span><span className="text-success-ink">{fmtBRL(a.valor_acrescimo)}</span></div>}
+                          {Number(a.valor_supressao) > 0 && <div><span className="text-muted-foreground">− Valor: </span><span className="text-destructive-ink">{fmtBRL(a.valor_supressao)}</span></div>}
                           {Number(a.quantidade_acrescimo) > 0 && <div><span className="text-muted-foreground">+ Qtd: </span><span>{fmtNum(a.quantidade_acrescimo)}</span></div>}
                           {a.nova_data_fim && <div><span className="text-muted-foreground">Nova vigência: </span><span>{new Date(a.nova_data_fim).toLocaleDateString('pt-BR')}</span></div>}
                         </div>

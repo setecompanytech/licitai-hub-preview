@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { AtSign, BadgeCheck, Briefcase, Info, Loader2, Mail, Phone, User } from 'lucide-react';
 import { CampoHub, GradeHub, RodapeHub } from '../PerfilPrimitivos';
@@ -93,8 +94,23 @@ export default function SecaoPerfil() {
 
   if (carregando) {
     return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground py-8">
-        <Loader2 className="w-4 h-4 animate-spin" /> Carregando seu perfil...
+      <div role="status" aria-busy="true" className="space-y-6">
+        <span className="sr-only">Carregando seu perfil</span>
+        <div className="flex items-center gap-6 border-b border-border pb-6">
+          <Skeleton className="h-24 w-24 rounded-full" />
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+        </div>
+        <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 5 }, (_, i) => (
+            <div key={i} className="space-y-2">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-11 w-full" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -130,7 +146,7 @@ export default function SecaoPerfil() {
           rotulo="E-mail"
           dica={<>Para trocar o e-mail, use <b className="text-foreground">Segurança</b> — a mudança exige confirmação no endereço atual.</>}
         >
-          <Input value={email} readOnly className="bg-muted/40 cursor-default select-all" />
+          <Input value={email} readOnly className="cursor-default select-all bg-muted" />
         </CampoHub>
 
         <CampoHub icone={Briefcase} rotulo="Cargo">
@@ -148,11 +164,11 @@ export default function SecaoPerfil() {
 
       <RodapeHub>
         <Button onClick={salvar} disabled={salvando}>
-          {salvando ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <BadgeCheck className="w-4 h-4 mr-2" />}
+          {salvando ? <Loader2 className="animate-spin" aria-hidden="true" /> : <BadgeCheck aria-hidden="true" />}
           Salvar alterações
         </Button>
-        <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
-          <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+        <p className="flex items-start gap-2 text-xs text-muted-foreground">
+          <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           Estes dados aparecem nas propostas e nos documentos gerados.
         </p>
       </RodapeHub>

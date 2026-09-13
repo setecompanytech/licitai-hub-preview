@@ -147,10 +147,10 @@ export default function DocumentDetectionDialog({
 
         {/* Caso 1: tipo divergente do registro pai */}
         {typeMismatch && (
-          <Card className="p-4 border-warning/40 bg-warning/5 space-y-3">
+          <Card className="p-4 border-warning-line bg-warning-tint space-y-3">
             <div className="flex items-start gap-2">
-              <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
-              <div className="text-xs space-y-1">
+              <AlertTriangle className="w-4 h-4 text-warning-ink shrink-0 mt-0.5" />
+              <div className="text-sm space-y-1">
                 <p className="font-semibold">Documento de tipo diferente do registro atual</p>
                 <p className="text-muted-foreground">
                   Você está nesta página de um <strong>{parentTipoDocumento === 'ata_srp' ? 'ATA SRP' : 'Contrato'}</strong>,
@@ -162,7 +162,7 @@ export default function DocumentDetectionDialog({
                 </p>
               </div>
             </div>
-            <div className="text-xs text-muted-foreground border-t pt-2 space-y-0.5">
+            <div className="text-sm text-muted-foreground border-t border-warning-line pt-2 space-y-1">
               {detection.numero_contrato && <div>📄 Nº Contrato: <strong>{detection.numero_contrato}</strong></div>}
               {detection.numero_ata && <div>📋 Nº ATA: <strong>{detection.numero_ata}</strong></div>}
               {detection.valor_global && <div>💰 Valor Global: <strong>{fmt(detection.valor_global)}</strong></div>}
@@ -196,10 +196,10 @@ export default function DocumentDetectionDialog({
             registrado — quantidade × saldo, preço × registrado, valor × teto.
             É a análise que o dono do produto pediu ANTES de o registro existir. */}
         {confronto && (
-          <Card className={`p-4 space-y-2 ${confronto.valorExcede || confronto.comProblema > 0 ? 'border-destructive/40 bg-destructive/5' : 'border-success/40 bg-success/5'}`}>
-            <p className="text-xs font-semibold">Confronto com a ATA</p>
-            <div className="text-xs space-y-1">
-              <div className={confronto.valorExcede ? 'text-destructive font-medium' : ''}>
+          <Card className={`p-4 space-y-2 ${confronto.valorExcede || confronto.comProblema > 0 ? 'border-destructive-line bg-destructive-tint' : 'border-success-line bg-success-tint'}`}>
+            <p className="text-sm font-semibold">Confronto com a ATA</p>
+            <div className="text-sm space-y-1">
+              <div className={confronto.valorExcede ? 'text-destructive-ink font-medium' : ''}>
                 💰 Valor do contrato {fmt(confronto.valorContrato)} × saldo da ata {fmt(confronto.saldoAta)}
                 {confronto.pctDaAta !== null && (
                   <strong> — este contrato toma {confronto.pctDaAta.toLocaleString('pt-BR')}% da ata</strong>
@@ -207,7 +207,7 @@ export default function DocumentDetectionDialog({
                 {confronto.valorExcede ? ' · EXCEDE: a soma dos contratos não pode passar do registrado' : ' · dentro do saldo'}
               </div>
               {confronto.dentroDaVigencia !== null && (
-                <div className={confronto.dentroDaVigencia ? '' : 'text-destructive font-medium'}>
+                <div className={confronto.dentroDaVigencia ? '' : 'text-destructive-ink font-medium'}>
                   📅 Assinatura {confronto.dentroDaVigencia ? 'dentro' : 'FORA'} da vigência da ata
                   {confronto.dataFimAta ? ` (até ${new Date(`${confronto.dataFimAta}T12:00:00`).toLocaleDateString('pt-BR')})` : ''}
                 </div>
@@ -215,17 +215,17 @@ export default function DocumentDetectionDialog({
               {confronto.itens.length > 0 && (
                 <div>
                   📦 {confronto.casados} de {confronto.itens.length} item(ns) casado(s) com a ata
-                  {confronto.semPar > 0 && <span className="text-warning"> · {confronto.semPar} sem par</span>}
+                  {confronto.semPar > 0 && <span className="text-warning-ink"> · {confronto.semPar} sem par</span>}
                 </div>
               )}
               {confronto.itens.filter(i => i.ataItem).map((i, idx) => (
                 <div key={idx} className="border-t border-border/50 pt-1">
                   <span className="font-medium">{i.extraido.descricao.slice(0, 60)}</span>
-                  <div className={i.quantidadeExcede ? 'text-destructive' : 'text-muted-foreground'}>
+                  <div className={i.quantidadeExcede ? 'text-destructive-ink' : 'text-muted-foreground'}>
                     Qtde {Number(i.extraido.quantidade || 0).toLocaleString('pt-BR')} × saldo {Number(i.saldoDisponivel ?? 0).toLocaleString('pt-BR')} {i.ataItem?.unidade || ''}
                     {i.quantidadeExcede ? ' — EXCEDE o saldo do item' : ' — ok'}
                   </div>
-                  <div className={i.precoDiverge ? 'text-destructive' : 'text-muted-foreground'}>
+                  <div className={i.precoDiverge ? 'text-destructive-ink' : 'text-muted-foreground'}>
                     Preço {fmt(Number(i.extraido.valor_unitario || 0))} × registrado {fmt(i.ataItem?.valor_unitario || 0)}
                     {i.precoDiverge ? ' — DIVERGE do registrado (mesmo preço e condições da ata)' : ' — mesmo preço'}
                   </div>
@@ -237,10 +237,10 @@ export default function DocumentDetectionDialog({
 
         {/* Caso 2: aditivo detectado */}
         {isAditivo && (
-          <Card className="p-4 border-success/40 bg-success/5 space-y-3">
+          <Card className="p-4 border-success-line bg-success-tint space-y-3">
             <div className="flex items-start gap-2">
-              <CheckCircle2 className="w-4 h-4 text-success shrink-0 mt-0.5" />
-              <div className="text-xs">
+              <CheckCircle2 className="w-4 h-4 text-success-ink shrink-0 mt-0.5" />
+              <div className="text-sm">
                 <p className="font-semibold">A IA pré-preencheu os dados do aditivo abaixo.</p>
                 <p className="text-muted-foreground">Revise, ajuste se necessário e confirme o registro.</p>
                 {detection.aditivo?.contrato_referencia && (
@@ -256,37 +256,37 @@ export default function DocumentDetectionDialog({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="col-span-2">
-                <Label className="text-xs">Número/Identificação</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="sm:col-span-2">
+                <Label>Número/Identificação</Label>
                 <Input value={adForm.numero_aditivo} onChange={e => setAdForm(f => ({ ...f, numero_aditivo: e.target.value }))} />
               </div>
               <div>
-                <Label className="text-xs">Valor Acréscimo (R$)</Label>
+                <Label>Valor Acréscimo (R$)</Label>
                 <MoneyInput value={parseFloat(adForm.valor_acrescimo) || 0} onValueChange={v => setAdForm(f => ({ ...f, valor_acrescimo: String(v) }))} />
               </div>
               <div>
-                <Label className="text-xs">Valor Supressão (R$)</Label>
+                <Label>Valor Supressão (R$)</Label>
                 <MoneyInput value={parseFloat(adForm.valor_supressao) || 0} onValueChange={v => setAdForm(f => ({ ...f, valor_supressao: String(v) }))} />
               </div>
               <div>
-                <Label className="text-xs">Qtde Acréscimo</Label>
+                <Label>Qtde Acréscimo</Label>
                 <Input type="number" step="0.01" value={adForm.quantidade_acrescimo} onChange={e => setAdForm(f => ({ ...f, quantidade_acrescimo: e.target.value }))} />
               </div>
               <div>
-                <Label className="text-xs">Qtde Supressão</Label>
+                <Label>Qtde Supressão</Label>
                 <Input type="number" step="0.01" value={adForm.quantidade_supressao} onChange={e => setAdForm(f => ({ ...f, quantidade_supressao: e.target.value }))} />
               </div>
-              <div className="col-span-2">
-                <Label className="text-xs">Nova Data Fim (se houver prorrogação)</Label>
+              <div className="sm:col-span-2">
+                <Label>Nova Data Fim (se houver prorrogação)</Label>
                 <Input type="date" value={adForm.nova_data_fim} onChange={e => setAdForm(f => ({ ...f, nova_data_fim: e.target.value }))} />
               </div>
-              <div className="col-span-2">
-                <Label className="text-xs">Justificativa</Label>
+              <div className="sm:col-span-2">
+                <Label>Justificativa</Label>
                 <Textarea rows={2} value={adForm.justificativa} onChange={e => setAdForm(f => ({ ...f, justificativa: e.target.value }))} />
               </div>
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               Este aditivo será registrado como pertencente ao{' '}
               <Badge variant="outline" className="text-xs">
                 {parentTipoDocumento === 'ata_srp' ? 'ATA SRP' : 'Contrato'} atual
@@ -299,7 +299,7 @@ export default function DocumentDetectionDialog({
         {/* Outro */}
         {!typeMismatch && !isAditivo && (
           <Card className="p-4">
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               A IA não conseguiu reconhecer um padrão de ATA SRP, Contrato ou Aditivo.
               O arquivo será mantido apenas como anexo.
             </p>

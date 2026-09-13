@@ -209,7 +209,7 @@ export default function LembreteDeConvocacao() {
                 <p className="mt-0.5 line-clamp-2 text-sm text-foreground">{c.conteudo}</p>
                 <button
                   onClick={() => abrir(c)}
-                  className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-accent hover:underline"
+                  className="mt-1.5 inline-flex items-center gap-1 rounded-sm text-xs font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   Analisar no Mural &amp; Chat <ArrowRight className="h-3 w-3" />
                 </button>
@@ -218,7 +218,7 @@ export default function LembreteDeConvocacao() {
                 onClick={() => marcarVisto(c.id)}
                 title="Dispensar este chamado"
                 aria-label="Dispensar este chamado"
-                className="rounded p-1 text-muted-foreground transition-colors hover:bg-foreground/10"
+                className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -230,7 +230,7 @@ export default function LembreteDeConvocacao() {
       {ocultos > 0 && (
         <button
           onClick={() => navigate('/monitoramento-chat')}
-          className="rounded-lg border border-border bg-card/95 px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-lg hover:text-foreground"
+          className="rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-md hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           e mais {ocultos} chamado{ocultos > 1 ? 's' : ''} no Mural &amp; Chat
         </button>

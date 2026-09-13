@@ -19,13 +19,15 @@ type HealthEntry = {
   detalhes: Record<string, unknown>;
 };
 
+type BadgeVariant = 'success' | 'warning' | 'danger' | 'info' | 'muted';
+
 // "Operacional" sugeria que o robô opera naquele portal. O que se mede é se o
 // endereço responde — nada além disso.
-const STATUS_CONFIG: Record<string, { icon: typeof Shield; cor: string; label: string }> = {
-  ok: { icon: CheckCircle2, cor: 'text-success', label: 'Responde' },
-  alerta: { icon: AlertTriangle, cor: 'text-warning', label: 'Respondeu com erro' },
-  falha: { icon: XCircle, cor: 'text-destructive', label: 'Fora do ar' },
-  desconhecido: { icon: Globe, cor: 'text-muted-foreground', label: 'Não verificado' },
+const STATUS_CONFIG: Record<string, { icon: typeof Shield; cor: string; variante: BadgeVariant; label: string }> = {
+  ok: { icon: CheckCircle2, cor: 'text-success', variante: 'success', label: 'Responde' },
+  alerta: { icon: AlertTriangle, cor: 'text-warning', variante: 'warning', label: 'Respondeu com erro' },
+  falha: { icon: XCircle, cor: 'text-destructive', variante: 'danger', label: 'Fora do ar' },
+  desconhecido: { icon: Globe, cor: 'text-muted-foreground', variante: 'muted', label: 'Não verificado' },
 };
 
 export default function PortalHealthcheck() {
@@ -72,36 +74,34 @@ export default function PortalHealthcheck() {
   const failCount = entries.filter(e => !e.seletores_ok).length;
 
   return (
-    <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+    <div className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
         <div className="space-y-1">
-          <h3 className="text-sm font-semibold flex items-center gap-2">
-            <Shield className="w-4 h-4 text-muted-foreground" />
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <Shield className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
             Portais no ar
           </h3>
-          <p className="text-xs text-muted-foreground max-w-xl">
+          <p className="text-sm text-muted-foreground max-w-xl">
             Confere se o endereço de cada portal responde. <strong>Não testa a automação</strong> —
             se o robô consegue fazer login, achar a sala da disputa e enviar lance
             só se sabe rodando uma sessão de verdade.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="bg-success/10 text-success border-success/30 text-xs">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <Badge variant="success">
             {okCount} responderam
           </Badge>
           {failCount > 0 && (
-            <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/30 text-xs">
+            <Badge variant="danger">
               {failCount} fora do ar
             </Badge>
           )}
           <Button
-            size="sm"
             variant="outline"
-            className="text-xs h-7 gap-1"
             onClick={runHealthcheck}
             disabled={checking}
           >
-            {checking ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+            {checking ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <RefreshCw className="w-4 h-4" aria-hidden="true" />}
             {checking ? 'Verificando...' : 'Verificar Agora'}
           </Button>
         </div>
@@ -110,21 +110,23 @@ export default function PortalHealthcheck() {
       {loading ? (
         /* A lista que vem é uma linha por portal. O esqueleto tem essa forma
            para a caixa não pular de altura quando os doze chegarem. */
-        <div className="space-y-1.5" role="status" aria-busy="true">
+        <div className="space-y-2" role="status" aria-busy="true">
           <span className="sr-only">Consultando portais</span>
           {[0, 1, 2, 3, 4].map((i) => (
-            <div key={i} className="flex items-center gap-2.5 py-1.5">
-              <Skeleton className="h-2 w-2 rounded-full shrink-0" />
-              <Skeleton className="h-3 flex-1 max-w-[180px]" />
-              <Skeleton className="h-3 w-14 shrink-0 ml-auto" />
+            <div key={i} className="flex items-center gap-3 py-2">
+              <Skeleton className="h-3 w-3 rounded-full shrink-0" />
+              <Skeleton className="h-4 flex-1 max-w-[180px]" />
+              <Skeleton className="h-4 w-14 shrink-0 ml-auto" />
             </div>
           ))}
         </div>
       ) : entries.length === 0 ? (
         <div className="text-center py-6">
-          <Globe className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
-          <p className="text-xs text-muted-foreground">Nenhum portal verificado ainda.</p>
-          <p className="text-xs text-muted-foreground mt-1">
+          <div className="w-10 h-10 rounded-full bg-primary-tint text-primary flex items-center justify-center mx-auto mb-2">
+            <Globe className="w-5 h-5" aria-hidden="true" />
+          </div>
+          <p className="text-base font-semibold">Nenhum portal verificado ainda</p>
+          <p className="text-sm text-muted-foreground mt-1">
             Clique em "Verificar Agora" para executar o healthcheck em todos os portais.
           </p>
         </div>
@@ -136,22 +138,22 @@ export default function PortalHealthcheck() {
             return (
               <div
                 key={entry.id}
-                className={`flex items-start gap-3 rounded-lg border p-3 ${
+                className={`flex items-start gap-3 rounded-lg border p-4 ${
                   entry.seletores_ok
-                    ? 'border-success/20 bg-success/5'
-                    : 'border-destructive/20 bg-destructive/5'
+                    ? 'border-success-line bg-success-tint'
+                    : 'border-destructive-line bg-destructive-tint'
                 }`}
               >
-                <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${config.cor}`} />
+                <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${config.cor}`} aria-hidden="true" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold">{entry.portal_nome}</p>
-                  <Badge variant="outline" className={`text-xs mt-1 ${config.cor}`}>
+                  <p className="text-sm font-semibold">{entry.portal_nome}</p>
+                  <Badge variant={config.variante} className="mt-1">
                     {config.label}
                   </Badge>
                   {entry.seletores_falhos.length > 0 && (
-                    <div className="mt-1.5 space-y-0.5">
+                    <div className="mt-2 space-y-0.5">
                       {entry.seletores_falhos.map((s, i) => (
-                        <p key={i} className="text-xs text-destructive truncate">⚠️ {s}</p>
+                        <p key={i} className="text-xs text-destructive-ink truncate">⚠️ {s}</p>
                       ))}
                     </div>
                   )}

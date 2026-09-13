@@ -115,32 +115,33 @@ export default function MeuPerfilModal({ open, onOpenChange }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl w-[calc(100vw-2rem)] p-0 gap-0 overflow-hidden max-h-[88vh] flex flex-col">
-        {/* O cabeçalho é navy nos dois temas, como a barra do topo: é a moldura
-            da marca, e é sobre ele que o dourado do nome da empresa lê. */}
-        <div className="bg-navy px-6 py-5 flex items-center gap-4 flex-shrink-0">
-          <span className="w-12 h-12 rounded-full bg-white/10 border border-white/20 text-white flex items-center justify-center text-base font-bold shrink-0 overflow-hidden">
+      <DialogContent className="flex max-h-[88vh] w-[calc(100vw-2rem)] max-w-5xl flex-col gap-0 overflow-hidden p-0">
+        {/* Cabeçalho claro (identidade 12/09): navy só no texto, verde só no
+            ladrilho do avatar. A empresa ativa lê em verde por ser o contexto
+            que muda o que as seções abaixo editam. */}
+        <div className="flex flex-shrink-0 items-center gap-4 border-b border-border bg-card px-6 py-4 pr-14">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary-tint text-base font-bold text-primary">
             {avatarUrl
-              ? <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
+              ? <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
               : iniciais}
           </span>
           <div className="min-w-0">
-            <DialogTitle className="text-white text-base font-bold truncate">{nome}</DialogTitle>
-            <p className="text-sm text-white/70 truncate">{email}</p>
+            <DialogTitle className="truncate text-lg font-semibold text-foreground">{nome}</DialogTitle>
+            <p className="truncate text-sm text-muted-foreground">{email}</p>
             {empresaAtiva && (
-              <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-gold-logo mt-1 truncate">
-                <Building2 className="w-3 h-3 shrink-0" aria-hidden="true" />
+              <p className="mt-1 flex items-center gap-2 truncate text-xs font-semibold uppercase tracking-wider text-primary">
+                <Building2 className="h-4 w-4 shrink-0" aria-hidden="true" />
                 {empresaAtiva.nome_fantasia || empresaAtiva.razao_social}
               </p>
             )}
           </div>
         </div>
 
-        <div className="flex-1 min-h-0 grid md:grid-cols-[236px_1fr]">
-          <nav className="border-b md:border-b-0 md:border-r border-border bg-muted/40 p-3 overflow-y-auto">
+        <div className="grid min-h-0 flex-1 md:grid-cols-[236px_1fr]">
+          <nav className="overflow-y-auto border-b border-border bg-muted p-3 md:border-b-0 md:border-r" aria-label="Seções do perfil">
             {GRUPOS.map(grupo => (
               <div key={grupo.titulo} className="mb-4 last:mb-0">
-                <p className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                <p className="px-3 pb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   {grupo.titulo}
                 </p>
                 {grupo.secoes.map(s => {
@@ -149,19 +150,21 @@ export default function MeuPerfilModal({ open, onOpenChange }: Props) {
                   return (
                     <button
                       key={s.chave}
+                      type="button"
                       onClick={() => escolher(s)}
                       aria-current={selecionada ? 'page' : undefined}
                       className={cn(
-                        'flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-sm text-left transition-colors',
+                        'flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors',
+                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                         selecionada
-                          ? 'bg-card text-accent font-semibold shadow-sm'
-                          : 'text-foreground hover:bg-muted',
+                          ? 'bg-primary-tint font-semibold text-primary'
+                          : 'text-foreground hover:bg-background',
                       )}
                     >
-                      <Icone className="w-4 h-4 shrink-0" aria-hidden="true" />
-                      <span className="truncate flex-1">{s.rotulo}</span>
+                      <Icone className="h-4 w-4 shrink-0" aria-hidden="true" />
+                      <span className="flex-1 truncate">{s.rotulo}</span>
                       {/* A seta avisa, antes do clique, que esta sai do modal. */}
-                      {s.rota && <ArrowRight className="w-3.5 h-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />}
+                      {s.rota && <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />}
                     </button>
                   );
                 })}
@@ -169,7 +172,7 @@ export default function MeuPerfilModal({ open, onOpenChange }: Props) {
             ))}
           </nav>
 
-          <div className="p-6 overflow-y-auto min-w-0">
+          <div className="min-w-0 overflow-y-auto bg-card p-6">
             <TituloHub titulo={secao.titulo} descricao={secao.descricao} />
 
             {ativa === 'perfil' && <SecaoPerfil />}

@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { usePedidosDoRobo } from './usePedidosDoRobo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { KeyRound, Monitor, Loader2, Send } from 'lucide-react';
 
@@ -130,16 +131,16 @@ export default function PedidoDoRobo({ onAbrirTelaRemota }: Props) {
     const ehCod = pedido.tipo === 'codigo';
     toast.custom(
       (id) => (
-        <div className="w-full rounded-xl border-2 border-accent/60 bg-card shadow-2xl p-4 flex gap-3.5">
-          <div className="w-12 h-12 rounded-lg bg-accent/15 flex items-center justify-center shrink-0">
+        <div className="w-full rounded-lg border-2 border-primary/60 bg-card shadow-md p-4 flex gap-4">
+          <div className="w-12 h-12 rounded-md bg-primary-tint text-primary flex items-center justify-center shrink-0">
             {ehCod ? (
-              <KeyRound className="w-6 h-6 text-accent" />
+              <KeyRound className="w-6 h-6" aria-hidden="true" />
             ) : (
-              <Monitor className="w-6 h-6 text-accent" />
+              <Monitor className="w-6 h-6" aria-hidden="true" />
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-base font-semibold leading-tight">
+            <p className="text-base font-semibold leading-tight text-foreground">
               {ehCod ? 'O robô está pedindo um código' : 'O robô precisa de um clique seu'}
             </p>
             {/* No caso do captcha, a mensagem do AGENTE — ele sabe em que tela
@@ -151,27 +152,24 @@ export default function PedidoDoRobo({ onAbrirTelaRemota }: Props) {
                 No caso do código, não: a mensagem do agente diz "cole aqui", e
                 aqui não há campo nenhum — este cartão flutua sobre qualquer
                 aba. Então o texto aponta para onde o campo está. */}
-            <p className="text-sm text-muted-foreground mt-1 leading-snug">
+            <p className="text-sm text-muted-foreground mt-1">
               {ehCod
                 ? 'Ele parou numa verificação em duas etapas. O campo para colar o código está na aba Agente Cloud — o robô digita e confirma por você.'
                 : pedido.mensagem}
             </p>
-            <div className="flex items-center gap-2 mt-3">
+            <div className="flex flex-wrap items-center gap-2 mt-3">
               <Button
-                size="sm"
-                className="text-sm gap-1.5 bg-accent hover:bg-accent/90 text-accent-foreground"
                 onClick={() => {
                   toast.dismiss(id);
                   onAbrirTelaRemota?.();
                 }}
               >
-                <Monitor className="w-4 h-4" />
+                <Monitor className="w-4 h-4" aria-hidden="true" />
                 {ehCod ? 'Ir para o campo' : 'Abrir a tela remota'}
               </Button>
               <Button
-                size="sm"
                 variant="ghost"
-                className="text-sm text-muted-foreground"
+                className="text-muted-foreground"
                 onClick={() => toast.dismiss(id)}
               >
                 Já estou lá
@@ -246,13 +244,13 @@ export default function PedidoDoRobo({ onAbrirTelaRemota }: Props) {
     // opacidade chamaria atenção piscando justamente o texto que precisa ser
     // lido, e o campo onde se digita. Por isso também não há `ring-*` aqui: ele
     // usa box-shadow e seria apagado pela animação.
-    <div className="border-2 border-accent bg-accent/5 rounded-xl p-5 space-y-4 animate-pulse-glow">
+    <div className="border-2 border-primary bg-primary-tint rounded-lg p-6 space-y-4 animate-pulse-glow" role="alert">
       <div className="flex items-start gap-4">
-        <div className="w-14 h-14 rounded-xl bg-accent/15 flex items-center justify-center shrink-0">
+        <div className="w-14 h-14 rounded-lg bg-card text-primary flex items-center justify-center shrink-0">
           {ehCodigo ? (
-            <KeyRound className="w-7 h-7 text-accent" />
+            <KeyRound className="w-7 h-7" aria-hidden="true" />
           ) : (
-            <Monitor className="w-7 h-7 text-accent" />
+            <Monitor className="w-7 h-7" aria-hidden="true" />
           )}
         </div>
         <div className="min-w-0 flex-1">
@@ -265,7 +263,7 @@ export default function PedidoDoRobo({ onAbrirTelaRemota }: Props) {
                 quando a pressa passa a ser real. */}
             {restam !== null && (
               <span
-                className={`text-sm font-mono tabular-nums shrink-0 ${
+                className={`text-sm tabular-nums shrink-0 ${
                   restam <= 60 ? 'text-destructive font-semibold' : 'text-muted-foreground'
                 }`}
               >
@@ -275,9 +273,9 @@ export default function PedidoDoRobo({ onAbrirTelaRemota }: Props) {
               </span>
             )}
           </div>
-          <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">{pedido.mensagem}</p>
+          <p className="text-base text-muted-foreground mt-1">{pedido.mensagem}</p>
           {pedido.tela && (
-            <p className="text-xs text-muted-foreground/70 mt-2 truncate">
+            <p className="text-xs text-muted-foreground mt-2 truncate">
               Tela: {pedido.tela}
             </p>
           )}
@@ -285,39 +283,44 @@ export default function PedidoDoRobo({ onAbrirTelaRemota }: Props) {
       </div>
 
       {ehCodigo ? (
-        <div className="flex gap-2">
-          <Input
-            value={valor}
-            onChange={(e) => setValor(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') enviar();
-            }}
-            placeholder="Cole o código aqui"
-            // Sem autocorreção e sem autocapitalização: é um código, não texto.
-            autoComplete="one-time-code"
-            inputMode="numeric"
-            autoFocus
-            // Grande e monoespaçado: são seis dígitos digitados sob pressão de
-            // tempo, e ler errado custa uma tentativa na conta do cliente.
-            className="font-mono text-lg tracking-[0.3em] h-12"
-            disabled={enviando}
-          />
-          <Button
-            onClick={enviar}
-            disabled={enviando || !valor.trim()}
-            className="gap-2 shrink-0 h-12 px-5 text-base"
-          >
-            {enviando ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Send className="w-4 h-4" />
-            )}
-            Enviar ao robô
-          </Button>
+        <div>
+          <Label htmlFor="pedido-robo-codigo" className="mb-1 block">Código de verificação</Label>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Input
+              id="pedido-robo-codigo"
+              value={valor}
+              onChange={(e) => setValor(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') enviar();
+              }}
+              placeholder="Cole o código aqui"
+              // Sem autocorreção e sem autocapitalização: é um código, não texto.
+              autoComplete="one-time-code"
+              inputMode="numeric"
+              autoFocus
+              // Grande e monoespaçado: são seis dígitos digitados sob pressão de
+              // tempo, e ler errado custa uma tentativa na conta do cliente.
+              className="font-mono text-lg tracking-widest h-12 bg-card"
+              disabled={enviando}
+            />
+            <Button
+              onClick={enviar}
+              disabled={enviando || !valor.trim()}
+              size="lg"
+              className="shrink-0"
+            >
+              {enviando ? (
+                <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <Send className="w-4 h-4" aria-hidden="true" />
+              )}
+              Enviar ao robô
+            </Button>
+          </div>
         </div>
       ) : (
-        <Button onClick={onAbrirTelaRemota} className="gap-2 w-full sm:w-auto h-12 px-5 text-base">
-          <Monitor className="w-5 h-5" />
+        <Button onClick={onAbrirTelaRemota} size="lg" className="w-full sm:w-auto">
+          <Monitor className="w-5 h-5" aria-hidden="true" />
           Abrir a tela remota
         </Button>
       )}

@@ -51,7 +51,7 @@ export default function FinResumoVisor() {
 
   if (isLoading || !data) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-4" role="status" aria-label="Carregando resumo">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <Skeleton className="h-48 lg:col-span-1" />
           <Skeleton className="h-48 lg:col-span-2" />
@@ -72,54 +72,53 @@ export default function FinResumoVisor() {
   }));
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-3">
           <Button
-            size="sm"
             variant="outline"
             onClick={() => { qc.invalidateQueries({ queryKey: ["fin-resumo-visor"] }); refetch(); }}
             disabled={isFetching}
           >
-            <RefreshCw className={`w-4 h-4 mr-1.5 ${isFetching ? "animate-spin" : ""}`} />
+            <RefreshCw className={`w-4 h-4 ${isFetching ? "animate-spin" : ""}`} aria-hidden="true" />
             Atualizar
           </Button>
-          <span className="text-xs text-muted-foreground">Atualização automática a cada 60s</span>
+          <span className="text-sm text-muted-foreground">Atualização automática a cada 60s</span>
         </div>
         <div className="flex items-center gap-2">
           <Switch id="auto-open" checked={autoOpen} onCheckedChange={setAutoOpen} />
-          <Label htmlFor="auto-open" className="text-xs cursor-pointer">
+          <Label htmlFor="auto-open" className="cursor-pointer">
             Exibir Resumo automaticamente ao abrir Financeiro
           </Label>
         </div>
       </div>
 
       {/* Atalhos rápidos */}
-      <Card className="border-dashed">
-        <CardContent className="p-3">
+      <Card>
+        <CardContent className="p-4">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs uppercase tracking-wide text-muted-foreground mr-2 ml-1">Ações rápidas</span>
-            <Button size="sm" variant="default" onClick={() => navegarFinanceiro("a_pagar")}>
-              <Plus className="w-4 h-4 mr-1.5" /> Conta a Pagar
+            <span className="text-sm font-medium text-muted-foreground mr-2">Ações rápidas</span>
+            <Button variant="default" onClick={() => navegarFinanceiro("a_pagar")}>
+              <Plus className="w-4 h-4" aria-hidden="true" /> Conta a Pagar
             </Button>
-            <Button size="sm" variant="default" onClick={() => navegarFinanceiro("a_receber")}>
-              <Plus className="w-4 h-4 mr-1.5" /> Conta a Receber
+            <Button variant="default" onClick={() => navegarFinanceiro("a_receber")}>
+              <Plus className="w-4 h-4" aria-hidden="true" /> Conta a Receber
             </Button>
-            <Button size="sm" variant="outline" onClick={() => navegarFinanceiro("transferencia")}>
-              <ArrowLeftRight className="w-4 h-4 mr-1.5" /> Transferência
+            <Button variant="outline" onClick={() => navegarFinanceiro("transferencia")}>
+              <ArrowLeftRight className="w-4 h-4" aria-hidden="true" /> Transferência
             </Button>
-            <Button size="sm" variant="outline" onClick={() => navegarFinanceiro("conciliacao")}>
-              <CheckCircle2 className="w-4 h-4 mr-1.5" /> Conciliação
+            <Button variant="outline" onClick={() => navegarFinanceiro("conciliacao")}>
+              <CheckCircle2 className="w-4 h-4" aria-hidden="true" /> Conciliação
             </Button>
-            <Button size="sm" variant="outline" onClick={() => navegarFinanceiro("baixa_lote")}>
-              <Layers className="w-4 h-4 mr-1.5" /> Baixa em Lote
+            <Button variant="outline" onClick={() => navegarFinanceiro("baixa_lote")}>
+              <Layers className="w-4 h-4" aria-hidden="true" /> Baixa em Lote
             </Button>
-            <Button size="sm" variant="outline" onClick={() => navegarFinanceiro("importar_ofx")}>
-              <FileSpreadsheet className="w-4 h-4 mr-1.5" /> Importar OFX
+            <Button variant="outline" onClick={() => navegarFinanceiro("importar_ofx")}>
+              <FileSpreadsheet className="w-4 h-4" aria-hidden="true" /> Importar OFX
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => navegarFinanceiro("contas")}>
-              <Wallet className="w-4 h-4 mr-1.5" /> Gerenciar Contas
+            <Button variant="ghost" onClick={() => navegarFinanceiro("contas")}>
+              <Wallet className="w-4 h-4" aria-hidden="true" /> Gerenciar Contas
             </Button>
           </div>
         </CardContent>
@@ -127,28 +126,28 @@ export default function FinResumoVisor() {
 
       {/* Hero + gráfico */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Hero */}
-        <Card className="lg:col-span-1 overflow-hidden border bg-gradient-to-br from-muted to-muted/60 text-foreground">
+        {/* Hero — data de hoje e saldo, em cartão claro */}
+        <Card className="lg:col-span-1">
           <CardContent className="p-6 h-full flex flex-col justify-between">
-            <div className="flex items-start justify-between">
+            <div className="flex items-start justify-between gap-3">
               <div>
-                <div className="text-6xl font-bold leading-none tabular-nums">{dataExtenso.dia}</div>
-                <div className="text-lg mt-1 capitalize">{dataExtenso.mes}</div>
-                <div className="text-sm opacity-80 capitalize">{dataExtenso.semana}-feira</div>
+                <p className="text-4xl font-bold leading-none tabular-nums text-foreground">{dataExtenso.dia}</p>
+                <p className="text-lg font-semibold mt-1 capitalize">{dataExtenso.mes}</p>
+                <p className="text-sm text-muted-foreground capitalize">{dataExtenso.semana}-feira</p>
               </div>
               <div className="text-right">
-                <div className="text-xs opacity-70 uppercase tracking-wide">Hoje</div>
-                <div className="text-sm opacity-90">{dataExtenso.ano}</div>
+                <p className="text-xs font-medium text-muted-foreground">Hoje</p>
+                <p className="text-sm text-muted-foreground tabular-nums">{dataExtenso.ano}</p>
               </div>
             </div>
             <div className="mt-6">
-              <div className="flex items-center gap-2 text-xs uppercase tracking-wide opacity-80">
-                <Wallet className="w-4 h-4" />
+              <p className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                <Wallet className="w-4 h-4" aria-hidden="true" />
                 Saldo em contas
-              </div>
-              <div className="text-3xl md:text-4xl font-semibold tabular-nums mt-1">
+              </p>
+              <p className="mt-1 text-[2rem] leading-10 font-bold tabular-nums text-foreground">
                 {formatBRL(data.saldoTotal)}
-              </div>
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -156,20 +155,20 @@ export default function FinResumoVisor() {
         {/* Gráfico 10 dias */}
         <Card className="lg:col-span-2">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-muted-foreground" />
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
               Resumo para os próximos 10 dias
             </CardTitle>
           </CardHeader>
-          <CardContent className="h-[260px]">
+          <CardContent className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : String(v)} />
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : String(v)} />
                 <Tooltip
                   formatter={(value: number) => formatBRL(value)}
-                  contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
+                  contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 10, fontSize: 12 }}
                 />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
                 <ReferenceLine y={0} stroke="hsl(var(--destructive))" strokeDasharray="3 3" />
@@ -238,30 +237,30 @@ function CardHoje({ tipo, qtd, total, atraso }: { tipo: "pagar" | "receber"; qtd
   const isPagar = tipo === "pagar";
   const Icon = isPagar ? ArrowUpCircle : ArrowDownCircle;
   const cor = isPagar ? "text-destructive" : "text-success";
-  const bgAccent = isPagar ? "bg-destructive/10" : "bg-success/10";
+  const caixa = isPagar ? "bg-destructive-tint text-destructive-ink" : "bg-success-tint text-success-ink";
 
   return (
-    <Card className={`overflow-hidden ${bgAccent}`}>
-      <CardContent className="p-5">
+    <Card>
+      <CardContent className="p-6">
         <div className="flex items-start justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <Icon className={`w-5 h-5 ${cor}`} />
-              <span className="text-xs uppercase tracking-wide font-medium text-muted-foreground">
-                {isPagar ? "Pagar Hoje" : "Receber Hoje"}
-              </span>
-            </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-muted-foreground">
+              {isPagar ? "Pagar Hoje" : "Receber Hoje"}
+            </p>
             <div className="mt-2 flex items-baseline gap-2">
               <span className={`text-2xl font-semibold tabular-nums ${cor}`}>{qtd}</span>
-              <span className="text-xs text-muted-foreground">contas</span>
+              <span className="text-sm text-muted-foreground">contas</span>
             </div>
-            <div className={`text-2xl font-semibold tabular-nums mt-1 ${cor}`}>{formatBRL(total)}</div>
+            <p className={`mt-1 text-[2rem] leading-10 font-bold tabular-nums truncate ${cor}`}>{formatBRL(total)}</p>
             {atraso > 0 && (
-              <div className="text-xs text-muted-foreground mt-2">
+              <p className="text-sm text-muted-foreground mt-2">
                 Em atraso: <span className="font-medium tabular-nums">{formatBRL(atraso)}</span>
-              </div>
+              </p>
             )}
           </div>
+          <span className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md ${caixa}`}>
+            <Icon className="w-5 h-5" aria-hidden="true" />
+          </span>
         </div>
       </CardContent>
     </Card>
@@ -275,15 +274,23 @@ function IndicadorCard({ icon: Icon, label, value, hint, tone }: { icon: React.E
     warning: "text-warning",
     danger: "text-destructive",
   }[tone];
+  const caixa = {
+    default: "bg-muted text-foreground",
+    success: "bg-success-tint text-success-ink",
+    warning: "bg-warning-tint text-warning-ink",
+    danger: "bg-destructive-tint text-destructive-ink",
+  }[tone];
   return (
     <Card>
-      <CardContent className="p-4 flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs text-muted-foreground uppercase tracking-wide">{label}</p>
-          <p className={`text-xl font-semibold tabular-nums mt-1 ${cor}`}>{value}</p>
-          {hint && <p className="text-xs text-muted-foreground mt-0.5">{hint}</p>}
+      <CardContent className="p-6 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-muted-foreground">{label}</p>
+          <p className={`mt-1 text-[2rem] leading-10 font-bold tabular-nums truncate ${cor}`}>{value}</p>
+          {hint && <p className="text-xs text-muted-foreground mt-1">{hint}</p>}
         </div>
-        <Icon className={`w-5 h-5 ${cor}`} />
+        <span className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md ${caixa}`}>
+          <Icon className="w-5 h-5" aria-hidden="true" />
+        </span>
       </CardContent>
     </Card>
   );
@@ -291,35 +298,38 @@ function IndicadorCard({ icon: Icon, label, value, hint, tone }: { icon: React.E
 
 function TopAtrasosCard({ titulo, itens, tipo }: { titulo: string; itens: Array<{ id: string; descricao: string; pessoa: string; diasAtraso: number; valor: number; vencimento: string }>; tipo: "pagar" | "receber" }) {
   const cor = tipo === "pagar" ? "text-destructive" : "text-success";
-  const bg = tipo === "pagar" ? "bg-destructive/10 text-destructive" : "bg-success/10 text-success";
+  const bg = tipo === "pagar" ? "bg-destructive-tint text-destructive-ink" : "bg-success-tint text-success-ink";
 
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm">{titulo}</CardTitle>
+        <CardTitle>{titulo}</CardTitle>
       </CardHeader>
       <CardContent className="p-0">
         {itens.length === 0 ? (
-          <div className="px-5 py-8 text-center text-sm text-muted-foreground">
-            Nenhuma conta em atraso 🎉
+          <div className="flex flex-col items-center px-6 py-8 text-center">
+            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-success-tint text-success-ink">
+              <CheckCircle2 className="w-6 h-6" aria-hidden="true" />
+            </span>
+            <p className="mt-3 text-sm text-muted-foreground">Nenhuma conta em atraso</p>
           </div>
         ) : (
-          <ul className="divide-y">
+          <ul className="divide-y divide-border">
             {itens.map((it) => {
               const iniciais = (it.pessoa || "—").split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join("") || "—";
               return (
-                <li key={it.id} className="flex items-center gap-3 px-5 py-3 hover:bg-muted/40 transition-colors">
-                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 ${bg}`}>
+                <li key={it.id} className="flex items-center gap-3 px-6 py-3 hover:bg-muted/50 transition-colors">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 ${bg}`} aria-hidden="true">
                     {iniciais}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium truncate">{it.pessoa}</div>
                     <div className="text-xs text-muted-foreground truncate">{it.descricao}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">
-                      Venc. {formatDataCurta(it.vencimento)} · <Badge variant="outline" className="ml-1 px-1.5 py-0 text-xs">{it.diasAtraso}d em atraso</Badge>
+                    <div className="text-xs text-muted-foreground mt-1 flex flex-wrap items-center gap-1">
+                      Venc. {formatDataCurta(it.vencimento)} · <Badge variant="danger">{it.diasAtraso}d em atraso</Badge>
                     </div>
                   </div>
-                  <div className={`text-sm font-semibold tabular-nums whitespace-nowrap ${cor}`}>
+                  <div className={`text-sm font-semibold text-right tabular-nums whitespace-nowrap ${cor}`}>
                     {formatBRL(it.valor)}
                   </div>
                 </li>
@@ -350,63 +360,72 @@ function SaldosPorConta({ contas, saldoTotal }: { contas: Array<{ id: string; no
   const ativas = contas.filter((c) => c.ativa);
   return (
     <Card>
-      <CardHeader className="pb-2 flex flex-row items-center justify-between">
-        <CardTitle className="text-base flex items-center gap-2">
-          <Wallet className="w-4 h-4 text-muted-foreground" />
+      <CardHeader className="pb-2 flex flex-row flex-wrap items-center justify-between gap-2">
+        <CardTitle className="flex items-center gap-2">
+          <Wallet className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
           Saldos por conta
-          <Badge variant="secondary" className="ml-1 text-xs">{ativas.length} ativas</Badge>
+          <Badge variant="muted" className="ml-1">{ativas.length} ativas</Badge>
         </CardTitle>
-        <Button size="sm" variant="ghost" onClick={() => navegarFinanceiro("contas")}>Gerenciar</Button>
+        <Button variant="ghost" onClick={() => navegarFinanceiro("contas")}>Gerenciar</Button>
       </CardHeader>
       <CardContent className="p-0">
         {ativas.length === 0 ? (
-          <div className="px-5 py-8 text-center text-sm text-muted-foreground">
-            Nenhuma conta cadastrada.{" "}
-            <Button size="sm" variant="link" onClick={() => navegarFinanceiro("contas")}>Cadastrar agora</Button>
+          <div className="flex flex-col items-center px-6 py-8 text-center">
+            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
+              <Wallet className="w-6 h-6" aria-hidden="true" />
+            </span>
+            <p className="mt-3 text-lg font-semibold">Nenhuma conta cadastrada</p>
+            <Button variant="link" className="mt-1" onClick={() => navegarFinanceiro("contas")}>Cadastrar agora</Button>
           </div>
         ) : (
-          <ul className="divide-y">
+          <ul className="divide-y divide-border">
             {ativas.map((c) => {
               const Icon = iconeContaTipo(c.tipo);
               const negativo = c.saldoAtual < 0;
               const pct = saldoTotal > 0 ? (c.saldoAtual / saldoTotal) * 100 : 0;
               const subtitulo = [c.banco, c.agencia, c.conta].filter(Boolean).join(" · ");
               return (
-                <li
-                  key={c.id}
-                  className="flex items-center gap-3 px-5 py-3 hover:bg-muted/40 transition-colors cursor-pointer"
-                  onClick={() => navegarFinanceiro("contas")}
-                >
-                  <div
-                    className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
-                    style={{ backgroundColor: c.cor ? `${c.cor}22` : "hsl(var(--muted))", color: c.cor ?? "hsl(var(--foreground))" }}
+                <li key={c.id}>
+                  <button
+                    type="button"
+                    className="w-full text-left flex items-center gap-3 px-6 py-3 hover:bg-muted/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+                    onClick={() => navegarFinanceiro("contas")}
+                    aria-label={`${c.nome}: ${formatBRL(c.saldoAtual)}. Abrir contas correntes`}
                   >
-                    <Icon className="w-4 h-4" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium truncate">{c.nome}</div>
-                    {subtitulo && <div className="text-xs text-muted-foreground truncate">{subtitulo}</div>}
-                    <div className="h-1 bg-muted rounded-full mt-1.5 overflow-hidden">
-                      <div
-                        className={negativo ? "h-full bg-destructive" : "h-full bg-muted-foreground"}
-                        style={{ width: `${Math.min(100, Math.abs(pct))}%` }}
-                      />
+                    {/* A cor vem do cadastro da conta (escolha do usuário) —
+                        exceção de dado, não cor de interface. */}
+                    <div
+                      className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${c.cor ? "" : "bg-muted text-foreground"}`}
+                      style={c.cor ? { backgroundColor: `${c.cor}22`, color: c.cor } : undefined}
+                      aria-hidden="true"
+                    >
+                      <Icon className="w-4 h-4" />
                     </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <div className={`text-sm font-semibold tabular-nums ${negativo ? "text-destructive" : "text-foreground"}`}>
-                      {formatBRL(c.saldoAtual)}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium truncate">{c.nome}</div>
+                      {subtitulo && <div className="text-xs text-muted-foreground truncate">{subtitulo}</div>}
+                      <div className="h-1 bg-muted rounded-full mt-2 overflow-hidden">
+                        <div
+                          className={negativo ? "h-full bg-destructive" : "h-full bg-primary"}
+                          style={{ width: `${Math.min(100, Math.abs(pct))}%` }}
+                        />
+                      </div>
                     </div>
-                    {saldoTotal > 0 && !negativo && (
-                      <div className="text-xs text-muted-foreground tabular-nums">{pct.toFixed(1)}%</div>
-                    )}
-                  </div>
+                    <div className="text-right shrink-0">
+                      <div className={`text-sm font-semibold tabular-nums ${negativo ? "text-destructive" : "text-foreground"}`}>
+                        {formatBRL(c.saldoAtual)}
+                      </div>
+                      {saldoTotal > 0 && !negativo && (
+                        <div className="text-xs text-muted-foreground tabular-nums">{pct.toFixed(1)}%</div>
+                      )}
+                    </div>
+                  </button>
                 </li>
               );
             })}
-            <li className="flex items-center justify-between px-5 py-3 bg-muted/30 font-medium">
+            <li className="flex items-center justify-between px-6 py-3 bg-muted font-medium">
               <span className="text-sm">Saldo consolidado</span>
-              <span className={`text-sm tabular-nums ${saldoTotal < 0 ? "text-destructive" : "text-foreground"}`}>
+              <span className={`text-sm text-right tabular-nums ${saldoTotal < 0 ? "text-destructive" : "text-foreground"}`}>
                 {formatBRL(saldoTotal)}
               </span>
             </li>

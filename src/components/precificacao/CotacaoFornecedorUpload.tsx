@@ -230,37 +230,38 @@ ${truncated}`
   return (
     <div className="space-y-4">
       {/* Upload area */}
-      <div className="flex gap-2 items-end">
+      <div className="flex flex-wrap items-end gap-2">
         {file ? (
-          <div className="flex items-center gap-3 flex-1 bg-muted/30 rounded-lg p-3 border border-border/50">
-            <FileText className="w-6 h-6 text-muted-foreground flex-shrink-0" />
+          <div className="flex flex-1 flex-wrap items-center gap-3 rounded-lg border border-border bg-muted p-4">
+            <FileText className="w-6 h-6 text-muted-foreground flex-shrink-0" aria-hidden="true" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{file.name}</p>
               <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(0)} KB</p>
             </div>
-            <Button size="sm" onClick={handleExtract} disabled={isExtracting}>
+            <Button onClick={handleExtract} disabled={isExtracting}>
               {isExtracting ? (
-                <><Loader2 className="w-4 h-4 animate-spin mr-1" /> Extraindo...</>
+                <><Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Extraindo...</>
               ) : (
-                <><CheckCircle className="w-4 h-4 mr-1" /> Extrair Preços</>
+                <><CheckCircle className="w-4 h-4" aria-hidden="true" /> Extrair Preços</>
               )}
             </Button>
-            <Button size="sm" variant="outline" onClick={() => { setFile(null); if (fileRef.current) fileRef.current.value = ''; }}>
-              <X className="w-4 h-4" />
+            <Button variant="outline" aria-label="Remover arquivo" onClick={() => { setFile(null); if (fileRef.current) fileRef.current.value = ''; }}>
+              <X className="w-4 h-4" aria-hidden="true" />
             </Button>
           </div>
         ) : (
-          <button
+          <Button
             type="button"
+            variant="outline"
             onClick={() => fileRef.current?.click()}
-            className="flex-1 border-2 border-dashed border-border rounded-lg p-4 flex items-center gap-3 hover:border-accent/50 hover:bg-muted/30 transition-colors"
+            className="h-auto flex-1 justify-start gap-3 whitespace-normal border-2 border-dashed p-4 text-left font-normal"
           >
-            <Upload className="w-6 h-6 text-muted-foreground" />
-            <div>
-              <span className="text-sm font-medium text-foreground">Enviar cotação de fornecedor (PDF)</span>
-              <span className="text-xs text-muted-foreground block">A IA extrairá produtos, preços e dados do fornecedor automaticamente</span>
-            </div>
-          </button>
+            <Upload className="w-6 h-6 text-muted-foreground" aria-hidden="true" />
+            <span className="min-w-0">
+              <span className="block text-sm font-medium text-foreground">Enviar cotação de fornecedor (PDF)</span>
+              <span className="block text-xs text-muted-foreground">A IA extrairá produtos, preços e dados do fornecedor automaticamente</span>
+            </span>
+          </Button>
         )}
         <input
           ref={fileRef}
@@ -273,7 +274,7 @@ ${truncated}`
 
       {/* Stats */}
       {cotacoes.length > 0 && (
-        <div className="flex gap-4 text-xs text-muted-foreground">
+        <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
           <span>{cotacoes.length} cotações carregadas</span>
           <span>·</span>
           <span>{totalItens} itens no total</span>
@@ -282,41 +283,41 @@ ${truncated}`
 
       {/* Cotações list */}
       {cotacoes.map((cotacao, idx) => (
-        <div key={cotacao.id || idx} className="bg-card border border-border/40 rounded-lg overflow-hidden">
+        <div key={cotacao.id || idx} className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
           <div
-            className="flex items-center justify-between p-3 cursor-pointer hover:bg-muted/30 transition-colors"
+            className="flex items-center justify-between gap-2 p-4 cursor-pointer hover:bg-muted transition-colors"
             onClick={() => setExpandedIdx(expandedIdx === idx ? null : idx)}
           >
             <div className="flex items-center gap-3 flex-1 min-w-0">
-              <FileText className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+              <FileText className="w-5 h-5 text-muted-foreground flex-shrink-0" aria-hidden="true" />
               <div className="min-w-0">
                 <p className="text-sm font-medium truncate">{cotacao.nome_fornecedor}</p>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                   {cotacao.cnpj_fornecedor && <span>{cotacao.cnpj_fornecedor}</span>}
                   {cotacao.data_cotacao && (
-                    <span className="flex items-center gap-0.5">
-                      <Calendar className="w-3 h-3" />
+                    <span className="flex items-center gap-1">
+                      <Calendar className="w-3 h-3" aria-hidden="true" />
                       {new Date(cotacao.data_cotacao + 'T00:00:00').toLocaleDateString('pt-BR')}
                     </span>
                   )}
-                  <Badge variant="outline" className="text-xs">{cotacao.itens.length} itens</Badge>
+                  <Badge variant="outline">{cotacao.itens.length} itens</Badge>
                 </div>
               </div>
             </div>
             <div className="flex gap-1 ml-2">
-              <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setExpandedIdx(expandedIdx === idx ? null : idx); }}>
-                <Eye className="w-4 h-4" />
+              <Button size="sm" variant="ghost" aria-expanded={expandedIdx === idx} aria-label={expandedIdx === idx ? `Recolher itens de ${cotacao.nome_fornecedor}` : `Ver itens de ${cotacao.nome_fornecedor}`} onClick={(e) => { e.stopPropagation(); setExpandedIdx(expandedIdx === idx ? null : idx); }}>
+                <Eye className="w-4 h-4" aria-hidden="true" />
               </Button>
-              <Button size="sm" variant="ghost" className="text-destructive" onClick={(e) => { e.stopPropagation(); handleDelete(idx); }}>
-                <Trash2 className="w-4 h-4" />
+              <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive-tint" aria-label={`Excluir cotação de ${cotacao.nome_fornecedor}`} onClick={(e) => { e.stopPropagation(); handleDelete(idx); }}>
+                <Trash2 className="w-4 h-4" aria-hidden="true" />
               </Button>
             </div>
           </div>
 
           {expandedIdx === idx && cotacao.itens.length > 0 && (
-            <div className="border-t border-border/30 divide-y divide-border/20">
+            <div className="border-t border-border divide-y divide-border">
               {cotacao.itens.map((item, j) => (
-                <div key={j} className="flex items-center justify-between px-4 py-2.5 text-sm">
+                <div key={j} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-foreground truncate">{item.descricao}</p>
                     <p className="text-xs text-muted-foreground">
@@ -325,7 +326,7 @@ ${truncated}`
                       {item.modelo && ` · ${item.modelo}`}
                     </p>
                   </div>
-                  <div className="text-right ml-3 flex-shrink-0">
+                  <div className="text-right flex-shrink-0 tabular-nums">
                     <p className="font-semibold">{formatCurrency(item.preco_unitario)}</p>
                     {item.preco_total > 0 && (
                       <p className="text-xs text-muted-foreground">Total: {formatCurrency(item.preco_total)}</p>
@@ -340,10 +341,12 @@ ${truncated}`
 
       {/* Empty state */}
       {cotacoes.length === 0 && !file && !loadingSaved && (
-        <div className="text-center py-6 text-muted-foreground">
-          <Building2 className="w-10 h-10 mx-auto mb-2 opacity-30" />
-          <p className="text-sm">Nenhuma cotação de fornecedor carregada</p>
-          <p className="text-xs mt-1">Envie PDFs de cotações para extrair preços automaticamente</p>
+        <div className="flex flex-col items-center justify-center py-8 text-center">
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
+            <Building2 className="w-6 h-6" aria-hidden="true" />
+          </span>
+          <p className="mt-4 text-base font-semibold">Nenhuma cotação de fornecedor carregada</p>
+          <p className="mt-1 text-sm text-muted-foreground">Envie PDFs de cotações para extrair preços automaticamente.</p>
         </div>
       )}
     </div>

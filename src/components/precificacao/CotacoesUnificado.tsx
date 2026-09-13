@@ -11,28 +11,26 @@ export default function CotacoesUnificado() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <div className="min-w-0">
-          <h2 className="text-sm sm:text-lg font-semibold text-foreground">Cotações & Listas</h2>
-          <p className="text-xs sm:text-xs text-muted-foreground mt-0.5">
-            Gerencie cotações formais, listas de compras, uploads de fornecedores e importações de planilhas em um só lugar.
-          </p>
-        </div>
+      <div className="min-w-0">
+        <h2 className="text-lg font-semibold text-foreground">Cotações & Listas</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Gerencie cotações formais, listas de compras, uploads de fornecedores e importações de planilhas em um só lugar.
+        </p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="bg-muted/50 h-auto flex-wrap">
-          <TabsTrigger value="cotacoes" className="gap-1.5 text-xs">
-            <FileText className="w-3.5 h-3.5" /> Cotações Formais
+        <TabsList className="h-auto flex-wrap gap-1">
+          <TabsTrigger value="cotacoes" className="gap-2">
+            <FileText className="w-4 h-4" aria-hidden="true" /> Cotações Formais
           </TabsTrigger>
-          <TabsTrigger value="fornecedores" className="gap-1.5 text-xs">
-            <Upload className="w-3.5 h-3.5" /> Upload Fornecedores
+          <TabsTrigger value="fornecedores" className="gap-2">
+            <Upload className="w-4 h-4" aria-hidden="true" /> Upload Fornecedores
           </TabsTrigger>
-          <TabsTrigger value="listas" className="gap-1.5 text-xs">
-            <ShoppingCart className="w-3.5 h-3.5" /> Listas de Compras
+          <TabsTrigger value="listas" className="gap-2">
+            <ShoppingCart className="w-4 h-4" aria-hidden="true" /> Listas de Compras
           </TabsTrigger>
-          <TabsTrigger value="importacoes" className="gap-1.5 text-xs">
-            <FileSpreadsheet className="w-3.5 h-3.5" /> Importar Planilha
+          <TabsTrigger value="importacoes" className="gap-2">
+            <FileSpreadsheet className="w-4 h-4" aria-hidden="true" /> Importar Planilha
           </TabsTrigger>
         </TabsList>
 

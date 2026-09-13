@@ -57,7 +57,7 @@ const fmtQty = (v: number) => new Intl.NumberFormat('pt-BR').format(v);
 // Tipos disponíveis para CONTRATOS ADMINISTRATIVOS
 const TIPOS_ARQUIVO_CONTRATO: Record<string, { label: string; color: string; isAditivo?: boolean; tipoAditivo?: string; semLimite?: boolean }> = {
   contrato_original: { label: 'Contrato Original', color: 'bg-foreground/10 text-foreground' },
-  ata_srp: { label: 'ATA SRP (referência)', color: 'bg-warning/10 text-warning' },
+  ata_srp: { label: 'ATA SRP (referência)', color: 'bg-warning-tint text-warning-ink' },
   // ── O rótulo é o INSTITUTO e o ARTIGO ────────────────────────────────────
   //
   // Padrão do "Reequilíbrio Econômico-Financeiro (art. 124, II, 'd')", que já
@@ -86,11 +86,11 @@ const TIPOS_ARQUIVO_CONTRATO: Record<string, { label: string; color: string; isA
   // período nos próprios campos (soma no saldo; NÃO consome o art. 125). A
   // mista única que restou é para o caso genuíno — prorrogar E acrescer
   // dentro da vigência — e grava tipo `valor_quantidade`, que conta no limite.
-  aditivo_prazo: { label: 'Prorrogação de Contrato por Escopo (art. 111)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'prazo' },
-  prorrogacao_continuo: { label: 'Prorrogação de Fornecimento ou Serviço Contínuo (art. 107)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'prorrogacao' },
-  aditivo_escopo: { label: 'Alteração Qualitativa — Projeto ou Especificações (art. 124, I, \u201ca\u201d)', color: 'bg-info/10 text-info', isAditivo: true, tipoAditivo: 'escopo' },
-  aditivo_valor_quantidade: { label: 'Alteração Quantitativa (art. 124, I, \u201cb\u201d)', color: 'bg-info/10 text-info', isAditivo: true, tipoAditivo: 'valor_quantidade' },
-  aditivo_prazo_alteracao: { label: 'Prorrogação com Alteração Quantitativa (arts. 107 e 124, I, \u201cb\u201d)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'valor_quantidade' },
+  aditivo_prazo: { label: 'Prorrogação de Contrato por Escopo (art. 111)', color: 'bg-warning-tint text-warning-ink', isAditivo: true, tipoAditivo: 'prazo' },
+  prorrogacao_continuo: { label: 'Prorrogação de Fornecimento ou Serviço Contínuo (art. 107)', color: 'bg-warning-tint text-warning-ink', isAditivo: true, tipoAditivo: 'prorrogacao' },
+  aditivo_escopo: { label: 'Alteração Qualitativa — Projeto ou Especificações (art. 124, I, \u201ca\u201d)', color: 'bg-muted text-foreground', isAditivo: true, tipoAditivo: 'escopo' },
+  aditivo_valor_quantidade: { label: 'Alteração Quantitativa (art. 124, I, \u201cb\u201d)', color: 'bg-muted text-foreground', isAditivo: true, tipoAditivo: 'valor_quantidade' },
+  aditivo_prazo_alteracao: { label: 'Prorrogação com Alteração Quantitativa (arts. 107 e 124, I, \u201cb\u201d)', color: 'bg-warning-tint text-warning-ink', isAditivo: true, tipoAditivo: 'valor_quantidade' },
   // ── Uma opção, não duas ──────────────────────────────────────────────────
   //
   // "Reequilíbrio Econômico-Financeiro" e "Revisão Contratual" citavam a MESMA
@@ -103,9 +103,9 @@ const TIPOS_ARQUIVO_CONTRATO: Record<string, { label: string; color: string; isA
   // Duas opções com o mesmo fundamento fazem quem registra escolher no
   // palpite — e metade dos registros cair em cada tipo, quebrando qualquer
   // soma por tipo. O rótulo único nomeia instrumento e finalidade juntos.
-  aditivo_reequilibrio: { label: 'Revisão para Reequilíbrio Econômico-Financeiro (art. 124, II, \u201cd\u201d)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'reequilibrio', semLimite: true },
-  aditivo_repactuacao: { label: 'Repactuação (art. 135)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'repactuacao', semLimite: true },
-  aditivo_reajuste: { label: 'Reajuste (art. 136, I)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'reajuste', semLimite: true },
+  aditivo_reequilibrio: { label: 'Revisão para Reequilíbrio Econômico-Financeiro (art. 124, II, \u201cd\u201d)', color: 'bg-warning-tint text-warning-ink', isAditivo: true, tipoAditivo: 'reequilibrio', semLimite: true },
+  aditivo_repactuacao: { label: 'Repactuação (art. 135)', color: 'bg-warning-tint text-warning-ink', isAditivo: true, tipoAditivo: 'repactuacao', semLimite: true },
+  aditivo_reajuste: { label: 'Reajuste (art. 136, I)', color: 'bg-warning-tint text-warning-ink', isAditivo: true, tipoAditivo: 'reajuste', semLimite: true },
   // A nota de empenho tinha `tipo = 'ordem_fornecimento'` gravado desde a
   // 20260830000001, mas nenhum rótulo aqui — e aparecia como "Outro
   // Documento", que é o carimbo de quem não sabe o que guardou. É o documento
@@ -133,19 +133,19 @@ const TIPOS_ARQUIVO_CONTRATO: Record<string, { label: string; color: string; isA
  * dos arquivos de contrato já gravados.
  */
 const TIPOS_ARQUIVO_ATA: Record<string, { label: string; color: string; isAditivo?: boolean; tipoAditivo?: string; semLimite?: boolean }> = {
-  ata_srp: { label: 'ATA SRP Original', color: 'bg-warning/10 text-warning' },
+  ata_srp: { label: 'ATA SRP Original', color: 'bg-warning-tint text-warning-ink' },
   // ── Apostilamento (Lei 14.133/2021, art. 136) — registro SEM termo aditivo ──
-  apostilamento_reajuste: { label: 'Apostilamento — Reajuste/repactuação previstos (art. 136, I)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'reajuste', semLimite: true },
-  apostilamento_financeiro: { label: 'Apostilamento — Atualização/compensação financeira (art. 136, II)', color: 'bg-warning/10 text-warning' },
+  apostilamento_reajuste: { label: 'Apostilamento — Reajuste/repactuação previstos (art. 136, I)', color: 'bg-warning-tint text-warning-ink', isAditivo: true, tipoAditivo: 'reajuste', semLimite: true },
+  apostilamento_financeiro: { label: 'Apostilamento — Atualização/compensação financeira (art. 136, II)', color: 'bg-warning-tint text-warning-ink' },
   apostilamento_razao_social: { label: 'Apostilamento — Alteração de razão social (art. 136, III)', color: 'bg-muted text-muted-foreground' },
   apostilamento_empenho: { label: 'Apostilamento — Empenho de dotação (art. 136, IV)', color: 'bg-muted text-muted-foreground' },
   // ── Contrato derivado: a ATA cumpre-se por contrato (ou empenho, art. 95) ──
-  contrato_derivado: { label: 'Contrato Administrativo (derivado da ATA)', color: 'bg-info/10 text-info' },
+  contrato_derivado: { label: 'Contrato Administrativo (derivado da ATA)', color: 'bg-muted text-foreground' },
   // ── Termo aditivo da ATA — cada hipótese com sua regra ──
-  ata_aditivo_prazo: { label: 'Termo Aditivo — Prorrogação da vigência (art. 84)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'prazo' },
-  ata_aditivo_adesao: { label: 'Termo Aditivo — Adesão de órgão não participante (Decreto 11.462/2023, art. 32)', color: 'bg-info/10 text-info', isAditivo: true, tipoAditivo: 'adesao' },
+  ata_aditivo_prazo: { label: 'Termo Aditivo — Prorrogação da vigência (art. 84)', color: 'bg-warning-tint text-warning-ink', isAditivo: true, tipoAditivo: 'prazo' },
+  ata_aditivo_adesao: { label: 'Termo Aditivo — Adesão de órgão não participante (Decreto 11.462/2023, art. 32)', color: 'bg-muted text-foreground', isAditivo: true, tipoAditivo: 'adesao' },
   ata_aditivo_remanejamento: { label: 'Termo Aditivo — Remanejamento entre participantes', color: 'bg-muted text-muted-foreground', isAditivo: true, tipoAditivo: 'remanejamento' },
-  ata_aditivo_revisao: { label: 'Termo Aditivo — Revisão de preços registrados (Decreto 11.462/2023, arts. 26 e 27)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'revisao', semLimite: true },
+  ata_aditivo_revisao: { label: 'Termo Aditivo — Revisão de preços registrados (Decreto 11.462/2023, arts. 26 e 27)', color: 'bg-warning-tint text-warning-ink', isAditivo: true, tipoAditivo: 'revisao', semLimite: true },
   outro: { label: 'Outro Documento', color: 'bg-muted text-muted-foreground' },
 };
 
@@ -161,17 +161,17 @@ const TIPOS_ARQUIVO: Record<string, { label: string; color: string; isAditivo?: 
   // porque lá ela também CRIA o empenho — subi-la por aqui deixaria o PDF no
   // dossiê e a autorização sem existir. Sem esta linha ela aparecia como
   // "Outro Documento", o carimbo de quem não sabe o que guardou.
-  ordem_fornecimento: { label: 'Ordem de Fornecimento / Nota de Empenho', color: 'bg-info/10 text-info' },
-  apostilamento: { label: 'Apostilamento', color: 'bg-warning/10 text-warning' },
+  ordem_fornecimento: { label: 'Ordem de Fornecimento / Nota de Empenho', color: 'bg-muted text-foreground' },
+  apostilamento: { label: 'Apostilamento', color: 'bg-warning-tint text-warning-ink' },
   // Saiu do seletor na fusão com o reequilíbrio (mesma alínea, mesmo
   // instituto); fica aqui para o arquivo antigo continuar nomeado.
-  aditivo_revisao: { label: 'Revisão Contratual (art. 124, II, \u201cd\u201d)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'revisao', semLimite: true },
+  aditivo_revisao: { label: 'Revisão Contratual (art. 124, II, \u201cd\u201d)', color: 'bg-warning-tint text-warning-ink', isAditivo: true, tipoAditivo: 'revisao', semLimite: true },
   // Saíram na fusão da tríade do art. 124, I, "b" e das duas mistas
   // (01/09/2026) — a hipótese legal é uma; o impacto virou campo numérico.
-  aditivo_quantidade: { label: 'Alteração Quantitativa — Quantidade (art. 124, I, \u201cb\u201d)', color: 'bg-info/10 text-info', isAditivo: true, tipoAditivo: 'quantidade' },
-  aditivo_valor: { label: 'Alteração Quantitativa — Valor (art. 124, I, \u201cb\u201d)', color: 'bg-success/10 text-success', isAditivo: true, tipoAditivo: 'valor' },
-  aditivo_prazo_valor: { label: 'Prorrogação e Alteração Quantitativa — Valor (arts. 107 e 124, I, \u201cb\u201d)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'prazo_valor' },
-  aditivo_prazo_quantidade: { label: 'Prorrogação e Alteração Quantitativa — Quantidade (arts. 107 e 124, I, \u201cb\u201d)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'prazo_quantidade' },
+  aditivo_quantidade: { label: 'Alteração Quantitativa — Quantidade (art. 124, I, \u201cb\u201d)', color: 'bg-muted text-foreground', isAditivo: true, tipoAditivo: 'quantidade' },
+  aditivo_valor: { label: 'Alteração Quantitativa — Valor (art. 124, I, \u201cb\u201d)', color: 'bg-success-tint text-success-ink', isAditivo: true, tipoAditivo: 'valor' },
+  aditivo_prazo_valor: { label: 'Prorrogação e Alteração Quantitativa — Valor (arts. 107 e 124, I, \u201cb\u201d)', color: 'bg-warning-tint text-warning-ink', isAditivo: true, tipoAditivo: 'prazo_valor' },
+  aditivo_prazo_quantidade: { label: 'Prorrogação e Alteração Quantitativa — Quantidade (arts. 107 e 124, I, \u201cb\u201d)', color: 'bg-warning-tint text-warning-ink', isAditivo: true, tipoAditivo: 'prazo_quantidade' },
 };
 
 /** Nome do tipo de aditivo, para a confirmação dizer o que será apagado. */
@@ -1349,19 +1349,19 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
                 que vai acontecer. No rótulo ela produzia linhas longas demais
                 para o menu, e ninguém lê um menu até o fim. */}
             {efeitoNoLimite(TIPOS_ARQUIVO[uploadTipo]?.tipoAditivo) && (
-              <p className="text-[11px] text-muted-foreground mt-1 max-w-[26rem]">
+              <p className="text-xs text-muted-foreground mt-1 max-w-[26rem]">
                 {efeitoNoLimite(TIPOS_ARQUIVO[uploadTipo]?.tipoAditivo)}
               </p>
             )}
             {TIPOS_ARQUIVO[uploadTipo]?.semLimite && (
-              <p className="text-xs text-warning mt-1 flex items-center gap-1">
+              <p className="text-xs text-warning-ink mt-1 flex items-center gap-1">
                 <RefreshCw className="w-3 h-3" />
                 Não sujeito ao limite de 25% do art. 125, Lei 14.133/21.
               </p>
             )}
             {/* Cada instituto da ATA carrega a própria regra — o seletor diz qual. */}
             {uploadTipo === 'ata_aditivo_adesao' && (
-              <p className="text-xs text-info mt-1">
+              <p className="text-xs text-foreground mt-1">
                 Somadas, as adesões não podem exceder o dobro do quantitativo registrado
                 (Decreto 11.462/2023, art. 32, §4º) — o sistema confere ao gravar.
               </p>
@@ -1415,12 +1415,12 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
                 <>
                   {/* Calculator for reequilíbrio types */}
                   {TIPOS_ARQUIVO_SEM_LIMITE.includes(uploadTipo) && (
-                    <div className="sm:col-span-2 rounded-lg border border-warning/30 bg-warning/10 p-3 space-y-2">
-                      <p className="text-xs font-semibold text-warning flex items-center gap-1">
+                    <div className="sm:col-span-2 rounded-lg border border-warning-line bg-warning-tint p-3 space-y-2">
+                      <p className="text-xs font-semibold text-warning-ink flex items-center gap-1">
                         <RefreshCw className="w-3 h-3" /> Calculadora de Reequilíbrio
                       </p>
                       {precificacaoMargem !== null && (
-                        <p className="text-xs text-warning">
+                        <p className="text-xs text-warning-ink">
                           Margem média da precificação vinculada: <strong>{precificacaoMargem}%</strong>
                         </p>
                       )}
@@ -1444,14 +1444,14 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
                           <div className="flex items-center gap-3 text-xs flex-wrap">
                             <span className="text-muted-foreground">Preço atual: <strong>{fmt(precoAtual)}</strong></span>
                             <span className="text-muted-foreground">Novo preço: <strong>{fmt(precoNovo)}</strong></span>
-                            <span className={diferenca >= 0 ? 'text-success font-semibold' : 'text-destructive font-semibold'}>
+                            <span className={diferenca >= 0 ? 'text-success-ink font-semibold' : 'text-destructive-ink font-semibold'}>
                               Diferença unitária: {diferenca >= 0 ? '+' : ''}{fmt(diferenca)}
                             </span>
                             <Button
                               type="button"
                               size="sm"
                               variant="outline"
-                              className="text-xs h-6 px-2 border-accent/40 text-accent"
+                              className="text-xs h-6 px-2 border-border text-primary"
                               onClick={() => setAditivoForm(f => ({ ...f, valor_acrescimo: diferenca > 0 ? String(diferenca) : '0', valor_supressao: diferenca < 0 ? String(Math.abs(diferenca)) : '0' }))}
                             >
                               Aplicar
@@ -1508,12 +1508,12 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
                 <p className="text-xs text-muted-foreground mb-1 font-medium">Resumo do Aditivo</p>
                 <div className="flex flex-wrap gap-4 text-xs">
                   {showValueFields(uploadTipo) && (
-                    <span className={`font-semibold ${(parseFloat(aditivoForm.valor_acrescimo) || 0) - (parseFloat(aditivoForm.valor_supressao) || 0) >= 0 ? 'text-success' : 'text-destructive'}`}>
+                    <span className={`font-semibold ${(parseFloat(aditivoForm.valor_acrescimo) || 0) - (parseFloat(aditivoForm.valor_supressao) || 0) >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>
                       Saldo Valor: {fmt((parseFloat(aditivoForm.valor_acrescimo) || 0) - (parseFloat(aditivoForm.valor_supressao) || 0))}
                     </span>
                   )}
                   {showQtyFields(uploadTipo) && (
-                    <span className={`font-semibold ${(parseFloat(aditivoForm.quantidade_acrescimo) || 0) - (parseFloat(aditivoForm.quantidade_supressao) || 0) >= 0 ? 'text-success' : 'text-destructive'}`}>
+                    <span className={`font-semibold ${(parseFloat(aditivoForm.quantidade_acrescimo) || 0) - (parseFloat(aditivoForm.quantidade_supressao) || 0) >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>
                       Saldo Qtde: {fmtQty((parseFloat(aditivoForm.quantidade_acrescimo) || 0) - (parseFloat(aditivoForm.quantidade_supressao) || 0))}
                     </span>
                   )}
@@ -1603,7 +1603,7 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
                     <Pencil className="w-4 h-4" />
                   </Button>
                   <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleDelete(arq)} title="Excluir">
-                    <Trash2 className="w-4 h-4 text-destructive" />
+                    <Trash2 className="w-4 h-4 text-destructive-ink" />
                   </Button>
                 </div>
               </Card>
@@ -1625,7 +1625,7 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
               simétrica com os quadros dos termos abaixo. */}
           <Card className="p-4 border-l-4 border-l-accent bg-muted/40">
             <div className="flex items-center gap-2 mb-3 flex-wrap">
-              <Layers className="w-4 h-4 text-accent" />
+              <Layers className="w-4 h-4 text-primary" />
               <span className="text-sm font-semibold">Aditivos Registrados</span>
               <span className="text-xs text-muted-foreground">
                 resumo geral das alterações contratuais · {aditivos.length} termo{aditivos.length > 1 ? 's' : ''}
@@ -1634,27 +1634,27 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-x-4 gap-y-3">
               <div className="text-center">
                 <div className="text-xs text-muted-foreground mb-0.5">Acréscimos (R$)</div>
-                <p className="text-base font-bold text-success">{fmt(totalAcrescimo)}</p>
+                <p className="text-base font-bold text-success-ink">{fmt(totalAcrescimo)}</p>
               </div>
               <div className="text-center">
                 <div className="text-xs text-muted-foreground mb-0.5">Supressões (R$)</div>
-                <p className="text-base font-bold text-destructive">{fmt(totalSupressao)}</p>
+                <p className="text-base font-bold text-destructive-ink">{fmt(totalSupressao)}</p>
               </div>
               <div className="text-center">
                 <div className="text-xs text-muted-foreground mb-0.5">Saldo Valor</div>
-                <p className={`text-base font-bold ${saldoAditivos >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(saldoAditivos)}</p>
+                <p className={`text-base font-bold ${saldoAditivos >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>{fmt(saldoAditivos)}</p>
               </div>
               <div className="text-center">
                 <div className="text-xs text-muted-foreground mb-0.5">Acrésc. Qtde</div>
-                <p className="text-base font-bold text-success">+{fmtQty(totalQtyAcrescimo)}</p>
+                <p className="text-base font-bold text-success-ink">+{fmtQty(totalQtyAcrescimo)}</p>
               </div>
               <div className="text-center">
                 <div className="text-xs text-muted-foreground mb-0.5">Supr. Qtde</div>
-                <p className="text-base font-bold text-destructive">-{fmtQty(totalQtySupressao)}</p>
+                <p className="text-base font-bold text-destructive-ink">-{fmtQty(totalQtySupressao)}</p>
               </div>
               <div className="text-center">
                 <div className="text-xs text-muted-foreground mb-0.5">Saldo Qtde</div>
-                <p className={`text-base font-bold ${saldoQty >= 0 ? 'text-success' : 'text-destructive'}`}>{fmtQty(saldoQty)}</p>
+                <p className={`text-base font-bold ${saldoQty >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>{fmtQty(saldoQty)}</p>
               </div>
             </div>
           </Card>
@@ -1676,10 +1676,10 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
                       <Badge variant="outline" className="text-xs">{tipoLabel}</Badge>
                     </div>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                      {(a.valor_acrescimo || 0) > 0 && <span className="text-success">+{fmt(a.valor_acrescimo)}</span>}
-                      {(a.valor_supressao || 0) > 0 && <span className="text-destructive">-{fmt(a.valor_supressao)}</span>}
-                      {(a.quantidade_acrescimo || 0) > 0 && <span className="text-success">+{fmtQty(a.quantidade_acrescimo)} un</span>}
-                      {(a.quantidade_supressao || 0) > 0 && <span className="text-destructive">-{fmtQty(a.quantidade_supressao)} un</span>}
+                      {(a.valor_acrescimo || 0) > 0 && <span className="text-success-ink">+{fmt(a.valor_acrescimo)}</span>}
+                      {(a.valor_supressao || 0) > 0 && <span className="text-destructive-ink">-{fmt(a.valor_supressao)}</span>}
+                      {(a.quantidade_acrescimo || 0) > 0 && <span className="text-success-ink">+{fmtQty(a.quantidade_acrescimo)} un</span>}
+                      {(a.quantidade_supressao || 0) > 0 && <span className="text-destructive-ink">-{fmtQty(a.quantidade_supressao)} un</span>}
                       {a.nova_data_fim && <span>Nova vigência: {new Date(a.nova_data_fim + 'T00:00:00').toLocaleDateString('pt-BR')}</span>}
                       {(a.data_assinatura || a.data_aditivo) && <span>Assinatura: {new Date((a.data_assinatura || a.data_aditivo) + 'T00:00:00').toLocaleDateString('pt-BR')}</span>}
                     </div>
@@ -1707,7 +1707,7 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
                             type="button"
                             onClick={() => handleVisualizar(arq)}
                             title="Visualizar o documento deste aditivo"
-                            className="mt-1 inline-flex items-center gap-1.5 text-xs text-accent hover:underline"
+                            className="mt-1 inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
                           >
                             <FileText className="w-3 h-3 shrink-0" />
                             <span className="truncate max-w-[420px]">{arq.nome_arquivo}</span>
@@ -1746,34 +1746,34 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
                     })()}
                   </div>
                   <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={() => handleDeleteAditivo(a.id)}>
-                    <Trash2 className="w-4 h-4 text-destructive" />
+                    <Trash2 className="w-4 h-4 text-destructive-ink" />
                   </Button>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
                   <div className="rounded-lg border p-2">
                     <div className="text-xs text-muted-foreground mb-0.5">Acréscimos (R$)</div>
-                    <p className="text-xs font-bold text-success">{fmt(a.valor_acrescimo || 0)}</p>
+                    <p className="text-xs font-bold text-success-ink">{fmt(a.valor_acrescimo || 0)}</p>
                   </div>
                   <div className="rounded-lg border p-2">
                     <div className="text-xs text-muted-foreground mb-0.5">Supressões (R$)</div>
-                    <p className="text-xs font-bold text-destructive">{fmt(a.valor_supressao || 0)}</p>
+                    <p className="text-xs font-bold text-destructive-ink">{fmt(a.valor_supressao || 0)}</p>
                   </div>
                   <div className="rounded-lg border p-2">
                     <div className="text-xs text-muted-foreground mb-0.5">Saldo Valor</div>
-                    <p className={`text-xs font-bold ${saldoValor >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(saldoValor)}</p>
+                    <p className={`text-xs font-bold ${saldoValor >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>{fmt(saldoValor)}</p>
                   </div>
                   <div className="rounded-lg border p-2">
                     <div className="text-xs text-muted-foreground mb-0.5">Acrésc. Qtde</div>
-                    <p className="text-xs font-bold text-success">+{fmtQty(a.quantidade_acrescimo || 0)}</p>
+                    <p className="text-xs font-bold text-success-ink">+{fmtQty(a.quantidade_acrescimo || 0)}</p>
                   </div>
                   <div className="rounded-lg border p-2">
                     <div className="text-xs text-muted-foreground mb-0.5">Supr. Qtde</div>
-                    <p className="text-xs font-bold text-destructive">-{fmtQty(a.quantidade_supressao || 0)}</p>
+                    <p className="text-xs font-bold text-destructive-ink">-{fmtQty(a.quantidade_supressao || 0)}</p>
                   </div>
                   <div className="rounded-lg border p-2">
                     <div className="text-xs text-muted-foreground mb-0.5">Saldo Qtde</div>
-                    <p className={`text-xs font-bold ${saldoQtyItem >= 0 ? 'text-success' : 'text-destructive'}`}>{fmtQty(saldoQtyItem)}</p>
+                    <p className={`text-xs font-bold ${saldoQtyItem >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>{fmtQty(saldoQtyItem)}</p>
                   </div>
                 </div>
               </Card>
@@ -1848,7 +1848,7 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
                 </SelectContent>
               </Select>
               {TIPOS_ARQUIVO[editTipo]?.semLimite && (
-                <p className="text-xs text-warning mt-1 flex items-center gap-1">
+                <p className="text-xs text-warning-ink mt-1 flex items-center gap-1">
                   <RefreshCw className="w-3 h-3" />
                   Não sujeito ao limite de 25% do art. 125, Lei 14.133/21.
                 </p>
@@ -1922,12 +1922,12 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
                     <p className="text-xs text-muted-foreground mb-1 font-medium">Resumo do Aditivo</p>
                     <div className="flex flex-wrap gap-4 text-xs">
                       {showValueFields(editTipo) && (
-                        <span className={`font-semibold ${(parseFloat(editAditivoForm.valor_acrescimo) || 0) - (parseFloat(editAditivoForm.valor_supressao) || 0) >= 0 ? 'text-success' : 'text-destructive'}`}>
+                        <span className={`font-semibold ${(parseFloat(editAditivoForm.valor_acrescimo) || 0) - (parseFloat(editAditivoForm.valor_supressao) || 0) >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>
                           Saldo Valor: {fmt((parseFloat(editAditivoForm.valor_acrescimo) || 0) - (parseFloat(editAditivoForm.valor_supressao) || 0))}
                         </span>
                       )}
                       {showQtyFields(editTipo) && (
-                        <span className={`font-semibold ${(parseFloat(editAditivoForm.quantidade_acrescimo) || 0) - (parseFloat(editAditivoForm.quantidade_supressao) || 0) >= 0 ? 'text-success' : 'text-destructive'}`}>
+                        <span className={`font-semibold ${(parseFloat(editAditivoForm.quantidade_acrescimo) || 0) - (parseFloat(editAditivoForm.quantidade_supressao) || 0) >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>
                           Saldo Qtde: {fmtQty((parseFloat(editAditivoForm.quantidade_acrescimo) || 0) - (parseFloat(editAditivoForm.quantidade_supressao) || 0))}
                         </span>
                       )}

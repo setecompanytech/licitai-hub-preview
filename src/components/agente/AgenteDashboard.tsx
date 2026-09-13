@@ -5,17 +5,21 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MoneyInput } from '@/components/ui/money-input';
 import { toast } from 'sonner';
 import {
-  Bot, Zap, Trophy, Clock, AlertTriangle, CheckCircle2, XCircle,
-  Eye, Play, Pause, BarChart3, FileText, Scale, Shield, Activity,
+  Bot, Zap, Trophy, Clock, CheckCircle2, XCircle,
+  Eye, Play, FileText, Activity,
   TrendingUp, Target, RefreshCw, Settings, DollarSign, Search,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import PrecificacaoReview from './PrecificacaoReview';
 import PesquisaPrecos from './PesquisaPrecos';
 
@@ -60,19 +64,48 @@ interface AgentAcaoLog {
   erro_msg: string | null;
 }
 
-const DECISAO_CONFIG: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: React.ElementType }> = {
-  participar: { label: 'Participar', variant: 'default', icon: Play },
-  aguardar_aprovacao: { label: 'Aguardando', variant: 'secondary', icon: Clock },
-  participando: { label: 'Participando', variant: 'default', icon: Activity },
-  proposta_enviada: { label: 'Proposta Enviada', variant: 'default', icon: FileText },
-  em_disputa: { label: 'Em Disputa', variant: 'destructive', icon: Zap },
-  vencedor: { label: 'Vencedor', variant: 'default', icon: Trophy },
-  perdedor: { label: 'Perdedor', variant: 'outline', icon: XCircle },
-  descartado: { label: 'Descartado', variant: 'outline', icon: XCircle },
-  em_contrato: { label: 'Em Contrato', variant: 'default', icon: FileText },
-  concluido: { label: 'Concluído', variant: 'secondary', icon: CheckCircle2 },
-  cancelado: { label: 'Cancelado', variant: 'outline', icon: XCircle },
+type VarianteStatus = 'success' | 'warning' | 'danger' | 'info' | 'muted';
+
+// Status sempre em família semântica do Badge, com texto — a cor é reforço.
+const DECISAO_CONFIG: Record<string, { label: string; variant: VarianteStatus; icon: React.ElementType }> = {
+  participar: { label: 'Participar', variant: 'info', icon: Play },
+  aguardar_aprovacao: { label: 'Aguardando', variant: 'warning', icon: Clock },
+  participando: { label: 'Participando', variant: 'info', icon: Activity },
+  proposta_enviada: { label: 'Proposta Enviada', variant: 'info', icon: FileText },
+  em_disputa: { label: 'Em Disputa', variant: 'warning', icon: Zap },
+  vencedor: { label: 'Vencedor', variant: 'success', icon: Trophy },
+  perdedor: { label: 'Perdedor', variant: 'danger', icon: XCircle },
+  descartado: { label: 'Descartado', variant: 'muted', icon: XCircle },
+  em_contrato: { label: 'Em Contrato', variant: 'success', icon: FileText },
+  concluido: { label: 'Concluído', variant: 'muted', icon: CheckCircle2 },
+  cancelado: { label: 'Cancelado', variant: 'muted', icon: XCircle },
 };
+
+const LOG_STATUS: Record<string, { label: string; variant: VarianteStatus }> = {
+  sucesso: { label: 'Sucesso', variant: 'success' },
+  erro: { label: 'Erro', variant: 'danger' },
+};
+
+/** Tom do ícone dos KPIs: semântico só onde há estado real. */
+type Tom = 'neutral' | 'primary' | 'success' | 'warning';
+const TONS: Record<Tom, string> = {
+  neutral: 'bg-muted text-muted-foreground',
+  primary: 'bg-primary-tint text-primary',
+  success: 'bg-success-tint text-success-ink',
+  warning: 'bg-warning-tint text-warning-ink',
+};
+
+function EstadoVazio({ icone: Icone, titulo, texto }: { icone: React.ElementType; titulo: string; texto?: string }) {
+  return (
+    <div className="text-center py-12">
+      <div aria-hidden="true" className="w-12 h-12 mx-auto rounded-full bg-primary-tint text-primary flex items-center justify-center mb-4">
+        <Icone className="w-6 h-6" />
+      </div>
+      <p className="text-base font-semibold text-foreground">{titulo}</p>
+      {texto && <p className="text-sm text-muted-foreground mt-1">{texto}</p>}
+    </div>
+  );
+}
 
 export default function AgenteDashboard() {
   const { empresaAtiva } = useEmpresa();
@@ -209,99 +242,89 @@ export default function AgenteDashboard() {
 
   if (!empresaAtiva?.id) {
     return (
-      <div className="flex items-center justify-center h-64 text-muted-foreground">
-        <p>Selecione uma empresa para acessar o AURÉLIA Agent.</p>
-      </div>
+      <Card className="p-12">
+        <EstadoVazio icone={Bot} titulo="Selecione uma empresa" texto="Escolha uma empresa para acessar o AURÉLIA Agent." />
+      </Card>
     );
   }
 
-  const kpis = [
-    { label: 'Monitoradas', value: metricas?.total_monitoradas ?? 0, icon: Eye, color: 'text-info' },
-    { label: 'Em Andamento', value: metricas?.em_andamento ?? 0, icon: Activity, color: 'text-success' },
-    { label: 'Em Disputa', value: metricas?.em_disputa ?? 0, icon: Zap, color: 'text-warning' },
-    { label: 'Aguardando', value: metricas?.aguardando_aprovacao ?? 0, icon: Clock, color: 'text-warning' },
-    { label: 'Vitórias (30d)', value: metricas?.vitorias_30d ?? 0, icon: Trophy, color: 'text-[hsl(var(--primary))]' },
-    { label: 'Taxa Vitória', value: `${metricas?.taxa_vitoria ?? 0}%`, icon: TrendingUp, color: 'text-[hsl(var(--primary))]' },
+  const kpis: { label: string; value: string | number; icon: React.ElementType; tom: Tom }[] = [
+    { label: 'Monitoradas', value: metricas?.total_monitoradas ?? 0, icon: Eye, tom: 'neutral' },
+    { label: 'Em Andamento', value: metricas?.em_andamento ?? 0, icon: Activity, tom: 'success' },
+    { label: 'Em Disputa', value: metricas?.em_disputa ?? 0, icon: Zap, tom: 'warning' },
+    { label: 'Aguardando', value: metricas?.aguardando_aprovacao ?? 0, icon: Clock, tom: 'warning' },
+    { label: 'Vitórias (30d)', value: metricas?.vitorias_30d ?? 0, icon: Trophy, tom: 'primary' },
+    { label: 'Taxa Vitória', value: `${metricas?.taxa_vitoria ?? 0}%`, icon: TrendingUp, tom: 'primary' },
   ];
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      {/* Barra de controle: o título da página vem do CabecalhoPagina (AgentePage). */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-primary/10">
-            <Bot className="h-6 w-6 text-primary" />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-foreground">AURÉLIA Agent</h2>
-            <p className="text-sm text-muted-foreground">Agente autônomo 24/7 — ciclo licitatório completo</p>
-          </div>
+          <Label htmlFor="agente-ativo" className="text-sm text-muted-foreground">Agente</Label>
+          <Switch id="agente-ativo" checked={agenteAtivo} onCheckedChange={toggleAgente} />
+          <Badge variant={agenteAtivo ? 'success' : 'muted'}>
+            {agenteAtivo ? 'Ativo' : 'Inativo'}
+          </Badge>
         </div>
-
-        <div className="flex items-center gap-4">
-          <Button variant="outline" size="sm" onClick={carregarDados} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Atualizar
-          </Button>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Agente</span>
-            <Switch checked={agenteAtivo} onCheckedChange={toggleAgente} />
-            <Badge variant={agenteAtivo ? 'default' : 'outline'} className={agenteAtivo ? 'bg-success/20 text-success border-success/30' : ''}>
-              {agenteAtivo ? '● Ativo' : '○ Inativo'}
-            </Badge>
-          </div>
-        </div>
+        <Button variant="outline" onClick={carregarDados} disabled={loading}>
+          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          Atualizar
+        </Button>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 [&>*]:min-w-0">
         {kpis.map((kpi) => (
-          <Card key={kpi.label} className="bg-card border-border">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-1">
-                <kpi.icon className={`h-4 w-4 ${kpi.color}`} />
-                <span className="text-xs text-muted-foreground">{kpi.label}</span>
+          <div key={kpi.label} className="rounded-lg border border-border bg-card p-6 shadow-sm">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm text-muted-foreground font-medium truncate">{kpi.label}</p>
+                <p className="text-[2rem] leading-10 font-bold tabular-nums mt-1 whitespace-nowrap">{kpi.value}</p>
               </div>
-              <p className={`text-2xl font-bold ${kpi.color}`}>{kpi.value}</p>
-            </CardContent>
-          </Card>
+              <div aria-hidden="true" className={cn('flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-md', TONS[kpi.tom])}>
+                <kpi.icon className="h-5 w-5" />
+              </div>
+            </div>
+          </div>
         ))}
       </div>
 
       {/* Valor total vitórias */}
       {metricas && metricas.valor_total_vitorias > 0 && (
-        <Card className="bg-primary/5 border-primary/20">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
+        <Card className="bg-primary-tint border-border">
+          <CardContent className="p-6 flex items-center justify-between gap-4">
+            <div className="min-w-0">
               <p className="text-sm text-muted-foreground">Valor total das vitórias (30 dias)</p>
-              <p className="text-2xl font-bold text-primary">{formatCurrency(metricas.valor_total_vitorias)}</p>
+              <p className="text-[2rem] leading-10 font-bold tabular-nums text-primary">{formatCurrency(metricas.valor_total_vitorias)}</p>
             </div>
-            <Trophy className="h-8 w-8 text-primary/40" />
+            <Trophy aria-hidden="true" className="h-8 w-8 text-primary shrink-0" />
           </CardContent>
         </Card>
       )}
 
       {/* Tabs */}
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="bg-muted/50 flex-wrap">
-          <TabsTrigger value="monitoradas">
-            <Target className="h-4 w-4 mr-2" />
+        <TabsList>
+          <TabsTrigger value="monitoradas" className="gap-2">
+            <Target className="h-4 w-4" />
             Licitações ({licitacoes.length})
           </TabsTrigger>
-          <TabsTrigger value="precificacao">
-            <DollarSign className="h-4 w-4 mr-2" />
+          <TabsTrigger value="precificacao" className="gap-2">
+            <DollarSign className="h-4 w-4" />
             Precificação
           </TabsTrigger>
-          <TabsTrigger value="pesquisa">
-            <Search className="h-4 w-4 mr-2" />
+          <TabsTrigger value="pesquisa" className="gap-2">
+            <Search className="h-4 w-4" />
             Pesquisa de Preços
           </TabsTrigger>
-          <TabsTrigger value="logs">
-            <Activity className="h-4 w-4 mr-2" />
+          <TabsTrigger value="logs" className="gap-2">
+            <Activity className="h-4 w-4" />
             Log de Ações
           </TabsTrigger>
-          <TabsTrigger value="config">
-            <Settings className="h-4 w-4 mr-2" />
+          <TabsTrigger value="config" className="gap-2">
+            <Settings className="h-4 w-4" />
             Configurações
           </TabsTrigger>
         </TabsList>
@@ -311,23 +334,23 @@ export default function AgenteDashboard() {
           <ScrollArea className="h-[500px]">
             <div className="space-y-3">
               {licitacoes.length === 0 && (
-                <div className="text-center py-12 text-muted-foreground">
-                  <Bot className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                  <p>Nenhuma licitação monitorada pelo agente.</p>
-                  <p className="text-sm mt-1">Ative o agente e configure os critérios de busca.</p>
-                </div>
+                <EstadoVazio
+                  icone={Bot}
+                  titulo="Nenhuma licitação monitorada pelo agente"
+                  texto="Ative o agente e configure os critérios de busca."
+                />
               )}
 
               {licitacoes.map((lic) => {
-                const cfg = DECISAO_CONFIG[lic.decisao] || { label: lic.decisao, variant: 'outline' as const, icon: Eye };
+                const cfg = DECISAO_CONFIG[lic.decisao] || { label: lic.decisao, variant: 'muted' as const, icon: Eye };
                 const Icon = cfg.icon;
 
                 return (
-                  <Card key={lic.id} className="bg-card border-border hover:border-primary/30 transition-colors">
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between gap-3">
+                  <Card key={lic.id} className="hover:border-primary/40 transition-colors">
+                    <CardContent className="p-6">
+                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-foreground truncate">
+                          <p className="text-base font-medium text-foreground truncate">
                             {lic.pncp_editais_cache?.objeto_compra || 'Carregando...'}
                           </p>
                           <p className="text-sm text-muted-foreground mt-1">
@@ -336,27 +359,27 @@ export default function AgenteDashboard() {
                               ? formatCurrency(lic.pncp_editais_cache.valor_total_estimado)
                               : 'Valor não informado'}
                           </p>
-                          <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                            <span>Score: <strong className="text-foreground">{lic.score_relevancia}/100</strong></span>
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs text-muted-foreground">
+                            <span>Score: <strong className="text-foreground tabular-nums">{lic.score_relevancia}/100</strong></span>
                             <span>Agente: {lic.agente_atual}</span>
                             <span>Última ação: {lic.ultima_acao}</span>
                             {lic.data_abertura && <span>Abertura: {formatDate(lic.data_abertura)}</span>}
                           </div>
                         </div>
 
-                        <div className="flex flex-col items-end gap-2">
-                          <Badge variant={cfg.variant}>
-                            <Icon className="h-3 w-3 mr-1" />
+                        <div className="flex flex-row sm:flex-col items-center sm:items-end gap-2 shrink-0">
+                          <Badge variant={cfg.variant} className="gap-1">
+                            <Icon className="h-3 w-3" aria-hidden="true" />
                             {cfg.label}
                           </Badge>
 
                           {lic.decisao === 'aguardar_aprovacao' && (
-                            <div className="flex gap-1.5">
-                              <Button size="sm" variant="default" className="text-xs h-7" onClick={() => aprovarParticipacao(lic.id)}>
-                                ✓ Aprovar
+                            <div className="flex gap-2">
+                              <Button size="sm" variant="default" onClick={() => aprovarParticipacao(lic.id)}>
+                                <CheckCircle2 className="h-4 w-4" /> Aprovar
                               </Button>
-                              <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => descartarLicitacao(lic.id)}>
-                                ✗ Descartar
+                              <Button size="sm" variant="outline" onClick={() => descartarLicitacao(lic.id)}>
+                                <XCircle className="h-4 w-4" /> Descartar
                               </Button>
                             </div>
                           )}
@@ -374,20 +397,20 @@ export default function AgenteDashboard() {
         <TabsContent value="precificacao">
           <div className="space-y-4">
             {licitacoes.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <DollarSign className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                <p>Nenhuma licitação para precificar.</p>
-                <p className="text-sm mt-1">Aprove licitações na aba anterior para iniciar a precificação.</p>
-              </div>
+              <EstadoVazio
+                icone={DollarSign}
+                titulo="Nenhuma licitação para precificar"
+                texto="Aprove licitações na aba anterior para iniciar a precificação."
+              />
             ) : (
               <div className="space-y-6">
                 {licitacoes
                   .filter(l => ['participar', 'participando', 'proposta_enviada', 'em_disputa', 'aguardar_aprovacao'].includes(l.decisao))
                   .map((lic) => (
                     <div key={lic.id} className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs">{lic.pncp_editais_cache?.modalidade_nome}</Badge>
-                        <h4 className="text-sm font-medium text-foreground truncate flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant="info">{lic.pncp_editais_cache?.modalidade_nome}</Badge>
+                        <h4 className="text-base font-semibold text-foreground truncate flex-1 min-w-0">
                           {lic.pncp_editais_cache?.objeto_compra || 'Carregando...'}
                         </h4>
                         <span className="text-xs text-muted-foreground">{lic.pncp_editais_cache?.orgao_nome}</span>
@@ -410,24 +433,24 @@ export default function AgenteDashboard() {
           <ScrollArea className="h-[500px]">
             <div className="space-y-2">
               {acoesLog.length === 0 && (
-                <div className="text-center py-12 text-muted-foreground">
-                  <Activity className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                  <p>Nenhuma ação registrada ainda.</p>
-                </div>
+                <EstadoVazio icone={Activity} titulo="Nenhuma ação registrada ainda" />
               )}
 
-              {acoesLog.map((log) => (
-                <div key={log.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 text-sm">
-                  <div className={`w-2 h-2 rounded-full ${log.status === 'sucesso' ? 'bg-success' : log.status === 'erro' ? 'bg-destructive' : 'bg-warning'}`} />
-                  <span className="font-mono text-xs text-muted-foreground w-24 shrink-0">{log.agente}</span>
-                  <span className="flex-1 truncate text-foreground">{log.acao}</span>
-                  {log.duracao_ms && <span className="text-xs text-muted-foreground">{log.duracao_ms}ms</span>}
-                  <span className="text-xs text-muted-foreground">{formatDate(log.created_at)}</span>
-                  {log.erro_msg && (
-                    <Badge variant="destructive" className="text-xs">Erro</Badge>
-                  )}
-                </div>
-              ))}
+              {acoesLog.map((log) => {
+                const st = LOG_STATUS[log.status] ?? { label: log.status, variant: 'warning' as const };
+                return (
+                  <div key={log.id} className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-card px-3 py-2 text-sm">
+                    <Badge variant={st.variant}>{st.label}</Badge>
+                    <span className="font-mono text-xs text-muted-foreground w-24 shrink-0 truncate">{log.agente}</span>
+                    <span className="flex-1 min-w-[10rem] truncate text-foreground">{log.acao}</span>
+                    {log.duracao_ms && <span className="text-xs text-muted-foreground tabular-nums">{log.duracao_ms}ms</span>}
+                    <span className="text-xs text-muted-foreground tabular-nums">{formatDate(log.created_at)}</span>
+                    {log.erro_msg && (
+                      <Badge variant="danger">Erro</Badge>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </ScrollArea>
         </TabsContent>
@@ -527,167 +550,160 @@ function AgentConfig({ empresaId }: { empresaId: string }) {
     }
   };
 
+  const rotulo = 'text-sm text-muted-foreground mb-1 block';
+
   return (
     <div className="space-y-6 max-w-2xl">
-      <Card className="bg-card border-border">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-base">Critérios de Prospecção</CardTitle>
+          <CardTitle>Critérios de Prospecção</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="text-sm text-muted-foreground">Score mínimo (auto)</label>
-              <input type="number" value={config.score_minimo_auto} onChange={e => setConfig(c => ({ ...c, score_minimo_auto: Number(e.target.value) }))}
-                className="w-full mt-1 px-3 py-2 rounded-md bg-background border border-border text-foreground text-sm" />
+              <Label htmlFor="cfg-score-auto" className={rotulo}>Score mínimo (auto)</Label>
+              <Input id="cfg-score-auto" type="number" value={config.score_minimo_auto} onChange={e => setConfig(c => ({ ...c, score_minimo_auto: Number(e.target.value) }))} />
               <p className="text-xs text-muted-foreground mt-1">Acima deste score, o agente participa automaticamente</p>
             </div>
             <div>
-              <label className="text-sm text-muted-foreground">Score mínimo (notificação)</label>
-              <input type="number" value={config.score_minimo_notif} onChange={e => setConfig(c => ({ ...c, score_minimo_notif: Number(e.target.value) }))}
-                className="w-full mt-1 px-3 py-2 rounded-md bg-background border border-border text-foreground text-sm" />
+              <Label htmlFor="cfg-score-notif" className={rotulo}>Score mínimo (notificação)</Label>
+              <Input id="cfg-score-notif" type="number" value={config.score_minimo_notif} onChange={e => setConfig(c => ({ ...c, score_minimo_notif: Number(e.target.value) }))} />
               <p className="text-xs text-muted-foreground mt-1">Abaixo deste score, é descartado silenciosamente</p>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="text-sm text-muted-foreground">Valor mínimo (R$)</label>
-              <MoneyInput value={Number(config.valor_minimo) || 0} onValueChange={v => setConfig(c => ({ ...c, valor_minimo: v }))} className="mt-1" />
+              <Label htmlFor="cfg-valor-min" className={rotulo}>Valor mínimo (R$)</Label>
+              <MoneyInput id="cfg-valor-min" value={Number(config.valor_minimo) || 0} onValueChange={v => setConfig(c => ({ ...c, valor_minimo: v }))} />
             </div>
             <div>
-              <label className="text-sm text-muted-foreground">Valor máximo (R$)</label>
-              <MoneyInput value={Number(config.valor_maximo) || 0} onValueChange={v => setConfig(c => ({ ...c, valor_maximo: v }))} className="mt-1" />
+              <Label htmlFor="cfg-valor-max" className={rotulo}>Valor máximo (R$)</Label>
+              <MoneyInput id="cfg-valor-max" value={Number(config.valor_maximo) || 0} onValueChange={v => setConfig(c => ({ ...c, valor_maximo: v }))} />
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <Card className="bg-card border-border">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-base">Estratégia de Lance</CardTitle>
+          <CardTitle>Estratégia de Lance</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <label className="text-sm text-muted-foreground">Modo de lance</label>
-            <select value={config.estrategia_lance} onChange={e => setConfig(c => ({ ...c, estrategia_lance: e.target.value }))}
-              className="w-full mt-1 px-3 py-2 rounded-md bg-background border border-border text-foreground text-sm">
-              <option value="agressivo">Agressivo — cobrir qualquer lance rapidamente</option>
-              <option value="conservador">Conservador — preservar margem mínima</option>
-              <option value="oportunista">Oportunista — lance único nos últimos minutos</option>
-              <option value="adaptativo">Adaptativo (IA) — estratégia dinâmica via IA</option>
-            </select>
+            <Label htmlFor="cfg-estrategia" className={rotulo}>Modo de lance</Label>
+            <Select value={config.estrategia_lance} onValueChange={v => setConfig(c => ({ ...c, estrategia_lance: v }))}>
+              <SelectTrigger id="cfg-estrategia"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="agressivo">Agressivo — cobrir qualquer lance rapidamente</SelectItem>
+                <SelectItem value="conservador">Conservador — preservar margem mínima</SelectItem>
+                <SelectItem value="oportunista">Oportunista — lance único nos últimos minutos</SelectItem>
+                <SelectItem value="adaptativo">Adaptativo (IA) — estratégia dinâmica via IA</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div>
-            <label className="text-sm text-muted-foreground">Preço mínimo (% do estimado)</label>
-            <input type="number" step="0.01" value={config.preco_minimo_perc} onChange={e => setConfig(c => ({ ...c, preco_minimo_perc: Number(e.target.value) }))}
-              className="w-full mt-1 px-3 py-2 rounded-md bg-background border border-border text-foreground text-sm" />
+            <Label htmlFor="cfg-preco-min-perc" className={rotulo}>Preço mínimo (% do estimado)</Label>
+            <Input id="cfg-preco-min-perc" type="number" step="0.01" value={config.preco_minimo_perc} onChange={e => setConfig(c => ({ ...c, preco_minimo_perc: Number(e.target.value) }))} />
             <p className="text-xs text-muted-foreground mt-1">Nunca lançar abaixo de {(config.preco_minimo_perc * 100).toFixed(0)}% do valor estimado</p>
           </div>
         </CardContent>
       </Card>
 
-      <Card className="bg-card border-border">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-base">Automação e Alertas</CardTitle>
+          <CardTitle>Automação e Alertas</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-sm font-medium text-foreground">Auto-submeter proposta</p>
+              <Label htmlFor="cfg-auto-submeter" className="text-sm font-medium text-foreground">Auto-submeter proposta</Label>
               <p className="text-xs text-muted-foreground">Submeter proposta sem aprovação manual</p>
             </div>
-            <Switch checked={config.auto_submeter_prop} onCheckedChange={v => setConfig(c => ({ ...c, auto_submeter_prop: v }))} />
+            <Switch id="cfg-auto-submeter" checked={config.auto_submeter_prop} onCheckedChange={v => setConfig(c => ({ ...c, auto_submeter_prop: v }))} />
           </div>
           <Separator />
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-sm font-medium text-foreground">Auto-responder chat</p>
+              <Label htmlFor="cfg-auto-chat" className="text-sm font-medium text-foreground">Auto-responder chat</Label>
               <p className="text-xs text-muted-foreground">Responder automaticamente a mensagens simples do pregoeiro</p>
             </div>
-            <Switch checked={config.auto_responder_chat} onCheckedChange={v => setConfig(c => ({ ...c, auto_responder_chat: v }))} />
+            <Switch id="cfg-auto-chat" checked={config.auto_responder_chat} onCheckedChange={v => setConfig(c => ({ ...c, auto_responder_chat: v }))} />
           </div>
           <Separator />
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-sm font-medium text-foreground">Alertas WhatsApp</p>
+              <Label htmlFor="cfg-whatsapp" className="text-sm font-medium text-foreground">Alertas WhatsApp</Label>
               <p className="text-xs text-muted-foreground">Receber alertas urgentes via WhatsApp</p>
             </div>
-            <Switch checked={config.alertar_whatsapp} onCheckedChange={v => setConfig(c => ({ ...c, alertar_whatsapp: v }))} />
+            <Switch id="cfg-whatsapp" checked={config.alertar_whatsapp} onCheckedChange={v => setConfig(c => ({ ...c, alertar_whatsapp: v }))} />
           </div>
           {config.alertar_whatsapp && (
             <div>
-              <label className="text-sm text-muted-foreground">Número WhatsApp</label>
-              <input type="text" placeholder="5511999999999" value={config.whatsapp_numero}
-                onChange={e => setConfig(c => ({ ...c, whatsapp_numero: e.target.value }))}
-                className="w-full mt-1 px-3 py-2 rounded-md bg-background border border-border text-foreground text-sm" />
+              <Label htmlFor="cfg-whatsapp-numero" className={rotulo}>Número WhatsApp</Label>
+              <Input id="cfg-whatsapp-numero" type="text" placeholder="5511999999999" value={config.whatsapp_numero}
+                onChange={e => setConfig(c => ({ ...c, whatsapp_numero: e.target.value }))} />
             </div>
           )}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="text-sm text-muted-foreground">Horário início</label>
-              <input type="time" value={config.horario_inicio} onChange={e => setConfig(c => ({ ...c, horario_inicio: e.target.value }))}
-                className="w-full mt-1 px-3 py-2 rounded-md bg-background border border-border text-foreground text-sm" />
+              <Label htmlFor="cfg-horario-inicio" className={rotulo}>Horário início</Label>
+              <Input id="cfg-horario-inicio" type="time" value={config.horario_inicio} onChange={e => setConfig(c => ({ ...c, horario_inicio: e.target.value }))} />
             </div>
             <div>
-              <label className="text-sm text-muted-foreground">Horário fim</label>
-              <input type="time" value={config.horario_fim} onChange={e => setConfig(c => ({ ...c, horario_fim: e.target.value }))}
-                className="w-full mt-1 px-3 py-2 rounded-md bg-background border border-border text-foreground text-sm" />
+              <Label htmlFor="cfg-horario-fim" className={rotulo}>Horário fim</Label>
+              <Input id="cfg-horario-fim" type="time" value={config.horario_fim} onChange={e => setConfig(c => ({ ...c, horario_fim: e.target.value }))} />
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <Card className="bg-card border-border">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <DollarSign className="h-4 w-4 text-primary" />
+          <CardTitle className="flex items-center gap-2">
+            <DollarSign className="h-5 w-5 text-primary" aria-hidden="true" />
             Precificação Autônoma
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="text-sm text-muted-foreground">Fator preço proposta</label>
-              <input type="number" step="0.001" value={config.fator_preco_proposta} onChange={e => setConfig(c => ({ ...c, fator_preco_proposta: Number(e.target.value) }))}
-                className="w-full mt-1 px-3 py-2 rounded-md bg-background border border-border text-foreground text-sm" />
+              <Label htmlFor="cfg-fator-proposta" className={rotulo}>Fator preço proposta</Label>
+              <Input id="cfg-fator-proposta" type="number" step="0.001" value={config.fator_preco_proposta} onChange={e => setConfig(c => ({ ...c, fator_preco_proposta: Number(e.target.value) }))} />
               <p className="text-xs text-muted-foreground mt-1">{((1 - config.fator_preco_proposta) * 100).toFixed(1)}% abaixo do mercado</p>
             </div>
             <div>
-              <label className="text-sm text-muted-foreground">Fator lance inicial</label>
-              <input type="number" step="0.001" value={config.fator_lance_inicial} onChange={e => setConfig(c => ({ ...c, fator_lance_inicial: Number(e.target.value) }))}
-                className="w-full mt-1 px-3 py-2 rounded-md bg-background border border-border text-foreground text-sm" />
+              <Label htmlFor="cfg-fator-lance" className={rotulo}>Fator lance inicial</Label>
+              <Input id="cfg-fator-lance" type="number" step="0.001" value={config.fator_lance_inicial} onChange={e => setConfig(c => ({ ...c, fator_lance_inicial: Number(e.target.value) }))} />
               <p className="text-xs text-muted-foreground mt-1">{((1 - config.fator_lance_inicial) * 100).toFixed(1)}% abaixo do mercado</p>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="text-sm text-muted-foreground">Margem mínima (%)</label>
-              <input type="number" step="0.001" value={config.margem_minima_perc_cfg} onChange={e => setConfig(c => ({ ...c, margem_minima_perc_cfg: Number(e.target.value) }))}
-                className="w-full mt-1 px-3 py-2 rounded-md bg-background border border-border text-foreground text-sm" />
+              <Label htmlFor="cfg-margem-min" className={rotulo}>Margem mínima (%)</Label>
+              <Input id="cfg-margem-min" type="number" step="0.001" value={config.margem_minima_perc_cfg} onChange={e => setConfig(c => ({ ...c, margem_minima_perc_cfg: Number(e.target.value) }))} />
               <p className="text-xs text-muted-foreground mt-1">{(config.margem_minima_perc_cfg * 100).toFixed(1)}% margem mínima</p>
             </div>
             <div>
-              <label className="text-sm text-muted-foreground">Margem alvo (%)</label>
-              <input type="number" step="0.001" value={config.margem_alvo_perc} onChange={e => setConfig(c => ({ ...c, margem_alvo_perc: Number(e.target.value) }))}
-                className="w-full mt-1 px-3 py-2 rounded-md bg-background border border-border text-foreground text-sm" />
+              <Label htmlFor="cfg-margem-alvo" className={rotulo}>Margem alvo (%)</Label>
+              <Input id="cfg-margem-alvo" type="number" step="0.001" value={config.margem_alvo_perc} onChange={e => setConfig(c => ({ ...c, margem_alvo_perc: Number(e.target.value) }))} />
               <p className="text-xs text-muted-foreground mt-1">{(config.margem_alvo_perc * 100).toFixed(1)}% margem alvo</p>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="text-sm text-muted-foreground">Confiança mín. auto-aprovação</label>
-              <input type="number" step="0.01" value={config.confianca_minima_auto} onChange={e => setConfig(c => ({ ...c, confianca_minima_auto: Number(e.target.value) }))}
-                className="w-full mt-1 px-3 py-2 rounded-md bg-background border border-border text-foreground text-sm" />
+              <Label htmlFor="cfg-confianca" className={rotulo}>Confiança mín. auto-aprovação</Label>
+              <Input id="cfg-confianca" type="number" step="0.01" value={config.confianca_minima_auto} onChange={e => setConfig(c => ({ ...c, confianca_minima_auto: Number(e.target.value) }))} />
               <p className="text-xs text-muted-foreground mt-1">{(config.confianca_minima_auto * 100).toFixed(0)}% — abaixo pede revisão humana</p>
             </div>
             <div>
-              <label className="text-sm text-muted-foreground">Preço mínimo absoluto (R$)</label>
-              <MoneyInput value={Number(config.preco_minimo_absoluto) || 0} onValueChange={v => setConfig(c => ({ ...c, preco_minimo_absoluto: v }))} className="mt-1" />
+              <Label htmlFor="cfg-preco-min-abs" className={rotulo}>Preço mínimo absoluto (R$)</Label>
+              <MoneyInput id="cfg-preco-min-abs" value={Number(config.preco_minimo_absoluto) || 0} onValueChange={v => setConfig(c => ({ ...c, preco_minimo_absoluto: v }))} />
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <Button onClick={salvar} disabled={saving} className="w-full">
+      <Button onClick={salvar} disabled={saving} className="w-full sm:w-auto">
         {saving ? 'Salvando...' : 'Salvar Configurações'}
       </Button>
     </div>

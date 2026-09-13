@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useDocumentoFiscal } from '@/hooks/useDocumentoFiscal';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -120,21 +121,24 @@ export default function DocumentoDoLancamento({
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <button
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
                 onClick={() => entrada.current?.click()}
                 disabled={enviando}
                 className={cn(
-                  'transition-colors',
+                  'h-7 w-7 shrink-0',
                   exigeDocumento
-                    ? 'text-warning hover:text-warning/80'
-                    : 'text-muted-foreground/40 hover:text-muted-foreground',
+                    ? 'text-warning hover:text-warning hover:bg-warning-tint'
+                    : 'text-muted-foreground hover:text-foreground',
                 )}
                 aria-label="Anexar documento a este lançamento"
               >
                 {enviando
-                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  : <Upload className="w-3.5 h-3.5" />}
-              </button>
+                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                  : <Upload className="w-4 h-4" />}
+              </Button>
             </TooltipTrigger>
             <TooltipContent side="left">
               <p className="text-xs">
@@ -168,16 +172,19 @@ export default function DocumentoDoLancamento({
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <button
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
             onClick={abrir}
             disabled={abrindo}
-            className="text-muted-foreground hover:text-foreground transition-colors"
+            className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
             aria-label={`Abrir documento ${doc.arquivo_nome}`}
           >
             {abrindo
-              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              : <Paperclip className="w-3.5 h-3.5" />}
-          </button>
+              ? <Loader2 className="w-4 h-4 animate-spin" />
+              : <Paperclip className="w-4 h-4" />}
+          </Button>
         </TooltipTrigger>
         <TooltipContent side="left">
           <p className="text-xs">{doc.arquivo_nome}</p>

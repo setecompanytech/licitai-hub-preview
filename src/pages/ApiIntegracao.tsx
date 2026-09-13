@@ -1,7 +1,8 @@
 import AppLayout from '@/components/layout/AppLayout';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Code2, Copy, CheckCircle2 } from 'lucide-react';
+import { Code2, Copy, CheckCircle2, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -23,11 +24,13 @@ const endpoints = [
   { method: 'GET', path: '/catalogo', desc: 'Listar itens precificados do catálogo', auth: true },
 ];
 
-const methodColors: Record<string, string> = {
-  GET: 'bg-success/10 text-success border-success/30',
-  POST: 'bg-info/10 text-info border-info/30',
-  PUT: 'bg-warning/10 text-warning border-warning/30',
-  DELETE: 'bg-destructive/10 text-destructive border-destructive/30',
+// Verbo HTTP em família semântica do Badge: leitura verde, escrita neutra,
+// atualização âmbar, remoção vermelha.
+const methodVariant: Record<string, 'success' | 'info' | 'warning' | 'danger'> = {
+  GET: 'success',
+  POST: 'info',
+  PUT: 'warning',
+  DELETE: 'danger',
 };
 
 export default function ApiIntegracao() {
@@ -58,76 +61,76 @@ export default function ApiIntegracao() {
   return (
     <AppLayout>
       <div className="space-y-6 max-w-5xl">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-            <Code2 className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground flex-shrink-0" />
-            API de Integração (ERP)
-          </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Endpoints REST para integrar com sistemas externos (ERPs, CRMs, etc.)
-          </p>
-        </div>
+        <CabecalhoPagina
+          icone={<Code2 />}
+          titulo="API de Integração (ERP)"
+          descricao="Endpoints REST para integrar com sistemas externos (ERPs, CRMs, etc.)"
+        />
 
-        <Card className="p-4">
+        <Card className="p-6">
           <h2 className="text-lg font-semibold mb-2">Autenticação</h2>
           <p className="text-sm text-muted-foreground mb-3">
-            Envie o token JWT do usuário no header <code className="bg-muted px-1 rounded">Authorization: Bearer {'<token>'}</code>.
+            Envie o token JWT do usuário no header <code className="bg-muted px-1 rounded-sm">Authorization: Bearer {'<token>'}</code>.
             O token é obtido ao fazer login na plataforma.
           </p>
-          <div className="bg-muted rounded-lg p-3 text-xs font-mono relative">
-            <pre className="whitespace-pre-wrap">{curlExample}</pre>
+          <div className="bg-muted rounded-lg p-4 text-sm font-mono relative overflow-x-auto">
+            <pre className="whitespace-pre-wrap pr-10">{curlExample}</pre>
             <Button
               variant="ghost"
               size="icon"
-              className="absolute top-2 right-2 h-7 w-7"
+              className="absolute top-2 right-2 h-8 w-8"
               onClick={() => copyExample(-1, curlExample)}
+              aria-label="Copiar exemplo de autenticação"
             >
               {copiedIdx === -1 ? <CheckCircle2 className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
             </Button>
           </div>
         </Card>
 
-        <Card className="p-4">
+        <Card className="p-6">
           <h2 className="text-lg font-semibold mb-4">Endpoints Disponíveis</h2>
           <div className="space-y-2">
             {endpoints.map((ep, idx) => (
               <div
                 key={idx}
-                className="flex items-center gap-3 p-3 rounded-lg border border-border/50 hover:bg-muted/30 transition-colors"
+                className="flex flex-wrap items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted transition-colors"
               >
-                <Badge variant="outline" className={`font-mono text-xs min-w-[60px] justify-center ${methodColors[ep.method]}`}>
+                <Badge variant={methodVariant[ep.method]} className="font-mono min-w-[60px] justify-center">
                   {ep.method}
                 </Badge>
-                <code className="text-sm font-mono text-foreground min-w-[200px]">{ep.path}</code>
-                <span className="text-sm text-muted-foreground flex-1">{ep.desc}</span>
+                <code className="text-sm font-mono text-foreground sm:min-w-[200px] break-all">{ep.path}</code>
+                <span className="text-sm text-muted-foreground flex-1 min-w-[12rem]">{ep.desc}</span>
                 {ep.auth && (
-                  <Badge variant="secondary" className="text-xs">🔒 Auth</Badge>
+                  <Badge variant="muted" className="gap-1">
+                    <Lock className="w-3 h-3" aria-hidden="true" /> Auth
+                  </Badge>
                 )}
               </div>
             ))}
           </div>
         </Card>
 
-        <Card className="p-4">
+        <Card className="p-6">
           <h2 className="text-lg font-semibold mb-2">Exemplo: Criar Licitação</h2>
-          <div className="bg-muted rounded-lg p-3 text-xs font-mono relative">
-            <pre className="whitespace-pre-wrap">{postExample}</pre>
+          <div className="bg-muted rounded-lg p-4 text-sm font-mono relative overflow-x-auto">
+            <pre className="whitespace-pre-wrap pr-10">{postExample}</pre>
             <Button
               variant="ghost"
               size="icon"
-              className="absolute top-2 right-2 h-7 w-7"
+              className="absolute top-2 right-2 h-8 w-8"
               onClick={() => copyExample(-2, postExample)}
+              aria-label="Copiar exemplo de criação"
             >
               {copiedIdx === -2 ? <CheckCircle2 className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
             </Button>
           </div>
         </Card>
 
-        <Card className="p-4">
+        <Card className="p-6">
           <h2 className="text-lg font-semibold mb-2">Base URL</h2>
-          <div className="bg-muted rounded-lg p-3 text-sm font-mono flex items-center justify-between">
-            <span className="truncate">{BASE_URL}</span>
-            <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0" onClick={() => copyExample(-3, BASE_URL)}>
+          <div className="bg-muted rounded-lg p-4 text-sm font-mono flex items-center justify-between gap-2">
+            <span className="min-w-0 break-all">{BASE_URL}</span>
+            <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" onClick={() => copyExample(-3, BASE_URL)} aria-label="Copiar Base URL">
               {copiedIdx === -3 ? <CheckCircle2 className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
             </Button>
           </div>

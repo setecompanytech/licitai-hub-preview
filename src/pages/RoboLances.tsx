@@ -3,15 +3,14 @@ import { usePapelEmpresa } from '@/hooks/usePapelEmpresa';
 import ProcessoContextoBanner from '@/components/shared/ProcessoContextoBanner';
 import { useProcessoAtivo } from '@/hooks/useProcessoAtivo';
 import AppLayout from '@/components/layout/AppLayout';
-import heroRoboLances from '@/assets/brand/hero-aperto-de-mao-robo-lances.jpeg';
-import { Badge } from '@/components/ui/badge';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
+import EstadoVazio from '@/components/shared/EstadoVazio';
+import { Badge, badgeVariants } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Switch } from '@/components/ui/switch';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -23,7 +22,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
   Bot, Plus, Play, Pause, Settings, Globe, Clock, TrendingDown,
-  AlertTriangle, CheckCircle2, ExternalLink, RefreshCw, Trash2, Edit2,
+  AlertTriangle, CheckCircle2, RefreshCw, Trash2, Edit2,
   Eye, ChevronDown, Search, MessageSquare, ListChecks, Info,
   Building2, Hash, CalendarDays, FileText, Shield, MoreVertical,
   Zap, Target, ArrowDown, Send, Trophy, XCircle, History, ShieldCheck,
@@ -74,24 +73,29 @@ type Operation = {
 const formatCurrency = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-const statusColors: Record<string, string> = {
-  vencendo: 'bg-success/15 text-success border-success/30',
-  ativo: 'bg-info/15 text-info border-info/30',
-  perdendo: 'bg-warning/15 text-warning border-warning/30',
-  aguardando: 'bg-muted text-muted-foreground border-border',
-  encerrado: 'bg-secondary text-secondary-foreground border-border',
+/** Variantes semânticas do Badge de ui — status sempre com texto. */
+type BadgeVariant = 'success' | 'warning' | 'danger' | 'info' | 'muted';
+
+const statusVariant: Record<string, BadgeVariant> = {
+  vencendo: 'success',
+  ativo: 'info',
+  perdendo: 'warning',
+  aguardando: 'muted',
+  encerrado: 'muted',
 };
+
+const rotuloStatus = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /** Falha silenciosa também vale para permissão: dizer por que não aparece. */
 function SemPermissao() {
   return (
-    <div className="max-w-xl mx-auto text-center py-12 space-y-2">
-      <Shield className="w-8 h-8 text-muted-foreground mx-auto" />
-      <p className="text-sm font-medium">Área restrita ao administrador</p>
-      <p className="text-xs text-muted-foreground">
-        Credenciais de portal, infraestrutura do agente e nível de automação são
-        configurações da empresa. Peça a um administrador em Equipe → Permissões.
-      </p>
+    <div className="mx-auto max-w-xl rounded-lg border border-border bg-card shadow-sm">
+      <EstadoVazio
+        icone={<Shield />}
+        titulo="Área restrita ao administrador"
+        descricao="Credenciais de portal, infraestrutura do agente e nível de automação são configurações da empresa. Peça a um administrador em Equipe → Permissões."
+        tamanho="compacto"
+      />
     </div>
   );
 }
@@ -709,6 +713,54 @@ export default function RoboLances() {
       l.portal.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  /* ── Selo de nível ──
+     O selo não é enfeite: é a informação mais cara desta tela. Nível 3
+     significa que o sistema envia lance com dinheiro da empresa sem ninguém
+     confirmar, e quem abre a página precisa saber disso antes de clicar em
+     qualquer coisa. Ele vinha só dentro da aba de configuração, a dois cliques
+     de distância.
+
+     Armado (nível 2 ou 3), o selo vira ATALHO para a aba de disputa — que é
+     onde mora a parada de emergência. É navegação, não capacidade nova: o
+     botão de parada continua exatamente onde estava, com o mesmo escopo e as
+     mesmas regras. Só o caminho até ele encurtou.
+
+     Veste o Badge semântico de ui (tinta + texto), com o mesmo desenho quer
+     seja botão, quer seja só selo. */
+  const nivelArmado = nivelAutomacao >= 2;
+  const seloNivelClasse = cn(
+    badgeVariants({
+      variant: nivelAutomacao >= 3 ? 'danger' : nivelAutomacao === 2 ? 'warning' : 'muted',
+    }),
+    'gap-1.5 py-1',
+    nivelArmado && 'cursor-pointer hover:brightness-95',
+  );
+  const seloNivelExplica =
+    nivelAutomacao >= 3
+      ? 'O sistema envia lances sem confirmação humana. Clique para ir à disputa, onde fica a parada de emergência.'
+      : nivelAutomacao === 2
+        ? 'O sistema sugere; o envio pede confirmação. Clique para ir à disputa.'
+        : 'Somente acompanhamento — nenhum lance é enviado.';
+  const seloNivelConteudo = (
+    <>
+      <Zap className="w-3 h-3" aria-hidden="true" />
+      Nível {nivelAutomacao}
+      {nivelArmado && <span className="font-normal">· armado</span>}
+    </>
+  );
+  const seloNivel = nivelArmado ? (
+    <button
+      type="button"
+      onClick={() => setActiveMainTab('disputar')}
+      className={seloNivelClasse}
+      title={seloNivelExplica}
+    >
+      {seloNivelConteudo}
+    </button>
+  ) : (
+    <span className={seloNivelClasse} title={seloNivelExplica}>{seloNivelConteudo}</span>
+  );
+
   return (
     <AppLayout>
       {/* Declara a pasta de origem e devolve o caminho de volta. Sem px-4: o
@@ -717,263 +769,176 @@ export default function RoboLances() {
       <div className="mb-3">
         <ProcessoContextoBanner />
       </div>
-      {/* ── Herói do módulo ──
-          REBRAND — o cabeçalho era texto sobre a superfície da página, igual ao
-          de outras 50 telas. O aperto de mão entre a mão robótica e a humana é
-          o assunto DESTA: o robô só dispara lance dentro do que uma pessoa
-          autorizou, que é exatamente o que os Níveis 1/2/3 abaixo governam.
 
-          A foto sangra na direita em vez de cobrir a faixa inteira. Esticada de
-          ponta a ponta, o recorte de uma faixa baixa corta o aperto de mão em
-          cima e embaixo e sobra só um punhado de dedos — assunto irreconhecível
-          é enfeite, não símbolo. Contida a 512px (a largura NATIVA do arquivo,
-          então zero ampliação) e com a faixa em 232px de altura, o gesto
-          inteiro aparece.
+      <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="flex flex-col">
+        {/* ── Cabeçalho do módulo (identidade 12/09) ──
+            A faixa herói navy com a foto do aperto de mão saiu: o cabeçalho
+            padrão é claro, com o ícone do módulo em tinta verde, o título em
+            navy e a ação principal à direita. As abas e o selo de nível ficam
+            entre o título e o conteúdo — a navegação e o estado de risco,
+            lado a lado, visíveis antes de qualquer clique.
 
-          Dois véus: o lateral derrete a borda esquerda da foto no navy, para
-          ela não parecer colada por cima; o de topo escurece o alto, onde fica
-          a parte mais clara do braço robótico.
+            Título, descrição, ícone e trilha NÃO são escritos aqui: vêm de
+            `lib/navegacao/paginas.ts` pela rota atual. Repeti-los no .tsx era
+            como os 93 títulos à mão divergiam — mudar o nome do módulo
+            passava a exigir caçar a string em cada tela.
 
-          Navy nos DOIS temas, pela mesma razão da barra do topo em `AppLayout`:
-          é moldura de marca, não superfície de tema. */}
-      <div className="mb-3 relative overflow-hidden rounded-xl bg-gradient-to-r from-navy-hover to-navy">
-        <div
-          aria-hidden="true"
-          className="absolute inset-y-0 right-0 hidden w-[512px] max-w-[52%] md:block"
-        >
-          <img
-            src={heroRoboLances}
-            alt=""
-            className="w-full h-full object-cover object-[center_45%]"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-navy via-navy/0 to-transparent" />
-          <div className="absolute inset-x-0 top-0 h-[70%] bg-gradient-to-b from-navy/45 to-transparent" />
-        </div>
+            Credenciais da empresa, infraestrutura do agente e nível de
+            automação (decisão de risco financeiro) são do administrador.
+            Operador e visualizador ficam com a aba de trabalho.
 
-        <div className="relative flex flex-col justify-center gap-4 px-5 py-6 sm:px-7 sm:py-8 md:min-h-[232px]">
-          <div className="flex items-start gap-3">
-            <span className="flex items-center justify-center w-11 h-11 rounded-xl bg-white/10 ring-1 ring-white/20 text-gold shrink-0">
-              <Bot className="w-6 h-6" aria-hidden="true" />
-            </span>
-            <div className="min-w-0 max-w-lg">
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white leading-tight">
-                Robô de Lances
-              </h1>
-              <p className="text-sm text-white/75 mt-1 leading-relaxed">
-                Automação de disputa em portais de licitação
-              </p>
-            </div>
-          </div>
-
-          {/* O selo de nível não é enfeite: é a informação mais cara desta tela.
-              Nível 3 significa que o sistema envia lance com dinheiro da empresa
-              sem ninguém confirmar, e quem abre a página precisa saber disso
-              antes de clicar em qualquer coisa. Ele vinha só dentro da aba de
-              configuração, a dois cliques de distância.
-
-              Armado (nível 2 ou 3), o selo vira ATALHO para a aba de disputa —
-              que é onde mora a parada de emergência. Antes, de Portais ou
-              Configurações, o freio ficava a dois cliques e sem pista de onde
-              estava.
-
-              É navegação, não capacidade nova: o botão de parada continua
-              exatamente onde estava, com o mesmo escopo e as mesmas regras. Só
-              o caminho até ele encurtou. */}
-          {(() => {
-            const armado = nivelAutomacao >= 2;
-            const classe = cn(
-              'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider border transition-colors',
-              nivelAutomacao >= 3
-                ? 'border-destructive-line bg-destructive-tint text-destructive-ink'
-                : nivelAutomacao === 2
-                  ? 'border-warning-line bg-warning-tint text-warning-ink'
-                  /* Nível 1 sobre navy: `bg-muted` era um chip CLARO no tema
-                     claro — o estado menos importante virava o mais chamativo
-                     da faixa. Neutro translúcido fica quieto nos dois temas. */
-                  : 'border-white/25 bg-white/10 text-white/85',
-              armado && 'hover:brightness-95 cursor-pointer',
-            );
-            const explica =
-              nivelAutomacao >= 3
-                ? 'O sistema envia lances sem confirmação humana. Clique para ir à disputa, onde fica a parada de emergência.'
-                : nivelAutomacao === 2
-                  ? 'O sistema sugere; o envio pede confirmação. Clique para ir à disputa.'
-                  : 'Somente acompanhamento — nenhum lance é enviado.';
-            const conteudo = (
-              <>
-                <Zap className="w-3 h-3" aria-hidden="true" />
-                Nível {nivelAutomacao}
-                {armado && <span className="font-normal normal-case opacity-80">· armado</span>}
-              </>
-            );
-            return armado ? (
-              <button
-                type="button"
-                onClick={() => setActiveMainTab('disputar')}
-                className={cn(classe, 'self-start')}
-                title={explica}
-              >
-                {conteudo}
-              </button>
-            ) : (
-              <span className={cn(classe, 'self-start')} title={explica}>{conteudo}</span>
-            );
-          })()}
-        </div>
-      </div>
-
-      <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="h-full flex flex-col">
-        {/* A faixa de abas ficou só com a NAVEGAÇÃO e o botão de exportar.
-            Título e selo subiram para o herói, e o botão continua aqui porque
-            `variant="outline"` é feito para superfície de tema: sobre navy o
-            texto dele ficaria escuro em cima de escuro. */}
-        <div className="border-b border-border bg-card px-4 pt-3 pb-0">
-          <div className="flex items-end justify-between gap-3">
-            <TabsList className="bg-transparent p-0 h-auto gap-1 flex-wrap justify-start">
-              <TabsTrigger value="disputar" className="text-xs">
-                <Zap className="w-3.5 h-3.5 mr-1" /> Disputar
-              </TabsTrigger>
-              {/* Credenciais da empresa, infraestrutura do agente e nível de
-                  automação (decisão de risco financeiro) são do administrador.
-                  Operador e visualizador ficam com a aba de trabalho. */}
-              {isAdmin && (
-                <>
-                  {/* Agente Cloud vem logo depois de Disputar porque é o
-                      movimento seguinte de quem acabou de enviar: a sessão pode
-                      durar segundos, e ter "Portais" no caminho obriga a
-                      atravessar uma aba que não interessa naquele instante.
-                      Portais é cadastro — se faz uma vez, não a cada disputa. */}
-                  <TabsTrigger value="agente" className="text-xs">
-                    <Shield className="w-3.5 h-3.5 mr-1" /> Agente Cloud
-                  </TabsTrigger>
-                  <TabsTrigger value="portais" className="text-xs">
-                    <Globe className="w-3.5 h-3.5 mr-1" /> Portais
-                  </TabsTrigger>
-                  <TabsTrigger value="configuracoes" className="text-xs">
-                    <Settings className="w-3.5 h-3.5 mr-1" /> Configurações
-                  </TabsTrigger>
-                </>
-              )}
-            </TabsList>
-            <div className="pb-1.5 shrink-0">
+            Agente Cloud vem logo depois de Disputar porque é o movimento
+            seguinte de quem acabou de enviar: a sessão pode durar segundos, e
+            ter "Portais" no caminho obriga a atravessar uma aba que não
+            interessa naquele instante. Portais é cadastro — se faz uma vez,
+            não a cada disputa. */}
+        <CabecalhoPagina
+          acoes={
+            <>
               <ExportarResultados lances={lances} />
-            </div>
-          </div>
-        </div>
-
-        {/* ── DISPUTAR TAB ── */}
-        <TabsContent value="disputar" className="flex-1 m-0 flex overflow-hidden">
-          {/* LEFT SIDEBAR – Disputes List */}
-          <div className="w-72 border-r border-border bg-card flex flex-col shrink-0">
-            <div className="p-3 border-b border-border space-y-2">
-              <h3 className="text-sm font-semibold text-foreground">Disputas adicionadas</h3>
-              {podeOperar ? (
+              {podeOperar && (
                 <ConfigurarLanceDialog
                   processoAtivoId={processoId}
                   onSave={handleSaveLance}
                   trigger={
-                    <Button size="sm" variant="outline" className="w-full justify-start gap-2 text-xs">
-                      <Plus className="w-3.5 h-3.5" /> Nova disputa
+                    <Button>
+                      <Plus className="w-4 h-4" aria-hidden="true" /> Nova sessão
                     </Button>
                   }
                 />
-              ) : (
-                /* Visualizador acompanha a sessão — vê posição, lances e
-                   resultado — mas não configura estratégia nem dispara lance. */
-                <div className="rounded-md border border-dashed border-border px-3 py-2 text-xs text-muted-foreground">
+              )}
+            </>
+          }
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <TabsList>
+              <TabsTrigger value="disputar">
+                <Zap className="w-4 h-4 mr-1.5" aria-hidden="true" /> Disputar
+              </TabsTrigger>
+              {isAdmin && (
+                <>
+                  <TabsTrigger value="agente">
+                    <Shield className="w-4 h-4 mr-1.5" aria-hidden="true" /> Agente
+                  </TabsTrigger>
+                  <TabsTrigger value="portais">
+                    <Globe className="w-4 h-4 mr-1.5" aria-hidden="true" /> Portais
+                  </TabsTrigger>
+                  <TabsTrigger value="configuracoes">
+                    <Settings className="w-4 h-4 mr-1.5" aria-hidden="true" /> Configurações
+                  </TabsTrigger>
+                </>
+              )}
+            </TabsList>
+            {seloNivel}
+          </div>
+        </CabecalhoPagina>
+
+        {/* ── DISPUTAR TAB ── */}
+        <TabsContent
+          value="disputar"
+          className="m-0 flex flex-col md:flex-row overflow-hidden rounded-lg border border-border bg-card shadow-sm"
+        >
+          {/* LEFT SIDEBAR – lista de disputas. No celular vira a faixa de cima,
+              com a lista limitada em altura; no desktop, coluna à esquerda. */}
+          <aside className="w-full md:w-72 md:shrink-0 border-b md:border-b-0 md:border-r border-border flex flex-col">
+            <div className="p-4 border-b border-border space-y-3">
+              <h2 className="text-lg font-semibold text-foreground">Disputas adicionadas</h2>
+              {/* O gatilho de criar subiu para o cabeçalho, como ação principal
+                  da tela ("Nova sessão", pelo registro). Aqui havia um SEGUNDO
+                  gatilho do MESMO diálogo, com outro rótulo — dois nomes para a
+                  mesma coisa na mesma dobra.
+
+                  Visualizador acompanha a sessão — vê posição, lances e
+                  resultado — mas não configura estratégia nem dispara lance, e
+                  continua sabendo por quê. */}
+              {!podeOperar && (
+                <div className="rounded-md border border-dashed border-border px-3 py-2 text-sm text-muted-foreground">
                   Você acompanha as disputas em modo leitura. Para configurar,
                   peça o papel de operador em Equipe → Permissões.
                 </div>
               )}
               <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
                 <Input
-                  placeholder="Buscar..."
+                  placeholder="Buscar disputa..."
+                  aria-label="Buscar disputa"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="h-8 pl-8 text-xs"
+                  className="pl-9"
                 />
               </div>
             </div>
-            <ScrollArea className="flex-1">
-              <div className="p-1.5 space-y-1">
+            <div className="max-h-80 overflow-y-auto md:max-h-none md:flex-1">
+              <div className="p-2 space-y-1">
                 {filteredLances.length === 0 && (
-                  <div className="text-center py-8 px-3">
-                    <Bot className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
-                    <p className="text-xs text-muted-foreground">Nenhuma disputa adicionada.</p>
-                    <p className="text-xs text-muted-foreground mt-1">Clique em "Nova disputa" para começar.</p>
-                  </div>
+                  <EstadoVazio
+                    icone={<Bot />}
+                    titulo="Nenhuma disputa adicionada"
+                    descricao={
+                      searchTerm
+                        ? 'Nenhuma disputa corresponde à busca.'
+                        : 'Use "Nova sessão", no topo da tela, para começar.'
+                    }
+                    tamanho="compacto"
+                  />
                 )}
-                {filteredLances.map((lance) => (
-                  <button
-                    key={lance.id}
-                    onClick={() => alternarSelecao(lance.id)}
-                    aria-pressed={selectedId === lance.id}
-                    title={selectedId === lance.id ? 'Clique de novo para desmarcar' : undefined}
-                    className={`w-full text-left rounded-lg px-3 py-2.5 transition-colors text-xs group ${
-                      selectedId === lance.id
-                        ? 'bg-accent text-accent-foreground'
-                        : 'hover:bg-muted/80 text-foreground'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold truncate">{lance.edital}</span>
-                      <Badge
-                        variant="outline"
-                        className={`text-xs scale-90 ${
-                          selectedId === lance.id
-                            ? 'border-accent-foreground/30 text-accent-foreground'
-                            : statusColors[lance.status]
-                        }`}
-                      >
-                        {lance.status === 'ativo' && <span className="w-1.5 h-1.5 rounded-full bg-current mr-1 animate-pulse" />}
-                        {lance.status.charAt(0).toUpperCase() + lance.status.slice(1)}
-                      </Badge>
-                    </div>
-                    <p className={`text-xs mt-0.5 truncate ${
-                      selectedId === lance.id ? 'text-accent-foreground/70' : 'text-muted-foreground'
-                    }`}>
-                      {lance.portal}
-                    </p>
-                    {lance.horario && (
-                      <div className={`flex items-center gap-1 text-xs mt-1 ${
-                        selectedId === lance.id ? 'text-accent-foreground/70' : 'text-muted-foreground'
-                      }`}>
-                        <CalendarDays className="w-3 h-3" />
-                        Sessão: {lance.horario}
+                {filteredLances.map((lance) => {
+                  const selecionada = selectedId === lance.id;
+                  return (
+                    <button
+                      key={lance.id}
+                      type="button"
+                      onClick={() => alternarSelecao(lance.id)}
+                      aria-pressed={selecionada}
+                      title={selecionada ? 'Clique de novo para desmarcar' : undefined}
+                      className={cn(
+                        'w-full text-left rounded-md px-3 py-2.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                        selecionada ? 'bg-primary-tint text-foreground' : 'text-foreground hover:bg-muted',
+                      )}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-semibold truncate">{lance.edital}</span>
+                        <Badge variant={statusVariant[lance.status] || 'muted'} className="shrink-0">
+                          {lance.status === 'ativo' && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-current mr-1 animate-pulse" aria-hidden="true" />
+                          )}
+                          {rotuloStatus(lance.status)}
+                        </Badge>
                       </div>
-                    )}
-                    {lance.licitacaoId && (
-                      <div className={`flex items-center gap-1 text-xs mt-0.5 ${
-                        selectedId === lance.id ? 'text-accent-foreground/70' : 'text-muted-foreground'
-                      }`}>
-                        <MessageSquare className="w-3 h-3" />
-                        Vinculado ao Kanban
-                      </div>
-                    )}
-                  </button>
-                ))}
+                      <p className="text-xs text-muted-foreground mt-0.5 truncate">{lance.portal}</p>
+                      {lance.horario && (
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                          <CalendarDays className="w-3 h-3" aria-hidden="true" />
+                          Sessão: {lance.horario}
+                        </div>
+                      )}
+                      {lance.licitacaoId && (
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                          <MessageSquare className="w-3 h-3" aria-hidden="true" />
+                          Vinculado ao Kanban
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
-            </ScrollArea>
-          </div>
+            </div>
+          </aside>
 
           {/* MAIN CONTENT */}
-          <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 min-w-0 flex flex-col">
             {/* Simultaneous disputes summary bar */}
             <DisputasResumo lances={lances} onSelect={alternarSelecao} selectedId={selectedId} />
 
             {!selectedLance ? (
               /* empty state with level selector */
-              <div className="flex-1 flex flex-col items-center justify-center bg-muted/20 gap-6 p-6">
-                <div className="text-center space-y-3">
-                  <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto">
-                    <Target className="w-8 h-8 text-muted-foreground" />
-                  </div>
-                  <h3 className="text-sm font-semibold text-foreground">Selecione ou crie uma disputa</h3>
-                  <p className="text-xs text-muted-foreground max-w-xs">
-                    Adicione uma nova disputa no painel lateral ou selecione uma existente para gerenciar seus lances.
-                  </p>
-                </div>
+              <div className="flex-1 flex flex-col items-center justify-center gap-6 p-6">
+                <EstadoVazio
+                  icone={<Target />}
+                  titulo="Selecione ou crie uma disputa"
+                  descricao={'Abra uma disputa da lista ao lado ou use "Nova sessão", no topo da tela, para gerenciar os lances.'}
+                  className="py-0"
+                />
                 {/* Level selector in empty state */}
                 <div className="w-full max-w-3xl">
                   <NivelAutomacaoSelector nivel={nivelAutomacao} onChange={handleNivelChange} />
@@ -990,31 +955,27 @@ export default function RoboLances() {
                     `flex-wrap` faz a barra quebrar em duas linhas em vez de
                     espremer o titulo, e `shrink-0` no grupo de acoes garante
                     que quem cede espaco e o texto, nao o botao. */}
-                <div className="border-b border-border bg-card px-4 py-2.5 flex items-center justify-between gap-x-3 gap-y-2 flex-wrap shrink-0">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div>
-                      <h2 className="text-sm font-bold flex items-center gap-2">
+                <div className="border-b border-border px-4 py-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+                  <div className="flex flex-wrap items-center gap-3 min-w-0">
+                    <div className="min-w-0">
+                      <h2 className="text-lg font-semibold flex flex-wrap items-center gap-2">
                         {selectedLance.edital}
                         {selectedLance.horario && (
-                          <span className="text-xs font-normal text-muted-foreground">
+                          <span className="text-sm font-normal text-muted-foreground">
                             — {selectedLance.horario}
                           </span>
                         )}
                       </h2>
-                      <p className="text-xs text-muted-foreground">{selectedLance.portal}</p>
+                      <p className="text-sm text-muted-foreground">{selectedLance.portal}</p>
                     </div>
-                    <Badge variant="outline" className={statusColors[selectedLance.status]}>
-                      {selectedLance.status.charAt(0).toUpperCase() + selectedLance.status.slice(1)}
+                    <Badge variant={statusVariant[selectedLance.status] || 'muted'}>
+                      {rotuloStatus(selectedLance.status)}
                     </Badge>
-                    <Badge variant="outline" className={`text-xs ${
-                      nivelAutomacao === 1 ? 'bg-info/15 text-info border-info/30' :
-                      nivelAutomacao === 2 ? 'bg-warning/15 text-warning border-warning/30' :
-                      'bg-destructive/15 text-destructive border-destructive/30'
-                    }`}>
+                    <Badge variant={nivelAutomacao === 1 ? 'info' : nivelAutomacao === 2 ? 'warning' : 'danger'}>
                       N{nivelAutomacao} — {nivelAutomacao === 1 ? 'Assistente' : nivelAutomacao === 2 ? 'Semi' : 'Auto'}
                     </Badge>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex flex-wrap items-center gap-2 shrink-0">
                     {/* O FREIO NÃO DEPENDE DO NÍVEL DE AUTOMAÇÃO — mas
                         depende de haver o que frear.
                         Ele ficava escondido atrás de `nivelAutomacao >= 2`, sob
@@ -1037,17 +998,15 @@ export default function RoboLances() {
                     {/* Level 2: Authorize strategy button */}
                     {nivelAutomacao === 2 && !estrategiaAutorizada && selectedLance.status === 'aguardando' && (
                       <Button
-                        size="sm"
                         variant="outline"
-                        className="text-xs gap-1.5 border-warning/40 text-warning hover:bg-warning/10"
                         onClick={() => setAutorizacaoOpen(true)}
                       >
-                        <ShieldCheck className="w-3.5 h-3.5" /> Autorizar Estratégia
+                        <ShieldCheck className="w-4 h-4" aria-hidden="true" /> Autorizar Estratégia
                       </Button>
                     )}
                     {estrategiaAutorizada && (
-                      <Badge variant="outline" className="bg-success/15 text-success border-success/30 text-xs">
-                        ✓ Estratégia Autorizada
+                      <Badge variant="success" className="gap-1">
+                        <CheckCircle2 className="w-3 h-3" aria-hidden="true" /> Estratégia Autorizada
                       </Badge>
                     )}
 
@@ -1059,87 +1018,84 @@ export default function RoboLances() {
                         Só o operador vê: quem tem papel de visualizador
                         acompanha a disputa, não dispara sessão. */}
                     {podeOperar && (
-                      <div className="flex items-center gap-2">
+                      <>
                         <Button
-                          size="sm"
                           onClick={handleEnviarAoRobo}
                           disabled={enviandoAoRobo}
-                          className="text-xs gap-1.5 bg-accent hover:bg-accent/90 text-accent-foreground"
                           title="Abre a sessão no agente: entra no portal, navega até a disputa e lê a tela. Não envia lance — o envio segue travado até o portal ser liberado."
                         >
                           {enviandoAoRobo
-                            ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Enviando…</>
-                            : <><Send className="w-3.5 h-3.5" /> Enviar ao robô</>}
+                            ? <><RefreshCw className="w-4 h-4 animate-spin" aria-hidden="true" /> Enviando…</>
+                            : <><Send className="w-4 h-4" aria-hidden="true" /> Enviar ao robô</>}
                         </Button>
 
                         {/* O ATALHO PRECISA VIR ANTES DO ENVIO.
                             Uma sessão que falha dura ~13 segundos, medidos. Quem
                             clica em enviar e só depois procura onde assistir
                             chega quando já acabou — e o que sobra é um spinner
-                            que termina em nada, sem dizer para onde ir. */}
+                            que termina em nada, sem dizer para onde ir.
+
+                            Quando acende (`destacarAssistir`), o botão vira a
+                            ação verde e pulsa pelo `pulse-glow` — que anima só
+                            o box-shadow, sem piscar o texto. */}
                         <Button
-                          size="sm"
                           variant={destacarAssistir ? 'default' : 'ghost'}
                           onClick={() => {
                             setDestacarAssistir(false);
                             irParaTelaRemota();
                           }}
-                          className={
-                            destacarAssistir
-                              ? 'text-xs gap-1.5 bg-accent hover:bg-accent/90 text-accent-foreground animate-pulse-glow ring-2 ring-accent/40'
-                              : 'text-xs gap-1.5 text-muted-foreground hover:text-foreground'
-                          }
+                          className={destacarAssistir ? 'animate-pulse-glow' : 'text-muted-foreground hover:text-foreground'}
                           title="Abre a tela remota já conectada. A sessão pode durar poucos segundos — deixá-la aberta antes de enviar é o jeito de acompanhar desde o início."
                         >
-                          <Monitor className="w-3.5 h-3.5" />
+                          <Monitor className="w-4 h-4" aria-hidden="true" />
                           {destacarAssistir ? 'Assista agora — o robô está entrando' : 'Assistir ao vivo'}
                         </Button>
-                      </div>
+                      </>
                     )}
 
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button size="sm" variant="outline" className="text-xs gap-1.5">
-                          <Settings className="w-3.5 h-3.5" /> Ações <ChevronDown className="w-3 h-3" />
+                        <Button variant="outline">
+                          <Settings className="w-4 h-4" aria-hidden="true" /> Ações <ChevronDown className="w-4 h-4" aria-hidden="true" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => setDetailsOpen(true)}>
-                          <Info className="w-3.5 h-3.5 mr-2" /> Detalhes da licitação
+                          <Info className="w-4 h-4 mr-2" aria-hidden="true" /> Detalhes da licitação
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleToggleStatus(selectedLance.id)}>
                           {selectedLance.status === 'aguardando' ? (
-                            <><Play className="w-3.5 h-3.5 mr-2" /> Iniciar disputa</>
+                            <><Play className="w-4 h-4 mr-2" aria-hidden="true" /> Iniciar disputa</>
                           ) : (
-                            <><Pause className="w-3.5 h-3.5 mr-2" /> Pausar disputa</>
+                            <><Pause className="w-4 h-4 mr-2" aria-hidden="true" /> Pausar disputa</>
                           )}
                         </DropdownMenuItem>
                         <DropdownMenuItem>
-                          <Edit2 className="w-3.5 h-3.5 mr-2" /> Editar parâmetros
+                          <Edit2 className="w-4 h-4 mr-2" aria-hidden="true" /> Editar parâmetros
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          className="text-success focus:text-success"
+                          className="text-success-ink focus:text-success-ink"
                           onClick={() => handleEndDispute('venceu')}
                         >
-                          <Trophy className="w-3.5 h-3.5 mr-2" /> Encerrar como Venceu
+                          <Trophy className="w-4 h-4 mr-2" aria-hidden="true" /> Encerrar como Venceu
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-destructive focus:text-destructive"
                           onClick={() => handleEndDispute('perdeu')}
                         >
-                          <XCircle className="w-3.5 h-3.5 mr-2" /> Encerrar como Perdeu
+                          <XCircle className="w-4 h-4 mr-2" aria-hidden="true" /> Encerrar como Perdeu
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-destructive focus:text-destructive"
                           onClick={() => handleDelete(selectedLance.id)}
                         >
-                          <Trash2 className="w-3.5 h-3.5 mr-2" /> Remover disputa
+                          <Trash2 className="w-4 h-4 mr-2" aria-hidden="true" /> Remover disputa
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
-                    <div className="relative">
-                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                      <Input placeholder="Buscar item..." className="h-8 pl-8 text-xs w-44" />
+                    <div className="relative w-full sm:w-48">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
+                      <Input placeholder="Buscar item..." aria-label="Buscar item" className="pl-9" />
                     </div>
                   </div>
                 </div>
@@ -1153,7 +1109,7 @@ export default function RoboLances() {
                     sessão não há o que mostrar, e um cartão permanente dizendo
                     "aguardando" viraria paisagem. */}
                 {sessaoVivaDesta && (
-                  <div className="px-4 pt-3">
+                  <div className="px-4 pt-4">
                     <ConferenciaDosItens
                       conferencia={sessaoVivaDesta.conferencia}
                       edital={selectedLance.edital}
@@ -1162,83 +1118,85 @@ export default function RoboLances() {
                 )}
 
                 {/* ── Items Table ── */}
-                <div className="flex-1 overflow-auto">
+                <div className="min-w-0">
                   {disputeItems.length === 0 ? (
-                    <div className="flex-1 flex items-center justify-center py-16">
-                      <div className="text-center space-y-2">
-                        <ListChecks className="w-8 h-8 text-muted-foreground/40 mx-auto" />
-                        <p className="text-xs text-muted-foreground">Nenhum item cadastrado nesta disputa.</p>
-                        <p className="text-xs text-muted-foreground">Edite a disputa para adicionar itens e lotes.</p>
-                      </div>
-                    </div>
+                    <EstadoVazio
+                      icone={<ListChecks />}
+                      titulo="Nenhum item cadastrado nesta disputa"
+                      descricao="Edite a disputa para adicionar itens e lotes."
+                    />
                   ) : (
                   <Table>
                     <TableHeader>
-                      <TableRow className="bg-muted/50">
-                        <TableHead className="w-10 text-center text-xs">Item</TableHead>
-                        <TableHead className="w-10 text-center text-xs" />
-                        <TableHead className="text-xs">Situação</TableHead>
-                        <TableHead className="text-right text-xs">Vlr Ref.</TableHead>
-                        <TableHead className="text-right text-xs">Melhor Lance</TableHead>
-                        <TableHead className="text-right text-xs">Seu Último Lance</TableHead>
-                        <TableHead className="text-center text-xs">Qtd</TableHead>
-                        <TableHead className="text-center text-xs">Disputando</TableHead>
-                        <TableHead className="text-xs">Descrição</TableHead>
+                      <TableRow className="bg-muted">
+                        <TableHead className="w-12 text-center">Item</TableHead>
+                        <TableHead className="w-12"><span className="sr-only">Ações</span></TableHead>
+                        <TableHead>Situação</TableHead>
+                        <TableHead className="text-right">Vlr Ref.</TableHead>
+                        <TableHead className="text-right">Melhor Lance</TableHead>
+                        <TableHead className="text-right">Seu Último Lance</TableHead>
+                        <TableHead className="text-center">Qtd</TableHead>
+                        <TableHead className="text-center">Disputando</TableHead>
+                        <TableHead>Descrição</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {disputeItems.map((item) => (
-                        <TableRow key={item.numero} className="group">
-                          <TableCell className="text-center text-xs font-medium">{item.numero}</TableCell>
+                        <TableRow key={item.numero}>
+                          <TableCell className="text-center font-medium tabular-nums">{item.numero}</TableCell>
                           <TableCell className="text-center">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                                  <MoreVertical className="w-3.5 h-3.5" />
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                  aria-label={`Ações do item ${item.numero}`}
+                                >
+                                  <MoreVertical className="w-4 h-4" aria-hidden="true" />
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="start">
-                                <DropdownMenuItem><ArrowDown className="w-3 h-3 mr-2" /> Enviar lance</DropdownMenuItem>
-                                <DropdownMenuItem><Eye className="w-3 h-3 mr-2" /> Ver histórico</DropdownMenuItem>
+                                <DropdownMenuItem><ArrowDown className="w-4 h-4 mr-2" aria-hidden="true" /> Enviar lance</DropdownMenuItem>
+                                <DropdownMenuItem><Eye className="w-4 h-4 mr-2" aria-hidden="true" /> Ver histórico</DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </TableCell>
                           <TableCell>
                             <Badge
-                              variant="outline"
-                              className={`text-xs ${
+                              variant={
                                 item.situacao === 'disputando'
-                                  ? 'bg-info/10 text-info border-info/30'
+                                  ? 'info'
                                   : item.situacao === 'encerrado'
-                                  ? 'bg-muted text-muted-foreground border-border'
-                                  : 'bg-warning/10 text-warning border-warning/30'
-                              }`}
+                                  ? 'muted'
+                                  : 'warning'
+                              }
                             >
-                              {item.situacao.charAt(0).toUpperCase() + item.situacao.slice(1)}
+                              {rotuloStatus(item.situacao)}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-right text-xs font-mono text-muted-foreground">
+                          <TableCell className="text-right tabular-nums text-muted-foreground">
                             {item.valorReferencia > 0 ? formatCurrency(item.valorReferencia) : '—'}
                           </TableCell>
-                          <TableCell className="text-right text-xs font-mono">
+                          <TableCell className="text-right tabular-nums">
                             {item.melhorLance ? formatCurrency(item.melhorLance) : '—'}
                           </TableCell>
-                          <TableCell className="text-right text-xs font-mono">
+                          <TableCell className="text-right tabular-nums">
                             {item.seuUltimoLance ? formatCurrency(item.seuUltimoLance) : '—'}
                           </TableCell>
-                          <TableCell className="text-center text-xs">
+                          <TableCell className="text-center tabular-nums">
                             {item.quantidade} {item.unidade}
                           </TableCell>
                           <TableCell className="text-center">
                             {item.disputando ? (
-                              <span className="inline-flex items-center gap-1 text-xs text-success font-medium">
-                                <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" /> Sim
+                              <span className="inline-flex items-center gap-1 text-success-ink font-medium">
+                                <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" aria-hidden="true" /> Sim
                               </span>
                             ) : (
-                              <span className="text-xs text-muted-foreground">—</span>
+                              <span className="text-muted-foreground">—</span>
                             )}
                           </TableCell>
-                          <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">
+                          <TableCell className="text-muted-foreground max-w-[200px] truncate" title={item.descricao}>
                             {item.descricao}
                           </TableCell>
                         </TableRow>
@@ -1249,121 +1207,97 @@ export default function RoboLances() {
                 </div>
 
                 {/* ── Painel de Risco (Level 1+) ── */}
-                <div className="px-4 py-2 border-t border-border overflow-auto max-h-52 shrink-0">
+                <div className="px-4 py-4 border-t border-border">
                   <PainelRisco lance={selectedLance} nivel={nivelAutomacao} />
                 </div>
 
-                {/* ── Bottom Panel: Mural + Operations + Audit ── */}
-                <div className="border-t border-border bg-card shrink-0">
-                  <div className="flex items-center gap-0 border-b border-border">
-                     <button
-                      onClick={() => setBottomTab('mural')}
-                      className={`px-4 py-2 text-xs font-medium transition-colors flex items-center gap-1.5 border-b-2 ${
-                        bottomTab === 'mural'
-                          ? 'border-accent text-accent'
-                          : 'border-transparent text-muted-foreground hover:text-foreground'
-                      }`}
-                    >
-                      <MessageSquare className="w-3.5 h-3.5" /> Mural
-                    </button>
-                    <button
-                      onClick={() => setBottomTab('simulacao')}
-                      className={`px-4 py-2 text-xs font-medium transition-colors flex items-center gap-1.5 border-b-2 ${
-                        bottomTab === 'simulacao'
-                          ? 'border-accent text-accent'
-                          : 'border-transparent text-muted-foreground hover:text-foreground'
-                      }`}
-                    >
-                      <Zap className="w-3.5 h-3.5" /> Simulação
-                    </button>
-                    <button
-                      onClick={() => setBottomTab('operacoes')}
-                      className={`px-4 py-2 text-xs font-medium transition-colors flex items-center gap-1.5 border-b-2 ${
-                        bottomTab === 'operacoes'
-                          ? 'border-accent text-accent'
-                          : 'border-transparent text-muted-foreground hover:text-foreground'
-                      }`}
-                    >
-                      <ListChecks className="w-3.5 h-3.5" /> Operações
-                    </button>
-                    <button
-                      onClick={() => setBottomTab('auditoria')}
-                      className={`px-4 py-2 text-xs font-medium transition-colors flex items-center gap-1.5 border-b-2 ${
-                        bottomTab === 'auditoria'
-                          ? 'border-accent text-accent'
-                          : 'border-transparent text-muted-foreground hover:text-foreground'
-                      }`}
-                    >
-                      <History className="w-3.5 h-3.5" /> Auditoria
-                    </button>
-                  </div>
+                {/* ── Bottom Panel: Mural + Simulação + Operações + Auditoria ──
+                    Abas de ui aninhadas nas abas principais: o Radix isola os
+                    dois contextos, e cada painel só monta quando ativo — o
+                    mesmo que o `bottomTab === …` fazia à mão. */}
+                <div className="border-t border-border">
+                  <Tabs
+                    value={bottomTab}
+                    onValueChange={(v) => setBottomTab(v as 'mural' | 'operacoes' | 'simulacao' | 'auditoria')}
+                  >
+                    <div className="px-4 pt-4">
+                      <TabsList>
+                        <TabsTrigger value="mural">
+                          <MessageSquare className="w-4 h-4 mr-1.5" aria-hidden="true" /> Mural
+                        </TabsTrigger>
+                        <TabsTrigger value="simulacao">
+                          <Zap className="w-4 h-4 mr-1.5" aria-hidden="true" /> Simulação
+                        </TabsTrigger>
+                        <TabsTrigger value="operacoes">
+                          <ListChecks className="w-4 h-4 mr-1.5" aria-hidden="true" /> Operações
+                        </TabsTrigger>
+                        <TabsTrigger value="auditoria">
+                          <History className="w-4 h-4 mr-1.5" aria-hidden="true" /> Auditoria
+                        </TabsTrigger>
+                      </TabsList>
+                    </div>
 
-                  <div className="h-56">
-                    {bottomTab === 'mural' ? (
-                      selectedLance?.licitacaoId ? (
+                    <TabsContent value="mural" className="m-0 h-64 p-4">
+                      {selectedLance.licitacaoId ? (
                         <LicitacaoChat
                           licitacaoId={selectedLance.licitacaoId}
                           licitacaoNumero={selectedLance.edital}
                         />
                       ) : (
-                        <div className="flex items-center justify-center h-full">
-                          <div className="text-center space-y-2">
-                            <MessageSquare className="w-6 h-6 text-muted-foreground/30 mx-auto" />
-                            <p className="text-xs text-muted-foreground">
-                              Esta disputa não está vinculada a um processo do Kanban.
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              Importe do Kanban ao criar a disputa para ativar o Mural em tempo real.
-                            </p>
-                          </div>
-                        </div>
-                      )
-                    ) : bottomTab === 'simulacao' ? (
-                      <div className="p-3 overflow-auto h-full">
-                        <SimulacaoDisputa
-                          lance={selectedLance}
-                          onUpdate={(updated) => {
-                            setLances(prev => prev.map(l => l.id === updated.id ? updated : l));
-                          }}
-                          licitacaoId={selectedLance.licitacaoId}
+                        <EstadoVazio
+                          icone={<MessageSquare />}
+                          titulo="Esta disputa não está vinculada a um processo do Kanban"
+                          descricao="Importe do Kanban ao criar a disputa para ativar o Mural em tempo real."
+                          tamanho="compacto"
+                          className="h-full"
                         />
-                      </div>
-                    ) : bottomTab === 'auditoria' ? (
-                      <div className="p-3 overflow-auto h-full">
-                        <AuditTrailViewer sessaoId={undefined} />
-                      </div>
-                    ) : (
-                      <div className="p-3 space-y-2 overflow-auto h-full">
-                        {operations.length === 0 ? (
-                          <div className="text-center py-8">
-                            <ListChecks className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
-                            <p className="text-xs text-muted-foreground">Nenhuma operação registrada.</p>
-                            <p className="text-xs text-muted-foreground mt-1">Inicie uma disputa para ver o log de operações.</p>
+                      )}
+                    </TabsContent>
+
+                    <TabsContent value="simulacao" className="m-0 p-4">
+                      <SimulacaoDisputa
+                        lance={selectedLance}
+                        onUpdate={(updated) => {
+                          setLances(prev => prev.map(l => l.id === updated.id ? updated : l));
+                        }}
+                        licitacaoId={selectedLance.licitacaoId}
+                      />
+                    </TabsContent>
+
+                    <TabsContent value="auditoria" className="m-0 p-4">
+                      <AuditTrailViewer sessaoId={undefined} />
+                    </TabsContent>
+
+                    <TabsContent value="operacoes" className="m-0 p-4 space-y-2 max-h-64 overflow-y-auto">
+                      {operations.length === 0 ? (
+                        <EstadoVazio
+                          icone={<ListChecks />}
+                          titulo="Nenhuma operação registrada"
+                          descricao="Inicie uma disputa para ver o log de operações."
+                          tamanho="compacto"
+                        />
+                      ) : (
+                        operations.map((op) => (
+                          <div key={op.id} className="flex flex-wrap items-center gap-3 text-sm">
+                            <span className="text-muted-foreground shrink-0 tabular-nums">
+                              {op.timestamp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                            </span>
+                            <Badge
+                              variant={
+                                op.resultado === 'sucesso' ? 'success' :
+                                op.resultado === 'erro' ? 'danger' :
+                                'info'
+                              }
+                            >
+                              {rotuloStatus(op.resultado)}
+                            </Badge>
+                            <span className="font-medium text-foreground">{op.acao}</span>
+                            <span className="text-muted-foreground">{op.detalhes}</span>
                           </div>
-                        ) : (
-                          operations.map((op) => (
-                            <div key={op.id} className="flex items-center gap-3 text-xs">
-                              <span className="text-muted-foreground shrink-0">
-                                {op.timestamp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                              </span>
-                              <Badge
-                                variant="outline"
-                                className={`text-xs ${
-                                  op.resultado === 'sucesso' ? 'bg-success/10 text-success border-success/30' :
-                                  op.resultado === 'erro' ? 'bg-destructive/10 text-destructive border-destructive/30' :
-                                  'bg-info/10 text-info border-info/30'
-                                }`}
-                              >
-                                {op.resultado}
-                              </Badge>
-                              <span className="font-medium text-foreground">{op.acao}</span>
-                              <span className="text-muted-foreground">{op.detalhes}</span>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    )}
-                  </div>
+                        ))
+                      )}
+                    </TabsContent>
+                  </Tabs>
                 </div>
               </>
             )}
@@ -1371,7 +1305,7 @@ export default function RoboLances() {
         </TabsContent>
 
         {/* ── PORTAIS TAB ── */}
-        <TabsContent value="portais" className="flex-1 m-0 overflow-auto p-6 space-y-6">
+        <TabsContent value="portais" className="m-0 space-y-6">
           {!isAdmin ? <SemPermissao /> : (<>
           <CredenciaisPortalForm />
           <PortalHealthcheck />
@@ -1379,7 +1313,7 @@ export default function RoboLances() {
         </TabsContent>
 
         {/* ── AGENTE CLOUD TAB ── */}
-        <TabsContent value="agente" className="flex-1 m-0 overflow-auto p-6 space-y-6">
+        <TabsContent value="agente" className="m-0 space-y-6">
           {!isAdmin ? <SemPermissao /> : (<>
           {/* A ordem segue o USO e a URGÊNCIA, não a configuração.
               O painel com prazo não pode exigir rolagem: a tela remota mostra o
@@ -1407,35 +1341,35 @@ export default function RoboLances() {
         </TabsContent>
 
         {/* ── CONFIGURAÇÕES TAB ── */}
-        <TabsContent value="configuracoes" className="flex-1 m-0 overflow-auto p-6 space-y-6">
+        <TabsContent value="configuracoes" className="m-0 space-y-6">
           {!isAdmin ? <SemPermissao /> : (<>
           <NivelAutomacaoSelector nivel={nivelAutomacao} onChange={handleNivelChange} />
           <EstrategiaIAPanel lance={selectedLance} />
           <DisputaRealtimePanel />
 
-          <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm space-y-4 max-w-2xl">
-            <h3 className="text-sm font-semibold flex items-center gap-2">
-              <Settings className="w-4 h-4 text-muted-foreground" /> Regras de Lance Automático (Padrão Global)
+          <div className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-4 max-w-2xl">
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              <Settings className="w-5 h-5 text-muted-foreground" aria-hidden="true" /> Regras de Lance Automático (Padrão Global)
             </h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="text-xs text-muted-foreground">Decremento padrão (%)</label>
-                <Input type="number" step="0.1" value={configDecremento} onChange={(e) => setConfigDecremento(e.target.value)} className="mt-1" />
+                <Label htmlFor="config-decremento">Decremento padrão (%)</Label>
+                <Input id="config-decremento" type="number" step="0.1" value={configDecremento} onChange={(e) => setConfigDecremento(e.target.value)} className="mt-1" />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground">Lance mínimo (% do estimado)</label>
-                <Input type="number" step="1" value={configLanceMin} onChange={(e) => setConfigLanceMin(e.target.value)} className="mt-1" />
+                <Label htmlFor="config-lance-min">Lance mínimo (% do estimado)</Label>
+                <Input id="config-lance-min" type="number" step="1" value={configLanceMin} onChange={(e) => setConfigLanceMin(e.target.value)} className="mt-1" />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground">Intervalo entre lances (seg)</label>
-                <Input type="number" step="1" min="1" value={configIntervalo} onChange={(e) => setConfigIntervalo(e.target.value)} className="mt-1" />
+                <Label htmlFor="config-intervalo">Intervalo entre lances (seg)</Label>
+                <Input id="config-intervalo" type="number" step="1" min="1" value={configIntervalo} onChange={(e) => setConfigIntervalo(e.target.value)} className="mt-1" />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground">Máx. lances por sessão</label>
-                <Input type="number" step="1" min="1" value={configMaxLances} onChange={(e) => setConfigMaxLances(e.target.value)} className="mt-1" />
+                <Label htmlFor="config-max-lances">Máx. lances por sessão</Label>
+                <Input id="config-max-lances" type="number" step="1" min="1" value={configMaxLances} onChange={(e) => setConfigMaxLances(e.target.value)} className="mt-1" />
               </div>
             </div>
-            <Button onClick={handleSaveConfig} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+            <Button onClick={handleSaveConfig}>
               Salvar Regras
             </Button>
           </div>
@@ -1480,7 +1414,7 @@ export default function RoboLances() {
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-base font-semibold">Detalhes da licitação</DialogTitle>
+            <DialogTitle>Detalhes da licitação</DialogTitle>
           </DialogHeader>
           {selectedLance && (
             <div className="divide-y divide-border">
@@ -1504,9 +1438,9 @@ export default function RoboLances() {
                 { icon: Shield, label: 'Nível de Automação', value: `Nível ${nivelAutomacao} — ${nivelAutomacao === 1 ? 'Assistente' : nivelAutomacao === 2 ? 'Semiautomático' : 'Automação Controlada'}` },
               ].map((item) => (
                 <div key={item.label} className="flex items-start gap-3 py-3 px-1">
-                  <item.icon className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <item.icon className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" aria-hidden="true" />
                   <div>
-                    <p className="text-xs font-semibold text-foreground">{item.label}</p>
+                    <p className="text-sm font-semibold text-foreground">{item.label}</p>
                     <p className="text-sm text-muted-foreground">{item.value}</p>
                   </div>
                 </div>

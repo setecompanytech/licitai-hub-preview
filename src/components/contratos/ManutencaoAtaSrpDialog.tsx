@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Wrench, Loader2, RefreshCw, Link2, AlertCircle, CheckCircle2, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -220,16 +221,14 @@ export default function ManutencaoAtaSrpDialog({ ataId, ataNumero, onAtualizou }
                 </div>
               </div>
               <div className="flex flex-wrap gap-2 pt-1">
-                <Button onClick={() => executarRecalculo('ata')} disabled={recalculando} size="sm" className="gap-2">
+                <Button onClick={() => executarRecalculo('ata')} disabled={recalculando}>
                   {recalculando ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                   Recalcular esta ATA
                 </Button>
                 <Button
                   onClick={() => executarRecalculo('todas')}
                   disabled={recalculando}
-                  size="sm"
                   variant="outline"
-                  className="gap-2"
                 >
                   {recalculando ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                   Recalcular todas as minhas ATAs
@@ -238,11 +237,11 @@ export default function ManutencaoAtaSrpDialog({ ataId, ataNumero, onAtualizou }
             </Card>
 
             {resultadoRecalc && (
-              <Card className="p-4 bg-success/5 border-success/30">
+              <Card className="p-4 bg-success-tint border-success-line">
                 <div className="flex items-start gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-success mt-0.5 shrink-0" />
+                  <CheckCircle2 className="w-5 h-5 text-success-ink mt-0.5 shrink-0" />
                   <div className="text-sm space-y-1">
-                    <p className="font-medium text-success">Recálculo concluído</p>
+                    <p className="font-medium text-success-ink">Recálculo concluído</p>
                     <ul className="text-muted-foreground space-y-0.5">
                       <li>ATAs processadas: <strong>{resultadoRecalc.atas_processadas}</strong></li>
                       <li>Itens recalculados: <strong>{resultadoRecalc.itens_recalculados}</strong></li>
@@ -256,11 +255,11 @@ export default function ManutencaoAtaSrpDialog({ ataId, ataNumero, onAtualizou }
 
           {/* ÓRFÃOS */}
           <TabsContent value="orfaos" className="space-y-5 pt-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm text-muted-foreground">
                 Contratos sem ATA de origem e itens de contratos derivados sem vínculo a um item da ATA.
               </p>
-              <Button onClick={carregarOrfaos} disabled={carregandoOrfaos} size="sm" variant="outline" className="gap-2">
+              <Button onClick={carregarOrfaos} disabled={carregandoOrfaos} variant="outline">
                 {carregandoOrfaos ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                 Recarregar
               </Button>
@@ -269,13 +268,13 @@ export default function ManutencaoAtaSrpDialog({ ataId, ataNumero, onAtualizou }
             {/* Contratos órfãos */}
             <Card className="p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold flex items-center gap-2">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
                   Contratos sem ATA de origem
                   <Badge variant="secondary">{contratosOrfaos.length}</Badge>
                 </h3>
               </div>
               {carregandoOrfaos ? (
-                <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+                <div className="space-y-2" aria-busy="true" aria-label="Carregando"><Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" /></div>
               ) : contratosOrfaos.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-3 text-center">
                   Nenhum contrato órfão encontrado para esta ATA (mesmo órgão).
@@ -298,7 +297,7 @@ export default function ManutencaoAtaSrpDialog({ ataId, ataNumero, onAtualizou }
                         <TableCell className="font-medium">{c.numero_contrato || '—'}</TableCell>
                         <TableCell className="text-xs">{c.orgao || '—'}</TableCell>
                         <TableCell className="text-xs">{fmtDate(c.data_assinatura)}</TableCell>
-                        <TableCell className="text-right text-xs">{fmt(c.valor_global || 0)}</TableCell>
+                        <TableCell className="text-right tabular-nums">{fmt(c.valor_global || 0)}</TableCell>
                         <TableCell className="text-xs">
                           {c.sugestao_ata?.ata_id === ataId ? (
                             <Badge variant="outline" className="gap-1">
@@ -329,13 +328,13 @@ export default function ManutencaoAtaSrpDialog({ ataId, ataNumero, onAtualizou }
             {/* Itens órfãos */}
             <Card className="p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold flex items-center gap-2">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
                   Itens sem vínculo ao item da ATA
                   <Badge variant="secondary">{itensOrfaos.length}</Badge>
                 </h3>
               </div>
               {carregandoOrfaos ? (
-                <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+                <div className="space-y-2" aria-busy="true" aria-label="Carregando"><Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" /></div>
               ) : itensOrfaos.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-3 text-center">
                   Todos os itens dos contratos derivados estão vinculados.

@@ -38,7 +38,7 @@ export default function CountdownTimer({ targetDate, className, compact = false 
   if (time.expired) {
     return (
       <span className={cn('inline-flex items-center gap-1 text-xs text-muted-foreground', className)}>
-        <CheckCircle2 className="w-3 h-3" /> Encerrado
+        <CheckCircle2 className="w-4 h-4" aria-hidden="true" /> Encerrado
       </span>
     );
   }
@@ -48,13 +48,15 @@ export default function CountdownTimer({ targetDate, className, compact = false 
 
   if (compact) {
     return (
+      // `tabular-nums` no lugar da fonte mono: dígitos de largura fixa é o
+      // que impede o relógio de "tremer" a cada segundo, sem trocar de família.
       <span className={cn(
-        'inline-flex items-center gap-1 text-xs font-mono font-medium',
-        isCritical ? 'text-destructive animate-pulse' : isUrgent ? 'text-warning' : 'text-accent',
+        'inline-flex items-center gap-1 text-xs font-medium tabular-nums',
+        isCritical ? 'text-destructive animate-pulse' : isUrgent ? 'text-warning' : 'text-primary',
         className
       )}>
-        {isCritical && <AlertTriangle className="w-3 h-3" />}
-        {!isCritical && <Clock className="w-3 h-3" />}
+        {isCritical && <AlertTriangle className="w-4 h-4" aria-hidden="true" />}
+        {!isCritical && <Clock className="w-4 h-4" aria-hidden="true" />}
         {time.days > 0 && `${time.days}d `}
         {String(time.hours).padStart(2, '0')}:{String(time.minutes).padStart(2, '0')}:{String(time.seconds).padStart(2, '0')}
       </span>
@@ -62,7 +64,7 @@ export default function CountdownTimer({ targetDate, className, compact = false 
   }
 
   return (
-    <div className={cn('flex items-center gap-1.5', className)}>
+    <div className={cn('flex items-center gap-2', className)}>
       {[
         { value: time.days, label: 'd' },
         { value: time.hours, label: 'h' },
@@ -72,15 +74,15 @@ export default function CountdownTimer({ targetDate, className, compact = false 
         <div
           key={unit.label}
           className={cn(
-            'flex flex-col items-center rounded-md px-1.5 py-1 min-w-[32px] border',
+            'flex flex-col items-center rounded-md px-2 py-1 min-w-8 border',
             isCritical
-              ? 'bg-destructive/10 border-destructive/30 text-destructive'
+              ? 'bg-destructive-tint border-destructive-line text-destructive-ink'
               : isUrgent
-              ? 'bg-warning/10 border-warning/30 text-warning'
-              : 'bg-accent/10 border-accent/30 text-accent'
+              ? 'bg-warning-tint border-warning-line text-warning-ink'
+              : 'bg-primary-tint border-border text-primary'
           )}
         >
-          <span className="text-sm font-bold font-mono leading-none">{String(unit.value).padStart(2, '0')}</span>
+          <span className="text-sm font-bold tabular-nums leading-none">{String(unit.value).padStart(2, '0')}</span>
           <span className="text-xs uppercase opacity-70">{unit.label}</span>
         </div>
       ))}

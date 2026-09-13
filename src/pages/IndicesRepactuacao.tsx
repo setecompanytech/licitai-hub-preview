@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
+import EstadoVazio from '@/components/shared/EstadoVazio';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -180,107 +183,118 @@ export default function IndicesRepactuacao() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground flex-shrink-0" />
-            Índices Econômicos & Repactuação
-          </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Painel de índices oficiais, base de CCTs e simulador de repactuação — Lei 14.133/2021
-          </p>
-        </div>
-
-        {/* ── A esteira: os índices correndo, como nos portais econômicos ──
-            Visível em todas as abas do menu; os números são os MESMOS da base
-            local (fonte SGS), só mudam de roupa. Duplicada para o loop ser
-            contínuo; a segunda cópia é decorativa para o leitor de tela. */}
-        {indices.length > 0 && (
-          <div className="esteira-indices flex items-stretch rounded-lg border border-border bg-muted/30 overflow-hidden">
-            <span className="shrink-0 flex items-center px-3 py-2 text-xs font-semibold text-primary whitespace-nowrap border-r border-border bg-card">
-              ÍNDICES OFICIAIS
-            </span>
-            <div className="relative flex-1 overflow-hidden flex items-center">
-              <div className="esteira-indices-faixa flex w-max items-center gap-8 px-4">
-                {[0, 1].map((volta) => (
-                  <span key={volta} className="flex items-center gap-8" aria-hidden={volta === 1}>
-                    {indices.map((idx) => (
-                      <span key={`${volta}-${idx.id}`} className="text-xs whitespace-nowrap tabular-nums">
-                        <b>{idx.sigla}</b>
-                        <span className="text-muted-foreground"> · {idx.periodo} · </span>
-                        <span className={(idx.variacao_mensal ?? 0) < 0 ? 'text-success' : 'text-warning'}>
-                          {idx.categoria === 'salario'
-                            ? fmtCur(idx.valor)
-                            : idx.categoria === 'juros'
-                              ? `${idx.valor}% a.a.`
-                              : fmtPerc(idx.valor)}
-                        </span>
-                        {idx.acumulado_12m != null && (
-                          <span className="text-muted-foreground"> (12m: {fmtPerc(idx.acumulado_12m)})</span>
-                        )}
+        {/* Título, descrição, ícone e trilha vêm do registro do menu
+            (`lib/navegacao/paginas.ts`): a tela de leitura não tem ação
+            principal, e as abas são as três declaradas lá. */}
+        <Tabs value={tab} onValueChange={setTab} className="space-y-4">
+          <CabecalhoPagina>
+            {/* ── A esteira: os índices correndo, como nos portais econômicos ──
+                Visível em todas as abas do menu; os números são os MESMOS da base
+                local (fonte SGS), só mudam de roupa. Duplicada para o loop ser
+                contínuo; a segunda cópia é decorativa para o leitor de tela. */}
+            {indices.length > 0 && (
+              <div className="esteira-indices flex items-stretch rounded-lg border border-border bg-muted overflow-hidden">
+                <span className="shrink-0 flex items-center px-3 py-2 text-xs font-semibold text-primary whitespace-nowrap border-r border-border bg-card">
+                  ÍNDICES OFICIAIS
+                </span>
+                <div className="relative flex-1 overflow-hidden flex items-center">
+                  <div className="esteira-indices-faixa flex w-max items-center gap-8 px-4">
+                    {[0, 1].map((volta) => (
+                      <span key={volta} className="flex items-center gap-8" aria-hidden={volta === 1}>
+                        {indices.map((idx) => (
+                          <span key={`${volta}-${idx.id}`} className="text-xs whitespace-nowrap tabular-nums">
+                            <b>{idx.sigla}</b>
+                            <span className="text-muted-foreground"> · {idx.periodo} · </span>
+                            <span className={(idx.variacao_mensal ?? 0) < 0 ? 'text-success-ink' : 'text-warning-ink'}>
+                              {idx.categoria === 'salario'
+                                ? fmtCur(idx.valor)
+                                : idx.categoria === 'juros'
+                                  ? `${idx.valor}% a.a.`
+                                  : fmtPerc(idx.valor)}
+                            </span>
+                            {idx.acumulado_12m != null && (
+                              <span className="text-muted-foreground"> (12m: {fmtPerc(idx.acumulado_12m)})</span>
+                            )}
+                          </span>
+                        ))}
                       </span>
                     ))}
-                  </span>
-                ))}
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        )}
+            )}
 
-        <Tabs value={tab} onValueChange={setTab} className="space-y-4">
-          <TabsList className="flex-wrap h-auto gap-1">
-            <TabsTrigger value="indices">📊 Painel de Índices</TabsTrigger>
-            <TabsTrigger value="ccts">📋 Convenções Coletivas</TabsTrigger>
-            <TabsTrigger value="simulador">🧮 Simulador de Repactuação</TabsTrigger>
-          </TabsList>
+            {/* O invólucro existe para a fila de abas continuar do tamanho do
+                conteúdo: dentro da coluna flex do cabeçalho, um filho direto
+                esticaria de ponta a ponta. */}
+            <div>
+              <TabsList>
+                <TabsTrigger value="indices">Índices</TabsTrigger>
+                <TabsTrigger value="ccts">CCTs</TabsTrigger>
+                <TabsTrigger value="simulador">Simulador</TabsTrigger>
+              </TabsList>
+            </div>
+          </CabecalhoPagina>
 
           {/* ═══ PAINEL DE ÍNDICES ═══ */}
           <TabsContent value="indices" className="space-y-4">
-            <div className="flex flex-wrap items-center gap-3">
-              <Button onClick={atualizarIndices} disabled={atualizando} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button onClick={atualizarIndices} disabled={atualizando}>
                 {atualizando ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
                 {atualizando ? 'Atualizando via IA...' : 'Atualizar Índices'}
               </Button>
-              <div className="flex gap-1 flex-wrap">
-                <Badge variant={catFiltro === 'todos' ? 'default' : 'outline'} className="cursor-pointer" onClick={() => setCatFiltro('todos')}>Todos</Badge>
+              {/* Recorte por categoria: botões, não selos — quem filtra precisa
+                  alcançar o controle pelo teclado, e selo não é botão. */}
+              <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar por categoria">
+                <Button size="sm" variant={catFiltro === 'todos' ? 'default' : 'outline'} aria-pressed={catFiltro === 'todos'} onClick={() => setCatFiltro('todos')}>Todos</Button>
                 {categorias.map(c => (
-                  <Badge key={c} variant={catFiltro === c ? 'default' : 'outline'} className="cursor-pointer" onClick={() => setCatFiltro(c)}>
+                  <Button key={c} size="sm" variant={catFiltro === c ? 'default' : 'outline'} aria-pressed={catFiltro === c} onClick={() => setCatFiltro(c)}>
                     {categoriaLabels[c] || c}
-                  </Badge>
+                  </Button>
                 ))}
               </div>
             </div>
 
             {loadingIndices ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-36 rounded-xl" />)}
+                {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-36 rounded-lg" />)}
               </div>
             ) : indices.length === 0 ? (
-              <Card className="p-8 text-center">
-                <TrendingUp className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-                <p className="text-muted-foreground">Nenhum índice cadastrado. Clique em "Atualizar Índices" para buscar as séries oficiais no Banco Central (SGS).</p>
-              </Card>
+              <div className="rounded-lg border border-border bg-card shadow-sm">
+                <EstadoVazio
+                  icone={<TrendingUp />}
+                  titulo="Nenhum índice cadastrado"
+                  descricao="Busque as séries oficiais no Banco Central (SGS) para começar a acompanhar IPCA, INPC, IGP-M e os demais."
+                  acao={
+                    <Button onClick={atualizarIndices} disabled={atualizando}>
+                      {atualizando ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                      Atualizar Índices
+                    </Button>
+                  }
+                />
+              </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredIndices.map(idx => {
                   const Icon = categoriaIcons[idx.categoria] || TrendingUp;
                   const isPositive = (idx.variacao_mensal ?? 0) >= 0;
                   return (
-                    <Card key={idx.id} className="p-4 hover:shadow-md transition-shadow">
-                      <div className="flex items-start justify-between mb-3">
+                    <Card key={idx.id} className="p-6 hover:shadow-md transition-shadow">
+                      <div className="flex items-start justify-between gap-2 mb-3">
                         <div className="flex items-center gap-2">
-                          <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center">
-                            <Icon className="w-4 h-4 text-muted-foreground" />
+                          <div className="w-10 h-10 rounded-md bg-primary-tint text-primary flex items-center justify-center">
+                            <Icon className="w-5 h-5" aria-hidden="true" />
                           </div>
                           <div>
-                            <p className="font-bold text-sm">{idx.sigla}</p>
-                            <p className="text-xs text-muted-foreground">{idx.fonte}</p>
+                            <p className="text-lg font-semibold">{idx.sigla}</p>
+                            <p className="text-sm text-muted-foreground">{idx.fonte}</p>
                           </div>
                         </div>
-                        <Badge variant="outline" className="text-xs">{idx.periodo}</Badge>
+                        <Badge variant="muted">{idx.periodo}</Badge>
                       </div>
-                      <p className="text-xs text-muted-foreground mb-2 line-clamp-1">{idx.nome}</p>
-                      <div className="flex items-end justify-between">
-                        <p className="text-xl font-bold">
+                      <p className="text-sm text-muted-foreground mb-2 line-clamp-1">{idx.nome}</p>
+                      <div className="flex flex-wrap items-end justify-between gap-2">
+                        <p className="text-[2rem] leading-10 font-bold tabular-nums break-normal">
                           {/* Só salário é dinheiro. INCC é VARIAÇÃO — "R$ 0,66"
                               afirmava um preço que não existe (print de 08/09). */}
                           {idx.categoria === 'salario'
@@ -291,13 +305,13 @@ export default function IndicesRepactuacao() {
                           }
                         </p>
                         {idx.variacao_mensal != null && (
-                          <div className={`flex items-center gap-0.5 text-xs font-medium ${isPositive ? 'text-warning' : 'text-success'}`}>
-                            {isPositive ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                          <div className={`flex items-center gap-0.5 text-sm font-medium tabular-nums ${isPositive ? 'text-warning-ink' : 'text-success-ink'}`}>
+                            {isPositive ? <ArrowUpRight className="w-4 h-4" aria-hidden="true" /> : <ArrowDownRight className="w-4 h-4" aria-hidden="true" />}
                             {fmtPerc(idx.variacao_mensal)}
                           </div>
                         )}
                       </div>
-                      <div className="flex gap-3 mt-2 text-xs text-muted-foreground">
+                      <div className="flex flex-wrap gap-3 mt-2 text-sm text-muted-foreground tabular-nums">
                         {idx.variacao_anual != null && <span>Ano: {fmtPerc(idx.variacao_anual)}</span>}
                         {idx.acumulado_12m != null && <span>12m: {fmtPerc(idx.acumulado_12m)}</span>}
                       </div>
@@ -305,8 +319,8 @@ export default function IndicesRepactuacao() {
                         const portal = portalOficial(idx.fonte, idx.categoria);
                         return (
                           <a href={portal.url} target="_blank" rel="noreferrer"
-                            className="mt-2 inline-flex items-center gap-1 text-xs text-primary hover:underline">
-                            Conferir no portal do {portal.nome} <ExternalLink className="w-3 h-3" />
+                            className="mt-3 inline-flex items-center gap-1 text-sm text-primary hover:underline">
+                            Conferir no portal do {portal.nome} <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
                           </a>
                         );
                       })()}
@@ -316,62 +330,60 @@ export default function IndicesRepactuacao() {
               </div>
             )}
 
-            <Card className="p-4 bg-muted/30 border-dashed">
-              <div className="flex items-start gap-2">
-                <Info className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                <p className="text-xs text-muted-foreground">
-                  <strong>Fundamentação Legal:</strong> Art. 92, §3º e Art. 135 da Lei 14.133/2021 — os contratos de serviços e fornecimentos contínuos terão reajuste com base em índice oficial. 
-                  Para mão de obra: repactuação por CCT (Art. 135, I). Para insumos: reajuste por índice setorial (Art. 135, II).
-                </p>
-              </div>
-            </Card>
+            <Alert variant="info">
+              <Info className="w-4 h-4" aria-hidden="true" />
+              <AlertDescription>
+                <strong>Fundamentação Legal:</strong> Art. 92, §3º e Art. 135 da Lei 14.133/2021 — os contratos de serviços e fornecimentos contínuos terão reajuste com base em índice oficial.
+                Para mão de obra: repactuação por CCT (Art. 135, I). Para insumos: reajuste por índice setorial (Art. 135, II).
+              </AlertDescription>
+            </Alert>
           </TabsContent>
 
           {/* ═══ CONVENÇÕES COLETIVAS ═══ */}
           <TabsContent value="ccts" className="space-y-4">
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">Base de convenções coletivas para repactuação de serviços com mão de obra</p>
-              <Button onClick={() => setShowCCTForm(!showCCTForm)} size="sm">
-                <Plus className="w-4 h-4 mr-1" /> Cadastrar CCT
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-base text-muted-foreground">Base de convenções coletivas para repactuação de serviços com mão de obra</p>
+              <Button onClick={() => setShowCCTForm(!showCCTForm)}>
+                <Plus className="w-4 h-4 mr-2" /> Cadastrar CCT
               </Button>
             </div>
 
             {showCCTForm && (
-              <Card className="p-4 space-y-3">
-                <h3 className="text-sm font-semibold">Nova Convenção Coletiva</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <Card className="p-6 space-y-4">
+                <h2 className="text-lg font-semibold">Nova Convenção Coletiva</h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <Label className="text-xs">Categoria Profissional *</Label>
-                    <Input placeholder="Ex: Vigilância, Limpeza..." value={cctForm.categoria_profissional} onChange={e => setCctForm(p => ({ ...p, categoria_profissional: e.target.value }))} />
+                    <Label htmlFor="cct-categoria">Categoria Profissional *</Label>
+                    <Input id="cct-categoria" placeholder="Ex: Vigilância, Limpeza..." value={cctForm.categoria_profissional} onChange={e => setCctForm(p => ({ ...p, categoria_profissional: e.target.value }))} />
                   </div>
                   <div>
-                    <Label className="text-xs">Sindicato Laboral</Label>
-                    <Input placeholder="Nome do sindicato" value={cctForm.sindicato_laboral} onChange={e => setCctForm(p => ({ ...p, sindicato_laboral: e.target.value }))} />
+                    <Label htmlFor="cct-sindicato">Sindicato Laboral</Label>
+                    <Input id="cct-sindicato" placeholder="Nome do sindicato" value={cctForm.sindicato_laboral} onChange={e => setCctForm(p => ({ ...p, sindicato_laboral: e.target.value }))} />
                   </div>
                   <div>
-                    <Label className="text-xs">Nº Registro MTE</Label>
-                    <Input placeholder="Ex: PA000123/2026" value={cctForm.numero_registro_mte} onChange={e => setCctForm(p => ({ ...p, numero_registro_mte: e.target.value }))} />
+                    <Label htmlFor="cct-mte">Nº Registro MTE</Label>
+                    <Input id="cct-mte" placeholder="Ex: PA000123/2026" value={cctForm.numero_registro_mte} onChange={e => setCctForm(p => ({ ...p, numero_registro_mte: e.target.value }))} />
                   </div>
                   <div>
-                    <Label className="text-xs">Vigência Início</Label>
-                    <Input type="date" value={cctForm.vigencia_inicio} onChange={e => setCctForm(p => ({ ...p, vigencia_inicio: e.target.value }))} />
+                    <Label htmlFor="cct-inicio">Vigência Início</Label>
+                    <Input id="cct-inicio" type="date" value={cctForm.vigencia_inicio} onChange={e => setCctForm(p => ({ ...p, vigencia_inicio: e.target.value }))} />
                   </div>
                   <div>
-                    <Label className="text-xs">Vigência Fim</Label>
-                    <Input type="date" value={cctForm.vigencia_fim} onChange={e => setCctForm(p => ({ ...p, vigencia_fim: e.target.value }))} />
+                    <Label htmlFor="cct-fim">Vigência Fim</Label>
+                    <Input id="cct-fim" type="date" value={cctForm.vigencia_fim} onChange={e => setCctForm(p => ({ ...p, vigencia_fim: e.target.value }))} />
                   </div>
                   <div>
-                    <Label className="text-xs">Piso Salarial (R$)</Label>
-                    <Input placeholder="0,00" value={cctForm.piso_salarial} onChange={e => setCctForm(p => ({ ...p, piso_salarial: e.target.value }))} />
+                    <Label htmlFor="cct-piso">Piso Salarial (R$)</Label>
+                    <Input id="cct-piso" placeholder="0,00" value={cctForm.piso_salarial} onChange={e => setCctForm(p => ({ ...p, piso_salarial: e.target.value }))} />
                   </div>
                   <div>
-                    <Label className="text-xs">Reajuste (%)</Label>
-                    <Input placeholder="0,00" value={cctForm.reajuste_percentual} onChange={e => setCctForm(p => ({ ...p, reajuste_percentual: e.target.value }))} />
+                    <Label htmlFor="cct-reajuste">Reajuste (%)</Label>
+                    <Input id="cct-reajuste" placeholder="0,00" value={cctForm.reajuste_percentual} onChange={e => setCctForm(p => ({ ...p, reajuste_percentual: e.target.value }))} />
                   </div>
                   <div>
-                    <Label className="text-xs">Índice Base</Label>
+                    <Label htmlFor="cct-indice">Índice Base</Label>
                     <Select value={cctForm.indice_reajuste} onValueChange={v => setCctForm(p => ({ ...p, indice_reajuste: v }))}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectTrigger id="cct-indice"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="INPC">INPC</SelectItem>
                         <SelectItem value="IPCA">IPCA</SelectItem>
@@ -381,44 +393,48 @@ export default function IndicesRepactuacao() {
                     </Select>
                   </div>
                   <div>
-                    <Label className="text-xs">UF Abrangência</Label>
-                    <Input placeholder="Ex: PA" value={cctForm.abrangencia_uf} onChange={e => setCctForm(p => ({ ...p, abrangencia_uf: e.target.value }))} />
+                    <Label htmlFor="cct-uf">UF Abrangência</Label>
+                    <Input id="cct-uf" placeholder="Ex: PA" value={cctForm.abrangencia_uf} onChange={e => setCctForm(p => ({ ...p, abrangencia_uf: e.target.value }))} />
                   </div>
                 </div>
-                <div className="flex gap-2 pt-2">
-                  <Button onClick={salvarCCT} size="sm"><Save className="w-3 h-3 mr-1" /> Salvar</Button>
-                  <Button variant="outline" size="sm" onClick={() => setShowCCTForm(false)}>Cancelar</Button>
+                <div className="flex flex-wrap gap-2 pt-2">
+                  <Button onClick={salvarCCT}><Save className="w-4 h-4 mr-2" /> Salvar</Button>
+                  <Button variant="outline" onClick={() => setShowCCTForm(false)}>Cancelar</Button>
                 </div>
               </Card>
             )}
 
             {loadingCCTs ? (
-              <div className="space-y-2">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-20 rounded-xl" />)}</div>
+              <div className="space-y-2">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-20 rounded-lg" />)}</div>
             ) : ccts.length === 0 ? (
-              <Card className="p-8 text-center">
-                <Users className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-                <p className="text-muted-foreground">Nenhuma CCT cadastrada. Adicione convenções coletivas para embasar repactuações.</p>
-              </Card>
+              <div className="rounded-lg border border-border bg-card shadow-sm">
+                <EstadoVazio
+                  icone={<Users />}
+                  titulo="Nenhuma CCT cadastrada"
+                  descricao="Adicione convenções coletivas para embasar repactuações de serviços com mão de obra."
+                  acao={<Button onClick={() => setShowCCTForm(true)}><Plus className="w-4 h-4 mr-2" /> Cadastrar CCT</Button>}
+                />
+              </div>
             ) : (
               <div className="space-y-3">
                 {ccts.map(cct => (
-                  <Card key={cct.id} className="p-4">
-                    <div className="flex items-start justify-between">
+                  <Card key={cct.id} className="p-6">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center">
-                          <Users className="w-4 h-4 text-muted-foreground" />
+                        <div className="w-10 h-10 rounded-md bg-primary-tint text-primary flex items-center justify-center">
+                          <Users className="w-5 h-5" aria-hidden="true" />
                         </div>
                         <div>
-                          <p className="font-semibold text-sm">{cct.categoria_profissional}</p>
-                          {cct.sindicato_laboral && <p className="text-xs text-muted-foreground">{cct.sindicato_laboral}</p>}
+                          <p className="text-lg font-semibold">{cct.categoria_profissional}</p>
+                          {cct.sindicato_laboral && <p className="text-sm text-muted-foreground">{cct.sindicato_laboral}</p>}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant={cct.status === 'vigente' ? 'default' : 'secondary'} className="text-xs">{cct.status}</Badge>
-                        {cct.abrangencia_uf && <Badge variant="outline" className="text-xs">{cct.abrangencia_uf}</Badge>}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant={cct.status === 'vigente' ? 'success' : 'muted'}>{cct.status}</Badge>
+                        {cct.abrangencia_uf && <Badge variant="outline">{cct.abrangencia_uf}</Badge>}
                       </div>
                     </div>
-                    <div className="flex gap-4 mt-3 text-xs text-muted-foreground">
+                    <div className="flex flex-wrap gap-4 mt-3 text-sm text-muted-foreground">
                       {cct.piso_salarial && <span>Piso: {fmtCur(cct.piso_salarial)}</span>}
                       {cct.reajuste_percentual && <span>Reajuste: {cct.reajuste_percentual}%</span>}
                       {cct.indice_reajuste && <span>Índice: {cct.indice_reajuste}</span>}
@@ -429,32 +445,30 @@ export default function IndicesRepactuacao() {
               </div>
             )}
 
-            <Card className="p-4 bg-muted/30 border-dashed">
-              <div className="flex items-start gap-2">
-                <Scale className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                <p className="text-xs text-muted-foreground">
-                  <strong>Art. 135, I — Lei 14.133/2021:</strong> A repactuação para serviços contínuos com dedicação exclusiva de mão de obra 
-                  será precedida de nova CCT ou sentença normativa. O prazo mínimo é de 1 ano, contado da data do orçamento ou última repactuação.
-                </p>
-              </div>
-            </Card>
+            <Alert variant="info">
+              <Scale className="w-4 h-4" aria-hidden="true" />
+              <AlertDescription>
+                <strong>Art. 135, I — Lei 14.133/2021:</strong> A repactuação para serviços contínuos com dedicação exclusiva de mão de obra
+                será precedida de nova CCT ou sentença normativa. O prazo mínimo é de 1 ano, contado da data do orçamento ou última repactuação.
+              </AlertDescription>
+            </Alert>
           </TabsContent>
 
           {/* ═══ SIMULADOR DE REPACTUAÇÃO ═══ */}
           <TabsContent value="simulador" className="space-y-4">
-            <Card className="p-5 space-y-4">
-              <h3 className="text-sm font-semibold flex items-center gap-2">
-                <Calculator className="w-4 h-4 text-muted-foreground" /> Simulador de Reajuste / Repactuação
-              </h3>
+            <Card className="p-6 space-y-4">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <Calculator className="w-5 h-5 text-muted-foreground" aria-hidden="true" /> Simulador de Reajuste / Repactuação
+              </h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <Label className="text-xs">Valor Original do Contrato (R$)</Label>
-                  <MoneyInput value={simValor} onValueChange={setSimValor} />
+                  <Label htmlFor="sim-valor">Valor Original do Contrato (R$)</Label>
+                  <MoneyInput id="sim-valor" value={simValor} onValueChange={setSimValor} />
                 </div>
                 <div>
-                  <Label className="text-xs">Índice de Reajuste</Label>
+                  <Label htmlFor="sim-indice">Índice de Reajuste</Label>
                   <Select value={simIndice} onValueChange={setSimIndice}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger id="sim-indice"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="IPCA">IPCA (inflação geral)</SelectItem>
                       <SelectItem value="INPC">INPC (mão de obra)</SelectItem>
@@ -467,21 +481,21 @@ export default function IndicesRepactuacao() {
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-xs">Percentual de Reajuste (%)</Label>
-                  <Input placeholder="4,50" value={simPerc} onChange={e => setSimPerc(e.target.value)} />
+                  <Label htmlFor="sim-perc">Percentual de Reajuste (%)</Label>
+                  <Input id="sim-perc" placeholder="4,50" value={simPerc} onChange={e => setSimPerc(e.target.value)} />
                 </div>
                 <div>
-                  <Label className="text-xs">Data-Base Original</Label>
-                  <Input type="date" value={simDataOrig} onChange={e => setSimDataOrig(e.target.value)} />
+                  <Label htmlFor="sim-data-orig">Data-Base Original</Label>
+                  <Input id="sim-data-orig" type="date" value={simDataOrig} onChange={e => setSimDataOrig(e.target.value)} />
                 </div>
                 <div>
-                  <Label className="text-xs">Data-Base do Reajuste</Label>
-                  <Input type="date" value={simDataReaj} onChange={e => setSimDataReaj(e.target.value)} />
+                  <Label htmlFor="sim-data-reaj">Data-Base do Reajuste</Label>
+                  <Input id="sim-data-reaj" type="date" value={simDataReaj} onChange={e => setSimDataReaj(e.target.value)} />
                 </div>
                 <div>
-                  <Label className="text-xs">Tipo de Serviço</Label>
+                  <Label htmlFor="sim-tipo">Tipo de Serviço</Label>
                   <Select value={simTipo} onValueChange={setSimTipo}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger id="sim-tipo"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="continuado">Serviço Continuado (mão de obra)</SelectItem>
                       <SelectItem value="engenharia">Engenharia</SelectItem>
@@ -491,7 +505,7 @@ export default function IndicesRepactuacao() {
                   </Select>
                 </div>
               </div>
-              <Button onClick={simular} disabled={simLoading} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+              <Button onClick={simular} disabled={simLoading}>
                 {simLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
                 {simLoading ? 'Calculando com IA...' : 'Simular Repactuação'}
               </Button>
@@ -500,82 +514,83 @@ export default function IndicesRepactuacao() {
             {simResult && (
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Card className="p-4 text-center">
-                    <p className="text-xs text-muted-foreground mb-1">Valor Original</p>
-                    <p className="text-lg font-bold">{fmtCur(simValor || 0)}</p>
+                  <Card className="p-6 text-center">
+                    <p className="text-sm text-muted-foreground mb-1">Valor Original</p>
+                    <p className="text-[2rem] leading-10 font-bold tabular-nums break-normal">{fmtCur(simValor || 0)}</p>
                   </Card>
-                  <Card className="p-4 text-center">
-                    <p className="text-xs text-muted-foreground mb-1">Valor Reajustado</p>
-                    <p className="text-lg font-bold text-foreground">{fmtCur(simResult.valor_reajustado)}</p>
+                  <Card className="p-6 text-center">
+                    <p className="text-sm text-muted-foreground mb-1">Valor Reajustado</p>
+                    <p className="text-[2rem] leading-10 font-bold text-foreground tabular-nums break-normal">{fmtCur(simResult.valor_reajustado)}</p>
                   </Card>
-                  <Card className="p-4 text-center">
-                    <p className="text-xs text-muted-foreground mb-1">Diferença</p>
-                    <p className="text-lg font-bold text-success">{fmtCur(simResult.diferenca)}</p>
+                  <Card className="p-6 text-center">
+                    <p className="text-sm text-muted-foreground mb-1">Diferença</p>
+                    <p className="text-[2rem] leading-10 font-bold text-success-ink tabular-nums break-normal">{fmtCur(simResult.diferenca)}</p>
                   </Card>
                 </div>
 
                 {simResult.alertas?.length > 0 && (
-                  <Card className="p-4 border-warning/30 bg-warning/5">
-                    <h4 className="text-sm font-semibold flex items-center gap-2 mb-2">
-                      <AlertTriangle className="w-4 h-4 text-warning" /> Alertas
-                    </h4>
-                    <ul className="space-y-1">
-                      {simResult.alertas.map((a, i) => (
-                        <li key={i} className="text-xs text-muted-foreground flex items-start gap-1">
-                          <Minus className="w-3 h-3 mt-0.5 flex-shrink-0" /> {a}
-                        </li>
-                      ))}
-                    </ul>
-                  </Card>
+                  <Alert variant="warning">
+                    <AlertTriangle className="w-4 h-4" aria-hidden="true" />
+                    <AlertDescription>
+                      <p className="font-semibold mb-2">Alertas</p>
+                      <ul className="space-y-1">
+                        {simResult.alertas.map((a, i) => (
+                          <li key={i} className="text-sm flex items-start gap-1">
+                            <Minus className="w-3 h-3 mt-1 flex-shrink-0" aria-hidden="true" /> {a}
+                          </li>
+                        ))}
+                      </ul>
+                    </AlertDescription>
+                  </Alert>
                 )}
 
-                <Card className="p-4">
-                  <h4 className="text-sm font-semibold flex items-center gap-2 mb-3">
-                    <Scale className="w-4 h-4 text-muted-foreground" /> Fundamentação Jurídica
-                  </h4>
-                  <div className="prose prose-sm max-w-none dark:prose-invert text-xs">
+                <Card className="p-6">
+                  <h2 className="text-lg font-semibold flex items-center gap-2 mb-3">
+                    <Scale className="w-5 h-5 text-muted-foreground" aria-hidden="true" /> Fundamentação Jurídica
+                  </h2>
+                  <div className="prose prose-sm max-w-none dark:prose-invert text-sm">
                     <ReactMarkdown>{simResult.fundamentacao}</ReactMarkdown>
                   </div>
                 </Card>
 
-                <Card className="p-4">
-                  <h4 className="text-sm font-semibold flex items-center gap-2 mb-3">
-                    <FileText className="w-4 h-4 text-muted-foreground" /> Parecer Técnico
-                  </h4>
-                  <div className="prose prose-sm max-w-none dark:prose-invert text-xs">
+                <Card className="p-6">
+                  <h2 className="text-lg font-semibold flex items-center gap-2 mb-3">
+                    <FileText className="w-5 h-5 text-muted-foreground" aria-hidden="true" /> Parecer Técnico
+                  </h2>
+                  <div className="prose prose-sm max-w-none dark:prose-invert text-sm">
                     <ReactMarkdown>{simResult.parecer}</ReactMarkdown>
                   </div>
                 </Card>
               </div>
             )}
 
-            <Card className="p-4 bg-muted/50 border-border">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Scale className="w-4 h-4 text-muted-foreground" />
+            <Card className="p-6">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-start gap-2">
+                  <Scale className="w-5 h-5 text-muted-foreground mt-0.5 shrink-0" aria-hidden="true" />
                   <div>
-                    <p className="text-sm font-semibold">Gerar Pedido de Reequilíbrio Formal</p>
-                    <p className="text-xs text-muted-foreground">Vá ao Apoio Jurídico para gerar documentos completos com estes índices e CCTs como fundamentação</p>
+                    <p className="text-lg font-semibold">Gerar Pedido de Reequilíbrio Formal</p>
+                    <p className="text-sm text-muted-foreground">Vá ao Apoio Jurídico para gerar documentos completos com estes índices e CCTs como fundamentação</p>
                   </div>
                 </div>
-                <Button size="sm" onClick={() => navigate('/apoio-juridico')} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-                  Apoio Jurídico <ArrowRight className="w-3 h-3 ml-1" />
+                <Button onClick={() => navigate('/apoio-juridico')}>
+                  Apoio Jurídico <ArrowRight className="w-4 h-4 ml-2" aria-hidden="true" />
                 </Button>
               </div>
             </Card>
 
-            <Card className="p-4 bg-muted/30 border-dashed">
-              <div className="flex items-start gap-2">
-                <Info className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                <div className="text-xs text-muted-foreground space-y-1">
+            <Alert variant="info">
+              <Info className="w-4 h-4" aria-hidden="true" />
+              <AlertDescription>
+                <div className="space-y-1">
                   <p><strong>Referências Legais:</strong></p>
                   <p>• Art. 92, §3º, Lei 14.133/2021 — Cláusula de reajuste obrigatória em contratos com prazo &gt; 1 ano</p>
                   <p>• Art. 135, Lei 14.133/2021 — Reajuste em sentido estrito (índice) e repactuação (CCT/dissídio)</p>
                   <p>• Art. 124, II, "d", Lei 14.133/2021 — Reequilíbrio econômico-financeiro</p>
                   <p>• Acórdão TCU 1.563/2004, 1.827/2008 — Súmulas sobre reajuste contratual</p>
                 </div>
-              </div>
-            </Card>
+              </AlertDescription>
+            </Alert>
           </TabsContent>
         </Tabs>
       </div>

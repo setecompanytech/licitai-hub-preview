@@ -7,8 +7,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Label } from '@/components/ui/label';
 import {
-  Globe, Search, ExternalLink, CheckCircle, XCircle, Loader2, Filter,
+  Globe, Search, ExternalLink, Filter,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -95,34 +97,38 @@ export default function FontesManager() {
   return (
     <div className="space-y-5">
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { label: 'Total de Fontes', value: stats.total, color: 'text-foreground' },
           { label: 'Fontes Ativas', value: stats.ativos, color: 'text-success' },
           { label: 'Categorias', value: stats.categorias, color: 'text-foreground' },
-          { label: 'Tipos', value: stats.tipos, color: 'text-info' },
+          { label: 'Tipos', value: stats.tipos, color: 'text-foreground' },
         ].map(s => (
-          <div key={s.label} className="bg-muted/30 border border-border/30 rounded-lg p-3 text-center">
-            <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+          <div key={s.label} className="rounded-lg border border-border bg-card p-4 text-center shadow-sm">
+            <p className={`text-[2rem] leading-10 font-bold tabular-nums ${s.color}`}>{s.value}</p>
             <p className="text-xs text-muted-foreground">{s.label}</p>
           </div>
         ))}
       </div>
 
       {/* Filters */}
-      <div className="flex gap-3 items-center flex-wrap">
-        <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar fonte..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="pl-9 h-9"
-          />
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="w-full sm:w-72">
+          <Label htmlFor="fontes-busca" className="sr-only">Buscar fonte</Label>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
+            <Input
+              id="fontes-busca"
+              placeholder="Buscar fonte..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="pl-9"
+            />
+          </div>
         </div>
         <Select value={filterTipo} onValueChange={setFilterTipo}>
-          <SelectTrigger className="w-[160px] h-9">
-            <Filter className="w-3.5 h-3.5 mr-1 text-muted-foreground" />
+          <SelectTrigger aria-label="Tipo de fonte" className="w-full sm:w-[180px]">
+            <Filter className="w-4 h-4 mr-1 text-muted-foreground" aria-hidden="true" />
             <SelectValue placeholder="Tipo" />
           </SelectTrigger>
           <SelectContent>
@@ -133,7 +139,7 @@ export default function FontesManager() {
           </SelectContent>
         </Select>
         <Select value={filterCategoria} onValueChange={setFilterCategoria}>
-          <SelectTrigger className="w-[180px] h-9">
+          <SelectTrigger aria-label="Categoria da fonte" className="w-full sm:w-[200px]">
             <SelectValue placeholder="Categoria" />
           </SelectTrigger>
           <SelectContent>
@@ -143,35 +149,38 @@ export default function FontesManager() {
             ))}
           </SelectContent>
         </Select>
-        <Badge variant="outline" className="text-xs">
+        <Badge variant="outline" className="h-11">
           {filtered.length} resultado{filtered.length !== 1 ? 's' : ''}
         </Badge>
       </div>
 
       {/* Table */}
       {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        <div className="space-y-2" role="status" aria-label="Carregando fontes">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
         </div>
       ) : (
-        <div className="border border-border/50 rounded-lg overflow-hidden">
+        <div className="overflow-x-auto rounded-lg border border-border">
           <Table>
             <TableHeader>
-              <TableRow className="bg-muted/30">
-                <TableHead className="text-xs">Fonte</TableHead>
-                <TableHead className="text-xs">Tipo</TableHead>
-                <TableHead className="text-xs">Categoria</TableHead>
-                <TableHead className="text-xs">Método</TableHead>
-                <TableHead className="text-xs text-center">Status</TableHead>
-                <TableHead className="text-xs text-center">Ações</TableHead>
+              <TableRow className="bg-muted">
+                <TableHead className="text-sm font-semibold">Fonte</TableHead>
+                <TableHead className="text-sm font-semibold">Tipo</TableHead>
+                <TableHead className="text-sm font-semibold">Categoria</TableHead>
+                <TableHead className="text-sm font-semibold">Método</TableHead>
+                <TableHead className="text-sm font-semibold text-center">Status</TableHead>
+                <TableHead className="text-sm font-semibold text-center">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.map(s => (
-                <TableRow key={s.id} className="hover:bg-muted/20">
+                <TableRow key={s.id} className="hover:bg-muted">
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <Globe className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                      <Globe className="w-4 h-4 text-muted-foreground flex-shrink-0" aria-hidden="true" />
                       <div>
                         <p className="text-sm font-medium">{s.nome}</p>
                         <p className="text-xs text-muted-foreground truncate max-w-[200px]">{s.url_base}</p>
@@ -179,34 +188,31 @@ export default function FontesManager() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline" className="text-xs">
+                    <Badge variant="outline">
                       {TIPO_LABELS[s.tipo] || s.tipo}
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-sm text-muted-foreground">
                       {CATEGORIA_LABELS[s.categoria] || s.categoria}
                     </span>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="secondary" className="text-xs">
+                    <Badge variant="muted">
                       {METODO_LABELS[s.metodo_ingestao] || s.metodo_ingestao}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-center">
-                    {s.ativo ? (
-                      <CheckCircle className="w-4 h-4 text-success inline-block" />
-                    ) : (
-                      <XCircle className="w-4 h-4 text-destructive inline-block" />
-                    )}
+                    <Badge variant={s.ativo ? 'success' : 'danger'}>{s.ativo ? 'Ativa' : 'Inativa'}</Badge>
                   </TableCell>
                   <TableCell className="text-center">
                     <Button
                       size="sm"
                       variant="ghost"
+                      aria-label={`Abrir ${s.nome} em nova aba`}
                       onClick={() => window.open(s.url_base, '_blank')}
                     >
-                      <ExternalLink className="w-3.5 h-3.5" />
+                      <ExternalLink className="w-4 h-4" aria-hidden="true" />
                     </Button>
                   </TableCell>
                 </TableRow>

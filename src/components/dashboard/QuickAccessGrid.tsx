@@ -1,12 +1,14 @@
 import { useNavigate } from 'react-router-dom';
 import {
-  Download, Bell, Target, Archive, Bot, Search, Scale, BookOpen,
+  Download, Bell, Target, Search, Scale,
   Kanban, Shield, MessageSquare, Crosshair, TrendingUp, Building2, Settings, Plug, Gauge,
   Users, DollarSign, ClipboardCheck, FileText,
-  BarChart3, CalendarDays, ListChecks, Calculator, Workflow,   FileBarChart, Sparkles,
+  CalendarDays, ListChecks, Calculator, Workflow, FileBarChart, Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface QuickItem {
@@ -114,26 +116,20 @@ export default function QuickAccessGrid() {
   // Duas colunas dispensam o cálculo de coluna que existia aqui: qualquer
   // número de grupos preenche as fileiras sem deixar buraco à direita.
   return (
-    <div className="grid gap-4 lg:grid-cols-2 [&>*]:min-w-0">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 [&>*]:min-w-0">
       {gruposVisiveis.map((group) => (
         <div
           key={group.title}
           className={cn(
-            // Borda além da sombra: o painel tem fundo cinza-claro, e só a
-            // sombra não separava o cartão do fundo em tela de baixo contraste.
-            'rounded-2xl p-5 shadow-md border',
+            'rounded-lg border p-6 shadow-sm',
             group.accent
-              ? 'bg-primary-tint/50 border-primary/15'
-              : 'bg-card border-border/70'
+              ? 'bg-primary-tint/50 border-primary/20'
+              : 'bg-card border-border'
           )}
         >
-          <div className="flex items-center gap-2.5 mb-4">
+          <div className="flex items-center gap-2 mb-4">
             <h3 className="text-lg font-semibold">{group.title}</h3>
-            {group.accent && (
-              <span className="text-xs font-bold uppercase tracking-wider bg-success text-success-foreground px-2 py-0.5 rounded-full leading-none">
-                Destaque
-              </span>
-            )}
+            {group.accent && <Badge variant="success">Destaque</Badge>}
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 [&>*]:min-w-0">
@@ -142,29 +138,33 @@ export default function QuickAccessGrid() {
               return (
                 <Tooltip key={item.path + item.label} delayDuration={400}>
                   <TooltipTrigger asChild>
-                    <button
+                    {/* Ladrilho = Button outline em coluna. `whitespace-normal`
+                        e `[&_svg]:size-5` sobrescrevem o nowrap e o ícone de
+                        16px que o Button traz para linha de texto. */}
+                    <Button
+                      variant="outline"
                       onClick={() => navigate(item.path)}
-                      className="eleva eleva--ladrilho group relative flex flex-col items-center justify-center gap-2.5 rounded-xl border border-border bg-card px-2 py-5 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      className="group relative h-auto flex-col gap-2 whitespace-normal px-2 py-5 text-center [&_svg]:size-5"
                     >
                       {item.badge && (
                         // O selo fica ACIMA do ladrilho, montado na borda, como
                         // no protótipo — dentro, ele empurraria o ícone e
                         // desalinharia a fileira inteira.
-                        <span className="absolute -top-2 left-1/2 -translate-x-1/2 text-xs font-bold bg-success text-success-foreground px-2 py-0.5 rounded-full leading-none whitespace-nowrap">
+                        <Badge variant="success" className="absolute -top-2 left-1/2 -translate-x-1/2">
                           Novidade
-                        </span>
+                        </Badge>
                       )}
                       {/* O ícone cresce junto, um pouco mais que o ladrilho —
                           é o que faz o gesto parecer que o cartão se aproxima,
                           e não que foi só esticado. */}
                       <Icon
-                        className="w-5 h-5 text-accent transition-transform duration-200 ease-out group-hover:scale-110 motion-reduce:transform-none motion-reduce:transition-none"
+                        className="text-primary transition-transform duration-200 ease-out group-hover:scale-110 motion-reduce:transform-none motion-reduce:transition-none"
                         aria-hidden="true"
                       />
                       <span className="text-sm font-medium leading-tight line-clamp-2">
                         {item.label}
                       </span>
-                    </button>
+                    </Button>
                   </TooltipTrigger>
                   <TooltipContent side="top" className="text-xs">
                     {item.label}

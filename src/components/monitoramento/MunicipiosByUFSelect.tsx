@@ -76,11 +76,11 @@ export default function MunicipiosByUFSelect({
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
-      <Label className="md:col-span-2 text-xs text-muted-foreground pt-2">
+      <Label className="md:col-span-2 pt-2 text-sm text-foreground">
         {label}
       </Label>
       <div className="md:col-span-10 space-y-2">
-        <p className="text-xs text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           {ufsVazias
             ? "Selecione uma ou mais UFs acima para listar municípios"
             : `${municipios.length.toLocaleString("pt-BR")} municípios disponíveis (IBGE) para ${ufs.join(", ")}`}
@@ -100,12 +100,12 @@ export default function MunicipiosByUFSelect({
             selecionados.map((v) => (
               <span
                 key={v}
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-muted text-foreground text-xs font-medium"
+                className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-foreground"
               >
                 {v}
                 <button
                   onClick={(e) => { e.stopPropagation(); onToggle(v); }}
-                  className="hover:text-destructive"
+                  className="rounded-sm hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   type="button"
                 >
                   <X className="w-3 h-3" />
@@ -119,7 +119,7 @@ export default function MunicipiosByUFSelect({
                 variant="ghost"
                 size="sm"
                 onClick={(e) => { e.stopPropagation(); onClear(); }}
-                className="h-6 text-xs px-2 text-muted-foreground hover:text-destructive"
+                className="h-8 px-2 text-xs text-muted-foreground hover:text-destructive"
                 type="button"
               >
                 Excluir
@@ -131,7 +131,7 @@ export default function MunicipiosByUFSelect({
               onClick={(e) => { e.stopPropagation(); if (!ufsVazias) setOpen((o) => !o); }}
               disabled={ufsVazias}
               type="button"
-              className="h-6 text-xs px-2"
+              className="h-8 px-2 text-xs"
             >
               {open ? (
                 <ChevronUp className="w-3 h-3 mr-1" />
@@ -151,7 +151,7 @@ export default function MunicipiosByUFSelect({
                 placeholder="Buscar município…"
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
-                className="h-8 pl-8 text-xs"
+                className="pl-8"
               />
             </div>
 
@@ -167,13 +167,13 @@ export default function MunicipiosByUFSelect({
 
             {!carregando && !erro && (
               <>
-                <div className="max-h-64 overflow-y-auto rounded border border-border/60">
+                <div className="max-h-64 overflow-y-auto rounded-md border border-border">
                   {filtrados.length === 0 ? (
-                    <p className="text-xs text-muted-foreground p-3 text-center">
+                    <p className="p-3 text-center text-sm text-muted-foreground">
                       Nenhum município encontrado.
                     </p>
                   ) : (
-                    <ul className="divide-y divide-border/40">
+                    <ul className="divide-y divide-border">
                       {filtrados.map((m) => {
                         const valor = `${m.nome}/${m.uf}`;
                         const ativo = selecionados.includes(valor);
@@ -182,8 +182,8 @@ export default function MunicipiosByUFSelect({
                             <button
                               type="button"
                               onClick={() => onToggle(valor)}
-                              className={`w-full flex items-center justify-between px-3 py-1.5 text-xs hover:bg-muted/50 transition-colors ${
-                                ativo ? "text-accent font-medium" : "text-foreground"
+                              className={`flex w-full items-center justify-between px-3 py-2 text-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
+                                ativo ? "bg-primary-tint font-medium text-primary" : "text-foreground"
                               }`}
                             >
                               <span>

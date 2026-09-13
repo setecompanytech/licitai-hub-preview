@@ -1,10 +1,13 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useEmpresaId } from "@/hooks/useFinanceiro";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from "recharts";
-import { Target, Loader2 } from "lucide-react";
+import { Target } from "lucide-react";
+
+const KPI_VALOR = "mt-1 text-[2rem] leading-10 font-bold tabular-nums truncate";
 
 export default function FinPrevistoRealizado() {
   const empresaId = useEmpresaId();
@@ -55,19 +58,19 @@ export default function FinPrevistoRealizado() {
   const totalDespReal = meses.reduce((a, b) => a + b.despesaReal, 0);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Target className="w-5 h-5 text-muted-foreground" /> Previsto × Realizado — {new Date().getFullYear()}
+          <CardTitle className="flex items-center gap-2">
+            <Target className="w-5 h-5 text-muted-foreground" aria-hidden="true" /> Previsto × Realizado — {new Date().getFullYear()}
           </CardTitle>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Compara o que foi planejado (previsto) com o efetivamente realizado em cada mês do ano corrente.
           </p>
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="h-64 grid place-items-center"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+            <Skeleton className="h-80 w-full" />
           ) : (
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
@@ -77,7 +80,7 @@ export default function FinPrevistoRealizado() {
                   <YAxis className="text-xs" tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} />
                   <Tooltip
                     formatter={(v: number) => `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
-                    contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))", borderRadius: 6 }}
+                    contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 10, color: "hsl(var(--foreground))" }}
                   />
                   <Legend wrapperStyle={{ fontSize: 12 }} />
                   <Bar dataKey="receitaPrev" name="Receita prevista" fill="hsl(var(--success) / 0.4)" />
@@ -91,24 +94,24 @@ export default function FinPrevistoRealizado() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Card><CardContent className="p-4">
-          <p className="text-xs text-muted-foreground">Receita prevista</p>
-          <p className="text-lg font-semibold tabular-nums">R$ {totalRecPrev.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card><CardContent className="p-6">
+          <p className="text-sm font-medium text-muted-foreground">Receita prevista</p>
+          <p className={KPI_VALOR}>R$ {totalRecPrev.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}</p>
         </CardContent></Card>
-        <Card><CardContent className="p-4">
-          <p className="text-xs text-muted-foreground">Receita realizada</p>
-          <p className="text-lg font-semibold tabular-nums text-success">R$ {totalRecReal.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}</p>
-          <p className="text-xs text-muted-foreground">{totalRecPrev ? ((totalRecReal/totalRecPrev)*100).toFixed(1) : 0}% da meta</p>
+        <Card><CardContent className="p-6">
+          <p className="text-sm font-medium text-muted-foreground">Receita realizada</p>
+          <p className={`${KPI_VALOR} text-success`}>R$ {totalRecReal.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}</p>
+          <p className="text-xs text-muted-foreground mt-1 tabular-nums">{totalRecPrev ? ((totalRecReal/totalRecPrev)*100).toFixed(1) : 0}% da meta</p>
         </CardContent></Card>
-        <Card><CardContent className="p-4">
-          <p className="text-xs text-muted-foreground">Despesa prevista</p>
-          <p className="text-lg font-semibold tabular-nums">R$ {totalDespPrev.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}</p>
+        <Card><CardContent className="p-6">
+          <p className="text-sm font-medium text-muted-foreground">Despesa prevista</p>
+          <p className={KPI_VALOR}>R$ {totalDespPrev.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}</p>
         </CardContent></Card>
-        <Card><CardContent className="p-4">
-          <p className="text-xs text-muted-foreground">Despesa realizada</p>
-          <p className="text-lg font-semibold tabular-nums text-destructive">R$ {totalDespReal.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}</p>
-          <p className="text-xs text-muted-foreground">{totalDespPrev ? ((totalDespReal/totalDespPrev)*100).toFixed(1) : 0}% do orçado</p>
+        <Card><CardContent className="p-6">
+          <p className="text-sm font-medium text-muted-foreground">Despesa realizada</p>
+          <p className={`${KPI_VALOR} text-destructive`}>R$ {totalDespReal.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}</p>
+          <p className="text-xs text-muted-foreground mt-1 tabular-nums">{totalDespPrev ? ((totalDespReal/totalDespPrev)*100).toFixed(1) : 0}% do orçado</p>
         </CardContent></Card>
       </div>
     </div>

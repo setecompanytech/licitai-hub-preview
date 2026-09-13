@@ -231,8 +231,8 @@ export default function ImportarContratoPDF({ onExtracted, onCadastroManual }: I
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Upload className="w-4 h-4 mr-2" /> Importar Contrato
+        <Button variant="outline">
+          <Upload className="w-4 h-4" /> Importar Contrato
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-lg">
@@ -245,7 +245,7 @@ export default function ImportarContratoPDF({ onExtracted, onCadastroManual }: I
         {step === 'upload' && (
           <div className="py-4 space-y-4">
             <div className="rounded-lg border border-border bg-muted/20 p-3">
-              <Label className="text-xs">O documento está organizado por *</Label>
+              <Label>O documento está organizado por *</Label>
               <Select value={tipoEstrutura} onValueChange={(v: 'itens' | 'lotes') => setTipoEstrutura(v)}>
                 <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -261,9 +261,11 @@ export default function ImportarContratoPDF({ onExtracted, onCadastroManual }: I
             </div>
             <label
               htmlFor="pdf-upload"
-              className="flex flex-col items-center justify-center border-2 border-dashed border-muted-foreground/30 rounded-lg p-8 cursor-pointer hover:border-primary/50 transition-colors"
+              className="flex flex-col items-center justify-center border-2 border-dashed border-border rounded-lg p-8 cursor-pointer hover:border-primary hover:bg-primary-tint transition-colors"
             >
-              <Upload className="w-10 h-10 text-muted-foreground mb-3" />
+              <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary" aria-hidden="true">
+                <Upload className="w-6 h-6" />
+              </span>
               <p className="text-sm font-medium">Clique ou arraste o documento do contrato</p>
               <p className="text-xs text-muted-foreground mt-1">PDF, DOC, DOCX ou TXT até 20MB</p>
             </label>
@@ -295,7 +297,7 @@ export default function ImportarContratoPDF({ onExtracted, onCadastroManual }: I
 
         {step === 'done' && extracted && (
           <div className="py-4 space-y-4">
-            <div className="flex items-center gap-2 text-sm text-success">
+            <div className="flex items-center gap-2 text-sm text-success-ink">
               <CheckCircle2 className="w-5 h-5" />
               <span className="font-medium">Extração concluída!</span>
             </div>
@@ -338,7 +340,7 @@ export default function ImportarContratoPDF({ onExtracted, onCadastroManual }: I
                 {extracted.vigencia_meses != null && <Badge variant="secondary" className="text-xs">{extracted.vigencia_meses} meses</Badge>}
               </div>
               {aviso && (
-                <p className={`mt-2 flex items-start gap-1.5 text-xs ${itensRecusados ? 'text-destructive' : 'text-warning'}`}>
+                <p className={`mt-2 flex items-start gap-1.5 text-xs ${itensRecusados ? 'text-destructive-ink' : 'text-warning-ink'}`}>
                   <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
                   <span>{aviso}</span>
                 </p>
@@ -354,7 +356,7 @@ export default function ImportarContratoPDF({ onExtracted, onCadastroManual }: I
 
         {step === 'error' && (
           <div className="py-6 space-y-4">
-            <div className="flex items-center gap-2 text-sm text-destructive">
+            <div className="flex items-center gap-2 text-sm text-destructive-ink">
               <AlertTriangle className="w-5 h-5" />
               <span className="font-medium">Erro na extração</span>
             </div>

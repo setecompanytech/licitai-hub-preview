@@ -186,21 +186,21 @@ export default function ContratoCustos({ contratoId, valorFaturado }: { contrato
         </Card>
         <Card className="p-3">
           <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1"><Receipt className="w-3 h-3" /> Custos Totais</div>
-          <p className="text-sm font-bold text-destructive whitespace-nowrap tabular-nums">{fmt(totalCustos)}</p>
+          <p className="text-sm font-bold text-destructive-ink whitespace-nowrap tabular-nums">{fmt(totalCustos)}</p>
         </Card>
         <Card className="p-3">
           <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1"><TrendingUp className="w-3 h-3" /> Lucro Bruto</div>
-          <p className={`text-sm font-bold whitespace-nowrap tabular-nums ${lucroBruto >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(lucroBruto)}</p>
+          <p className={`text-sm font-bold whitespace-nowrap tabular-nums ${lucroBruto >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>{fmt(lucroBruto)}</p>
           <p className="text-xs text-muted-foreground">Margem: {margemBruta.toFixed(1)}%</p>
         </Card>
         <Card className="p-3">
           <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1"><TrendingDown className="w-3 h-3" /> Lucro Líquido</div>
-          <p className={`text-sm font-bold whitespace-nowrap tabular-nums ${lucroLiquido >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(lucroLiquido)}</p>
+          <p className={`text-sm font-bold whitespace-nowrap tabular-nums ${lucroLiquido >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>{fmt(lucroLiquido)}</p>
           <p className="text-xs text-muted-foreground">Margem: {margemLiquida.toFixed(1)}%</p>
         </Card>
         <Card className="p-3">
           <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1"><Percent className="w-3 h-3" /> Tributos</div>
-          <p className="text-sm font-bold text-warning whitespace-nowrap tabular-nums">{fmt(tributos)}</p>
+          <p className="text-sm font-bold text-warning-ink whitespace-nowrap tabular-nums">{fmt(tributos)}</p>
         </Card>
         <Card className="p-3">
           <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1"><Truck className="w-3 h-3" /> Frete/Logística</div>
@@ -264,7 +264,7 @@ export default function ContratoCustos({ contratoId, valorFaturado }: { contrato
 
       {/* Header + filter */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold flex items-center gap-2">
+        <h3 className="text-lg font-semibold flex items-center gap-2">
           <Receipt className="w-4 h-4 text-muted-foreground" /> Lançamentos de Custos
           {filtroTipo !== 'all' && (
             <Badge variant="outline" className="text-xs cursor-pointer" onClick={() => setFiltroTipo('all')}>
@@ -314,13 +314,13 @@ export default function ContratoCustos({ contratoId, valorFaturado }: { contrato
                       </Badge>
                     </TableCell>
                     <TableCell className="text-xs max-w-[200px] truncate" title={c.descricao}>{c.descricao}</TableCell>
-                    <TableCell className="text-xs text-right font-medium text-destructive">{fmt(c.valor)}</TableCell>
+                    <TableCell className="text-xs text-right font-medium text-destructive-ink">{fmt(c.valor)}</TableCell>
                     <TableCell className="text-xs text-center">{c.data_lancamento ? new Date(c.data_lancamento + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</TableCell>
                     <TableCell className="text-xs">{c.categoria || '—'}</TableCell>
                     <TableCell className="text-xs">{c.nota_fiscal || '—'}</TableCell>
                     <TableCell>
                       <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleDelete(c.id)}>
-                        <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                        <Trash2 className="w-3.5 h-3.5 text-destructive-ink" />
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -431,7 +431,7 @@ function TributoCalculator({ contratoId, userId, regime, valorFaturado, onSaved,
   if (!regimeConfig) {
     return (
       <div className="py-6 text-center space-y-3">
-        <AlertTriangle className="w-10 h-10 text-warning mx-auto" />
+        <AlertTriangle className="w-10 h-10 text-warning-ink mx-auto" />
         <p className="text-sm font-medium">Regime tributário não configurado</p>
         <p className="text-xs text-muted-foreground">
           Acesse <strong>Empresas → Editar</strong> e defina o regime tributário para calcular os tributos automaticamente.
@@ -501,13 +501,13 @@ function TributoCalculator({ contratoId, userId, regime, valorFaturado, onSaved,
                       <span>{fmtPct(t.aliquota)}</span>
                     )}
                   </TableCell>
-                  <TableCell className="text-xs text-right font-medium text-warning">{fmt(t.valor)}</TableCell>
+                  <TableCell className="text-xs text-right font-medium text-warning-ink">{fmt(t.valor)}</TableCell>
                 </TableRow>
               ))}
               <TableRow className="bg-muted/30 font-bold">
                 <TableCell className="text-xs">Total Tributos</TableCell>
                 <TableCell className="text-xs text-right">{base > 0 ? fmtPct((totalTributos / base) * 100) : '—'}</TableCell>
-                <TableCell className="text-xs text-right text-warning">{fmt(totalTributos)}</TableCell>
+                <TableCell className="text-xs text-right text-warning-ink">{fmt(totalTributos)}</TableCell>
               </TableRow>
             </TableBody>
           </Table>
@@ -823,7 +823,7 @@ function GenericCostCalculator({ contratoId, userId, tipo, onSaved, onClose }: {
               <span className="text-xs font-semibold text-muted-foreground">Item {idx + 1}</span>
               {lines.length > 1 && (
                 <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => removeLine(line.key)}>
-                  <Trash2 className="w-3 h-3 text-destructive" />
+                  <Trash2 className="w-3 h-3 text-destructive-ink" />
                 </Button>
               )}
             </div>

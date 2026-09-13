@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useResumoFinanceiro } from '@/hooks/useFinanceiro';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 
 /**
  * Herói do Financeiro — o bloco de saldo, os quatro números do dia e a curva
@@ -21,6 +22,9 @@ import { Skeleton } from '@/components/ui/skeleton';
  * devolve saldoTotal, aPagar, aReceber e o fluxo de 6 meses — então o gráfico
  * não custa consulta nova. Foi o que decidiu esta tela ser a primeira: o
  * desenho do protótipo e os dados que o app já tem coincidem.
+ *
+ * Identidade 12/09: o cartão navy virou cartão claro — a linguagem nova é de
+ * fundo claro, com navy só no texto e verde só na ação.
  */
 
 const brl = (v: number) =>
@@ -40,6 +44,12 @@ interface Props {
   onNavigate: (id: string) => void;
 }
 
+const TOM_ICONE = {
+  success: 'text-success',
+  destructive: 'text-destructive',
+  neutro: 'text-muted-foreground',
+} as const;
+
 export default function FinHeroPainel({ onNavigate }: Props) {
   const { data, isLoading } = useResumoFinanceiro();
 
@@ -54,9 +64,9 @@ export default function FinHeroPainel({ onNavigate }: Props) {
 
   if (isLoading) {
     return (
-      <div className="grid gap-4 lg:grid-cols-3 mb-4">
-        <Skeleton className="h-[196px] rounded-2xl lg:col-span-2" />
-        <Skeleton className="h-[196px] rounded-2xl" />
+      <div className="grid gap-4 lg:grid-cols-3" role="status" aria-label="Carregando resumo financeiro">
+        <Skeleton className="h-48 rounded-lg lg:col-span-2" />
+        <Skeleton className="h-48 rounded-lg" />
       </div>
     );
   }
@@ -68,55 +78,52 @@ export default function FinHeroPainel({ onNavigate }: Props) {
   ];
 
   return (
-    <div className="mb-4 grid gap-4 lg:grid-cols-3 [&>*]:min-w-0">
-      {/* Saldo + curva — o cartão navy do protótipo */}
-      <div className="lg:col-span-2 rounded-2xl bg-gradient-dark text-white p-5 sm:p-6 shadow-md overflow-hidden">
+    <div className="grid gap-4 lg:grid-cols-3 [&>*]:min-w-0">
+      {/* Saldo + curva — o cartão de destaque, agora claro */}
+      <div className="lg:col-span-2 rounded-lg border border-border bg-card p-6 shadow-sm overflow-hidden">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-xs font-bold uppercase tracking-wider text-white/60">
+            <p className="text-sm font-medium text-muted-foreground">
               Saldo em contas
             </p>
-            <p className="text-3xl sm:text-4xl font-bold tabular-nums leading-none mt-2">
+            <p className="mt-1 text-[2rem] leading-10 font-bold tabular-nums text-foreground">
               {brl(data?.saldoTotal ?? 0)}
             </p>
-            <p className="text-sm text-white/70 mt-2">
+            <p className="mt-2 text-sm text-muted-foreground">
               Projeção{' '}
-              <span className="font-semibold text-white tabular-nums">{brl(projecao)}</span>{' '}
-              <span className="text-white/50">se tudo for liquidado</span>
+              <span className="font-semibold text-foreground tabular-nums">{brl(projecao)}</span>{' '}
+              <span>se tudo for liquidado</span>
             </p>
           </div>
 
-          <button
-            onClick={() => onNavigate('panorama')}
-            className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider bg-white/10 hover:bg-white/20 border border-white/20 px-3.5 py-2 rounded-lg transition-colors"
-          >
-            <LayoutDashboard className="w-3.5 h-3.5" />
+          <Button variant="outline" onClick={() => onNavigate('panorama')}>
+            <LayoutDashboard aria-hidden="true" />
             Painel completo
-          </button>
+          </Button>
         </div>
 
         {/* Entradas e saídas dos últimos 6 meses. `realizado` e `conciliado`
             apenas — previsto não é fluxo de caixa, é intenção. */}
-        <div className="h-[104px] mt-5 -mx-2">
+        <div className="h-28 mt-6 -mx-2">
           {fluxo.length === 0 ? (
-            <p className="text-sm text-white/50 px-2">Sem movimento registrado nos últimos meses.</p>
+            <p className="text-sm text-muted-foreground px-2">Sem movimento registrado nos últimos meses.</p>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={fluxo} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
                 <defs>
                   <linearGradient id="fin-entrada" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="hsl(var(--success))" stopOpacity={0.55} />
+                    <stop offset="0%" stopColor="hsl(var(--success))" stopOpacity={0.35} />
                     <stop offset="100%" stopColor="hsl(var(--success))" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="fin-saida" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="hsl(var(--destructive))" stopOpacity={0.45} />
+                    <stop offset="0%" stopColor="hsl(var(--destructive))" stopOpacity={0.3} />
                     <stop offset="100%" stopColor="hsl(var(--destructive))" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.10)" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                 <XAxis
                   dataKey="rotulo"
-                  tick={{ fontSize: 11, fill: 'rgba(255,255,255,0.55)' }}
+                  tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
                   axisLine={false}
                   tickLine={false}
                 />
@@ -144,29 +151,26 @@ export default function FinHeroPainel({ onNavigate }: Props) {
         {kpis.map(({ rot, val, ic: Icone, tom, ir }) => (
           <button
             key={rot}
+            type="button"
             onClick={() => onNavigate(ir)}
-            className="text-left rounded-xl border border-border bg-card p-4 hover:border-accent transition-colors"
+            className="text-left rounded-lg border border-border bg-card p-4 shadow-sm transition-colors hover:border-primary/40 hover:bg-primary-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
-            <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-              <Icone
-                className="w-3.5 h-3.5"
-                style={tom === 'neutro' ? undefined : { color: `hsl(var(--${tom}))` }}
-                aria-hidden="true"
-              />
+            <span className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <Icone className={`w-4 h-4 ${TOM_ICONE[tom]}`} aria-hidden="true" />
               {rot}
             </span>
-            <span className="block text-2xl font-bold tabular-nums mt-1.5">{brlCompacto(val)}</span>
+            <span className="block text-2xl font-bold tabular-nums mt-1 text-foreground">{brlCompacto(val)}</span>
           </button>
         ))}
 
         {/* A faixa de alerta do protótipo só aparece quando há o que alertar.
             Faixa permanente vira paisagem e para de ser lida. */}
         {(data?.aPagar ?? 0) > (data?.saldoTotal ?? 0) && (
-          <div className="flex items-start gap-2 rounded-xl border border-warning-line bg-warning-tint px-4 py-3">
+          <div role="alert" className="flex items-start gap-2 rounded-lg border border-warning-line bg-warning-tint px-4 py-3">
             <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-warning-ink" aria-hidden="true" />
-            <p className="text-xs leading-relaxed text-warning-ink">
+            <p className="text-sm text-warning-ink">
               O total a pagar supera o saldo em contas. Confira o{' '}
-              <button onClick={() => onNavigate('fluxo_caixa')} className="font-bold underline underline-offset-2">
+              <button type="button" onClick={() => onNavigate('fluxo_caixa')} className="font-semibold underline underline-offset-2 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 fluxo de caixa
               </button>{' '}
               antes de novos compromissos.

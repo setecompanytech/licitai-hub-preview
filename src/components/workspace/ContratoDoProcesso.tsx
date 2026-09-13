@@ -52,23 +52,23 @@ export default function ContratoDoProcesso({ licitacaoId }: { licitacaoId: strin
   if (contratos.length === 0) return null;
 
   return (
-    <Card className="p-4">
-      <div className="flex items-center gap-2 mb-3">
-        <FileSignature className="w-4 h-4 text-muted-foreground" />
-        <span className="font-semibold text-sm">
+    <Card className="p-6">
+      <div className="mb-3 flex items-center gap-2">
+        <FileSignature className="w-5 h-5 text-primary" aria-hidden="true" />
+        <h2 className="text-lg font-semibold">
           {contratos.length === 1 ? 'Contrato deste processo' : 'Contratos deste processo'}
-        </span>
+        </h2>
       </div>
 
       <div className="divide-y divide-border">
         {contratos.map((c) => {
           const ehAta = c.tipo_documento === 'ata_srp';
           return (
-            <div key={c.id} className="flex items-center gap-3 py-2.5 flex-wrap">
+            <div key={c.id} className="flex flex-wrap items-center gap-3 py-3">
               <span className="text-sm font-medium">
                 {ehAta ? rotuloDaAta(c.numero_ata || c.numero_contrato) : rotuloDoContrato(c.numero_contrato)}
               </span>
-              <Badge variant="outline" className="text-xs">{c.status}</Badge>
+              <Badge variant="info">{c.status}</Badge>
               <span className="text-sm text-muted-foreground tabular-nums">{brl(c.valor_global)}</span>
               {c.data_assinatura && (
                 <span className="text-xs text-muted-foreground">
@@ -78,10 +78,10 @@ export default function ContratoDoProcesso({ licitacaoId }: { licitacaoId: strin
               <Button
                 size="sm"
                 variant="ghost"
-                className="ml-auto h-7 text-xs"
+                className="ml-auto"
                 onClick={() => navigate('/gestao-contratos')}
               >
-                Abrir <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+                Abrir <ArrowRight className="w-4 h-4" aria-hidden="true" />
               </Button>
             </div>
           );

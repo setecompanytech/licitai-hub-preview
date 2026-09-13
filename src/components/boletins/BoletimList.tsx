@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Badge } from '@/components/ui/badge';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { Card } from '@/components/ui/card';
 import {
   CheckCircle2, AlertTriangle, FileText, CalendarDays, Clock, Loader2, Inbox,
@@ -44,10 +45,10 @@ type EnvioRow = {
 };
 
 const TIPO = {
-  ia_diario: { titulo: 'Boletim IA — panorama do dia', label: 'Boletim IA', color: 'bg-accent/15 text-accent border-accent/30', icon: Brain },
-  manha: { titulo: 'Boletim da Manhã', label: 'Novas Licitações', color: 'bg-success/15 text-success border-success/30', icon: FileText },
-  meiodia: { titulo: 'Boletim do Meio-dia', label: 'Alterações', color: 'bg-warning/15 text-warning border-warning/30', icon: AlertTriangle },
-  tarde: { titulo: 'Boletim da Tarde', label: 'Resultados', color: 'bg-info/15 text-info border-info/30', icon: CheckCircle2 },
+  ia_diario: { titulo: 'Boletim IA — panorama do dia', label: 'Boletim IA', variante: 'info', ladrilho: 'bg-primary-tint text-primary', icon: Brain },
+  manha: { titulo: 'Boletim da Manhã', label: 'Novas licitações', variante: 'success', ladrilho: 'bg-success-tint text-success-ink', icon: FileText },
+  meiodia: { titulo: 'Boletim do Meio-dia', label: 'Alterações', variante: 'warning', ladrilho: 'bg-warning-tint text-warning-ink', icon: AlertTriangle },
+  tarde: { titulo: 'Boletim da Tarde', label: 'Resultados', variante: 'muted', ladrilho: 'bg-muted text-foreground', icon: CheckCircle2 },
 } as const;
 
 const configDe = (tipo: string) => TIPO[tipo as keyof typeof TIPO] ?? TIPO.ia_diario;
@@ -88,11 +89,11 @@ export default function BoletimList() {
 
   if (envios.length === 0) {
     return (
-      <div className="text-center py-12">
-        <Inbox className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
-        <p className="text-sm text-muted-foreground">Nenhum boletim enviado ainda.</p>
-        <p className="text-xs text-muted-foreground mt-1">Configure suas preferências de boletim para começar a receber.</p>
-      </div>
+      <EstadoVazio
+        icone={<Inbox />}
+        titulo="Nenhum boletim enviado ainda"
+        descricao="Configure suas preferências de boletim na aba Configuração para começar a receber."
+      />
     );
   }
 
@@ -105,22 +106,22 @@ export default function BoletimList() {
         const editais = envio.conteudo?.editais ?? [];
         const total = envio.total_itens ?? editais.length;
         return (
-          <Card key={envio.id} className="p-4 transition-shadow hover:shadow-md">
+          <Card key={envio.id} className="p-6 transition-shadow hover:shadow-md">
             <button
-              className="w-full text-left"
+              className="w-full rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-expanded={isOpen}
               onClick={() => setAberto(isOpen ? null : envio.id)}
             >
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${cfg.color}`}>
+                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md ${cfg.ladrilho}`}>
                     <Icon className="w-5 h-5" />
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-sm truncate">{cfg.titulo}</span>
+                      <span className="truncate text-base font-semibold text-foreground">{cfg.titulo}</span>
                       {envio.status === 'erro' && (
-                        <Badge variant="outline" className="text-xs text-destructive border-destructive/30">falhou</Badge>
+                        <Badge variant="danger">falhou</Badge>
                       )}
                     </div>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
@@ -135,24 +136,24 @@ export default function BoletimList() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <Badge variant="outline" className={cfg.color + ' text-xs'}>{cfg.label}</Badge>
+                  <Badge variant={cfg.variante}>{cfg.label}</Badge>
                   <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
                 </div>
               </div>
             </button>
 
             {isOpen && (
-              <div className="mt-3 pt-3 border-t border-border/50 space-y-2">
+              <div className="mt-3 space-y-2 border-t border-border pt-3">
                 {envio.conteudo?.resumo && (
-                  <p className="text-xs text-muted-foreground italic leading-relaxed">{envio.conteudo.resumo}</p>
+                  <p className="text-sm italic leading-relaxed text-muted-foreground">{envio.conteudo.resumo}</p>
                 )}
 
                 {editais.length > 0 ? (
                   <>
                     {editais.map((e, i) => (
-                      <div key={i} className="flex items-start justify-between gap-3 p-2 bg-muted/30 rounded-lg text-sm">
+                      <div key={i} className="flex items-start justify-between gap-3 rounded-md bg-muted p-2 text-sm">
                         <div className="min-w-0">
-                          <p className="font-medium text-xs line-clamp-2">{e.objeto || 'Objeto não informado'}</p>
+                          <p className="line-clamp-2 text-sm font-medium text-foreground">{e.objeto || 'Objeto não informado'}</p>
                           <p className="text-xs text-muted-foreground truncate">
                             {e.orgao}
                             {e.municipio ? ` · ${e.municipio}` : ''}{e.uf ? `/${e.uf}` : ''}
@@ -167,7 +168,7 @@ export default function BoletimList() {
                               href={e.url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-xs text-accent hover:underline"
+                              className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
                             >
                               Abrir edital <ExternalLink className="w-3 h-3" />
                             </a>

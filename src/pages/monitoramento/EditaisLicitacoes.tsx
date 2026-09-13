@@ -2,6 +2,9 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { normalizeUfs } from "@/constants/ufsBrasil";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   ChevronDown, ChevronUp, Download, FileText,
   Search, X, AlertTriangle, ExternalLink,
@@ -113,157 +116,144 @@ const CardEdital = ({
         : null);
 
   return (
-    <div className="border border-border rounded-md mb-2 overflow-hidden bg-card">
+    <div className="mb-3 overflow-hidden rounded-lg border border-border bg-card shadow-sm">
       {/* Cabeçalho com número e município */}
-      <div
-        className={`flex items-center px-3.5 py-1.5 gap-4 ${
-          urgente ? "bg-destructive" : encerrado ? "bg-muted-foreground" : "bg-[hsl(var(--sidebar-background))]"
-        }`}
-      >
-        <span className="bg-white/15 text-white w-7 h-7 rounded-full flex items-center justify-center text-[13px] font-bold shrink-0">
+      <div className="flex flex-wrap items-center gap-3 border-b border-border bg-muted px-4 py-2">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary-tint text-sm font-bold tabular-nums text-primary">
           {numero}
         </span>
-        <span className="text-white text-[13px] font-semibold flex-1">
+        <span className="flex-1 text-sm font-semibold text-foreground">
           {edital.municipio
             ? `${edital.municipio} — ${edital.uf}`
             : edital.uf || "Brasil"}
         </span>
-        {urgente && (
-          <span className="bg-destructive text-white text-xs font-bold px-2.5 py-0.5 rounded tracking-wide">
-            ⚡ MENOS DE 24H
-          </span>
-        )}
-        {edital.srp && (
-          <span className="bg-info text-info-foreground text-xs font-bold px-2.5 py-0.5 rounded">
-            SRP
-          </span>
-        )}
-        {encerrado && (
-          <span className="bg-muted-foreground text-white text-xs px-2.5 py-0.5 rounded">
-            ENCERRADO
-          </span>
-        )}
+        {urgente && <Badge variant="danger">Menos de 24 h</Badge>}
+        {edital.srp && <Badge variant="info">SRP</Badge>}
+        {encerrado && <Badge variant="muted">Encerrado</Badge>}
       </div>
 
       {/* Corpo do card */}
-      <div className="p-3.5 pt-3">
+      <div className="p-4">
         {/* Hierarquia do órgão */}
-        <div className="mb-2.5">
-          <div className="text-sm font-bold text-foreground mb-0.5">
+        <div className="mb-3">
+          <p className="text-base font-semibold text-foreground">
             {edital.orgao || "Órgão não informado"}
-          </div>
+          </p>
           {edital.unidade_orgao && edital.unidade_orgao !== edital.orgao && (
-            <div className="text-xs text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               {edital.unidade_orgao}
-            </div>
+            </p>
           )}
           {edital.numero_controle_pncp && (
-            <div className="text-xs text-muted-foreground mt-0.5">
+            <p className="mt-0.5 text-xs text-muted-foreground">
               Código de Controle PNCP: {edital.numero_controle_pncp}
-            </div>
+            </p>
           )}
         </div>
 
         {/* Número do processo e modalidade */}
-        <div className="mb-2">
-          <span
-            className="text-[13px] font-bold text-primary underline cursor-pointer"
-            onClick={() => linkEdital && window.open(linkEdital, "_blank")}
-          >
-            {edital.modalidade_nome || "Licitação"} Nº{" "}
-            {edital.numero_compra}/{edital.ano_compra}
-          </span>
+        <div className="mb-2 flex flex-wrap items-center gap-2">
+          {linkEdital ? (
+            <a
+              href={linkEdital}
+              target="_blank"
+              rel="noreferrer"
+              className="text-sm font-semibold text-primary underline"
+            >
+              {edital.modalidade_nome || "Licitação"} Nº{" "}
+              {edital.numero_compra}/{edital.ano_compra}
+            </a>
+          ) : (
+            <span className="text-sm font-semibold text-foreground">
+              {edital.modalidade_nome || "Licitação"} Nº{" "}
+              {edital.numero_compra}/{edital.ano_compra}
+            </span>
+          )}
           {edital.url_pncp && (
-            <span className="text-xs text-muted-foreground ml-2">
+            <span className="text-xs text-muted-foreground">
               (Lei nº 14.133/2021)
             </span>
           )}
         </div>
 
         {/* Objeto */}
-        <div className="mb-2.5">
-          <span className="text-[13px] text-foreground font-bold">Objeto: </span>
-          <span className="text-[13px] text-foreground leading-relaxed">
-            {edital.objeto || "—"}
-          </span>
-        </div>
+        <p className="mb-3 text-sm leading-relaxed text-foreground">
+          <span className="font-semibold">Objeto: </span>
+          {edital.objeto || "—"}
+        </p>
 
         {/* Campos estruturados */}
-        <table className="w-full text-xs mb-3 border-collapse">
-          <tbody>
-            <tr>
-              <td className="py-0.5 text-foreground font-bold w-[30%] align-top">
-                Edital a partir de:
-              </td>
-              <td className="py-0.5 text-foreground">
-                {fmtData(edital.data_publicacao_pncp)}
-              </td>
-              <td className="py-0.5 pl-6 text-foreground font-bold w-[30%] align-top">
-                Valor Estimado:
-              </td>
-              <td className="py-0.5 text-foreground">
-                {fmtValor(edital.valor_total_estimado)}
-              </td>
-            </tr>
-            <tr>
-              <td className="py-0.5 text-foreground font-bold">Entrega da Proposta:</td>
-              <td className="py-0.5 text-foreground">
-                {edital.data_abertura_proposta
-                  ? `a partir de ${fmtData(edital.data_abertura_proposta)}`
-                  : "—"}
-              </td>
-              <td className="py-0.5 pl-6 text-foreground font-bold">Situação:</td>
-              <td className="py-0.5 text-foreground">
-                {encerrado
-                  ? "Encerrado"
-                  : edital.situacao || "Divulgada no PNCP"}
-              </td>
-            </tr>
-            <tr>
-              <td className="py-0.5 text-foreground font-bold">Abertura da Proposta:</td>
-              <td colSpan={3} className="py-0.5 text-foreground font-semibold">
-                {dataAbertura
-                  ? `em ${fmtData(edital.data_abertura_proposta)}, no endereço: `
-                  : "—"}
-                {linkEdital && dataAbertura && (
-                  <a
-                    href={linkEdital}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-primary underline text-xs"
-                  >
-                    {edital.link_sistema_origem || linkEdital}
-                  </a>
-                )}
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <div className="mb-4 overflow-x-auto">
+          <table className="w-full border-collapse text-sm">
+            <tbody>
+              <tr>
+                <th scope="row" className="w-[30%] py-1 text-left align-top font-semibold text-foreground">
+                  Edital a partir de:
+                </th>
+                <td className="py-1 text-foreground">
+                  {fmtData(edital.data_publicacao_pncp)}
+                </td>
+                <th scope="row" className="w-[30%] py-1 pl-6 text-left align-top font-semibold text-foreground">
+                  Valor estimado:
+                </th>
+                <td className="py-1 tabular-nums text-foreground">
+                  {fmtValor(edital.valor_total_estimado)}
+                </td>
+              </tr>
+              <tr>
+                <th scope="row" className="py-1 text-left align-top font-semibold text-foreground">Entrega da proposta:</th>
+                <td className="py-1 text-foreground">
+                  {edital.data_abertura_proposta
+                    ? `a partir de ${fmtData(edital.data_abertura_proposta)}`
+                    : "—"}
+                </td>
+                <th scope="row" className="py-1 pl-6 text-left align-top font-semibold text-foreground">Situação:</th>
+                <td className="py-1 text-foreground">
+                  {encerrado
+                    ? "Encerrado"
+                    : edital.situacao || "Divulgada no PNCP"}
+                </td>
+              </tr>
+              <tr>
+                <th scope="row" className="py-1 text-left align-top font-semibold text-foreground">Abertura da proposta:</th>
+                <td colSpan={3} className="py-1 text-foreground">
+                  {dataAbertura
+                    ? `em ${fmtData(edital.data_abertura_proposta)}, no endereço: `
+                    : "—"}
+                  {linkEdital && dataAbertura && (
+                    <a
+                      href={linkEdital}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-primary underline"
+                    >
+                      {edital.link_sistema_origem || linkEdital}
+                    </a>
+                  )}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
         {/* Linha de ações */}
-        <div className="flex gap-2 items-center">
-          <button
-            onClick={() => onVerItens(edital)}
-            className="bg-[hsl(var(--sidebar-background))] text-white border-none px-3.5 py-1.5 rounded text-xs font-bold cursor-pointer flex items-center gap-1.5"
-          >
-            <Download size={13} />
-            Itens e Download
-          </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button size="sm" onClick={() => onVerItens(edital)}>
+            <Download aria-hidden="true" />
+            Itens e download
+          </Button>
 
           {linkEdital && (
-            <a
-              href={linkEdital}
-              target="_blank"
-              rel="noreferrer"
-              className="bg-primary text-primary-foreground px-3.5 py-1.5 rounded text-xs font-bold cursor-pointer no-underline flex items-center gap-1.5"
-            >
-              <ExternalLink size={13} />
-              Acessar Edital
-            </a>
+            <Button size="sm" variant="outline" asChild>
+              <a href={linkEdital} target="_blank" rel="noreferrer">
+                <ExternalLink aria-hidden="true" />
+                Acessar edital
+              </a>
+            </Button>
           )}
 
-          <span className="text-xs text-muted-foreground ml-1">
-            Histórico de eventos publicados...
+          <span className="text-xs text-muted-foreground">
+            Histórico de eventos publicados…
           </span>
         </div>
       </div>
@@ -295,40 +285,23 @@ const ModalItensDownload = ({
     }).format(v) : "Não informado";
 
   return (
-    <div
-      onClick={onClose}
-      className="fixed inset-0 bg-black/60 z-[1000] flex items-center justify-center p-6"
-    >
-      <div
-        onClick={e => e.stopPropagation()}
-        className="bg-card rounded-lg w-full max-w-[720px] max-h-[85vh] overflow-auto shadow-2xl"
-      >
-        {/* Header do modal */}
-        <div className="bg-[hsl(var(--sidebar-background))] p-3.5 px-5 flex items-center justify-between rounded-t-lg">
-          <div>
-            <div className="text-sidebar-foreground text-sm font-bold tracking-wide">
-              ITENS E DOWNLOAD — {edital.modalidade_nome?.toUpperCase()} Nº{" "}
-              {edital.numero_compra}/{edital.ano_compra}
-            </div>
-            <div className="text-sidebar-foreground/70 text-xs mt-0.5">
-              {edital.orgao}
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="bg-sidebar-foreground/15 border-none rounded-full w-8 h-8 text-sidebar-foreground cursor-pointer flex items-center justify-center text-lg"
-          >
-            ×
-          </button>
-        </div>
+    <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>
+            Itens e download — {edital.modalidade_nome} Nº{" "}
+            {edital.numero_compra}/{edital.ano_compra}
+          </DialogTitle>
+          <DialogDescription>{edital.orgao}</DialogDescription>
+        </DialogHeader>
 
-        <div className="p-6">
-          {/* Dados do processo */}
-          <table className="w-full text-[13px] mb-5 border border-border rounded-md border-collapse">
+        {/* Dados do processo */}
+        <div className="overflow-x-auto rounded-lg border border-border">
+          <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="bg-muted">
-                <th colSpan={2} className="px-3 py-2 text-left text-xs font-bold text-foreground border-b border-border">
-                  DADOS DO PROCESSO LICITATÓRIO
+                <th colSpan={2} className="border-b border-border px-3 py-2 text-left text-sm font-semibold text-foreground">
+                  Dados do processo licitatório
                 </th>
               </tr>
             </thead>
@@ -346,73 +319,64 @@ const ModalItensDownload = ({
                 ["Situação", edital.situacao || "Divulgada no PNCP"],
                 ["Nº Controle PNCP", edital.numero_controle_pncp || "—"],
               ].map(([label, value], i) => (
-                <tr key={i} className={i % 2 === 0 ? "bg-muted/30" : "bg-card"}>
-                  <td className="px-3 py-1.5 font-bold text-foreground w-[32%] border-b border-border/30 text-xs align-top">
+                <tr key={i} className={i % 2 === 0 ? "bg-muted/40" : "bg-card"}>
+                  <th scope="row" className="w-[32%] border-b border-border px-3 py-2 text-left align-top text-sm font-semibold text-foreground">
                     {label}
-                  </td>
-                  <td className="px-3 py-1.5 text-foreground border-b border-border/30 text-xs leading-relaxed">
+                  </th>
+                  <td className="border-b border-border px-3 py-2 text-sm leading-relaxed text-foreground">
                     {value}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
 
-          {/* Seção de downloads */}
-          <div className="bg-muted border border-border rounded-md p-4 mb-4">
-            <div className="text-[13px] font-bold text-foreground mb-3">
-              DOCUMENTOS E ARQUIVOS DO EDITAL
-            </div>
+        {/* Seção de downloads */}
+        <div className="rounded-lg border border-border bg-muted p-4">
+          <h3 className="mb-3 text-lg font-semibold text-foreground">
+            Documentos e arquivos do edital
+          </h3>
 
-            <div className="flex flex-col gap-2">
-              {linkEdital && (
-                <a
-                  href={linkEdital}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-2 px-3.5 py-2.5 bg-primary text-primary-foreground rounded no-underline text-[13px] font-semibold"
-                >
-                  <FileText size={15} />
-                  Edital Completo e Anexos — PNCP
-                  <ExternalLink size={12} className="ml-auto" />
+          <div className="flex flex-col gap-2">
+            {linkEdital && (
+              <Button asChild className="justify-start">
+                <a href={linkEdital} target="_blank" rel="noreferrer">
+                  <FileText aria-hidden="true" />
+                  Edital completo e anexos — PNCP
+                  <ExternalLink className="ml-auto" aria-hidden="true" />
                 </a>
-              )}
+              </Button>
+            )}
 
-              {linkArquivos && (
-                <a
-                  href={linkArquivos}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-2 px-3.5 py-2.5 bg-[hsl(var(--sidebar-background))] text-white rounded no-underline text-[13px] font-semibold"
-                >
-                  <Download size={15} />
-                  Todos os Arquivos do Processo
-                  <ExternalLink size={12} className="ml-auto" />
+            {linkArquivos && (
+              <Button variant="outline" asChild className="justify-start">
+                <a href={linkArquivos} target="_blank" rel="noreferrer">
+                  <Download aria-hidden="true" />
+                  Todos os arquivos do processo
+                  <ExternalLink className="ml-auto" aria-hidden="true" />
                 </a>
-              )}
+              </Button>
+            )}
 
-              {edital.link_sistema_origem && edital.link_sistema_origem !== linkEdital && (
-                <a
-                  href={edital.link_sistema_origem}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-2 px-3.5 py-2.5 bg-accent text-accent-foreground rounded no-underline text-[13px] font-semibold"
-                >
-                  <ExternalLink size={15} />
-                  Acessar Portal de Origem
-                  <ExternalLink size={12} className="ml-auto" />
+            {edital.link_sistema_origem && edital.link_sistema_origem !== linkEdital && (
+              <Button variant="outline" asChild className="justify-start">
+                <a href={edital.link_sistema_origem} target="_blank" rel="noreferrer">
+                  <ExternalLink aria-hidden="true" />
+                  Acessar portal de origem
+                  <ExternalLink className="ml-auto" aria-hidden="true" />
                 </a>
-              )}
-            </div>
-          </div>
-
-          <div className="text-xs text-muted-foreground text-center">
-            Os arquivos do edital estão disponíveis no portal oficial.
-            Clique nos botões acima para acessar diretamente.
+              </Button>
+            )}
           </div>
         </div>
-      </div>
-    </div>
+
+        <p className="text-center text-xs text-muted-foreground">
+          Os arquivos do edital estão disponíveis no portal oficial.
+          Clique nos botões acima para acessar diretamente.
+        </p>
+      </DialogContent>
+    </Dialog>
   );
 };
 

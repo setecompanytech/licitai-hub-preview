@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import AppLayout from "@/components/layout/AppLayout";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Home } from "lucide-react";
+import CabecalhoPagina from "@/components/shared/CabecalhoPagina";
+import { Building2, Landmark } from "lucide-react";
 import FinHomeHub, { HUB_ITEMS } from "@/components/financeiro/FinHomeHub";
 import FinHeroPainel from "@/components/financeiro/FinHeroPainel";
 import FinResumoVisor, { getResumoAutoOpen } from "@/components/financeiro/FinResumoVisor";
@@ -159,6 +159,7 @@ export default function Financeiro() {
   }, []);
 
   const activeItem = activeView ? HUB_ITEMS.find((i) => i.id === activeView) : null;
+  const IconeModulo = activeItem?.icon ?? Landmark;
 
   const renderActive = () => {
     if (!activeView) return null;
@@ -168,9 +169,12 @@ export default function Financeiro() {
     if (cs) {
       return (
         <Card>
-          <CardContent className="py-16 text-center space-y-2">
-            <h3 className="text-lg font-semibold">{cs.title}</h3>
-            <p className="text-sm text-muted-foreground max-w-md mx-auto">{cs.description}</p>
+          <CardContent className="flex flex-col items-center py-16 text-center">
+            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
+              <IconeModulo className="w-6 h-6" aria-hidden="true" />
+            </span>
+            <p className="mt-3 text-lg font-semibold">{cs.title}</p>
+            <p className="mt-1 max-w-md text-sm text-muted-foreground">{cs.description}</p>
           </CardContent>
         </Card>
       );
@@ -180,58 +184,55 @@ export default function Financeiro() {
 
   return (
     <AppLayout>
-      <div className="p-4 md:p-6 max-w-[1400px] mx-auto space-y-4">
-        <header className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-              <button
-                onClick={() => navigateToView(null)}
-                className="hover:text-foreground transition-colors flex items-center gap-1"
-              >
-                <Home className="w-3 h-3" /> Financeiro
-              </button>
-              {activeItem && (
-                <>
-                  <span>/</span>
-                  <span className="text-foreground">{activeItem.label}</span>
-                </>
-              )}
-            </div>
-            <h1 className="text-2xl font-semibold tracking-tight">
-              {activeItem ? activeItem.label : "Financeiro"}
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              {activeItem
-                ? activeItem.description
-                : "Hub central de operações financeiras — escolha um módulo abaixo."}
-            </p>
-          </div>
-          {/* O "Voltar ao Hub" saiu: com o Voltar do layout logo acima, eram
-              duas setas fazendo a mesma coisa. O caminho para o hub continua no
-              rastro de migalhas — "Financeiro" ali em cima é clicável —, que
-              serve inclusive a quem entrou direto pelo link da subtela e não
-              tem percurso para desfazer. */}
-        </header>
+      <div className="p-4 md:p-6 max-w-[1400px] mx-auto">
+        {/* O "Voltar ao Hub" saiu: com o Voltar do layout logo acima, eram
+            duas setas fazendo a mesma coisa. O caminho para o hub continua no
+            rastro de migalhas — "Financeiro" ali em cima é clicável —, que
+            serve inclusive a quem entrou direto pelo link da subtela e não
+            tem percurso para desfazer. A trilha carrega a busca (`?lid=`)
+            para o processo ativo continuar vinculado. */}
+        <CabecalhoPagina
+          titulo={activeItem ? activeItem.label : "Financeiro"}
+          descricao={
+            activeItem
+              ? activeItem.description
+              : "Hub central de operações financeiras — escolha um módulo abaixo."
+          }
+          icone={<IconeModulo />}
+          trilha={
+            activeItem
+              ? [{ rotulo: "Financeiro", para: `/financeiro${busca}` }, { rotulo: activeItem.label }]
+              : undefined
+          }
+        />
 
-        {!loading && !empresaAtiva ? (
-          <Card>
-            <CardContent className="py-12 text-center text-sm text-muted-foreground">
-              Selecione uma empresa ativa no menu superior para acessar o módulo financeiro.
-            </CardContent>
-          </Card>
-        ) : activeView ? (
-          renderActive()
-        ) : (
-          <>
-            {/* REBRAND — o herói do protótipo (saldo, projeção, os números do
-                dia e a curva de 6 meses) entra ACIMA do hub, que continua
-                inteiro. Aditivo: o hub tem busca, favoritos e recentes que
-                funcionam, e reescrevê-lo para encaixar um cabeçalho seria
-                trocar risco por estética. */}
-            <FinHeroPainel onNavigate={navigateToView} />
-            <FinHomeHub onNavigate={navigateToView} />
-          </>
-        )}
+        <div className="space-y-6">
+          {!loading && !empresaAtiva ? (
+            <Card>
+              <CardContent className="flex flex-col items-center py-12 text-center">
+                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
+                  <Building2 className="w-6 h-6" aria-hidden="true" />
+                </span>
+                <p className="mt-3 text-lg font-semibold">Nenhuma empresa ativa</p>
+                <p className="mt-1 max-w-md text-sm text-muted-foreground">
+                  Selecione uma empresa ativa no menu superior para acessar o módulo financeiro.
+                </p>
+              </CardContent>
+            </Card>
+          ) : activeView ? (
+            renderActive()
+          ) : (
+            <>
+              {/* REBRAND — o herói do protótipo (saldo, projeção, os números do
+                  dia e a curva de 6 meses) entra ACIMA do hub, que continua
+                  inteiro. Aditivo: o hub tem busca, favoritos e recentes que
+                  funcionam, e reescrevê-lo para encaixar um cabeçalho seria
+                  trocar risco por estética. */}
+              <FinHeroPainel onNavigate={navigateToView} />
+              <FinHomeHub onNavigate={navigateToView} />
+            </>
+          )}
+        </div>
         <FinCommandPalette onNavigate={navigateToView} />
       </div>
     </AppLayout>

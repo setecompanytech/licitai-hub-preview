@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Shield, Key, Eye, Clock, AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Shield, Key, Eye, AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react';
 import MfaEnrollment from './MfaEnrollment';
 import SolicitacaoLgpd from './SolicitacaoLgpd';
 import { toast } from 'sonner';
@@ -77,16 +78,17 @@ export default function SegurancaConta() {
   return (
     <div className="space-y-6">
       {/* Alterar Senha */}
-      <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
-        <div className="flex items-center gap-2 mb-4">
-          <Key className="w-5 h-5 text-muted-foreground" />
-          <h2 className="text-sm font-semibold">Alterar Senha</h2>
+      <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
+        <div className="mb-4 flex items-center gap-2">
+          <Key className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+          <h2 className="text-lg font-semibold text-foreground">Alterar Senha</h2>
         </div>
 
-        <div className="space-y-3 max-w-md">
+        <div className="max-w-md space-y-4">
           <div>
-            <Label className="text-xs">Nova Senha</Label>
+            <Label htmlFor="nova-senha">Nova Senha</Label>
             <Input
+              id="nova-senha"
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
@@ -95,14 +97,15 @@ export default function SegurancaConta() {
               className="mt-1"
             />
             {newPassword && (
-              <p className={`text-xs mt-1 ${strength.color}`}>
+              <p className={`mt-1 text-xs ${strength.color}`}>
                 Força: {strength.label}
               </p>
             )}
           </div>
           <div>
-            <Label className="text-xs">Confirmar Nova Senha</Label>
+            <Label htmlFor="confirmar-senha">Confirmar Nova Senha</Label>
             <Input
+              id="confirmar-senha"
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
@@ -114,15 +117,13 @@ export default function SegurancaConta() {
           <Button
             onClick={handleChangePassword}
             disabled={changingPassword || !newPassword}
-            className="bg-accent hover:bg-accent/90 text-accent-foreground"
-            size="sm"
           >
-            {changingPassword ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Key className="w-4 h-4 mr-2" />}
+            {changingPassword ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Key aria-hidden="true" />}
             Alterar Senha
           </Button>
         </div>
 
-        <div className="mt-4 pt-4 border-t border-border/30">
+        <div className="mt-4 border-t border-border pt-4">
           <p className="text-xs text-muted-foreground">
             <strong>Requisitos de senha:</strong> Mínimo de 8 caracteres. Recomendamos combinar letras maiúsculas, minúsculas, números e caracteres especiais.
           </p>
@@ -130,32 +131,36 @@ export default function SegurancaConta() {
       </section>
 
       {/* Informações de Segurança */}
-      <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
-        <div className="flex items-center gap-2 mb-4">
-          <Shield className="w-5 h-5 text-muted-foreground" />
-          <h2 className="text-sm font-semibold">Informações de Segurança</h2>
+      <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
+        <div className="mb-4 flex items-center gap-2">
+          <Shield className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+          <h2 className="text-lg font-semibold text-foreground">Informações de Segurança</h2>
         </div>
 
-        <div className="space-y-3 text-sm">
-          <div className="flex items-center justify-between py-2 border-b border-border/20">
-            <span className="text-muted-foreground">E-mail da conta</span>
-            <span className="font-medium">{user?.email}</span>
+        <dl className="text-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border py-3">
+            <dt className="text-muted-foreground">E-mail da conta</dt>
+            <dd className="font-medium text-foreground">{user?.email}</dd>
           </div>
-          <div className="flex items-center justify-between py-2 border-b border-border/20">
-            <span className="text-muted-foreground">E-mail confirmado</span>
-            <Badge variant="outline" className={user?.email_confirmed_at ? 'bg-success/10 text-success border-success/20' : 'bg-warning/10 text-warning border-warning/20'}>
-              {user?.email_confirmed_at ? <><CheckCircle2 className="w-3 h-3 mr-1" /> Verificado</> : <><AlertTriangle className="w-3 h-3 mr-1" /> Pendente</>}
-            </Badge>
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border py-3">
+            <dt className="text-muted-foreground">E-mail confirmado</dt>
+            <dd>
+              <Badge variant={user?.email_confirmed_at ? 'success' : 'warning'} className="gap-1">
+                {user?.email_confirmed_at
+                  ? <><CheckCircle2 className="h-4 w-4" aria-hidden="true" /> Verificado</>
+                  : <><AlertTriangle className="h-4 w-4" aria-hidden="true" /> Pendente</>}
+              </Badge>
+            </dd>
           </div>
-          <div className="flex items-center justify-between py-2 border-b border-border/20">
-            <span className="text-muted-foreground">Último login</span>
-            <span className="font-medium text-xs">{user?.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString('pt-BR') : '—'}</span>
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border py-3">
+            <dt className="text-muted-foreground">Último login</dt>
+            <dd className="text-xs font-medium text-foreground">{user?.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString('pt-BR') : '—'}</dd>
           </div>
-          <div className="flex items-center justify-between py-2 border-b border-border/20">
-            <span className="text-muted-foreground">Conta criada em</span>
-            <span className="font-medium text-xs">{user?.created_at ? new Date(user.created_at).toLocaleString('pt-BR') : '—'}</span>
+          <div className="flex flex-wrap items-center justify-between gap-2 py-3">
+            <dt className="text-muted-foreground">Conta criada em</dt>
+            <dd className="text-xs font-medium text-foreground">{user?.created_at ? new Date(user.created_at).toLocaleString('pt-BR') : '—'}</dd>
           </div>
-        </div>
+        </dl>
       </section>
 
       {/* MFA */}
@@ -165,27 +170,30 @@ export default function SegurancaConta() {
       <SolicitacaoLgpd />
 
       {/* Log de Atividades de Autenticação */}
-      <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
-        <div className="flex items-center gap-2 mb-4">
-          <Eye className="w-5 h-5 text-muted-foreground" />
-          <h2 className="text-sm font-semibold">Atividades Recentes de Autenticação</h2>
+      <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
+        <div className="mb-4 flex items-center gap-2">
+          <Eye className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+          <h2 className="text-lg font-semibold text-foreground">Atividades Recentes de Autenticação</h2>
         </div>
 
         {loadingLogs ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          <div role="status" aria-busy="true" className="space-y-2">
+            <span className="sr-only">Carregando atividades</span>
+            {Array.from({ length: 3 }, (_, i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
           </div>
         ) : recentLogins.length === 0 ? (
-          <p className="text-xs text-muted-foreground py-4">Nenhum registro de atividade encontrado.</p>
+          <p className="py-4 text-sm text-muted-foreground">Nenhum registro de atividade encontrado.</p>
         ) : (
-          <div className="space-y-2 max-h-64 overflow-y-auto">
+          <div className="max-h-64 space-y-2 overflow-y-auto">
             {recentLogins.map((log) => (
-              <div key={log.id} className="flex items-center justify-between text-xs py-2 border-b border-border/10">
+              <div key={log.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-border py-2 text-sm">
                 <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="text-xs">{log.evento}</Badge>
+                  <Badge variant="muted">{log.evento}</Badge>
                   {log.ip_address && <span className="text-muted-foreground">IP: {log.ip_address}</span>}
                 </div>
-                <span className="text-muted-foreground">{new Date(log.created_at).toLocaleString('pt-BR')}</span>
+                <span className="text-xs text-muted-foreground">{new Date(log.created_at).toLocaleString('pt-BR')}</span>
               </div>
             ))}
           </div>

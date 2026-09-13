@@ -524,7 +524,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
       <EstruturaDocumentoCard contratoId={contratoId} />
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
-          <h3 className="text-sm font-semibold flex items-center gap-2">
+          <h3 className="text-lg font-semibold flex items-center gap-2">
             <Package className="w-4 h-4 text-muted-foreground" /> Itens {meta?.tipo_documento === 'ata_srp' ? 'da ATA SRP' : 'do Contrato'}
             {meta?.tipo_estrutura && (
               <Badge variant="outline" className="text-xs font-normal">
@@ -535,7 +535,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
           <p className="text-xs text-muted-foreground">
             Total efetivo: {fmt(totalContratadoEfetivo)} | Saldo: {fmt(totalSaldoEfetivo)}
             {!consolidado && itens.length !== itensMesclados.length && (
-              <span className="ml-2 text-warning">({itens.length} registros, {itensMesclados.length} itens físicos)</span>
+              <span className="ml-2 text-warning-ink">({itens.length} registros, {itensMesclados.length} itens físicos)</span>
             )}
           </p>
           {(() => {
@@ -549,7 +549,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
             const dif = totalContratadoEfetivo - global;
             if (Math.abs(dif) <= global * 0.01) return null;
             return (
-              <p className="text-xs text-destructive mt-0.5">
+              <p className="text-xs text-destructive-ink mt-0.5">
                 ⚠ A soma dos itens {dif > 0 ? 'excede' : 'fica abaixo de'} o Valor Global do contrato
                 ({fmt(global)}) em {fmt(Math.abs(dif))}. Confira o preço unitário dos itens
                 e os aditivos — os dois totais devem fechar.
@@ -558,7 +558,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
           })()}
 
           {isContratoComATA && (
-            <p className="text-xs text-warning mt-1 flex items-center gap-1">
+            <p className="text-xs text-warning-ink mt-1 flex items-center gap-1">
               <Link2 className="w-3 h-3" /> Contrato vinculado à ATA SRP — itens devem ser selecionados da ATA de origem
             </p>
           )}
@@ -593,7 +593,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                 <div className="col-span-2">
                   <Label className="flex items-center gap-1.5">
                     <Search className="w-3.5 h-3.5 text-muted-foreground" /> Buscar Produto do Catálogo
-                    {form.produto_id && <span className="text-xs text-success font-normal">(vinculado)</span>}
+                    {form.produto_id && <span className="text-xs text-success-ink font-normal">(vinculado)</span>}
                   </Label>
                   <div className="relative mt-1">
                     <Input
@@ -602,7 +602,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                       onFocus={() => setProdPopover(true)}
                       onBlur={() => setTimeout(() => setProdPopover(false), 150)}
                       placeholder="Digite para buscar ou criar produto..."
-                      className={form.produto_id ? 'border-success/50 bg-success/5' : ''}
+                      className={form.produto_id ? 'border-success-line bg-success-tint' : ''}
                     />
                     {prodPopover && (
                       <div className="absolute z-50 w-full bg-popover border rounded-md shadow-lg mt-1 max-h-52 overflow-y-auto">
@@ -611,7 +611,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                             <button
                               key={p.id}
                               type="button"
-                              className="w-full text-left px-3 py-2 text-xs hover:bg-accent/10 flex items-center gap-2"
+                              className="w-full text-left px-3 py-2 text-xs hover:bg-primary-tint flex items-center gap-2"
                               onMouseDown={() => onSelectProduto(p)}
                             >
                               {p.codigo && <span className="font-mono text-muted-foreground text-xs shrink-0">[{p.codigo}]</span>}
@@ -734,7 +734,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
         <TooltipProvider>
         <div className="space-y-1">
         {consolidado && situacao !== 'todas' && (
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             Conferindo a camada <span className="font-medium text-foreground">{labelSituacao}</span> —
             atribuição FIFO: o consumo abate primeiro o Contrato Original e depois cada termo,
             na ordem de registro. Os pedidos não são carimbados por termo aditivo; esta visão
@@ -820,9 +820,9 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                 const badgeColor = !consolidado
                   ? 'bg-muted text-muted-foreground'
                   : foiModificado
-                    ? 'bg-warning/10 text-warning border-warning/30'
+                    ? 'bg-warning-tint text-warning-ink border-warning-line'
                     : foiAdicionado
-                      ? 'bg-success/10 text-success border-success/30'
+                      ? 'bg-success-tint text-success-ink border-success-line'
                       : 'bg-muted text-muted-foreground';
 
                 // Tooltip com histórico de versões (só na visão consolidada)
@@ -838,7 +838,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                         <p key={v.id}>
                           {ad?.numero_aditivo ?? 'Aditivo'}: {fmt(v.valor_unitario)}/un × {v.quantidade_contratada} {v.unidade}
                           {v.valor_unitario !== original.valor_unitario && (
-                            <span className={v.valor_unitario > original.valor_unitario ? ' text-success' : ' text-destructive'}>
+                            <span className={v.valor_unitario > original.valor_unitario ? ' text-success-ink' : ' text-destructive-ink'}>
                               {' '}({v.valor_unitario > original.valor_unitario ? '+' : ''}{((v.valor_unitario - original.valor_unitario) / original.valor_unitario * 100).toFixed(1)}%)
                             </span>
                           )}
@@ -849,7 +849,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                 ) : null;
 
                 return (
-                  <TableRow key={item.id} className={lowStock ? 'bg-warning/5' : ''}>
+                  <TableRow key={item.id} className={lowStock ? 'bg-warning-tint' : ''}>
                     <TableCell className="text-xs whitespace-nowrap">
                       {tooltipContent ? (
                         <Tooltip>
@@ -880,7 +880,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                         type="button"
                         onClick={() => setItemVisualizado(item)}
                         title="Ver a descrição completa do item"
-                        className="truncate block w-full text-left font-medium text-foreground hover:text-accent hover:underline"
+                        className="truncate block w-full text-left font-medium text-foreground hover:text-primary hover:underline"
                       >
                         {item.descricao}
                       </button>
@@ -888,14 +888,14 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                           ATA dobrava a célula em duas linhas (09/09). O texto
                           inteiro fica no title e no olho da descrição. */}
                       <span
-                        className="block truncate text-[11px] text-muted-foreground"
+                        className="block truncate text-xs text-muted-foreground"
                         title={item.ata_item_id ? `Vinculado ao item da ATA: ${ataItemLabel(item.ata_item_id) ?? ''}` : undefined}
                       >
                         {item.codigo_item && <span className="font-mono">cód. {item.codigo_item}</span>}
                         {isContratoComATA && (
                           item.ata_item_id
                             ? <span>{item.codigo_item ? ' · ' : ''}ATA: {ataItemLabel(item.ata_item_id)}</span>
-                            : <span className="text-warning">{item.codigo_item ? ' · ' : ''}sem vínculo à ata</span>
+                            : <span className="text-warning-ink">{item.codigo_item ? ' · ' : ''}sem vínculo à ata</span>
                         )}
                       </span>
                       {consolidado && foiModificado && original && original.valor_unitario !== item.valor_unitario && (
@@ -910,9 +910,9 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                           {nf(camadaSel.capacidade)}
                           <span className="text-muted-foreground"> {uni(item.unidade)}</span>
                           {camadaSel.capacidade > 0 ? (
-                            <div className="text-[11px] text-muted-foreground">de {qtdVigente.toLocaleString('pt-BR')} vigentes</div>
+                            <div className="text-xs text-muted-foreground">de {qtdVigente.toLocaleString('pt-BR')} vigentes</div>
                           ) : (
-                            <div className="text-[11px] text-muted-foreground">termo sem acréscimo de quantidade</div>
+                            <div className="text-xs text-muted-foreground">termo sem acréscimo de quantidade</div>
                           )}
                         </>
                       ) : (
@@ -920,7 +920,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                       {Number(item.quantidade_contratada || 0).toLocaleString('pt-BR')}
                       <span className="text-muted-foreground"> {uni(item.unidade)}</span>
                       {qtdVigente > (item.quantidade_contratada || 0) + 0.001 && (
-                        <div className="text-[11px] text-muted-foreground" title="Quantidade contratada + reforços de aditivo">
+                        <div className="text-xs text-muted-foreground" title="Quantidade contratada + reforços de aditivo">
                           vigente: {qtdVigente.toLocaleString('pt-BR')}
                         </div>
                       )}
@@ -930,20 +930,20 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                           scan não rendeu o número e o total fica em R$ 0,00.
                           O aviso mora ao lado do defeito, não noutra aba. */}
                       {(item.quantidade_contratada || 0) === 0 && (
-                        <div className="text-[11px] text-warning">sem quantidade — edite no lápis</div>
+                        <div className="text-xs text-warning-ink">sem quantidade — edite no lápis</div>
                       )}
                     </TableCell>
                     {podeVerCustos && (
                       <TableCell className="text-xs text-right whitespace-nowrap text-muted-foreground">
-                        <div>{item.custo_unitario != null ? fmt(item.custo_unitario) : '—'}<span className="text-[10px]">/un</span></div>
+                        <div>{item.custo_unitario != null ? fmt(item.custo_unitario) : '—'}<span className="text-xs">/un</span></div>
                         {/* O "/un" rotula a primeira linha; sem rótulo na segunda,
                             item de quantidade zero mostrava R$ 0,00 sobre R$ 0,00
                             e parecia valor repetido, não unitário × total.
                             Na visão por camada, o total de custo mede A CAMADA —
                             camada de quantidade zero mostrava o custo do item
                             inteiro ao lado de um Valor de R$ 0,00 (09/09). */}
-                        <div className="text-[11px]">
-                          <span className="text-[10px]">total </span>
+                        <div className="text-xs">
+                          <span className="text-xs">total </span>
                           {camadaSel
                             ? (camadaSel.capacidade > 0 ? fmt(camadaSel.capacidade * (Number(item.custo_unitario) || 0)) : '—')
                             : (item.custo_total != null ? fmt(item.custo_total) : '—')}
@@ -951,7 +951,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                       </TableCell>
                     )}
                     <TableCell className="text-xs text-right whitespace-nowrap font-medium">
-                      {fmt(item.valor_unitario)}<span className="text-[10px] text-muted-foreground">/un</span>
+                      {fmt(item.valor_unitario)}<span className="text-xs text-muted-foreground">/un</span>
                       {(() => {
                         // Divergência contrato × ATA tem DUAS histórias, e a nota
                         // precisa contar a certa (09/09): preço do contrato acima do
@@ -969,7 +969,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                           const pctAumento = ((vContrato - vAta) / vAta) * 100;
                           return (
                             <div
-                              className="text-[11px] text-muted-foreground font-normal"
+                              className="text-xs text-muted-foreground font-normal"
                               title="Preço da contratação registrado na ATA, atualizado pelo reequilíbrio/revisão/reajuste registrado em Arquivos e Aditivos"
                             >
                               contratado na ATA a {fmt(vAta)} · reequilibrado +{pctAumento.toFixed(1).replace('.', ',')}%
@@ -978,12 +978,12 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                         }
                         const pct = vContrato ? (((vAta - vContrato) / vContrato) * 100).toFixed(2).replace('.', ',') : null;
                         return (
-                          <div className="text-[11px] text-warning font-normal" title="Preço do item diverge do registrado na ATA sem aditivo que autorize — confira">
+                          <div className="text-xs text-warning-ink font-normal" title="Preço do item diverge do registrado na ATA sem aditivo que autorize — confira">
                             ATA registra {fmt(vAta)}{pct ? ` (${vAta > vContrato ? '+' : ''}${pct}%)` : ''}
                           </div>
                         );
                       })()}
-                      <div className="text-[11px] text-muted-foreground"><span className="text-[10px]">total </span><span className="text-foreground">{fmt(camadaSel ? camadaSel.capacidade * (item.valor_unitario || 0) : item.valor_total)}</span></div>
+                      <div className="text-xs text-muted-foreground"><span className="text-xs">total </span><span className="text-foreground">{fmt(camadaSel ? camadaSel.capacidade * (item.valor_unitario || 0) : item.valor_total)}</span></div>
                     </TableCell>
                     <TableCell className="text-xs text-right whitespace-nowrap tabular-nums">
                       {camadaSel ? (
@@ -1001,17 +1001,17 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                             title={ehAta ? 'Consumido pelos contratos derivados da ata' : 'Sobre a quantidade vigente (contratada + aditivos)'}
                           >({pct.toFixed(0)}%)</span>
                           {ehAta && consumidaDe(item) > 0 && (
-                            <div className="text-[11px] text-muted-foreground">pelos contratos derivados</div>
+                            <div className="text-xs text-muted-foreground">pelos contratos derivados</div>
                           )}
                         </>
                       )}
                     </TableCell>
-                    <TableCell className={`text-xs text-right font-medium whitespace-nowrap tabular-nums ${lowStock ? 'text-warning' : 'text-success'}`}>
+                    <TableCell className={`text-xs text-right font-medium whitespace-nowrap tabular-nums ${lowStock ? 'text-warning-ink' : 'text-success-ink'}`}>
                       {camadaSel ? (
                         camadaSel.capacidade > 0 ? (
                           <>
                             <div>{nf(camadaSel.saldo)} {uni(item.unidade)}</div>
-                            <div className="text-[11px]">{fmt(camadaSel.saldo * (item.valor_unitario || 0))}</div>
+                            <div className="text-xs">{fmt(camadaSel.saldo * (item.valor_unitario || 0))}</div>
                           </>
                         ) : <span className="text-muted-foreground font-normal">—</span>
                       ) : (
@@ -1020,7 +1020,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                               saldo_financeiro do banco acumula acréscimo de aditivo por cima
                               do preço reequilibrado e chegou a exibir R$ 3,8 mi a mais (09/09). */}
                           <div>{saldoQtdDe(item).toLocaleString('pt-BR')} {uni(item.unidade)}</div>
-                          <div className="text-[11px]">{fmt(saldoFinanceiroDe(item))}</div>
+                          <div className="text-xs">{fmt(saldoFinanceiroDe(item))}</div>
                         </>
                       )}
                     </TableCell>
@@ -1033,7 +1033,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                           <Pencil className="w-3.5 h-3.5" />
                         </Button>
                         <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleDelete(item.id)}>
-                          <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                          <Trash2 className="w-3.5 h-3.5 text-destructive-ink" />
                         </Button>
                       </div>
                     </TableCell>
@@ -1081,7 +1081,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                       <Input type="number" step="0.01" value={editForm.valor_unitario}
                         onChange={e => setEditForm(f => ({ ...f, valor_unitario: e.target.value }))} />
                       {isContratoComATA && !!editItem.ata_item_id && temAditivoForaDoObjeto && (
-                        <p className="text-xs text-warning mt-1">
+                        <p className="text-xs text-warning-ink mt-1">
                           Destravado: o contrato registra reequilíbrio/revisão/reajuste.
                           A mudança fica no histórico de preços; o registrado da ATA não muda.
                         </p>

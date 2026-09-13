@@ -3,8 +3,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 import { toast } from 'sonner';
 import {
   Upload, FileText, Trash2, Sparkles, Loader2, Search,
@@ -19,6 +24,10 @@ const TIPOS_DOCUMENTO = [
   { value: 'parecer', label: 'Parecer', icon: FileWarning },
   { value: 'legislacao', label: 'Legislação', icon: FileText },
 ];
+
+// O Select da ui não aceita item com valor vazio; "todos os tipos" ganha um
+// sentinela só na apresentação — o estado `filtroTipo` continua '' para "todos".
+const TODOS_TIPOS = '__todos__';
 
 type DocJuridico = {
   id: string;
@@ -222,7 +231,7 @@ export default function BaseJuridicaUpload() {
   };
 
   const filtered = docs.filter(d => {
-    const matchSearch = !search || 
+    const matchSearch = !search ||
       d.titulo.toLowerCase().includes(search.toLowerCase()) ||
       d.ementa?.toLowerCase().includes(search.toLowerCase()) ||
       d.tribunal?.toLowerCase().includes(search.toLowerCase());
@@ -236,155 +245,167 @@ export default function BaseJuridicaUpload() {
   return (
     <div className="space-y-6">
       {/* Upload Form */}
-      <div className="bg-card rounded-xl border border-border/50 p-6 shadow-sm space-y-4">
-        <div className="flex items-center gap-2 mb-2">
-          <Upload className="w-5 h-5 text-muted-foreground" />
-          <h3 className="text-sm font-semibold">Alimentar Base Jurídica da IA</h3>
+      <section className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-4">
+        <div className="flex items-center gap-2">
+          <Upload className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+          <h3 className="text-lg font-semibold">Alimentar Base Jurídica da IA</h3>
         </div>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           Faça upload de decisões, acórdãos, doutrinas, súmulas e pareceres para enriquecer as respostas da IA.
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="text-xs text-muted-foreground">Arquivo (PDF/TXT/DOC)</label>
+          <div className="space-y-2">
+            <Label htmlFor="bj-arquivo">Arquivo (PDF/TXT/DOC)</Label>
             <Input
+              id="bj-arquivo"
               type="file"
               accept=".pdf,.txt,.doc,.docx,.rtf"
               onChange={handleFileChange}
-              className="mt-1"
             />
           </div>
-          <div>
-            <label className="text-xs text-muted-foreground">Tipo de Documento</label>
-            <select
-              value={tipo}
-              onChange={e => setTipo(e.target.value)}
-              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            >
-              {TIPOS_DOCUMENTO.map(t => (
-                <option key={t.value} value={t.value}>{t.label}</option>
-              ))}
-            </select>
+          <div className="space-y-2">
+            <Label htmlFor="bj-tipo">Tipo de Documento</Label>
+            <Select value={tipo} onValueChange={setTipo}>
+              <SelectTrigger id="bj-tipo">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TIPOS_DOCUMENTO.map(t => (
+                  <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
         {file && (
           <Button
             variant="outline"
-            size="sm"
             onClick={extractWithAI}
             disabled={extracting}
           >
-            {extracting ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Sparkles className="w-3 h-3 mr-1" />}
+            {extracting ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Sparkles aria-hidden="true" />}
             {extracting ? 'Extraindo com IA...' : 'Extrair dados com IA'}
           </Button>
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="text-xs text-muted-foreground">Título</label>
-            <Input value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Ex: RE 1.287.322 - STF" className="mt-1" />
+          <div className="space-y-2">
+            <Label htmlFor="bj-titulo">Título</Label>
+            <Input id="bj-titulo" value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Ex: RE 1.287.322 - STF" />
           </div>
-          <div>
-            <label className="text-xs text-muted-foreground">Tribunal / Órgão</label>
-            <Input value={tribunal} onChange={e => setTribunal(e.target.value)} placeholder="Ex: STF, STJ, TCU, TRF-1" className="mt-1" />
+          <div className="space-y-2">
+            <Label htmlFor="bj-tribunal">Tribunal / Órgão</Label>
+            <Input id="bj-tribunal" value={tribunal} onChange={e => setTribunal(e.target.value)} placeholder="Ex: STF, STJ, TCU, TRF-1" />
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="text-xs text-muted-foreground">Nº do Processo</label>
-            <Input value={numeroProcesso} onChange={e => setNumeroProcesso(e.target.value)} placeholder="0001234-56.2024.8.14.0301" className="mt-1" />
+          <div className="space-y-2">
+            <Label htmlFor="bj-processo">Nº do Processo</Label>
+            <Input id="bj-processo" value={numeroProcesso} onChange={e => setNumeroProcesso(e.target.value)} placeholder="0001234-56.2024.8.14.0301" />
           </div>
-          <div>
-            <label className="text-xs text-muted-foreground">Tags (separadas por vírgula)</label>
-            <Input value={tags} onChange={e => setTags(e.target.value)} placeholder="licitação, pregão, habilitação" className="mt-1" />
+          <div className="space-y-2">
+            <Label htmlFor="bj-tags">Tags (separadas por vírgula)</Label>
+            <Input id="bj-tags" value={tags} onChange={e => setTags(e.target.value)} placeholder="licitação, pregão, habilitação" />
           </div>
         </div>
 
         {ementaExtraida && (
-          <div>
-            <label className="text-xs text-muted-foreground">Ementa extraída pela IA</label>
+          <div className="space-y-2">
+            <Label htmlFor="bj-ementa">Ementa extraída pela IA</Label>
             <Textarea
+              id="bj-ementa"
               value={ementaExtraida}
               onChange={e => setEmentaExtraida(e.target.value)}
-              className="mt-1 min-h-[80px] text-xs"
+              className="min-h-[80px]"
             />
           </div>
         )}
 
-        <Button onClick={handleUpload} disabled={uploading || !file || !titulo} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-          {uploading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Upload className="w-4 h-4 mr-1" />}
+        <Button onClick={handleUpload} disabled={uploading || !file || !titulo}>
+          {uploading ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Upload aria-hidden="true" />}
           Adicionar à Base Jurídica
         </Button>
-      </div>
+      </section>
 
       {/* Documents List */}
-      <div className="bg-card rounded-xl border border-border/50 p-6 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <BookOpen className="w-5 h-5 text-muted-foreground" />
-            <h3 className="text-sm font-semibold">Documentos na Base ({docs.length})</h3>
-          </div>
+      <section className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-4">
+        <div className="flex items-center gap-2">
+          <BookOpen className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+          <h3 className="text-lg font-semibold">Documentos na Base ({docs.length})</h3>
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <div className="relative flex-1 min-w-0">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <div className="relative flex-1 min-w-[200px]">
+            <Label htmlFor="bj-busca" className="sr-only">Buscar por título, ementa ou tribunal</Label>
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
             <Input
+              id="bj-busca"
               placeholder="Buscar por título, ementa ou tribunal..."
               value={search}
               onChange={e => setSearch(e.target.value)}
               className="pl-9"
             />
           </div>
-          <select
-            value={filtroTipo}
-            onChange={e => setFiltroTipo(e.target.value)}
-            className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-          >
-            <option value="">Todos os tipos</option>
-            {TIPOS_DOCUMENTO.map(t => (
-              <option key={t.value} value={t.value}>{t.label}</option>
-            ))}
-          </select>
+          <div className="w-full sm:w-56">
+            <Label htmlFor="bj-filtro-tipo" className="sr-only">Filtrar por tipo</Label>
+            <Select
+              value={filtroTipo || TODOS_TIPOS}
+              onValueChange={v => setFiltroTipo(v === TODOS_TIPOS ? '' : v)}
+            >
+              <SelectTrigger id="bj-filtro-tipo">
+                <SelectValue placeholder="Todos os tipos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={TODOS_TIPOS}>Todos os tipos</SelectItem>
+                {TIPOS_DOCUMENTO.map(t => (
+                  <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+          <div className="space-y-3" role="status" aria-label="Carregando documentos">
+            {[1, 2, 3].map(i => <Skeleton key={i} className="h-20 w-full rounded-md" />)}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <BookOpen className="w-10 h-10 mx-auto mb-2 opacity-30" />
-            <p className="text-sm">Nenhum documento na base jurídica</p>
-            <p className="text-xs mt-1">Faça upload de decisões, acórdãos e doutrinas para enriquecer a IA</p>
+          <div className="flex flex-col items-center text-center py-8 gap-3">
+            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
+              <BookOpen className="w-6 h-6" aria-hidden="true" />
+            </span>
+            <p className="text-base font-semibold">Nenhum documento na base jurídica</p>
+            <p className="text-sm text-muted-foreground max-w-md">
+              Faça upload de decisões, acórdãos e doutrinas para enriquecer a IA.
+            </p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <ul className="space-y-3">
             {filtered.map(doc => {
               const Icon = TipoIcon(doc.tipo);
               return (
-                <div key={doc.id} className="flex items-start gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
-                  <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-                    <Icon className="w-4 h-4 text-muted-foreground" />
+                <li key={doc.id} className="flex items-start gap-3 rounded-md border border-border bg-background p-3 hover:bg-muted/50 transition-colors">
+                  <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center flex-shrink-0">
+                    <Icon className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-sm truncate">{doc.titulo}</p>
                     <div className="flex flex-wrap items-center gap-1 mt-1">
-                      <Badge variant="outline" className="text-xs">{tipoLabel(doc.tipo)}</Badge>
-                      {doc.tribunal && <Badge variant="secondary" className="text-xs">{doc.tribunal}</Badge>}
-                      {doc.numero_processo && <span className="text-xs text-muted-foreground">{doc.numero_processo}</span>}
+                      <Badge variant="info">{tipoLabel(doc.tipo)}</Badge>
+                      {doc.tribunal && <Badge variant="muted">{doc.tribunal}</Badge>}
+                      {doc.numero_processo && <span className="text-xs text-muted-foreground tabular-nums">{doc.numero_processo}</span>}
                     </div>
                     {doc.ementa && (
-                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{doc.ementa}</p>
+                      <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{doc.ementa}</p>
                     )}
                     {doc.tags && doc.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-1">
+                      <div className="flex flex-wrap gap-2 mt-1">
                         {doc.tags.map((tag, i) => (
-                          <span key={i} className="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
-                            <Tag className="w-2.5 h-2.5" />{tag}
+                          <span key={i} className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                            <Tag className="w-3 h-3" aria-hidden="true" />{tag}
                           </span>
                         ))}
                       </div>
@@ -394,15 +415,22 @@ export default function BaseJuridicaUpload() {
                       {doc.texto_integral ? ` · ${(doc.texto_integral.length / 1000).toFixed(0)}k chars indexados` : ''}
                     </p>
                   </div>
-                  <Button size="sm" variant="ghost" onClick={() => handleDelete(doc.id)} className="text-destructive hover:text-destructive">
-                    <Trash2 className="w-3 h-3" />
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => handleDelete(doc.id)}
+                    className="text-destructive hover:text-destructive hover:bg-destructive-tint"
+                    aria-label={`Remover ${doc.titulo} da base`}
+                    title="Remover da base"
+                  >
+                    <Trash2 aria-hidden="true" />
                   </Button>
-                </div>
+                </li>
               );
             })}
-          </div>
+          </ul>
         )}
-      </div>
+      </section>
     </div>
   );
 }

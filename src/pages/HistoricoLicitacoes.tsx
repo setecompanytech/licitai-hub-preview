@@ -1,16 +1,24 @@
 import { useState, useEffect, useMemo } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
+import EstadoVazio from '@/components/shared/EstadoVazio';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { MoneyInput } from '@/components/ui/money-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
-import { ehDecidido, STATUS_PROCESSO, aparenciaStatus, rotuloStatus } from '@/lib/licitacao/status';
 import {
-  Search, Archive, Trophy, XCircle, Download, Calendar, Building2, MapPin,
+  ehDecidido, STATUS_PROCESSO, normalizarStatus, rotuloStatus, type StatusProcesso,
+} from '@/lib/licitacao/status';
+import {
+  Search, Archive, Trophy, XCircle, Download, Building2, MapPin,
   TrendingUp, CheckCircle, AlertTriangle, BarChart3, Clock,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -27,15 +35,35 @@ import { identidadeDoEdital } from '@/lib/licitacao/identidade-edital';
 // e Contrato Assinado são DESFECHOS e vivem no campo Resultado.
 const STATUS_FLOW = STATUS_PROCESSO;
 
-const statusConfig: Record<string, { label: string; className: string; icon: typeof Trophy }> = {
-  'Publicado': { label: 'Publicado', className: 'bg-info/10 text-info border-info/20', icon: Clock },
-  'Em Disputa': { label: 'Em Disputa', className: 'bg-warning/10 text-warning border-warning/20', icon: TrendingUp },
-  'Homologado': { label: 'Homologado', className: 'bg-success/10 text-success border-success/20', icon: CheckCircle },
-  'Contrato Assinado': { label: 'Contrato Assinado', className: 'bg-success/10 text-success border-success/20', icon: CheckCircle },
-  'Deserto': { label: 'Deserto', className: 'bg-muted text-muted-foreground border-border', icon: AlertTriangle },
-  'Fracassado': { label: 'Fracassado', className: 'bg-destructive/10 text-destructive border-destructive/20', icon: XCircle },
-  'Revogado': { label: 'Revogado', className: 'bg-destructive/10 text-destructive border-destructive/20', icon: XCircle },
-  'Anulado': { label: 'Anulado', className: 'bg-destructive/10 text-destructive border-destructive/20', icon: XCircle },
+/** Variantes semânticas do Badge (identidade 12/09) — status sempre com texto. */
+type VarianteBadge = 'success' | 'warning' | 'danger' | 'info' | 'muted';
+
+/**
+ * Aparência de cada status canônico no Badge. O vocabulário continua sendo o
+ * de `@/lib/licitacao/status` (o tipo garante cobertura completa); aqui só se
+ * escolhe a família semântica — a lib devolve classes com alfa composto à
+ * mão (`bg-warning/10 text-warning`), que a régua nova aposentou.
+ */
+const VARIANTE_STATUS: Record<StatusProcesso, VarianteBadge> = {
+  Monitorando: 'muted',
+  'Em Análise': 'warning',
+  'Proposta Enviada': 'info',
+  'Em Disputa': 'info',
+  Vencida: 'success',
+  Homologada: 'success',
+  Perdida: 'danger',
+  Arquivada: 'muted',
+};
+
+const statusConfig: Record<string, { label: string; variant: VarianteBadge }> = {
+  'Publicado': { label: 'Publicado', variant: 'info' },
+  'Em Disputa': { label: 'Em Disputa', variant: 'warning' },
+  'Homologado': { label: 'Homologado', variant: 'success' },
+  'Contrato Assinado': { label: 'Contrato Assinado', variant: 'success' },
+  'Deserto': { label: 'Deserto', variant: 'muted' },
+  'Fracassado': { label: 'Fracassado', variant: 'danger' },
+  'Revogado': { label: 'Revogado', variant: 'danger' },
+  'Anulado': { label: 'Anulado', variant: 'danger' },
 };
 
 const resultadoOptions = ['Vencida', 'Perdida', 'Desclassificada', 'Deserto', 'Fracassado', 'Revogado', 'Anulado', 'Contrato Assinado'];
@@ -197,230 +225,250 @@ export default function HistoricoLicitacoes() {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-              <Archive className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground flex-shrink-0" />
-              Histórico e Desempenho
-            </h1>
-            <p className="text-base text-muted-foreground mt-1">
-              Acompanhe os resultados das licitações. Processos finalizados ficam disponíveis por 120 dias.
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={handleDownloadAll}>
-              <Download className="w-4 h-4 mr-1" /> CSV
+      {/* Título, descrição, ícone e trilha vêm do registro
+          `lib/navegacao/paginas.ts` pela rota. O prazo de 120 dias saiu da
+          descrição e ficou onde ele significa alguma coisa: no aviso que só
+          aparece quando existe processo arquivado correndo o prazo. */}
+      <CabecalhoPagina
+        acoes={
+          <>
+            <Button variant="outline" onClick={handleDownloadAll}>
+              <Download aria-hidden="true" /> CSV
             </Button>
-            <Button variant="outline" size="sm" onClick={handleDownloadPDF}>
-              <Download className="w-4 h-4 mr-1" /> PDF
+            <Button variant="outline" onClick={handleDownloadPDF}>
+              <Download aria-hidden="true" /> PDF
             </Button>
-            <Button variant="outline" size="sm" onClick={handleDownloadJSON}>
-              <Download className="w-4 h-4 mr-1" /> JSON
+            <Button variant="outline" onClick={handleDownloadJSON}>
+              <Download aria-hidden="true" /> JSON
             </Button>
-          </div>
-        </div>
+          </>
+        }
+        filtros={
+          <>
+            <div className="relative w-full sm:w-80">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+              <Input
+                placeholder="Buscar..."
+                aria-label="Buscar por objeto, órgão ou número"
+                className="pl-9"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full sm:w-48" aria-label="Filtrar por status"><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os status</SelectItem>
+                {STATUS_FLOW.map(s => <SelectItem key={s} value={s}>{rotuloStatus(s)}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={resultadoFilter} onValueChange={setResultadoFilter}>
+              <SelectTrigger className="w-full sm:w-48" aria-label="Filtrar por resultado"><SelectValue placeholder="Resultado" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos resultados</SelectItem>
+                {resultadoOptions.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </>
+        }
+      />
 
+      <div className="space-y-6">
         {/* Metrics */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
           {[
             { label: 'Total', value: metrics.total, icon: BarChart3, color: 'text-foreground' },
-            { label: 'Em Andamento', value: metrics.emAndamento, icon: Clock, color: 'text-warning' },
+            { label: 'Em andamento', value: metrics.emAndamento, icon: Clock, color: 'text-warning' },
             { label: 'Vencidas', value: metrics.vencidas, icon: Trophy, color: 'text-success' },
             { label: 'Perdidas', value: metrics.perdidas, icon: XCircle, color: 'text-destructive' },
-            { label: 'Taxa de Sucesso', value: `${metrics.taxaSucesso}%`, icon: TrendingUp, color: 'text-foreground' },
-            { label: 'Valor Ganho', value: formatCurrency(metrics.valorGanho), icon: CheckCircle, color: 'text-success' },
+            { label: 'Taxa de sucesso', value: `${metrics.taxaSucesso}%`, icon: TrendingUp, color: 'text-foreground' },
+            { label: 'Valor ganho', value: formatCurrency(metrics.valorGanho), icon: CheckCircle, color: 'text-success' },
           ].map((m, i) => (
-            <div key={i} className="bg-card rounded-xl border border-border/50 p-4 shadow-sm">
-              <div className="flex items-center gap-2 mb-1">
-                <m.icon className={cn('w-4 h-4', m.color)} />
+            <Card key={i} className="min-w-0 p-6">
+              <div className="mb-2 flex items-start justify-between gap-2">
                 <span className="text-xs text-muted-foreground">{m.label}</span>
+                <m.icon className={cn('h-4 w-4 shrink-0', m.color)} aria-hidden="true" />
               </div>
-              <p className={cn('text-lg font-bold', m.color)}>{m.value}</p>
-            </div>
+              <p className={cn('text-[2rem] font-bold leading-10 tabular-nums [overflow-wrap:anywhere]', m.color)}>{m.value}</p>
+            </Card>
           ))}
         </div>
 
         {/* Alert */}
         {metrics.arquivados > 0 && (
-          <div className="bg-warning/10 border border-warning/20 rounded-lg p-3 flex items-start gap-2 text-base">
-            <AlertTriangle className="w-4 h-4 text-warning mt-0.5 shrink-0" />
-            <span>
+          <Alert variant="warning">
+            <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+            <AlertDescription className="text-base">
               <strong>{metrics.arquivados}</strong> processo(s) arquivado(s). Faça o download antes do prazo de 120 dias para evitar perda de dados.
-            </span>
-          </div>
+            </AlertDescription>
+          </Alert>
         )}
 
-        {/* Filters */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative flex-1 min-w-[250px] max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input placeholder="Buscar..." className="pl-9 bg-card border-border/50" value={search} onChange={e => setSearch(e.target.value)} />
-          </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[170px] bg-card border-border/50"><SelectValue placeholder="Status" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os status</SelectItem>
-              {STATUS_FLOW.map(s => <SelectItem key={s} value={s}>{rotuloStatus(s)}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={resultadoFilter} onValueChange={setResultadoFilter}>
-            <SelectTrigger className="w-[160px] bg-card border-border/50"><SelectValue placeholder="Resultado" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos resultados</SelectItem>
-              {resultadoOptions.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-
         {/* Table */}
-        <div className="bg-card rounded-xl border border-border/50 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto w-full">
-            <table className="min-w-[1200px] w-full table-fixed border-collapse">
-              <colgroup>
-                <col style={{ width: '360px' }} />
-                <col style={{ width: '220px' }} />
-                <col style={{ width: '130px' }} />
-                <col style={{ width: '130px' }} />
-                <col style={{ width: '140px' }} />
-                <col style={{ width: '120px' }} />
-                <col style={{ width: '100px' }} />
-              </colgroup>
-              <thead>
-                <tr className="border-b border-border/50 bg-muted/30">
-                  <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3 whitespace-nowrap">Nº / Objeto</th>
-                  <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3 whitespace-nowrap">Órgão</th>
-                  <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3 whitespace-nowrap">Status</th>
-                  <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3 whitespace-nowrap">Resultado</th>
-                  <th className="text-right text-xs font-semibold text-muted-foreground px-4 py-3 whitespace-nowrap">Valor Adj.</th>
-                  <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3 whitespace-nowrap">Prazo</th>
-                  <th className="text-center text-xs font-semibold text-muted-foreground px-4 py-3 whitespace-nowrap">Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.length === 0 && !loading && (
-                  <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">Nenhuma licitação encontrada.</td></tr>
-                )}
-                {filtered.map((lic, i) => {
-                  const st = statusConfig[lic.status] || { ...aparenciaStatus(lic.status), icon: Clock };
-                  const dias = diasRestantes(lic.arquivado_em);
-                  return (
-                    <tr key={lic.id} className="border-b border-border/30 hover:bg-muted/30 transition-colors animate-fade-in" style={{ animationDelay: `${i * 30}ms` }}>
-                      <td className="px-4 py-3">
-                        {(() => {
-                          // Autoridade única de nomeação — "P.E. 044", "6" e
-                          // "00046" crus não identificam; a forma do portal
-                          // fica no hover.
-                          const identidade = identidadeDoEdital({ numeroCompra: lic.numero, modalidade: lic.modalidade });
-                          return (
-                            <span
-                              className="text-xs font-medium text-muted-foreground block cursor-help"
-                              title={identidade.reescrito ? `Como o portal publica: ${identidade.bruto}` : undefined}
-                            >
-                              {identidade.rotulo}{identidade.srpNoTexto ? ' · SRP' : ''}
-                            </span>
-                          );
-                        })()}
-                        <span className="text-sm font-medium line-clamp-1">{lic.objeto}</span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-1.5 text-sm">
-                          <Building2 className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                          <span className="line-clamp-1">{lic.orgao}</span>
-                        </div>
-                        {lic.municipio && lic.uf && (
-                          <span className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                            <MapPin className="w-3 h-3" />{lic.municipio}/{lic.uf}
+        <Card className="overflow-hidden">
+          <Table className="min-w-[1100px] table-fixed">
+            <colgroup>
+              <col className="w-[340px]" />
+              <col className="w-[220px]" />
+              <col className="w-[130px]" />
+              <col className="w-[130px]" />
+              <col className="w-[150px]" />
+              <col className="w-[120px]" />
+              <col className="w-[110px]" />
+            </colgroup>
+            <TableHeader>
+              <TableRow className="bg-muted hover:bg-muted">
+                <TableHead className="whitespace-nowrap">Nº / Objeto</TableHead>
+                <TableHead className="whitespace-nowrap">Órgão</TableHead>
+                <TableHead className="whitespace-nowrap text-center">Status</TableHead>
+                <TableHead className="whitespace-nowrap text-center">Resultado</TableHead>
+                <TableHead className="whitespace-nowrap text-right">Valor adj.</TableHead>
+                <TableHead className="whitespace-nowrap text-center">Prazo</TableHead>
+                <TableHead className="whitespace-nowrap text-center">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading && [0, 1, 2].map((i) => (
+                <TableRow key={`sk-${i}`}>
+                  <TableCell><Skeleton className="h-4 w-24" /><Skeleton className="mt-2 h-4 w-64" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+                  <TableCell><Skeleton className="mx-auto h-5 w-20" /></TableCell>
+                  <TableCell><Skeleton className="mx-auto h-5 w-20" /></TableCell>
+                  <TableCell><Skeleton className="ml-auto h-4 w-24" /></TableCell>
+                  <TableCell><Skeleton className="mx-auto h-4 w-16" /></TableCell>
+                  <TableCell><Skeleton className="mx-auto h-8 w-16" /></TableCell>
+                </TableRow>
+              ))}
+              {filtered.length === 0 && !loading && (
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={7}>
+                    <EstadoVazio
+                      tamanho="compacto"
+                      icone={<Archive />}
+                      titulo="Nenhuma licitação encontrada"
+                      descricao="Ajuste a busca ou os filtros de status e resultado."
+                    />
+                  </TableCell>
+                </TableRow>
+              )}
+              {filtered.map((lic) => {
+                const st = statusConfig[lic.status]
+                  || { label: rotuloStatus(lic.status), variant: VARIANTE_STATUS[normalizarStatus(lic.status)] };
+                const dias = diasRestantes(lic.arquivado_em);
+                return (
+                  <TableRow key={lic.id}>
+                    <TableCell className="px-4 py-3">
+                      {(() => {
+                        // Autoridade única de nomeação — "P.E. 044", "6" e
+                        // "00046" crus não identificam; a forma do portal
+                        // fica no hover.
+                        const identidade = identidadeDoEdital({ numeroCompra: lic.numero, modalidade: lic.modalidade });
+                        return (
+                          <span
+                            className="block cursor-help text-xs font-medium text-muted-foreground"
+                            title={identidade.reescrito ? `Como o portal publica: ${identidade.bruto}` : undefined}
+                          >
+                            {identidade.rotulo}{identidade.srpNoTexto ? ' · SRP' : ''}
                           </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <Badge variant="outline" className={cn('text-xs px-2 py-0.5 whitespace-nowrap inline-flex', st.className)}>{st.label}</Badge>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        {lic.vencedor === true ? (
-                          <Badge className="bg-success/10 text-success border-success/20 text-xs">
-                            <Trophy className="w-3 h-3 mr-1" /> Vencida
-                          </Badge>
-                        ) : lic.resultado ? (
-                          <span className="text-xs text-muted-foreground">{lic.resultado}</span>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-right text-sm font-semibold">
-                        {lic.valor_adjudicado ? formatCurrency(lic.valor_adjudicado) : '-'}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        {dias !== null ? (
-                          <span className={cn('text-xs font-medium', dias <= 30 ? 'text-destructive' : dias <= 60 ? 'text-warning' : 'text-muted-foreground')}>
-                            {dias}d restantes
-                          </span>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <Button variant="ghost" size="sm" onClick={() => openEdit(lic)} className="text-xs">
-                          Editar
-                        </Button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
+                        );
+                      })()}
+                      <span className="text-sm font-medium line-clamp-1">{lic.objeto}</span>
+                    </TableCell>
+                    <TableCell className="px-4 py-3">
+                      <div className="flex items-center gap-2 text-sm">
+                        <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                        <span className="line-clamp-1">{lic.orgao}</span>
+                      </div>
+                      {lic.municipio && lic.uf && (
+                        <span className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+                          <MapPin className="h-4 w-4" aria-hidden="true" />{lic.municipio}/{lic.uf}
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-center">
+                      <Badge variant={st.variant}>{st.label}</Badge>
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-center">
+                      {lic.vencedor === true ? (
+                        <Badge variant="success" className="gap-1">
+                          <Trophy className="h-3 w-3" aria-hidden="true" /> Vencida
+                        </Badge>
+                      ) : lic.resultado ? (
+                        <span className="text-sm text-muted-foreground">{lic.resultado}</span>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-right text-sm font-semibold tabular-nums">
+                      {lic.valor_adjudicado ? formatCurrency(lic.valor_adjudicado) : '-'}
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-center">
+                      {dias !== null ? (
+                        <span className={cn('text-sm font-medium tabular-nums', dias <= 30 ? 'text-destructive' : dias <= 60 ? 'text-warning' : 'text-muted-foreground')}>
+                          {dias}d restantes
+                        </span>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-center">
+                      <Button variant="ghost" size="sm" onClick={() => openEdit(lic)}>
+                        Editar
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </Card>
 
         {/* Status flow legend */}
-        <div className="bg-card rounded-xl border border-border/50 shadow-sm p-4">
-          <p className="text-xs font-semibold text-muted-foreground mb-2">Fluxo de Status Padronizado</p>
+        <Card className="p-6">
+          <h2 className="mb-3 text-lg font-semibold">Fluxo de status padronizado</h2>
           <div className="flex flex-wrap items-center gap-2">
-            {STATUS_FLOW.map((s, i) => {
-              const st = aparenciaStatus(s);
-              return (
-                <div key={s} className="flex items-center gap-1">
-                  <Badge variant="outline" className={cn('text-xs px-2 py-0.5', st.className)}>{st.label}</Badge>
-                  {i < 3 && <span className="text-muted-foreground text-xs">→</span>}
-                  {i === 3 && <span className="text-muted-foreground text-xs ml-2">|</span>}
-                </div>
-              );
-            })}
+            {STATUS_FLOW.map((s, i) => (
+              <div key={s} className="flex items-center gap-1">
+                <Badge variant={VARIANTE_STATUS[s]}>{rotuloStatus(s)}</Badge>
+                {i < 3 && <span className="text-xs text-muted-foreground" aria-hidden="true">→</span>}
+                {i === 3 && <span className="ml-2 text-xs text-muted-foreground" aria-hidden="true">|</span>}
+              </div>
+            ))}
           </div>
-        </div>
+        </Card>
       </div>
 
       {/* Edit Dialog */}
       <Dialog open={!!editingLic} onOpenChange={(o) => !o && setEditingLic(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Atualizar Resultado — {editingLic ? identidadeDoEdital({ numeroCompra: editingLic.numero, modalidade: editingLic.modalidade }).rotulo : ''}</DialogTitle>
+            <DialogTitle>
+              Atualizar resultado — {editingLic ? identidadeDoEdital({ numeroCompra: editingLic.numero, modalidade: editingLic.modalidade }).rotulo : ''}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label>Status</Label>
+              <Label htmlFor="edit-status">Status</Label>
               <Select value={editStatus} onValueChange={setEditStatus}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger id="edit-status"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {STATUS_FLOW.map(s => <SelectItem key={s} value={s}>{rotuloStatus(s)}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Resultado</Label>
+              <Label htmlFor="edit-resultado">Resultado</Label>
               <Select value={editResultado} onValueChange={setEditResultado}>
-                <SelectTrigger><SelectValue placeholder="Selecionar resultado" /></SelectTrigger>
+                <SelectTrigger id="edit-resultado"><SelectValue placeholder="Selecionar resultado" /></SelectTrigger>
                 <SelectContent>
                   {resultadoOptions.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Empresa vencedora?</Label>
+              <Label htmlFor="edit-vencedor">Empresa vencedora?</Label>
               <Select value={editVencedor} onValueChange={setEditVencedor}>
-                <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                <SelectTrigger id="edit-vencedor"><SelectValue placeholder="Selecionar" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="sim">Sim</SelectItem>
                   <SelectItem value="nao">Não</SelectItem>
@@ -428,12 +476,12 @@ export default function HistoricoLicitacoes() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Valor Adjudicado (R$)</Label>
-              <MoneyInput value={Number(editValorAdj) || 0} onValueChange={v => setEditValorAdj(String(v))} placeholder="R$ 0,00" />
+              <Label htmlFor="edit-valor-adj">Valor adjudicado (R$)</Label>
+              <MoneyInput id="edit-valor-adj" value={Number(editValorAdj) || 0} onValueChange={v => setEditValorAdj(String(v))} placeholder="R$ 0,00" />
             </div>
             <div className="space-y-2">
-              <Label>Data de Homologação</Label>
-              <Input type="date" value={editDataHom} onChange={e => setEditDataHom(e.target.value)} />
+              <Label htmlFor="edit-data-hom">Data de homologação</Label>
+              <Input id="edit-data-hom" type="date" value={editDataHom} onChange={e => setEditDataHom(e.target.value)} />
             </div>
           </div>
           <DialogFooter>

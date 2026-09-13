@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Target, Lock, Pencil, Gauge, SlidersHorizontal } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Target, Lock, Pencil, Gauge, SlidersHorizontal, Users } from 'lucide-react';
 import ParametrizacaoMetas from '@/components/metas/ParametrizacaoMetas';
 import DefinirMetaDialog from '@/components/metas/DefinirMetaDialog';
 import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
@@ -50,19 +52,32 @@ export default function DefinirMetas() {
   const anos = [hoje.getFullYear() - 1, hoje.getFullYear(), hoje.getFullYear() + 1];
   const metaDe = (userId: string) => (metas ?? []).find((m) => m.user_id === userId) ?? null;
 
-  if (loading) return <AppLayout><div /></AppLayout>;
+  if (loading) {
+    return (
+      <AppLayout>
+        <div role="status" aria-label="Carregando" className="space-y-4">
+          <Skeleton className="h-9 w-64" />
+          <Skeleton className="h-5 w-96 max-w-full" />
+          <Skeleton className="h-64 w-full" />
+        </div>
+      </AppLayout>
+    );
+  }
 
   if (!isAdmin) {
     return (
       <AppLayout>
+        <CabecalhoPagina icone={<SlidersHorizontal />} titulo="Definir Metas" />
         <Card className="p-12 text-center">
-          <Lock className="w-10 h-10 mx-auto text-muted-foreground/30 mb-3" />
-          <p className="text-base font-medium text-muted-foreground">Acesso restrito</p>
-          <p className="text-base text-muted-foreground mt-1">
+          <div aria-hidden="true" className="w-12 h-12 mx-auto rounded-full bg-muted text-muted-foreground flex items-center justify-center mb-4">
+            <Lock className="w-6 h-6" />
+          </div>
+          <p className="text-lg font-semibold text-foreground">Acesso restrito</p>
+          <p className="text-base text-muted-foreground mt-1 max-w-md mx-auto">
             Definir metas é atribuição do administrador. Seu acompanhamento está em
             Gestão → Metas do Comercial.
           </p>
-          <Button variant="outline" size="sm" className="mt-4"
+          <Button variant="outline" className="mt-6"
             onClick={() => navigate('/metas-comercial')}>
             Ir para o painel
           </Button>
@@ -73,31 +88,27 @@ export default function DefinirMetas() {
 
   return (
     <AppLayout>
-      <div className="mb-4 flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-            <SlidersHorizontal className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground" />
-            Definir Metas
-          </h1>
-          <p className="text-base text-muted-foreground mt-1">
-            Onde o alvo é escrito. O acompanhamento fica em Gestão → Metas do Comercial.
-          </p>
-        </div>
-        <Button variant="outline" size="sm" onClick={() => navigate('/metas-comercial')}>
-          <Gauge className="w-3.5 h-3.5 mr-1.5" />
-          Ver o painel
-        </Button>
-      </div>
+      <CabecalhoPagina
+        icone={<SlidersHorizontal />}
+        titulo="Definir Metas"
+        descricao="Onde o alvo é escrito. O acompanhamento fica em Gestão → Metas do Comercial."
+        acoes={
+          <Button variant="outline" onClick={() => navigate('/metas-comercial')}>
+            <Gauge className="w-4 h-4" />
+            Ver o painel
+          </Button>
+        }
+      />
 
       <div className="space-y-6">
         {/* ── Meta mensal por colaborador ── */}
         <Card>
-          <CardContent className="p-5 space-y-4">
+          <CardContent className="p-6 space-y-4">
             <div className="flex items-end gap-3 flex-wrap">
               <div className="flex-1 min-w-[8rem]">
-                <Label className="text-sm text-muted-foreground mb-1 block">Mês</Label>
+                <Label htmlFor="definir-metas-mes" className="text-sm text-muted-foreground mb-1 block">Mês</Label>
                 <Select value={String(mes)} onValueChange={(v) => setMes(Number(v))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="definir-metas-mes"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {NOMES_MES.map((n, i) => (
                       <SelectItem key={n} value={String(i + 1)}>{n}</SelectItem>
@@ -105,10 +116,10 @@ export default function DefinirMetas() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="w-28">
-                <Label className="text-sm text-muted-foreground mb-1 block">Ano</Label>
+              <div className="w-full sm:w-32">
+                <Label htmlFor="definir-metas-ano" className="text-sm text-muted-foreground mb-1 block">Ano</Label>
                 <Select value={String(ano)} onValueChange={(v) => setAno(Number(v))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="definir-metas-ano"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {anos.map((a) => <SelectItem key={a} value={String(a)}>{a}</SelectItem>)}
                   </SelectContent>
@@ -119,17 +130,21 @@ export default function DefinirMetas() {
             {/* A equipe inteira de uma vez, em vez de um seletor por pessoa:
                 quem define metas define as de todos no mesmo dia, e comparar
                 lado a lado é o que evita alvo desigual sem querer. */}
-            <div className="rounded-lg border divide-y">
+            <div className="rounded-lg border border-border divide-y divide-border">
               {(colaboradores ?? []).length === 0 && (
-                <p className="p-6 text-center text-sm text-muted-foreground">
-                  Nenhum colaborador comercial cadastrado. Ferramentas → Equipe.
-                </p>
+                <div className="p-8 text-center">
+                  <div aria-hidden="true" className="w-12 h-12 mx-auto rounded-full bg-primary-tint text-primary flex items-center justify-center mb-3">
+                    <Users className="w-6 h-6" />
+                  </div>
+                  <p className="text-base font-semibold text-foreground">Nenhum colaborador comercial cadastrado</p>
+                  <p className="text-sm text-muted-foreground mt-1">Cadastre a equipe em Ferramentas → Equipe.</p>
+                </div>
               )}
               {(colaboradores ?? []).map((c) => {
                 const m = metaDe(c.user_id);
                 const nome = nomeExibido(c as never) || c.user_id.slice(0, 8);
                 return (
-                  <div key={c.user_id} className="flex items-center justify-between gap-3 p-3 flex-wrap">
+                  <div key={c.user_id} className="flex items-center justify-between gap-3 p-4 flex-wrap">
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">{nome}</p>
                       {m ? (
@@ -143,10 +158,10 @@ export default function DefinirMetas() {
                       )}
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      {m && <Badge variant="outline" className="text-xs">definida</Badge>}
+                      {m && <Badge variant="success">Meta definida</Badge>}
                       <Button size="sm" variant={m ? 'outline' : 'default'}
                         onClick={() => setEmEdicao({ user_id: c.user_id, nome })}>
-                        {m ? <Pencil className="w-3.5 h-3.5 mr-1.5" /> : <Target className="w-3.5 h-3.5 mr-1.5" />}
+                        {m ? <Pencil className="w-4 h-4" /> : <Target className="w-4 h-4" />}
                         {m ? 'Editar' : 'Definir'}
                       </Button>
                     </div>

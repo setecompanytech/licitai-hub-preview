@@ -1,12 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import AppLayout from '@/components/layout/AppLayout';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -14,9 +17,9 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from '@/components/ui/dialog';
 import {
-  CalendarDays, Clock, Building2, Bell, Mail, MessageSquare, Zap,
-  CheckCircle2, XCircle, Trash2, ExternalLink, Bot, AlertTriangle,
-  ArrowRight, Loader2, RefreshCw, ListChecks, Brain, Shield,
+  Clock, Building2, Bell, Mail, MessageSquare, Zap,
+  CheckCircle2, XCircle, Trash2, ExternalLink, AlertTriangle,
+  Loader2, RefreshCw, ListChecks, Brain, Shield,
   ChevronDown, ChevronUp, Archive, ArchiveRestore,
 } from 'lucide-react';
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
@@ -66,13 +69,16 @@ type ExclusaoLog = {
   created_at: string;
 };
 
-const statusConfig: Record<string, { label: string; color: string; icon: typeof CheckCircle2 }> = {
-  interessado: { label: 'Interessado', color: 'bg-info/10 text-info border-info/20', icon: ListChecks },
-  analisando: { label: 'IA Analisando', color: 'bg-warning/10 text-warning border-warning/20', icon: Brain },
-  aprovado: { label: 'Aprovado', color: 'bg-success/10 text-success border-success/20', icon: CheckCircle2 },
-  cadastrado: { label: 'Cadastrado', color: 'bg-muted text-muted-foreground border-border', icon: Shield },
-  rejeitado: { label: 'Rejeitado', color: 'bg-destructive/10 text-destructive border-destructive/20', icon: XCircle },
-  arquivado: { label: 'Arquivado', color: 'bg-muted text-muted-foreground border-border', icon: Archive },
+/** Variantes semânticas do Badge (identidade 12/09) — status sempre com texto. */
+type VarianteBadge = 'success' | 'warning' | 'danger' | 'info' | 'muted';
+
+const statusConfig: Record<string, { label: string; variant: VarianteBadge; icon: typeof CheckCircle2 }> = {
+  interessado: { label: 'Interessado', variant: 'info', icon: ListChecks },
+  analisando: { label: 'IA Analisando', variant: 'warning', icon: Brain },
+  aprovado: { label: 'Aprovado', variant: 'success', icon: CheckCircle2 },
+  cadastrado: { label: 'Cadastrado', variant: 'muted', icon: Shield },
+  rejeitado: { label: 'Rejeitado', variant: 'danger', icon: XCircle },
+  arquivado: { label: 'Arquivado', variant: 'muted', icon: Archive },
 };
 
 const formatCurrency = (v: number) =>
@@ -107,8 +113,8 @@ function Countdown({ targetDate }: { targetDate: string }) {
   };
 
   return (
-    <span className={`tabular-nums font-bold text-sm ${colors[urgency]}`}>
-      <Clock className="w-3.5 h-3.5 inline mr-1" />
+    <span className={`inline-flex items-center gap-1 text-sm font-bold tabular-nums ${colors[urgency]}`}>
+      <Clock className="h-4 w-4" aria-hidden="true" />
       {diff}
     </span>
   );
@@ -347,36 +353,50 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
 
   return (
     <AppLayout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-              <ListChecks className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground flex-shrink-0" />
-              Meus Compromissos
-            </h1>
-            <p className="text-base text-muted-foreground mt-1">
-              Processos de interesse com alertas multicanal e workflow autônomo
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Select value={filtroEmpresa} onValueChange={setFiltroEmpresa}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Todas as empresas" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas as empresas</SelectItem>
-                {empresas.map(e => (
-                  <SelectItem key={e.empresa_id} value={e.empresa_id}>{e.empresa.nome_fantasia || e.empresa.razao_social}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button variant="outline" size="sm" onClick={carregarProcessos}>
-              <RefreshCw className="w-4 h-4" />
+      {/* Título, descrição, ícone e trilha saem do registro
+          `lib/navegacao/paginas.ts` pela rota — nada de texto repetido aqui.
+          A fila de filtros mora DENTRO do cabeçalho, logo abaixo do título,
+          como na galeria: por isso o Tabs envolve o cabeçalho (o Radix exige
+          a lista sob a mesma raiz). O valor continua em `filtroStatus`, e a
+          carga preguiçosa de "Removidos" segue no mesmo lugar. */}
+      <Tabs
+        value={filtroStatus}
+        onValueChange={(v) => { setFiltroStatus(v); if (v === 'removidos' && !removidosCarregado) carregarRemovidos(); }}
+      >
+        <CabecalhoPagina
+          acoes={
+            <Button variant="outline" onClick={carregarProcessos} aria-label="Atualizar lista de compromissos">
+              <RefreshCw aria-hidden="true" /> Atualizar
             </Button>
-          </div>
-        </div>
+          }
+          filtros={
+            <div className="flex w-full flex-col gap-1 sm:w-64">
+              <Label htmlFor="filtro-empresa" className="text-xs text-muted-foreground">Empresa</Label>
+              <Select value={filtroEmpresa} onValueChange={setFiltroEmpresa}>
+                <SelectTrigger id="filtro-empresa">
+                  <SelectValue placeholder="Todas as empresas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas as empresas</SelectItem>
+                  {empresas.map(e => (
+                    <SelectItem key={e.empresa_id} value={e.empresa_id}>{e.empresa.nome_fantasia || e.empresa.razao_social}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          }
+        >
+          <TabsList>
+            <TabsTrigger value="all">Todos</TabsTrigger>
+            {Object.entries(statusConfig).map(([key, cfg]) => (
+              <TabsTrigger key={key} value={key}>{cfg.label}</TabsTrigger>
+            ))}
+            <TabsTrigger value="removidos">Removidos</TabsTrigger>
+          </TabsList>
+        </CabecalhoPagina>
+      </Tabs>
 
+      <div className="space-y-6">
         {/* REBRAND — a anatomia `kpi-meta`, a mesma dos Contratos: rótulo e
             ícone em cima, valor grande alinhado à esquerda, e uma NOTA embaixo.
 
@@ -389,62 +409,51 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
             "aprovado") e competia com o quinto, que é o único que pede ação
             hoje. "Encerra em menos de 3 dias" acende inteiro quando há o que
             olhar, e fica quieto quando não há. */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
           {([
             { rot: 'Total', val: stats.total, ic: ListChecks, nota: 'Sem os arquivados' },
             { rot: 'Interessados', val: stats.interessados, ic: Bell, nota: 'Aguardando decisão' },
             { rot: 'Aprovados', val: stats.aprovados, ic: CheckCircle2, nota: 'Liberados para disputar' },
             { rot: 'Cadastrados', val: stats.cadastrados, ic: Building2, nota: 'Já viraram processo' },
           ] as const).map(({ rot, val, ic: Icone, nota }) => (
-            <Card key={rot} className="p-4 min-w-0">
-              <div className="flex items-start justify-between gap-2 mb-2">
+            <Card key={rot} className="min-w-0 p-6">
+              <div className="mb-2 flex items-start justify-between gap-2">
                 <span className="text-xs text-muted-foreground">{rot}</span>
-                <Icone className="w-4 h-4 shrink-0 text-muted-foreground/70" aria-hidden="true" />
+                <Icone className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
               </div>
-              <p className="text-2xl font-bold tabular-nums leading-none">{val}</p>
-              <p className="text-xs text-muted-foreground mt-1.5">{nota}</p>
+              <p className="text-[2rem] font-bold leading-10 tabular-nums">{val}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{nota}</p>
             </Card>
           ))}
 
-          <Card className={`p-4 min-w-0 ${stats.urgentes > 0 ? 'border-destructive-line bg-destructive-tint' : ''}`}>
-            <div className="flex items-start justify-between gap-2 mb-2">
+          <Card className={`min-w-0 p-6 ${stats.urgentes > 0 ? 'border-destructive-line bg-destructive-tint' : ''}`}>
+            <div className="mb-2 flex items-start justify-between gap-2">
               <span className={`text-xs ${stats.urgentes > 0 ? 'text-destructive-ink' : 'text-muted-foreground'}`}>
                 Encerra em 3 dias
               </span>
               <AlertTriangle
-                className={`w-4 h-4 shrink-0 ${stats.urgentes > 0 ? 'text-destructive-ink' : 'text-muted-foreground/70'}`}
+                className={`h-4 w-4 shrink-0 ${stats.urgentes > 0 ? 'text-destructive-ink' : 'text-muted-foreground'}`}
                 aria-hidden="true"
               />
             </div>
-            <p className={`text-2xl font-bold tabular-nums leading-none ${stats.urgentes > 0 ? 'text-destructive-ink' : ''}`}>
+            <p className={`text-[2rem] font-bold leading-10 tabular-nums ${stats.urgentes > 0 ? 'text-destructive-ink' : ''}`}>
               {stats.urgentes}
             </p>
-            <p className={`text-xs mt-1.5 ${stats.urgentes > 0 ? 'text-destructive-ink' : 'text-muted-foreground'}`}>
+            <p className={`mt-1 text-xs ${stats.urgentes > 0 ? 'text-destructive-ink' : 'text-muted-foreground'}`}>
               {stats.urgentes > 0 ? 'Decida hoje ou perde o prazo' : 'Nenhum prazo apertado'}
             </p>
           </Card>
         </div>
 
-        {/* Filter by status */}
-        <Tabs value={filtroStatus} onValueChange={(v) => { setFiltroStatus(v); if (v === 'removidos' && !removidosCarregado) carregarRemovidos(); }}>
-          <TabsList className="flex-wrap h-auto gap-1">
-            <TabsTrigger value="all">Todos</TabsTrigger>
-            {Object.entries(statusConfig).map(([key, cfg]) => (
-              <TabsTrigger key={key} value={key}>{cfg.label}</TabsTrigger>
-            ))}
-            <TabsTrigger value="removidos">Removidos</TabsTrigger>
-          </TabsList>
-        </Tabs>
-
         {/* List */}
         {filtroStatus === 'removidos' ? (
           removidos.length === 0 ? (
-            <Card className="p-12 text-center">
-              <Trash2 className="w-12 h-12 mx-auto text-muted-foreground/30 mb-4" />
-              <p className="text-lg font-medium text-muted-foreground">Nenhuma remoção registrada</p>
-              <p className="text-base text-muted-foreground mt-1">
-                Quando você rejeitar ou remover um processo, o registro (com o motivo) fica consultável aqui.
-              </p>
+            <Card>
+              <EstadoVazio
+                icone={<Trash2 />}
+                titulo="Nenhuma remoção registrada"
+                descricao="Quando você rejeitar ou remover um processo, o registro (com o motivo) fica consultável aqui."
+              />
             </Card>
           ) : (
             <div className="space-y-3">
@@ -452,22 +461,20 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
                 <Card key={r.id} className="p-4">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Badge variant="outline" className={r.acao === 'rejeitar'
-                          ? 'bg-destructive/10 text-destructive border-destructive/20'
-                          : 'bg-muted text-muted-foreground border-border'}>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant={r.acao === 'rejeitar' ? 'danger' : 'muted'}>
                           {r.acao === 'rejeitar' ? 'Rejeitado' : 'Removido'}
                         </Badge>
                         <span className="font-semibold">{r.processo_numero || 's/ número'}</span>
-                        <span className="text-sm text-muted-foreground">
+                        <span className="text-sm text-muted-foreground tabular-nums">
                           {new Date(r.created_at).toLocaleDateString('pt-BR')}
                         </span>
                       </div>
-                      <p className="text-sm font-medium mt-1">{r.processo_orgao}</p>
+                      <p className="mt-1 text-sm font-medium">{r.processo_orgao}</p>
                       {r.processo_objeto && (
-                        <p className="text-sm text-muted-foreground truncate max-w-[640px]">{r.processo_objeto}</p>
+                        <p className="max-w-2xl truncate text-sm text-muted-foreground">{r.processo_objeto}</p>
                       )}
-                      <p className="text-sm mt-2">
+                      <p className="mt-2 text-sm">
                         <span className="text-muted-foreground">Motivo:</span> {r.motivo}
                       </p>
                     </div>
@@ -477,16 +484,26 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
             </div>
           )
         ) : loading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+          <div className="space-y-3" role="status" aria-live="polite">
+            <span className="sr-only">Carregando compromissos…</span>
+            {[0, 1, 2].map((i) => (
+              <Card key={i} className="space-y-3 p-4">
+                <div className="flex items-center gap-2">
+                  <Skeleton className="h-5 w-24" />
+                  <Skeleton className="h-5 w-40" />
+                </div>
+                <Skeleton className="h-4 w-1/2" />
+                <Skeleton className="h-4 w-full" />
+              </Card>
+            ))}
           </div>
         ) : filtered.length === 0 ? (
-          <Card className="p-12 text-center">
-            <ListChecks className="w-12 h-12 mx-auto text-muted-foreground/30 mb-4" />
-            <p className="text-lg font-medium text-muted-foreground">Nenhum processo na lista</p>
-            <p className="text-base text-muted-foreground mt-1">
-              Marque interesse em editais no Monitoramento para adicioná-los aqui.
-            </p>
+          <Card>
+            <EstadoVazio
+              icone={<ListChecks />}
+              titulo="Nenhum processo na lista"
+              descricao="Marque interesse em editais no Monitoramento para adicioná-los aqui."
+            />
           </Card>
         ) : (
           <div className="space-y-3">
@@ -498,53 +515,51 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
               // aqui todos leem igual, e o hover preserva a forma original.
               const identidade = identidadeDoEdital({ numeroCompra: p.numero, modalidade: p.modalidade });
               return (
-                <Card key={p.id} className="p-4 space-y-3">
+                <Card key={p.id} className="space-y-3 p-4">
                   <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Badge variant="outline" className={cfg.color}>
-                          <StatusIcon className="w-3 h-3 mr-1" />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant={cfg.variant} className="gap-1">
+                          <StatusIcon className="h-3 w-3" aria-hidden="true" />
                           {cfg.label}
                         </Badge>
                         <span
-                          className="font-semibold text-sm cursor-help"
+                          className="cursor-help text-sm font-semibold"
                           title={identidade.reescrito ? `Como o portal publica: ${identidade.bruto}` : undefined}
                         >
                           {identidade.rotulo}
                         </span>
                         {identidade.srpNoTexto && (
-                          <Badge variant="outline" className="bg-muted text-muted-foreground border-border text-xs">
-                            SRP
-                          </Badge>
+                          <Badge variant="muted">SRP</Badge>
                         )}
                         {p.data_encerramento && <Countdown targetDate={p.data_encerramento} />}
                         {p.auto_cadastro && (
-                          <Badge variant="outline" className="bg-muted text-muted-foreground border-border text-xs">
-                            <Zap className="w-3 h-3 mr-0.5" /> Auto
+                          <Badge variant="muted" className="gap-1">
+                            <Zap className="h-3 w-3" aria-hidden="true" /> Auto
                           </Badge>
                         )}
                       </div>
-                      <p className="text-sm text-muted-foreground mt-1">{p.orgao}</p>
-                      <p className="text-base text-muted-foreground line-clamp-2 mt-0.5">{p.objeto}</p>
-                      <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground flex-wrap">
+                      <p className="mt-1 text-sm text-muted-foreground">{p.orgao}</p>
+                      <p className="mt-0.5 text-base text-muted-foreground line-clamp-2">{p.objeto}</p>
+                      <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1">
-                          <Building2 className="w-3 h-3" />
+                          <Building2 className="h-4 w-4" aria-hidden="true" />
                           {empresaMap[p.empresa_id] || 'Empresa'}
                         </span>
-                        {p.valor_estimado && <span>{formatCurrency(p.valor_estimado)}</span>}
+                        {p.valor_estimado && <span className="tabular-nums">{formatCurrency(p.valor_estimado)}</span>}
                         {p.uf && <span>{p.municipio ? `${p.municipio}/${p.uf}` : p.uf}</span>}
                         {p.portal && <span>{p.portal}</span>}
                         <span className="flex items-center gap-1">
-                          {p.alerta_sistema && <Bell className="w-3 h-3 text-muted-foreground" />}
-                          {p.alerta_email && <Mail className="w-3 h-3 text-info" />}
-                          {p.alerta_whatsapp && <MessageSquare className="w-3 h-3 text-success" />}
+                          {p.alerta_sistema && <Bell className="h-4 w-4 text-muted-foreground" aria-label="Alerta no sistema" />}
+                          {p.alerta_email && <Mail className="h-4 w-4 text-info" aria-label="Alerta por e-mail" />}
+                          {p.alerta_whatsapp && <MessageSquare className="h-4 w-4 text-success" aria-label="Alerta por WhatsApp" />}
                         </span>
                       </div>
                       {p.ia_score != null && (
                         <div className="mt-2 flex items-center gap-2">
                           <span className="text-xs text-muted-foreground">Score IA:</span>
-                          <Progress value={p.ia_score} className="h-2 w-24" />
-                          <span className="text-xs font-bold">{p.ia_score}%</span>
+                          <Progress value={p.ia_score} className="h-2 w-24" aria-label={`Score IA ${p.ia_score}%`} />
+                          <span className="text-xs font-bold tabular-nums">{p.ia_score}%</span>
                         </div>
                       )}
                     </div>
@@ -553,26 +568,26 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
                   {/* As ações moram numa LINHA no rodapé: empilhadas à direita,
                       seis botões ditavam a altura do cartão e o conteúdo curto
                       deixava um vazio enorme embaixo (apontado em 12/09). */}
-                  <div className="flex items-center flex-wrap justify-end gap-1 border-t border-border/50 pt-2">
+                  <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border pt-3">
                       {p.status === 'interessado' && (
                         <>
                           <Button size="sm" variant="outline" onClick={() => handleAnaliseIA(p)} disabled={analisandoIA === p.id}>
-                            <Brain className="w-3.5 h-3.5 mr-1" />
+                            <Brain aria-hidden="true" />
                             {analisandoIA === p.id ? 'Analisando...' : 'IA Analisar'}
                           </Button>
-                          <Button size="sm" className="bg-success hover:bg-success/90 text-success-foreground" onClick={() => handleAprovar(p.id)}>
-                            <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Aprovar
+                          <Button size="sm" onClick={() => handleAprovar(p.id)}>
+                            <CheckCircle2 aria-hidden="true" /> Aprovar
                           </Button>
                         </>
                       )}
                       {p.status === 'analisando' && (
-                        <Button size="sm" className="bg-success hover:bg-success/90 text-success-foreground" onClick={() => handleAprovar(p.id)}>
-                          <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Aprovar
+                        <Button size="sm" onClick={() => handleAprovar(p.id)}>
+                          <CheckCircle2 aria-hidden="true" /> Aprovar
                         </Button>
                       )}
                       {p.status !== 'rejeitado' && (
-                        <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setAcaoDialog({ tipo: 'rejeitar', processo: p })}>
-                          <XCircle className="w-3.5 h-3.5 mr-1" /> Rejeitar
+                        <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setAcaoDialog({ tipo: 'rejeitar', processo: p })}>
+                          <XCircle aria-hidden="true" /> Rejeitar
                         </Button>
                       )}
                       <Button
@@ -584,21 +599,21 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
                         title={p.licitacao_id ? 'Sincroniza com o Kanban' : undefined}
                       >
                         {arquivando === p.id
-                          ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                          ? <Loader2 className="animate-spin" aria-hidden="true" />
                           : p.status === 'arquivado'
-                          ? <ArchiveRestore className="w-3.5 h-3.5 mr-1" />
-                          : <Archive className="w-3.5 h-3.5 mr-1" />}
+                          ? <ArchiveRestore aria-hidden="true" />
+                          : <Archive aria-hidden="true" />}
                         {p.status === 'arquivado' ? 'Restaurar' : 'Arquivar'}
                       </Button>
                       {p.status !== 'rejeitado' && (
                         <Button size="sm" variant="ghost" onClick={() => setAcaoDialog({ tipo: 'remover', processo: p })}>
-                          <Trash2 className="w-3.5 h-3.5 mr-1" /> Remover
+                          <Trash2 aria-hidden="true" /> Remover
                         </Button>
                       )}
                       {p.url && (
                         <Button size="sm" variant="outline" asChild title="Abrir no portal de origem">
-                          <a href={p.url} target="_blank" rel="noopener noreferrer">
-                            <ExternalLink className="w-3.5 h-3.5" />
+                          <a href={p.url} target="_blank" rel="noopener noreferrer" aria-label="Abrir no portal de origem">
+                            <ExternalLink aria-hidden="true" />
                           </a>
                         </Button>
                       )}
@@ -606,21 +621,23 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
 
                   {/* IA Analysis result */}
                   {(iaResult[p.id] || p.ia_recomendacao) && (
-                    <div className="bg-muted/30 rounded-lg border border-border/50 text-base">
+                    <div className="rounded-lg border border-border bg-muted text-base">
                       <button
-                        className="flex items-center gap-2 w-full text-left p-3"
+                        type="button"
+                        aria-expanded={!!expandedAnalise[p.id]}
+                        className="flex w-full items-center gap-2 rounded-lg p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                         onClick={() => setExpandedAnalise(prev => ({ ...prev, [p.id]: !prev[p.id] }))}
                       >
-                        <Brain className="w-3.5 h-3.5 text-muted-foreground" />
-                        <span className="text-xs font-semibold text-foreground flex-1">Análise da IA</span>
+                        <Brain className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                        <span className="flex-1 text-sm font-semibold text-foreground">Análise da IA</span>
                         {expandedAnalise[p.id] ? (
-                          <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                          <ChevronUp className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                         ) : (
-                          <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                          <ChevronDown className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                         )}
                       </button>
                       {expandedAnalise[p.id] && (
-                        <div className="prose dark:prose-invert max-w-none px-3 pb-3">
+                        <div className="prose max-w-none px-3 pb-3 dark:prose-invert">
                           <ReactMarkdown>{iaResult[p.id] || p.ia_recomendacao || ''}</ReactMarkdown>
                         </div>
                       )}
@@ -637,7 +654,7 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>
-                {acaoDialog?.tipo === 'rejeitar' ? 'Rejeitar Processo' : 'Remover Processo'}
+                {acaoDialog?.tipo === 'rejeitar' ? 'Rejeitar processo' : 'Remover processo'}
               </DialogTitle>
               <DialogDescription>
                 Processo <strong>{acaoDialog ? identidadeDoEdital({ numeroCompra: acaoDialog.processo.numero, modalidade: acaoDialog.processo.modalidade }).rotulo : ''}</strong> — {acaoDialog?.processo.orgao}
@@ -651,28 +668,32 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
                 </p>
               )}
             </DialogHeader>
-            <div className="space-y-3 py-2">
-              <div className="space-y-1.5">
-                <Label className="text-sm font-medium">Motivo *</Label>
+            <div className="space-y-4 py-2">
+              <div className="space-y-2">
+                <Label htmlFor="motivo-acao">Motivo *</Label>
                 <Textarea
+                  id="motivo-acao"
                   value={motivoTexto}
                   onChange={e => setMotivoTexto(e.target.value)}
                   placeholder="Descreva o motivo da rejeição/remoção..."
                   className="min-h-[100px]"
                   maxLength={500}
+                  required
                 />
-                <p className="text-xs text-muted-foreground text-right">{motivoTexto.length}/500</p>
+                <p className="text-right text-xs text-muted-foreground tabular-nums">{motivoTexto.length}/500</p>
               </div>
               {acaoDialog?.tipo === 'remover' && acaoDialog?.processo.licitacao_id && (
-                <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
-                  <input
-                    type="checkbox"
+                <div className="flex items-start gap-2">
+                  <Checkbox
+                    id="arquivar-junto"
                     checked={arquivarJunto}
-                    onChange={(e) => setArquivarJunto(e.target.checked)}
-                    className="h-4 w-4 rounded border-border accent-primary"
+                    onCheckedChange={(v) => setArquivarJunto(v === true)}
+                    className="mt-0.5"
                   />
-                  Também arquivar o processo na gestão (sai do Kanban e das listas ativas)
-                </label>
+                  <Label htmlFor="arquivar-junto" className="cursor-pointer text-sm font-normal leading-5">
+                    Também arquivar o processo na gestão (sai do Kanban e das listas ativas)
+                  </Label>
+                </div>
               )}
             </div>
             <DialogFooter className="gap-2">
@@ -682,9 +703,9 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
               <Button
                 onClick={handleConfirmarAcao}
                 disabled={executandoAcao || !motivoTexto.trim()}
-                className={acaoDialog?.tipo === 'rejeitar' ? 'bg-destructive hover:bg-destructive/90' : ''}
+                variant={acaoDialog?.tipo === 'rejeitar' ? 'destructive' : 'default'}
               >
-                {executandoAcao ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+                {executandoAcao ? <Loader2 className="animate-spin" aria-hidden="true" /> : null}
                 {acaoDialog?.tipo === 'rejeitar' ? 'Confirmar Rejeição' : 'Confirmar Remoção'}
               </Button>
             </DialogFooter>

@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Send, Loader2, Sparkles, Scale, BarChart3,
   BookOpen, ExternalLink, Trash2, Download, Globe
@@ -225,77 +225,69 @@ export default function AssistenteEspecializado() {
 
   return (
     <AppLayout>
-      <div className="flex flex-col h-[calc(100vh-4rem)]">
-        {/* Header */}
-        <div className="border-b border-border/50 pb-4 mb-4">
-           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
-                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
-              </div>
-              <div className="min-w-0">
-                <h1 className="text-base sm:text-lg font-bold tracking-tight">Assistente IA Especializada</h1>
-                <p className="text-xs sm:text-xs text-muted-foreground truncate">
-                  Jurídica, Contábil e Econômico-Financeira — com busca em fontes oficiais
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
+      <div className="flex flex-col h-[calc(100vh-4rem)] min-h-0">
+        <CabecalhoPagina
+          icone={<Sparkles />}
+          titulo="Assistente IA Especializada"
+          descricao="Jurídica, Contábil e Econômico-Financeira — com busca em fontes oficiais"
+          acoes={
+            <>
               <Button
-                size="sm"
                 variant={buscaWeb ? 'default' : 'outline'}
                 onClick={() => setBuscaWeb(!buscaWeb)}
-                className="text-xs gap-1.5"
+                aria-pressed={buscaWeb}
               >
-                <Globe className="w-3.5 h-3.5" />
+                <Globe className="w-4 h-4" />
                 {buscaWeb ? 'Busca Web Ativa' : 'Busca Web Desativada'}
               </Button>
               {messages.length > 0 && (
                 <>
-                  <Button size="sm" variant="outline" onClick={handleExport} className="text-xs gap-1">
-                    <Download className="w-3 h-3" /> Exportar
+                  <Button variant="outline" onClick={handleExport}>
+                    <Download className="w-4 h-4" /> Exportar
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={handleClear} className="text-xs gap-1 text-destructive hover:text-destructive">
-                    <Trash2 className="w-3 h-3" /> Limpar
+                  <Button variant="ghost" onClick={handleClear} className="text-destructive hover:text-destructive">
+                    <Trash2 className="w-4 h-4" /> Limpar
                   </Button>
                 </>
               )}
-            </div>
+            </>
+          }
+        >
+          <div className="flex flex-wrap gap-2">
+            <Badge variant="info">Lei 14.133/2021</Badge>
+            <Badge variant="info">NBC TSP</Badge>
+            <Badge variant="info">TCU</Badge>
+            <Badge variant="info">LRF</Badge>
+            <Badge variant="info">CFC/CRC</Badge>
+            <Badge variant="info">IPCA/IGP-M</Badge>
           </div>
-          <div className="flex flex-wrap gap-1.5 mt-3">
-            <Badge variant="outline" className="text-xs">Lei 14.133/2021</Badge>
-            <Badge variant="outline" className="text-xs">NBC TSP</Badge>
-            <Badge variant="outline" className="text-xs">TCU</Badge>
-            <Badge variant="outline" className="text-xs">LRF</Badge>
-            <Badge variant="outline" className="text-xs">CFC/CRC</Badge>
-            <Badge variant="outline" className="text-xs">IPCA/IGP-M</Badge>
-          </div>
-        </div>
+        </CabecalhoPagina>
 
         {/* Messages */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-4 pb-4">
+        <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto space-y-4 pb-4">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full gap-6 text-center px-4">
-              <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center">
-                <Sparkles className="w-8 h-8 text-muted-foreground" />
+              <div aria-hidden="true" className="w-16 h-16 rounded-full bg-primary-tint text-primary flex items-center justify-center">
+                <Sparkles className="w-8 h-8" />
               </div>
               <div>
                 <h2 className="text-lg font-semibold mb-1">Assistente IA Especializada</h2>
-                <p className="text-sm text-muted-foreground max-w-md">
+                <p className="text-base text-muted-foreground max-w-md">
                   Pergunte sobre legislação, jurisprudência, balanços patrimoniais, índices econômicos,
                   habilitação em licitações ou qualquer tema jurídico-contábil.
                 </p>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-w-2xl w-full">
                 {SUGGESTION_CHIPS.map((chip) => (
-                  <button
+                  <Button
                     key={chip.label}
+                    variant="outline"
                     onClick={() => handleSend(chip.label)}
-                    className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-border/50 bg-card hover:bg-accent/5 hover:border-accent/30 transition-colors text-left"
+                    className="h-auto justify-start gap-2 px-3 py-3 text-left whitespace-normal font-medium"
                   >
-                    <chip.icon className="w-4 h-4 text-muted-foreground shrink-0" />
-                    <span className="text-xs text-foreground">{chip.label}</span>
-                  </button>
+                    <chip.icon className="w-4 h-4 text-primary shrink-0" />
+                    <span className="text-sm text-foreground">{chip.label}</span>
+                  </Button>
                 ))}
               </div>
             </div>
@@ -303,13 +295,13 @@ export default function AssistenteEspecializado() {
 
           {messages.map((msg) => (
             <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[85%] rounded-xl px-4 py-3 ${
+              <div className={`max-w-[85%] rounded-lg px-4 py-3 ${
                 msg.role === 'user'
-                  ? 'bg-accent text-accent-foreground'
-                  : 'bg-card border border-border/50'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-card border border-border'
               }`}>
                 {msg.role === 'assistant' ? (
-                  <div className="prose prose-sm dark:prose-invert max-w-none prose-p:mb-4 prose-p:leading-relaxed prose-headings:mt-6 prose-headings:mb-3 prose-headings:font-bold prose-h2:text-base prose-h2:border-b prose-h2:border-border/40 prose-h2:pb-2 prose-h3:text-sm prose-strong:text-foreground prose-blockquote:border-border prose-blockquote:bg-muted prose-blockquote:py-1 prose-blockquote:px-3 prose-blockquote:rounded [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:pl-5">
+                  <div className="prose prose-sm dark:prose-invert max-w-none prose-p:mb-4 prose-p:leading-relaxed prose-headings:mt-6 prose-headings:mb-3 prose-headings:font-bold prose-h2:text-base prose-h2:border-b prose-h2:border-border prose-h2:pb-2 prose-h3:text-sm prose-strong:text-foreground prose-blockquote:border-border prose-blockquote:bg-muted prose-blockquote:py-1 prose-blockquote:px-3 prose-blockquote:rounded-md [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:pl-5">
                     <ReactMarkdown>{msg.content}</ReactMarkdown>
                   </div>
                 ) : (
@@ -317,8 +309,8 @@ export default function AssistenteEspecializado() {
                 )}
 
                 {msg.sources && msg.sources.length > 0 && (
-                  <div className="mt-3 pt-2 border-t border-border/30">
-                    <p className="text-xs font-medium text-muted-foreground mb-1.5">Fontes consultadas:</p>
+                  <div className="mt-3 pt-2 border-t border-border">
+                    <p className="text-xs font-medium text-muted-foreground mb-2">Fontes consultadas:</p>
                     <div className="flex flex-wrap gap-1">
                       {msg.sources.map((s, i) => (
                         <a
@@ -326,9 +318,9 @@ export default function AssistenteEspecializado() {
                           href={s.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
+                          className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-md bg-primary-tint text-primary hover:underline transition-colors"
                         >
-                          <ExternalLink className="w-2.5 h-2.5" />
+                          <ExternalLink className="w-3 h-3" />
                           {s.title?.slice(0, 40) || new URL(s.url).hostname}
                         </a>
                       ))}
@@ -341,9 +333,9 @@ export default function AssistenteEspecializado() {
 
           {isLoading && messages[messages.length - 1]?.role !== 'assistant' && (
             <div className="flex justify-start">
-              <div className="bg-card border border-border/50 rounded-xl px-4 py-3 flex items-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">
+              <div className="bg-card border border-border rounded-lg px-4 py-3 flex items-center gap-2" role="status">
+                <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                <span className="text-sm text-muted-foreground">
                   {buscaWeb ? 'Buscando em fontes oficiais e analisando...' : 'Analisando...'}
                 </span>
               </div>
@@ -352,27 +344,31 @@ export default function AssistenteEspecializado() {
         </div>
 
         {/* Input */}
-        <div className="border-t border-border/50 pt-4">
+        <div className="border-t border-border pt-4">
           <div className="flex gap-2">
+            <label htmlFor="assistente-pergunta" className="sr-only">Sua pergunta</label>
             <Textarea
+              id="assistente-pergunta"
               ref={textareaRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Pergunte sobre legislação, balanços, índices econômicos, habilitação..."
               rows={2}
-              className="resize-none text-sm"
+              className="resize-none"
               disabled={isLoading}
             />
             <Button
               onClick={() => handleSend()}
               disabled={!input.trim() || isLoading}
-              className="bg-accent hover:bg-accent/90 text-accent-foreground px-4 self-end"
+              size="icon"
+              className="h-11 w-11 shrink-0 self-end"
+              aria-label="Enviar pergunta"
             >
               {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground mt-1.5">
+          <p className="text-xs text-muted-foreground mt-2">
             {buscaWeb
               ? 'A IA consultará fontes oficiais (Planalto, TCU, IBGE, Banco Central) em tempo real para fundamentar a resposta.'
               : 'Busca web desativada. A IA responderá com base no conhecimento interno.'

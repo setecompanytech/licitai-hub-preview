@@ -85,20 +85,20 @@ export default function ComposicaoResultado({ iaResult, regimeLabel, ufCalculo, 
   // Fallback: if AI didn't return valid JSON, show markdown
   if (!parsed) {
     return (
-      <div className="bg-card rounded-xl border border-border/50 p-5 space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      <div className="space-y-3 rounded-lg border border-border bg-card p-6 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <Bot className="w-5 h-5 text-muted-foreground" />
-            <h4 className="font-semibold text-sm">Composição de Custo Gerada</h4>
+            <Bot className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+            <h4 className="text-lg font-semibold">Composição de Custo Gerada</h4>
           </div>
-          <div className="flex gap-2">
-            <Badge className="bg-muted text-foreground border-border text-xs">{regimeLabel} • {ufCalculo}</Badge>
-            <Button variant="outline" size="sm" onClick={copyResult}>
-              <Download className="w-3.5 h-3.5 mr-1" /> Copiar
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="info">{regimeLabel} • {ufCalculo}</Badge>
+            <Button variant="outline" onClick={copyResult}>
+              <Download className="w-4 h-4" aria-hidden="true" /> Copiar
             </Button>
           </div>
         </div>
-        <div className="bg-muted/30 rounded-lg p-4 prose prose-sm max-w-none dark:prose-invert text-xs overflow-auto">
+        <div className="rounded-lg bg-muted p-4 prose prose-sm max-w-none dark:prose-invert text-sm overflow-auto">
           <ReactMarkdown>{iaResult}</ReactMarkdown>
         </div>
       </div>

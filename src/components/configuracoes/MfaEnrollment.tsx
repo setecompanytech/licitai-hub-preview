@@ -3,7 +3,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Shield, ShieldCheck, ShieldOff, Loader2, Copy, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -63,7 +65,7 @@ export default function MfaEnrollment() {
         friendlyName: 'PRAEFECTUS App',
       });
       if (error) throw error;
-      
+
       setQrCode(data.totp.qr_code);
       setSecret(data.totp.secret);
       setFactorId(data.id);
@@ -127,58 +129,55 @@ export default function MfaEnrollment() {
 
   if (loading) {
     return (
-      <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
-        <div className="flex items-center justify-center py-4">
-          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-        </div>
+      <section className="rounded-lg border border-border bg-card p-6 shadow-sm" role="status" aria-busy="true">
+        <span className="sr-only">Carregando verificação em duas etapas</span>
+        <Skeleton className="mb-4 h-6 w-64" />
+        <Skeleton className="h-12 w-full" />
       </section>
     );
   }
 
   return (
     <>
-      <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
-        <div className="flex items-center gap-2 mb-4">
-          <Shield className="w-5 h-5 text-muted-foreground" />
-          <h2 className="text-sm font-semibold">Autenticação em Dois Fatores (2FA/MFA)</h2>
+      <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
+        <div className="mb-4 flex items-center gap-2">
+          <Shield className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+          <h2 className="text-lg font-semibold text-foreground">Autenticação em Dois Fatores (2FA/MFA)</h2>
         </div>
 
-        <div className="flex items-center justify-between py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 py-3">
           <div>
-            <p className="text-sm font-medium">Verificação por aplicativo (TOTP)</p>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <p className="text-base font-medium text-foreground">Verificação por aplicativo (TOTP)</p>
+            <p className="mt-1 text-sm text-muted-foreground">
               Use Google Authenticator, Authy ou outro app compatível
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             {mfaEnabled ? (
               <>
-                <Badge className="bg-success/10 text-success border-success/20">
-                  <ShieldCheck className="w-3 h-3 mr-1" /> Ativo
+                <Badge variant="success" className="gap-1">
+                  <ShieldCheck className="h-4 w-4" aria-hidden="true" /> Ativo
                 </Badge>
                 <Button
                   variant="outline"
-                  size="sm"
                   onClick={handleUnenroll}
                   disabled={unenrolling}
                   className="text-destructive hover:text-destructive"
                 >
-                  {unenrolling ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <ShieldOff className="w-3 h-3 mr-1" />}
+                  {unenrolling ? <Loader2 className="animate-spin" aria-hidden="true" /> : <ShieldOff aria-hidden="true" />}
                   Desativar
                 </Button>
               </>
             ) : (
               <>
-                <Badge variant="outline" className="bg-muted text-muted-foreground">
+                <Badge variant="muted">
                   Inativo
                 </Badge>
                 <Button
-                  size="sm"
                   onClick={handleEnroll}
                   disabled={enrolling}
-                  className="bg-accent hover:bg-accent/90 text-accent-foreground"
                 >
-                  {enrolling ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <ShieldCheck className="w-3 h-3 mr-1" />}
+                  {enrolling ? <Loader2 className="animate-spin" aria-hidden="true" /> : <ShieldCheck aria-hidden="true" />}
                   Ativar 2FA
                 </Button>
               </>
@@ -186,7 +185,7 @@ export default function MfaEnrollment() {
           </div>
         </div>
 
-        <div className="mt-3 pt-3 border-t border-border/30">
+        <div className="mt-3 border-t border-border pt-3">
           <p className="text-xs text-muted-foreground">
             A autenticação em dois fatores adiciona uma camada extra de segurança à sua conta, exigindo um código temporário além da senha para acessar o sistema.
           </p>
@@ -198,7 +197,7 @@ export default function MfaEnrollment() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Shield className="w-5 h-5 text-muted-foreground" />
+              <Shield className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
               Configurar Autenticação em Dois Fatores
             </DialogTitle>
             <DialogDescription>
@@ -206,37 +205,41 @@ export default function MfaEnrollment() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-5">
+          <div className="space-y-6">
             {/* Step 1: QR Code */}
             <div className="space-y-3">
-              <p className="text-sm font-medium">1. Escaneie o QR Code</p>
-              <div className="flex justify-center p-4 bg-white rounded-lg">
-                {qrCode && <img src={qrCode} alt="QR Code MFA" className="w-48 h-48" />}
+              <p className="text-base font-medium text-foreground">1. Escaneie o QR Code</p>
+              {/* Fundo branco fixo de propósito: o leitor de QR precisa de
+                  contraste preto-sobre-branco também no tema escuro. */}
+              <div className="flex justify-center rounded-lg bg-white p-4">
+                {qrCode && <img src={qrCode} alt="QR Code MFA" className="h-48 w-48" />}
               </div>
             </div>
 
             {/* Manual entry */}
             <div className="space-y-2">
-              <p className="text-xs text-muted-foreground">Ou insira o código manualmente:</p>
+              <p className="text-sm text-muted-foreground">Ou insira o código manualmente:</p>
               <div className="flex items-center gap-2">
-                <code className="flex-1 text-xs bg-muted px-3 py-2 rounded font-mono break-all">
+                <code className="flex-1 break-all rounded-md bg-muted px-3 py-2 font-mono text-sm">
                   {secret}
                 </code>
-                <Button variant="ghost" size="icon" onClick={copySecret} className="flex-shrink-0">
-                  {copied ? <CheckCircle2 className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
+                <Button variant="ghost" size="icon" onClick={copySecret} className="shrink-0" aria-label="Copiar código">
+                  {copied ? <CheckCircle2 className="text-success" aria-hidden="true" /> : <Copy aria-hidden="true" />}
                 </Button>
               </div>
             </div>
 
             {/* Step 2: Verify */}
             <div className="space-y-3">
-              <p className="text-sm font-medium">2. Insira o código de verificação</p>
+              <Label htmlFor="mfa-codigo" className="text-base font-medium">2. Insira o código de verificação</Label>
               <Input
+                id="mfa-codigo"
                 value={verifyCode}
                 onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 placeholder="000000"
-                className="text-center text-2xl tracking-[0.5em] font-mono"
+                className="text-center font-mono text-2xl tracking-[0.5em] md:text-2xl"
                 maxLength={6}
+                inputMode="numeric"
                 autoFocus
               />
             </div>
@@ -244,9 +247,9 @@ export default function MfaEnrollment() {
             <Button
               onClick={handleVerify}
               disabled={verifying || verifyCode.length !== 6}
-              className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
+              className="w-full"
             >
-              {verifying ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <ShieldCheck className="w-4 h-4 mr-2" />}
+              {verifying ? <Loader2 className="animate-spin" aria-hidden="true" /> : <ShieldCheck aria-hidden="true" />}
               Verificar e Ativar
             </Button>
           </div>

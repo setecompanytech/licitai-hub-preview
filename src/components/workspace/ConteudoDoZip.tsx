@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { FileText, Download, Loader2, FolderOpen } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Skeleton } from '@/components/ui/skeleton';
+import { FileText, Download, Loader2, FolderOpen, AlertTriangle } from 'lucide-react';
 
 /**
  * Abre o pacote .zip do PNCP dentro da tela, em vez de mandar baixar.
@@ -71,65 +73,79 @@ export default function ConteudoDoZip({ url, nomeZip }: { url: string; nomeZip?:
 
   if (erro) {
     return (
-      <div className="p-6 text-center space-y-3">
-        <FileText className="w-8 h-8 mx-auto text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">{erro}</p>
-        <Button asChild size="sm" variant="outline">
-          <a href={url} download={nomeZip}><Download className="w-3.5 h-3.5 mr-1.5" /> Baixar ZIP</a>
-        </Button>
+      <div className="p-6">
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+          <AlertDescription className="flex flex-wrap items-center gap-3">
+            <span>{erro}</span>
+            <Button asChild size="sm" variant="outline">
+              <a href={url} download={nomeZip}><Download className="w-4 h-4" aria-hidden="true" /> Baixar ZIP</a>
+            </Button>
+          </AlertDescription>
+        </Alert>
       </div>
     );
   }
 
   if (!entradas) {
     return (
-      <div className="p-10 text-center">
-        <Loader2 className="w-5 h-5 mx-auto animate-spin text-muted-foreground" />
-        <p className="text-sm text-muted-foreground mt-2">Abrindo o pacote…</p>
+      <div role="status" aria-busy="true" className="space-y-3 p-6">
+        <span className="sr-only">Abrindo o pacote…</span>
+        <Skeleton className="h-4 w-48" />
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-2/3" />
       </div>
     );
   }
 
   return (
     <div className="grid md:grid-cols-[minmax(0,260px)_1fr]">
-      <div className="border-r border-border max-h-[600px] overflow-y-auto">
-        <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
-          <FolderOpen className="w-3.5 h-3.5 text-muted-foreground" />
+      <div className="max-h-[600px] overflow-y-auto border-r border-border">
+        <div className="flex items-center gap-2 border-b border-border px-3 py-2">
+          <FolderOpen className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
           <span className="text-sm font-medium">{entradas.length} arquivo(s) no pacote</span>
         </div>
-        {entradas.map((e) => (
-          <button
-            key={e.caminho}
-            onClick={() => abrirInterno(e)}
-            className={`w-full text-left px-3 py-2 border-b border-border/60 hover:bg-muted/50 transition-colors ${
-              aberto?.nome === e.nome ? 'bg-accent/10' : ''
-            }`}
-          >
-            <span className="flex items-center gap-2">
-              {abrindo === e.caminho
-                ? <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
-                : <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
-              <span className="text-sm truncate">{e.nome}</span>
-            </span>
-            {e.bytes > 0 && (
-              <span className="text-xs text-muted-foreground ml-5.5">{tamanho(e.bytes)}</span>
-            )}
-          </button>
-        ))}
+        {entradas.map((e) => {
+          const ativo = aberto?.nome === e.nome;
+          return (
+            <Button
+              key={e.caminho}
+              type="button"
+              variant="ghost"
+              aria-pressed={ativo}
+              onClick={() => abrirInterno(e)}
+              className={`h-auto w-full flex-col items-start gap-0.5 whitespace-normal rounded-none border-b border-border px-3 py-2 text-left font-normal ${
+                ativo ? 'bg-primary-tint hover:bg-primary-tint' : ''
+              }`}
+            >
+              <span className="flex w-full items-center gap-2">
+                {abrindo === e.caminho
+                  ? <Loader2 className="w-4 h-4 shrink-0 animate-spin" aria-hidden="true" />
+                  : <FileText className="w-4 h-4 shrink-0 text-muted-foreground" aria-hidden="true" />}
+                <span className="min-w-0 truncate text-sm">{e.nome}</span>
+              </span>
+              {e.bytes > 0 && (
+                <span className="pl-6 text-xs text-muted-foreground">{tamanho(e.bytes)}</span>
+              )}
+            </Button>
+          );
+        })}
       </div>
 
       <div className="min-w-0">
         {aberto && ehPdf(aberto.nome) ? (
-          <iframe src={aberto.url} title={aberto.nome} className="w-full h-[600px] border-0 bg-white" />
+          <iframe src={aberto.url} title={aberto.nome} className="h-[600px] w-full border-0 bg-background" />
         ) : aberto ? (
-          <div className="p-6 text-center space-y-3">
-            <FileText className="w-8 h-8 mx-auto text-muted-foreground" />
+          <div className="space-y-3 p-6 text-center">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
+              <FileText className="w-6 h-6" aria-hidden="true" />
+            </div>
             <p className="text-sm text-muted-foreground">
               <strong>{aberto.nome}</strong> não é PDF — o navegador não o exibe aqui.
             </p>
-            <Button asChild size="sm" variant="outline">
+            <Button asChild variant="outline">
               <a href={aberto.url} download={aberto.nome}>
-                <Download className="w-3.5 h-3.5 mr-1.5" /> Baixar arquivo
+                <Download className="w-4 h-4" aria-hidden="true" /> Baixar arquivo
               </a>
             </Button>
           </div>

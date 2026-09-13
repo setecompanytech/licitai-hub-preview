@@ -1,4 +1,5 @@
 import SkeletonPagina from '@/components/shared/SkeletonPagina';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import { useEffect, useRef, useState } from 'react';
 import BotaoVoltar from '@/components/layout/BotaoVoltar';
 import DesfechoDaDisputa from '@/components/workspace/DesfechoDaDisputa';
@@ -10,11 +11,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
-  ArrowLeft, FolderOpen, FileText, Calculator, Sparkles, Scale, Briefcase,
-  ClipboardList, History, ExternalLink, Building2, Calendar, DollarSign, MapPin, Loader2, Archive,
-  TrendingUp, Clock, Package, AlertTriangle, RefreshCw
-, Crosshair
+  FolderOpen, FileText, Calculator, Sparkles, Scale, Briefcase,
+  ClipboardList, ExternalLink, Building2, Calendar, DollarSign, MapPin, Loader2, Archive,
+  TrendingUp, Clock, Package, AlertTriangle, RefreshCw, Crosshair,
 } from 'lucide-react';
 import HistoricoProcesso from '@/components/workspace/HistoricoProcesso';
 import ItensEditalPrecificacao from '@/components/workspace/ItensEditalPrecificacao';
@@ -27,6 +29,7 @@ import EditalViewer from '@/components/workspace/EditalViewer';
 import { useProcessoWorkspace } from '@/hooks/useProcessoWorkspace';
 import { exportarPastaZip } from '@/components/workspace/exportarPasta';
 import AureliaPrecificacaoChat from '@/components/precificacao/AureliaPrecificacaoChat';
+import { normalizarStatus } from '@/lib/licitacao/status';
 
 interface Licitacao {
   id: string; numero: string | null; orgao: string | null; objeto: string | null;
@@ -62,6 +65,16 @@ type RascunhoPlanilha = {
 };
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+
+/** Cor do selo de status no cabeçalho — só apresentação; o texto continua o
+ *  status bruto do processo. */
+const varianteStatus = (status: string): 'success' | 'danger' | 'muted' | 'info' => {
+  const n = normalizarStatus(status);
+  if (n === 'Vencida' || n === 'Homologada') return 'success';
+  if (n === 'Perdida') return 'danger';
+  if (n === 'Arquivada') return 'muted';
+  return 'info';
+};
 
 export default function ProcessoWorkspace() {
   const { id } = useParams<{ id: string }>();
@@ -336,44 +349,74 @@ export default function ProcessoWorkspace() {
      processo carrega. */
   if (loading) return <SkeletonPagina />;
   if (!lic) return (
-    <div className="p-8 text-center">
-      <p className="text-muted-foreground mb-4">Processo não encontrado.</p>
-      <Button onClick={() => navigate('/kanban')}>Voltar ao Kanban</Button>
+    <div className="min-h-screen bg-background">
+      <div className="mx-auto max-w-lg px-4 py-16 text-center">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
+          <FolderOpen className="w-6 h-6" aria-hidden="true" />
+        </div>
+        <h1 className="text-lg font-semibold">Processo não encontrado.</h1>
+        <p className="mt-1 text-sm text-muted-foreground">O processo pode ter sido excluído ou o endereço está incompleto.</p>
+        <Button className="mt-4" onClick={() => navigate('/kanban')}>Voltar ao Kanban</Button>
+      </div>
     </div>
   );
 
+  const temMeta = !!(lic.modalidade || lic.uf || lic.data_encerramento || lic.valor_estimado != null);
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Header da Pasta */}
-      <div className="border-b border-border bg-card sticky top-0 z-20">
-        <div className="max-w-[1440px] mx-auto px-4 py-4">
-          <div className="flex items-center gap-3 mb-3">
-            {/* Mesmo Voltar do resto do sistema. Ter um botão próprio aqui,
-                saltando para uma origem fixa, era o que fazia o percurso girar:
-                o salto entrava na pilha como avanço, e o Voltar da tela
-                seguinte trazia de volta para a pasta. */}
-            <BotaoVoltar somenteIcone padrao="/kanban" />
-            <FolderOpen className="w-6 h-6 text-muted-foreground" />
-            <div className="flex-1 min-w-0">
-              <h1 className="text-lg font-bold truncate">{lic.numero || 'Processo'} {lic.orgao && `— ${lic.orgao}`}</h1>
-              <p className="text-base text-muted-foreground truncate">{lic.objeto}</p>
-            </div>
-            {lic.status && <Badge variant="outline">{lic.status}</Badge>}
-            <Button size="sm" variant="outline" className="gap-2" onClick={handleExportarZip} disabled={exportando}>
-              {exportando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Archive className="w-4 h-4" />}
-              {exportando ? 'Compactando...' : 'Exportar ZIP'}
-            </Button>
-          </div>
-          <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
-            {lic.modalidade && <span className="flex items-center gap-1"><Building2 className="w-3 h-3" /> {lic.modalidade}</span>}
-            {lic.uf && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {lic.municipio}/{lic.uf}</span>}
-            {lic.data_encerramento && <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> Encerra: {dataSo(lic.data_encerramento)}</span>}
-            {lic.valor_estimado != null && <span className="flex items-center gap-1"><DollarSign className="w-3 h-3" /> R$ {Number(lic.valor_estimado).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>}
-          </div>
+      <div className="mx-auto max-w-[1440px] px-4 py-6 md:px-6">
+        {/* Mesmo Voltar do resto do sistema. Ter um botão próprio aqui,
+            saltando para uma origem fixa, era o que fazia o percurso girar:
+            o salto entrava na pilha como avanço, e o Voltar da tela
+            seguinte trazia de volta para a pasta. */}
+        <div className="mb-2">
+          <BotaoVoltar somenteIcone padrao="/kanban" />
         </div>
-      </div>
 
-      <div className="max-w-[1440px] mx-auto px-4 py-6">
+        {/* Cabeçalho da pasta */}
+        <CabecalhoPagina
+          icone={<FolderOpen />}
+          titulo={`${lic.numero || 'Processo'}${lic.orgao ? ` — ${lic.orgao}` : ''}`}
+          descricao={lic.objeto ? <span className="line-clamp-3">{lic.objeto}</span> : undefined}
+          acoes={
+            <>
+              {lic.status && <Badge variant={varianteStatus(lic.status)}>{lic.status}</Badge>}
+              <Button variant="outline" onClick={handleExportarZip} disabled={exportando}>
+                {exportando
+                  ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                  : <Archive className="w-4 h-4" aria-hidden="true" />}
+                {exportando ? 'Compactando...' : 'Exportar ZIP'}
+              </Button>
+            </>
+          }
+        >
+          {temMeta && (
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
+              {lic.modalidade && (
+                <span className="inline-flex items-center gap-1">
+                  <Building2 className="w-4 h-4" aria-hidden="true" /> {lic.modalidade}
+                </span>
+              )}
+              {lic.uf && (
+                <span className="inline-flex items-center gap-1">
+                  <MapPin className="w-4 h-4" aria-hidden="true" /> {lic.municipio}/{lic.uf}
+                </span>
+              )}
+              {lic.data_encerramento && (
+                <span className="inline-flex items-center gap-1">
+                  <Calendar className="w-4 h-4" aria-hidden="true" /> Encerra: {dataSo(lic.data_encerramento)}
+                </span>
+              )}
+              {lic.valor_estimado != null && (
+                <span className="inline-flex items-center gap-1 tabular-nums">
+                  <DollarSign className="w-4 h-4" aria-hidden="true" /> R$ {Number(lic.valor_estimado).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </span>
+              )}
+            </div>
+          )}
+        </CabecalhoPagina>
+
         {/* `?aba=` deixa o painel abrir direto na aba certa — é o que faz o
             ícone de Precificação da linha levar o processo junto, em vez de
             despejar o usuário numa tela em branco. */}
@@ -405,41 +448,41 @@ export default function ProcessoWorkspace() {
             />
             {/* O contrato que nasceu daqui — só aparece quando existe elo. */}
             <ContratoDoProcesso licitacaoId={lic.id} />
-            <Card className="p-5 space-y-3 text-base">
-              <div className="flex flex-wrap gap-x-6 gap-y-1.5 pb-3 border-b border-border/40">
+            <Card className="p-6 space-y-3 text-base">
+              <div className="flex flex-wrap gap-x-6 gap-y-2 pb-3 border-b border-border">
                 <span><span className="font-semibold">Local:</span> <span>{lic.municipio && lic.uf ? `${lic.municipio}/${lic.uf}` : lic.municipio || lic.uf || '—'}</span></span>
-                <span className="text-border select-none">|</span>
+                <span className="text-border select-none" aria-hidden="true">|</span>
                 <span><span className="font-semibold">Órgão:</span> <span>{lic.orgao || '—'}</span></span>
-                <span className="text-border select-none">|</span>
+                <span className="text-border select-none" aria-hidden="true">|</span>
                 <span><span className="font-semibold">Status:</span> <span>{lic.status || '—'}</span></span>
               </div>
-              <div className="flex flex-wrap gap-x-6 gap-y-1.5 pb-3 border-b border-border/40">
+              <div className="flex flex-wrap gap-x-6 gap-y-2 pb-3 border-b border-border">
                 <span><span className="font-semibold">Modalidade:</span> <span>{lic.modalidade || '—'}</span></span>
-                <span className="text-border select-none">|</span>
-                <span><span className="font-semibold">Valor estimado:</span> <span>{lic.valor_estimado != null ? fmt(lic.valor_estimado) : '—'}</span></span>
+                <span className="text-border select-none" aria-hidden="true">|</span>
+                <span><span className="font-semibold">Valor estimado:</span> <span className="tabular-nums">{lic.valor_estimado != null ? fmt(lic.valor_estimado) : '—'}</span></span>
                 {lic.data_abertura && (
                   <>
-                    <span className="text-border select-none">|</span>
+                    <span className="text-border select-none" aria-hidden="true">|</span>
                     <span><span className="font-semibold">Abertura:</span> <span>{dataHora(lic.data_abertura)}</span></span>
                   </>
                 )}
               </div>
               {(lic.data_encerramento || lic.portal) && (
-                <div className="flex flex-wrap gap-x-6 gap-y-1.5 pb-3 border-b border-border/40">
+                <div className="flex flex-wrap gap-x-6 gap-y-2 pb-3 border-b border-border">
                   {lic.data_encerramento && (
                     <span><span className="font-semibold">Encerramento:</span> <span>{dataHora(lic.data_encerramento)}</span></span>
                   )}
                   {lic.portal && (
                     <>
-                      {lic.data_encerramento && <span className="text-border select-none">|</span>}
+                      {lic.data_encerramento && <span className="text-border select-none" aria-hidden="true">|</span>}
                       <span>
-                        <span className="text-xs text-muted-foreground">Portal:</span>{' '}
+                        <span className="font-semibold">Portal:</span>{' '}
                         {lic.url_edital ? (
-                          <a href={lic.url_edital} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline inline-flex items-center gap-0.5">
-                            {lic.portal} <ExternalLink className="w-3 h-3" />
+                          <a href={lic.url_edital} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
+                            {lic.portal} <ExternalLink className="w-4 h-4" aria-hidden="true" />
                           </a>
                         ) : (
-                          <span className="font-semibold">{lic.portal}</span>
+                          <span>{lic.portal}</span>
                         )}
                       </span>
                     </>
@@ -447,28 +490,28 @@ export default function ProcessoWorkspace() {
                 </div>
               )}
               {lic.resultado && (
-                <div className="flex flex-wrap gap-x-6 gap-y-1.5 pb-3 border-b border-border/40">
-                  <span className="flex items-center gap-1.5">
-                    {lic.vencedor && <span className="w-2 h-2 rounded-full bg-success shrink-0" title="Empresa vencedora" />}
-                    <span className="text-xs text-muted-foreground">Resultado:</span>
-                    <span className={`font-semibold ${lic.vencedor ? 'text-success' : ''}`}>{lic.resultado}</span>
+                <div className="flex flex-wrap gap-x-6 gap-y-2 pb-3 border-b border-border">
+                  <span className="inline-flex items-center gap-2">
+                    {lic.vencedor && <span className="w-2 h-2 rounded-full bg-success shrink-0" title="Empresa vencedora" aria-hidden="true" />}
+                    <span className="font-semibold">Resultado:</span>
+                    <span className={lic.vencedor ? 'font-semibold text-success' : ''}>{lic.resultado}</span>
                   </span>
                   {lic.valor_adjudicado != null && (
                     <>
-                      <span className="text-border select-none">|</span>
-                      <span><span className="font-semibold">Valor adjudicado:</span> <span>{fmt(lic.valor_adjudicado)}</span></span>
+                      <span className="text-border select-none" aria-hidden="true">|</span>
+                      <span><span className="font-semibold">Valor adjudicado:</span> <span className="tabular-nums">{fmt(lic.valor_adjudicado)}</span></span>
                     </>
                   )}
                   {lic.data_homologacao && (
                     <>
-                      <span className="text-border select-none">|</span>
+                      <span className="text-border select-none" aria-hidden="true">|</span>
                       <span><span className="font-semibold">Homologação:</span> <span>{new Date(lic.data_homologacao).toLocaleDateString('pt-BR')}</span></span>
                     </>
                   )}
                 </div>
               )}
               {temEspelho && (
-                <div className="flex flex-wrap gap-x-6 gap-y-1.5 pb-3 border-b border-border/40">
+                <div className="flex flex-wrap gap-x-6 gap-y-2 pb-3 border-b border-border">
                   {espelho.unidadeCompradora && (
                     <span><span className="font-semibold">Unidade compradora:</span> <span>{espelho.unidadeCompradora}</span></span>
                   )}
@@ -488,7 +531,7 @@ export default function ProcessoWorkspace() {
                 </div>
               )}
               {temEspelho && (
-                <div className="flex flex-wrap gap-x-6 gap-y-1.5 pb-3 border-b border-border/40">
+                <div className="flex flex-wrap gap-x-6 gap-y-2 pb-3 border-b border-border">
                   {espelho.divulgacaoPncp && (
                     <span><span className="font-semibold">Divulgação no PNCP:</span> <span>{dataSo(espelho.divulgacaoPncp)}</span></span>
                   )}
@@ -514,47 +557,44 @@ export default function ProcessoWorkspace() {
                 <p className="mt-1 leading-relaxed">{lic.objeto || '—'}</p>
               </div>
               {lic.observacoes && (
-                <p className="pt-2 border-t border-border/40 text-base text-muted-foreground italic">{lic.observacoes}</p>
+                <p className="pt-3 border-t border-border text-base text-muted-foreground italic">{lic.observacoes}</p>
               )}
             </Card>
+
             {/* ── Dados completos do PNCP ── */}
             {pncpErro && !pncpDetalhe && !pncpCarregando && !temEspelho && (
-              <Card className="px-4 py-3">
-                <div className="flex items-center gap-3 flex-wrap">
-                  <span className="text-sm font-semibold">Espelho PNCP</span>
-                  <Badge variant="outline" className="gap-1 text-xs">
-                    <AlertTriangle className="w-3 h-3 text-warning" /> Indisponível no momento
-                  </Badge>
-                  <span className="text-xs text-muted-foreground">
-                    O PNCP não respondeu — costuma ser instabilidade passageira do portal.
-                  </span>
+              <Alert variant="warning">
+                <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+                <AlertTitle>Espelho PNCP — indisponível no momento</AlertTitle>
+                <AlertDescription className="flex flex-wrap items-center gap-3">
+                  <span>O PNCP não respondeu — costuma ser instabilidade passageira do portal.</span>
                   <Button
-                    size="sm" variant="ghost" className="h-7 ml-auto"
+                    size="sm" variant="outline"
                     onClick={() => { pncpFetchedRef.current = false; setPncpNonce((n) => n + 1); }}
                   >
-                    <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Tentar novamente
+                    <RefreshCw className="w-4 h-4" aria-hidden="true" /> Tentar novamente
                   </Button>
-                </div>
-              </Card>
+                </AlertDescription>
+              </Alert>
             )}
 
             {((pncpCarregando && !temEspelho) || pncpDetalhe || itensEspelho.length > 0 || pncpArquivos.length > 0) && (
-              <Card className="p-5">
+              <Card className="p-6">
                 {pncpCarregando && !itensEspelho.length ? (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Carregando dados completos do PNCP…
+                  <div role="status" aria-busy="true" className="space-y-3">
+                    <span className="sr-only">Carregando dados completos do PNCP…</span>
+                    <Skeleton className="h-5 w-64" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-5/6" />
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                      Complementos do PNCP — itens e arquivos
-                    </p>
+                    <h2 className="text-lg font-semibold">Complementos do PNCP — itens e arquivos</h2>
 
                     {/* Informação complementar */}
                     {pncpDetalhe?.informacao_complementar && (
-                      <div className="pt-3 border-t border-border/40">
-                        <p className="text-xs text-muted-foreground mb-1">Informação complementar</p>
+                      <div className="pt-3 border-t border-border">
+                        <h3 className="mb-1 text-base font-semibold">Informação complementar</h3>
                         <p className="text-base text-foreground leading-relaxed">{pncpDetalhe.informacao_complementar}</p>
                       </div>
                     )}
@@ -563,18 +603,20 @@ export default function ProcessoWorkspace() {
                         de itens simplesmente não existia e ninguém sabia se era
                         instabilidade, contratação sem itens ou extração pendente. */}
                     {!pncpCarregando && itensEspelho.length === 0 && (
-                      <div className="pt-3 border-t border-border/40">
-                        <p className="text-xs text-muted-foreground mb-1 font-medium">Itens</p>
-                        <p className="text-xs text-muted-foreground">
+                      <div className="pt-3 border-t border-border">
+                        <h3 className="mb-1 text-base font-semibold">Itens</h3>
+                        <p className="text-sm text-muted-foreground">
                           Nenhum item veio do PNCP nesta consulta — pode ser instabilidade do portal
                           ou contratação sem itens publicados.{' '}
-                          <button
+                          <Button
                             type="button"
-                            className="underline underline-offset-2 hover:text-foreground"
+                            variant="link"
+                            size="sm"
+                            className="h-auto p-0 text-sm"
                             onClick={() => { pncpFetchedRef.current = false; setPncpNonce((n) => n + 1); }}
                           >
                             Consultar novamente
-                          </button>
+                          </Button>
                         </p>
                       </div>
                     )}
@@ -583,34 +625,34 @@ export default function ProcessoWorkspace() {
                         mesmos rótulos de coluna, descrição integral, cabeçalho em
                         negrito como no portal. */}
                     {itensEspelho.length > 0 && (
-                      <div className="pt-3 border-t border-border/40">
-                        <p className="text-xs text-muted-foreground mb-2 font-medium">
+                      <div className="pt-3 border-t border-border">
+                        <h3 className="mb-2 text-base font-semibold">
                           Itens ({itensEspelho.length})
-                        </p>
-                        <div className="overflow-x-auto rounded border border-border/60">
-                          <table className="w-full text-xs">
+                        </h3>
+                        <div className="overflow-x-auto rounded-md border border-border">
+                          <table className="w-full text-sm">
                             <thead>
-                              <tr className="bg-muted/40 border-b border-border">
-                                <th className="text-left px-3 py-2 font-semibold w-16">Número</th>
-                                <th className="text-left px-3 py-2 font-semibold">Descrição</th>
-                                <th className="text-right px-3 py-2 font-semibold w-28">Quantidade</th>
-                                <th className="text-right px-3 py-2 font-semibold w-36">Valor unitário estimado</th>
-                                <th className="text-right px-3 py-2 font-semibold w-36">Valor total estimado</th>
+                              <tr className="bg-muted border-b border-border">
+                                <th className="text-left px-3 py-2 text-sm font-semibold w-16">Número</th>
+                                <th className="text-left px-3 py-2 text-sm font-semibold">Descrição</th>
+                                <th className="text-right px-3 py-2 text-sm font-semibold w-28">Quantidade</th>
+                                <th className="text-right px-3 py-2 text-sm font-semibold w-36">Valor unitário estimado</th>
+                                <th className="text-right px-3 py-2 text-sm font-semibold w-36">Valor total estimado</th>
                               </tr>
                             </thead>
-                            <tbody className="divide-y divide-border/40">
+                            <tbody className="divide-y divide-border">
                               {itensEspelho.map((item: any, i: number) => {
                                 const qtd = item.quantidade ?? item.quantidadeItens;
                                 const vUnit = item.valor_unitario_estimado ?? item.valorUnitarioEstimado ?? item.valorUnitario;
                                 const vTotal = item.valor_total ?? item.valorTotal ?? item.valorTotalEstimado
                                   ?? (vUnit != null && qtd != null ? vUnit * qtd : null);
                                 return (
-                                  <tr key={item.numero ?? item.numeroItem ?? i} className="hover:bg-muted/20 transition-colors">
-                                    <td className="px-3 py-2 text-muted-foreground">{item.numero ?? item.numeroItem ?? i + 1}</td>
+                                  <tr key={item.numero ?? item.numeroItem ?? i} className="hover:bg-muted/50 transition-colors">
+                                    <td className="px-3 py-2 text-muted-foreground tabular-nums">{item.numero ?? item.numeroItem ?? i + 1}</td>
                                     <td className="px-3 py-2 text-foreground">
                                       {item.descricao || item.descricaoItem || '—'}
                                       {(item.unidade_medida || item.unidadeMedida) && (
-                                        <span className="ml-1.5 text-xs text-muted-foreground border border-border/60 px-1 rounded">
+                                        <span className="ml-2 rounded border border-border px-1 text-xs text-muted-foreground">
                                           {item.unidade_medida || item.unidadeMedida}
                                         </span>
                                       )}
@@ -629,18 +671,18 @@ export default function ProcessoWorkspace() {
 
                     {/* Arquivos */}
                     {pncpArquivos.length > 0 && (
-                      <div className="pt-3 border-t border-border/40">
-                        <p className="text-xs text-muted-foreground mb-2 font-medium">
+                      <div className="pt-3 border-t border-border">
+                        <h3 className="mb-2 text-base font-semibold">
                           Arquivos ({pncpArquivos.length})
-                        </p>
+                        </h3>
                         <div className="space-y-2">
                           {pncpArquivos.map((arq: any, i: number) => (
                             <div key={arq.sequencialDocumento ?? i}
-                              className="flex items-center justify-between p-2.5 rounded border border-border bg-muted/20 hover:bg-muted/40 transition-colors">
-                              <div className="flex items-center gap-2 min-w-0">
-                                <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
+                              className="flex items-center justify-between gap-3 rounded-md border border-border p-3 transition-colors hover:bg-muted/50">
+                              <div className="flex min-w-0 items-center gap-2">
+                                <FileText className="w-4 h-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                                 <div className="min-w-0">
-                                  <p className="text-xs font-medium truncate">{arq.titulo || arq.nomeArquivo || `Arquivo ${i + 1}`}</p>
+                                  <p className="truncate text-sm font-medium">{arq.titulo || arq.nomeArquivo || `Arquivo ${i + 1}`}</p>
                                   {arq.dataPublicacao && (
                                     <p className="text-xs text-muted-foreground">
                                       {new Date(arq.dataPublicacao).toLocaleDateString('pt-BR')}
@@ -649,10 +691,11 @@ export default function ProcessoWorkspace() {
                                 </div>
                               </div>
                               {arq.url && (
-                                <a href={arq.url} target="_blank" rel="noopener noreferrer"
-                                  className="flex items-center gap-1 text-xs text-accent hover:underline shrink-0 ml-3">
-                                  <ExternalLink className="w-3 h-3" />Abrir
-                                </a>
+                                <Button asChild size="sm" variant="ghost" className="shrink-0">
+                                  <a href={arq.url} target="_blank" rel="noopener noreferrer">
+                                    <ExternalLink className="w-4 h-4" aria-hidden="true" /> Abrir
+                                  </a>
+                                </Button>
                               )}
                             </div>
                           ))}
@@ -703,148 +746,159 @@ export default function ProcessoWorkspace() {
           <TabsContent value="precificacao">
             <Tabs defaultValue="prec-historico" className="space-y-4">
               <TabsList className="h-auto">
-                <TabsTrigger value="prec-historico" className="gap-1.5">
-                  <Calculator className="w-3.5 h-3.5" /> Precificação
+                <TabsTrigger value="prec-historico" className="gap-2">
+                  <Calculator className="w-4 h-4" aria-hidden="true" /> Precificação
                 </TabsTrigger>
-                <TabsTrigger value="prec-aurelia" className="gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5" /> Nova Precificação
+                <TabsTrigger value="prec-aurelia" className="gap-2">
+                  <Sparkles className="w-4 h-4" aria-hidden="true" /> Nova Precificação
                 </TabsTrigger>
               </TabsList>
 
               {/* sub-aba: conteúdo original */}
               <TabsContent value="prec-historico" className="space-y-4">
-            {/* Fase 2: precificação in-context — os itens do edital ganham
-                preço aqui e vão para o catálogo, de onde a Proposta importa. */}
-            <ItensEditalPrecificacao
-              licitacaoId={lic.id}
-              onSaved={loadPrecificacao}
-              onIrParaProposta={() => setAba('proposta')}
-              objetoProcesso={lic.objeto ?? ''}
-              pncpCoords={(() => {
-                const m = (lic.url_edital || '').match(/editais\/(\d{14})\/(\d{4})\/(\d+)/);
-                if (m) return { cnpj: m[1], ano: m[2], seq: m[3] };
-                if (lic.cnpj_orgao && lic.ano_compra && lic.sequencial_compra)
-                  return { cnpj: lic.cnpj_orgao, ano: lic.ano_compra, seq: lic.sequencial_compra };
-                const n = (lic.numero_controle_pncp || '').match(/(\d{14})-\d+-(\d+)\/(\d{4})/);
-                if (n) return { cnpj: n[1], ano: n[3], seq: String(Number(n[2])) };
-                return null;
-              })()}
-            />
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-semibold">Histórico de Precificação</h3>
-                <p className="text-base text-muted-foreground mt-0.5">Planilha de custos e itens precificados para este processo</p>
-              </div>
-              <Button size="sm" asChild>
-                <Link to={`/precificacao?lid=${lic.id}`}>
-                  <Calculator className="w-4 h-4 mr-2" /> Abrir Precificação
-                </Link>
-              </Button>
-            </div>
+                {/* Fase 2: precificação in-context — os itens do edital ganham
+                    preço aqui e vão para o catálogo, de onde a Proposta importa. */}
+                <ItensEditalPrecificacao
+                  licitacaoId={lic.id}
+                  onSaved={loadPrecificacao}
+                  onIrParaProposta={() => setAba('proposta')}
+                  objetoProcesso={lic.objeto ?? ''}
+                  pncpCoords={(() => {
+                    const m = (lic.url_edital || '').match(/editais\/(\d{14})\/(\d{4})\/(\d+)/);
+                    if (m) return { cnpj: m[1], ano: m[2], seq: m[3] };
+                    if (lic.cnpj_orgao && lic.ano_compra && lic.sequencial_compra)
+                      return { cnpj: lic.cnpj_orgao, ano: lic.ano_compra, seq: lic.sequencial_compra };
+                    const n = (lic.numero_controle_pncp || '').match(/(\d{14})-\d+-(\d+)\/(\d{4})/);
+                    if (n) return { cnpj: n[1], ano: n[3], seq: String(Number(n[2])) };
+                    return null;
+                  })()}
+                />
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h2 className="text-lg font-semibold">Histórico de Precificação</h2>
+                    <p className="text-sm text-muted-foreground">Planilha de custos e itens precificados para este processo</p>
+                  </div>
+                  <Button asChild>
+                    <Link to={`/precificacao?lid=${lic.id}`}>
+                      <Calculator className="w-4 h-4" aria-hidden="true" /> Abrir Precificação
+                    </Link>
+                  </Button>
+                </div>
 
-            {loadingPrec ? (
-              <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
-            ) : (
-              <>
-                {/* Rascunho da planilha de custos */}
-                {rascunhoPlanilha ? (() => {
-                  const itens = rascunhoPlanilha.dados?.itens?.filter(i => i.valorUnitario && i.valorUnitario > 0) || [];
-                  const total = itens.reduce((s, i) => s + ((i.valorTotal ?? 0) || (i.valorUnitario ?? 0) * (i.quantidade ?? 1)), 0);
-                  const updated = new Date(rascunhoPlanilha.updated_at);
-                  return (
-                    <Card className="p-4 border-primary/20 bg-primary/5">
-                      <div className="flex items-start gap-3">
-                        <div className="w-9 h-9 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
-                          <TrendingUp className="w-4 h-4 text-muted-foreground" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold">Planilha de Custos</p>
-                          <div className="flex flex-wrap gap-3 mt-1 text-xs text-muted-foreground">
-                            <span className="flex items-center gap-1"><Package className="w-3 h-3" /> {itens.length} {itens.length === 1 ? 'item' : 'itens'} preenchidos</span>
-                            {total > 0 && <span className="flex items-center gap-1"><DollarSign className="w-3 h-3" /> Total: <strong className="text-foreground">{fmt(total)}</strong></span>}
-                            <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> Atualizado em {updated.toLocaleDateString('pt-BR')} às {updated.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
-                          </div>
-                          {itens.length > 0 && (
-                            <div className="mt-3 border rounded-md overflow-hidden">
-                              <table className="w-full text-xs">
-                                <thead className="bg-muted/50">
-                                  <tr>
-                                    <th className="text-left px-3 py-1.5 font-medium">Descrição</th>
-                                    <th className="text-right px-3 py-1.5 font-medium w-16">Qtde</th>
-                                    <th className="text-right px-3 py-1.5 font-medium w-28 whitespace-nowrap">Vl. Unit.</th>
-                                    <th className="text-right px-3 py-1.5 font-medium w-28 whitespace-nowrap">Total</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y">
-                                  {itens.slice(0, 10).map((it, i) => (
-                                    <tr key={i} className="hover:bg-muted/30">
-                                      <td className="px-3 py-1.5 truncate max-w-[200px]">{it.descricao}</td>
-                                      <td className="px-3 py-1.5 text-right tabular-nums">{it.quantidade}</td>
-                                      <td className="px-3 py-1.5 text-right whitespace-nowrap tabular-nums">{it.valorUnitario ? fmt(it.valorUnitario) : '—'}</td>
-                                      <td className="px-3 py-1.5 text-right font-medium whitespace-nowrap tabular-nums">{it.valorTotal ? fmt(it.valorTotal) : '—'}</td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                              {itens.length > 10 && (
-                                <p className="text-xs text-muted-foreground px-3 py-1.5 border-t">
-                                  + {itens.length - 10} itens adicionais — abra a Precificação para ver todos
-                                </p>
+                {loadingPrec ? (
+                  <div role="status" aria-busy="true" className="space-y-3">
+                    <span className="sr-only">Carregando precificação…</span>
+                    <Skeleton className="h-24 w-full rounded-lg" />
+                    <Skeleton className="h-40 w-full rounded-lg" />
+                  </div>
+                ) : (
+                  <>
+                    {/* Rascunho da planilha de custos */}
+                    {rascunhoPlanilha ? (() => {
+                      const itens = rascunhoPlanilha.dados?.itens?.filter(i => i.valorUnitario && i.valorUnitario > 0) || [];
+                      const total = itens.reduce((s, i) => s + ((i.valorTotal ?? 0) || (i.valorUnitario ?? 0) * (i.quantidade ?? 1)), 0);
+                      const updated = new Date(rascunhoPlanilha.updated_at);
+                      return (
+                        <Card className="p-6">
+                          <div className="flex items-start gap-4">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary-tint text-primary">
+                              <TrendingUp className="w-5 h-5" aria-hidden="true" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <h3 className="text-lg font-semibold">Planilha de Custos</h3>
+                              <div className="mt-1 flex flex-wrap gap-3 text-xs text-muted-foreground">
+                                <span className="inline-flex items-center gap-1"><Package className="w-4 h-4" aria-hidden="true" /> {itens.length} {itens.length === 1 ? 'item' : 'itens'} preenchidos</span>
+                                {total > 0 && <span className="inline-flex items-center gap-1"><DollarSign className="w-4 h-4" aria-hidden="true" /> Total: <strong className="text-foreground tabular-nums">{fmt(total)}</strong></span>}
+                                <span className="inline-flex items-center gap-1"><Clock className="w-4 h-4" aria-hidden="true" /> Atualizado em {updated.toLocaleDateString('pt-BR')} às {updated.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                              </div>
+                              {itens.length > 0 && (
+                                <div className="mt-3 overflow-x-auto rounded-md border border-border">
+                                  <table className="w-full text-sm">
+                                    <thead className="bg-muted">
+                                      <tr>
+                                        <th className="text-left px-3 py-2 text-sm font-semibold">Descrição</th>
+                                        <th className="text-right px-3 py-2 text-sm font-semibold w-16">Qtde</th>
+                                        <th className="text-right px-3 py-2 text-sm font-semibold w-28 whitespace-nowrap">Vl. Unit.</th>
+                                        <th className="text-right px-3 py-2 text-sm font-semibold w-28 whitespace-nowrap">Total</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-border">
+                                      {itens.slice(0, 10).map((it, i) => (
+                                        <tr key={i} className="hover:bg-muted/50">
+                                          <td className="px-3 py-2 truncate max-w-[200px]">{it.descricao}</td>
+                                          <td className="px-3 py-2 text-right tabular-nums">{it.quantidade}</td>
+                                          <td className="px-3 py-2 text-right whitespace-nowrap tabular-nums">{it.valorUnitario ? fmt(it.valorUnitario) : '—'}</td>
+                                          <td className="px-3 py-2 text-right font-medium whitespace-nowrap tabular-nums">{it.valorTotal ? fmt(it.valorTotal) : '—'}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                  {itens.length > 10 && (
+                                    <p className="border-t border-border px-3 py-2 text-xs text-muted-foreground">
+                                      + {itens.length - 10} itens adicionais — abra a Precificação para ver todos
+                                    </p>
+                                  )}
+                                </div>
                               )}
                             </div>
+                          </div>
+                        </Card>
+                      );
+                    })() : (
+                      <Card className="p-6 text-center">
+                        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
+                          <TrendingUp className="w-6 h-6" aria-hidden="true" />
+                        </div>
+                        <p className="text-lg font-semibold">Nenhuma planilha de custos salva ainda.</p>
+                        <p className="mt-1 text-sm text-muted-foreground">Acesse a Precificação e preencha os valores para que apareçam aqui.</p>
+                        <Button asChild variant="outline" className="mt-4">
+                          <Link to={`/precificacao?lid=${lic.id}`}>
+                            <Calculator className="w-4 h-4" aria-hidden="true" /> Abrir Precificação
+                          </Link>
+                        </Button>
+                      </Card>
+                    )}
+
+                    {/* Itens do catálogo */}
+                    {precItems.length > 0 && (
+                      <div>
+                        <h3 className="mb-2 text-lg font-semibold">Itens precificados no catálogo ({precItems.length})</h3>
+                        <div className="overflow-x-auto rounded-md border border-border">
+                          <table className="w-full text-sm">
+                            <thead className="bg-muted">
+                              <tr>
+                                <th className="text-left px-3 py-2 text-sm font-semibold">Descrição</th>
+                                <th className="text-right px-3 py-2 text-sm font-semibold w-28 whitespace-nowrap">Custo</th>
+                                <th className="text-right px-3 py-2 text-sm font-semibold w-28 whitespace-nowrap">Preço</th>
+                                <th className="text-right px-3 py-2 text-sm font-semibold w-20 whitespace-nowrap">Margem</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border">
+                              {precItems.slice(0, 15).map(it => (
+                                <tr key={it.id} className="hover:bg-muted/50">
+                                  <td className="px-3 py-2 truncate max-w-[220px]">{it.descricao}</td>
+                                  <td className="px-3 py-2 text-right text-muted-foreground whitespace-nowrap tabular-nums">{it.custo_unitario ? fmt(it.custo_unitario) : '—'}</td>
+                                  <td className="px-3 py-2 text-right font-medium whitespace-nowrap tabular-nums">{it.preco_unitario ? fmt(it.preco_unitario) : '—'}</td>
+                                  <td className="px-3 py-2 text-right whitespace-nowrap tabular-nums">{it.margem_lucro != null ? `${it.margem_lucro}%` : '—'}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                          {precItems.length > 15 && (
+                            <p className="border-t border-border px-3 py-2 text-xs text-muted-foreground">
+                              + {precItems.length - 15} itens adicionais
+                            </p>
                           )}
                         </div>
                       </div>
-                    </Card>
-                  );
-                })() : (
-                  <Card className="p-5 border-dashed text-center">
-                    <TrendingUp className="w-8 h-8 mx-auto text-muted-foreground/30 mb-2" />
-                    <p className="text-base text-muted-foreground">Nenhuma planilha de custos salva ainda.</p>
-                    <p className="text-base text-muted-foreground mt-1">Acesse a Precificação e preencha os valores para que apareçam aqui.</p>
-                  </Card>
+                    )}
+                  </>
                 )}
-
-                {/* Itens do catálogo */}
-                {precItems.length > 0 && (
-                  <div>
-                    <p className="text-sm font-semibold mb-2">Itens precificados no catálogo ({precItems.length})</p>
-                    <div className="border rounded-md overflow-hidden">
-                      <table className="w-full text-xs">
-                        <thead className="bg-muted/50">
-                          <tr>
-                            <th className="text-left px-3 py-1.5 font-medium">Descrição</th>
-                            <th className="text-right px-3 py-1.5 font-medium w-28 whitespace-nowrap">Custo</th>
-                            <th className="text-right px-3 py-1.5 font-medium w-28 whitespace-nowrap">Preço</th>
-                            <th className="text-right px-3 py-1.5 font-medium w-20 whitespace-nowrap">Margem</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y">
-                          {precItems.slice(0, 15).map(it => (
-                            <tr key={it.id} className="hover:bg-muted/30">
-                              <td className="px-3 py-1.5 truncate max-w-[220px]">{it.descricao}</td>
-                              <td className="px-3 py-1.5 text-right text-muted-foreground whitespace-nowrap tabular-nums">{it.custo_unitario ? fmt(it.custo_unitario) : '—'}</td>
-                              <td className="px-3 py-1.5 text-right font-medium whitespace-nowrap tabular-nums">{it.preco_unitario ? fmt(it.preco_unitario) : '—'}</td>
-                              <td className="px-3 py-1.5 text-right whitespace-nowrap tabular-nums">{it.margem_lucro != null ? `${it.margem_lucro}%` : '—'}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                      {precItems.length > 15 && (
-                        <p className="text-xs text-muted-foreground px-3 py-1.5 border-t">
-                          + {precItems.length - 15} itens adicionais
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
               </TabsContent>
 
               {/* sub-aba: AURÉLIA conversacional */}
               <TabsContent value="prec-aurelia">
-                <div className="bg-card rounded-xl border border-border/50 shadow-sm overflow-hidden" style={{ height: 'calc(100vh - 280px)', minHeight: 480 }}>
+                <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm" style={{ height: 'calc(100vh - 280px)', minHeight: 480 }}>
                   <AureliaPrecificacaoChat />
                 </div>
               </TabsContent>
@@ -862,13 +916,13 @@ export default function ProcessoWorkspace() {
 
           {/* Módulos */}
           <TabsContent value="modulos">
-            <Card className="p-4">
-              <h3 className="font-semibold mb-3">Abrir em módulos completos</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <Card className="p-6">
+              <h2 className="mb-4 text-lg font-semibold">Abrir em módulos completos</h2>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {ATALHOS.map(a => (
                   <Button key={a.label} variant="outline" className="justify-start gap-2" asChild>
                     <Link to={`${a.path}${a.path.includes('?') ? '&' : '?'}lid=${lic.id}`}>
-                      <a.icon className="w-4 h-4" /> {a.label}
+                      <a.icon className="w-4 h-4" aria-hidden="true" /> {a.label}
                     </Link>
                   </Button>
                 ))}

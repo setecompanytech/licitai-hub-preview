@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,39 +29,35 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
  * Alteração usa violeta (`--chart-5`) por ser categoria, não estado: âmbar já
  * é suspensão, e duas coisas diferentes na mesma cor se confundem na lista.
  */
+type VarianteBadge = 'success' | 'warning' | 'danger' | 'info' | 'muted';
+
 const TIPO_CONFIG: Record<
   string,
-  { icon: React.ElementType; label: string; color: string; tarja: string; ladrilho: string; selo: string; emoji: string }
+  { icon: React.ElementType; label: string; variante: VarianteBadge; tarja: string; ladrilho: string; emoji: string }
 > = {
   novo_edital: {
-    icon: FileText, label: 'Novo edital', emoji: '🆕',
-    color: 'bg-accent/10 text-accent border-accent/30',
-    tarja: 'bg-accent', ladrilho: 'bg-accent/10 text-accent', selo: 'bg-accent/10 text-accent',
+    icon: FileText, label: 'Novo edital', emoji: '🆕', variante: 'success',
+    tarja: 'bg-primary', ladrilho: 'bg-primary-tint text-primary',
   },
   alteracao: {
-    icon: AlertTriangle, label: 'Alteração', emoji: '⚠️',
-    color: 'bg-chart-5/10 text-chart-5 border-chart-5/30',
-    tarja: 'bg-chart-5', ladrilho: 'bg-chart-5/10 text-chart-5', selo: 'bg-chart-5/10 text-chart-5',
+    icon: AlertTriangle, label: 'Alteração', emoji: '⚠️', variante: 'info',
+    tarja: 'bg-chart-5', ladrilho: 'bg-chart-5 text-primary-foreground',
   },
   suspensao: {
-    icon: Ban, label: 'Suspensão', emoji: '🚫',
-    color: 'bg-warning-tint text-warning-ink border-warning-line',
-    tarja: 'bg-warning', ladrilho: 'bg-warning-tint text-warning-ink', selo: 'bg-warning-tint text-warning-ink',
+    icon: Ban, label: 'Suspensão', emoji: '🚫', variante: 'warning',
+    tarja: 'bg-warning', ladrilho: 'bg-warning-tint text-warning-ink',
   },
   cancelamento: {
-    icon: XCircle, label: 'Cancelamento', emoji: '❌',
-    color: 'bg-destructive-tint text-destructive-ink border-destructive-line',
-    tarja: 'bg-destructive', ladrilho: 'bg-destructive-tint text-destructive-ink', selo: 'bg-destructive-tint text-destructive-ink',
+    icon: XCircle, label: 'Cancelamento', emoji: '❌', variante: 'danger',
+    tarja: 'bg-destructive', ladrilho: 'bg-destructive-tint text-destructive-ink',
   },
   homologacao: {
-    icon: CheckCircle2, label: 'Homologação', emoji: '✅',
-    color: 'bg-success-tint text-success-ink border-success-line',
-    tarja: 'bg-success', ladrilho: 'bg-success-tint text-success-ink', selo: 'bg-success-tint text-success-ink',
+    icon: CheckCircle2, label: 'Homologação', emoji: '✅', variante: 'success',
+    tarja: 'bg-success', ladrilho: 'bg-success-tint text-success-ink',
   },
   resultado: {
-    icon: Trophy, label: 'Resultado', emoji: '📊',
-    color: 'bg-muted text-muted-foreground border-border',
-    tarja: 'bg-border', ladrilho: 'bg-muted text-muted-foreground', selo: 'bg-muted text-muted-foreground',
+    icon: Trophy, label: 'Resultado', emoji: '📊', variante: 'muted',
+    tarja: 'bg-border', ladrilho: 'bg-muted text-muted-foreground',
   },
 };
 
@@ -80,14 +78,6 @@ function rotuloDoDia(iso: string): string {
 
 const horaDe = (iso: string) =>
   new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-
-const FONTE_COLORS: Record<string, string> = {
-  PNCP: 'bg-muted text-muted-foreground',
-  DOU: 'bg-muted text-muted-foreground',
-  DOE: 'bg-muted text-muted-foreground',
-  ComprasNet: 'bg-muted text-muted-foreground',
-  sistema: 'bg-muted text-muted-foreground',
-};
 
 export default function CentralAvisos() {
   const {
@@ -122,19 +112,15 @@ export default function CentralAvisos() {
   return (
     <AppLayout>
       <div className="space-y-5">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <h1 className="text-3xl font-bold tracking-tight">Central de Avisos</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Editais, alterações, suspensões, cancelamentos e homologações
-            </p>
-          </div>
-          <Link to="/configuracoes/alertas" className="flex-shrink-0">
-            <Button variant="outline">
-              <Settings className="w-4 h-4" /> Configurar
+        <CabecalhoPagina
+          acoes={
+            <Button variant="outline" asChild>
+              <Link to="/configuracoes/alertas">
+                <Settings aria-hidden="true" /> Configurar alertas
+              </Link>
             </Button>
-          </Link>
-        </div>
+          }
+        />
 
         {/* Resumo — número grande e rótulo embaixo, como no protótipo */}
         <div className="grid grid-cols-3 gap-4 [&>*]:min-w-0">
@@ -143,30 +129,28 @@ export default function CentralAvisos() {
             { valor: naoLidos, rotulo: 'Não lidos', cor: '' },
             { valor: urgentes, rotulo: 'Urgentes', cor: 'text-destructive' },
           ].map((s) => (
-            <Card key={s.rotulo} className="py-6 px-4 text-center">
-              <p className={`text-4xl font-bold tabular-nums leading-none ${s.cor}`}>{s.valor}</p>
-              <p className="text-sm text-muted-foreground mt-2">{s.rotulo}</p>
+            <Card key={s.rotulo} className="px-4 py-6 text-center">
+              <p className={`text-[2rem] font-bold leading-10 tabular-nums ${s.cor}`}>{s.valor}</p>
+              <p className="mt-2 text-sm text-muted-foreground">{s.rotulo}</p>
             </Card>
           ))}
         </div>
 
         {/* Filter chips */}
         <div className="flex items-center gap-2 flex-wrap">
-          <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => setShowFilters(!showFilters)}>
-            <Filter className="w-3 h-3 mr-1" /> Filtros {filtroTipos.length > 0 && `(${filtroTipos.length})`}
+          <Button variant="ghost" size="sm" aria-expanded={showFilters} onClick={() => setShowFilters(!showFilters)}>
+            <Filter aria-hidden="true" /> Filtros {filtroTipos.length > 0 && `(${filtroTipos.length})`}
           </Button>
           {showFilters && Object.entries(TIPO_CONFIG).map(([tipo, cfg]) => (
-            <button
+            <Button
               key={tipo}
+              size="sm"
+              variant={filtroTipos.includes(tipo as TipoAlerta) ? 'default' : 'outline'}
+              aria-pressed={filtroTipos.includes(tipo as TipoAlerta)}
               onClick={() => toggleTipo(tipo as TipoAlerta)}
-              className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border transition-colors ${
-                filtroTipos.includes(tipo as TipoAlerta)
-                  ? cfg.color
-                  : 'bg-muted/30 text-muted-foreground border-border/50'
-              }`}
             >
               {cfg.emoji} {cfg.label}
-            </button>
+            </Button>
           ))}
         </div>
 
@@ -199,12 +183,19 @@ export default function CentralAvisos() {
                 <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
               </div>
             ) : alertas.length === 0 ? (
-              <Card className="p-10 text-center">
-                <Bell className="w-10 h-10 mx-auto mb-3 text-muted-foreground/30" />
-                <p className="text-sm text-muted-foreground">Nenhum alerta encontrado</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Configure seus segmentos e UFs para receber avisos personalizados
-                </p>
+              <Card>
+                <EstadoVazio
+                  icone={<Bell />}
+                  titulo="Nenhum aviso encontrado"
+                  descricao="Configure seus segmentos e UFs para receber avisos personalizados."
+                  acao={
+                    <Button variant="outline" asChild>
+                      <Link to="/configuracoes/alertas">
+                        <Settings aria-hidden="true" /> Configurar alertas
+                      </Link>
+                    </Button>
+                  }
+                />
               </Card>
             ) : (
               // Agrupado por dia, preservando a ordem que veio do banco. O
@@ -218,7 +209,7 @@ export default function CentralAvisos() {
                 }, {}),
               ).map(([dia, doDia]) => (
                 <section key={dia} className="space-y-2">
-                  <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground pt-2">
+                  <h2 className="pt-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                     {dia}
                   </h2>
 
@@ -232,7 +223,7 @@ export default function CentralAvisos() {
                         role="button"
                         tabIndex={0}
                         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openAlerta(alerta); } }}
-                        className={`group relative flex items-start gap-3.5 pl-5 pr-4 py-3.5 rounded-xl bg-card shadow-sm cursor-pointer overflow-hidden transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                        className={`group relative flex cursor-pointer items-start gap-3.5 overflow-hidden rounded-lg border border-border bg-card py-3.5 pl-5 pr-4 shadow-sm transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                           alerta.lido ? 'opacity-60 hover:opacity-100' : ''
                         }`}
                       >
@@ -242,7 +233,7 @@ export default function CentralAvisos() {
                           <span className={`absolute left-0 top-0 bottom-0 w-1 ${cfg.tarja}`} aria-hidden="true" />
                         )}
 
-                        <div className={`w-9 h-9 rounded-lg shrink-0 flex items-center justify-center ${cfg.ladrilho}`}>
+                        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md ${cfg.ladrilho}`}>
                           <Icon className="w-4 h-4" />
                         </div>
 
@@ -251,14 +242,8 @@ export default function CentralAvisos() {
                             <p className={`text-base leading-snug ${alerta.lido ? 'font-medium' : 'font-semibold'}`}>
                               {alerta.titulo}
                             </p>
-                            <span className={`text-xs font-medium px-2 py-0.5 rounded-full leading-none whitespace-nowrap ${cfg.selo}`}>
-                              {cfg.label}
-                            </span>
-                            {alerta.urgente && (
-                              <span className="text-xs font-bold uppercase tracking-wide px-2 py-0.5 rounded-full leading-none bg-destructive-tint text-destructive-ink whitespace-nowrap">
-                                Urgente
-                              </span>
-                            )}
+                            <Badge variant={cfg.variante}>{cfg.label}</Badge>
+                            {alerta.urgente && <Badge variant="danger">Urgente</Badge>}
                           </div>
 
                           {/* Órgão · UF · processo numa linha só, como no
@@ -315,19 +300,17 @@ export default function CentralAvisos() {
                 <>
                   <SheetHeader>
                     <div className="flex items-center gap-2">
-                      <Badge className={`${cfg.color} border text-xs`}>
+                      <Badge variant={cfg.variante}>
                         {cfg.emoji} {cfg.label}
                       </Badge>
-                      {selectedAlerta.urgente && (
-                        <Badge variant="destructive" className="text-xs">URGENTE</Badge>
-                      )}
+                      {selectedAlerta.urgente && <Badge variant="danger">Urgente</Badge>}
                     </div>
                     <SheetTitle className="text-left text-base mt-2">{selectedAlerta.titulo}</SheetTitle>
                   </SheetHeader>
                   <div className="space-y-4 mt-4">
                     <p className="text-sm text-muted-foreground leading-relaxed">{selectedAlerta.descricao}</p>
 
-                    <div className="bg-muted/30 rounded-lg p-3 space-y-2 text-sm">
+                    <div className="space-y-2 rounded-md bg-muted p-3 text-sm">
                       {selectedAlerta.orgao && (
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">🏛️ Órgão</span>
@@ -366,20 +349,20 @@ export default function CentralAvisos() {
                       )}
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">📡 Fonte</span>
-                        <Badge className={`${FONTE_COLORS[selectedAlerta.fonte]} border-0 text-xs`}>{selectedAlerta.fonte}</Badge>
+                        <Badge variant="muted">{selectedAlerta.fonte}</Badge>
                       </div>
                     </div>
 
                     <div className="flex gap-2">
                       {selectedAlerta.url_edital && (
                         <a href={selectedAlerta.url_edital} target="_blank" rel="noopener noreferrer" className="flex-1">
-                          <Button className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
-                            <ExternalLink className="w-4 h-4 mr-2" /> Acessar Edital
+                          <Button className="w-full">
+                            <ExternalLink aria-hidden="true" /> Acessar edital
                           </Button>
                         </a>
                       )}
                       <Button variant="outline" onClick={() => { arquivar(selectedAlerta.id); setSelectedAlerta(null); }}>
-                        <Archive className="w-4 h-4 mr-1" /> Arquivar
+                        <Archive aria-hidden="true" /> Arquivar
                       </Button>
                     </div>
                   </div>

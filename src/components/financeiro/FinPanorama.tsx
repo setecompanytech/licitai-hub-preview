@@ -13,23 +13,23 @@ import FinCalendarioFinanceiro from "./FinCalendarioFinanceiro";
  */
 export default function FinPanorama() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <Tabs defaultValue="visao" className="space-y-4">
         <TabsList className="flex flex-wrap h-auto">
           <TabsTrigger value="visao">
-            <Eye className="w-4 h-4 mr-1.5" />
+            <Eye className="w-4 h-4 mr-2" aria-hidden="true" />
             Visão Geral
           </TabsTrigger>
           <TabsTrigger value="cfo">
-            <Activity className="w-4 h-4 mr-1.5" />
+            <Activity className="w-4 h-4 mr-2" aria-hidden="true" />
             CFO
           </TabsTrigger>
           <TabsTrigger value="executivo">
-            <BarChart3 className="w-4 h-4 mr-1.5" />
+            <BarChart3 className="w-4 h-4 mr-2" aria-hidden="true" />
             Executivo
           </TabsTrigger>
           <TabsTrigger value="operacional">
-            <LayoutDashboard className="w-4 h-4 mr-1.5" />
+            <LayoutDashboard className="w-4 h-4 mr-2" aria-hidden="true" />
             Operacional
           </TabsTrigger>
         </TabsList>
@@ -47,12 +47,12 @@ export default function FinPanorama() {
         </TabsContent>
       </Tabs>
 
-      <section className="space-y-3 pt-2 border-t border-border/60">
-        <div className="flex items-center gap-2">
-          <CalendarDays className="w-5 h-5 text-muted-foreground" />
+      <section className="space-y-4 pt-6 border-t border-border">
+        <div className="flex items-center gap-3">
+          <CalendarDays className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
           <div>
-            <h2 className="text-lg font-semibold tracking-tight">Calendário Financeiro</h2>
-            <p className="text-xs text-muted-foreground">
+            <h2 className="text-lg font-semibold">Calendário Financeiro</h2>
+            <p className="text-sm text-muted-foreground">
               Espelho dinâmico de pagamentos e recebimentos do mês.
             </p>
           </div>

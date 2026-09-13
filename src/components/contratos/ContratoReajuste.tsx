@@ -271,7 +271,7 @@ Central do Brasil — apuração do índice pelo ${calculo.fonte.split('·')[0].
   return (
     <Card className="p-4">
       <div className="flex items-center justify-between mb-3">
-        <h4 className="text-xs font-semibold flex items-center gap-1.5">
+        <h4 className="text-lg font-semibold flex items-center gap-1.5">
           <TrendingUp className="w-4 h-4 text-muted-foreground" /> Reajuste por índice
         </h4>
         {!editando && (
@@ -340,7 +340,7 @@ Central do Brasil — apuração do índice pelo ${calculo.fonte.split('·')[0].
         </div>
       ) : semNada ? (
         <div className="text-xs text-muted-foreground space-y-1">
-          <p className="flex items-center gap-1.5 text-warning">
+          <p className="flex items-center gap-1.5 text-warning-ink">
             <AlertTriangle className="w-3.5 h-3.5" /> Cláusula de reajuste não registrada
           </p>
           <p>
@@ -370,8 +370,8 @@ Central do Brasil — apuração do índice pelo ${calculo.fonte.split('·')[0].
           </div>
 
           {situacao?.devido ? (
-            <div className="rounded-md border border-warning/40 bg-warning/5 p-2.5 space-y-1">
-              <p className="font-semibold text-warning flex items-center gap-1.5">
+            <div className="rounded-md border border-warning-line bg-warning-tint p-2.5 space-y-1">
+              <p className="font-semibold text-warning-ink flex items-center gap-1.5">
                 <AlertTriangle className="w-3.5 h-3.5" />
                 Reajuste devido desde {dataBr(situacao.aniversario)}
                 {situacao.mesesDesdeAniversario > 0 && ` — há ${situacao.mesesDesdeAniversario} ${situacao.mesesDesdeAniversario === 1 ? 'mês' : 'meses'}`}
@@ -414,7 +414,7 @@ Central do Brasil — apuração do índice pelo ${calculo.fonte.split('·')[0].
                       <span className="text-muted-foreground"> · {calculo.fonte}</span>
                     </p>
                     {!calculo.completo && (
-                      <p className="text-warning flex items-center gap-1">
+                      <p className="text-warning-ink flex items-center gap-1">
                         <AlertTriangle className="w-3 h-3 shrink-0" />
                         Série divulgada até {calculo.serie_ate ?? '—'} — fator parcial
                         ({calculo.meses.length}/{calculo.meses_esperados} meses). Refaça após a divulgação.
@@ -479,17 +479,17 @@ Central do Brasil — apuração do índice pelo ${calculo.fonte.split('·')[0].
               </Link>
             </div>
           ) : situacao ? (
-            <Badge variant="outline" className="text-xs border-success/30 text-success">
+            <Badge variant="outline" className="text-xs border-success-line text-success-ink">
               Em dia — próximo aniversário em {dataBr(situacao.aniversario)}
             </Badge>
           ) : (
-            <p className="text-warning">
+            <p className="text-warning-ink">
               Índice registrado, mas sem data-base — sem ela o aniversário não é vigiado. Edite pelo lápis.
             </p>
           )}
 
           {dados?.reajuste_clausula && (
-            <p className="text-[11px] text-muted-foreground italic border-l-2 border-border pl-2">
+            <p className="text-xs text-muted-foreground italic border-l-2 border-border pl-2">
               “{dados.reajuste_clausula}”
             </p>
           )}

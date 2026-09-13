@@ -22,9 +22,16 @@ interface Props {
   onAbrir: () => void;
 }
 
+const REQUISITO_ROTULO: Record<ModeloCardData['requisitosFiltro'][number], string> = {
+  indices: 'Índices',
+  ccts: 'CCT',
+  base_juridica: 'Base Jurídica',
+  contrato: 'Contrato',
+};
+
 /**
  * Linha forense estilo Vade Mecum / Diário Oficial.
- * Tipografia do sistema (Inter) em todos os textos.
+ * Tipografia do sistema em todos os textos.
  * Numeração arábica à esquerda, fundamentação centralizada, ações à direita.
  */
 export default function ModeloCard({ modelo: m, pedidosCount = 0, index, onAbrir }: Props) {
@@ -85,17 +92,17 @@ export default function ModeloCard({ modelo: m, pedidosCount = 0, index, onAbrir
       role="button"
       tabIndex={0}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); triggerNativeNewTab(); } }}
-      className="group relative grid grid-cols-[2rem_1fr_auto] items-start gap-2.5 px-3 py-2 border-b border-border/40 last:border-b-0 hover:bg-accent/5 transition-colors cursor-pointer focus-visible:outline-none focus-visible:bg-accent/10 focus-visible:ring-1 focus-visible:ring-accent/40"
+      className="group relative grid grid-cols-[2rem_1fr_auto] items-start gap-3 px-3 py-2 border-b border-border last:border-b-0 hover:bg-muted/50 transition-colors cursor-pointer focus-visible:outline-none focus-visible:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
     >
       {/* Numeração forense */}
       <div className="flex flex-col items-center pt-0.5 shrink-0">
         <span className="text-xs font-semibold text-muted-foreground tabular-nums leading-none">
           {numero}
         </span>
-        <span className="block w-4 h-px bg-border/60 mt-1" />
+        <span className="block w-4 h-px bg-border mt-1" aria-hidden="true" />
         {pedidosCount > 0 && (
-          <Badge className="mt-1 text-xs gap-0.5 bg-muted text-foreground border-border h-4 px-1 leading-none shrink-0">
-            <FileText className="w-2.5 h-2.5" /> {pedidosCount}
+          <Badge variant="muted" className="mt-1 gap-1 px-1.5 py-0 shrink-0" title={`${pedidosCount} documento(s) emitido(s)`}>
+            <FileText className="w-3 h-3" aria-hidden="true" /> {pedidosCount}
           </Badge>
         )}
       </div>
@@ -105,25 +112,18 @@ export default function ModeloCard({ modelo: m, pedidosCount = 0, index, onAbrir
         <h4 className="text-sm font-semibold text-foreground leading-snug">
           {m.titulo}
         </h4>
-        <p className="text-xs text-muted-foreground mt-0.5 leading-snug line-clamp-2">
+        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
           {m.descricao}
         </p>
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
           <span className="inline-flex items-center gap-1 text-xs font-medium text-foreground tabular-nums whitespace-nowrap">
-            <span className="text-muted-foreground">§</span> {m.fundamentacao}
+            <span className="text-muted-foreground" aria-hidden="true">§</span> {m.fundamentacao}
           </span>
-          {m.requisitosFiltro.includes('indices') && (
-            <span className="text-xs uppercase tracking-wider text-muted-foreground border-l border-border/60 pl-2 whitespace-nowrap">Índices</span>
-          )}
-          {m.requisitosFiltro.includes('ccts') && (
-            <span className="text-xs uppercase tracking-wider text-muted-foreground border-l border-border/60 pl-2 whitespace-nowrap">CCT</span>
-          )}
-          {m.requisitosFiltro.includes('base_juridica') && (
-            <span className="text-xs uppercase tracking-wider text-muted-foreground border-l border-border/60 pl-2 whitespace-nowrap">Base Jurídica</span>
-          )}
-          {m.requisitosFiltro.includes('contrato') && (
-            <span className="text-xs uppercase tracking-wider text-muted-foreground border-l border-border/60 pl-2 whitespace-nowrap">Contrato</span>
-          )}
+          {m.requisitosFiltro.map((req) => (
+            <span key={req} className="text-xs uppercase tracking-wider text-muted-foreground border-l border-border pl-2 whitespace-nowrap">
+              {REQUISITO_ROTULO[req]}
+            </span>
+          ))}
         </div>
       </div>
 
@@ -132,17 +132,18 @@ export default function ModeloCard({ modelo: m, pedidosCount = 0, index, onAbrir
         <Button
           size="sm"
           variant="ghost"
-          className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+          className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
           onClick={handleCopy}
           title="Copiar"
+          aria-label={`Copiar modelo ${m.titulo}`}
         >
-          <Copy className="w-3.5 h-3.5" />
+          <Copy className="w-4 h-4" aria-hidden="true" />
         </Button>
         <Button
           asChild
           size="sm"
           variant="ghost"
-          className="h-7 px-2 text-xs uppercase tracking-wide font-semibold text-accent hover:text-accent hover:bg-accent/10 gap-1 shrink-0"
+          className="h-8 px-2 text-xs uppercase tracking-wide font-semibold text-primary hover:text-primary hover:bg-primary-tint gap-1 shrink-0"
         >
           <a
             ref={cardLinkRef}
@@ -157,7 +158,7 @@ export default function ModeloCard({ modelo: m, pedidosCount = 0, index, onAbrir
             onClick={(e) => { e.stopPropagation(); }}
             onAuxClick={(e) => { e.stopPropagation(); }}
           >
-            Redigir <ChevronRight className="w-3 h-3" />
+            Redigir <ChevronRight className="w-3 h-3" aria-hidden="true" />
           </a>
         </Button>
       </div>

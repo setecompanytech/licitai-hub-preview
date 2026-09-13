@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import { MoneyInput } from '@/components/ui/money-input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -167,7 +169,7 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
   // ── Render helpers ──
   const PercInput = ({ label, value, onChange, info, step: s }: { label: string; value: number; onChange: (v: number) => void; info?: string; step?: string }) => (
     <div>
-      <Label className="text-xs flex items-center gap-1">
+      <Label className="text-sm flex items-center gap-1">
         {label}
         {info && (
           <TooltipProvider><Tooltip><TooltipTrigger><Info className="w-3 h-3 text-muted-foreground" /></TooltipTrigger>
@@ -183,7 +185,7 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
 
   const CurrInput = ({ label, value, onChange, info }: { label: string; value: string; onChange: (v: string) => void; info?: string }) => (
     <div>
-      <Label className="text-xs flex items-center gap-1">
+      <Label className="text-sm flex items-center gap-1">
         {label}
         {info && (
           <TooltipProvider><Tooltip><TooltipTrigger><Info className="w-3 h-3 text-muted-foreground" /></TooltipTrigger>
@@ -197,7 +199,7 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
   const renderLineItems = (items: LineItem[]) => (
     <div className="space-y-0.5">
       {items.map((item, i) => (
-        <div key={i} className="flex items-center justify-between text-xs py-0.5 hover:bg-muted/20 px-1 rounded group">
+        <div key={i} className="flex items-center justify-between text-sm py-1 hover:bg-muted px-1 rounded group">
           <div className="flex items-center gap-1.5 flex-1 min-w-0">
             {item.id && <Badge variant="outline" className="text-xs px-1 py-0 shrink-0 font-mono">{item.id}</Badge>}
             <span className="text-muted-foreground truncate">{item.descricao}</span>
@@ -214,10 +216,10 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
   );
 
   const renderSubmodulo = (sub: SubModuloResult) => (
-    <div className="bg-muted/10 rounded-lg p-2.5 space-y-1 ml-2">
-      <h6 className="text-xs font-semibold text-foreground">{sub.titulo}</h6>
+    <div className="rounded-md bg-muted p-3 space-y-1 ml-2">
+      <h6 className="text-sm font-semibold text-foreground">{sub.titulo}</h6>
       {renderLineItems(sub.itens)}
-      <div className="flex items-center justify-between text-xs font-bold border-t border-border/20 pt-0.5 px-1">
+      <div className="flex items-center justify-between text-sm font-bold border-t border-border pt-0.5 px-1">
         <span>Subtotal</span>
         <span className="tabular-nums">{fmtCur(sub.subtotal)}</span>
       </div>
@@ -237,62 +239,70 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
   return (
     <>
       {/* Reference banner */}
-      <div className="bg-muted/50 border border-border rounded-xl p-4">
-        <div className="flex items-center justify-between mb-2">
+      <div className="rounded-lg border border-border bg-muted p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
           <div className="flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-muted-foreground" />
-            <span className="text-xs font-semibold">Motor de Cálculo Determinístico — Portal de Compras</span>
+            <ShieldCheck className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+            <span className="text-sm font-semibold">Motor de Cálculo Determinístico — Portal de Compras</span>
           </div>
-          <a href="/templates/modelo-planilha-portal-compras-v2.xlsx" download className="inline-flex items-center gap-1 text-xs text-accent hover:underline bg-accent/10 px-2 py-1 rounded">
-            <Download className="w-3 h-3" /> Modelo XLSX
-          </a>
+          <Button asChild variant="outline" size="sm">
+            <a href="/templates/modelo-planilha-portal-compras-v2.xlsx" download>
+              <Download className="w-4 h-4" aria-hidden="true" /> Modelo XLSX
+            </a>
+          </Button>
         </div>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           Cálculo 100% determinístico baseado no modelo oficial do <strong>Portal de Compras</strong>. Conforme <strong>Lei 14.133/2021</strong>, <strong>IN SEGES/ME nº 5/2017 (Anexo VII-D)</strong> e <strong>Acórdãos TCU 1.753/2008 e 786/2006</strong>.
           Resultados recalculam automaticamente a cada alteração de parâmetro.
         </p>
       </div>
 
       {/* Step navigation */}
-      <div className="bg-card rounded-xl border border-border/50 p-3">
-        <div className="flex gap-1 overflow-x-auto">
+      <div className="rounded-lg border border-border bg-card p-3 shadow-sm">
+        <div className="flex flex-wrap gap-2">
           {steps.map((s, i) => (
-            <button key={s.id} onClick={() => setStep(s.id)}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${step === s.id ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-muted/50'}`}>
-              <s.icon className="w-3.5 h-3.5" />
+            <Button
+              key={s.id}
+              type="button"
+              size="sm"
+              variant={step === s.id ? 'default' : 'ghost'}
+              aria-current={step === s.id ? 'step' : undefined}
+              onClick={() => setStep(s.id)}
+            >
+              <s.icon className="w-4 h-4" aria-hidden="true" />
               <span className="hidden sm:inline">{i + 1}.</span> {s.label}
-            </button>
+            </Button>
           ))}
         </div>
         {result && (
-          <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
             <span>Valor mensal/empregado:</span>
-            <Badge className="bg-muted text-foreground border-border text-xs font-bold">{fmtCur(result.quadroResumo.valorMensalEmpregado)}</Badge>
+            <Badge variant="info">{fmtCur(result.quadroResumo.valorMensalEmpregado)}</Badge>
             <span>×{cargo.quantidadePostos} =</span>
-            <Badge className="bg-muted text-foreground border-border text-xs font-bold">{fmtCur(result.quadroResumo.valorMensalTotal)}</Badge>
+            <Badge variant="info">{fmtCur(result.quadroResumo.valorMensalTotal)}</Badge>
           </div>
         )}
       </div>
 
       {/* ═══ STEP: CONTRATO ═══ */}
       {step === 'contrato' && (
-        <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
-          <h4 className="text-sm font-semibold flex items-center gap-2"><Briefcase className="w-4 h-4 text-muted-foreground" /> Dados do Contrato</h4>
+        <div className="rounded-lg border border-border bg-card p-5 shadow-sm space-y-4">
+          <h4 className="text-lg font-semibold flex items-center gap-2"><Briefcase className="w-4 h-4 text-muted-foreground" /> Dados do Contrato</h4>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            <div><Label className="text-xs">Nº do Processo</Label><Input value={contrato.nrProcesso} onChange={e => updContrato('nrProcesso', e.target.value)} className="mt-1" /></div>
-            <div><Label className="text-xs">Nº da Contratação</Label><Input value={contrato.nrContratacao} onChange={e => updContrato('nrContratacao', e.target.value)} className="mt-1" /></div>
-            <div><Label className="text-xs">Órgão</Label><Input value={contrato.orgao} onChange={e => updContrato('orgao', e.target.value)} className="mt-1" /></div>
-            <div className="col-span-2 md:col-span-3"><Label className="text-xs">Descrição do Serviço</Label><Input value={contrato.descricaoServico} onChange={e => updContrato('descricaoServico', e.target.value)} className="mt-1" /></div>
-            <div><Label className="text-xs">Vigência (meses) *</Label><Input type="number" value={contrato.vigenciaMeses} onChange={e => updContrato('vigenciaMeses', parseInt(e.target.value) || 12)} min={1} max={120} className="mt-1" /></div>
-            <div><Label className="text-xs">Data da Proposta</Label><Input type="date" value={contrato.dataProposta} onChange={e => updContrato('dataProposta', e.target.value)} className="mt-1" /></div>
-            <div><Label className="text-xs">Município/UF</Label><Input value={contrato.municipioUf} onChange={e => updContrato('municipioUf', e.target.value)} className="mt-1" /></div>
+            <div><Label className="text-sm">Nº do Processo</Label><Input value={contrato.nrProcesso} onChange={e => updContrato('nrProcesso', e.target.value)} className="mt-1" /></div>
+            <div><Label className="text-sm">Nº da Contratação</Label><Input value={contrato.nrContratacao} onChange={e => updContrato('nrContratacao', e.target.value)} className="mt-1" /></div>
+            <div><Label className="text-sm">Órgão</Label><Input value={contrato.orgao} onChange={e => updContrato('orgao', e.target.value)} className="mt-1" /></div>
+            <div className="col-span-2 md:col-span-3"><Label className="text-sm">Descrição do Serviço</Label><Input value={contrato.descricaoServico} onChange={e => updContrato('descricaoServico', e.target.value)} className="mt-1" /></div>
+            <div><Label className="text-sm">Vigência (meses) *</Label><Input type="number" value={contrato.vigenciaMeses} onChange={e => updContrato('vigenciaMeses', parseInt(e.target.value) || 12)} min={1} max={120} className="mt-1" /></div>
+            <div><Label className="text-sm">Data da Proposta</Label><Input type="date" value={contrato.dataProposta} onChange={e => updContrato('dataProposta', e.target.value)} className="mt-1" /></div>
+            <div><Label className="text-sm">Município/UF</Label><Input value={contrato.municipioUf} onChange={e => updContrato('municipioUf', e.target.value)} className="mt-1" /></div>
           </div>
-          <div className="border-t border-border/30 pt-3">
-            <p className="text-xs text-muted-foreground mb-2 font-medium">Convenção Coletiva de Trabalho (Art. 63, §1º, Lei 14.133/21)</p>
+          <div className="border-t border-border pt-3">
+            <p className="text-sm text-muted-foreground mb-2 font-medium">Convenção Coletiva de Trabalho (Art. 63, §1º, Lei 14.133/21)</p>
             <div className="grid grid-cols-3 gap-3">
-              <div><Label className="text-xs">Sindicato/Convenção</Label><Input value={contrato.convencaoColetiva} onChange={e => updContrato('convencaoColetiva', e.target.value)} className="mt-1" /></div>
-              <div><Label className="text-xs">Nº Registro MTE</Label><Input value={contrato.nrRegistroCCT} onChange={e => updContrato('nrRegistroCCT', e.target.value)} className="mt-1" /></div>
-              <div><Label className="text-xs">Vigência CCT</Label><Input value={contrato.vigenciaCCT} onChange={e => updContrato('vigenciaCCT', e.target.value)} className="mt-1" /></div>
+              <div><Label className="text-sm">Sindicato/Convenção</Label><Input value={contrato.convencaoColetiva} onChange={e => updContrato('convencaoColetiva', e.target.value)} className="mt-1" /></div>
+              <div><Label className="text-sm">Nº Registro MTE</Label><Input value={contrato.nrRegistroCCT} onChange={e => updContrato('nrRegistroCCT', e.target.value)} className="mt-1" /></div>
+              <div><Label className="text-sm">Vigência CCT</Label><Input value={contrato.vigenciaCCT} onChange={e => updContrato('vigenciaCCT', e.target.value)} className="mt-1" /></div>
             </div>
           </div>
           <Button onClick={() => setStep('cargos')} className="w-full">Próximo → Cargos/Postos</Button>
@@ -301,20 +311,20 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
 
       {/* ═══ STEP: CARGOS ═══ */}
       {step === 'cargos' && (
-        <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
-          <h4 className="text-sm font-semibold flex items-center gap-2">
-            <span className="bg-muted text-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">1</span>
+        <div className="rounded-lg border border-border bg-card p-5 shadow-sm space-y-4">
+          <h4 className="text-lg font-semibold flex items-center gap-2">
+            <span aria-hidden="true" className="bg-muted text-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">1</span>
             Módulo 1 — Cargo/Posto e Remuneração Base
           </h4>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <div><Label className="text-xs">Cargo/Função *</Label><Input value={cargo.nome} onChange={e => setCargo(p => ({ ...p, nome: e.target.value }))} placeholder="Ex: Servente de Limpeza" className="mt-1" /></div>
+            <div><Label className="text-sm">Cargo/Função *</Label><Input value={cargo.nome} onChange={e => setCargo(p => ({ ...p, nome: e.target.value }))} placeholder="Ex: Servente de Limpeza" className="mt-1" /></div>
             <CurrInput label="Salário-base Mensal (R$) *" value={salarioBaseStr} onChange={setSalarioBaseStr} info="Piso da CCT vigente" />
             <div>
-              <Label className="text-xs">Qtd de Postos</Label>
+              <Label className="text-sm">Qtd de Postos</Label>
               <Input type="number" value={cargo.quantidadePostos} onChange={e => setCargo(p => ({ ...p, quantidadePostos: parseInt(e.target.value) || 1 }))} min={1} className="mt-1" />
             </div>
             <div>
-              <Label className="text-xs">Tipo de Jornada</Label>
+              <Label className="text-sm">Tipo de Jornada</Label>
               <Select value={cargo.jornadaTipo} onValueChange={(v: any) => {
                 setCargo(p => ({ ...p, jornadaTipo: v }));
                 if (v === '12x36_noturno') setMod1(p => ({ ...p, proporcaoNoturna: 7/12, horaNReduzidaProporcao: 1/12, adicNoturnoPerc: 20 }));
@@ -331,8 +341,8 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
             </div>
           </div>
 
-          <div className="border-t border-border/30 pt-3">
-            <p className="text-xs text-muted-foreground mb-2 font-medium">Adicionais (CLT e NRs)</p>
+          <div className="border-t border-border pt-3">
+            <p className="text-sm text-muted-foreground mb-2 font-medium">Adicionais (CLT e NRs)</p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <PercInput label="Gratificação (%)" value={mod1.gratificacaoPerc} onChange={v => updMod1('gratificacaoPerc', v)} info="Gratificação de função sobre salário-base" />
               <PercInput label="Periculosidade (%)" value={mod1.adicPericulosidadePerc} onChange={v => updMod1('adicPericulosidadePerc', v)} info="30% sobre salário-base (Art. 193, CLT / NR-16)" step="1" />
@@ -342,12 +352,12 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
             {(cargo.jornadaTipo === '12x36_noturno' || mod1.adicNoturnoPerc > 0) && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">
                 <div>
-                  <Label className="text-xs">Proporção Noturna</Label>
+                  <Label className="text-sm">Proporção Noturna</Label>
                   <Input type="number" value={mod1.proporcaoNoturna || ''} onChange={e => updMod1('proporcaoNoturna', parseFloat(e.target.value) || 0)} step="0.0001" className="mt-1" />
                   <p className="text-xs text-muted-foreground mt-0.5">Ex: 7/12 = 0,5833</p>
                 </div>
                 <div>
-                  <Label className="text-xs">Proporção Hora Reduzida</Label>
+                  <Label className="text-sm">Proporção Hora Reduzida</Label>
                   <Input type="number" value={mod1.horaNReduzidaProporcao || ''} onChange={e => updMod1('horaNReduzidaProporcao', parseFloat(e.target.value) || 0)} step="0.0001" className="mt-1" />
                   <p className="text-xs text-muted-foreground mt-0.5">Ex: 1/12 = 0,0833</p>
                 </div>
@@ -356,7 +366,7 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">
               <PercInput label="Adicional Genérico (%)" value={mod1.adicGenericoPerc} onChange={v => updMod1('adicGenericoPerc', v)} info="Campo genérico para adicionais não especificados" />
               <div>
-                <Label className="text-xs">Base Insalubridade</Label>
+                <Label className="text-sm">Base Insalubridade</Label>
                 <Select value={mod1.baseInsalubridade} onValueChange={(v: any) => updMod1('baseInsalubridade', v)}>
                   <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -367,7 +377,7 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
               </div>
               {mod1.baseInsalubridade === 'salario_minimo' && (
                 <div>
-                  <Label className="text-xs">Salário Mínimo (R$)</Label>
+                  <Label className="text-sm">Salário Mínimo (R$)</Label>
                   <MoneyInput value={Number(mod1.salarioMinimo) || 0} onValueChange={v => updMod1('salarioMinimo', v)} className="mt-1" />
                 </div>
               )}
@@ -384,9 +394,9 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
       {step === 'parametros' && (
         <div className="space-y-4">
           {/* Submódulo 2.1 */}
-          <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
-            <h4 className="text-sm font-semibold flex items-center gap-2">
-              <span className="bg-muted text-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">2.1</span>
+          <div className="rounded-lg border border-border bg-card p-5 shadow-sm space-y-4">
+            <h4 className="text-lg font-semibold flex items-center gap-2">
+              <span aria-hidden="true" className="bg-muted text-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">2.1</span>
               13º Salário, Férias e Adicional de Férias
             </h4>
             <div className="grid grid-cols-3 gap-3">
@@ -397,12 +407,12 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
           </div>
 
           {/* Submódulo 2.2 */}
-          <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
-            <h4 className="text-sm font-semibold flex items-center gap-2">
-              <span className="bg-muted text-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">2.2</span>
+          <div className="rounded-lg border border-border bg-card p-5 shadow-sm space-y-4">
+            <h4 className="text-lg font-semibold flex items-center gap-2">
+              <span aria-hidden="true" className="bg-muted text-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">2.2</span>
               Encargos Previdenciários, FGTS e Contribuições
             </h4>
-            <p className="text-xs text-muted-foreground">Incidem sobre Módulo 1 + Submódulo 2.1 (Acórdão TCU 1.753/2008)</p>
+            <p className="text-sm text-muted-foreground">Incidem sobre Módulo 1 + Submódulo 2.1 (Acórdão TCU 1.753/2008)</p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <PercInput label="INSS Patronal" value={mod2_2.inssPatronal} onChange={v => updMod2_2('inssPatronal', v)} info="Art. 22, Lei 8.212/91" step="1" />
               <PercInput label="Salário-Educação" value={mod2_2.salarioEducacao} onChange={v => updMod2_2('salarioEducacao', v)} info="Art. 3º, Lei 9.424/96" />
@@ -416,12 +426,12 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
           </div>
 
           {/* Módulo 3 */}
-          <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
-            <h4 className="text-sm font-semibold flex items-center gap-2">
-              <span className="bg-muted text-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">3</span>
+          <div className="rounded-lg border border-border bg-card p-5 shadow-sm space-y-4">
+            <h4 className="text-lg font-semibold flex items-center gap-2">
+              <span aria-hidden="true" className="bg-muted text-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">3</span>
               Provisão para Rescisão
             </h4>
-            <p className="text-xs text-muted-foreground">Acórdão TCU 1.753/2008 e legislação trabalhista</p>
+            <p className="text-sm text-muted-foreground">Acórdão TCU 1.753/2008 e legislação trabalhista</p>
             <div className="grid grid-cols-3 gap-3">
               <PercInput label="Aviso Prévio Indenizado" value={mod3.avisoPrevioIndenizadoPerc} onChange={v => updMod3('avisoPrevioIndenizadoPerc', v)} info="Art. 7º, XXI, CF" />
               <PercInput label="Aviso Prévio Trabalhado" value={mod3.avisoPrevioTrabalhadoPerc} onChange={v => updMod3('avisoPrevioTrabalhadoPerc', v)} info="Art. 487, CLT" />
@@ -430,9 +440,9 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
           </div>
 
           {/* Módulo 4 */}
-          <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
-            <h4 className="text-sm font-semibold flex items-center gap-2">
-              <span className="bg-muted text-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">4</span>
+          <div className="rounded-lg border border-border bg-card p-5 shadow-sm space-y-4">
+            <h4 className="text-lg font-semibold flex items-center gap-2">
+              <span aria-hidden="true" className="bg-muted text-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">4</span>
               Custo de Reposição do Profissional Ausente
             </h4>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -444,26 +454,30 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
               <PercInput label="Outros" value={mod4.outrosPerc} onChange={v => updMod4('outrosPerc', v)} />
             </div>
             <div>
-              <Label className="text-xs">Valor Intrajornada (R$/mês)</Label>
+              <Label className="text-sm">Valor Intrajornada (R$/mês)</Label>
               <MoneyInput value={Number(mod4.intrajornadaValor) || 0} onValueChange={v => updMod4('intrajornadaValor', v)} className="mt-1 max-w-xs" />
               <p className="text-xs text-muted-foreground mt-0.5">Substituto na cobertura de intervalo p/ repouso</p>
             </div>
           </div>
 
           {/* Módulo 6 */}
-          <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
-            <h4 className="text-sm font-semibold flex items-center gap-2">
-              <span className="bg-muted text-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">6</span>
+          <div className="rounded-lg border border-border bg-card p-5 shadow-sm space-y-4">
+            <h4 className="text-lg font-semibold flex items-center gap-2">
+              <span aria-hidden="true" className="bg-muted text-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">6</span>
               Custos Indiretos, Tributos e Lucro
             </h4>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               <PercInput label="Custos Indiretos" value={mod6.custosIndiretosPerc} onChange={v => updMod6('custosIndiretosPerc', v)} step="1" />
               <PercInput label="Lucro" value={mod6.lucroPerc} onChange={v => updMod6('lucroPerc', v)} step="1" />
             </div>
-            <div className="border-t border-border/30 pt-3">
-              <p className="text-xs font-medium mb-2">Tributos — {regimeLabel} (calculados "por dentro")</p>
+            <div className="border-t border-border pt-3">
+              <p className="text-sm font-medium mb-2">Tributos — {regimeLabel} (calculados "por dentro")</p>
               {regime === 'simples_nacional' && (
-                <p className="text-xs text-warning mb-2">⚠️ No Simples Nacional, PIS, COFINS e ISS já estão incluídos no DAS. Preencha apenas se houver incidência separada.</p>
+                <Alert variant="warning" className="mb-2">
+                  <AlertDescription>
+                    No Simples Nacional, PIS, COFINS e ISS já estão incluídos no DAS. Preencha apenas se houver incidência separada.
+                  </AlertDescription>
+                </Alert>
               )}
               <div className="grid grid-cols-3 gap-3">
                 <PercInput label="PIS" value={mod6.pisPerc} onChange={v => updMod6('pisPerc', v)} />
@@ -483,25 +497,25 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
       {/* ═══ STEP: BENEFÍCIOS / INSUMOS ═══ */}
       {step === 'beneficios' && (
         <div className="space-y-4">
-          <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
-            <h4 className="text-sm font-semibold flex items-center gap-2">
-              <span className="bg-muted text-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">2.3</span>
+          <div className="rounded-lg border border-border bg-card p-5 shadow-sm space-y-4">
+            <h4 className="text-lg font-semibold flex items-center gap-2">
+              <span aria-hidden="true" className="bg-muted text-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">2.3</span>
               Benefícios Mensais e Diários
             </h4>
             <div className="space-y-3">
               {beneficios.map((b, i) => (
                 <div key={i} className="grid grid-cols-12 gap-2 items-end">
                   <div className="col-span-4">
-                    <Label className="text-xs">{b.descricao}</Label>
+                    <Label className="text-sm">{b.descricao}</Label>
                     <Input value={b.valorBruto ? fmtInput(String(Math.round(b.valorBruto * 100))) : ''} onChange={e => updateBeneficio(i, 'valorBruto', parseInput(fmtInput(e.target.value)))} placeholder="R$ 0,00" className="mt-0.5" />
                   </div>
                   <div className="col-span-4">
-                    <Label className="text-xs">Desc. Empregado (R$)</Label>
+                    <Label className="text-sm">Desc. Empregado (R$)</Label>
                     <Input value={b.descontoEmpregado ? fmtInput(String(Math.round(b.descontoEmpregado * 100))) : ''} onChange={e => updateBeneficio(i, 'descontoEmpregado', parseInput(fmtInput(e.target.value)))} placeholder="R$ 0,00" className="mt-0.5" />
                   </div>
                   <div className="col-span-3">
-                    <Label className="text-xs">Líquido</Label>
-                    <div className="mt-0.5 h-10 flex items-center text-xs font-medium">{fmtCur(Math.max(0, b.valorBruto - b.descontoEmpregado))}</div>
+                    <Label className="text-sm">Líquido</Label>
+                    <div className="mt-0.5 h-10 flex items-center text-sm font-medium tabular-nums">{fmtCur(Math.max(0, b.valorBruto - b.descontoEmpregado))}</div>
                   </div>
                   <div className="col-span-1 text-xs text-muted-foreground">{b.referencia}</div>
                 </div>
@@ -509,10 +523,10 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
             </div>
           </div>
 
-          <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
+          <div className="rounded-lg border border-border bg-card p-5 shadow-sm space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <h4 className="text-sm font-semibold flex items-center gap-2">
-                <span className="bg-muted text-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">5</span>
+              <h4 className="text-lg font-semibold flex items-center gap-2">
+                <span aria-hidden="true" className="bg-muted text-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">5</span>
                 Insumos Diversos
               </h4>
               <Button variant="outline" size="sm" onClick={addInsumo}><Plus className="w-3 h-3 mr-1" /> Insumo</Button>
@@ -523,7 +537,7 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
                   <div className="col-span-4"><Input value={ins.descricao} onChange={e => setInsumos(p => p.map((x, idx) => idx === i ? { ...x, descricao: e.target.value } : x))} placeholder="Descrição" /></div>
                   <div className="col-span-3"><MoneyInput value={Number(ins.valorMensal) || 0} onValueChange={v => setInsumos(p => p.map((x, idx) => idx === i ? { ...x, valorMensal: v } : x))} placeholder="R$ 0,00" /></div>
                   <div className="col-span-4"><Input value={ins.detalhes} onChange={e => setInsumos(p => p.map((x, idx) => idx === i ? { ...x, detalhes: e.target.value } : x))} placeholder="Detalhes (ex: 2 jogos/ano)" /></div>
-                  <div className="col-span-1">{insumos.length > 1 && <Button variant="ghost" size="sm" onClick={() => removeInsumo(i)} className="text-destructive h-8 w-8 p-0"><Trash2 className="w-3 h-3" /></Button>}</div>
+                  <div className="col-span-1">{insumos.length > 1 && <Button variant="ghost" size="sm" onClick={() => removeInsumo(i)} aria-label={`Remover insumo ${ins.descricao || i + 1}`} className="text-destructive hover:text-destructive hover:bg-destructive-tint h-9 w-9 p-0"><Trash2 className="w-4 h-4" aria-hidden="true" /></Button>}</div>
                 </div>
               ))}
             </div>
@@ -540,87 +554,91 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
       {step === 'resultados' && (
         <div className="space-y-4">
           {!result ? (
-            <div className="bg-card rounded-xl border border-border/50 p-8 text-center">
-              <Calculator className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">Informe o salário-base para visualizar os resultados.</p>
+            <div className="rounded-lg border border-border bg-card shadow-sm">
+              <EstadoVazio
+                icone={<Calculator />}
+                titulo="Sem resultados ainda"
+                descricao="Informe o salário-base para visualizar os resultados."
+                acao={<Button variant="outline" onClick={() => setStep('cargos')}>Ir para Cargos</Button>}
+              />
             </div>
           ) : (
             <>
               {/* Módulo 1 */}
-              <div className="bg-card rounded-xl border border-border/50 p-4 space-y-2">
+              <div className="rounded-lg border border-border bg-card p-4 shadow-sm space-y-2">
                 <div className="flex items-center justify-between">
-                  <h5 className="text-xs font-semibold text-foreground">{result.modulo1.titulo}</h5>
-                  <Badge variant="outline" className="text-xs tabular-nums">{fmtCur(result.modulo1.subtotal)}</Badge>
+                  <h5 className="text-lg font-semibold text-foreground">{result.modulo1.titulo}</h5>
+                  <Badge variant="muted" className="tabular-nums">{fmtCur(result.modulo1.subtotal)}</Badge>
                 </div>
                 {renderLineItems(result.modulo1.itens!)}
-                <div className="flex items-center justify-between text-xs font-bold border-t border-border/30 pt-1 px-1">
+                <div className="flex items-center justify-between text-sm font-bold border-t border-border pt-1 px-1">
                   <span>Total Módulo 1</span><span className="text-foreground tabular-nums">{fmtCur(result.modulo1.subtotal)}</span>
                 </div>
               </div>
 
               {/* Módulo 2 */}
-              <div className="bg-card rounded-xl border border-border/50 p-4 space-y-2">
-                <h5 className="text-xs font-semibold text-foreground">{result.modulo2.titulo}</h5>
+              <div className="rounded-lg border border-border bg-card p-4 shadow-sm space-y-2">
+                <h5 className="text-lg font-semibold text-foreground">{result.modulo2.titulo}</h5>
                 {result.modulo2.submodulos && Object.values(result.modulo2.submodulos).map((sub, i) => (
                   <div key={i}>{renderSubmodulo(sub)}</div>
                 ))}
-                <div className="flex items-center justify-between text-xs font-bold border-t border-border/30 pt-1 px-1">
+                <div className="flex items-center justify-between text-sm font-bold border-t border-border pt-1 px-1">
                   <span>Total Módulo 2</span><span className="text-foreground tabular-nums">{fmtCur(result.modulo2.subtotal)}</span>
                 </div>
               </div>
 
               {/* Módulo 3 */}
-              <div className="bg-card rounded-xl border border-border/50 p-4 space-y-2">
+              <div className="rounded-lg border border-border bg-card p-4 shadow-sm space-y-2">
                 <div className="flex items-center justify-between">
-                  <h5 className="text-xs font-semibold text-foreground">{result.modulo3.titulo}</h5>
-                  <Badge variant="outline" className="text-xs tabular-nums">{fmtCur(result.modulo3.subtotal)}</Badge>
+                  <h5 className="text-lg font-semibold text-foreground">{result.modulo3.titulo}</h5>
+                  <Badge variant="muted" className="tabular-nums">{fmtCur(result.modulo3.subtotal)}</Badge>
                 </div>
                 {renderLineItems(result.modulo3.itens!)}
                 {result.modulo3.nota && <p className="text-xs text-muted-foreground italic">{result.modulo3.nota}</p>}
-                <div className="flex items-center justify-between text-xs font-bold border-t border-border/30 pt-1 px-1">
+                <div className="flex items-center justify-between text-sm font-bold border-t border-border pt-1 px-1">
                   <span>Total Módulo 3</span><span className="text-foreground tabular-nums">{fmtCur(result.modulo3.subtotal)}</span>
                 </div>
               </div>
 
               {/* Módulo 4 */}
-              <div className="bg-card rounded-xl border border-border/50 p-4 space-y-2">
-                <h5 className="text-xs font-semibold text-foreground">{result.modulo4.titulo}</h5>
+              <div className="rounded-lg border border-border bg-card p-4 shadow-sm space-y-2">
+                <h5 className="text-lg font-semibold text-foreground">{result.modulo4.titulo}</h5>
                 {result.modulo4.submodulos && Object.values(result.modulo4.submodulos).map((sub, i) => (
                   <div key={i}>{renderSubmodulo(sub)}</div>
                 ))}
                 {result.modulo4.itens && renderLineItems(result.modulo4.itens)}
                 {result.modulo4.nota && <p className="text-xs text-muted-foreground italic">{result.modulo4.nota}</p>}
-                <div className="flex items-center justify-between text-xs font-bold border-t border-border/30 pt-1 px-1">
+                <div className="flex items-center justify-between text-sm font-bold border-t border-border pt-1 px-1">
                   <span>Total Módulo 4</span><span className="text-foreground tabular-nums">{fmtCur(result.modulo4.subtotal)}</span>
                 </div>
               </div>
 
               {/* Módulo 5 */}
-              <div className="bg-card rounded-xl border border-border/50 p-4 space-y-2">
+              <div className="rounded-lg border border-border bg-card p-4 shadow-sm space-y-2">
                 <div className="flex items-center justify-between">
-                  <h5 className="text-xs font-semibold text-foreground">{result.modulo5.titulo}</h5>
-                  <Badge variant="outline" className="text-xs tabular-nums">{fmtCur(result.modulo5.subtotal)}</Badge>
+                  <h5 className="text-lg font-semibold text-foreground">{result.modulo5.titulo}</h5>
+                  <Badge variant="muted" className="tabular-nums">{fmtCur(result.modulo5.subtotal)}</Badge>
                 </div>
                 {renderLineItems(result.modulo5.itens!)}
-                <div className="flex items-center justify-between text-xs font-bold border-t border-border/30 pt-1 px-1">
+                <div className="flex items-center justify-between text-sm font-bold border-t border-border pt-1 px-1">
                   <span>Total Módulo 5</span><span className="text-foreground tabular-nums">{fmtCur(result.modulo5.subtotal)}</span>
                 </div>
               </div>
 
               {/* Módulo 6 */}
-              <div className="bg-card rounded-xl border border-border/50 p-4 space-y-2">
-                <h5 className="text-xs font-semibold text-foreground">{result.modulo6.titulo}</h5>
+              <div className="rounded-lg border border-border bg-card p-4 shadow-sm space-y-2">
+                <h5 className="text-lg font-semibold text-foreground">{result.modulo6.titulo}</h5>
                 {result.modulo6.submodulos && Object.values(result.modulo6.submodulos).map((sub, i) => (
                   <div key={i}>{renderSubmodulo(sub)}</div>
                 ))}
-                <div className="flex items-center justify-between text-xs font-bold border-t border-border/30 pt-1 px-1">
+                <div className="flex items-center justify-between text-sm font-bold border-t border-border pt-1 px-1">
                   <span>Total Módulo 6</span><span className="text-foreground tabular-nums">{fmtCur(result.modulo6.subtotal)}</span>
                 </div>
               </div>
 
               {/* Quadro Resumo */}
-              <div className="bg-muted rounded-xl border border-border p-5 space-y-3">
-                <h5 className="text-sm font-bold text-foreground">QUADRO-RESUMO DO CUSTO POR EMPREGADO</h5>
+              <div className="rounded-lg border border-border bg-muted p-5 space-y-3">
+                <h5 className="text-lg font-semibold text-foreground">QUADRO-RESUMO DO CUSTO POR EMPREGADO</h5>
                 <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
                   {[
                     { label: 'Módulo 1', val: result.quadroResumo.modulo1 },
@@ -657,15 +675,17 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
               </div>
 
               {/* Parecer */}
-              <div className={`rounded-xl p-4 text-xs space-y-1 ${result.parecer.viabilidade === 'VIÁVEL' ? 'bg-success/10 border border-success/20' : 'bg-warning/10 border border-warning/20'}`}>
-                <div className="flex items-center gap-2">
-                  <span className="font-bold">{result.parecer.viabilidade}</span>
-                  <span className="text-muted-foreground">— Margem Líquida: {Number(result.parecer.margemLiquida || 0).toFixed(2)}%</span>
-                  {result.parecer.alertaInexequibilidade && <Badge variant="destructive" className="text-xs">⚠ Risco de Inexequibilidade</Badge>}
-                </div>
-                <p>{result.parecer.observacoes}</p>
-                <p className="text-xs text-muted-foreground">Fundamento: {result.parecer.fundamentacaoLegal.join(' • ')}</p>
-              </div>
+              <Alert variant={result.parecer.viabilidade === 'VIÁVEL' ? 'success' : 'warning'}>
+                <AlertDescription className="space-y-1">
+                  <span className="flex flex-wrap items-center gap-2">
+                    <span className="font-bold">{result.parecer.viabilidade}</span>
+                    <span>— Margem Líquida: {Number(result.parecer.margemLiquida || 0).toFixed(2)}%</span>
+                    {result.parecer.alertaInexequibilidade && <Badge variant="danger">Risco de inexequibilidade</Badge>}
+                  </span>
+                  <p>{result.parecer.observacoes}</p>
+                  <p className="text-xs">Fundamento: {result.parecer.fundamentacaoLegal.join(' • ')}</p>
+                </AlertDescription>
+              </Alert>
 
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setStep('beneficios')} className="flex-1">← Benefícios</Button>
@@ -678,9 +698,9 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
 
       {/* ═══ STEP: EXPORTAR ═══ */}
       {step === 'exportar' && result && (
-        <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
-          <h4 className="text-sm font-semibold flex items-center gap-2"><Download className="w-4 h-4 text-muted-foreground" /> Exportar Planilha de Custos</h4>
-          <p className="text-xs text-muted-foreground">Exporte os resultados em formato XLSX (compatível com a planilha do Portal de Compras) ou PDF.</p>
+        <div className="rounded-lg border border-border bg-card p-5 shadow-sm space-y-4">
+          <h4 className="text-lg font-semibold flex items-center gap-2"><Download className="w-4 h-4 text-muted-foreground" /> Exportar Planilha de Custos</h4>
+          <p className="text-sm text-muted-foreground">Exporte os resultados em formato XLSX (compatível com a planilha do Portal de Compras) ou PDF.</p>
           <div className="grid grid-cols-2 gap-3">
             <Button variant="outline" onClick={() => { exportMDOXLSX(result, inputs); toast.success('XLSX exportado!'); }} className="h-16 flex-col gap-1">
               <FileText className="w-5 h-5 text-success" />

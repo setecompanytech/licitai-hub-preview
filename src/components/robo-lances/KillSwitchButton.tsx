@@ -104,24 +104,23 @@ export default function KillSwitchButton({ sessaoId, licitacaoId, onParada, disa
     <AlertDialog>
       <AlertDialogTrigger asChild>
         <Button
-          size="sm"
           variant="destructive"
           disabled={disabled}
-          className="gap-1.5 font-bold animate-pulse hover:animate-none"
+          className="font-bold animate-pulse hover:animate-none"
         >
-          <OctagonX className="w-4 h-4" />
+          <OctagonX className="w-4 h-4" aria-hidden="true" />
           PARADA EMERGENCIAL
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-            <OctagonX className="w-5 h-5" />
+            <OctagonX className="w-5 h-5" aria-hidden="true" />
             Confirmar Parada Emergencial
           </AlertDialogTitle>
           <AlertDialogDescription className="space-y-2">
             <p>Esta ação irá <strong>interromper imediatamente</strong> todas as operações automatizadas em curso:</p>
-            <ul className="list-disc list-inside text-xs space-y-1 ml-2">
+            <ul className="list-disc list-inside text-sm space-y-1 ml-2">
               <li>Todos os lances pendentes serão cancelados</li>
               <li>
                 <strong>Todas as sessões</strong> do robô serão encerradas —

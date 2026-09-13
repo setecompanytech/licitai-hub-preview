@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useResumoFinanceiro } from "@/hooks/useFinanceiro";
 import { formatBRL, formatBRLCompact } from "@/lib/financeiro/formatters";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tags } from "lucide-react";
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -24,13 +25,13 @@ export default function FinDashboard() {
   const { data, isLoading } = useResumoFinanceiro();
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <FinResumoCards />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle className="text-base">Fluxo de caixa — últimos 6 meses</CardTitle>
+            <CardTitle>Fluxo de caixa — últimos 6 meses</CardTitle>
           </CardHeader>
           <CardContent className="h-72">
             {isLoading || !data ? (
@@ -57,7 +58,7 @@ export default function FinDashboard() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Top 5 despesas por categoria</CardTitle>
+            <CardTitle>Top 5 despesas por categoria</CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading || !data ? (
@@ -67,9 +68,14 @@ export default function FinDashboard() {
                 ))}
               </div>
             ) : data.topDespesas.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-8 text-center">
-                Sem despesas registradas no período.
-              </p>
+              <div className="flex flex-col items-center py-8 text-center">
+                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
+                  <Tags className="w-6 h-6" aria-hidden="true" />
+                </span>
+                <p className="mt-3 text-sm text-muted-foreground">
+                  Sem despesas registradas no período.
+                </p>
+              </div>
             ) : (
               <ul className="space-y-3">
                 {data.topDespesas.map((d) => {
@@ -77,12 +83,12 @@ export default function FinDashboard() {
                   const pct = (d.total / max) * 100;
                   return (
                     <li key={d.nome}>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="truncate pr-2">{d.nome}</span>
-                        <span className="tabular-nums font-medium">{formatBRL(d.total)}</span>
+                      <div className="flex items-center justify-between gap-2 text-sm">
+                        <span className="truncate">{d.nome}</span>
+                        <span className="text-right tabular-nums font-medium whitespace-nowrap">{formatBRL(d.total)}</span>
                       </div>
                       <div className="h-1.5 bg-muted rounded-full mt-1 overflow-hidden">
-                        <div className="h-full bg-muted-foreground" style={{ width: `${pct}%` }} />
+                        <div className="h-full bg-primary" style={{ width: `${pct}%` }} />
                       </div>
                     </li>
                   );

@@ -42,9 +42,9 @@ type Contrato = {
 };
 
 const ESTILO = {
-  critico: { fundo: 'border-destructive/40 bg-destructive/5', cor: 'text-destructive', Icone: ShieldAlert },
-  atencao: { fundo: 'border-warning/40 bg-warning/5', cor: 'text-warning', Icone: AlertTriangle },
-  ok: { fundo: 'border-success/40 bg-success/5', cor: 'text-success', Icone: ShieldCheck },
+  critico: { fundo: 'border-destructive-line bg-destructive-tint', cor: 'text-destructive-ink', Icone: ShieldAlert },
+  atencao: { fundo: 'border-warning-line bg-warning-tint', cor: 'text-warning-ink', Icone: AlertTriangle },
+  ok: { fundo: 'border-success-line bg-success-tint', cor: 'text-success-ink', Icone: ShieldCheck },
 } as const;
 
 /**
@@ -315,7 +315,7 @@ export default function ContratoEficacia({ contratoId }: { contratoId: string })
             <>
             <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{s.detalhe}</p>
             {!s.podeExecutar && (
-              <Badge variant="outline" className="mt-2 text-xs border-destructive/40 text-destructive">
+              <Badge variant="outline" className="mt-2 text-xs border-destructive-line text-destructive-ink">
                 Não inicie a execução
               </Badge>
             )}
@@ -332,7 +332,7 @@ export default function ContratoEficacia({ contratoId }: { contratoId: string })
             {s.estado === 'assinatura_incompleta' && (
               <div className="mt-2.5 space-y-1.5 nao-imprime">
                 {leituraDaAssinatura.observacao && (
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     O que a leitura encontrou: {leituraDaAssinatura.observacao}
                   </p>
                 )}
@@ -354,7 +354,7 @@ export default function ContratoEficacia({ contratoId }: { contratoId: string })
           <button type="button" className="flex-1 flex items-center justify-between gap-2 text-left"
             onClick={() => setExtratosAbertos((v) => !v)}
             title={extratosAbertos ? 'Recolher' : 'Expandir'}>
-            <h4 className="text-xs font-semibold flex items-center gap-1.5">
+            <h4 className="text-lg font-semibold flex items-center gap-1.5">
               <Gavel className="w-4 h-4 text-muted-foreground" /> Extratos e publicações
             </h4>
             {extratosAbertos
@@ -380,13 +380,13 @@ export default function ContratoEficacia({ contratoId }: { contratoId: string })
             return (
               <div key={ex.tipo} className="flex items-start gap-2 text-xs">
                 {completo
-                  ? <ShieldCheck className="w-3.5 h-3.5 text-success shrink-0 mt-0.5" />
-                  : <AlertTriangle className="w-3.5 h-3.5 text-warning shrink-0 mt-0.5" />}
+                  ? <ShieldCheck className="w-3.5 h-3.5 text-success-ink shrink-0 mt-0.5" />
+                  : <AlertTriangle className="w-3.5 h-3.5 text-warning-ink shrink-0 mt-0.5" />}
                 <div className="min-w-0">
                   <p className="font-medium">
                     {ex.rotulo}
                     {ex.quantos > 1 && <span className="text-muted-foreground"> — {tem} de {ex.quantos}</span>}
-                    {ex.quantos === 1 && !completo && <span className="text-warning"> — falta</span>}
+                    {ex.quantos === 1 && !completo && <span className="text-warning-ink"> — falta</span>}
                   </p>
                   <p className="text-muted-foreground">{ex.porque}</p>
                 </div>
@@ -425,7 +425,7 @@ export default function ContratoEficacia({ contratoId }: { contratoId: string })
                 <Button variant="ghost" size="icon" className="h-6 w-6 ml-auto shrink-0 nao-imprime"
                   title="Excluir registro de publicação (o motivo fica no histórico)"
                   onClick={() => pedirExclusao(p.id)}>
-                  <Trash2 className="w-3 h-3 text-destructive" />
+                  <Trash2 className="w-3 h-3 text-destructive-ink" />
                 </Button>
               </div>
             ))}
@@ -567,7 +567,7 @@ export default function ContratoEficacia({ contratoId }: { contratoId: string })
               rows={3}
             />
             {motivoExclusao.trim().length > 0 && motivoExclusao.trim().length < 5 && (
-              <p className="text-xs text-destructive">Descreva o motivo com pelo menos 5 caracteres.</p>
+              <p className="text-xs text-destructive-ink">Descreva o motivo com pelo menos 5 caracteres.</p>
             )}
           </div>
           <AlertDialogFooter>

@@ -447,12 +447,12 @@ export default function FinRelatorios() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Parâmetros globais */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Activity className="w-4 h-4 text-muted-foreground" />
+          <CardTitle className="flex items-center gap-2">
+            <Activity className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
             Parâmetros do Relatório
           </CardTitle>
           <CardDescription>
@@ -460,27 +460,29 @@ export default function FinRelatorios() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-            <div>
-              <Label className="text-xs">Data inicial</Label>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="rel-inicio">Data inicial</Label>
               <Input
+                id="rel-inicio"
                 type="date"
                 value={periodo.inicio}
                 onChange={(e) => setPeriodo((p) => ({ ...p, inicio: e.target.value }))}
               />
             </div>
-            <div>
-              <Label className="text-xs">Data final</Label>
+            <div className="space-y-2">
+              <Label htmlFor="rel-fim">Data final</Label>
               <Input
+                id="rel-fim"
                 type="date"
                 value={periodo.fim}
                 onChange={(e) => setPeriodo((p) => ({ ...p, fim: e.target.value }))}
               />
             </div>
-            <div>
-              <Label className="text-xs">Formato</Label>
+            <div className="space-y-2">
+              <Label htmlFor="rel-formato">Formato</Label>
               <Select value={formato} onValueChange={(v) => setFormato(v as Formato)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger id="rel-formato"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="pdf">
                     <span className="flex items-center gap-2"><FileText className="w-4 h-4" /> PDF</span>
@@ -491,10 +493,10 @@ export default function FinRelatorios() {
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label className="text-xs">Agrupamento (Razão)</Label>
+            <div className="space-y-2">
+              <Label htmlFor="rel-agrupamento">Agrupamento (Razão)</Label>
               <Select value={agrupamento} onValueChange={(v) => setAgrupamento(v as typeof agrupamento)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger id="rel-agrupamento"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="nenhum">Sem agrupamento</SelectItem>
                   <SelectItem value="categoria">Por categoria</SelectItem>
@@ -505,43 +507,44 @@ export default function FinRelatorios() {
             </div>
           </div>
           <Separator className="my-4" />
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Badge variant="outline">{periodoLabel}</Badge>
-            <Badge variant="outline" className="uppercase">{formato}</Badge>
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <Badge variant="info">{periodoLabel}</Badge>
+            <Badge variant="info" className="uppercase">{formato}</Badge>
             {agrupamento !== "nenhum" && (
-              <Badge variant="outline">Agrup.: {agrupamento}</Badge>
+              <Badge variant="info">Agrup.: {agrupamento}</Badge>
             )}
           </div>
         </CardContent>
       </Card>
 
       {/* Catálogo de relatórios */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {RELATORIOS.map((rel) => {
           const Icon = rel.icone;
           const isLoading = gerando === rel.key;
           return (
             <Card key={rel.key} className="flex flex-col">
               <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-sm">
-                  <Icon className={`w-4 h-4 ${rel.cor}`} />
+                <CardTitle className="flex items-center gap-2">
+                  <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary-tint text-primary">
+                    <Icon className="w-5 h-5" aria-hidden="true" />
+                  </span>
                   {rel.titulo}
                 </CardTitle>
-                <CardDescription className="text-xs leading-relaxed">
+                <CardDescription>
                   {rel.descricao}
                 </CardDescription>
               </CardHeader>
               <CardContent className="mt-auto pt-0">
                 <Button
-                  size="sm"
-                  className="w-full gap-2"
+                  className="w-full"
                   onClick={() => handleGerar(rel)}
                   disabled={isLoading || !empresaAtiva}
                 >
                   {isLoading ? (
-                    <><Loader2 className="w-4 h-4 animate-spin" /> Gerando...</>
+                    <><Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Gerando...</>
                   ) : (
-                    <><Download className="w-4 h-4" /> Gerar {formato.toUpperCase()}</>
+                    <><Download className="w-4 h-4" aria-hidden="true" /> Gerar {formato.toUpperCase()}</>
                   )}
                 </Button>
               </CardContent>

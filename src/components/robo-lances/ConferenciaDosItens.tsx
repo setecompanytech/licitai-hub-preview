@@ -32,8 +32,8 @@ export default function ConferenciaDosItens({
   // Estado 1 — o robô entrou e ainda está lendo a lista do portal.
   if (!conferencia) {
     return (
-      <div className="flex items-center gap-2 text-xs text-muted-foreground border border-border/50 rounded-lg px-3 py-2">
-        <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+      <div className="flex items-center gap-2 text-sm text-muted-foreground border border-border bg-card rounded-lg px-4 py-3" role="status">
+        <Loader2 className="w-4 h-4 animate-spin shrink-0" aria-hidden="true" />
         <span>Conferindo os itens contra o edital no portal…</span>
       </div>
     );
@@ -42,8 +42,8 @@ export default function ConferenciaDosItens({
   // Estado 2 — sem leitura, nada a afirmar.
   if (!conferencia.leu) {
     return (
-      <div className="flex items-start gap-2 text-xs border border-border/50 bg-muted/30 rounded-lg px-3 py-2">
-        <HelpCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-muted-foreground" />
+      <div className="flex items-start gap-2 text-sm border border-border bg-muted rounded-lg px-4 py-3">
+        <HelpCircle className="w-4 h-4 shrink-0 mt-0.5 text-muted-foreground" aria-hidden="true" />
         <div className="text-muted-foreground">
           <span className="font-medium text-foreground">Não deu para conferir os itens.</span>{' '}
           O robô não conseguiu ler a lista do portal neste processo. Isso não impede a sessão — só
@@ -57,8 +57,8 @@ export default function ConferenciaDosItens({
   // sessão vira paisagem, e aí o vermelho também para de ser visto.
   if (conferencia.ok) {
     return (
-      <div className="flex items-center gap-2 text-xs border border-success/25 bg-success/5 rounded-lg px-3 py-2">
-        <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-success" />
+      <div className="flex items-center gap-2 text-sm border border-success-line bg-success-tint rounded-lg px-4 py-3">
+        <CheckCircle2 className="w-4 h-4 shrink-0 text-success-ink" aria-hidden="true" />
         <span className="text-muted-foreground">
           <span className="font-medium text-foreground">Itens conferem com o edital.</span>{' '}
           {conferencia.sobrando_qtd > 0 && (
@@ -75,31 +75,31 @@ export default function ConferenciaDosItens({
   // Estado 4 — não confere. Aqui o número do item é o que importa: é o que a
   // pessoa vai procurar no cadastro para corrigir.
   return (
-    <div className="border border-warning/40 bg-warning/5 rounded-lg p-3 space-y-2">
+    <div className="border border-warning-line bg-warning-tint rounded-lg p-4 space-y-2" role="alert">
       <div className="flex items-center gap-2">
-        <AlertTriangle className="w-4 h-4 text-warning shrink-0" />
-        <p className="text-sm font-semibold">Os itens não conferem com o edital</p>
+        <AlertTriangle className="w-5 h-5 text-warning-ink shrink-0" aria-hidden="true" />
+        <p className="text-base font-semibold">Os itens não conferem com o edital</p>
       </div>
 
       {conferencia.faltando.length > 0 && (
-        <div className="text-xs text-muted-foreground">
+        <div className="text-sm text-muted-foreground">
           <p>
             <strong className="text-foreground">
               {conferencia.faltando.length} item(ns) que você enviou não existem neste processo
             </strong>{' '}
             — o robô não teria o que acompanhar neles:
           </p>
-          <div className="flex flex-wrap gap-1 mt-1.5">
+          <div className="flex flex-wrap gap-1 mt-2">
             {conferencia.faltando.slice(0, 20).map((n) => (
               <span
                 key={n}
-                className="font-mono text-[11px] px-1.5 py-0.5 rounded border border-warning/40 bg-warning/10"
+                className="font-mono text-xs px-2 py-0.5 rounded border border-warning-line bg-card text-warning-ink"
               >
                 nº {n}
               </span>
             ))}
             {conferencia.faltando.length > 20 && (
-              <span className="text-[11px] self-center">
+              <span className="text-xs self-center">
                 e mais {conferencia.faltando.length - 20}
               </span>
             )}
@@ -108,7 +108,7 @@ export default function ConferenciaDosItens({
       )}
 
       {conferencia.divergencias.length > 0 && (
-        <div className="text-xs text-muted-foreground">
+        <div className="text-sm text-muted-foreground">
           <p>
             <strong className="text-foreground">
               {conferencia.divergencias.length} item(ns) com valor de referência diferente
@@ -117,7 +117,7 @@ export default function ConferenciaDosItens({
           </p>
           <ul className="mt-1 space-y-0.5">
             {conferencia.divergencias.slice(0, 5).map((d) => (
-              <li key={d.numero} className="font-mono text-[11px]">
+              <li key={d.numero} className="font-mono text-xs">
                 nº {d.numero}: nosso {formatarReal(d.nosso)} × portal {formatarReal(d.portal)}
               </li>
             ))}
@@ -127,8 +127,8 @@ export default function ConferenciaDosItens({
 
       {/* A saída, dita em uma linha. Aviso que não diz o que fazer vira
           ansiedade, não ação. */}
-      <p className="text-xs text-muted-foreground border-t border-warning/25 pt-2">
-        <ScanSearch className="w-3 h-3 inline mr-1" />
+      <p className="text-sm text-muted-foreground border-t border-warning-line pt-2">
+        <ScanSearch className="w-4 h-4 inline mr-1" aria-hidden="true" />
         Confira a numeração dos itens da disputa <span className="font-mono">{edital}</span> contra
         o edital publicado. O robô continua acompanhando — nada foi enviado ao portal.
       </p>

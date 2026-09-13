@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { MoneyInput } from '@/components/ui/money-input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -8,7 +9,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Shield, AlertTriangle, Lock, FileText, DollarSign, Key } from 'lucide-react';
+import { Shield, AlertTriangle, FileText, DollarSign, Key } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -150,16 +151,16 @@ export default function AceiteTermosDialog({ open, onOpenChange, nivel, sessaoId
   };
 
   const nivelLabel = nivel === 1 ? 'Assistente' : nivel === 2 ? 'Semiautomático' : 'Automação Controlada';
-  const nivelColor = nivel === 1 ? 'bg-info/15 text-info border-info/30' : nivel === 2 ? 'bg-warning/15 text-warning border-warning/30' : 'bg-destructive/15 text-destructive border-destructive/30';
+  const nivelVariant = nivel === 1 ? 'info' : nivel === 2 ? 'warning' : 'danger';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Shield className="w-5 h-5 text-muted-foreground" />
+          <DialogTitle className="flex flex-wrap items-center gap-2">
+            <Shield className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
             Aceite de Termos — Nível {nivel}
-            <Badge variant="outline" className={nivelColor}>{nivelLabel}</Badge>
+            <Badge variant={nivelVariant}>{nivelLabel}</Badge>
           </DialogTitle>
         </DialogHeader>
 
@@ -167,11 +168,11 @@ export default function AceiteTermosDialog({ open, onOpenChange, nivel, sessaoId
           {/* Política de uso */}
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <FileText className="w-4 h-4 text-muted-foreground" />
-              <span className="text-xs font-semibold">Política de Uso do Robô de Lances</span>
+              <FileText className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+              <span className="text-sm font-semibold">Política de Uso do Robô de Lances</span>
             </div>
-            <ScrollArea className="h-40 border border-border rounded-lg p-3">
-              <pre className="text-xs text-muted-foreground whitespace-pre-wrap font-sans leading-relaxed">
+            <ScrollArea className="h-40 border border-border rounded-md p-3">
+              <pre className="text-sm text-muted-foreground whitespace-pre-wrap font-sans">
                 {POLITICA_USO}
               </pre>
             </ScrollArea>
@@ -180,13 +181,14 @@ export default function AceiteTermosDialog({ open, onOpenChange, nivel, sessaoId
           {/* Limite financeiro */}
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <DollarSign className="w-4 h-4 text-warning" />
-              <label className="text-xs font-semibold">Limite Financeiro Máximo (R$) *</label>
+              <DollarSign className="w-4 h-4 text-warning" aria-hidden="true" />
+              <Label htmlFor="aceite-limite-financeiro">Limite Financeiro Máximo (R$) *</Label>
             </div>
             <MoneyInput
+              id="aceite-limite-financeiro"
               value={parseFloat(limiteFinanceiro) || 0}
               onValueChange={(v) => setLimiteFinanceiro(String(v))}
-              className="font-mono"
+              className="tabular-nums"
             />
             <p className="text-xs text-muted-foreground mt-1">
               Valor máximo total que o sistema poderá comprometer em lances. Nenhuma operação excederá este limite.
@@ -195,17 +197,17 @@ export default function AceiteTermosDialog({ open, onOpenChange, nivel, sessaoId
 
           {/* 2FA for Level 3 */}
           {precisa2fa && (
-            <div className="border border-destructive/20 rounded-lg p-3 bg-destructive/5 space-y-3">
+            <div className="border border-destructive-line rounded-lg p-4 bg-destructive-tint space-y-3">
               <div className="flex items-center gap-2">
-                <Key className="w-4 h-4 text-destructive" />
-                <span className="text-xs font-semibold text-destructive">Dupla Autenticação Obrigatória</span>
+                <Key className="w-4 h-4 text-destructive-ink" aria-hidden="true" />
+                <span className="text-sm font-semibold text-destructive-ink">Dupla Autenticação Obrigatória</span>
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 O Nível 3 exige verificação adicional. Um código será enviado ao e-mail {user?.email}.
               </p>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap items-end gap-2">
                 <Button
-                  size="sm"
+                  type="button"
                   variant="outline"
                   onClick={handleEnviar2fa}
                   disabled={codigo2faEnviado}
@@ -213,28 +215,35 @@ export default function AceiteTermosDialog({ open, onOpenChange, nivel, sessaoId
                   {codigo2faEnviado ? 'Código enviado ✓' : 'Enviar código'}
                 </Button>
                 {codigo2faEnviado && (
-                  <Input
-                    value={codigo2fa}
-                    onChange={(e) => setCodigo2fa(e.target.value)}
-                    placeholder="000000"
-                    maxLength={6}
-                    className="w-32 font-mono text-center tracking-widest"
-                  />
+                  <div>
+                    <Label htmlFor="aceite-codigo-2fa" className="mb-1 block">Código recebido</Label>
+                    <Input
+                      id="aceite-codigo-2fa"
+                      value={codigo2fa}
+                      onChange={(e) => setCodigo2fa(e.target.value)}
+                      placeholder="000000"
+                      maxLength={6}
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      className="w-36 text-center tracking-widest tabular-nums"
+                    />
+                  </div>
                 )}
               </div>
             </div>
           )}
 
           {/* Checkboxes */}
-          <div className="space-y-3 border-t border-border pt-3">
+          <div className="space-y-3 border-t border-border pt-4">
             <div className="flex items-start gap-3">
               <Checkbox
                 id="aceite-politica"
                 checked={aceitePolitica}
                 onCheckedChange={(v) => setAceitePolitica(v === true)}
+                className="mt-0.5"
               />
-              <label htmlFor="aceite-politica" className="text-xs text-muted-foreground cursor-pointer leading-relaxed">
-                Li e aceito integralmente a <strong>Política de Uso do Robô de Lances</strong>, incluindo os termos de responsabilidade e limites de automação.
+              <label htmlFor="aceite-politica" className="text-sm text-muted-foreground cursor-pointer">
+                Li e aceito integralmente a <strong className="text-foreground">Política de Uso do Robô de Lances</strong>, incluindo os termos de responsabilidade e limites de automação.
               </label>
             </div>
 
@@ -243,17 +252,18 @@ export default function AceiteTermosDialog({ open, onOpenChange, nivel, sessaoId
                 id="aceite-responsabilidade"
                 checked={aceiteResponsabilidade}
                 onCheckedChange={(v) => setAceiteResponsabilidade(v === true)}
+                className="mt-0.5"
               />
-              <label htmlFor="aceite-responsabilidade" className="text-xs text-muted-foreground cursor-pointer leading-relaxed">
-                Declaro que sou o <strong>responsável legal</strong> pela empresa e que os lances executados pelo sistema são de minha inteira responsabilidade, conforme a Lei 14.133/2021.
+              <label htmlFor="aceite-responsabilidade" className="text-sm text-muted-foreground cursor-pointer">
+                Declaro que sou o <strong className="text-foreground">responsável legal</strong> pela empresa e que os lances executados pelo sistema são de minha inteira responsabilidade, conforme a Lei 14.133/2021.
               </label>
             </div>
           </div>
 
           {nivel >= 2 && (
-            <div className="flex items-center gap-2 px-3 py-2 bg-warning/10 rounded-lg border border-warning/20">
-              <AlertTriangle className="w-4 h-4 text-warning shrink-0" />
-              <p className="text-xs text-warning">
+            <div className="flex items-start gap-2 px-3 py-2 bg-warning-tint rounded-lg border border-warning-line">
+              <AlertTriangle className="w-4 h-4 text-warning-ink shrink-0 mt-0.5" aria-hidden="true" />
+              <p className="text-sm text-warning-ink">
                 {nivel === 2
                   ? 'No modo semiautomático, cada lance requer sua autorização prévia. O sistema não agirá sem confirmação.'
                   : 'A automação controlada enviará lances dentro dos limites definidos. Use o botão de parada emergencial se necessário.'
@@ -268,9 +278,8 @@ export default function AceiteTermosDialog({ open, onOpenChange, nivel, sessaoId
           <Button
             onClick={handleAceitar}
             disabled={!aceitePolitica || !aceiteResponsabilidade || !limiteFinanceiro || saving || (precisa2fa && (!codigo2faEnviado || codigo2fa.length < 6))}
-            className="bg-accent hover:bg-accent/90 text-accent-foreground"
           >
-            <Shield className="w-4 h-4 mr-1" />
+            <Shield className="w-4 h-4" aria-hidden="true" />
             {saving ? 'Registrando...' : 'Aceitar e Prosseguir'}
           </Button>
         </DialogFooter>

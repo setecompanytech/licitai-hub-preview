@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
-import { Globe, CheckCircle2, XCircle, Loader2, Building2 } from 'lucide-react';
+import { CheckCircle2, XCircle, Building2 } from 'lucide-react';
 
 const PORTAIS_CONHECIDOS = [
   { id: 'compras-gov', nome: 'Compras.gov.br', categoria: 'federal' },
@@ -112,20 +112,20 @@ export default function DeteccaoPortais() {
   }
 
   return (
-    <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm space-y-4">
+    <div className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold flex items-center gap-2">
-          <Building2 className="w-4 h-4 text-muted-foreground" />
+        <h3 className="text-lg font-semibold flex flex-wrap items-center gap-2">
+          <Building2 className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
           Análise de Portais da Empresa
           {empresaNome && (
-            <span className="text-xs text-muted-foreground font-normal">— {empresaNome}</span>
+            <span className="text-sm text-muted-foreground font-normal">— {empresaNome}</span>
           )}
         </h3>
-        <div className="flex gap-2">
-          <Badge variant="outline" className="bg-success/10 text-success border-success/30 text-xs">
+        <div className="flex flex-wrap gap-2">
+          <Badge variant="success">
             {comCredencial} com login
           </Badge>
-          <Badge variant="outline" className="bg-info/10 text-info border-info/30 text-xs">
+          <Badge variant="info">
             {comCertificado} com certificado
           </Badge>
         </div>
@@ -141,20 +141,20 @@ export default function DeteccaoPortais() {
         return (
           <div key={cat} className="space-y-2">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{catLabel}</p>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
               {portalsCat.map((p) => (
                 <div
                   key={p.id}
-                  className={`flex items-center gap-2 rounded-lg border p-2.5 text-xs ${
+                  className={`flex items-center gap-2 rounded-md border p-3 text-sm ${
                     p.temCredencial
-                      ? 'border-success/30 bg-success/5'
-                      : 'border-border/50 bg-muted/30'
+                      ? 'border-success-line bg-success-tint'
+                      : 'border-border bg-muted'
                   }`}
                 >
                   {p.temCredencial ? (
-                    <CheckCircle2 className="w-3.5 h-3.5 text-success shrink-0" />
+                    <CheckCircle2 className="w-4 h-4 text-success shrink-0" aria-hidden="true" />
                   ) : (
-                    <XCircle className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                    <XCircle className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
                   )}
                   <div className="min-w-0">
                     <p className="font-medium truncate">{p.nome}</p>
@@ -174,7 +174,7 @@ export default function DeteccaoPortais() {
       })}
 
       {comCredencial === 0 && (
-        <p className="text-xs text-muted-foreground text-center">
+        <p className="text-sm text-muted-foreground text-center">
           Nenhuma credencial cadastrada. Vá em <strong>"Portais Conectados"</strong> para adicionar seus acessos.
         </p>
       )}

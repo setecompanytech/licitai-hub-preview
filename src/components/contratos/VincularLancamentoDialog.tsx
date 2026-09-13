@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Link2, Loader2, AlertTriangle, CheckCircle2, Unlink } from 'lucide-react';
@@ -156,8 +157,10 @@ export default function VincularLancamentoDialog({
 
         <div className="flex-1 min-h-0 overflow-y-auto pr-1">
         {carregando ? (
-          <div className="py-10 text-center text-sm text-muted-foreground">
-            <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" /> Procurando lançamentos…
+          <div className="space-y-2 py-2" aria-busy="true" aria-label="Procurando lançamentos">
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
           </div>
         ) : ordenados.length === 0 ? (
           <div className="py-8 text-center text-sm text-muted-foreground">
@@ -170,8 +173,8 @@ export default function VincularLancamentoDialog({
             {ordenados.map((t) => (
               <label
                 key={t.id}
-                className={`flex items-start gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors ${
-                  escolhidos.has(t.id) ? 'border-primary/40 bg-primary/5' : 'border-border hover:bg-muted/40'
+                className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                  escolhidos.has(t.id) ? 'border-primary bg-primary-tint' : 'border-border hover:bg-muted'
                 }`}
               >
                 <Checkbox checked={escolhidos.has(t.id)} onCheckedChange={() => alternar(t.id)} className="mt-0.5" />
@@ -181,7 +184,7 @@ export default function VincularLancamentoDialog({
                     <span className="text-sm font-semibold tabular-nums">{fmt(Number(t.valor))}</span>
                     <Badge variant="outline" className="text-xs">{t.status}</Badge>
                     {t.contrato_pedido_id === pedido.id && (
-                      <Badge className="text-xs bg-primary/10 text-primary border-primary/30">já vinculado</Badge>
+                      <Badge variant="success">já vinculado</Badge>
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
@@ -202,14 +205,14 @@ export default function VincularLancamentoDialog({
             glosa fazem a soma divergir legitimamente. */}
         <div
           className={`shrink-0 rounded-lg border p-3 text-sm flex items-start gap-2 ${
-            soma.fecha ? 'border-success/40 bg-success/5' : 'border-warning/40 bg-warning/5'
+            soma.fecha ? 'border-success-line bg-success-tint' : 'border-warning-line bg-warning-tint'
           }`}
         >
           {soma.fecha
-            ? <CheckCircle2 className="w-4 h-4 text-success shrink-0 mt-0.5" />
-            : <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />}
+            ? <CheckCircle2 className="w-4 h-4 text-success-ink shrink-0 mt-0.5" />
+            : <AlertTriangle className="w-4 h-4 text-warning-ink shrink-0 mt-0.5" />}
           <div>
-            <p className={soma.fecha ? 'text-success' : 'text-warning'}>{soma.frase}</p>
+            <p className={soma.fecha ? 'text-success-ink' : 'text-warning-ink'}>{soma.frase}</p>
             {selecionados.length > 0 && (
               <p className="text-xs text-muted-foreground mt-0.5 tabular-nums">
                 Selecionado {fmt(soma.soma)} · pedido {fmt(pedido.valor_total)}
@@ -218,10 +221,9 @@ export default function VincularLancamentoDialog({
           </div>
         </div>
 
-        <div className="shrink-0 flex justify-end gap-2">
-          <Button variant="ghost" size="sm" onClick={onFechar}>Cancelar</Button>
+        <div className="shrink-0 flex flex-wrap justify-end gap-2">
+          <Button variant="ghost" onClick={onFechar}>Cancelar</Button>
           <Button
-            size="sm"
             onClick={salvar}
             disabled={salvando || (escolhidos.size === 0 && jaVinculados.length === 0)}
           >

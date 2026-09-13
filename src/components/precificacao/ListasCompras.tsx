@@ -4,17 +4,17 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import { MoneyInput } from '@/components/ui/money-input';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
-} from '@/components/ui/dialog';
-import {
-  ShoppingCart, Plus, Trash2, Edit2, Eye, Loader2, Package, FileText,
+  ShoppingCart, Plus, Trash2, Package,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 type ShoppingList = {
@@ -125,27 +125,33 @@ export default function ListasCompras() {
   const totalList = items.reduce((sum, i) => sum + (i.preco_referencia || 0) * i.quantidade, 0);
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <ShoppingCart className="w-5 h-5 text-muted-foreground" />
-          <h3 className="font-semibold">Listas de Compras</h3>
-          <Badge variant="outline">{lists.length}</Badge>
+          <ShoppingCart className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+          <h3 className="text-lg font-semibold">Listas de Compras</h3>
+          <Badge variant="info">{lists.length} {lists.length === 1 ? 'lista' : 'listas'}</Badge>
         </div>
-        <Button size="sm" onClick={() => setShowCreate(true)}>
-          <Plus className="w-4 h-4 mr-1" /> Nova Lista
+        <Button onClick={() => setShowCreate(true)}>
+          <Plus className="w-4 h-4" aria-hidden="true" /> Nova Lista
         </Button>
       </div>
 
       {showCreate && (
-        <div className="bg-muted/30 border border-border/40 rounded-lg p-4 space-y-3">
-          <Input placeholder="Nome da lista" value={newName} onChange={e => setNewName(e.target.value)} />
-          <Textarea placeholder="Descrição (opcional)" value={newDesc} onChange={e => setNewDesc(e.target.value)} className="min-h-[60px]" />
-          <div className="flex gap-2">
-            <Button size="sm" onClick={createList} disabled={creating || !newName.trim()}>
-              {creating ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Plus className="w-4 h-4 mr-1" />} Criar
+        <div className="space-y-3 rounded-lg border border-border bg-muted p-4">
+          <div>
+            <Label htmlFor="lista-nome" className="text-sm">Nome da lista</Label>
+            <Input id="lista-nome" placeholder="Ex.: Material de expediente — PE 12/2026" value={newName} onChange={e => setNewName(e.target.value)} className="mt-1" />
+          </div>
+          <div>
+            <Label htmlFor="lista-descricao" className="text-sm">Descrição (opcional)</Label>
+            <Textarea id="lista-descricao" placeholder="Descrição" value={newDesc} onChange={e => setNewDesc(e.target.value)} className="mt-1 min-h-[60px]" />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={createList} disabled={creating || !newName.trim()}>
+              <Plus className="w-4 h-4" aria-hidden="true" /> {creating ? 'Criando...' : 'Criar'}
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => setShowCreate(false)}>Cancelar</Button>
+            <Button variant="ghost" onClick={() => setShowCreate(false)}>Cancelar</Button>
           </div>
         </div>
       )}
@@ -154,28 +160,46 @@ export default function ListasCompras() {
         {/* Lists panel */}
         <div className="lg:col-span-1 space-y-2">
           {loading ? (
-            <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+            <div className="space-y-2" role="status" aria-label="Carregando listas">
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-16 w-full" />
+            </div>
           ) : lists.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">Nenhuma lista criada ainda.</p>
           ) : (
-            lists.map(list => (
-              <button
-                key={list.id}
-                onClick={() => openList(list)}
-                className={`w-full text-left p-3 rounded-lg border transition-colors ${selectedList?.id === list.id ? 'border-primary bg-primary/5' : 'border-border/40 hover:bg-muted/30'}`}
-              >
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium truncate">{list.nome}</p>
-                  <div className="flex gap-1">
-                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={e => { e.stopPropagation(); deleteList(list.id); }}>
-                      <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                    </Button>
-                  </div>
+            lists.map(list => {
+              const ativa = selectedList?.id === list.id;
+              return (
+                <div
+                  key={list.id}
+                  className={cn(
+                    'relative rounded-lg border transition-colors',
+                    ativa ? 'border-primary bg-primary-tint' : 'border-border bg-card hover:bg-muted',
+                  )}
+                >
+                  <button
+                    type="button"
+                    onClick={() => openList(list)}
+                    aria-pressed={ativa}
+                    className="w-full rounded-lg p-3 pr-12 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  >
+                    <p className="text-sm font-medium truncate">{list.nome}</p>
+                    {list.descricao && <p className="text-xs text-muted-foreground mt-1 truncate">{list.descricao}</p>}
+                    <p className="text-xs text-muted-foreground mt-1">{new Date(list.created_at).toLocaleDateString('pt-BR')}</p>
+                  </button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="absolute right-2 top-2 h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive-tint"
+                    aria-label={`Excluir lista ${list.nome}`}
+                    onClick={() => deleteList(list.id)}
+                  >
+                    <Trash2 className="w-4 h-4" aria-hidden="true" />
+                  </Button>
                 </div>
-                {list.descricao && <p className="text-xs text-muted-foreground mt-1 truncate">{list.descricao}</p>}
-                <p className="text-xs text-muted-foreground mt-1">{new Date(list.created_at).toLocaleDateString('pt-BR')}</p>
-              </button>
-            ))
+              );
+            })
           )}
         </div>
 
@@ -183,78 +207,105 @@ export default function ListasCompras() {
         <div className="lg:col-span-2">
           {selectedList ? (
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-semibold">{selectedList.nome}</h4>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline" onClick={() => setShowAddItem(true)}>
-                    <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar Item
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h4 className="text-lg font-semibold">{selectedList.nome}</h4>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" onClick={() => setShowAddItem(true)}>
+                    <Plus className="w-4 h-4" aria-hidden="true" /> Adicionar Item
                   </Button>
                 </div>
               </div>
 
               {showAddItem && (
-                <div className="bg-muted/30 border border-border/40 rounded-lg p-3 grid grid-cols-2 gap-2">
-                  <Input placeholder="Descrição do produto *" value={newItem.descricao} onChange={e => setNewItem(p => ({ ...p, descricao: e.target.value }))} className="col-span-2" />
-                  <Input placeholder="Marca" value={newItem.marca} onChange={e => setNewItem(p => ({ ...p, marca: e.target.value }))} />
-                  <Input placeholder="Unidade" value={newItem.unidade} onChange={e => setNewItem(p => ({ ...p, unidade: e.target.value }))} />
-                  <Input type="number" placeholder="Quantidade" value={newItem.quantidade} onChange={e => setNewItem(p => ({ ...p, quantidade: e.target.value }))} />
-                  <MoneyInput placeholder="Preço referência (R$)" value={Number(newItem.preco_referencia) || 0} onValueChange={v => setNewItem(p => ({ ...p, preco_referencia: String(v) }))} />
-                  <Input placeholder="Fonte referência" value={newItem.fonte_referencia} onChange={e => setNewItem(p => ({ ...p, fonte_referencia: e.target.value }))} className="col-span-2" />
-                  <div className="col-span-2 flex gap-2">
-                    <Button size="sm" onClick={addItem} disabled={!newItem.descricao.trim()}>Adicionar</Button>
-                    <Button size="sm" variant="ghost" onClick={() => setShowAddItem(false)}>Cancelar</Button>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-lg border border-border bg-muted p-4">
+                  <div className="sm:col-span-2">
+                    <Label htmlFor="item-descricao" className="text-sm">Descrição do produto *</Label>
+                    <Input id="item-descricao" placeholder="Descrição" value={newItem.descricao} onChange={e => setNewItem(p => ({ ...p, descricao: e.target.value }))} className="mt-1" />
+                  </div>
+                  <div>
+                    <Label htmlFor="item-marca" className="text-sm">Marca</Label>
+                    <Input id="item-marca" placeholder="Opcional" value={newItem.marca} onChange={e => setNewItem(p => ({ ...p, marca: e.target.value }))} className="mt-1" />
+                  </div>
+                  <div>
+                    <Label htmlFor="item-unidade" className="text-sm">Unidade</Label>
+                    <Input id="item-unidade" placeholder="UN" value={newItem.unidade} onChange={e => setNewItem(p => ({ ...p, unidade: e.target.value }))} className="mt-1" />
+                  </div>
+                  <div>
+                    <Label htmlFor="item-quantidade" className="text-sm">Quantidade</Label>
+                    <Input id="item-quantidade" type="number" placeholder="1" value={newItem.quantidade} onChange={e => setNewItem(p => ({ ...p, quantidade: e.target.value }))} className="mt-1" />
+                  </div>
+                  <div>
+                    <Label htmlFor="item-preco" className="text-sm">Preço de referência (R$)</Label>
+                    <MoneyInput id="item-preco" placeholder="0,00" value={Number(newItem.preco_referencia) || 0} onValueChange={v => setNewItem(p => ({ ...p, preco_referencia: String(v) }))} className="mt-1" />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <Label htmlFor="item-fonte" className="text-sm">Fonte de referência</Label>
+                    <Input id="item-fonte" placeholder="Ex.: Painel de Preços, Mercado Livre" value={newItem.fonte_referencia} onChange={e => setNewItem(p => ({ ...p, fonte_referencia: e.target.value }))} className="mt-1" />
+                  </div>
+                  <div className="sm:col-span-2 flex flex-wrap gap-2">
+                    <Button onClick={addItem} disabled={!newItem.descricao.trim()}>Adicionar</Button>
+                    <Button variant="ghost" onClick={() => setShowAddItem(false)}>Cancelar</Button>
                   </div>
                 </div>
               )}
 
               {loadingItems ? (
-                <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+                <div className="space-y-2" role="status" aria-label="Carregando itens da lista">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
               ) : items.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-8">Lista vazia. Adicione itens para começar.</p>
               ) : (
                 <>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="text-xs">Produto</TableHead>
-                        <TableHead className="text-xs">Marca</TableHead>
-                        <TableHead className="text-xs text-center">Qtd</TableHead>
-                        <TableHead className="text-xs text-center">Unid</TableHead>
-                        <TableHead className="text-xs text-right">Preço Ref.</TableHead>
-                        <TableHead className="text-xs text-right">Total</TableHead>
-                        <TableHead className="text-xs text-center w-10"></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {items.map(item => (
-                        <TableRow key={item.id}>
-                          <TableCell className="text-sm">{item.descricao}</TableCell>
-                          <TableCell className="text-xs text-muted-foreground">{item.marca || '—'}</TableCell>
-                          <TableCell className="text-center text-sm">{item.quantidade}</TableCell>
-                          <TableCell className="text-center text-xs">{item.unidade}</TableCell>
-                          <TableCell className="text-right text-sm">{item.preco_referencia ? formatCurrency(item.preco_referencia) : '—'}</TableCell>
-                          <TableCell className="text-right text-sm font-medium">
-                            {item.preco_referencia ? formatCurrency(item.preco_referencia * item.quantidade) : '—'}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => deleteItem(item.id)}>
-                              <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                            </Button>
-                          </TableCell>
+                  <div className="overflow-x-auto rounded-lg border border-border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-sm font-semibold">Produto</TableHead>
+                          <TableHead className="text-sm font-semibold">Marca</TableHead>
+                          <TableHead className="text-sm font-semibold text-center">Qtd</TableHead>
+                          <TableHead className="text-sm font-semibold text-center">Unid</TableHead>
+                          <TableHead className="text-sm font-semibold text-right">Preço Ref.</TableHead>
+                          <TableHead className="text-sm font-semibold text-right">Total</TableHead>
+                          <TableHead className="w-10 text-sm font-semibold"><span className="sr-only">Ações</span></TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                  <div className="flex justify-end pt-2 border-t border-border/30">
-                    <p className="text-sm font-semibold">Total estimado: {formatCurrency(totalList)}</p>
+                      </TableHeader>
+                      <TableBody>
+                        {items.map(item => (
+                          <TableRow key={item.id}>
+                            <TableCell className="text-sm">{item.descricao}</TableCell>
+                            <TableCell className="text-sm text-muted-foreground">{item.marca || '—'}</TableCell>
+                            <TableCell className="text-center text-sm tabular-nums">{item.quantidade}</TableCell>
+                            <TableCell className="text-center text-sm">{item.unidade}</TableCell>
+                            <TableCell className="text-right text-sm tabular-nums">{item.preco_referencia ? formatCurrency(item.preco_referencia) : '—'}</TableCell>
+                            <TableCell className="text-right text-sm font-medium tabular-nums">
+                              {item.preco_referencia ? formatCurrency(item.preco_referencia * item.quantidade) : '—'}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive-tint" aria-label={`Remover ${item.descricao}`} onClick={() => deleteItem(item.id)}>
+                                <Trash2 className="w-4 h-4" aria-hidden="true" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  <div className="flex justify-end pt-2 border-t border-border">
+                    <p className="text-sm font-semibold tabular-nums">Total estimado: {formatCurrency(totalList)}</p>
                   </div>
                 </>
               )}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-              <Package className="w-8 h-8 mb-2 opacity-50" />
-              <p className="text-sm">Selecione uma lista para visualizar os itens</p>
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
+                <Package className="w-6 h-6" aria-hidden="true" />
+              </span>
+              <p className="mt-4 text-base font-semibold">Nenhuma lista selecionada</p>
+              <p className="mt-1 text-sm text-muted-foreground">Selecione uma lista para visualizar os itens.</p>
             </div>
           )}
         </div>

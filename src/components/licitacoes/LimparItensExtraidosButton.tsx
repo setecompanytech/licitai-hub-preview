@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Trash2, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -78,8 +78,8 @@ export default function LimparItensExtraidosButton({
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger asChild>
-        <Button variant={variant} size={size} disabled={!licitacaoId} className="gap-1.5">
-          <Trash2 className="w-3.5 h-3.5" />
+        <Button variant={variant} size={size} disabled={!licitacaoId}>
+          <Trash2 aria-hidden="true" />
           {label}
         </Button>
       </AlertDialogTrigger>
@@ -91,12 +91,15 @@ export default function LimparItensExtraidosButton({
               <p>
                 Esta ação removerá <strong>permanentemente</strong> os dados deste processo licitatório nas fontes:
               </p>
-              <ul className="list-disc list-inside text-xs text-muted-foreground space-y-0.5">
+              <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
                 {fontes.map((f) => (
                   <li key={f}>{FONTE_LABEL[f] || f}</li>
                 ))}
               </ul>
-              <p className="text-xs text-warning">
+              {/* Tinta suave do trio warning (fundo/tinta/linha) em vez de
+                  texto âmbar solto: o aviso é um bloco, e a cor do texto
+                  sozinha mudava de contraste conforme a superfície. */}
+              <p className="rounded-md border border-warning-line bg-warning-tint p-3 text-sm text-warning-ink">
                 Use esta opção se houver itens incorretos vindos de outros processos. Após limpar, basta executar a extração novamente para popular com os dados corretos.
               </p>
             </div>
@@ -107,9 +110,9 @@ export default function LimparItensExtraidosButton({
           <AlertDialogAction
             onClick={(e) => { e.preventDefault(); handleConfirm(); }}
             disabled={loading}
-            className="bg-destructive hover:bg-destructive/90"
+            className={buttonVariants({ variant: 'destructive' })}
           >
-            {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Trash2 className="w-3.5 h-3.5 mr-1.5" />}
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Trash2 className="w-4 h-4" aria-hidden="true" />}
             Confirmar limpeza
           </AlertDialogAction>
         </AlertDialogFooter>

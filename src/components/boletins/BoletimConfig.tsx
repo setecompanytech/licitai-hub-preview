@@ -196,23 +196,22 @@ export default function BoletimConfig() {
   return (
     <div className="space-y-4">
       {/* Boletim IA — destaque Fase 2 */}
-      <Card className="p-5 bg-gradient-to-br from-accent/5 to-accent/10 border-accent/30">
+      <Card className="border-border bg-primary-tint p-6">
         <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0">
-            <Sparkles className="w-5 h-5 text-accent" />
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-card text-primary">
+            <Sparkles className="w-5 h-5" aria-hidden="true" />
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-semibold flex items-center gap-2">
+            <h2 className="flex items-center gap-2 text-lg font-semibold">
               Boletim Inteligente AURÉLIA
               <Badge variant="secondary" className="text-xs uppercase">Novo</Badge>
-            </h3>
-            <p className="text-xs text-muted-foreground mt-1">
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
               Resumo personalizado gerado por IA das oportunidades das últimas 24h, com score de
               alinhamento, justificativa e insights estratégicos. Enviado diariamente às 06h.
             </p>
             <Button
-              size="sm"
-              className="mt-3 bg-accent hover:bg-accent/90 text-accent-foreground"
+              className="mt-3"
               disabled={sending !== null}
               onClick={enviarBoletimIA}
             >
@@ -227,9 +226,9 @@ export default function BoletimConfig() {
       </Card>
 
       {/* Horários de envio */}
-      <Card className="p-5 space-y-4">
-        <h3 className="text-sm font-semibold">Horários de Envio</h3>
-        <p className="text-xs text-muted-foreground">
+      <Card className="space-y-4 p-6">
+        <h2 className="text-lg font-semibold">Horários de envio</h2>
+        <p className="text-sm text-muted-foreground">
           Configure quais boletins deseja receber no e-mail <strong>{user?.email}</strong>
         </p>
 
@@ -240,9 +239,9 @@ export default function BoletimConfig() {
             { key: 'boletim_tarde' as const, label: 'Boletim da Tarde (17:00)', desc: 'Resultados e homologações do dia', tipo: 'tarde' as const },
             { key: 'notificacao_push' as const, label: 'Notificações Push', desc: 'Alertas em tempo real no navegador', tipo: null },
           ].map((item) => (
-            <div key={item.key} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+            <div key={item.key} className="flex flex-wrap items-center justify-between gap-3 rounded-md bg-muted p-3">
               <div className="flex-1">
-                <p className="text-sm font-medium">{item.label}</p>
+                <p className="text-sm font-medium text-foreground">{item.label}</p>
                 <p className="text-xs text-muted-foreground">{item.desc}</p>
               </div>
               <div className="flex items-center gap-2">
@@ -273,12 +272,12 @@ export default function BoletimConfig() {
       </Card>
 
       {/* Segmentos de Interesse */}
-      <Card className="p-5 space-y-4">
+      <Card className="space-y-4 p-6">
         <Collapsible open={segmentosOpen} onOpenChange={setSegmentosOpen}>
           <CollapsibleTrigger className="flex items-center justify-between w-full">
             <div className="flex items-center gap-2">
-              <ShoppingBag className="w-4 h-4 text-accent" />
-              <h3 className="text-sm font-semibold">Segmentos de Interesse</h3>
+              <ShoppingBag className="w-4 h-4 text-primary" aria-hidden="true" />
+              <h2 className="text-lg font-semibold">Segmentos de interesse</h2>
               {config.segmentos.length > 0 && (
                 <Badge variant="secondary" className="text-xs">
                   {config.segmentos.length} selecionado(s)
@@ -287,7 +286,7 @@ export default function BoletimConfig() {
             </div>
             <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${segmentosOpen ? 'rotate-180' : ''}`} />
           </CollapsibleTrigger>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="mt-1 text-sm text-muted-foreground">
             Selecione os segmentos para receber apenas licitações relevantes ao seu negócio
           </p>
           <CollapsibleContent className="mt-3">
@@ -315,8 +314,8 @@ export default function BoletimConfig() {
                   key={seg.id}
                   className={`flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-colors ${
                     config.segmentos.includes(seg.id)
-                      ? 'border-accent/50 bg-accent/5'
-                      : 'border-border/50 hover:bg-muted/30'
+                      ? 'border-primary bg-primary-tint'
+                      : 'border-border hover:bg-muted'
                   }`}
                 >
                   <Checkbox
@@ -325,14 +324,14 @@ export default function BoletimConfig() {
                     className="mt-0.5"
                   />
                   <div className="min-w-0">
-                    <p className="text-xs font-medium leading-tight">{seg.label}</p>
+                    <p className="text-sm font-medium leading-tight text-foreground">{seg.label}</p>
                     <p className="text-xs text-muted-foreground leading-tight mt-0.5">{seg.desc}</p>
                   </div>
                 </label>
               ))}
             </div>
             {config.segmentos.length === 0 && (
-              <p className="text-xs text-warning mt-2">
+              <p className="mt-2 text-sm text-warning-ink">
                 ⚠️ Nenhum segmento selecionado — você receberá todos os avisos sem filtro de segmento.
               </p>
             )}
@@ -341,12 +340,12 @@ export default function BoletimConfig() {
       </Card>
 
       {/* UFs de Interesse */}
-      <Card className="p-5 space-y-4">
+      <Card className="space-y-4 p-6">
         <Collapsible open={ufsOpen} onOpenChange={setUfsOpen}>
           <CollapsibleTrigger className="flex items-center justify-between w-full">
             <div className="flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-accent" />
-              <h3 className="text-sm font-semibold">Estados de Interesse</h3>
+              <MapPin className="w-4 h-4 text-primary" aria-hidden="true" />
+              <h2 className="text-lg font-semibold">Estados de interesse</h2>
               {config.ufs_interesse.length > 0 && (
                 <Badge variant="secondary" className="text-xs">
                   {config.ufs_interesse.length} UF(s)
@@ -355,7 +354,7 @@ export default function BoletimConfig() {
             </div>
             <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${ufsOpen ? 'rotate-180' : ''}`} />
           </CollapsibleTrigger>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="mt-1 text-sm text-muted-foreground">
             Selecione os estados onde deseja competir em licitações
           </p>
           <CollapsibleContent className="mt-3">
@@ -376,22 +375,21 @@ export default function BoletimConfig() {
             )}
             <div className="flex flex-wrap gap-1.5">
               {UFS_BRASIL.map(uf => (
-                <button
+                <Button
                   key={uf}
                   type="button"
-                  className={`px-2.5 py-1 rounded text-xs font-medium border transition-colors ${
-                    config.ufs_interesse.includes(uf)
-                      ? 'bg-accent text-accent-foreground border-accent'
-                      : 'bg-muted/30 text-muted-foreground border-border/50 hover:bg-muted/50'
-                  }`}
+                  size="sm"
+                  variant={config.ufs_interesse.includes(uf) ? 'default' : 'outline'}
+                  aria-pressed={config.ufs_interesse.includes(uf)}
+                  className="px-3"
                   onClick={() => toggleUf(uf)}
                 >
                   {uf}
-                </button>
+                </Button>
               ))}
             </div>
             {config.ufs_interesse.length === 0 && (
-              <p className="text-xs text-warning mt-2">
+              <p className="mt-2 text-sm text-warning-ink">
                 ⚠️ Nenhuma UF selecionada — você receberá avisos de todos os estados.
               </p>
             )}
@@ -400,16 +398,16 @@ export default function BoletimConfig() {
       </Card>
 
       {/* Filtragem Inteligente */}
-      <Card className="p-5 space-y-4">
-        <h3 className="text-sm font-semibold">Filtragem Inteligente</h3>
-        <p className="text-xs text-muted-foreground">
+      <Card className="space-y-4 p-6">
+        <h2 className="text-lg font-semibold">Filtragem inteligente</h2>
+        <p className="text-sm text-muted-foreground">
           Configurações de filtragem automática baseadas nos dados da sua empresa
         </p>
 
         <div className="space-y-3">
-          <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-md bg-muted p-3">
             <div className="flex-1">
-              <p className="text-sm font-medium">Filtrar alterações por CNPJ</p>
+              <p className="text-sm font-medium text-foreground">Filtrar alterações por CNPJ</p>
               <p className="text-xs text-muted-foreground">
                 O boletim do meio-dia mostrará apenas alterações, suspensões e cancelamentos
                 de processos em que sua empresa está envolvida (busca por CNPJ e razão social nos Diários Oficiais)
@@ -421,9 +419,9 @@ export default function BoletimConfig() {
             />
           </div>
 
-          <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-md bg-muted p-3">
             <div className="flex-1">
-              <p className="text-sm font-medium">Resultados por participação</p>
+              <p className="text-sm font-medium text-foreground">Resultados por participação</p>
               <p className="text-xs text-muted-foreground">
                 O boletim da tarde mostrará apenas homologações e resultados de processos licitatórios
                 em que você participou (extraído automaticamente do histórico do sistema)
@@ -438,7 +436,7 @@ export default function BoletimConfig() {
       </Card>
 
       <Button
-        className="bg-accent hover:bg-accent/90 text-accent-foreground w-full"
+        className="w-full"
         onClick={saveConfig}
         disabled={saving}
       >

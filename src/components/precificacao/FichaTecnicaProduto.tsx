@@ -3,8 +3,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 import {
-  ExternalLink, Plus, Loader2, Package, Star, Store, Truck,
+  ExternalLink, Plus, Package, Star, Store, Truck,
   ShieldCheck, ClipboardList, Image as ImageIcon, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -93,24 +95,33 @@ export default function FichaTecnicaProduto({ open, onOpenChange, produto }: Fic
     <Dialog open={open} onOpenChange={handleOpen}>
       <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden">
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 gap-3">
-            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+          <div className="space-y-4 p-6" role="status" aria-label="Extraindo ficha técnica do produto">
+            <Skeleton className="h-7 w-2/3" />
+            <div className="flex flex-col md:flex-row gap-6">
+              <Skeleton className="aspect-square w-full md:w-[320px] flex-shrink-0" />
+              <div className="flex-1 space-y-3">
+                <Skeleton className="h-5 w-1/3" />
+                <Skeleton className="h-10 w-1/2" />
+                <Skeleton className="h-4 w-1/4" />
+                <Skeleton className="h-11 w-48" />
+              </div>
+            </div>
             <p className="text-sm text-muted-foreground">Extraindo ficha técnica do produto...</p>
           </div>
         ) : (
           <ScrollArea className="max-h-[90vh]">
-            <div className="p-6 space-y-5">
+            <div className="p-6 space-y-6">
               {/* Header */}
               <DialogHeader>
-                <DialogTitle className="text-base font-semibold leading-snug pr-8">
+                <DialogTitle className="text-lg font-semibold pr-8">
                   {ficha?.titulo || produto.produto}
                 </DialogTitle>
               </DialogHeader>
 
               <div className="flex flex-col md:flex-row gap-6">
                 {/* Image gallery */}
-                <div className="md:w-[320px] flex-shrink-0 space-y-3">
-                  <div className="relative aspect-square bg-muted/10 rounded-lg border border-border/30 flex items-center justify-center overflow-hidden">
+                <div className="w-full md:w-[320px] flex-shrink-0 space-y-3">
+                  <div className="relative aspect-square bg-muted rounded-lg border border-border flex items-center justify-center overflow-hidden">
                     {images.length > 0 ? (
                       <img
                         src={images[imgIndex]}
@@ -119,23 +130,31 @@ export default function FichaTecnicaProduto({ open, onOpenChange, produto }: Fic
                         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                       />
                     ) : (
-                      <Package className="w-16 h-16 text-muted-foreground/20" />
+                      <Package className="w-16 h-16 text-muted-foreground" aria-hidden="true" />
                     )}
                     {images.length > 1 && (
                       <>
-                        <button
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          aria-label="Imagem anterior"
                           onClick={() => setImgIndex(i => (i - 1 + images.length) % images.length)}
-                          className="absolute left-1 top-1/2 -translate-y-1/2 bg-background/80 rounded-full p-1 hover:bg-background"
+                          className="absolute left-1 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full bg-background/80"
                         >
-                          <ChevronLeft className="w-4 h-4" />
-                        </button>
-                        <button
+                          <ChevronLeft className="w-4 h-4" aria-hidden="true" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          aria-label="Próxima imagem"
                           onClick={() => setImgIndex(i => (i + 1) % images.length)}
-                          className="absolute right-1 top-1/2 -translate-y-1/2 bg-background/80 rounded-full p-1 hover:bg-background"
+                          className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full bg-background/80"
                         >
-                          <ChevronRight className="w-4 h-4" />
-                        </button>
-                        <span className="absolute bottom-2 right-2 text-xs bg-background/80 rounded px-1.5 py-0.5">
+                          <ChevronRight className="w-4 h-4" aria-hidden="true" />
+                        </Button>
+                        <span className="absolute bottom-2 right-2 rounded-sm border border-border bg-background/80 px-1.5 py-0.5 text-xs tabular-nums">
                           {imgIndex + 1}/{images.length}
                         </span>
                       </>
@@ -143,17 +162,20 @@ export default function FichaTecnicaProduto({ open, onOpenChange, produto }: Fic
                   </div>
                   {/* Thumbnails */}
                   {images.length > 1 && (
-                    <div className="flex gap-1.5 overflow-x-auto pb-1">
+                    <div className="flex gap-2 overflow-x-auto pb-1">
                       {images.slice(0, 8).map((img, i) => (
-                        <button
+                        <Button
                           key={i}
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          aria-label={`Ver imagem ${i + 1}`}
+                          aria-pressed={i === imgIndex}
                           onClick={() => setImgIndex(i)}
-                          className={`w-14 h-14 flex-shrink-0 rounded border overflow-hidden ${
-                            i === imgIndex ? 'border-primary ring-1 ring-primary' : 'border-border/30'
-                          }`}
+                          className={cn('h-14 w-14 flex-shrink-0 overflow-hidden p-0', i === imgIndex && 'border-primary ring-2 ring-ring')}
                         >
                           <img src={img} alt="" className="w-full h-full object-contain p-0.5" />
-                        </button>
+                        </Button>
                       ))}
                     </div>
                   )}
@@ -164,31 +186,31 @@ export default function FichaTecnicaProduto({ open, onOpenChange, produto }: Fic
                   {/* Price + badges */}
                   <div>
                     <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <Badge variant="outline" className="text-xs">{produto.condicao || 'Novo'}</Badge>
+                      <Badge variant="outline">{produto.condicao || 'Novo'}</Badge>
                       <div className="flex items-center gap-1">
-                        <Store className="w-3 h-3 text-muted-foreground" />
+                        <Store className="w-3 h-3 text-muted-foreground" aria-hidden="true" />
                         <span className="text-xs text-muted-foreground">{produto.loja}</span>
                       </div>
                       {produto.vendedor_qualificado && (
-                        <Badge className="bg-success/10 text-success border-success/20 text-xs">
-                          <ShieldCheck className="w-3 h-3 mr-0.5" /> Vendedor Qualificado
+                        <Badge variant="success" className="gap-1">
+                          <ShieldCheck className="w-3 h-3" aria-hidden="true" /> Vendedor Qualificado
                         </Badge>
                       )}
                     </div>
                     {(ficha?.preco_original || produto.preco_original) && (
-                      <p className="text-sm text-muted-foreground line-through">
+                      <p className="text-sm text-muted-foreground line-through tabular-nums">
                         {formatCurrency(ficha?.preco_original || produto.preco_original!)}
                       </p>
                     )}
-                    <p className="text-3xl font-bold text-foreground">
+                    <p className="text-[2rem] leading-10 font-bold text-foreground tabular-nums">
                       {formatCurrency(ficha?.preco || produto.preco)}
                     </p>
                     {produto.parcelas && (
-                      <p className="text-xs text-success font-medium mt-0.5">em {produto.parcelas}</p>
+                      <p className="text-xs text-success font-medium mt-1">em {produto.parcelas}</p>
                     )}
                     {produto.frete && (
                       <div className="flex items-center gap-1 mt-1">
-                        <Truck className="w-3.5 h-3.5" />
+                        <Truck className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
                         <span className={`text-xs ${produto.frete.toLowerCase().includes('grátis') ? 'text-success font-semibold' : 'text-muted-foreground'}`}>
                           {produto.frete}
                         </span>
@@ -197,16 +219,16 @@ export default function FichaTecnicaProduto({ open, onOpenChange, produto }: Fic
                     {produto.avaliacao && (
                       <div className="flex items-center gap-1 mt-1">
                         {[1, 2, 3, 4, 5].map(s => (
-                          <Star key={s} className={`w-3.5 h-3.5 ${s <= Math.floor(produto.avaliacao!) ? 'fill-warning text-warning' : 'text-muted-foreground/30'}`} />
+                          <Star key={s} aria-hidden="true" className={`w-4 h-4 ${s <= Math.floor(produto.avaliacao!) ? 'fill-warning text-warning' : 'text-border'}`} />
                         ))}
-                        <span className="text-xs text-muted-foreground ml-1">{produto.avaliacao.toFixed(1)}</span>
+                        <span className="text-xs text-muted-foreground ml-1">{produto.avaliacao.toFixed(1)} de 5</span>
                       </div>
                     )}
                   </div>
 
                   {/* Brand/Model */}
                   {(produto.marca || produto.modelo) && (
-                    <div className="flex gap-4 text-sm">
+                    <div className="flex flex-wrap gap-4 text-sm">
                       {produto.marca && (
                         <div>
                           <span className="text-muted-foreground text-xs">Marca:</span>
@@ -223,18 +245,15 @@ export default function FichaTecnicaProduto({ open, onOpenChange, produto }: Fic
                   )}
 
                   {/* Actions */}
-                  <div className="flex gap-2 pt-2">
-                    <Button
-                      onClick={handleAddToProposta}
-                      className="bg-accent hover:bg-accent/90 text-accent-foreground"
-                    >
-                      <Plus className="w-4 h-4 mr-1" /> Adicionar à Proposta
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    <Button onClick={handleAddToProposta}>
+                      <Plus className="w-4 h-4" aria-hidden="true" /> Adicionar à Proposta
                     </Button>
                     <Button
                       variant="outline"
                       onClick={() => window.open(ficha?.url || produto.url, '_blank')}
                     >
-                      <ExternalLink className="w-4 h-4 mr-1" /> Ver no Site
+                      <ExternalLink className="w-4 h-4" aria-hidden="true" /> Ver no Site
                     </Button>
                   </div>
                 </div>
@@ -243,16 +262,16 @@ export default function FichaTecnicaProduto({ open, onOpenChange, produto }: Fic
               {/* Specifications Table */}
               {ficha?.especificacoes && ficha.especificacoes.length > 0 && (
                 <div className="space-y-2">
-                  <h4 className="text-sm font-semibold flex items-center gap-2">
-                    <ClipboardList className="w-4 h-4 text-muted-foreground" />
+                  <h4 className="text-base font-semibold flex items-center gap-2">
+                    <ClipboardList className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
                     Especificações Técnicas
                   </h4>
-                  <div className="border border-border/40 rounded-lg overflow-hidden">
+                  <div className="overflow-x-auto rounded-lg border border-border">
                     <table className="w-full text-sm">
                       <tbody>
                         {ficha.especificacoes.map((spec, i) => (
-                          <tr key={i} className={i % 2 === 0 ? 'bg-muted/20' : 'bg-card'}>
-                            <td className="px-3 py-2 font-medium text-muted-foreground w-[40%] border-r border-border/20">
+                          <tr key={i} className={i % 2 === 0 ? 'bg-muted' : 'bg-card'}>
+                            <td className="px-3 py-2 font-medium text-muted-foreground w-[40%] border-r border-border">
                               {spec.chave}
                             </td>
                             <td className="px-3 py-2 text-foreground">{spec.valor}</td>
@@ -267,21 +286,23 @@ export default function FichaTecnicaProduto({ open, onOpenChange, produto }: Fic
               {/* Images gallery section */}
               {images.length > 2 && (
                 <div className="space-y-2">
-                  <h4 className="text-sm font-semibold flex items-center gap-2">
-                    <ImageIcon className="w-4 h-4 text-muted-foreground" />
+                  <h4 className="text-base font-semibold flex items-center gap-2">
+                    <ImageIcon className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
                     Galeria de Imagens ({images.length})
                   </h4>
                   <div className="grid grid-cols-4 md:grid-cols-6 gap-2">
                     {images.map((img, i) => (
-                      <button
+                      <Button
                         key={i}
+                        type="button"
+                        variant="outline"
+                        aria-label={`Ver imagem ${i + 1}`}
+                        aria-pressed={i === imgIndex}
                         onClick={() => setImgIndex(i)}
-                        className={`aspect-square rounded-md border overflow-hidden ${
-                          i === imgIndex ? 'border-primary ring-2 ring-primary/30' : 'border-border/30 hover:border-primary/50'
-                        }`}
+                        className={cn('aspect-square h-auto w-full overflow-hidden p-0', i === imgIndex && 'border-primary ring-2 ring-ring')}
                       >
                         <img src={img} alt="" className="w-full h-full object-contain p-1" />
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </div>

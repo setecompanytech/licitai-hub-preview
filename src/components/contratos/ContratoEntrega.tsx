@@ -111,12 +111,12 @@ export default function ContratoEntrega({ contratoId }: { contratoId: string }) 
   return (
     <Card className="p-4">
       <div className="flex items-center justify-between mb-3">
-        <h4 className="text-xs font-semibold flex items-center gap-1.5">
+        <h4 className="text-lg font-semibold flex items-center gap-2">
           <Truck className="w-4 h-4 text-muted-foreground" /> Condições de entrega
         </h4>
         {!editando && (
-          <Button variant="ghost" size="icon" className="h-5 w-5 nao-imprime" onClick={abrir} title="Editar">
-            <Pencil className="w-3 h-3" />
+          <Button variant="ghost" size="icon" className="h-9 w-9 nao-imprime" onClick={abrir} title="Editar" aria-label="Editar condições de entrega">
+            <Pencil className="w-4 h-4" />
           </Button>
         )}
       </div>
@@ -125,13 +125,13 @@ export default function ContratoEntrega({ contratoId }: { contratoId: string }) 
         <div className="space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <Label className="text-xs text-muted-foreground">Prazo de entrega</Label>
+              <Label>Prazo de entrega</Label>
               <Input type="number" min={1} max={1825} placeholder="dias"
                 value={form.prazo_entrega_dias ?? ''}
                 onChange={e => setForm(f => ({ ...f, prazo_entrega_dias: e.target.value ? Number(e.target.value) : null }))} />
             </div>
             <div>
-              <Label className="text-xs text-muted-foreground">Contagem</Label>
+              <Label>Contagem</Label>
               <Select value={form.prazo_entrega_unidade ?? 'corridos'}
                 onValueChange={v => setForm(f => ({ ...f, prazo_entrega_unidade: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -142,7 +142,7 @@ export default function ContratoEntrega({ contratoId }: { contratoId: string }) 
               </Select>
             </div>
             <div>
-              <Label className="text-xs text-muted-foreground">Ateste pelo órgão (art. 140)</Label>
+              <Label>Ateste pelo órgão (art. 140)</Label>
               <Input type="number" min={1} max={1825} placeholder="dias"
                 value={form.prazo_recebimento_dias ?? ''}
                 onChange={e => setForm(f => ({ ...f, prazo_recebimento_dias: e.target.value ? Number(e.target.value) : null }))} />
@@ -150,13 +150,13 @@ export default function ContratoEntrega({ contratoId }: { contratoId: string }) 
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <Label className="text-xs text-muted-foreground">Prazo de pagamento</Label>
+              <Label>Prazo de pagamento</Label>
               <Input type="number" min={1} max={365} placeholder="dias"
                 value={form.prazo_pagamento_dias ?? ''}
                 onChange={e => setForm(f => ({ ...f, prazo_pagamento_dias: e.target.value ? Number(e.target.value) : null }))} />
             </div>
             <div>
-              <Label className="text-xs text-muted-foreground">Contagem</Label>
+              <Label>Contagem</Label>
               <Select value={form.prazo_pagamento_unidade ?? 'corridos'}
                 onValueChange={v => setForm(f => ({ ...f, prazo_pagamento_unidade: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -169,7 +169,7 @@ export default function ContratoEntrega({ contratoId }: { contratoId: string }) 
             <div>
               {/* Sem padrão de propósito: trocar ateste por nota fiscal
                   desloca a previsão de entrada em semanas. */}
-              <Label className="text-xs text-muted-foreground">Contado a partir</Label>
+              <Label>Contado a partir</Label>
               <Select value={form.prazo_pagamento_marco ?? ''}
                 onValueChange={v => setForm(f => ({ ...f, prazo_pagamento_marco: v }))}>
                 <SelectTrigger><SelectValue placeholder="o que a cláusula diz" /></SelectTrigger>
@@ -183,25 +183,26 @@ export default function ContratoEntrega({ contratoId }: { contratoId: string }) 
             </div>
           </div>
           <div>
-            <Label className="text-xs text-muted-foreground">Local de entrega</Label>
+            <Label>Local de entrega</Label>
             <Input placeholder="Endereço, unidade ou a regra do contrato"
               value={form.local_entrega ?? ''}
               onChange={e => setForm(f => ({ ...f, local_entrega: e.target.value }))} />
           </div>
-          <div className="flex gap-2">
-            <Button size="sm" className="h-8 text-xs" onClick={salvar} disabled={salvando}>
-              {salvando ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5 mr-1" />}
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" onClick={salvar} disabled={salvando}>
+              {salvando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
               Salvar
             </Button>
-            <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setEditando(false)}>
-              <X className="w-3.5 h-3.5" />
+            <Button size="sm" variant="ghost" onClick={() => setEditando(false)} aria-label="Cancelar edição">
+              <X className="w-4 h-4" />
+              Cancelar
             </Button>
           </div>
         </div>
       ) : semNada ? (
-        <div className="text-xs text-muted-foreground space-y-1">
-          <p className="flex items-center gap-1.5 text-warning">
-            <AlertTriangle className="w-3.5 h-3.5" /> Nenhuma condição de entrega registrada
+        <div className="text-sm text-muted-foreground space-y-1">
+          <p className="flex items-center gap-2 font-medium text-warning-ink">
+            <AlertTriangle className="w-4 h-4" /> Nenhuma condição de entrega registrada
           </p>
           <p>
             Sem elas, a aba Pedidos não calcula a data-limite de cada pedido. Os documentos já
@@ -217,11 +218,11 @@ export default function ContratoEntrega({ contratoId }: { contratoId: string }) 
               outro — é o que o órgão tem para ATESTAR (art. 140), e é dele que
               costuma correr o pagamento. Nomear quem deve o quê separa os três
               sem precisar explicar. */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
             <div>
               <span className="text-muted-foreground">Você entrega em:</span>
               <p className="font-medium">{emDias(dados!.prazo_entrega_dias, dados!.prazo_entrega_unidade) ?? '—'}</p>
-              <p className="text-[11px] text-muted-foreground">contado do marco da cláusula</p>
+              <p className="text-xs text-muted-foreground">contado do marco da cláusula</p>
             </div>
             <div>
               <span className="text-muted-foreground">Órgão atesta em:</span>
@@ -229,7 +230,7 @@ export default function ContratoEntrega({ contratoId }: { contratoId: string }) 
                 {emDias(dados!.prazo_recebimento_dias, dados!.prazo_recebimento_unidade)
                   ?? <span className="text-muted-foreground font-normal">não fixado</span>}
               </p>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 recebimento definitivo — art. 140
               </p>
             </div>
@@ -237,14 +238,14 @@ export default function ContratoEntrega({ contratoId }: { contratoId: string }) 
               <span className="text-muted-foreground">Órgão paga em:</span>
               <p className="font-medium">
                 {emDias(dados!.prazo_pagamento_dias, dados!.prazo_pagamento_unidade)
-                  ?? <span className="text-warning font-normal">não fixado</span>}
+                  ?? <span className="text-warning-ink font-normal">não fixado</span>}
                 {dados!.prazo_pagamento_marco && (
                   <span className="text-muted-foreground font-normal">
                     {' '}{ROTULO_DO_MARCO[dados!.prazo_pagamento_marco as keyof typeof ROTULO_DO_MARCO]}
                   </span>
                 )}
               </p>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 cláusula obrigatória — art. 92, V
               </p>
             </div>
@@ -258,7 +259,7 @@ export default function ContratoEntrega({ contratoId }: { contratoId: string }) 
               informa que falta a cláusula que faz o Contas a Receber projetar,
               nem que a lei tem uma resposta quando ela falta. */}
           {!dados!.prazo_pagamento_dias && (
-            <p className="text-[11px] text-warning flex items-start gap-1.5">
+            <p className="text-xs text-warning-ink flex items-start gap-1.5">
               <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0" />
               <span>
                 Sem prazo de pagamento o Contas a Receber não tem data para projetar — e projetar
@@ -276,12 +277,12 @@ export default function ContratoEntrega({ contratoId }: { contratoId: string }) 
           {(dados!.prazo_entrega_clausula || dados!.local_entrega_clausula
             || dados!.prazo_recebimento_clausula || dados!.prazo_pagamento_clausula) && (
             <div className="pt-2 border-t space-y-1">
-              <p className="text-[11px] text-muted-foreground">Conforme o documento:</p>
+              <p className="text-xs text-muted-foreground">Conforme o documento:</p>
               {[dados!.prazo_entrega_clausula, dados!.local_entrega_clausula,
                 dados!.prazo_recebimento_clausula, dados!.prazo_pagamento_clausula]
                 .filter(Boolean)
                 .map((c, i) => (
-                  <p key={i} className="text-[11px] text-muted-foreground/80 italic border-l-2 border-border pl-2">
+                  <p key={i} className="text-xs text-muted-foreground italic border-l-2 border-border pl-2">
                     “{c}”
                   </p>
                 ))}

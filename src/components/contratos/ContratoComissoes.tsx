@@ -23,11 +23,11 @@ import {
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
 const STATUS_CFG: Record<string, { label: string; color: string }> = {
-  pendente: { label: 'Pendente', color: 'bg-warning/10 text-warning' },
-  aprovado: { label: 'Aprovado', color: 'bg-info/15 text-info' },
-  pago: { label: 'Pago', color: 'bg-success/10 text-success' },
-  cancelado: { label: 'Cancelado', color: 'bg-destructive/10 text-destructive' },
-  rejeitado: { label: 'Rejeitado', color: 'bg-destructive/10 text-destructive' },
+  pendente: { label: 'Pendente', color: 'bg-warning-tint text-warning-ink' },
+  aprovado: { label: 'Aprovado', color: 'bg-muted text-foreground' },
+  pago: { label: 'Pago', color: 'bg-success-tint text-success-ink' },
+  cancelado: { label: 'Cancelado', color: 'bg-destructive-tint text-destructive-ink' },
+  rejeitado: { label: 'Rejeitado', color: 'bg-destructive-tint text-destructive-ink' },
 };
 
 const TIPO_COMISSAO: Record<string, string> = {
@@ -205,7 +205,7 @@ export default function ContratoComissoes({ contratoId }: { contratoId: string }
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
-          <h3 className="text-sm font-semibold flex items-center gap-2">
+          <h3 className="text-lg font-semibold flex items-center gap-2">
             <DollarSign className="w-4 h-4 text-muted-foreground" /> Bonificações do Contrato
           </h3>
           <p className="text-xs text-muted-foreground">
@@ -234,15 +234,15 @@ export default function ContratoComissoes({ contratoId }: { contratoId: string }
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Card className="p-3 text-center">
           <p className="text-xs text-muted-foreground">Pendente</p>
-          <p className="text-base font-bold text-warning">{fmt(totalPendente)}</p>
+          <p className="text-base font-bold text-warning-ink">{fmt(totalPendente)}</p>
         </Card>
         <Card className="p-3 text-center">
           <p className="text-xs text-muted-foreground">Aprovado</p>
-          <p className="text-base font-bold text-info">{fmt(totalAprovado)}</p>
+          <p className="text-base font-bold text-foreground">{fmt(totalAprovado)}</p>
         </Card>
         <Card className="p-3 text-center">
           <p className="text-xs text-muted-foreground">Pago</p>
-          <p className="text-base font-bold text-success">{fmt(totalPago)}</p>
+          <p className="text-base font-bold text-success-ink">{fmt(totalPago)}</p>
         </Card>
         <Card className="p-3 text-center">
           <p className="text-xs text-muted-foreground">Minha Bonificação</p>
@@ -288,10 +288,10 @@ export default function ContratoComissoes({ contratoId }: { contratoId: string }
                         {l.status === 'pendente' && (
                           <div className="flex gap-1">
                             <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleUpdateStatus(l.id, 'aprovado')} title="Aprovar">
-                              <CheckCircle2 className="w-4 h-4 text-success" />
+                              <CheckCircle2 className="w-4 h-4 text-success-ink" />
                             </Button>
                             <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleUpdateStatus(l.id, 'rejeitado')} title="Rejeitar">
-                              <XCircle className="w-4 h-4 text-destructive" />
+                              <XCircle className="w-4 h-4 text-destructive-ink" />
                             </Button>
                           </div>
                         )}
@@ -414,8 +414,8 @@ export default function ContratoComissoes({ contratoId }: { contratoId: string }
               <Textarea value={solObs} onChange={e => setSolObs(e.target.value)} rows={2} placeholder="Justificativa da solicitação..." />
             </div>
             {minhaCfg && solValorBase && (
-              <div className="bg-success/10 rounded-lg p-3 text-sm">
-                <p className="font-medium">Valor estimado da bonificação: <span className="text-success font-bold">
+              <div className="bg-success-tint rounded-lg p-3 text-sm">
+                <p className="font-medium">Valor estimado da bonificação: <span className="text-success-ink font-bold">
                   {fmt(!ehPercentual(minhaCfg.tipo_comissao)
                     ? minhaCfg.valor_fixo
                     : (parseFloat(solValorBase) || 0) * (minhaCfg.percentual / 100)

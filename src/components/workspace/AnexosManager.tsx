@@ -3,6 +3,8 @@ import { useProcessoWorkspace, type CategoriaAnexo, type ProcessoAnexo } from '@
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Upload, Download, Trash2, FileText, Folder, Search, Eye, ExternalLink, Loader2, ArrowRight, ChevronDown } from 'lucide-react';
@@ -49,14 +51,14 @@ const grupoDoAnexo = (a: ProcessoAnexo): string => {
   return g && GRUPOS_HABILITACAO.some((x) => x.key === g) ? g : 'outros';
 };
 
-const CATEGORIAS: { value: CategoriaAnexo; label: string; color: string }[] = [
-  { value: 'edital', label: 'Edital', color: 'bg-muted text-muted-foreground border-border' },
-  { value: 'habilitacao', label: 'Habilitação', color: 'bg-muted text-muted-foreground border-border' },
-  { value: 'proposta', label: 'Proposta', color: 'bg-muted text-muted-foreground border-border' },
-  { value: 'declaracoes', label: 'Declarações', color: 'bg-muted text-muted-foreground border-border' },
-  { value: 'recursos', label: 'Recursos', color: 'bg-muted text-muted-foreground border-border' },
-  { value: 'contrato', label: 'Contrato', color: 'bg-muted text-muted-foreground border-border' },
-  { value: 'outros', label: 'Outros', color: 'bg-muted text-muted-foreground border-border' },
+const CATEGORIAS: { value: CategoriaAnexo; label: string }[] = [
+  { value: 'edital', label: 'Edital' },
+  { value: 'habilitacao', label: 'Habilitação' },
+  { value: 'proposta', label: 'Proposta' },
+  { value: 'declaracoes', label: 'Declarações' },
+  { value: 'recursos', label: 'Recursos' },
+  { value: 'contrato', label: 'Contrato' },
+  { value: 'outros', label: 'Outros' },
 ];
 
 function formatBytes(b: number | null) {
@@ -127,41 +129,44 @@ export default function AnexosManager({ licitacaoId, editalViewer, pncpEditalCou
 
   const grupos = CATEGORIAS.map(c => ({ ...c, count: anexos.filter(a => a.categoria === c.value).length }));
 
+  const classeTile = (ativo: boolean) =>
+    `h-auto flex-col items-start justify-start gap-1 whitespace-normal p-3 text-left ${ativo ? 'border-primary bg-primary-tint' : ''}`;
+
   const renderAnexo = (a: ProcessoAnexo) => {
     const cat = CATEGORIAS.find(c => c.value === a.categoria);
     const meta = a.metadata as { segmento?: string | null; tipo?: string | null } | null;
     return (
-      <div key={a.id} className="flex items-center gap-3 p-3 hover:bg-muted/30">
-        <FileText className="w-5 h-5 text-muted-foreground shrink-0" />
-        <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium truncate">{a.nome_arquivo}</div>
-          <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
-            <Badge variant="outline" className={`text-xs ${cat?.color}`}>{cat?.label}</Badge>
+      <div key={a.id} className="flex items-center gap-3 p-3 transition-colors hover:bg-muted/50">
+        <FileText className="w-5 h-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm font-medium">{a.nome_arquivo}</div>
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <Badge variant="muted">{cat?.label}</Badge>
             {meta?.tipo === 'atestado_tecnico' && meta?.segmento && (
-              <Badge variant="outline" className="text-xs">{LABEL_SEGMENTO[meta.segmento] || meta.segmento}</Badge>
+              <Badge variant="outline">{LABEL_SEGMENTO[meta.segmento] || meta.segmento}</Badge>
             )}
             <span>{formatBytes(a.tamanho_bytes)}</span>
-            <span>·</span>
+            <span aria-hidden="true">·</span>
             <span>{new Date(a.created_at).toLocaleDateString('pt-BR')}</span>
-            {a.origem === 'cofre' && <Badge variant="outline" className="text-xs">Do cofre</Badge>}
-            {a.origem !== 'upload' && a.origem !== 'cofre' && <Badge variant="outline" className="text-xs">Gerado</Badge>}
+            {a.origem === 'cofre' && <Badge variant="outline">Do cofre</Badge>}
+            {a.origem !== 'upload' && a.origem !== 'cofre' && <Badge variant="outline">Gerado</Badge>}
           </div>
         </div>
         <Button
           variant="ghost" size="sm" title="Visualizar" aria-label={`Visualizar ${a.nome_arquivo}`}
-          onClick={() => abrirVisualizacao(a)} disabled={abrindo === a.id} className="h-8 w-8 p-0"
+          onClick={() => abrirVisualizacao(a)} disabled={abrindo === a.id} className="w-9 px-0"
         >
-          {abrindo === a.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
+          {abrindo === a.id ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Eye className="w-4 h-4" aria-hidden="true" />}
         </Button>
-        <Button variant="ghost" size="sm" title="Baixar" aria-label={`Baixar ${a.nome_arquivo}`} onClick={() => downloadAnexo(a)} className="h-8 w-8 p-0">
-          <Download className="w-4 h-4" />
+        <Button variant="ghost" size="sm" title="Baixar" aria-label={`Baixar ${a.nome_arquivo}`} onClick={() => downloadAnexo(a)} className="w-9 px-0">
+          <Download className="w-4 h-4" aria-hidden="true" />
         </Button>
         <Button
           variant="ghost" size="sm" title="Excluir" aria-label={`Excluir ${a.nome_arquivo}`}
           onClick={() => { if (confirm(`Excluir "${a.nome_arquivo}"?`)) deleteAnexo(a); }}
-          className="h-8 w-8 p-0 text-destructive"
+          className="w-9 px-0 text-destructive"
         >
-          <Trash2 className="w-4 h-4" />
+          <Trash2 className="w-4 h-4" aria-hidden="true" />
         </Button>
       </div>
     );
@@ -171,63 +176,77 @@ export default function AnexosManager({ licitacaoId, editalViewer, pncpEditalCou
     <div className="space-y-4">
       {/* Toolbar */}
       <Card className="p-4">
-        <div className="flex items-center gap-3 flex-wrap">
-          <Select value={categoria} onValueChange={(v) => setCategoria(v as CategoriaAnexo)}>
-            <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
-            <SelectContent>{CATEGORIAS.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
-          </Select>
-          {categoria === 'habilitacao' && (
-            <Select value={grupoHab} onValueChange={setGrupoHab}>
-              <SelectTrigger className="w-[280px]"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="auto">Detectar grupo pelo nome (automático)</SelectItem>
-                {GRUPOS_HABILITACAO.map(g => (
-                  <SelectItem key={g.key} value={g.key}>
-                    {g.label}{ARTIGO_POR_GRUPO[g.key] ? ` — ${ARTIGO_POR_GRUPO[g.key]}` : ''}
-                  </SelectItem>
-                ))}
-              </SelectContent>
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex w-full flex-col gap-1 sm:w-[180px]">
+            <Label htmlFor="anexo-pasta">Pasta</Label>
+            <Select value={categoria} onValueChange={(v) => setCategoria(v as CategoriaAnexo)}>
+              <SelectTrigger id="anexo-pasta"><SelectValue /></SelectTrigger>
+              <SelectContent>{CATEGORIAS.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
             </Select>
+          </div>
+          {categoria === 'habilitacao' && (
+            <div className="flex w-full flex-col gap-1 sm:w-[280px]">
+              <Label htmlFor="anexo-grupo">Grupo da Lei</Label>
+              <Select value={grupoHab} onValueChange={setGrupoHab}>
+                <SelectTrigger id="anexo-grupo"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="auto">Detectar grupo pelo nome (automático)</SelectItem>
+                  {GRUPOS_HABILITACAO.map(g => (
+                    <SelectItem key={g.key} value={g.key}>
+                      {g.label}{ARTIGO_POR_GRUPO[g.key] ? ` — ${ARTIGO_POR_GRUPO[g.key]}` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           )}
-          <Button onClick={() => fileRef.current?.click()} disabled={uploading} className="gap-2">
-            <Upload className="w-4 h-4" />
+          <Button onClick={() => fileRef.current?.click()} disabled={uploading}>
+            <Upload className="w-4 h-4" aria-hidden="true" />
             {uploading ? 'Enviando...' : 'Enviar Arquivo(s)'}
           </Button>
-          <input ref={fileRef} type="file" multiple hidden onChange={handleFile} />
-          <div className="flex-1" />
-          <div className="relative">
-            <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar arquivo..." className="pl-8 w-[220px]" />
+          <input ref={fileRef} type="file" multiple hidden onChange={handleFile} aria-label="Selecionar arquivos para enviar" />
+          <div className="flex w-full flex-col gap-1 sm:ml-auto sm:w-[240px]">
+            <Label htmlFor="anexo-busca">Buscar</Label>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+              <Input id="anexo-busca" value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar arquivo..." className="pl-9" />
+            </div>
           </div>
         </div>
       </Card>
 
       {/* Pastas */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
-        <button
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+        <Button
+          type="button"
+          variant="outline"
+          aria-pressed={filtroCat === 'todas'}
           onClick={() => setFiltroCat('todas')}
-          className={`p-3 rounded-md border text-left transition ${filtroCat === 'todas' ? 'border-accent bg-accent/10' : 'border-border hover:bg-muted/50'}`}
+          className={classeTile(filtroCat === 'todas')}
         >
-          <Folder className="w-4 h-4 mb-1 text-accent" />
-          <div className="text-xs font-semibold">Todas</div>
-          <div className="text-xs text-muted-foreground">{anexos.length} arquivos</div>
-        </button>
+          <Folder className="w-4 h-4 text-primary" aria-hidden="true" />
+          <span className="text-sm font-semibold">Todas</span>
+          <span className="text-xs font-normal text-muted-foreground">{anexos.length} arquivos</span>
+        </Button>
         {grupos.map(g => (
-          <button
+          <Button
             key={g.value}
+            type="button"
+            variant="outline"
+            aria-pressed={filtroCat === g.value}
             onClick={() => setFiltroCat(g.value)}
-            className={`p-3 rounded-md border text-left transition ${filtroCat === g.value ? 'border-accent bg-accent/10' : 'border-border hover:bg-muted/50'}`}
+            className={classeTile(filtroCat === g.value)}
           >
-            <Folder className="w-4 h-4 mb-1 text-accent" />
-            <div className="text-xs font-semibold">{g.label}</div>
-            <div className="text-xs text-muted-foreground">
+            <Folder className="w-4 h-4 text-primary" aria-hidden="true" />
+            <span className="text-sm font-semibold">{g.label}</span>
+            <span className="text-xs font-normal text-muted-foreground">
               {g.value === 'edital' && editalViewer
                 ? pncpEditalCount != null
                   ? `${g.count + pncpEditalCount} arquivo(s)${pncpEditalCount > 0 ? ` · ${pncpEditalCount} do PNCP` : ''}`
                   : `${g.count} arquivo(s) + PNCP`
                 : `${g.count} arquivos`}
-            </div>
-          </button>
+            </span>
+          </Button>
         ))}
       </div>
 
@@ -238,24 +257,44 @@ export default function AnexosManager({ licitacaoId, editalViewer, pncpEditalCou
 
       {/* Lista */}
       <Card className="divide-y divide-border">
-        {loading && <div className="p-8 text-center text-sm text-muted-foreground">Carregando...</div>}
+        {loading && (
+          <div role="status" aria-busy="true" className="space-y-4 p-4">
+            <span className="sr-only">Carregando...</span>
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="flex items-center gap-3">
+                <Skeleton className="h-5 w-5 rounded" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="h-3 w-1/3" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
         {!loading && filtrados.length === 0 && (
-          <div className="p-12 text-center space-y-3">
-            <Folder className="w-10 h-10 mx-auto text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">Nenhum arquivo nesta pasta. Envie o primeiro acima.</p>
+          <div className="p-12 text-center">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
+              <Folder className="w-6 h-6" aria-hidden="true" />
+            </div>
+            <p className="text-lg font-semibold">Nenhum arquivo nesta pasta.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Envie o primeiro acima.</p>
             {/* Pastas alimentadas por um módulo do processo apontam para ele —
                 a pasta e a aba que a produz são o mesmo trabalho. */}
-            {ORIGEM_DA_PASTA[filtroCat] && (
-              <div className="text-sm text-muted-foreground">
+            {ORIGEM_DA_PASTA[filtroCat] ? (
+              <div className="mt-4 text-sm text-muted-foreground">
                 <p>{ORIGEM_DA_PASTA[filtroCat].texto}</p>
-                <Button size="sm" variant="outline" className="mt-2" onClick={() => setSearchParams((prev) => {
+                <Button variant="outline" className="mt-3" onClick={() => setSearchParams((prev) => {
                   const next = new URLSearchParams(prev);
                   next.set('aba', ORIGEM_DA_PASTA[filtroCat].aba);
                   return next;
                 }, { replace: true })}>
-                  {ORIGEM_DA_PASTA[filtroCat].botao} <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+                  {ORIGEM_DA_PASTA[filtroCat].botao} <ArrowRight className="w-4 h-4" aria-hidden="true" />
                 </Button>
               </div>
+            ) : (
+              <Button variant="outline" className="mt-4" onClick={() => fileRef.current?.click()} disabled={uploading}>
+                <Upload className="w-4 h-4" aria-hidden="true" /> {uploading ? 'Enviando...' : 'Enviar Arquivo(s)'}
+              </Button>
             )}
           </div>
         )}
@@ -273,22 +312,24 @@ export default function AnexosManager({ licitacaoId, editalViewer, pncpEditalCou
           const fechado = gruposFechados.has(key);
           return (
             <div key={key}>
-              <button
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={() => alternarGrupo(key)}
                 aria-expanded={!fechado}
                 title={fechado ? 'Abrir o grupo' : 'Recolher o grupo'}
-                className="flex w-full items-center gap-2 px-3 py-2 bg-muted/30 text-left transition-colors hover:bg-muted/60"
+                className="h-auto w-full justify-start gap-2 rounded-none bg-muted/50 px-3 py-2 text-left font-normal hover:bg-muted"
               >
                 <ChevronDown
-                  className={`w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform ${fechado ? '-rotate-90' : ''}`}
+                  className={`w-4 h-4 shrink-0 text-muted-foreground transition-transform ${fechado ? '-rotate-90' : ''}`}
+                  aria-hidden="true"
                 />
-                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</span>
+                <span className="text-sm font-semibold text-muted-foreground">{label}</span>
                 {ARTIGO_POR_GRUPO[key] && (
-                  <Badge variant="outline" className="text-xs">{ARTIGO_POR_GRUPO[key]}</Badge>
+                  <Badge variant="outline">{ARTIGO_POR_GRUPO[key]}</Badge>
                 )}
-                <span className="text-xs text-muted-foreground ml-auto">{doGrupo.length} arquivo(s)</span>
-              </button>
+                <span className="ml-auto text-xs text-muted-foreground">{doGrupo.length} arquivo(s)</span>
+              </Button>
               {!fechado && (
                 <div className="divide-y divide-border">
                   {doGrupo.map((a) => renderAnexo(a))}
@@ -302,9 +343,9 @@ export default function AnexosManager({ licitacaoId, editalViewer, pncpEditalCou
       {/* Visualizador — PDF e imagem renderizam inline; formatos que o
           navegador não exibe (Word, Excel) oferecem abrir/baixar. */}
       <Dialog open={!!visualizando} onOpenChange={(o) => { if (!o) setVisualizando(null); }}>
-        <DialogContent className="max-w-5xl h-[85vh] flex flex-col p-0">
-          <DialogHeader className="px-4 py-3 border-b border-border shrink-0">
-            <DialogTitle className="text-sm font-medium truncate pr-8">
+        <DialogContent className="flex h-[85vh] max-w-5xl flex-col p-0">
+          <DialogHeader className="shrink-0 border-b border-border px-4 py-3">
+            <DialogTitle className="truncate pr-8 text-base font-semibold">
               {visualizando?.anexo.nome_arquivo}
             </DialogTitle>
           </DialogHeader>
@@ -313,29 +354,31 @@ export default function AnexosManager({ licitacaoId, editalViewer, pncpEditalCou
             const ehPdf = nome.endsWith('.pdf') || visualizando.anexo.mime_type === 'application/pdf';
             const ehImagem = /\.(png|jpe?g|webp|gif)$/.test(nome) || (visualizando.anexo.mime_type || '').startsWith('image/');
             if (ehPdf) {
-              return <iframe src={visualizando.url} title={visualizando.anexo.nome_arquivo} className="flex-1 w-full border-0" />;
+              return <iframe src={visualizando.url} title={visualizando.anexo.nome_arquivo} className="w-full flex-1 border-0" />;
             }
             if (ehImagem) {
               return (
-                <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-muted/20">
-                  <img src={visualizando.url} alt={visualizando.anexo.nome_arquivo} className="max-w-full max-h-full object-contain" />
+                <div className="flex flex-1 items-center justify-center overflow-auto bg-muted p-4">
+                  <img src={visualizando.url} alt={visualizando.anexo.nome_arquivo} className="max-h-full max-w-full object-contain" />
                 </div>
               );
             }
             return (
-              <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center p-8">
-                <FileText className="w-10 h-10 text-muted-foreground" />
+              <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
+                  <FileText className="w-6 h-6" aria-hidden="true" />
+                </div>
                 <p className="text-sm text-muted-foreground">
                   O navegador não exibe este formato em tela. Abra em uma nova aba ou baixe o arquivo.
                 </p>
-                <div className="flex items-center gap-2">
-                  <Button size="sm" variant="outline" asChild>
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <Button variant="outline" asChild>
                     <a href={visualizando.url} target="_blank" rel="noreferrer">
-                      <ExternalLink className="w-3.5 h-3.5 mr-1.5" /> Abrir em nova aba
+                      <ExternalLink className="w-4 h-4" aria-hidden="true" /> Abrir em nova aba
                     </a>
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => downloadAnexo(visualizando.anexo)}>
-                    <Download className="w-3.5 h-3.5 mr-1.5" /> Baixar
+                  <Button variant="outline" onClick={() => downloadAnexo(visualizando.anexo)}>
+                    <Download className="w-4 h-4" aria-hidden="true" /> Baixar
                   </Button>
                 </div>
               </div>

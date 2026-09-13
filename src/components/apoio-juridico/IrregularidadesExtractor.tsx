@@ -1,9 +1,13 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 import {
   Loader2, Sparkles, Upload, FileText, X, Plus, Trash2,
   AlertTriangle, CheckCircle, ChevronRight, ChevronLeft, Scale
@@ -27,10 +31,10 @@ interface IrregularidadesExtractorProps {
   setEditalNum: (v: string) => void;
 }
 
-const GRAVIDADE_COLORS: Record<string, string> = {
-  alta: 'bg-destructive/10 text-destructive border-destructive/30',
-  media: 'bg-warning/10 text-warning border-warning/30',
-  baixa: 'bg-info/10 text-info border-info/30',
+const GRAVIDADE_VARIANTE: Record<Irregularidade['gravidade'], 'danger' | 'warning' | 'info'> = {
+  alta: 'danger',
+  media: 'warning',
+  baixa: 'info',
 };
 
 const GRAVIDADE_LABELS: Record<string, string> = {
@@ -221,48 +225,54 @@ ${truncated}`
   if (step === 1) {
     return (
       <div className="space-y-4">
-        <div className="flex items-center gap-2 mb-1">
-          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-muted text-foreground text-xs font-bold">1</div>
-          <h4 className="text-sm font-semibold">Etapa 1 — Envio do Edital para Análise</h4>
+        <div className="flex items-center gap-2">
+          <span className="flex items-center justify-center w-7 h-7 rounded-full bg-primary-tint text-primary text-xs font-bold" aria-hidden="true">1</span>
+          <h4 className="text-base font-semibold">Etapa 1 — Envio do Edital para Análise</h4>
         </div>
 
-        <p className="text-xs text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           Envie o arquivo do edital ou cole o texto abaixo. A IA identificará automaticamente todas as irregularidades, falhas e vícios com fundamentação na Lei 14.133/2021.
         </p>
 
-        <div>
-          <label className="text-xs text-muted-foreground">Nº do Edital</label>
+        <div className="space-y-2">
+          <Label htmlFor="irr-edital-num">Nº do Edital</Label>
           <Input
+            id="irr-edital-num"
             value={editalNum}
             onChange={e => setEditalNum(e.target.value)}
             placeholder="PE-001/2026"
-            className="mt-1"
           />
         </div>
 
         {/* File upload */}
         <div className="space-y-2">
           {editalFile ? (
-            <div className="flex items-center gap-3 bg-muted/30 rounded-lg p-3 border border-border/50">
-              <FileText className="w-5 h-5 text-muted-foreground shrink-0" />
+            <div className="flex items-center gap-3 rounded-md border border-border bg-muted/50 p-3">
+              <FileText className="w-5 h-5 text-muted-foreground shrink-0" aria-hidden="true" />
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium truncate">{editalFile.name}</p>
-                <p className="text-xs text-muted-foreground">{(editalFile.size / 1024).toFixed(0)} KB</p>
+                <p className="text-sm font-medium truncate">{editalFile.name}</p>
+                <p className="text-xs text-muted-foreground tabular-nums">{(editalFile.size / 1024).toFixed(0)} KB</p>
               </div>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditalFile(null); setEditalText(''); }}>
-                <X className="w-3.5 h-3.5" />
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0"
+                onClick={() => { setEditalFile(null); setEditalText(''); }}
+                aria-label="Remover arquivo do edital"
+              >
+                <X aria-hidden="true" />
               </Button>
             </div>
           ) : (
-            <label className="flex flex-col items-center gap-2 border-2 border-dashed border-border/60 rounded-xl p-6 cursor-pointer hover:border-accent/50 hover:bg-accent/5 transition-all">
-              <Upload className="w-6 h-6 text-muted-foreground" />
-              <span className="text-xs font-medium">Enviar arquivo do edital</span>
+            <label className="flex flex-col items-center gap-2 rounded-lg border-2 border-dashed border-border p-6 cursor-pointer hover:border-primary/40 hover:bg-primary-tint transition-colors focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+              <Upload className="w-6 h-6 text-muted-foreground" aria-hidden="true" />
+              <span className="text-sm font-medium">Enviar arquivo do edital</span>
               <div className="flex gap-1">
-                <Badge variant="outline" className="text-xs">PDF</Badge>
-                <Badge variant="outline" className="text-xs">DOC</Badge>
-                <Badge variant="outline" className="text-xs">TXT</Badge>
+                <Badge variant="muted">PDF</Badge>
+                <Badge variant="muted">DOC</Badge>
+                <Badge variant="muted">TXT</Badge>
               </div>
-              <input type="file" accept=".pdf,.doc,.docx,.txt" className="hidden" onChange={handleFileUpload} />
+              <input type="file" accept=".pdf,.doc,.docx,.txt" className="sr-only" onChange={handleFileUpload} />
             </label>
           )}
         </div>
@@ -271,25 +281,29 @@ ${truncated}`
           <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center justify-center">
             <span className="bg-card px-2 text-xs text-muted-foreground">ou cole o texto</span>
           </div>
-          <div className="border-t border-border/40 my-3" />
+          <div className="border-t border-border my-3" />
         </div>
 
-        <Textarea
-          value={editalText}
-          onChange={e => setEditalText(e.target.value)}
-          placeholder="Cole aqui o texto completo do edital para análise automática de irregularidades..."
-          className="min-h-[200px] text-xs"
-        />
+        <div className="space-y-2">
+          <Label htmlFor="irr-edital-texto" className="sr-only">Texto do edital</Label>
+          <Textarea
+            id="irr-edital-texto"
+            value={editalText}
+            onChange={e => setEditalText(e.target.value)}
+            placeholder="Cole aqui o texto completo do edital para análise automática de irregularidades..."
+            className="min-h-[200px]"
+          />
+        </div>
 
         <Button
           onClick={handleExtract}
           disabled={extracting || !editalText.trim()}
-          className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
+          className="w-full"
         >
           {extracting ? (
-            <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {progress || 'Analisando...'}</>
+            <><Loader2 className="animate-spin" aria-hidden="true" /> {progress || 'Analisando...'}</>
           ) : (
-            <><Sparkles className="w-4 h-4 mr-2" /> Analisar Irregularidades com IA</>
+            <><Sparkles aria-hidden="true" /> Analisar Irregularidades com IA</>
           )}
         </Button>
       </div>
@@ -301,27 +315,27 @@ ${truncated}`
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-muted text-foreground text-xs font-bold">2</div>
-          <h4 className="text-sm font-semibold">Etapa 2 — Revisão e Complemento</h4>
+          <span className="flex items-center justify-center w-7 h-7 rounded-full bg-primary-tint text-primary text-xs font-bold" aria-hidden="true">2</span>
+          <h4 className="text-base font-semibold">Etapa 2 — Revisão e Complemento</h4>
         </div>
-        <Button variant="ghost" size="sm" onClick={() => setStep(1)} className="text-xs">
-          <ChevronLeft className="w-3 h-3 mr-1" /> Voltar
+        <Button variant="ghost" size="sm" onClick={() => setStep(1)}>
+          <ChevronLeft aria-hidden="true" /> Voltar
         </Button>
       </div>
 
-      <p className="text-xs text-muted-foreground">
+      <p className="text-sm text-muted-foreground">
         Revise as irregularidades encontradas pela IA. Desmarque as que não deseja incluir e adicione novas irregularidades manualmente.
       </p>
 
       {/* Stats */}
-      <div className="flex gap-3">
-        <Badge variant="outline" className="text-xs">
+      <div className="flex flex-wrap gap-2">
+        <Badge variant="info" className="tabular-nums">
           {irregularidades.length} encontrada(s)
         </Badge>
-        <Badge className="bg-muted text-foreground border-border text-xs">
+        <Badge variant="success" className="tabular-nums">
           {selectedCount} selecionada(s)
         </Badge>
-        <Badge variant="outline" className="text-xs">
+        <Badge variant="muted" className="tabular-nums">
           {irregularidades.filter(i => i.origem === 'manual').length} manual(is)
         </Badge>
       </div>
@@ -331,8 +345,8 @@ ${truncated}`
         {irregularidades.map((item) => (
           <div
             key={item.id}
-            className={`rounded-lg border p-3 space-y-2 transition-all ${
-              item.selecionada ? 'bg-card border-border' : 'bg-muted/20 border-border/30 opacity-60'
+            className={`rounded-md border p-3 space-y-2 transition-colors ${
+              item.selecionada ? 'bg-card border-border' : 'bg-muted/50 border-border opacity-60'
             }`}
           >
             <div className="flex items-start gap-3">
@@ -340,95 +354,103 @@ ${truncated}`
                 checked={item.selecionada}
                 onCheckedChange={() => toggleIrregularidade(item.id)}
                 className="mt-0.5"
+                aria-label={`Incluir irregularidade: ${item.descricao.slice(0, 60)}`}
               />
-              <div className="flex-1 min-w-0 space-y-1.5">
+              <div className="flex-1 min-w-0 space-y-2">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <Badge className={`text-xs border ${GRAVIDADE_COLORS[item.gravidade]}`}>
-                    <AlertTriangle className="w-2.5 h-2.5 mr-0.5" />
+                  <Badge variant={GRAVIDADE_VARIANTE[item.gravidade]} className="gap-1">
+                    <AlertTriangle className="w-3 h-3" aria-hidden="true" />
                     {GRAVIDADE_LABELS[item.gravidade]}
                   </Badge>
-                  <Badge variant="outline" className="text-xs">
-                    {item.origem === 'ia' ? '🤖 IA' : '✏️ Manual'}
+                  <Badge variant="muted">
+                    {item.origem === 'ia' ? 'IA' : 'Manual'}
                   </Badge>
                   {item.artigos.map((art, i) => (
-                    <Badge key={i} variant="outline" className="text-xs bg-muted">
-                      <Scale className="w-2.5 h-2.5 mr-0.5" /> {art}
+                    <Badge key={i} variant="info" className="gap-1">
+                      <Scale className="w-3 h-3" aria-hidden="true" /> {art}
                     </Badge>
                   ))}
                 </div>
-                <p className="text-xs text-foreground leading-relaxed">{item.descricao}</p>
-                <p className="text-xs text-muted-foreground leading-relaxed italic">
-                  📖 {item.fundamentacao}
+                <p className="text-sm text-foreground">{item.descricao}</p>
+                <p className="text-sm text-muted-foreground italic">
+                  {item.fundamentacao}
                 </p>
               </div>
               <Button
                 variant="ghost"
-                size="icon"
-                className="h-6 w-6 shrink-0 text-muted-foreground hover:text-destructive"
+                size="sm"
+                className="h-8 w-8 p-0 shrink-0 text-muted-foreground hover:text-destructive hover:bg-destructive-tint"
                 onClick={() => removeIrregularidade(item.id)}
+                aria-label="Remover irregularidade"
               >
-                <Trash2 className="w-3 h-3" />
+                <Trash2 aria-hidden="true" />
               </Button>
             </div>
           </div>
         ))}
 
         {irregularidades.length === 0 && (
-          <div className="text-center py-8 text-muted-foreground">
-            <AlertTriangle className="w-8 h-8 mx-auto mb-2 opacity-30" />
-            <p className="text-xs">Nenhuma irregularidade encontrada. Adicione manualmente abaixo.</p>
+          <div className="flex flex-col items-center text-center py-8 gap-3">
+            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
+              <AlertTriangle className="w-6 h-6" aria-hidden="true" />
+            </span>
+            <p className="text-base font-semibold">Nenhuma irregularidade encontrada</p>
+            <p className="text-sm text-muted-foreground">Adicione manualmente abaixo.</p>
           </div>
         )}
       </div>
 
       {/* Manual add */}
       {showManualForm ? (
-        <div className="bg-muted/30 rounded-lg border border-border/50 p-4 space-y-3">
+        <div className="rounded-md border border-border bg-muted/50 p-4 space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <h5 className="text-xs font-semibold flex items-center gap-1">
-              <Plus className="w-3.5 h-3.5" /> Adicionar Irregularidade Manual
+            <h5 className="text-base font-semibold flex items-center gap-1">
+              <Plus className="w-4 h-4" aria-hidden="true" /> Adicionar Irregularidade Manual
             </h5>
-            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setShowManualForm(false)}>
-              <X className="w-3 h-3" />
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setShowManualForm(false)} aria-label="Fechar formulário manual">
+              <X aria-hidden="true" />
             </Button>
           </div>
-          <div>
-            <label className="text-xs text-muted-foreground">Descrição da irregularidade *</label>
+          <div className="space-y-2">
+            <Label htmlFor="irr-manual-desc">Descrição da irregularidade *</Label>
             <Textarea
+              id="irr-manual-desc"
               value={manualDesc}
               onChange={e => setManualDesc(e.target.value)}
               placeholder="Descreva a irregularidade, falha ou vício identificado no edital..."
-              className="mt-1 min-h-[80px] text-xs"
+              className="min-h-[80px]"
             />
           </div>
-          <div>
-            <label className="text-xs text-muted-foreground">Fundamentação jurídica</label>
+          <div className="space-y-2">
+            <Label htmlFor="irr-manual-fund">Fundamentação jurídica</Label>
             <Textarea
+              id="irr-manual-fund"
               value={manualFund}
               onChange={e => setManualFund(e.target.value)}
               placeholder="Cite artigos da Lei 14.133/2021, jurisprudência TCU, doutrina..."
-              className="mt-1 min-h-[60px] text-xs"
+              className="min-h-[60px]"
             />
           </div>
-          <div>
-            <label className="text-xs text-muted-foreground">Gravidade</label>
-            <select
-              value={manualGrav}
-              onChange={e => setManualGrav(e.target.value as 'alta' | 'media' | 'baixa')}
-              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs"
-            >
-              <option value="alta">🔴 Alta — Ilegalidade clara</option>
-              <option value="media">🟡 Média — Vício relevante</option>
-              <option value="baixa">🔵 Baixa — Irregularidade menor</option>
-            </select>
+          <div className="space-y-2">
+            <Label htmlFor="irr-manual-grav">Gravidade</Label>
+            <Select value={manualGrav} onValueChange={v => setManualGrav(v as 'alta' | 'media' | 'baixa')}>
+              <SelectTrigger id="irr-manual-grav">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="alta">Alta — Ilegalidade clara</SelectItem>
+                <SelectItem value="media">Média — Vício relevante</SelectItem>
+                <SelectItem value="baixa">Baixa — Irregularidade menor</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <Button size="sm" onClick={addManual} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-            <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar
+          <Button onClick={addManual}>
+            <Plus aria-hidden="true" /> Adicionar
           </Button>
         </div>
       ) : (
-        <Button variant="outline" size="sm" onClick={() => setShowManualForm(true)} className="w-full border-dashed">
-          <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar irregularidade manual
+        <Button variant="outline" onClick={() => setShowManualForm(true)} className="w-full border-dashed">
+          <Plus aria-hidden="true" /> Adicionar irregularidade manual
         </Button>
       )}
 
@@ -436,11 +458,11 @@ ${truncated}`
       <Button
         onClick={handleFinish}
         disabled={selectedCount === 0}
-        className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
+        className="w-full"
       >
-        <CheckCircle className="w-4 h-4 mr-2" />
+        <CheckCircle aria-hidden="true" />
         Gerar Documento com {selectedCount} Irregularidade(s)
-        <ChevronRight className="w-4 h-4 ml-2" />
+        <ChevronRight aria-hidden="true" />
       </Button>
     </div>
   );

@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import AppLayout from '@/components/layout/AppLayout';
-import heroPrecificacao from '@/assets/brand/hero-precificacao-modulo.jpg';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import ProcessoContextoBanner from '@/components/shared/ProcessoContextoBanner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,9 +11,9 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import {
-  DollarSign, Search, ShoppingCart, TrendingUp, TrendingDown,
+  DollarSign, Search, ShoppingCart, TrendingDown,
   ExternalLink, RefreshCw, Package, Plus, FileText, Loader2, Bot,
-  Filter, Save, History, Trash2, Eye, CalendarIcon,
+  Save, History, Trash2, Eye, CalendarIcon,
   MapPin, Globe, ChevronRight, Tag, X, Truck, CheckSquare, Square, Store, Award,
   Building2, Sparkles, Calculator, FileSpreadsheet, ChevronDown
 } from 'lucide-react';
@@ -68,24 +68,23 @@ const itensPesquisa: ItemPesquisa[] = [];
 const formatCurrency = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-const fonteColors: Record<string, string> = {
-  'Mercado Livre': 'bg-warning/15 text-warning',
-  'Google Shopping': 'bg-info/15 text-info',
-  SINAPI: 'bg-success/15 text-success',
+const fonteVariant: Record<string, 'warning' | 'info' | 'success'> = {
+  'Mercado Livre': 'warning',
+  'Google Shopping': 'info',
+  SINAPI: 'success',
 };
 
 
 /**
  * As abas do módulo, declaradas uma vez só.
  *
- * Antes, o rótulo da aba vivia no `TabsTrigger`, o título da página num
- * ternário sobre o parâmetro `?tab=` da URL, e o subtítulo noutro ternário ao
- * lado. O efeito: quem entrava por "Edital / Itens" via o cabeçalho certo, mas
- * quem clicava na mesma aba dentro da página continuava lendo "Precificação de
- * Preços" — porque o ternário olhava a URL, que não muda ao clicar.
+ * Os rótulos são os do registro (`lib/navegacao/paginas.ts`, rota
+ * `/precificacao`): título, descrição, ícone e trilha da tela saem de lá pelo
+ * CabecalhoPagina, e a fila de abas acompanha o mesmo vocabulário. O `id` de
+ * cada aba NÃO muda — é ele que viaja no `?tab=` dos links do workspace.
  *
- * Com a lista aqui, rótulo, ícone, título e subtítulo saem da mesma linha, e a
- * aba ativa (não a URL) manda no cabeçalho.
+ * `subtitulo` é a linha de contexto da aba ativa, logo abaixo da fila; não
+ * concorre com o h1, que é um só e vem do registro.
  *
  * `usaLocalizacao` marca as duas únicas abas onde os filtros de região/estado/
  * cidade significam alguma coisa. Eles ficavam sempre visíveis, inclusive nas
@@ -102,41 +101,36 @@ const PLATAFORMAS = [
 const ABAS = [
   {
     id: 'extracao-itens',
-    label: 'Itens & Planilha',
+    label: 'Itens do edital',
     icone: FileText,
-    titulo: 'Itens & Planilha de Custos',
     subtitulo: 'Itens extraídos do edital — lote, descrição, quantidade, unidade e valor — e a planilha de custos que nasce deles',
     usaLocalizacao: false,
   },
   {
     id: 'marketplaces',
-    label: 'Pesquisa de Preços',
+    label: 'Marketplaces',
     icone: ShoppingCart,
-    titulo: 'Pesquisa de Preços',
     subtitulo: 'Preços praticados no varejo e em marketplaces, para sustentar a estimativa',
     usaLocalizacao: true,
   },
   {
     id: 'govbr',
-    label: 'Painel Gov.br',
+    label: 'Preços gov',
     icone: Building2,
-    titulo: 'Painel de Preços Gov.br',
     subtitulo: 'Preços homologados em compras públicas — a referência que o pregoeiro consulta',
     usaLocalizacao: true,
   },
   {
     id: 'cotacoes-listas',
-    label: 'Cotações & Listas',
+    label: 'Cotações',
     icone: FileSpreadsheet,
-    titulo: 'Cotações & Listas',
     subtitulo: 'Cotações formais de fornecedores, listas de compras e importação de planilhas',
     usaLocalizacao: false,
   },
   {
     id: 'calculadora',
-    label: 'Calculadoras',
+    label: 'Calculadora',
     icone: Calculator,
-    titulo: 'Calculadoras de Formação de Preço',
     subtitulo: 'Produto com BDI, serviço de engenharia e serviço com mão de obra',
     usaLocalizacao: false,
   },
@@ -144,23 +138,22 @@ const ABAS = [
     id: 'catalogo',
     label: 'Catálogo',
     icone: Package,
-    titulo: 'Catálogo de Itens Precificados',
     subtitulo: 'O que já foi precificado, pronto para reaproveitar no próximo processo',
     usaLocalizacao: false,
   },
   {
     id: 'inteligencia',
-    label: 'Inteligência de Preços',
+    label: 'Inteligência',
     icone: Bot,
-    titulo: 'Inteligência de Preços',
     subtitulo: 'Comparativo entre fontes e recomendações de precificação por IA',
     usaLocalizacao: false,
   },
   {
+    // Fora do registro (ver relatório de migração): a precificação
+    // conversacional com a AURÉLIA não tem aba declarada em paginas.ts.
     id: 'aurelia-cotar',
-    label: 'Nova Precificação',
+    label: 'Nova precificação',
     icone: Sparkles,
-    titulo: 'AURÉLIA · Precificação Conversacional',
     subtitulo: 'Descreva o item do edital e a AURÉLIA busca cotações comparadas em tempo real',
     usaLocalizacao: false,
   },
@@ -550,209 +543,118 @@ export default function Precificacao() {
       <div className="space-y-6">
         {/* Declara SOBRE QUAL processo as ações desta tela agem */}
         <ProcessoContextoBanner />
-        {/* ── Herói do módulo ──
-            REBRAND — mesma anatomia do Robô de Lances e dos dois Apoios: faixa
-            navy de 232px, foto sangrando na direita, texto sobre o navy sólido
-            da esquerda. A diferença é que aqui o herói é CAMALEÃO: o título, o
-            subtítulo e o ícone vêm de `AbaAtual`, então ele se reescreve a cada
-            uma das sete abas em vez de anunciar "Precificação" e deixar a
-            pessoa descobrir sozinha onde está.
-
-            A barra de LOCALIZAÇÃO mudou de lugar e veio para dentro dele. Ela
-            vivia solta entre o cabeçalho e as abas, o que a fazia parecer um
-            filtro da página inteira — e ela não é: só duas das sete abas
-            recortam por região. Dentro do herói, que é justamente o bloco que
-            muda com a aba, o vínculo fica visível: quando a aba não usa
-            localização, a barra some junto com o resto do contexto dela.
-
-            `brightness-[.85]` e o véu lateral estendido a 65% pelo mesmo motivo
-            do Apoio Contábil — a juta e o papelão são claros e quentes, e sem
-            isso a foto vira um bloco aceso com emenda na borda esquerda.
-
-            O recorte em 62% (abaixo do centro) é o que mantém a balança na
-            cena: acima disso sobra fundo de madeira, e a gangorra — que é o que
-            faz a foto dizer "comparar preço" em vez de "dinheiro" — sai. */}
-        <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-navy-hover to-navy">
-          <div
-            aria-hidden="true"
-            className="absolute inset-y-0 right-0 hidden w-[520px] max-w-[42%] md:block"
-          >
-            <img
-              src={heroPrecificacao}
-              alt=""
-              className="w-full h-full object-cover object-[center_62%] brightness-[.85]"
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-navy via-navy/0 via-65% to-transparent" />
-            <div className="absolute inset-x-0 top-0 h-[70%] bg-gradient-to-b from-navy/50 to-transparent" />
-          </div>
-
-          <div className="relative flex flex-col justify-center gap-4 px-5 py-6 sm:px-7 sm:py-8 md:min-h-[232px]">
-            <div className="flex items-start gap-3">
-              <span className="flex items-center justify-center w-10 h-10 rounded-xl bg-white/10 ring-1 ring-white/20 text-gold shrink-0">
-                <AbaAtual.icone className="w-5 h-5" aria-hidden="true" />
-              </span>
-              <div className="min-w-0 max-w-xl">
-                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white leading-tight">
-                  {AbaAtual.titulo}
-                </h1>
-                <p className="text-sm text-white/75 mt-1 leading-relaxed">{AbaAtual.subtitulo}</p>
-              </div>
-            </div>
-
-            {/* Localização: só nas abas que de fato recortam por ela.
-                Os três seletores ganham pele própria porque sobre navy o
-                `bg-background` do componente é branco no tema claro e quase
-                preto no escuro — a mesma barra teria dois pesos completamente
-                diferentes. Translúcido sobre a faixa fica igual nos dois. */}
-            {AbaAtual.usaLocalizacao && (
-              <div className="flex gap-3 items-center flex-wrap">
-                <div className="flex items-center gap-1.5 text-sm text-white/70">
-                  <MapPin className="w-4 h-4" aria-hidden="true" />
-                  <span className="font-medium">Localização:</span>
-                </div>
-                <Select value={selectedRegiao} onValueChange={handleRegiaoChange}>
-                  <SelectTrigger className="w-[150px] h-9 bg-white/10 border-white/25 text-white hover:bg-white/15 transition-colors">
-                    <Globe className="w-3.5 h-3.5 mr-1 text-white/70" />
-                    <SelectValue placeholder="Região" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todos">Todas as regiões</SelectItem>
-                    {Object.entries(REGIOES_ESTADOS).map(([key, r]) => (
-                      <SelectItem key={key} value={key}>{r.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select value={selectedEstado} onValueChange={handleEstadoChange}>
-                  <SelectTrigger className="w-[180px] h-9 bg-white/10 border-white/25 text-white hover:bg-white/15 transition-colors">
-                    <SelectValue placeholder="Estado" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todos">Todos os estados</SelectItem>
-                    {availableEstados.map((e) => (
-                      <SelectItem key={e.uf} value={e.uf}>{e.nome} ({e.uf})</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select value={selectedCidade} onValueChange={setSelectedCidade}>
-                  <SelectTrigger className="w-[180px] h-9 bg-white/10 border-white/25 text-white hover:bg-white/15 transition-colors">
-                    <SelectValue placeholder="Cidade" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todos">Todas as cidades</SelectItem>
-                    {availableCidades.map((c, i) => (
-                      <SelectItem key={`${i}-${c}`} value={c}>{c}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {(selectedRegiao !== 'todos' || selectedEstado !== 'todos' || selectedCidade !== 'todos') && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-white/80 hover:bg-white/10 hover:text-white"
-                    onClick={() => { setSelectedRegiao('todos'); setSelectedEstado('todos'); setSelectedCidade('todos'); }}
-                  >
-                    Limpar
-                  </Button>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Os quatro cartões só existem quando há o que contar.
-            Vazios eles liam "0 / 0 / — / 09:56" — três nadas e um relógio. E o
-            relógio era o pior: mostrava a hora de uma cotação que nunca houve,
-            dando ao usuário a impressão de que o sistema acabara de atualizar
-            preços. Os números nascem da planilha, então acompanham a aba dela. */}
-        {abaAtiva === 'extracao-itens' && itensNaPlanilha > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {[
-            {
-              label: 'Itens Pesquisados',
-              value: statsPlanilha ? `${statsPlanilha.itensPesquisados}${statsPlanilha.totalItens ? `/${statsPlanilha.totalItens}` : ''}` : '—',
-              icon: Package,
-            },
-            {
-              label: 'Fontes Consultadas',
-              value: statsPlanilha ? String(statsPlanilha.fontesConsultadas) : '—',
-              icon: ShoppingCart,
-            },
-            {
-              label: 'Economia Potencial',
-              value: statsPlanilha && statsPlanilha.economia > 0
-                ? statsPlanilha.economia.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
-                : '—',
-              icon: TrendingDown,
-              color: 'text-success',
-            },
-            {
-              label: 'Última Atualização',
-              value: statsPlanilha?.atualizadoEm
-                ? statsPlanilha.atualizadoEm.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-                : '—',
-              icon: RefreshCw,
-            },
-          ].map((s) => (
-            <div key={s.label} className="stat-card">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-muted-foreground">{s.label}</span>
-                <s.icon className={`w-4 h-4 ${s.color || 'text-muted-foreground'}`} />
-              </div>
-              <p className="text-2xl font-bold whitespace-nowrap tabular-nums">{s.value}</p>
-            </div>
-          ))}
-        </div>
-        )}
-
-        {/* REBRAND — os dois gráficos do protótipo. Mesma condição dos cartões
-            acima: só existem quando há planilha com o que medir. Leem o detalhe
-            que a varredura da planilha já produzia e ninguém via. */}
-        {abaAtiva === 'extracao-itens' && itensNaPlanilha > 0 && statsPlanilha && (
-          <PrecoGraficos stats={statsPlanilha} />
-        )}
-
-
-        {/* ML-style Category Breadcrumb */}
-        {categoryTree.subs.length > 0 && selectedCategory !== 'todos' && (
-          <div className="flex items-center gap-1.5 text-sm">
-            <button onClick={() => setSelectedCategory('todos')} className="text-primary hover:underline">
-              {categoryTree.main || 'Resultados'}
-            </button>
-            <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
-            <span className="text-foreground font-medium">{selectedCategory}</span>
-            <button onClick={() => setSelectedCategory('todos')} className="ml-2 p-0.5 rounded-full hover:bg-muted">
-              <X className="w-3.5 h-3.5 text-muted-foreground" />
-            </button>
-          </div>
-        )}
-
-        {/* Source Tabs */}
         <Tabs value={abaAtiva} onValueChange={setAbaAtiva} className="space-y-4">
-          <TabsList className="bg-muted/50 flex-wrap h-auto">
-            {ABAS.map((aba) => (
-              <TabsTrigger key={aba.id} value={aba.id} className="gap-1.5">
-                <aba.icone className="w-3.5 h-3.5" /> {aba.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
+        {/* ── Cabeçalho do módulo (identidade 12/09) ──
+            Substitui a faixa navy com foto. Título, descrição, ícone e trilha
+            vêm do registro (`lib/navegacao/paginas.ts`, rota /precificacao) —
+            a tela não reescreve o que já está padronizado. A fila de abas fica
+            no corpo do cabeçalho e, logo abaixo dela, a linha que diz o que a
+            aba ativa faz: o contexto muda sem que a página ganhe um segundo h1.
+
+            A barra de LOCALIZAÇÃO mora nos `filtros` do cabeçalho: só duas das
+            abas recortam por região, e ficando dentro do bloco que muda
+            com a aba o vínculo fica visível — quando a aba não usa
+            localização, a barra some junto com o resto do contexto dela. */}
+        <CabecalhoPagina
+          acoes={
+            <Button onClick={() => setAbaAtiva('calculadora')}>
+              <Plus className="w-4 h-4" aria-hidden="true" /> Nova composição
+            </Button>
+          }
+          filtros={AbaAtual.usaLocalizacao ? (
+            <>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <MapPin className="w-4 h-4" aria-hidden="true" />
+                <span className="font-medium">Localização:</span>
+              </div>
+              <Select value={selectedRegiao} onValueChange={handleRegiaoChange}>
+                <SelectTrigger aria-label="Região" className="w-full sm:w-[180px]">
+                  <Globe className="w-4 h-4 mr-1 text-muted-foreground" aria-hidden="true" />
+                  <SelectValue placeholder="Região" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todas as regiões</SelectItem>
+                  {Object.entries(REGIOES_ESTADOS).map(([key, r]) => (
+                    <SelectItem key={key} value={key}>{r.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={selectedEstado} onValueChange={handleEstadoChange}>
+                <SelectTrigger aria-label="Estado" className="w-full sm:w-[200px]">
+                  <SelectValue placeholder="Estado" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os estados</SelectItem>
+                  {availableEstados.map((e) => (
+                    <SelectItem key={e.uf} value={e.uf}>{e.nome} ({e.uf})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={selectedCidade} onValueChange={setSelectedCidade}>
+                <SelectTrigger aria-label="Cidade" className="w-full sm:w-[200px]">
+                  <SelectValue placeholder="Cidade" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todas as cidades</SelectItem>
+                  {availableCidades.map((c, i) => (
+                    <SelectItem key={`${i}-${c}`} value={c}>{c}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {(selectedRegiao !== 'todos' || selectedEstado !== 'todos' || selectedCidade !== 'todos') && (
+                <Button
+                  variant="ghost"
+                  onClick={() => { setSelectedRegiao('todos'); setSelectedEstado('todos'); setSelectedCidade('todos'); }}
+                >
+                  Limpar
+                </Button>
+              )}
+            </>
+          ) : undefined}
+        >
+          <div className="space-y-2">
+            <TabsList>
+              {ABAS.map((aba) => (
+                <TabsTrigger key={aba.id} value={aba.id} className="gap-2">
+                  <aba.icone className="w-4 h-4" aria-hidden="true" /> {aba.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+            <p className="text-sm leading-5 text-muted-foreground">{AbaAtual.subtitulo}</p>
+          </div>
+        </CabecalhoPagina>
 
           <TabsContent value="marketplaces" className="space-y-4">
+        {/* ML-style Category Breadcrumb */}
+        {categoryTree.subs.length > 0 && selectedCategory !== 'todos' && (
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <Button variant="link" size="sm" className="h-auto p-0" onClick={() => setSelectedCategory('todos')}>
+              {categoryTree.main || 'Resultados'}
+            </Button>
+            <ChevronRight className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+            <span className="text-foreground font-medium">{selectedCategory}</span>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full" aria-label="Remover filtro de categoria" onClick={() => setSelectedCategory('todos')}>
+              <X className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+            </Button>
+          </div>
+        )}
+
         {/* As trinta marcas viravam um mural: quatro cartões, trinta etiquetas e
             um selo de conformidade ocupando a primeira tela inteira, todo dia,
             para dizer algo que só se lê uma vez. Vira uma linha; quem quiser a
             lista abre. */}
         {!aiParsedData && !isSearchingAI && !showHistory && (
-          <details className="group rounded-lg border border-border/50 bg-muted/30 px-3 py-2">
+          <details className="group rounded-lg border border-border bg-muted px-3 py-2">
             <summary className="flex cursor-pointer list-none items-center gap-2 text-xs text-muted-foreground">
-              <Globe className="w-3.5 h-3.5 flex-shrink-0" />
+              <Globe className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
               <span>Pesquisa em tempo real em <strong className="font-semibold text-foreground">+30 marketplaces e varejistas</strong></span>
-              <ChevronDown className="w-3.5 h-3.5 ml-auto transition-transform group-open:rotate-180" />
+              <ChevronDown className="w-4 h-4 ml-auto transition-transform group-open:rotate-180" aria-hidden="true" />
             </summary>
-            <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2 border-t border-border/50 pt-3">
+            <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2 border-t border-border pt-3">
               {PLATAFORMAS.map((grupo) => (
                 <div key={grupo.titulo}>
-                  <p className="text-[11px] font-semibold text-foreground mb-0.5">{grupo.titulo}</p>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">{grupo.itens.join(' · ')}</p>
+                  <p className="text-xs font-semibold text-foreground mb-0.5">{grupo.titulo}</p>
+                  <p className="text-xs text-muted-foreground">{grupo.itens.join(' · ')}</p>
                 </div>
               ))}
             </div>
@@ -760,10 +662,11 @@ export default function Precificacao() {
         )}
 
         {/* Simple Search */}
-        <div className="flex gap-2 w-full max-w-2xl">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <div className="flex flex-wrap gap-2 w-full max-w-2xl">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
             <Input
+              aria-label="Produto a pesquisar"
               placeholder="Ex: Notebook Dell i7, Monitor 24'', Toner HP..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -774,32 +677,32 @@ export default function Precificacao() {
           <Button
             onClick={handleAISearch}
             disabled={isSearchingAI}
-            className="bg-accent hover:bg-accent/90 text-accent-foreground min-w-[120px]"
+            className="min-w-[120px]"
           >
             {isSearchingAI ? (
-              <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Pesquisando...</>
+              <><Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Pesquisando...</>
             ) : (
-              <><Search className="w-4 h-4 mr-1" /> BUSCAR</>
+              <><Search className="w-4 h-4" aria-hidden="true" /> Buscar</>
             )}
           </Button>
           <Button
             variant="outline"
-            size="default"
             onClick={() => setShowHistory(!showHistory)}
             className="min-w-[120px]"
+            aria-expanded={showHistory}
           >
-            <History className="w-4 h-4 mr-1" /> Histórico
+            <History className="w-4 h-4" aria-hidden="true" /> Histórico
           </Button>
         </div>
 
 
         {/* Saved Searches History */}
         {showHistory && (
-          <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
+          <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
             <div className="flex items-center gap-2 mb-4">
-              <History className="w-5 h-5 text-muted-foreground" />
-              <h3 className="font-semibold text-sm">Pesquisas Salvas</h3>
-              {loadingHistory && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+              <History className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+              <h3 className="text-lg font-semibold">Pesquisas Salvas</h3>
+              {loadingHistory && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" aria-hidden="true" />}
             </div>
             <div className="flex flex-wrap items-center gap-3 mb-4">
               <Popover>
@@ -836,20 +739,20 @@ export default function Precificacao() {
             ) : (
               <div className="space-y-2">
                 {savedSearches.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between p-3 rounded-lg border border-border/30 hover:bg-muted/50 transition-colors">
+                  <div key={item.id} className="flex items-center justify-between gap-2 p-3 rounded-lg border border-border hover:bg-muted transition-colors">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{item.termo_busca}</p>
                       <p className="text-xs text-muted-foreground">
-                        {item.categoria !== 'todos' && <Badge variant="outline" className="mr-2 text-xs">{item.categoria}</Badge>}
+                        {item.categoria !== 'todos' && <Badge variant="muted" className="mr-2">{item.categoria}</Badge>}
                         {new Date(item.created_at).toLocaleString('pt-BR')}
                       </p>
                     </div>
                     <div className="flex gap-1 ml-2">
-                      <Button size="sm" variant="ghost" onClick={() => handleViewSearch(item)} title="Visualizar">
-                        <Eye className="w-4 h-4" />
+                      <Button size="sm" variant="ghost" onClick={() => handleViewSearch(item)} title="Visualizar" aria-label={`Visualizar pesquisa ${item.termo_busca}`}>
+                        <Eye className="w-4 h-4" aria-hidden="true" />
                       </Button>
-                      <Button size="sm" variant="ghost" onClick={() => handleDeleteSearch(item.id)} title="Excluir" className="text-destructive hover:text-destructive">
-                        <Trash2 className="w-4 h-4" />
+                      <Button size="sm" variant="ghost" onClick={() => handleDeleteSearch(item.id)} title="Excluir" aria-label={`Excluir pesquisa ${item.termo_busca}`} className="text-destructive hover:text-destructive hover:bg-destructive-tint">
+                        <Trash2 className="w-4 h-4" aria-hidden="true" />
                       </Button>
                     </div>
                   </div>
@@ -861,55 +764,55 @@ export default function Precificacao() {
 
         {/* AI Results with ML-style sidebar */}
         {(aiResult || isSearchingAI) && (
-          <div className="flex gap-5">
+          <div className="flex gap-6">
             {/* Left Sidebar – ML Filters */}
             {aiParsedData && !isSearchingAI && (
               <div className="w-[230px] flex-shrink-0 hidden md:block">
                 <div className="sticky top-4 max-h-[calc(100vh-6rem)] overflow-y-auto pr-1 space-y-3 scrollbar-thin">
                   {/* Active filters summary */}
                   {hasActiveFilters && (
-                    <div className="bg-muted/50 border border-border rounded-lg p-2.5 flex items-center justify-between">
+                    <div className="bg-muted border border-border rounded-lg p-3 flex items-center justify-between">
                       <span className="text-xs text-foreground font-medium">Filtros ativos</span>
-                      <button onClick={resetAllFilters} className="text-xs text-primary hover:underline">Limpar todos</button>
+                      <Button variant="link" size="sm" className="h-auto p-0 text-xs" onClick={resetAllFilters}>Limpar todos</Button>
                     </div>
                   )}
 
                   {/* Categories */}
                   {categoryTree.subs.length > 0 && (
-                    <div className="bg-card border border-border/40 rounded-lg p-3">
+                    <div className="rounded-lg border border-border bg-card p-3 shadow-sm">
                       <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                        <Tag className="w-3 h-3 text-muted-foreground" />
+                        <Tag className="w-3 h-3 text-muted-foreground" aria-hidden="true" />
                         {categoryTree.main || 'Categorias'}
                       </h4>
                       <ul className="space-y-0.5">
                         <li>
-                          <button
+                          <Button variant="ghost" type="button"
                             onClick={() => setSelectedCategory('todos')}
                             className={cn(
-                              "w-full flex items-center justify-between px-2 py-1.5 rounded text-xs transition-colors",
+                              "h-auto w-full justify-between px-2 py-1.5 text-xs font-normal",
                               selectedCategory === 'todos'
-                                ? "bg-primary/10 text-primary font-semibold"
-                                : "text-foreground hover:bg-muted"
+                                ? "bg-primary-tint text-primary font-semibold hover:bg-primary-tint hover:text-primary"
+                                : "text-foreground"
                             )}
                           >
                             <span>Todas</span>
                             <span className="text-xs text-muted-foreground">({categoryTree.total})</span>
-                          </button>
+                          </Button>
                         </li>
                         {categoryTree.subs.map((sub) => (
                           <li key={sub.name}>
-                            <button
+                            <Button variant="ghost" type="button"
                               onClick={() => setSelectedCategory(sub.name)}
                               className={cn(
-                                "w-full flex items-center justify-between px-2 py-1.5 rounded text-xs transition-colors",
+                                "h-auto w-full justify-between px-2 py-1.5 text-xs font-normal",
                                 selectedCategory === sub.name
-                                  ? "bg-primary/10 text-primary font-semibold"
-                                  : "text-foreground hover:bg-muted"
+                                  ? "bg-primary-tint text-primary font-semibold hover:bg-primary-tint hover:text-primary"
+                                  : "text-foreground"
                               )}
                             >
                               <span className="truncate">{sub.name}</span>
                               <span className="text-xs text-muted-foreground ml-1">({sub.count})</span>
-                            </button>
+                            </Button>
                           </li>
                         ))}
                       </ul>
@@ -917,7 +820,7 @@ export default function Precificacao() {
                   )}
 
                   {/* Price Range */}
-                  <div className="bg-card border border-border/40 rounded-lg p-3">
+                  <div className="rounded-lg border border-border bg-card p-3 shadow-sm">
                     <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
                       <DollarSign className="w-3 h-3 text-muted-foreground" />
                       Faixa de preço
@@ -928,7 +831,7 @@ export default function Precificacao() {
                         placeholder={priceRange.min > 0 ? `${Math.floor(priceRange.min)}` : 'Mín'}
                         value={filterPrecoMin}
                         onChange={(e) => setFilterPrecoMin(e.target.value)}
-                        className="h-7 text-xs px-2"
+                        className="h-9 text-sm px-2 tabular-nums"
                       />
                       <span className="text-xs text-muted-foreground">–</span>
                       <Input
@@ -936,52 +839,52 @@ export default function Precificacao() {
                         placeholder={priceRange.max > 0 ? `${Math.ceil(priceRange.max)}` : 'Máx'}
                         value={filterPrecoMax}
                         onChange={(e) => setFilterPrecoMax(e.target.value)}
-                        className="h-7 text-xs px-2"
+                        className="h-9 text-sm px-2 tabular-nums"
                       />
                     </div>
                     {(filterPrecoMin || filterPrecoMax) && (
-                      <button onClick={() => { setFilterPrecoMin(''); setFilterPrecoMax(''); }} className="text-xs text-primary hover:underline mt-1.5">
+                      <Button variant="link" size="sm" className="h-auto p-0 text-xs mt-2" onClick={() => { setFilterPrecoMin(''); setFilterPrecoMax(''); }}>
                         Limpar preço
-                      </button>
+                      </Button>
                     )}
                   </div>
 
                   {/* Condição */}
                   {availableConditions.length > 0 && (
-                    <div className="bg-card border border-border/40 rounded-lg p-3">
+                    <div className="rounded-lg border border-border bg-card p-3 shadow-sm">
                       <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
                         <Package className="w-3 h-3 text-muted-foreground" />
                         Condição
                       </h4>
                       <ul className="space-y-0.5">
                         <li>
-                          <button
+                          <Button variant="ghost" type="button"
                             onClick={() => setFilterCondicao('todos')}
                             className={cn(
-                              "w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs transition-colors",
+                              "h-auto w-full justify-start gap-2 px-2 py-1.5 text-xs font-normal",
                               filterCondicao === 'todos'
-                                ? "bg-primary/10 text-primary font-semibold"
-                                : "text-foreground hover:bg-muted"
+                                ? "bg-primary-tint text-primary font-semibold hover:bg-primary-tint hover:text-primary"
+                                : "text-foreground"
                             )}
                           >
                             {filterCondicao === 'todos' ? <CheckSquare className="w-3 h-3" /> : <Square className="w-3 h-3 text-muted-foreground" />}
                             Todos
-                          </button>
+                          </Button>
                         </li>
                         {availableConditions.map((cond) => (
                           <li key={cond}>
-                            <button
+                            <Button variant="ghost" type="button"
                               onClick={() => setFilterCondicao(cond as any)}
                               className={cn(
-                                "w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs transition-colors",
+                                "h-auto w-full justify-start gap-2 px-2 py-1.5 text-xs font-normal",
                                 filterCondicao === cond
-                                  ? "bg-primary/10 text-primary font-semibold"
-                                  : "text-foreground hover:bg-muted"
+                                  ? "bg-primary-tint text-primary font-semibold hover:bg-primary-tint hover:text-primary"
+                                  : "text-foreground"
                               )}
                             >
                               {filterCondicao === cond ? <CheckSquare className="w-3 h-3" /> : <Square className="w-3 h-3 text-muted-foreground" />}
                               {cond}
-                            </button>
+                            </Button>
                           </li>
                         ))}
                       </ul>
@@ -989,28 +892,28 @@ export default function Precificacao() {
                   )}
 
                   {/* Frete Grátis */}
-                  <div className="bg-card border border-border/40 rounded-lg p-3">
+                  <div className="rounded-lg border border-border bg-card p-3 shadow-sm">
                     <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
                       <Truck className="w-3 h-3 text-muted-foreground" />
                       Envio
                     </h4>
-                    <button
+                    <Button variant="ghost" type="button"
                       onClick={() => setFilterFreteGratis(!filterFreteGratis)}
                       className={cn(
-                        "w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs transition-colors",
+                        "h-auto w-full justify-start gap-2 px-2 py-1.5 text-xs font-normal",
                         filterFreteGratis
-                          ? "bg-success/10 text-success font-semibold"
-                          : "text-foreground hover:bg-muted"
+                          ? "bg-success-tint text-success-ink font-semibold hover:bg-success-tint hover:text-success-ink"
+                          : "text-foreground"
                       )}
                     >
                       {filterFreteGratis ? <CheckSquare className="w-3 h-3" /> : <Square className="w-3 h-3 text-muted-foreground" />}
                       Frete grátis
-                    </button>
+                    </Button>
                   </div>
 
                   {/* Lojas */}
                   {availableLojas.length > 0 && (
-                    <div className="bg-card border border-border/40 rounded-lg p-3">
+                    <div className="rounded-lg border border-border bg-card p-3 shadow-sm">
                       <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
                         <Store className="w-3 h-3 text-muted-foreground" />
                         Lojas
@@ -1018,33 +921,33 @@ export default function Precificacao() {
                       <ul className="space-y-0.5 max-h-[180px] overflow-y-auto">
                         {availableLojas.map((loja) => (
                           <li key={loja.name}>
-                            <button
+                            <Button variant="ghost" type="button"
                               onClick={() => toggleLojaFilter(loja.name)}
                               className={cn(
-                                "w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs transition-colors",
+                                "h-auto w-full justify-start gap-2 px-2 py-1.5 text-xs font-normal",
                                 filterLojas.includes(loja.name)
-                                  ? "bg-primary/10 text-primary font-semibold"
-                                  : "text-foreground hover:bg-muted"
+                                  ? "bg-primary-tint text-primary font-semibold hover:bg-primary-tint hover:text-primary"
+                                  : "text-foreground"
                               )}
                             >
                               {filterLojas.includes(loja.name) ? <CheckSquare className="w-3 h-3" /> : <Square className="w-3 h-3 text-muted-foreground" />}
                               <span className="truncate flex-1 text-left">{loja.name}</span>
                               <span className="text-xs text-muted-foreground ml-1">({loja.count})</span>
-                            </button>
+                            </Button>
                           </li>
                         ))}
                       </ul>
                       {filterLojas.length > 0 && (
-                        <button onClick={() => setFilterLojas([])} className="text-xs text-primary hover:underline mt-1.5">
+                        <Button variant="link" size="sm" className="h-auto p-0 text-xs mt-2" onClick={() => setFilterLojas([])}>
                           Limpar lojas
-                        </button>
+                        </Button>
                       )}
                     </div>
                   )}
 
                   {/* Marcas */}
                   {availableMarcas.length > 0 && (
-                    <div className="bg-card border border-border/40 rounded-lg p-3">
+                    <div className="rounded-lg border border-border bg-card p-3 shadow-sm">
                       <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
                         <Award className="w-3 h-3 text-muted-foreground" />
                         Marcas
@@ -1052,26 +955,26 @@ export default function Precificacao() {
                       <ul className="space-y-0.5 max-h-[180px] overflow-y-auto">
                         {availableMarcas.map((marca) => (
                           <li key={marca.name}>
-                            <button
+                            <Button variant="ghost" type="button"
                               onClick={() => toggleMarcaFilter(marca.name)}
                               className={cn(
-                                "w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs transition-colors",
+                                "h-auto w-full justify-start gap-2 px-2 py-1.5 text-xs font-normal",
                                 filterMarcas.includes(marca.name)
-                                  ? "bg-primary/10 text-primary font-semibold"
-                                  : "text-foreground hover:bg-muted"
+                                  ? "bg-primary-tint text-primary font-semibold hover:bg-primary-tint hover:text-primary"
+                                  : "text-foreground"
                               )}
                             >
                               {filterMarcas.includes(marca.name) ? <CheckSquare className="w-3 h-3" /> : <Square className="w-3 h-3 text-muted-foreground" />}
                               <span className="truncate flex-1 text-left">{marca.name}</span>
                               <span className="text-xs text-muted-foreground ml-1">({marca.count})</span>
-                            </button>
+                            </Button>
                           </li>
                         ))}
                       </ul>
                       {filterMarcas.length > 0 && (
-                        <button onClick={() => setFilterMarcas([])} className="text-xs text-primary hover:underline mt-1.5">
+                        <Button variant="link" size="sm" className="h-auto p-0 text-xs mt-2" onClick={() => setFilterMarcas([])}>
                           Limpar marcas
-                        </button>
+                        </Button>
                       )}
                     </div>
                   )}
@@ -1081,16 +984,16 @@ export default function Precificacao() {
 
             {/* Results Content */}
             <div className="flex-1 min-w-0">
-              <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
-                <div className="flex items-center justify-between mb-3">
+              <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                   <div className="flex items-center gap-2">
-                    <ShoppingCart className="w-5 h-5 text-muted-foreground" />
-                    <h3 className="font-semibold text-sm">Resultados dos Marketplaces</h3>
-                    {isSearchingAI && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+                    <ShoppingCart className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+                    <h3 className="text-lg font-semibold">Resultados dos Marketplaces</h3>
+                    {isSearchingAI && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" aria-hidden="true" />}
                   </div>
                   {aiResult && !isSearchingAI && (
-                    <Button size="sm" variant="outline" onClick={handleSaveSearch}>
-                      <Save className="w-4 h-4 mr-1" /> Salvar Pesquisa
+                    <Button variant="outline" onClick={handleSaveSearch}>
+                      <Save className="w-4 h-4" aria-hidden="true" /> Salvar Pesquisa
                     </Button>
                   )}
                 </div>
@@ -1112,22 +1015,22 @@ export default function Precificacao() {
 
         {/* Pending items banner */}
         {hasPending && (
-          <div className="flex items-center justify-between p-3 bg-muted border border-border rounded-lg">
+          <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-primary-tint border border-primary/20 rounded-lg">
             <div className="flex items-center gap-2 text-sm">
-              <FileText className="w-4 h-4 text-muted-foreground" />
+              <FileText className="w-4 h-4 text-primary" aria-hidden="true" />
               <span><strong>{pendingItems.length}</strong> {pendingItems.length === 1 ? 'item adicionado' : 'itens adicionados'} à proposta</span>
             </div>
-            <Button size="sm" onClick={() => navigate('/proposta-tecnica')} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-              <FileText className="w-4 h-4 mr-1" /> Ir para Proposta Comercial
+            <Button onClick={() => navigate('/proposta-tecnica')}>
+              <FileText className="w-4 h-4" aria-hidden="true" /> Ir para Proposta Comercial
             </Button>
           </div>
         )}
         {/* Items */}
         <div className="space-y-4">
           {filtered.map((item) => (
-            <div key={item.id} className="bg-card rounded-xl border border-border/50 shadow-sm overflow-hidden">
+            <div key={item.id} className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
               {/* Item header */}
-              <div className="flex items-center justify-between px-5 py-4 border-b border-border/30">
+              <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-b border-border">
                 <div>
                   <p className="font-semibold text-sm">{item.descricao}</p>
                   <p className="text-xs text-muted-foreground">
@@ -1135,15 +1038,15 @@ export default function Precificacao() {
                   </p>
                 </div>
                 <div className="flex items-center gap-4 text-xs">
-                  <div className="text-right">
+                  <div className="text-right tabular-nums">
                     <p className="text-muted-foreground">Mínimo</p>
                     <p className="font-semibold text-success">{formatCurrency(item.precoMin)}</p>
                   </div>
-                  <div className="text-right">
+                  <div className="text-right tabular-nums">
                     <p className="text-muted-foreground">Máximo</p>
                     <p className="font-semibold text-destructive">{formatCurrency(item.precoMax)}</p>
                   </div>
-                  <div className="text-right">
+                  <div className="text-right tabular-nums">
                     <p className="text-muted-foreground">Total Estimado</p>
                     <p className="font-bold">{formatCurrency(item.precoMedio * item.quantidade)}</p>
                   </div>
@@ -1151,17 +1054,17 @@ export default function Precificacao() {
               </div>
 
               {/* Fontes */}
-              <div className="divide-y divide-border/20">
+              <div className="divide-y divide-border">
                 {item.fontes.map((f, i) => (
-                  <div key={i} className="flex items-center justify-between px-5 py-3">
+                  <div key={i} className="flex flex-wrap items-center justify-between gap-3 px-6 py-3">
                     <div className="flex items-center gap-3">
-                      <Badge variant="outline" className={fonteColors[f.fonte] || 'bg-muted text-muted-foreground'}>
+                      <Badge variant={fonteVariant[f.fonte] || 'muted'}>
                         {f.fonte}
                       </Badge>
                       <span className="text-sm">{f.vendedor}</span>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <span className="text-sm font-semibold">{formatCurrency(f.preco)}</span>
+                    <div className="flex flex-wrap items-center gap-4">
+                      <span className="text-sm font-semibold tabular-nums">{formatCurrency(f.preco)}</span>
                       {f.frete !== undefined && (
                         <span className="text-xs text-muted-foreground">
                           Frete: {f.frete === 0 ? 'Grátis' : formatCurrency(f.frete)}
@@ -1171,15 +1074,15 @@ export default function Precificacao() {
                         {new Date(f.atualizado).toLocaleDateString('pt-BR')}
                       </span>
                       {f.preco === item.precoMin && (
-                        <Badge className="bg-success/15 text-success border-success/30 text-xs">
+                        <Badge variant="success">
                           Menor preço
                         </Badge>
                       )}
-                      <Button size="sm" variant="ghost">
-                        <ExternalLink className="w-3 h-3" />
+                      <Button size="sm" variant="ghost" aria-label={`Abrir anúncio em ${f.fonte}`}>
+                        <ExternalLink className="w-4 h-4" aria-hidden="true" />
                       </Button>
                       <Button size="sm" variant="outline" onClick={() => handleAddToProposta(item, f.preco)} title="Adicionar à Proposta Técnica">
-                        <Plus className="w-3 h-3 mr-1" /> Proposta
+                        <Plus className="w-4 h-4" aria-hidden="true" /> Proposta
                       </Button>
                     </div>
                   </div>
@@ -1191,8 +1094,8 @@ export default function Precificacao() {
 
           {/* Fontes de Pesquisa - integrado na aba de Pesquisa */}
           <details className="mt-6">
-            <summary className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground flex items-center gap-2">
-              <Globe className="w-4 h-4" />
+            <summary className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground flex items-center gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <Globe className="w-4 h-4" aria-hidden="true" />
               Ver todas as fontes de pesquisa ({'>'}80 fontes cadastradas)
             </summary>
             <div className="mt-3">
@@ -1202,7 +1105,7 @@ export default function Precificacao() {
           </TabsContent>
 
           <TabsContent value="govbr">
-            <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
+            <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
               <PainelPrecosGov ufInicial={selectedEstado} municipioInicial={selectedCidade} />
             </div>
           </TabsContent>
@@ -1211,13 +1114,13 @@ export default function Precificacao() {
 
 
           <TabsContent value="cotacoes-listas">
-            <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
+            <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
               <CotacoesUnificado />
             </div>
           </TabsContent>
 
           <TabsContent value="calculadora">
-            <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
+            <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
               <CalculadoraUnificada
                 licitacaoId={processoId}
                 licitacaoNumero={processoMeta.numero}
@@ -1227,7 +1130,7 @@ export default function Precificacao() {
           </TabsContent>
 
           <TabsContent value="catalogo">
-            <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
+            <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
               <CatalogoPrecificados
                 licitacaoId={processoId}
                 licitacaoNumero={processoMeta.numero}
@@ -1237,13 +1140,13 @@ export default function Precificacao() {
           </TabsContent>
 
           <TabsContent value="inteligencia">
-            <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
+            <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
               <InteligenciaUnificada />
             </div>
           </TabsContent>
 
           <TabsContent value="aurelia-cotar" className="flex-1 min-h-0">
-            <div className="bg-card rounded-xl border border-border/50 shadow-sm overflow-hidden" style={{ height: 'calc(100vh - 240px)', minHeight: 500 }}>
+            <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden" style={{ height: 'calc(100vh - 240px)', minHeight: 500 }}>
               <AureliaPrecificacaoChat />
             </div>
           </TabsContent>
@@ -1253,17 +1156,69 @@ export default function Precificacao() {
               tabela que o visualizador de itens desta aba — duas telas, dois
               formatos, um dado só. Quem editava numa não via a outra mudar. */}
           <TabsContent value="extracao-itens" className="space-y-4">
-            <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
+            {/* Os quatro cartões só existem quando há o que contar.
+                Vazios eles liam "0 / 0 / — / 09:56" — três nadas e um relógio. E o
+                relógio era o pior: mostrava a hora de uma cotação que nunca houve,
+                dando ao usuário a impressão de que o sistema acabara de atualizar
+                preços. Os números nascem da planilha, então vivem na aba dela. */}
+            {itensNaPlanilha > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                {[
+                  {
+                    label: 'Itens Pesquisados',
+                    value: statsPlanilha ? `${statsPlanilha.itensPesquisados}${statsPlanilha.totalItens ? `/${statsPlanilha.totalItens}` : ''}` : '—',
+                    icon: Package,
+                  },
+                  {
+                    label: 'Fontes Consultadas',
+                    value: statsPlanilha ? String(statsPlanilha.fontesConsultadas) : '—',
+                    icon: ShoppingCart,
+                  },
+                  {
+                    label: 'Economia Potencial',
+                    value: statsPlanilha && statsPlanilha.economia > 0
+                      ? statsPlanilha.economia.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
+                      : '—',
+                    icon: TrendingDown,
+                    color: 'text-success',
+                  },
+                  {
+                    label: 'Última Atualização',
+                    value: statsPlanilha?.atualizadoEm
+                      ? statsPlanilha.atualizadoEm.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+                      : '—',
+                    icon: RefreshCw,
+                  },
+                ].map((s) => (
+                  <div key={s.label} className="rounded-lg border border-border bg-card p-4 shadow-sm">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs text-muted-foreground">{s.label}</span>
+                      <s.icon className={cn('w-4 h-4', s.color || 'text-muted-foreground')} aria-hidden="true" />
+                    </div>
+                    <p className="text-[2rem] leading-10 font-bold whitespace-nowrap tabular-nums">{s.value}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* REBRAND — os dois gráficos do protótipo. Mesma condição dos cartões
+                acima: só existem quando há planilha com o que medir. Leem o detalhe
+                que a varredura da planilha já produzia e ninguém via. */}
+            {itensNaPlanilha > 0 && statsPlanilha && (
+              <PrecoGraficos stats={statsPlanilha} />
+            )}
+
+            <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
               <EditalItensViewer licitacaoId={processoId ?? null} />
             </div>
           {/* Planilha de Custos — Extração por IA */}
-          <div className="bg-card border border-border/50 rounded-xl p-4 space-y-3">
-            <div className="flex items-center gap-2 mb-1">
-              <Sparkles className="w-4 h-4 text-muted-foreground" />
-              <h3 className="text-sm font-semibold">Planilha de Custos — Extração por IA</h3>
-              <Badge variant="outline" className="text-xs ml-auto">Upload + Extração + Cotação</Badge>
+          <div className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-3">
+            <div className="flex flex-wrap items-center gap-2 mb-1">
+              <Sparkles className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+              <h3 className="text-lg font-semibold">Planilha de Custos — Extração por IA</h3>
+              <Badge variant="muted" className="ml-auto">Upload + Extração + Cotação</Badge>
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               Preencha os custos e use "Cotar Todos" para buscar valores automaticamente nas fontes de pesquisa.
             </p>
             {/* O convite a extrair saía daqui e do vazio do EditalItensViewer logo

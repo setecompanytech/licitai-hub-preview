@@ -1,10 +1,13 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, type CSSProperties } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import EstadoVazio from '@/components/shared/EstadoVazio';
+import { cn } from '@/lib/utils';
 import { ListChecks, Brain, Bell, Mail, MessageSquare, Building2, ArrowRight, Loader2, Clock, FolderOpen, Archive, ArchiveRestore, Folder, List, LayoutGrid } from 'lucide-react';
 import { identidadeDoEdital } from '@/lib/licitacao/identidade-edital';
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
@@ -39,6 +42,9 @@ function diasAte(iso: string | null): number | null {
   const ms = new Date(iso).getTime() - Date.now();
   return Math.ceil(ms / 86_400_000);
 }
+
+/** Urgência do prazo → família semântica do Badge (identidade 12/09). */
+const VARIANTE_URGENCIA = { danger: 'danger', warning: 'warning', normal: 'success' } as const;
 
 /**
  * Modo de exibição dos compromissos: lista (detalhe) ou PASTAS — grade de
@@ -203,8 +209,18 @@ export default function CompromissosResumo() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-16">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      <div className="space-y-3" role="status" aria-live="polite">
+        <span className="sr-only">Carregando compromissos…</span>
+        {[0, 1, 2].map((i) => (
+          <Card key={i} className="space-y-3 p-4">
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-5 w-24" />
+              <Skeleton className="h-5 w-40" />
+            </div>
+            <Skeleton className="h-4 w-2/3" />
+            <Skeleton className="h-4 w-1/2" />
+          </Card>
+        ))}
       </div>
     );
   }
@@ -214,108 +230,123 @@ export default function CompromissosResumo() {
 
   if (items.length === 0) {
     return (
-      <Card className="p-12 text-center">
-        <ListChecks className="w-10 h-10 mx-auto text-muted-foreground/30 mb-3" />
-        <p className="text-sm font-medium text-muted-foreground">Nenhum compromisso ativo</p>
-        <p className="text-xs text-muted-foreground mt-1">
-          Inicie um processo no <strong>Monitoramento de Editais</strong> para gerar prazos e alertas automáticos.
-        </p>
-        <Button asChild variant="outline" size="sm" className="mt-4">
-          <Link to="/monitoramento-editais">Ir para Monitoramento</Link>
-        </Button>
+      <Card>
+        <EstadoVazio
+          icone={<ListChecks />}
+          titulo="Nenhum compromisso ativo"
+          descricao={
+            <>
+              Inicie um processo no <strong>Monitoramento de Editais</strong> para gerar prazos e alertas automáticos.
+            </>
+          }
+          acao={
+            <Button asChild variant="outline">
+              <Link to="/monitoramento-editais">Ir para Monitoramento</Link>
+            </Button>
+          }
+        />
       </Card>
     );
   }
 
   return (
     <>
-    <div className="space-y-3">
-      {/* Processo Ativo — seletor e atalho para a Pasta do Processo */}
-      <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
-        {/* A barra de "processo ativo" saiu junto com a memória entre telas:
-            ela servia para eleger um processo que acompanharia a pessoa pelos
-            módulos, e é justamente isso que deixou de existir. Abrir a pasta é
-            o caminho. */}
-      </div>
+    <div className="space-y-4">
+      {/* A barra de "processo ativo" saiu junto com a memória entre telas:
+          ela servia para eleger um processo que acompanharia a pessoa pelos
+          módulos, e é justamente isso que deixou de existir. Abrir a pasta é
+          o caminho. */}
 
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <p className="text-xs text-muted-foreground">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">
           {verArquivados
             ? `${arquivados.length} compromisso(s) arquivado(s)`
             : `${visiveis.length} compromissos ativos — exibindo prazos críticos primeiro`}
         </p>
-        <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Vista: lista detalhada ou pastas (grade estilo Finder). Na grade,
               a pessoa escolhe a densidade — 2, 4, 6 ou 8 pastas por linha. */}
-          <div className="flex items-center rounded-lg border border-border overflow-hidden">
-            <button
+          <div className="inline-flex items-center overflow-hidden rounded-md border border-input bg-background" role="group" aria-label="Modo de exibição">
+            <Button
               type="button"
+              variant="ghost"
               onClick={() => mudarVista({ ...vista, modo: 'lista' })}
               title="Ver como lista"
               aria-pressed={vista.modo === 'lista'}
-              className={`px-2 py-1.5 text-xs flex items-center gap-1 transition-colors ${vista.modo === 'lista' ? 'bg-accent/15 text-accent' : 'text-muted-foreground hover:bg-muted'}`}
+              className={cn('rounded-none', vista.modo === 'lista' ? 'bg-primary-tint text-primary hover:bg-primary-tint hover:text-primary' : 'text-muted-foreground')}
             >
-              <List className="w-3.5 h-3.5" /> Lista
-            </button>
-            <button
+              <List aria-hidden="true" /> Lista
+            </Button>
+            <Button
               type="button"
+              variant="ghost"
               onClick={() => mudarVista({ ...vista, modo: 'pastas' })}
               title="Ver como pastas"
               aria-pressed={vista.modo === 'pastas'}
-              className={`px-2 py-1.5 text-xs flex items-center gap-1 transition-colors border-l border-border ${vista.modo === 'pastas' ? 'bg-accent/15 text-accent' : 'text-muted-foreground hover:bg-muted'}`}
+              className={cn('rounded-none border-l border-input', vista.modo === 'pastas' ? 'bg-primary-tint text-primary hover:bg-primary-tint hover:text-primary' : 'text-muted-foreground')}
             >
-              <LayoutGrid className="w-3.5 h-3.5" /> Pastas
-            </button>
+              <LayoutGrid aria-hidden="true" /> Pastas
+            </Button>
           </div>
           {vista.modo === 'pastas' && (
-            <div className="flex items-center rounded-lg border border-border overflow-hidden" role="group" aria-label="Pastas por linha">
+            <div className="inline-flex items-center overflow-hidden rounded-md border border-input bg-background" role="group" aria-label="Pastas por linha">
               {COLUNAS_OPCOES.map((c, i) => (
-                <button
+                <Button
                   key={c}
                   type="button"
+                  variant="ghost"
                   onClick={() => mudarVista({ ...vista, colunas: c })}
                   title={`${c} pastas por linha`}
                   aria-pressed={vista.colunas === c}
-                  className={`px-2 py-1.5 text-xs tabular-nums transition-colors ${i > 0 ? 'border-l border-border' : ''} ${vista.colunas === c ? 'bg-accent/15 text-accent font-semibold' : 'text-muted-foreground hover:bg-muted'}`}
+                  className={cn(
+                    'rounded-none px-3 tabular-nums',
+                    i > 0 && 'border-l border-input',
+                    vista.colunas === c ? 'bg-primary-tint text-primary hover:bg-primary-tint hover:text-primary' : 'text-muted-foreground',
+                  )}
                 >
                   {c}
-                </button>
+                </Button>
               ))}
             </div>
           )}
           {arquivados.length > 0 && (
-            <Button variant="ghost" size="sm" className="text-xs" onClick={() => setVerArquivados(v => !v)}>
-              <Archive className="w-3.5 h-3.5 mr-1" />
+            <Button variant="ghost" onClick={() => setVerArquivados(v => !v)}>
+              <Archive aria-hidden="true" />
               {verArquivados ? 'Ver ativos' : `Arquivados (${arquivados.length})`}
             </Button>
           )}
-          <Button asChild variant="ghost" size="sm">
-            <Link to="/meus-compromissos" className="text-xs">
-              Abrir página completa <ArrowRight className="w-3.5 h-3.5 ml-1" />
+          <Button asChild variant="ghost">
+            <Link to="/meus-compromissos">
+              Abrir página completa <ArrowRight aria-hidden="true" />
             </Link>
           </Button>
         </div>
       </div>
 
       {visiveis.length === 0 && (
-        <Card className="p-8 text-center">
-          <p className="text-sm text-muted-foreground">
-            {verArquivados ? 'Nenhum compromisso arquivado.' : 'Nenhum compromisso ativo — todos estão arquivados.'}
-          </p>
+        <Card>
+          <EstadoVazio
+            tamanho="compacto"
+            icone={verArquivados ? <Archive /> : <ListChecks />}
+            titulo={verArquivados ? 'Nenhum compromisso arquivado' : 'Nenhum compromisso ativo'}
+            descricao={verArquivados ? 'Arquive um compromisso para vê-lo aqui.' : 'Todos os compromissos estão arquivados.'}
+          />
         </Card>
       )}
 
       {vista.modo === 'pastas' && visiveis.length > 0 && (
-        <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${vista.colunas}, minmax(0, 1fr))` }}>
+        /* A densidade escolhida (2/4/6/8) vale de `md` para cima; no celular a
+           grade fica em duas colunas — oito pastas numa tela de 360px viram
+           tiras ilegíveis. A contagem entra por variável CSS, não por classe
+           dinâmica, para o Tailwind não precisar conhecer os quatro valores. */
+        <div
+          className="grid grid-cols-2 gap-4 md:[grid-template-columns:repeat(var(--pastas),minmax(0,1fr))]"
+          style={{ '--pastas': vista.colunas } as CSSProperties}
+        >
           {visiveis.map((p) => {
             const dias = diasAte(p.data_encerramento);
             const urgencia = dias === null ? 'normal' : dias <= 1 ? 'danger' : dias <= 3 ? 'warning' : 'normal';
-            const corPasta = { danger: 'text-destructive', warning: 'text-warning', normal: 'text-accent' }[urgencia];
-            const chipPrazo = {
-              danger: 'bg-destructive/15 text-destructive',
-              warning: 'bg-warning/15 text-warning',
-              normal: 'bg-success/10 text-success',
-            }[urgencia];
+            const corPasta = { danger: 'text-destructive', warning: 'text-warning', normal: 'text-primary' }[urgencia];
             const identidade = identidadeDoEdital({ numeroCompra: p.numero, modalidade: p.modalidade });
             return (
               <div
@@ -325,27 +356,29 @@ export default function CompromissosResumo() {
                 onClick={() => abrirPasta(p)}
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrirPasta(p); } }}
                 title={identidade.reescrito ? `Como o portal publica: ${identidade.bruto}` : identidade.rotulo}
-                className="group flex h-full cursor-pointer flex-col gap-1.5 rounded-xl border border-border bg-card p-3 text-left transition-all hover:border-accent/40 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                className="group flex h-full cursor-pointer flex-col gap-2 rounded-lg border border-border bg-card p-4 text-left shadow-sm transition-[box-shadow,border-color] hover:border-primary/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 <div className="flex items-center justify-between gap-1">
                   {opening === p.id
-                    ? <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
-                    : <Folder className={`h-7 w-7 ${corPasta}`} strokeWidth={1.5} />}
+                    ? <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" aria-hidden="true" />
+                    : <Folder className={cn('h-8 w-8', corPasta)} strokeWidth={1.5} aria-hidden="true" />}
                   {dias !== null && dias >= 0 && (
-                    <span className={`rounded-full px-1.5 py-0.5 text-xs font-medium ${chipPrazo}`}>
+                    <Badge variant={VARIANTE_URGENCIA[urgencia]} className="tabular-nums">
                       {dias === 0 ? 'hoje' : `${dias}d`}
-                    </span>
+                    </Badge>
                   )}
                 </div>
-                <p className="text-xs font-semibold leading-snug line-clamp-2">{identidade.rotulo}</p>
-                <p className="text-xs leading-snug text-muted-foreground line-clamp-2">{p.objeto}</p>
-                <div className="mt-auto flex items-end justify-between gap-1 pt-1 min-w-0">
+                <p className="text-sm font-semibold line-clamp-2">{identidade.rotulo}</p>
+                <p className="text-xs text-muted-foreground line-clamp-2">{p.objeto}</p>
+                <div className="mt-auto flex min-w-0 items-end justify-between gap-1 pt-1">
                   <div className="min-w-0">
                     <p className="truncate text-xs text-muted-foreground">{p.orgao}</p>
-                    <p className="text-xs font-medium text-foreground">{fmtCurrency(p.valor_estimado)}</p>
+                    <p className="text-sm font-medium text-foreground tabular-nums">{fmtCurrency(p.valor_estimado)}</p>
                   </div>
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="icon"
                     onClick={(e) => {
                       e.stopPropagation();
                       if (p.status === 'arquivado') { alternarArquivo(p); return; }
@@ -354,14 +387,17 @@ export default function CompromissosResumo() {
                     disabled={arquivando === p.id}
                     title={p.status === 'arquivado' ? 'Restaurar' : 'Arquivar'}
                     aria-label={p.status === 'arquivado' ? 'Restaurar compromisso' : 'Arquivar compromisso'}
-                    className="rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-muted group-hover:opacity-100 focus-visible:opacity-100"
+                    className={cn(
+                      'h-8 w-8 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100',
+                      arquivando === p.id && 'opacity-100',
+                    )}
                   >
                     {arquivando === p.id
-                      ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ? <Loader2 className="animate-spin" aria-hidden="true" />
                       : p.status === 'arquivado'
-                      ? <ArchiveRestore className="h-3.5 w-3.5" />
-                      : <Archive className="h-3.5 w-3.5" />}
-                  </button>
+                      ? <ArchiveRestore aria-hidden="true" />
+                      : <Archive aria-hidden="true" />}
+                  </Button>
                 </div>
               </div>
             );
@@ -375,66 +411,61 @@ export default function CompromissosResumo() {
           : dias <= 1 ? 'danger'
           : dias <= 3 ? 'warning'
           : 'normal';
-        const colorMap = {
-          danger: 'bg-destructive/15 text-destructive border-destructive/30',
-          warning: 'bg-warning/15 text-warning border-warning/30',
-          normal: 'bg-success/10 text-success border-success/30',
-        };
         const identidade = identidadeDoEdital({ numeroCompra: p.numero, modalidade: p.modalidade });
         return (
-          <Card key={p.id} className="p-3.5">
+          <Card key={p.id} className="p-4">
             <div className="flex items-start justify-between gap-3">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap mb-1">
-                  <Badge variant="outline" className="text-xs">
-                    <ListChecks className="w-3 h-3 mr-1" />{p.status}
+              <div className="min-w-0 flex-1">
+                <div className="mb-1 flex flex-wrap items-center gap-2">
+                  <Badge variant="muted" className="gap-1">
+                    <ListChecks className="h-3 w-3" aria-hidden="true" />{p.status}
                   </Badge>
                   <span
-                    className="text-xs font-semibold cursor-help"
+                    className="cursor-help text-sm font-semibold"
                     title={identidade.reescrito ? `Como o portal publica: ${identidade.bruto}` : undefined}
                   >
                     {identidade.rotulo}
                   </span>
                   {identidade.srpNoTexto && (
-                    <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">SRP</span>
+                    <Badge variant="muted">SRP</Badge>
                   )}
                   {dias !== null && dias >= 0 && (
-                    <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${colorMap[urgencia]}`}>
-                      <Clock className="w-2.5 h-2.5 inline mr-0.5" />
+                    <Badge variant={VARIANTE_URGENCIA[urgencia]} className="gap-1 tabular-nums">
+                      <Clock className="h-3 w-3" aria-hidden="true" />
                       {dias === 0 ? 'Encerra hoje' : `${dias}d restantes`}
-                    </span>
+                    </Badge>
                   )}
                   {p.ia_score != null && (
-                    <span className="text-xs px-1.5 py-0.5 rounded bg-accent/10 text-accent border border-accent/20">
-                      <Brain className="w-3 h-3 inline mr-0.5" /> Score {p.ia_score}
-                    </span>
+                    <Badge variant="info" className="gap-1 tabular-nums">
+                      <Brain className="h-3 w-3" aria-hidden="true" /> Score {p.ia_score}
+                    </Badge>
                   )}
                 </div>
-                <p className="text-sm font-medium leading-snug line-clamp-1">{p.objeto}</p>
-                <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground flex-wrap">
+                <p className="text-sm font-medium line-clamp-1">{p.objeto}</p>
+                <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
-                    <Building2 className="w-3 h-3" />{p.orgao}
+                    <Building2 className="h-4 w-4" aria-hidden="true" />{p.orgao}
                   </span>
                   {p.uf && <span>{p.municipio ? `${p.municipio}/${p.uf}` : p.uf}</span>}
-                  <span className="font-medium text-foreground">{fmtCurrency(p.valor_estimado)}</span>
+                  <span className="font-medium text-foreground tabular-nums">{fmtCurrency(p.valor_estimado)}</span>
                   <span className="flex items-center gap-1">
-                    {p.alerta_sistema && <Bell className="w-3 h-3 text-accent" />}
-                    {p.alerta_email && <Mail className="w-3 h-3 text-info" />}
-                    {p.alerta_whatsapp && <MessageSquare className="w-3 h-3 text-success" />}
+                    {p.alerta_sistema && <Bell className="h-4 w-4 text-primary" aria-label="Alerta no sistema" />}
+                    {p.alerta_email && <Mail className="h-4 w-4 text-info" aria-label="Alerta por e-mail" />}
+                    {p.alerta_whatsapp && <MessageSquare className="h-4 w-4 text-success" aria-label="Alerta por WhatsApp" />}
                   </span>
                 </div>
               </div>
-              <div className="flex flex-col gap-1 shrink-0">
+              <div className="flex shrink-0 flex-col gap-2">
                 <Button size="sm" variant="outline" onClick={() => abrirPasta(p)} disabled={opening === p.id}>
                   {opening === p.id
-                    ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
-                    : <FolderOpen className="w-3.5 h-3.5 mr-1" />}
+                    ? <Loader2 className="animate-spin" aria-hidden="true" />
+                    : <FolderOpen aria-hidden="true" />}
                   Abrir Pasta
                 </Button>
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="text-xs text-muted-foreground"
+                  className="text-muted-foreground"
                   onClick={() => {
                     // Restaurar não precisa de pergunta; arquivar precisa.
                     if (p.status === 'arquivado') { alternarArquivo(p); return; }
@@ -444,10 +475,10 @@ export default function CompromissosResumo() {
                   title={p.licitacao_id ? 'Sincroniza com o Kanban' : undefined}
                 >
                   {arquivando === p.id
-                    ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                    ? <Loader2 className="animate-spin" aria-hidden="true" />
                     : p.status === 'arquivado'
-                    ? <ArchiveRestore className="w-3.5 h-3.5 mr-1" />
-                    : <Archive className="w-3.5 h-3.5 mr-1" />}
+                    ? <ArchiveRestore aria-hidden="true" />
+                    : <Archive aria-hidden="true" />}
                   {p.status === 'arquivado' ? 'Restaurar' : 'Arquivar'}
                 </Button>
               </div>

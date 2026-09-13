@@ -6,9 +6,10 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MoneyInput } from "@/components/ui/money-input";
-import { ShieldCheck, Check, X, Loader2, ShieldAlert } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ShieldCheck, Check, X, Loader2, ShieldAlert, CheckCircle2 } from "lucide-react";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useMembroPermissoes } from "@/hooks/useMembroPermissoes";
 import { supabase } from "@/integrations/supabase/client";
@@ -153,52 +154,59 @@ export default function FinAprovacoes() {
   const limite = Number(config?.limite_admin) || 0;
 
   if (carregando && !config) {
-    return <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>;
+    return (
+      <div className="space-y-4" role="status" aria-live="polite" aria-label="Carregando aprovações">
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <ShieldCheck className="w-5 h-5 text-muted-foreground" /> Aprovação de Pagamentos
+          <CardTitle className="flex items-center gap-2">
+            <ShieldCheck className="w-5 h-5 text-primary" aria-hidden="true" /> Aprovação de Pagamentos
           </CardTitle>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Com o workflow ligado, a <b>baixa manual</b> de contas a pagar exige aprovação — a trava é no
             banco e vale em todas as telas. Conciliação bancária não é barrada: o extrato prova que o
             dinheiro saiu, e registrar o fato não é autorizá-lo.
           </p>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6">
           {/* Configuração — política da empresa, decidida pelo admin */}
-          <div className="rounded-md border p-3 flex flex-col sm:flex-row sm:items-end gap-3">
-            <div className="flex items-center gap-3 flex-1">
+          <div className="rounded-lg border border-border bg-muted p-4 flex flex-col lg:flex-row lg:items-end gap-4">
+            <div className="flex items-start gap-3 flex-1">
               <Switch
                 id="wf-ativo"
                 checked={!!config?.ativo}
                 disabled={!podeConfigurar || salvandoCfg}
                 onCheckedChange={v => salvarConfig(v)}
+                className="mt-0.5"
               />
               <div>
-                <Label htmlFor="wf-ativo" className="text-sm">Exigir aprovação antes da baixa</Label>
-                <p className="text-xs text-muted-foreground">
+                <Label htmlFor="wf-ativo">Exigir aprovação antes da baixa</Label>
+                <p className="text-sm text-muted-foreground mt-1">
                   Até o limite, a equipe do Financeiro aprova; acima, somente o administrador.
                   {!podeConfigurar && " (Só o administrador altera esta política.)"}
                 </p>
               </div>
             </div>
-            <div className="flex gap-3">
-              <div>
-                <Label className="text-xs">Limite da equipe (R$)</Label>
-                <MoneyInput value={cfgLimite} onValueChange={setCfgLimite} disabled={!podeConfigurar} className="h-8 w-36" />
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="wf-limite">Limite da equipe (R$)</Label>
+                <MoneyInput id="wf-limite" value={cfgLimite} onValueChange={setCfgLimite} disabled={!podeConfigurar} className="w-40" />
               </div>
-              <div>
-                <Label className="text-xs">Janela (dias)</Label>
-                <Input type="number" min={1} max={365} value={cfgJanela} onChange={e => setCfgJanela(e.target.value)}
-                  disabled={!podeConfigurar} className="h-8 w-20" />
+              <div className="space-y-2">
+                <Label htmlFor="wf-janela">Janela (dias)</Label>
+                <Input id="wf-janela" type="number" min={1} max={365} value={cfgJanela} onChange={e => setCfgJanela(e.target.value)}
+                  disabled={!podeConfigurar} className="w-24" />
               </div>
               {config?.ativo && podeConfigurar && (
-                <Button size="sm" variant="outline" className="self-end" disabled={salvandoCfg}
+                <Button variant="outline" disabled={salvandoCfg}
                   onClick={() => salvarConfig(true)}>
                   Salvar
                 </Button>
@@ -207,26 +215,35 @@ export default function FinAprovacoes() {
           </div>
 
           {!config?.ativo ? (
-            <div className="p-8 text-center text-sm text-muted-foreground border border-dashed rounded-md">
-              <ShieldAlert className="w-6 h-6 mx-auto mb-2 opacity-50" />
-              O workflow está <b>desligado</b> — as baixas acontecem sem aprovação, como sempre.
-              Ligue o interruptor acima para ativar a trava de alçada nesta empresa.
+            <div className="flex flex-col items-center rounded-lg border border-dashed border-border py-12 px-6 text-center">
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
+                <ShieldAlert className="w-6 h-6" aria-hidden="true" />
+              </span>
+              <p className="mt-3 text-lg font-semibold">Workflow desligado</p>
+              <p className="mt-1 max-w-md text-sm text-muted-foreground">
+                As baixas acontecem sem aprovação, como sempre. Ligue o interruptor acima para ativar a
+                trava de alçada nesta empresa.
+              </p>
             </div>
           ) : (
             <>
-              <div className="flex items-center justify-between p-3 rounded-md bg-muted/30">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-muted p-4">
                 <span className="text-sm">
                   Aguardando aprovação (vencimentos até {config.janela_dias} dias):
                 </span>
-                <span className="font-semibold tabular-nums">
+                <span className="font-semibold tabular-nums text-right">
                   {pendentes.filter(p => p.aprovacao_status !== "rejeitado").length} · {fmt(totalPendente)}
                 </span>
               </div>
 
-              <div className="rounded-md border max-h-[480px] overflow-y-auto">
+              <div className="rounded-lg border border-border max-h-[480px] overflow-y-auto">
                 {pendentes.length === 0 ? (
-                  <div className="p-8 text-center text-sm text-muted-foreground">
-                    ✓ Nada aguardando aprovação na janela.
+                  <div className="flex flex-col items-center py-12 px-6 text-center">
+                    <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
+                      <CheckCircle2 className="w-6 h-6" aria-hidden="true" />
+                    </span>
+                    <p className="mt-3 text-lg font-semibold">Nada aguardando aprovação</p>
+                    <p className="mt-1 max-w-md text-sm text-muted-foreground">Nenhum pagamento pendente na janela configurada.</p>
                   </div>
                 ) : (
                   pendentes.map(l => {
@@ -234,31 +251,37 @@ export default function FinAprovacoes() {
                     const rejeitado = l.aprovacao_status === "rejeitado";
                     const podeDecidir = podeConfigurar || (isFinanceiro && !acimaDoLimite);
                     return (
-                      <div key={l.id} className={`flex items-center gap-3 p-3 border-b last:border-b-0 ${rejeitado ? "bg-destructive/5" : ""}`}>
+                      <div key={l.id} className={`flex flex-wrap items-center gap-3 p-4 border-b border-border last:border-b-0 ${rejeitado ? "bg-destructive-tint" : ""}`}>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm truncate">{l.descricao || "(sem descrição)"}</p>
+                          <p className="text-sm font-medium truncate">{l.descricao || "(sem descrição)"}</p>
                           <div className="flex items-center gap-2 mt-1 flex-wrap">
-                            <Badge variant="outline" className={`text-xs ${acimaDoLimite ? "bg-destructive/10 text-destructive border-destructive/30" : "bg-info/10 text-info border-info/30"}`}>
+                            <Badge variant={acimaDoLimite ? "warning" : "info"}>
                               {acimaDoLimite ? "Somente admin" : "Equipe Financeiro"}
                             </Badge>
-                            {rejeitado && <Badge variant="outline" className="text-xs bg-destructive/10 text-destructive border-destructive/30">Rejeitado — em revisão</Badge>}
+                            {rejeitado && <Badge variant="danger">Rejeitado — em revisão</Badge>}
                             <span className="text-xs text-muted-foreground">Vence {fmtData(l.data_vencimento)}</span>
                           </div>
                           {rejeitado && l.aprovacao_motivo && (
-                            <p className="text-xs text-destructive mt-1 truncate" title={l.aprovacao_motivo}>Motivo: {l.aprovacao_motivo}</p>
+                            <p className="text-xs text-destructive-ink mt-1 truncate" title={l.aprovacao_motivo}>Motivo: {l.aprovacao_motivo}</p>
                           )}
                         </div>
-                        <span className="font-semibold tabular-nums whitespace-nowrap">{fmt(l.valor)}</span>
-                        <Button size="icon" variant="outline" className="h-8 w-8" title="Rejeitar (devolve para revisão com motivo — não cancela o título)"
-                          disabled={!podeDecidir || agindo === l.id}
-                          onClick={() => { setRejeitando(l); setMotivo(""); }}>
-                          <X className="w-4 h-4" />
-                        </Button>
-                        <Button size="icon" className="h-8 w-8" title={podeDecidir ? "Aprovar — libera a baixa" : "Alçada insuficiente para este valor"}
-                          disabled={!podeDecidir || agindo === l.id}
-                          onClick={() => decidir(l, "aprovar")}>
-                          {agindo === l.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                        </Button>
+                        <span className="font-semibold tabular-nums whitespace-nowrap text-right">{fmt(l.valor)}</span>
+                        <div className="flex items-center gap-2">
+                          <Button size="sm" variant="outline"
+                            aria-label="Rejeitar pagamento"
+                            title="Rejeitar (devolve para revisão com motivo — não cancela o título)"
+                            disabled={!podeDecidir || agindo === l.id}
+                            onClick={() => { setRejeitando(l); setMotivo(""); }}>
+                            <X className="w-4 h-4" /> Rejeitar
+                          </Button>
+                          <Button size="sm"
+                            aria-label="Aprovar pagamento"
+                            title={podeDecidir ? "Aprovar — libera a baixa" : "Alçada insuficiente para este valor"}
+                            disabled={!podeDecidir || agindo === l.id}
+                            onClick={() => decidir(l, "aprovar")}>
+                            {agindo === l.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} Aprovar
+                          </Button>
+                        </div>
                       </div>
                     );
                   })
@@ -266,20 +289,20 @@ export default function FinAprovacoes() {
               </div>
 
               {!podeAprovarAlgo && (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-sm text-muted-foreground">
                   Você pode acompanhar a fila; aprovar é da equipe do Financeiro (até o limite) e do administrador.
                 </p>
               )}
 
               {trilha.length > 0 && (
-                <div className="rounded-md border p-3">
-                  <p className="text-xs font-semibold mb-2">Trilha de decisões (últimas {trilha.length})</p>
+                <div className="rounded-lg border border-border p-4">
+                  <p className="text-sm font-semibold mb-2">Trilha de decisões (últimas {trilha.length})</p>
                   <div className="space-y-1">
                     {trilha.map(t => (
                       <p key={t.id} className="text-xs text-muted-foreground truncate">
-                        <span className={t.acao === "aprovado" ? "text-success" : "text-destructive"}>
-                          {t.acao === "aprovado" ? "✓" : "✗"}
-                        </span>{" "}
+                        <span className={t.acao === "aprovado" ? "text-success font-semibold" : "text-destructive font-semibold"}>
+                          {t.acao === "aprovado" ? "Aprovado" : "Rejeitado"}
+                        </span>{" · "}
                         {new Date(t.criado_em).toLocaleString("pt-BR")} · {fmt(Number(t.valor) || 0)} · {t.descricao || "—"}
                         {t.motivo ? ` · motivo: ${t.motivo}` : ""}
                       </p>
@@ -295,27 +318,30 @@ export default function FinAprovacoes() {
       {/* Rejeição pede motivo — é ele que orienta quem vai revisar */}
       <Dialog open={!!rejeitando} onOpenChange={v => !v && setRejeitando(null)}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle className="text-base">Rejeitar pagamento</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Rejeitar pagamento</DialogTitle></DialogHeader>
           {rejeitando && (
-            <div className="space-y-3">
-              <p className="text-sm">{rejeitando.descricao || "(sem descrição)"} — {fmt(rejeitando.valor)}</p>
-              <p className="text-xs text-muted-foreground">
+            <div className="space-y-4">
+              <p className="text-sm font-medium">{rejeitando.descricao || "(sem descrição)"} — {fmt(rejeitando.valor)}</p>
+              <p className="text-sm text-muted-foreground">
                 A rejeição devolve a conta para revisão com o motivo abaixo. O título continua vivo —
                 nada é cancelado.
               </p>
-              <div>
-                <Label className="text-xs">Motivo *</Label>
-                <Textarea rows={3} value={motivo} onChange={e => setMotivo(e.target.value)}
+              <div className="space-y-2">
+                <Label htmlFor="wf-motivo">Motivo *</Label>
+                <Textarea id="wf-motivo" rows={3} value={motivo} onChange={e => setMotivo(e.target.value)}
                   placeholder="Ex.: valor diverge do boleto; fornecedor pendente de regularização…" />
+                {motivo.trim().length > 0 && motivo.trim().length < 4 && (
+                  <p className="text-xs text-destructive">Informe ao menos 4 caracteres.</p>
+                )}
               </div>
-              <div className="flex justify-end gap-2">
+              <DialogFooter>
                 <Button variant="outline" onClick={() => setRejeitando(null)}>Cancelar</Button>
                 <Button variant="destructive" disabled={motivo.trim().length < 4 || agindo === rejeitando.id}
                   onClick={() => decidir(rejeitando, "rejeitar", motivo.trim())}>
-                  {agindo === rejeitando.id ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <X className="w-4 h-4 mr-1" />}
+                  {agindo === rejeitando.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
                   Rejeitar
                 </Button>
-              </div>
+              </DialogFooter>
             </div>
           )}
         </DialogContent>

@@ -8,9 +8,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, TrendingUp, CheckCircle2, AlertTriangle, History, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { nomeExibido } from '@/lib/equipe/nomeExibido';
+import { cn } from '@/lib/utils';
 
 /**
  * Os indicadores que o Financeiro entrega ao comercial — e o ato de adotá-los.
@@ -157,21 +159,21 @@ export default function IndicadoresGerenciais() {
     : null;
 
   return (
-    <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm space-y-5">
-      <div className="flex items-start justify-between gap-3 flex-wrap">
+    <section className="space-y-6 rounded-lg border border-border bg-card p-6 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <TrendingUp className="w-5 h-5 text-muted-foreground" />
-            <h2 className="text-sm font-semibold">Indicadores Gerenciais</h2>
+          <div className="mb-1 flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+            <h2 className="text-lg font-semibold text-foreground">Indicadores Gerenciais</h2>
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             O custo da estrutura, apurado dos lançamentos conciliados — é ele que o
             comercial usa para precificar.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Select value={String(janela)} onValueChange={(v) => setJanela(Number(v))}>
-            <SelectTrigger className="w-[150px] h-9 text-xs"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-[180px]" aria-label="Janela de apuração"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="3">Últimos 3 meses</SelectItem>
               <SelectItem value="6">Últimos 6 meses</SelectItem>
@@ -179,16 +181,17 @@ export default function IndicadoresGerenciais() {
               <SelectItem value="24">Últimos 24 meses</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="ghost" size="sm" onClick={() => void recarregar()} disabled={carregando}>
-            {carregando ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+          <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => void recarregar()} disabled={carregando} aria-label="Recalcular indicadores" title="Recalcular">
+            {carregando ? <Loader2 className="animate-spin" aria-hidden="true" /> : <RefreshCw aria-hidden="true" />}
           </Button>
         </div>
       </div>
 
       {erro && (
-        <p className="text-xs text-destructive">
-          Não foi possível apurar os indicadores: {erro}
-        </p>
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>Não foi possível apurar os indicadores: {erro}</AlertDescription>
+        </Alert>
       )}
 
       {indicadores && (
@@ -200,28 +203,28 @@ export default function IndicadoresGerenciais() {
               do lucro, não do preço; e o CMV já é o custo unitário do item na
               cotação, somá-lo aqui cobraria a mercadoria duas vezes. Dizer isso
               no cartão evita que alguém some 6% de boa-fé. */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="rounded-lg border border-primary/40 bg-primary/5 p-3">
-              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="rounded-lg border border-primary bg-primary-tint p-4">
+              <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                 Despesas administrativas
-                <span className="rounded bg-primary/15 px-1 py-px text-[10px] font-semibold text-primary">vai ao preço</span>
+                <Badge variant="success">vai ao preço</Badge>
               </p>
-              <p className="text-2xl font-bold tabular-nums">{pct(indicadores.pct_despesa_administrativa)}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
+              <p className="text-[2rem] font-bold leading-10 tabular-nums text-foreground">{pct(indicadores.pct_despesa_administrativa)}</p>
+              <p className="mt-1 text-sm text-muted-foreground">
                 {brl(indicadores.media_mensal.despesa_operacional)}/mês
               </p>
             </div>
-            <div className="rounded-lg border p-3 bg-muted/30">
-              <p className="text-xs text-muted-foreground">Despesas financeiras</p>
-              <p className="text-2xl font-bold tabular-nums text-muted-foreground">{pct(indicadores.pct_despesa_financeira)}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
+            <div className="rounded-lg border border-border bg-muted p-4">
+              <p className="text-sm text-muted-foreground">Despesas financeiras</p>
+              <p className="text-[2rem] font-bold leading-10 tabular-nums text-muted-foreground">{pct(indicadores.pct_despesa_financeira)}</p>
+              <p className="mt-1 text-sm text-muted-foreground">
                 {brl(indicadores.media_mensal.despesa_financeira)}/mês — fora do cálculo
               </p>
             </div>
-            <div className="rounded-lg border p-3 bg-muted/30">
-              <p className="text-xs text-muted-foreground">Receita bruta média</p>
-              <p className="text-2xl font-bold tabular-nums">{brl(indicadores.media_mensal.receita)}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
+            <div className="rounded-lg border border-border bg-muted p-4">
+              <p className="text-sm text-muted-foreground">Receita bruta média</p>
+              <p className="text-[2rem] font-bold leading-10 tabular-nums text-foreground">{brl(indicadores.media_mensal.receita)}</p>
+              <p className="mt-1 text-sm text-muted-foreground">
                 CMV {pct(indicadores.pct_cmv)} — fora do cálculo
               </p>
             </div>
@@ -238,11 +241,15 @@ export default function IndicadoresGerenciais() {
             const emAberto = Math.min(Math.max(aReceberEmAberto, 0), Math.max(dif, 0));
             const porLancar = Math.max(dif - emAberto, 0);
             const excedente = dif < 0;
+            const atencao = porLancar > 0 || excedente;
 
             return (
-              <div className={`rounded-lg border p-3 ${porLancar > 0 || excedente ? 'border-warning/40 bg-warning/5' : 'border-info/40 bg-info/5'}`}>
-                <p className={`text-xs font-medium flex items-center gap-1.5 mb-1.5 ${porLancar > 0 || excedente ? 'text-warning' : 'text-info'}`}>
-                  <AlertTriangle className="w-4 h-4" />
+              <div className={cn(
+                'rounded-lg border p-4',
+                atencao ? 'border-warning-line bg-warning-tint text-warning-ink' : 'border-border bg-muted text-foreground',
+              )}>
+                <p className="mb-2 flex items-center gap-2 text-sm font-medium">
+                  <AlertTriangle className={cn('h-4 w-4', !atencao && 'text-primary')} aria-hidden="true" />
                   {excedente
                     ? 'Receita lançada acima do faturamento declarado'
                     : porLancar > 0
@@ -250,18 +257,18 @@ export default function IndicadoresGerenciais() {
                       : 'Diferença explicada por contas a receber'}
                 </p>
 
-                <div className="text-xs space-y-1">
+                <div className="space-y-1 text-sm">
                   <div className="flex justify-between gap-2">
                     <span className="text-muted-foreground">Faturamento declarado (Apuração)</span>
-                    <span className="tabular-nums font-medium">{brl(faturamentoDeclarado)}</span>
+                    <span className="font-medium tabular-nums">{brl(faturamentoDeclarado)}</span>
                   </div>
                   <div className="flex justify-between gap-2">
                     <span className="text-muted-foreground">Receita contabilizada (lançamentos)</span>
-                    <span className="tabular-nums font-medium">{brl(indicadores.receita_bruta)}</span>
+                    <span className="font-medium tabular-nums">{brl(indicadores.receita_bruta)}</span>
                   </div>
-                  <div className="flex justify-between gap-2 border-t pt-1">
+                  <div className="flex justify-between gap-2 border-t border-border pt-1">
                     <span className="text-muted-foreground">Diferença</span>
-                    <span className="tabular-nums font-semibold">
+                    <span className="font-semibold tabular-nums">
                       {brl(Math.abs(dif))} ({Math.abs(pctDif).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%)
                     </span>
                   </div>
@@ -273,13 +280,13 @@ export default function IndicadoresGerenciais() {
                       </div>
                       <div className="flex justify-between gap-2 pl-3">
                         <span className="text-muted-foreground">· sem lançamento (a conciliar)</span>
-                        <span className={`tabular-nums ${porLancar > 0 ? 'font-semibold text-warning' : ''}`}>{brl(porLancar)}</span>
+                        <span className={cn('tabular-nums', porLancar > 0 && 'font-semibold')}>{brl(porLancar)}</span>
                       </div>
                     </>
                   )}
                 </div>
 
-                <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
+                <p className="mt-2 text-sm leading-5 text-muted-foreground">
                   {excedente
                     ? 'Há mais receita lançada do que faturamento declarado na Apuração — provável nota lançada em duplicidade, ou competência de Apuração desatualizada.'
                     : porLancar > 0
@@ -291,20 +298,20 @@ export default function IndicadoresGerenciais() {
           })()}
 
           {/* ── A confiança do número, dita antes de ele ser usado ──────── */}
-          <div className="rounded-lg border p-3 space-y-2">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <span className="text-xs font-medium flex items-center gap-1.5">
+          <div className="space-y-2 rounded-lg border border-border p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="flex items-center gap-2 text-sm font-medium text-foreground">
                 {indicadores.confiavel
-                  ? <><CheckCircle2 className="w-4 h-4 text-success" /> Classificação suficiente</>
-                  : <><AlertTriangle className="w-4 h-4 text-warning" /> Classificação incompleta</>}
+                  ? <><CheckCircle2 className="h-4 w-4 text-success" aria-hidden="true" /> Classificação suficiente</>
+                  : <><AlertTriangle className="h-4 w-4 text-warning" aria-hidden="true" /> Classificação incompleta</>}
               </span>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-sm text-muted-foreground">
                 despesas {pct(indicadores.cobertura.despesa)} · receitas {pct(indicadores.cobertura.receita)}
               </span>
             </div>
-            <Progress value={indicadores.cobertura.despesa ?? 0} className="h-1.5" />
+            <Progress value={indicadores.cobertura.despesa ?? 0} className="h-2" aria-label="Cobertura de classificação das despesas" />
             {!indicadores.confiavel && (
-              <p className="text-xs text-warning">
+              <p className="text-sm text-warning">
                 {brl(indicadores.cobertura.despesa_sem_categoria)} em despesas e{' '}
                 {brl(indicadores.cobertura.receita_sem_categoria)} em receitas ainda sem categoria.
                 Percentual apurado sobre lançamento não classificado é palpite — classifique na
@@ -314,11 +321,11 @@ export default function IndicadoresGerenciais() {
           </div>
 
           {/* ── O ato de adotar ─────────────────────────────────────────── */}
-          <div className="rounded-lg border p-3 space-y-3">
+          <div className="space-y-3 rounded-lg border border-border p-4">
             {vigente ? (
-              <p className="text-xs text-muted-foreground">
-                Em vigor desde <strong>{new Date(vigente.adotado_em).toLocaleDateString('pt-BR')}</strong>:{' '}
-                <strong>{pct(vigente.pct_despesa_administrativa)}</strong> administrativas
+              <p className="text-sm text-muted-foreground">
+                Em vigor desde <strong className="text-foreground">{new Date(vigente.adotado_em).toLocaleDateString('pt-BR')}</strong>:{' '}
+                <strong className="text-foreground">{pct(vigente.pct_despesa_administrativa)}</strong> administrativas
                 {vigente.adotado_por && nomes[vigente.adotado_por] ? ` · adotado por ${nomes[vigente.adotado_por]}` : ''}
                 {defasagem != null && defasagem >= 0.5 && (
                   <span className="text-warning">
@@ -327,22 +334,23 @@ export default function IndicadoresGerenciais() {
                 )}
               </p>
             ) : (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 Nenhuma versão adotada ainda. O comercial usa o valor apurado no momento do cálculo.
               </p>
             )}
-            <div className="flex items-end gap-2 flex-wrap">
-              <div className="flex-1 min-w-[220px]">
-                <Label className="text-xs">Observação (opcional)</Label>
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="min-w-[220px] flex-1">
+                <Label htmlFor="indicadores-observacao">Observação (opcional)</Label>
                 <Input
+                  id="indicadores-observacao"
                   value={observacao}
                   onChange={(e) => setObservacao(e.target.value)}
                   placeholder="Ex.: revisão trimestral após ajuste do aluguel"
-                  className="mt-1 h-9"
+                  className="mt-1"
                 />
               </div>
-              <Button size="sm" onClick={confirmarAdocao} disabled={adotando || !indicadores.confiavel}>
-                {adotando ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-1" />}
+              <Button onClick={confirmarAdocao} disabled={adotando || !indicadores.confiavel}>
+                {adotando ? <Loader2 className="animate-spin" aria-hidden="true" /> : <CheckCircle2 aria-hidden="true" />}
                 Adotar estes indicadores
               </Button>
             </div>
@@ -356,23 +364,23 @@ export default function IndicadoresGerenciais() {
           {/* ── O histórico: a memória que defende o preço praticado ────── */}
           {historico.length > 0 && (
             <div>
-              <p className="text-xs font-semibold flex items-center gap-1.5 mb-2">
-                <History className="w-4 h-4 text-muted-foreground" /> Versões adotadas
+              <p className="mb-2 flex items-center gap-2 text-sm font-semibold text-foreground">
+                <History className="h-4 w-4 text-muted-foreground" aria-hidden="true" /> Versões adotadas
               </p>
-              <div className="divide-y divide-border/50">
+              <div className="divide-y divide-border">
                 {historico.map((h) => (
-                  <div key={h.id} className="flex items-center gap-3 py-2 text-xs flex-wrap">
+                  <div key={h.id} className="flex flex-wrap items-center gap-3 py-2 text-sm">
                     <span className="text-muted-foreground">
                       {new Date(h.adotado_em).toLocaleDateString('pt-BR')}
                     </span>
-                    <Badge variant="outline" className="text-xs">{h.meses}m</Badge>
-                    <span className="font-medium tabular-nums">{pct(h.pct_despesa_administrativa)} adm.</span>
-                    <span className="text-muted-foreground tabular-nums">{pct(h.pct_despesa_financeira)} fin.</span>
+                    <Badge variant="muted">{h.meses}m</Badge>
+                    <span className="font-medium tabular-nums text-foreground">{pct(h.pct_despesa_administrativa)} adm.</span>
+                    <span className="tabular-nums text-muted-foreground">{pct(h.pct_despesa_financeira)} fin.</span>
                     {h.adotado_por && nomes[h.adotado_por] && (
                       <span className="text-muted-foreground">{nomes[h.adotado_por]}</span>
                     )}
                     {h.observacao && (
-                      <span className="text-muted-foreground italic truncate max-w-[280px]">{h.observacao}</span>
+                      <span className="max-w-[280px] truncate italic text-muted-foreground">{h.observacao}</span>
                     )}
                   </div>
                 ))}

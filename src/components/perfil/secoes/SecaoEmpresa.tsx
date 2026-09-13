@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { toast } from 'sonner';
 import {
   BadgeCheck, Building2, FileDigit, Hash, Loader2, Mail, MapPin, Phone,
@@ -93,17 +95,26 @@ export default function SecaoEmpresa() {
 
   if (carregando) {
     return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground py-8">
-        <Loader2 className="w-4 h-4 animate-spin" /> Carregando dados da empresa...
+      <div role="status" aria-busy="true" className="grid gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
+        <span className="sr-only">Carregando dados da empresa</span>
+        {Array.from({ length: 6 }, (_, i) => (
+          <div key={i} className="space-y-2">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-11 w-full" />
+          </div>
+        ))}
       </div>
     );
   }
 
   if (!empresaAtiva) {
     return (
-      <p className="text-sm text-muted-foreground py-8">
-        Nenhuma empresa selecionada. Escolha uma no seletor do topo para editar os dados dela.
-      </p>
+      <EstadoVazio
+        tamanho="compacto"
+        icone={<Building2 />}
+        titulo="Nenhuma empresa selecionada"
+        descricao="Escolha uma no seletor do topo para editar os dados dela."
+      />
     );
   }
 
@@ -119,7 +130,7 @@ export default function SecaoEmpresa() {
         {/* CNPJ é a identidade da linha e a chave de tudo que aponta para ela.
             Trocar aqui seria trocar de empresa, não editar esta. */}
         <CampoHub icone={FileDigit} rotulo="CNPJ" dica="Para mudar o CNPJ, cadastre outra empresa.">
-          <Input value={form.cnpj} readOnly className="bg-muted/40 cursor-default select-all" />
+          <Input value={form.cnpj} readOnly className="cursor-default select-all bg-muted" />
         </CampoHub>
 
         <CampoHub icone={Hash} rotulo="Inscrição estadual">
@@ -155,7 +166,7 @@ export default function SecaoEmpresa() {
 
       <RodapeHub>
         <Button onClick={salvar} disabled={salvando}>
-          {salvando ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <BadgeCheck className="w-4 h-4 mr-2" />}
+          {salvando ? <Loader2 className="animate-spin" aria-hidden="true" /> : <BadgeCheck aria-hidden="true" />}
           Salvar alterações
         </Button>
         <p className="text-xs text-muted-foreground">

@@ -122,15 +122,13 @@ export default function AureliaEditalPanel({ edital, empresa, colunas = 2 }: Aur
   ];
 
   return (
-    /* REBRAND — o painel tinha cor escrita à mão: `hsl(215, 50%, 7%)` inline no
-       fundo, `text-[hsl(215,14%,92%)]` no texto e mais cinco. Eram valores do
-       tema escuro fixados no componente, então no tema claro o painel virava um
-       retângulo navy dentro de um cartão branco, com texto cinza quase ilegível.
-       Agora sai tudo de token e acompanha o tema. */
-    <div className="rounded-xl border aurelia-border aurelia-bg overflow-hidden">
-      <div className="px-4 py-3 border-b aurelia-border aurelia-surface flex items-center gap-2">
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent text-xs font-bold text-accent-foreground">IA</span>
-        <span className="text-sm font-semibold text-foreground">AURÉLIA — Análise Deste Edital</span>
+    /* Identidade 12/09: painel claro, sobre a superfície `muted`, com os
+       cartões de análise em `card`. Tudo sai de token e acompanha o tema —
+       nada de cor escrita à mão. */
+    <div className="rounded-lg border border-border bg-muted overflow-hidden">
+      <div className="px-4 py-3 border-b border-border bg-card flex items-center gap-2">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary text-xs font-bold text-primary-foreground">IA</span>
+        <span className="text-base font-semibold text-foreground">AURÉLIA — Análise Deste Edital</span>
       </div>
 
       <div className={cn("grid grid-cols-1 gap-3 p-4", colunas === 2 && "md:grid-cols-2")}>
@@ -148,14 +146,16 @@ export default function AureliaEditalPanel({ edital, empresa, colunas = 2 }: Aur
       </div>
 
       {/* Contextual chat */}
-      <div className="border-t aurelia-border p-4">
+      <div className="border-t border-border bg-card p-4">
         {chatMessages.length > 0 && (
           <div className="max-h-48 overflow-y-auto space-y-2 mb-3">
             {chatMessages.map((msg, i) => (
               <div key={i} className={cn("flex", msg.role === 'user' ? 'justify-end' : 'justify-start')}>
                 <div className={cn(
-                  "max-w-[85%] rounded-lg px-3 py-2 text-xs",
-                  msg.role === 'user' ? 'aurelia-bubble-user text-foreground' : 'aurelia-bubble-ai text-foreground'
+                  "max-w-[85%] rounded-lg px-3 py-2 text-sm",
+                  msg.role === 'user'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-foreground'
                 )}>
                   {msg.role === 'assistant' ? (
                     <div className="whitespace-pre-line">{sanitizeAureliaOutput(msg.content)}</div>
@@ -166,16 +166,23 @@ export default function AureliaEditalPanel({ edital, empresa, colunas = 2 }: Aur
           </div>
         )}
         <div className="flex gap-2">
+          <label htmlFor="aurelia-edital-pergunta" className="sr-only">Pergunta sobre este edital</label>
           <Input
+            id="aurelia-edital-pergunta"
             value={chatInput}
             onChange={(e) => setChatInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleChatSend()}
             placeholder="Pergunte sobre este edital específico"
-            className="text-xs"
             disabled={chatLoading}
           />
-          <Button onClick={handleChatSend} disabled={!chatInput.trim() || chatLoading} size="icon" className="h-9 w-9 bg-accent hover:bg-accent/90 text-accent-foreground shrink-0">
-            {chatLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+          <Button
+            onClick={handleChatSend}
+            disabled={!chatInput.trim() || chatLoading}
+            size="icon"
+            className="h-11 w-11 shrink-0"
+            aria-label="Enviar pergunta"
+          >
+            {chatLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </Button>
         </div>
       </div>

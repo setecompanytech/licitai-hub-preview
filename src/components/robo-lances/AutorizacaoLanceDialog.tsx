@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
@@ -74,26 +75,26 @@ export default function AutorizacaoLanceDialog({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <ShieldCheck className="w-5 h-5 text-warning" />
+            <ShieldCheck className="w-5 h-5 text-warning" aria-hidden="true" />
             Autorizar Estratégia — Nível 2
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="bg-warning/5 border border-warning/20 rounded-lg p-3">
-            <p className="text-xs text-warning font-semibold mb-2">
+          <div className="bg-warning-tint border border-warning-line rounded-lg p-4">
+            <p className="text-sm text-warning-ink font-semibold mb-1">
               Revise a estratégia antes de autorizar
             </p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               No modo semiautomático, o sistema executará lances dentro dos parâmetros abaixo.
               Você está autorizando esta estratégia de forma expressa.
             </p>
           </div>
 
           <div className="space-y-2">
-            <p className="text-xs font-semibold">Edital: {edital}</p>
-            
-            <div className="grid grid-cols-2 gap-2">
+            <p className="text-sm font-semibold">Edital: {edital}</p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {[
                 { label: 'Valor Inicial', value: formatCurrency(estrategia.valorInicial), icon: DollarSign },
                 { label: 'Valor Mínimo (Piso)', value: formatCurrency(estrategia.valorMinimo), icon: ArrowDown },
@@ -102,11 +103,11 @@ export default function AutorizacaoLanceDialog({
                 { label: 'Máx. Lances', value: String(estrategia.maxLances), icon: CheckCircle2 },
                 { label: 'Intervalo', value: `${estrategia.intervaloSegundos}s`, icon: CheckCircle2 },
               ].map((item) => (
-                <div key={item.label} className="bg-muted/50 rounded-lg p-2 flex items-center gap-2">
-                  <item.icon className="w-3 h-3 text-muted-foreground shrink-0" />
-                  <div>
+                <div key={item.label} className="bg-muted rounded-md p-3 flex items-center gap-2">
+                  <item.icon className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                  <div className="min-w-0">
                     <p className="text-xs text-muted-foreground">{item.label}</p>
-                    <p className="text-xs font-semibold font-mono">{item.value}</p>
+                    <p className="text-sm font-semibold tabular-nums">{item.value}</p>
                   </div>
                 </div>
               ))}
@@ -115,21 +116,21 @@ export default function AutorizacaoLanceDialog({
             {limiteFinanceiro > 0 && (
               <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${
                 excedeLimite
-                  ? 'bg-destructive/5 border-destructive/20'
-                  : 'bg-success/5 border-success/20'
+                  ? 'bg-destructive-tint border-destructive-line'
+                  : 'bg-success-tint border-success-line'
               }`}>
                 {excedeLimite ? (
                   <>
-                    <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
-                    <p className="text-xs text-destructive">
-                      ⚠️ Valor inicial ({formatCurrency(estrategia.valorInicial)}) excede o limite financeiro ({formatCurrency(limiteFinanceiro)}).
+                    <AlertTriangle className="w-4 h-4 text-destructive-ink shrink-0" aria-hidden="true" />
+                    <p className="text-sm text-destructive-ink">
+                      Valor inicial ({formatCurrency(estrategia.valorInicial)}) excede o limite financeiro ({formatCurrency(limiteFinanceiro)}).
                     </p>
                   </>
                 ) : (
                   <>
-                    <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
-                    <p className="text-xs text-success">
-                      ✅ Dentro do limite financeiro ({formatCurrency(limiteFinanceiro)}).
+                    <CheckCircle2 className="w-4 h-4 text-success-ink shrink-0" aria-hidden="true" />
+                    <p className="text-sm text-success-ink">
+                      Dentro do limite financeiro ({formatCurrency(limiteFinanceiro)}).
                     </p>
                   </>
                 )}
@@ -137,15 +138,17 @@ export default function AutorizacaoLanceDialog({
             )}
           </div>
 
-          <div className="border-t border-border pt-3">
-            <label className="text-xs font-semibold block mb-1">
-              Digite <Badge variant="outline" className="text-xs mx-1">AUTORIZO</Badge> para confirmar
-            </label>
+          <div className="border-t border-border pt-4">
+            <Label htmlFor="autorizacao-confirmacao" className="block mb-1">
+              Digite <Badge variant="muted" className="mx-1">AUTORIZO</Badge> para confirmar
+            </Label>
             <Input
+              id="autorizacao-confirmacao"
               value={confirmText}
               onChange={(e) => setConfirmText(e.target.value.toUpperCase())}
               placeholder="AUTORIZO"
-              className="font-mono text-center tracking-widest"
+              autoComplete="off"
+              className="text-center tracking-widest"
             />
           </div>
         </div>
@@ -155,9 +158,8 @@ export default function AutorizacaoLanceDialog({
           <Button
             onClick={handleAutorizar}
             disabled={confirmText !== 'AUTORIZO' || excedeLimite}
-            className="bg-warning hover:bg-warning/90 text-warning-foreground"
           >
-            <ShieldCheck className="w-4 h-4 mr-1" />
+            <ShieldCheck className="w-4 h-4" aria-hidden="true" />
             Autorizar Estratégia
           </Button>
         </DialogFooter>

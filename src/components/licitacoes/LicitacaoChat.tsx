@@ -5,15 +5,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   MessageSquare, Send, Loader2, Bot, User, Info, AlertTriangle,
-  CheckCircle2, Clock,
+  CheckCircle2, Volume2, VolumeX,
 } from 'lucide-react';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { playNotificationSound, isSoundEnabled, setSoundEnabled } from '@/lib/notification-sound';
-import { Volume2, VolumeX } from 'lucide-react';
 
 type Mensagem = {
   id: string;
@@ -39,9 +40,9 @@ const tipoIcons: Record<string, typeof Info> = {
 
 const tipoColors: Record<string, string> = {
   sistema: 'bg-muted text-muted-foreground',
-  alerta: 'bg-warning/10 text-warning',
-  sucesso: 'bg-success/10 text-success',
-  mensagem: 'bg-primary/10 text-primary',
+  alerta: 'bg-warning-tint text-warning-ink',
+  sucesso: 'bg-success-tint text-success-ink',
+  mensagem: 'bg-primary-tint text-primary',
 };
 
 export default function LicitacaoChat({ licitacaoId, licitacaoNumero }: Props) {
@@ -122,41 +123,57 @@ export default function LicitacaoChat({ licitacaoId, licitacaoNumero }: Props) {
   }, [input, user, licitacaoId, sending]);
 
   return (
-    <div className="flex flex-col h-full border border-border/50 rounded-xl bg-card overflow-hidden">
+    <div className="flex flex-col h-full border border-border rounded-lg bg-card overflow-hidden">
       {/* Header */}
-      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border/50 bg-muted/30">
-        <MessageSquare className="w-4 h-4 text-accent" />
-        <span className="text-sm font-semibold">Mural do Processo</span>
+      <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-border bg-muted">
+        <MessageSquare className="w-5 h-5 text-primary" aria-hidden="true" />
+        <span className="text-lg font-semibold">Mural do Processo</span>
         {licitacaoNumero && (
-          <Badge variant="outline" className="text-xs">{licitacaoNumero}</Badge>
+          <Badge variant="info">{licitacaoNumero}</Badge>
         )}
-        <button
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
           onClick={() => { const next = !soundOn; setSoundOn(next); setSoundEnabled(next); }}
-          className={`p-1 rounded transition-colors ${soundOn ? 'text-accent hover:bg-accent/10' : 'text-muted-foreground hover:bg-muted'}`}
+          className={soundOn ? 'text-primary' : 'text-muted-foreground'}
           title={soundOn ? 'Som ativado' : 'Som desativado'}
+          aria-label={soundOn ? 'Desativar som das notificações' : 'Ativar som das notificações'}
+          aria-pressed={soundOn}
         >
-          {soundOn ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
-        </button>
-        <Badge variant="outline" className="text-xs ml-auto bg-success/10 text-success border-success/30">
-          <span className="w-1.5 h-1.5 rounded-full bg-success mr-1 animate-pulse" />
+          {soundOn ? <Volume2 aria-hidden="true" /> : <VolumeX aria-hidden="true" />}
+        </Button>
+        <Badge variant="success" className="ml-auto">
+          <span className="w-2 h-2 rounded-full bg-success mr-1 animate-pulse" aria-hidden="true" />
           Tempo real
         </Badge>
       </div>
 
       {/* Messages */}
-      <ScrollArea className="flex-1 p-3 max-h-[400px]">
+      <ScrollArea className="flex-1 p-4 max-h-[400px]">
         <div className="space-y-2">
           {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            <div role="status" aria-live="polite" className="space-y-3 py-2">
+              <span className="sr-only">Carregando mensagens…</span>
+              <div className="flex gap-2">
+                <Skeleton className="h-8 w-8 rounded-full flex-shrink-0" />
+                <Skeleton className="h-12 w-3/5 rounded-lg" />
+              </div>
+              <div className="flex justify-end">
+                <Skeleton className="h-10 w-2/5 rounded-lg" />
+              </div>
+              <div className="flex gap-2">
+                <Skeleton className="h-8 w-8 rounded-full flex-shrink-0" />
+                <Skeleton className="h-12 w-1/2 rounded-lg" />
+              </div>
             </div>
           ) : mensagens.length === 0 ? (
-            <div className="text-center py-8">
-              <MessageSquare className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
-              <p className="text-xs text-muted-foreground">
-                Nenhuma mensagem ainda. Inicie a conversa!
-              </p>
-            </div>
+            <EstadoVazio
+              tamanho="compacto"
+              icone={<MessageSquare />}
+              titulo="Nenhuma mensagem ainda"
+              descricao="Inicie a conversa pela caixa abaixo."
+            />
           ) : (
             mensagens.map((msg) => {
               const Icon = tipoIcons[msg.tipo] || User;
@@ -173,23 +190,23 @@ export default function LicitacaoChat({ licitacaoId, licitacaoNumero }: Props) {
                 >
                   {!isMine && (
                     <div className={cn(
-                      'w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5',
+                      'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0',
                       tipoColors[msg.tipo] || 'bg-muted'
                     )}>
-                      <Icon className="w-3 h-3" />
+                      <Icon className="w-4 h-4" aria-hidden="true" />
                     </div>
                   )}
                   <div className={cn(
-                    'max-w-[85%] rounded-xl px-3 py-2 text-xs',
+                    'max-w-[85%] rounded-lg px-3 py-2 text-sm',
                     isSystem
-                      ? 'bg-muted/50 border border-border/30 text-muted-foreground italic'
+                      ? 'bg-muted border border-border text-muted-foreground italic'
                       : isMine
-                      ? 'bg-primary text-primary-foreground rounded-br-sm'
-                      : 'bg-muted rounded-bl-sm'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted'
                   )}>
                     <p className="whitespace-pre-wrap">{msg.conteudo}</p>
                     <span className={cn(
-                      'text-xs mt-1 block',
+                      'text-xs mt-1 block tabular-nums',
                       isMine ? 'text-primary-foreground/60' : 'text-muted-foreground'
                     )}>
                       {format(new Date(msg.created_at), "dd/MM HH:mm", { locale: ptBR })}
@@ -204,22 +221,24 @@ export default function LicitacaoChat({ licitacaoId, licitacaoNumero }: Props) {
       </ScrollArea>
 
       {/* Input */}
-      <div className="flex items-center gap-2 px-3 py-2 border-t border-border/50">
+      <div className="flex items-center gap-2 px-4 py-3 border-t border-border">
         <Input
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
           placeholder="Digite uma mensagem ou anotação..."
-          className="text-xs h-8"
+          aria-label="Mensagem"
           disabled={sending}
         />
         <Button
-          size="sm"
+          type="button"
+          size="icon"
           onClick={handleSend}
           disabled={!input.trim() || sending}
-          className="h-8 w-8 p-0 rounded-full"
+          className="h-11 w-11 flex-shrink-0"
+          aria-label="Enviar mensagem"
         >
-          {sending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+          {sending ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Send aria-hidden="true" />}
         </Button>
       </div>
     </div>

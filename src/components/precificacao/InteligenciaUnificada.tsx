@@ -9,22 +9,20 @@ export default function InteligenciaUnificada() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <div className="min-w-0">
-          <h2 className="text-sm sm:text-lg font-semibold text-foreground">Inteligência de Preços</h2>
-          <p className="text-xs sm:text-xs text-muted-foreground mt-0.5">
-            Análise comparativa entre fontes e recomendações de precificação por IA.
-          </p>
-        </div>
+      <div className="min-w-0">
+        <h2 className="text-lg font-semibold text-foreground">Inteligência de Preços</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Análise comparativa entre fontes e recomendações de precificação por IA.
+        </p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="bg-muted/50 h-auto">
-          <TabsTrigger value="inteligencia" className="gap-1.5 text-xs">
-            <Brain className="w-3.5 h-3.5" /> Recomendações IA
+        <TabsList className="h-auto flex-wrap gap-1">
+          <TabsTrigger value="inteligencia" className="gap-2">
+            <Brain className="w-4 h-4" aria-hidden="true" /> Recomendações IA
           </TabsTrigger>
-          <TabsTrigger value="comparativo" className="gap-1.5 text-xs">
-            <BarChart3 className="w-3.5 h-3.5" /> Comparativo de Fontes
+          <TabsTrigger value="comparativo" className="gap-2">
+            <BarChart3 className="w-4 h-4" aria-hidden="true" /> Comparativo de Fontes
           </TabsTrigger>
         </TabsList>
 

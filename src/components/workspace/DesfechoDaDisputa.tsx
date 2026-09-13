@@ -90,20 +90,20 @@ export default function DesfechoDaDisputa({
 
   return (
     <>
-      <Card className={`p-4 border-l-4 ${perdeu ? 'border-l-destructive' : 'border-l-success'}`}>
-        <div className="flex items-start gap-3 flex-wrap">
+      <Card className={`p-6 border-l-4 ${perdeu ? 'border-l-destructive' : 'border-l-success'}`}>
+        <div className="flex flex-wrap items-start gap-3">
           {perdeu
-            ? <XCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
-            : <Trophy className="w-5 h-5 text-success shrink-0 mt-0.5" />}
+            ? <XCircle className="w-5 h-5 shrink-0 mt-0.5 text-destructive" aria-hidden="true" />
+            : <Trophy className="w-5 h-5 shrink-0 mt-0.5 text-success" aria-hidden="true" />}
 
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-semibold text-sm">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-lg font-semibold">
                 {perdeu ? 'Disputa encerrada — não vencemos' : 'Disputa vencida'}
-              </span>
-              <Badge variant="outline" className="text-xs">{atual}</Badge>
+              </h2>
+              <Badge variant={perdeu ? 'danger' : 'success'}>{atual}</Badge>
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <p className="mt-1 text-sm text-muted-foreground">
               {perdeu
                 ? 'Registre o motivo para o processo contar nas análises do comercial.'
                 : homologada
@@ -111,50 +111,44 @@ export default function DesfechoDaDisputa({
                   : 'O que o portal exige do vencedor está a um clique daqui.'}
             </p>
 
-            <div className="flex items-center gap-2 mt-3 flex-wrap">
+            <div className="mt-4 flex flex-wrap items-center gap-2">
               {(venceu || homologada) && (
                 <>
-                  <Button size="sm" variant="outline" className="h-8 text-xs"
-                    onClick={() => irParaAba('proposta')}>
-                    <FileText className="w-3.5 h-3.5 mr-1.5" /> Proposta readequada
+                  <Button variant="outline" onClick={() => irParaAba('proposta')}>
+                    <FileText className="w-4 h-4" aria-hidden="true" /> Proposta readequada
                   </Button>
-                  <Button size="sm" variant="outline" className="h-8 text-xs"
-                    onClick={() => irParaAba('anexos')}>
-                    <FolderCheck className="w-3.5 h-3.5 mr-1.5" /> Pasta de habilitação
+                  <Button variant="outline" onClick={() => irParaAba('anexos')}>
+                    <FolderCheck className="w-4 h-4" aria-hidden="true" /> Pasta de habilitação
                   </Button>
                 </>
               )}
 
               {(venceu || homologada) && (
-                <Button size="sm" variant="outline" className="h-8 text-xs"
-                  onClick={() => navigate(`/gestao-contratos?novo_de=${licitacaoId}`)}>
-                  <FileSignature className="w-3.5 h-3.5 mr-1.5" /> Cadastrar contrato
+                <Button variant="outline" onClick={() => navigate(`/gestao-contratos?novo_de=${licitacaoId}`)}>
+                  <FileSignature className="w-4 h-4" aria-hidden="true" /> Cadastrar contrato
                 </Button>
               )}
 
               {venceu && (
-                <Button size="sm" className="h-8 text-xs"
-                  disabled={!!salvando} onClick={() => mudarStatus('Homologada')}>
+                <Button disabled={!!salvando} onClick={() => mudarStatus('Homologada')}>
                   {ocupado('Homologada')
-                    ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                    : <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />}
+                    ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                    : <CheckCircle2 className="w-4 h-4" aria-hidden="true" />}
                   Mover para Homologada
                 </Button>
               )}
 
               {perdeu && (
-                <Button size="sm" variant="outline" className="h-8 text-xs"
-                  onClick={() => setPerdaAberta(true)}>
-                  <XCircle className="w-3.5 h-3.5 mr-1.5" /> Registrar motivo da perda
+                <Button variant="outline" onClick={() => setPerdaAberta(true)}>
+                  <XCircle className="w-4 h-4" aria-hidden="true" /> Registrar motivo da perda
                 </Button>
               )}
 
               {(perdeu || homologada) && (
-                <Button size="sm" variant="ghost" className="h-8 text-xs text-muted-foreground"
-                  disabled={!!salvando} onClick={arquivar}>
+                <Button variant="ghost" className="text-muted-foreground" disabled={!!salvando} onClick={arquivar}>
                   {ocupado('arquivar')
-                    ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                    : <Archive className="w-3.5 h-3.5 mr-1.5" />}
+                    ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                    : <Archive className="w-4 h-4" aria-hidden="true" />}
                   Arquivar
                 </Button>
               )}

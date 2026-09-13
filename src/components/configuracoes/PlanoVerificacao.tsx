@@ -7,7 +7,7 @@ import { Progress } from '@/components/ui/progress';
 import {
   CheckCircle2, XCircle, Loader2, Play, Shield, Database,
   Bot, Search, FileText, Bell, Kanban, Users, Zap, Scale,
-  Calculator, Globe, BarChart3, CreditCard
+  Calculator, Globe, BarChart3
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -203,10 +203,10 @@ const createTests = (userId: string): TestCase[] => [
   },
 ];
 
-const planLabels: Record<string, { name: string; color: string }> = {
-  basico: { name: 'Básico', color: 'bg-muted text-muted-foreground' },
-  profissional: { name: 'Profissional', color: 'bg-muted text-foreground' },
-  enterprise: { name: 'Enterprise', color: 'bg-muted text-foreground' },
+const planLabels: Record<string, { name: string }> = {
+  basico: { name: 'Básico' },
+  profissional: { name: 'Profissional' },
+  enterprise: { name: 'Enterprise' },
 };
 
 export default function PlanoVerificacao() {
@@ -249,120 +249,127 @@ export default function PlanoVerificacao() {
   };
 
   return (
-    <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
-      <div className="flex items-center justify-between mb-5">
-        <div className="flex items-center gap-2">
-          <Shield className="w-5 h-5 text-muted-foreground" />
-          <h2 className="text-sm font-semibold">Verificação de Funcionalidades por Plano</h2>
-        </div>
+    <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
+      <div className="mb-4 flex items-center gap-2">
+        <Shield className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+        <h2 className="text-lg font-semibold text-foreground">Verificação de Funcionalidades por Plano</h2>
       </div>
 
-      <p className="text-xs text-muted-foreground mb-4">
+      <p className="mb-4 text-sm text-muted-foreground">
         Selecione um plano para testar se todas as funcionalidades incluídas estão operando corretamente.
       </p>
 
       {/* Plan selector */}
-      <div className="flex gap-2 mb-5">
-        {Object.entries(planLabels).map(([slug, { name, color }]) => (
-          <button
+      <div className="mb-6 flex flex-wrap gap-2" role="group" aria-label="Plano a verificar">
+        {Object.entries(planLabels).map(([slug, { name }]) => (
+          <Button
             key={slug}
+            type="button"
+            variant={selectedPlan === slug ? 'default' : 'outline'}
+            aria-pressed={selectedPlan === slug}
             onClick={() => { setSelectedPlan(slug); setResults({}); }}
-            className={cn(
-              'px-4 py-2 rounded-lg text-xs font-semibold transition-all border',
-              selectedPlan === slug
-                ? 'border-accent bg-accent/10 text-accent ring-1 ring-accent/30'
-                : 'border-border/50 text-muted-foreground hover:border-accent/40'
-            )}
           >
             {name}
-          </button>
+          </Button>
         ))}
       </div>
 
       {/* Progress */}
       {(passCount + failCount) > 0 && (
-        <div className="mb-5 space-y-2">
-          <div className="flex items-center justify-between text-xs">
+        <div className="mb-6 space-y-2">
+          <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Progresso dos testes</span>
-            <span className="font-semibold">
-              <span className="text-success">{passCount} ✓</span>
-              {failCount > 0 && <span className="text-destructive ml-2">{failCount} ✗</span>}
-              <span className="text-muted-foreground ml-2">/ {planTests.length}</span>
+            <span className="font-semibold tabular-nums">
+              <span className="text-success">{passCount} ok</span>
+              {failCount > 0 && <span className="ml-2 text-destructive">{failCount} falhas</span>}
+              <span className="ml-2 text-muted-foreground">/ {planTests.length}</span>
             </span>
           </div>
-          <Progress value={progress} className="h-2" />
+          <Progress value={progress} className="h-2" aria-label="Progresso dos testes" />
         </div>
       )}
 
       {/* Test list */}
-      <div className="space-y-2 mb-5 max-h-[400px] overflow-y-auto">
+      <ul className="mb-6 max-h-[400px] space-y-2 overflow-y-auto">
         {planTests.map((t) => {
           const status = results[t.id] || 'idle';
           const Icon = t.icon;
           return (
-            <div
+            <li
               key={t.id}
               className={cn(
-                'flex items-center gap-3 p-3 rounded-lg border transition-all',
-                status === 'pass' && 'border-success/30 bg-success/5',
-                status === 'fail' && 'border-destructive/30 bg-destructive/5',
-                status === 'running' && 'border-accent/40 bg-accent/5',
-                status === 'idle' && 'border-border/50 bg-muted/20',
+                'flex items-center gap-3 rounded-lg border p-4 transition-colors',
+                status === 'pass' && 'border-success-line bg-success-tint',
+                status === 'fail' && 'border-destructive-line bg-destructive-tint',
+                status === 'running' && 'border-primary bg-primary-tint',
+                status === 'idle' && 'border-border bg-muted',
               )}
             >
-              <Icon className="w-4 h-4 text-muted-foreground shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium">{t.name}</p>
-                <p className="text-xs text-muted-foreground">{t.description}</p>
+              <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <div className="min-w-0 flex-1">
+                <p className="text-base font-medium text-foreground">{t.name}</p>
+                <p className="text-sm text-muted-foreground">{t.description}</p>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <div className="hidden sm:flex gap-1">
+              <div className="flex shrink-0 items-center gap-2">
+                <div className="hidden gap-1 sm:flex">
                   {t.plans.map(p => (
-                    <Badge key={p} variant="outline" className={cn('text-xs px-1.5 py-0', planLabels[p]?.color)}>
+                    <Badge key={p} variant="muted">
                       {planLabels[p]?.name}
                     </Badge>
                   ))}
                 </div>
-                {status === 'idle' && <div className="w-5 h-5 rounded-full bg-muted" />}
-                {status === 'running' && <Loader2 className="w-5 h-5 text-accent animate-spin" />}
-                {status === 'pass' && <CheckCircle2 className="w-5 h-5 text-success" />}
-                {status === 'fail' && <XCircle className="w-5 h-5 text-destructive" />}
+                {status === 'idle' && <Badge variant="muted">Aguardando</Badge>}
+                {status === 'running' && (
+                  <Badge variant="info" className="gap-1">
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Testando
+                  </Badge>
+                )}
+                {status === 'pass' && (
+                  <Badge variant="success" className="gap-1">
+                    <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> Passou
+                  </Badge>
+                )}
+                {status === 'fail' && (
+                  <Badge variant="danger" className="gap-1">
+                    <XCircle className="h-4 w-4" aria-hidden="true" /> Falhou
+                  </Badge>
+                )}
               </div>
-            </div>
+            </li>
           );
         })}
-      </div>
+      </ul>
 
       {/* Run button */}
       <Button
         onClick={runTests}
         disabled={running || !user}
-        className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
+        className="w-full"
       >
         {running ? (
-          <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Executando testes...</>
+          <><Loader2 className="animate-spin" aria-hidden="true" /> Executando testes...</>
         ) : (
-          <><Play className="w-4 h-4 mr-2" /> Testar Plano {planLabels[selectedPlan]?.name}</>
+          <><Play aria-hidden="true" /> Testar Plano {planLabels[selectedPlan]?.name}</>
         )}
       </Button>
 
       {/* Summary */}
       {!running && passCount + failCount === planTests.length && planTests.length > 0 && (
         <div className={cn(
-          'mt-4 p-4 rounded-lg border text-center',
-          failCount === 0 ? 'border-success/30 bg-success/5' : 'border-warning/30 bg-warning/5'
+          'mt-4 rounded-lg border p-4 text-center',
+          failCount === 0 ? 'border-success-line bg-success-tint text-success-ink' : 'border-warning-line bg-warning-tint text-warning-ink'
         )}>
           {failCount === 0 ? (
             <>
-              <CheckCircle2 className="w-8 h-8 text-success mx-auto mb-2" />
-              <p className="text-sm font-bold text-success">Plano {planLabels[selectedPlan]?.name} — 100% Operacional</p>
-              <p className="text-xs text-muted-foreground mt-1">Todas as {planTests.length} funcionalidades estão ativas e funcionando corretamente.</p>
+              <CheckCircle2 className="mx-auto mb-2 h-6 w-6" aria-hidden="true" />
+              <p className="text-base font-semibold">Plano {planLabels[selectedPlan]?.name} — 100% Operacional</p>
+              <p className="mt-1 text-sm">Todas as {planTests.length} funcionalidades estão ativas e funcionando corretamente.</p>
             </>
           ) : (
             <>
-              <XCircle className="w-8 h-8 text-warning mx-auto mb-2" />
-              <p className="text-sm font-bold text-warning">Plano {planLabels[selectedPlan]?.name} — {passCount}/{planTests.length} testes passaram</p>
-              <p className="text-xs text-muted-foreground mt-1">{failCount} funcionalidade(s) com falha. Verifique as permissões do banco de dados.</p>
+              <XCircle className="mx-auto mb-2 h-6 w-6" aria-hidden="true" />
+              <p className="text-base font-semibold">Plano {planLabels[selectedPlan]?.name} — {passCount}/{planTests.length} testes passaram</p>
+              <p className="mt-1 text-sm">{failCount} funcionalidade(s) com falha. Verifique as permissões do banco de dados.</p>
             </>
           )}
         </div>

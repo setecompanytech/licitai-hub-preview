@@ -53,19 +53,29 @@ function KpiCard({
         : status === "bad"
           ? "text-destructive"
           : "text-foreground";
+  const caixa =
+    status === "good"
+      ? "bg-success-tint text-success-ink"
+      : status === "warn"
+        ? "bg-warning-tint text-warning-ink"
+        : status === "bad"
+          ? "bg-destructive-tint text-destructive-ink"
+          : "bg-muted text-foreground";
   return (
     <Card>
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">{titulo}</p>
-            <p className={`text-2xl font-bold mt-1 ${cor}`}>
+      <CardContent className="p-6">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-muted-foreground">{titulo}</p>
+            <p className={`mt-1 text-[2rem] leading-10 font-bold tabular-nums truncate ${cor}`}>
               {valor}
-              {sufixo && <span className="text-base ml-1 text-muted-foreground">{sufixo}</span>}
+              {sufixo && <span className="text-base font-medium ml-1 text-muted-foreground">{sufixo}</span>}
             </p>
             {hint && <p className="text-xs text-muted-foreground mt-1">{hint}</p>}
           </div>
-          <Icon className={`w-5 h-5 ${cor} opacity-70`} />
+          <span className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md ${caixa}`}>
+            <Icon className="w-5 h-5" aria-hidden="true" />
+          </span>
         </div>
       </CardContent>
     </Card>
@@ -73,17 +83,14 @@ function KpiCard({
 }
 
 function nivelBadge(nivel: CFOInsights["saude_nivel"]) {
-  const map = {
-    critico: { label: "Crítico", cls: "bg-destructive text-destructive-foreground" },
-    atencao: { label: "Atenção", cls: "bg-warning text-warning-foreground" },
-    saudavel: {
-      label: "Saudável",
-      cls: "bg-success/15 text-success border border-success/30 hover:bg-success/15",
-    },
-    excelente: { label: "Excelente", cls: "bg-success text-success-foreground" },
+  const map: Record<string, { label: string; variant: "danger" | "warning" | "success" }> = {
+    critico: { label: "Crítico", variant: "danger" },
+    atencao: { label: "Atenção", variant: "warning" },
+    saudavel: { label: "Saudável", variant: "success" },
+    excelente: { label: "Excelente", variant: "success" },
   };
   const v = map[nivel] ?? map.atencao;
-  return <Badge className={v.cls}>{v.label}</Badge>;
+  return <Badge variant={v.variant}>{v.label}</Badge>;
 }
 
 export default function FinCFODashboard() {
@@ -93,9 +100,9 @@ export default function FinCFODashboard() {
 
   if (isLoading || !ind) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" role="status" aria-label="Carregando indicadores">
         {Array.from({ length: 8 }).map((_, i) => (
-          <Skeleton key={i} className="h-24" />
+          <Skeleton key={i} className="h-28" />
         ))}
       </div>
     );
@@ -122,13 +129,13 @@ export default function FinCFODashboard() {
   return (
     <div className="space-y-6">
       {/* Cabeçalho + IA */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold flex items-center gap-2">
-            <Activity className="w-5 h-5 text-muted-foreground" />
+            <Activity className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
             Painel CFO — Visão Executiva
           </h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
+          <p className="text-sm text-muted-foreground mt-1">
             Indicadores contábeis e projeção de caixa 90 dias
             {ind.competenciaBp && (
               <> · BP de referência: <strong>{formatDate(ind.competenciaBp)}</strong></>
@@ -144,9 +151,9 @@ export default function FinCFODashboard() {
           disabled={gerarInsights.isPending}
         >
           {gerarInsights.isPending ? (
-            <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+            <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
           ) : (
-            <Sparkles className="w-4 h-4 mr-1.5" />
+            <Sparkles className="w-4 h-4" aria-hidden="true" />
           )}
           Gerar análise IA
         </Button>
@@ -165,8 +172,8 @@ export default function FinCFODashboard() {
 
       {/* Linha 1: Rentabilidade */}
       <div>
-        <h3 className="text-sm font-semibold mb-2 text-muted-foreground uppercase tracking-wide">Rentabilidade</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+        <h3 className="text-lg font-semibold mb-3">Rentabilidade</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiCard
             titulo="EBITDA"
             valor={formatBRL(ind.ebitda)}
@@ -199,10 +206,10 @@ export default function FinCFODashboard() {
 
       {/* Linha 2: Liquidez & Endividamento */}
       <div>
-        <h3 className="text-sm font-semibold mb-2 text-muted-foreground uppercase tracking-wide">
+        <h3 className="text-lg font-semibold mb-3">
           Liquidez & Endividamento
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiCard
             titulo="Liquidez Corrente"
             valor={ind.liquidezCorrente.toFixed(2)}
@@ -238,10 +245,10 @@ export default function FinCFODashboard() {
 
       {/* Linha 3: Retorno & Caixa */}
       <div>
-        <h3 className="text-sm font-semibold mb-2 text-muted-foreground uppercase tracking-wide">
+        <h3 className="text-lg font-semibold mb-3">
           Retorno & Caixa
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiCard
             titulo="ROI (Ativo)"
             valor={ind.roi.toFixed(2)}
@@ -284,23 +291,23 @@ export default function FinCFODashboard() {
       {/* Projeção 90d */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-muted-foreground" />
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
             Projeção de Caixa — Próximos 90 dias
           </CardTitle>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={260}>
             <LineChart data={ind.projecao90d}>
-              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
               <XAxis
                 dataKey="dia"
                 tickFormatter={(d) => formatDate(d).slice(0, 5)}
-                fontSize={11}
+                fontSize={12}
               />
               <YAxis
                 tickFormatter={(v) => formatBRL(v).replace("R$", "").trim()}
-                fontSize={11}
+                fontSize={12}
               />
               <Tooltip
                 formatter={(v: number) => formatBRL(v)}
@@ -326,45 +333,45 @@ export default function FinCFODashboard() {
 
       {/* Insights IA */}
       {insights && (
-        <Card className="border-primary/30">
+        <Card className="border-primary/40">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between flex-wrap gap-2">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-muted-foreground" />
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
                 Análise Executiva IA
               </CardTitle>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">Saúde financeira:</span>
-                <span className="text-2xl font-bold text-foreground">{insights.saude_score}</span>
+                <span className="text-sm text-muted-foreground">Saúde financeira:</span>
+                <span className="text-2xl font-bold tabular-nums text-foreground">{insights.saude_score}</span>
                 {nivelBadge(insights.saude_nivel)}
               </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="text-sm leading-relaxed">{insights.resumo}</p>
+            <p className="text-base">{insights.resumo}</p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <h4 className="text-xs font-semibold text-success uppercase mb-2 flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3" /> Pontos Fortes
+                <h4 className="text-sm font-semibold text-success mb-2 flex items-center gap-1">
+                  <CheckCircle2 className="w-4 h-4" aria-hidden="true" /> Pontos Fortes
                 </h4>
-                <ul className="space-y-1.5">
+                <ul className="space-y-2">
                   {insights.pontos_fortes.map((p, i) => (
                     <li key={i} className="text-sm flex gap-2">
-                      <span className="text-success mt-0.5">✓</span>
+                      <span className="text-success mt-0.5" aria-hidden="true">✓</span>
                       <span>{p}</span>
                     </li>
                   ))}
                 </ul>
               </div>
               <div>
-                <h4 className="text-xs font-semibold text-warning uppercase mb-2 flex items-center gap-1">
-                  <AlertTriangle className="w-3 h-3" /> Pontos de Atenção
+                <h4 className="text-sm font-semibold text-warning mb-2 flex items-center gap-1">
+                  <AlertTriangle className="w-4 h-4" aria-hidden="true" /> Pontos de Atenção
                 </h4>
-                <ul className="space-y-1.5">
+                <ul className="space-y-2">
                   {insights.pontos_atencao.map((p, i) => (
                     <li key={i} className="text-sm flex gap-2">
-                      <span className="text-warning mt-0.5">!</span>
+                      <span className="text-warning mt-0.5" aria-hidden="true">!</span>
                       <span>{p}</span>
                     </li>
                   ))}
@@ -374,23 +381,23 @@ export default function FinCFODashboard() {
 
             {insights.acoes_prioritarias?.length > 0 && (
               <div>
-                <h4 className="text-xs font-semibold text-foreground uppercase mb-2 flex items-center gap-1">
-                  <Target className="w-3 h-3" /> Ações Prioritárias (30 dias)
+                <h4 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-1">
+                  <Target className="w-4 h-4" aria-hidden="true" /> Ações Prioritárias (30 dias)
                 </h4>
                 <div className="space-y-2">
                   {insights.acoes_prioritarias.map((a, i) => (
                     <div
                       key={i}
-                      className="flex items-start gap-3 p-2.5 rounded-md border bg-muted/30"
+                      className="flex items-start gap-3 p-3 rounded-md border border-border bg-muted"
                     >
-                      <div className="text-xl font-bold text-foreground leading-none">{i + 1}</div>
+                      <div className="text-xl font-bold tabular-nums text-foreground leading-none">{i + 1}</div>
                       <div className="flex-1">
                         <p className="text-sm font-medium">{a.titulo}</p>
-                        <div className="flex gap-2 mt-1">
-                          <Badge variant="outline" className="text-xs">
+                        <div className="flex flex-wrap gap-2 mt-1">
+                          <Badge variant="info">
                             Impacto: {a.impacto}
                           </Badge>
-                          <Badge variant="outline" className="text-xs">
+                          <Badge variant="info">
                             Prazo: {a.prazo}
                           </Badge>
                         </div>

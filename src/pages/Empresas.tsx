@@ -1,4 +1,6 @@
 import AppLayout from '@/components/layout/AppLayout';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { Button } from '@/components/ui/button';
 import { Building2, Pencil, Plus, ShieldCheck, Trash2 } from 'lucide-react';
@@ -8,6 +10,7 @@ import EditEmpresaDialog from '@/components/empresa/EditEmpresaDialog';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 export default function Empresas() {
   const { empresas, empresaAtiva, todasSelecionadas, reloadEmpresas } = useEmpresa();
@@ -27,109 +30,119 @@ export default function Empresas() {
 
   return (
     <AppLayout>
-      <div className="max-w-5xl mx-auto">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
-          <div className="min-w-0">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Empresas</h1>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-1">Gerencie suas empresas e certificados digitais</p>
-          </div>
-          <Button onClick={() => setShowForm(!showForm)} className="bg-accent hover:bg-accent/90 text-accent-foreground self-start sm:self-auto flex-shrink-0">
-            <Plus className="w-4 h-4 mr-2" />
-            Nova Empresa
-          </Button>
-        </div>
+      <div className="mx-auto max-w-5xl">
+        <CabecalhoPagina
+          icone={<Building2 />}
+          titulo="Empresas"
+          descricao="Gerencie suas empresas e certificados digitais"
+          acoes={
+            <Button onClick={() => setShowForm(!showForm)} aria-expanded={showForm}>
+              <Plus aria-hidden="true" />
+              Nova Empresa
+            </Button>
+          }
+        />
 
         {showForm && (
-          <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm mb-6">
+          <section className="mb-6 rounded-lg border border-border bg-card p-6 shadow-sm">
             <CadastroCertificado onSuccess={() => setShowForm(false)} />
           </section>
         )}
 
         {empresas.length === 0 ? (
-          <section className="bg-card rounded-xl border border-border/50 p-8 shadow-sm text-center">
-            <Building2 className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-            <h3 className="font-semibold mb-1">Nenhuma empresa cadastrada</h3>
-            <p className="text-sm text-muted-foreground mb-4">Cadastre sua primeira empresa via certificado digital para começar.</p>
-            <Button onClick={() => setShowForm(true)} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-              <ShieldCheck className="w-4 h-4 mr-2" />
-              Cadastrar com Certificado Digital
-            </Button>
+          <section className="rounded-lg border border-border bg-card shadow-sm">
+            <EstadoVazio
+              icone={<Building2 />}
+              titulo="Nenhuma empresa cadastrada"
+              descricao="Cadastre sua primeira empresa via certificado digital para começar."
+              acao={
+                <Button onClick={() => setShowForm(true)}>
+                  <ShieldCheck aria-hidden="true" />
+                  Cadastrar com Certificado Digital
+                </Button>
+              }
+            />
           </section>
         ) : (
           <div className="space-y-3">
-            {empresas.map((m) => (
-              <section
-                key={m.empresa_id}
-                className={`bg-card rounded-xl border p-5 shadow-sm transition-all ${
-                  !todasSelecionadas && empresaAtiva?.id === m.empresa_id
-                    ? 'border-accent/50 ring-1 ring-accent/20'
-                    : 'border-border/50'
-                }`}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
-                      <Building2 className="w-5 h-5 text-muted-foreground" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-sm">
-                          {m.empresa.nome_fantasia || m.empresa.razao_social}
-                        </h3>
-                        <Badge variant="outline" className="text-xs">{m.papel}</Badge>
-                        {m.empresa.regime_tributario && (
-                          <Badge variant="secondary" className="text-xs">
-                            {m.empresa.regime_tributario === 'simples_nacional' ? 'Simples Nacional' :
-                             m.empresa.regime_tributario === 'lucro_presumido' ? 'Lucro Presumido' : 'Lucro Real'}
-                          </Badge>
-                        )}
-                        {!todasSelecionadas && empresaAtiva?.id === m.empresa_id && (
-                          <Badge className="bg-success/10 text-success text-xs">Ativa</Badge>
+            {empresas.map((m) => {
+              const ativa = !todasSelecionadas && empresaAtiva?.id === m.empresa_id;
+              return (
+                <section
+                  key={m.empresa_id}
+                  className={cn(
+                    'rounded-lg border bg-card p-6 shadow-sm transition-colors',
+                    ativa ? 'border-primary' : 'border-border',
+                  )}
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary-tint text-primary">
+                        <Building2 className="h-5 w-5" aria-hidden="true" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="text-base font-semibold text-foreground">
+                            {m.empresa.nome_fantasia || m.empresa.razao_social}
+                          </h3>
+                          <Badge variant="info">{m.papel}</Badge>
+                          {m.empresa.regime_tributario && (
+                            <Badge variant="muted">
+                              {m.empresa.regime_tributario === 'simples_nacional' ? 'Simples Nacional' :
+                               m.empresa.regime_tributario === 'lucro_presumido' ? 'Lucro Presumido' : 'Lucro Real'}
+                            </Badge>
+                          )}
+                          {ativa && (
+                            <Badge variant="success">Ativa</Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">{m.empresa.cnpj}</p>
+                        {m.empresa.razao_social !== m.empresa.nome_fantasia && m.empresa.nome_fantasia && (
+                          <p className="text-sm text-muted-foreground">{m.empresa.razao_social}</p>
                         )}
                       </div>
-                      <p className="text-xs text-muted-foreground">{m.empresa.cnpj}</p>
-                      {m.empresa.razao_social !== m.empresa.nome_fantasia && m.empresa.nome_fantasia && (
-                        <p className="text-xs text-muted-foreground">{m.empresa.razao_social}</p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {m.empresa.certificado_nome && (
+                        <Badge variant="muted" className="gap-1" truncate>
+                          <ShieldCheck className="h-4 w-4 shrink-0" aria-hidden="true" />
+                          {m.empresa.certificado_nome}
+                        </Badge>
+                      )}
+                      {m.papel === 'admin' && (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-muted-foreground hover:text-primary"
+                            onClick={() => setEditEmpresa(m.empresa)}
+                            title="Editar empresa"
+                            aria-label="Editar empresa"
+                          >
+                            <Pencil aria-hidden="true" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-muted-foreground hover:text-destructive"
+                            onClick={() => handleDelete(m.empresa_id, m.empresa.razao_social)}
+                            title="Remover empresa"
+                            aria-label="Remover empresa"
+                          >
+                            <Trash2 aria-hidden="true" />
+                          </Button>
+                        </>
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {m.empresa.certificado_nome && (
-                      <Badge variant="secondary" className="text-xs gap-1">
-                        <ShieldCheck className="w-3 h-3" />
-                        {m.empresa.certificado_nome}
-                      </Badge>
-                    )}
-                    {m.papel === 'admin' && (
-                      <>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-muted-foreground hover:text-accent"
-                          onClick={() => setEditEmpresa(m.empresa)}
-                          title="Editar empresa"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive/60 hover:text-destructive"
-                          onClick={() => handleDelete(m.empresa_id, m.empresa.razao_social)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </div>
-                {m.empresa.certificado_validade && (
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Certificado válido até: {new Date(m.empresa.certificado_validade).toLocaleDateString('pt-BR')}
-                  </p>
-                )}
-              </section>
-            ))}
+                  {m.empresa.certificado_validade && (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Certificado válido até: {new Date(m.empresa.certificado_validade).toLocaleDateString('pt-BR')}
+                    </p>
+                  )}
+                </section>
+              );
+            })}
           </div>
         )}
 

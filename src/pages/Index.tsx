@@ -1,4 +1,5 @@
 import AppLayout from '@/components/layout/AppLayout';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import StatCard from '@/components/dashboard/StatCard';
 import PainelLicitacoes from '@/components/dashboard/PainelLicitacoes';
 import QuickAccessGrid from '@/components/dashboard/QuickAccessGrid';
@@ -10,6 +11,7 @@ import EmpresaSelector from '@/components/empresa/EmpresaSelector';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { useAnalyticsData } from '@/hooks/useAnalyticsData';
+import { Badge } from '@/components/ui/badge';
 import { Eye, Trophy, DollarSign, XCircle, Clock, Database, CalendarDays } from 'lucide-react';
 import RelatorioGerencialPDF from '@/components/relatorios/RelatorioGerencialPDF';
 import OnboardingWizard, { useOnboarding } from '@/components/onboarding/OnboardingWizard';
@@ -39,43 +41,43 @@ export default function Index() {
 
   return (
     <AppLayout>
-      {/* REBRAND — o protótipo não repete o nome da página no corpo: quem diz
-          onde você está é o rastro na barra do topo, e os títulos de seção são
-          as âncoras visuais. Sobra aqui a linha de contexto da empresa, que é
-          funcional (o app é multiempresa) e não existe no protótipo.
-          O h1 continua para quem navega por leitor de tela. */}
-      <h1 className="sr-only">Painel de Gestão — {empresaLabel}</h1>
-
-      <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-        <p className="text-sm text-muted-foreground truncate min-w-0">
-          Resultados de: <span className="font-medium text-foreground">{empresaLabel}</span>
-        </p>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <RelatorioGerencialPDF />
-          <div className="hidden sm:block lg:hidden">
-            <EmpresaSelector />
-          </div>
+      {/* Identidade 12/09: o h1 visível vem do CabecalhoPagina — é o único da
+          página — e título, descrição, ícone e trilha vêm do registro
+          (lib/navegacao/paginas.ts) pela rota, sem a tela reescrever o que já
+          está padronizado. A linha de contexto da empresa é funcional (o app é
+          multiempresa) e segue como chip abaixo da descrição. */}
+      <CabecalhoPagina
+        rota="/dashboard"
+        acoes={
+          <>
+            <RelatorioGerencialPDF />
+            <div className="hidden sm:block lg:hidden">
+              <EmpresaSelector />
+            </div>
+          </>
+        }
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="muted" truncate>{`Resultados de ${empresaLabel}`}</Badge>
         </div>
-      </div>
+      </CabecalhoPagina>
 
-      {/* 1. Ferramentas — acesso rápido */}
-      <section data-secao="Nossas Ferramentas" className="mb-6 sm:mb-8">
-        <h2 className="text-2xl font-bold tracking-tight mb-4">Nossas Ferramentas</h2>
-        <QuickAccessGrid />
-      </section>
-
-      {/* 2. Painel — os números da operação do dia, com a faixa de destaque ao
-          lado, como no protótipo. */}
-      <section data-secao="Painel" className="mb-6 sm:mb-8">
-        <h2 className="text-2xl font-bold tracking-tight mb-4">Painel</h2>
-        <div className="grid gap-4 lg:grid-cols-3 [&>*]:min-w-0">
-          <div className="lg:col-span-2 grid grid-cols-2 gap-4 [&>*]:min-w-0">
+      {/* 1. Os números da operação do dia, com a faixa de destaque ao lado,
+          como no protótipo. O padrão declarado para /dashboard é "painel":
+          KPIs em linha LOGO ABAIXO do cabeçalho, e só então os blocos de
+          leitura — por isso esta seção não tem h2. O título dela é o h1 da
+          página ("Painel", do registro), e repeti-lo aqui como h2 dava dois
+          "Painel" empilhados a 24px de distância. O nome da seção segue no
+          `data-secao`, que é o que o NavegadorDeSecoes lê. */}
+      <section data-secao="Resumo do dia" aria-label="Resumo do dia" className="mb-8">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 [&>*]:min-w-0">
+          <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4 [&>*]:min-w-0">
           {/* Regra de cor da auditoria: semântica só onde o ícone comunica estado
               real (andamento/ganho/perda). Azul e teal decorativos viram neutro. */}
           <StatCard label="Monitoradas" value={kpis.licitacoesMonitoradas.toString()} icon={Eye} tone="neutral" />
-          <StatCard label="Em Andamento" value={analyticsKpis.emAndamento.toString()} icon={Clock} accentColor="var(--warning)" />
-          <StatCard label="Ganhas" value={analyticsKpis.ganhas.toString()} icon={Trophy} accentColor="var(--success)" />
-          <StatCard label="Perdidas" value={analyticsKpis.perdidas.toString()} icon={XCircle} accentColor="var(--destructive)" />
+          <StatCard label="Em andamento" value={analyticsKpis.emAndamento.toString()} icon={Clock} tone="warning" />
+          <StatCard label="Ganhas" value={analyticsKpis.ganhas.toString()} icon={Trophy} tone="success" />
+          <StatCard label="Perdidas" value={analyticsKpis.perdidas.toString()} icon={XCircle} tone="destructive" />
           </div>
 
           {/* TEXTO FIXO, de propósito — não há dado por trás deste cartão.
@@ -102,8 +104,8 @@ export default function Index() {
         {/* Os dois números que não couberam na grade de quatro seguem numa
             fileira própria — o protótipo tem quatro ladrilhos, o app apura seis
             e nenhum deles é descartável. */}
-        <div className="grid grid-cols-2 gap-4 mt-4 [&>*]:min-w-0">
-          <StatCard label="Valor Ganho" value={formatCurrency(kpis.valorTotalGanho)} icon={DollarSign} tone="neutral" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 [&>*]:min-w-0">
+          <StatCard label="Valor ganho" value={formatCurrency(kpis.valorTotalGanho)} icon={DollarSign} tone="neutral" />
           <StatCard
             label="Editais PNCP"
             value={kpis.editaisAbertos.toLocaleString('pt-BR')}
@@ -115,12 +117,20 @@ export default function Index() {
         </div>
       </section>
 
+      {/* 2. Atalhos para os módulos, agrupados como no menu. Era "Nossas
+          Ferramentas" — voz do produto, e em caixa de título. A régua da
+          identidade escreve em caixa de frase e nomeia o que a seção FAZ. */}
+      <section data-secao="Acesso rápido" className="mb-8">
+        <h2 className="text-lg font-semibold mb-4">Acesso rápido</h2>
+        <QuickAccessGrid />
+      </section>
+
       {/* 3. Oportunidades — o que entrou e o que está aberto.
           Os quatro números são os que o app já apura. O protótipo mostra ainda
           "iminência de deserta" e "baixa concorrência", que não existem como
           dado aqui — ficaram de fora em vez de virar número inventado. */}
-      <section data-secao="Oportunidades" className="mb-6 sm:mb-8">
-        <h2 className="text-2xl font-bold tracking-tight mb-4">Oportunidades</h2>
+      <section data-secao="Oportunidades" className="mb-8">
+        <h2 className="text-lg font-semibold mb-4">Oportunidades</h2>
         <OportunidadesPainel
           itens={[
             {
@@ -150,23 +160,23 @@ export default function Index() {
       </section>
 
       {/* 4. Distribuição geográfica — onde estão as licitações */}
-      <section data-secao="Licitações por estado" className="mb-6 sm:mb-8">
-        <h2 className="text-2xl font-bold tracking-tight mb-4">Licitações por estado</h2>
+      <section data-secao="Licitações por estado" className="mb-8">
+        <h2 className="text-lg font-semibold mb-4">Licitações por estado</h2>
         <MapaLicitacoesPorEstado dados={ufBreakdown} />
       </section>
 
       {/* 5. Calendário dinâmico — datas de processos, certidões e backups */}
-      <section data-secao="Agenda Operacional" className="mb-6 sm:mb-8">
-        <h2 className="text-2xl font-bold tracking-tight mb-4 flex items-center gap-2.5">
+      <section data-secao="Agenda operacional" className="mb-8">
+        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
           <CalendarDays className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
-          Agenda Operacional
+          Agenda operacional
         </h2>
         <CalendarioLicitacoes />
       </section>
 
       {/* 6. Processos Licitatórios — operação */}
-      <section data-secao="Licitações gerenciadas" className="mb-6 sm:mb-8">
-        <h2 className="text-2xl font-bold tracking-tight mb-4">Licitações gerenciadas</h2>
+      <section data-secao="Licitações gerenciadas" className="mb-8">
+        <h2 className="text-lg font-semibold mb-4">Licitações gerenciadas</h2>
         <PainelLicitacoes />
       </section>
 

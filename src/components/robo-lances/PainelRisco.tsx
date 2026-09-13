@@ -3,9 +3,9 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import {
   TrendingDown, TrendingUp, AlertTriangle, CheckCircle2, Target,
-  ShieldAlert, BarChart3, ArrowDown, ArrowUp,
+  ShieldAlert, BarChart3,
 } from 'lucide-react';
-import type { LanceConfig, DisputeItem } from './ConfigurarLanceDialog';
+import type { LanceConfig } from './ConfigurarLanceDialog';
 
 type Props = {
   lance: LanceConfig;
@@ -67,18 +67,24 @@ function calcularRisco(lance: LanceConfig): {
 const formatCurrency = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-const RISCO_CORES: Record<string, string> = {
-  baixo: 'bg-success/15 text-success border-success/30',
-  medio: 'bg-warning/15 text-warning border-warning/30',
-  alto: 'bg-destructive/15 text-destructive border-destructive/30',
-  critico: 'bg-destructive text-destructive-foreground border-destructive',
+/** Variantes semânticas do Badge de ui — status sempre com texto. */
+type BadgeVariant = 'success' | 'warning' | 'danger' | 'info' | 'muted';
+
+// "Alto" e "Crítico" partilham a tinta vermelha: a diferença é dita pelo TEXTO
+// do selo ("Risco Crítico"), não por um vermelho cheio — a identidade 12/09
+// reserva o sólido para a ação destrutiva, não para rótulo de estado.
+const RISCO_VARIANTE: Record<string, BadgeVariant> = {
+  baixo: 'success',
+  medio: 'warning',
+  alto: 'danger',
+  critico: 'danger',
 };
 
-const POSICAO_CORES: Record<string, string> = {
-  liderando: 'bg-success/15 text-success border-success/30',
-  competitivo: 'bg-info/15 text-info border-info/30',
-  perdendo: 'bg-warning/15 text-warning border-warning/30',
-  indefinido: 'bg-muted text-muted-foreground border-border',
+const POSICAO_VARIANTE: Record<string, BadgeVariant> = {
+  liderando: 'success',
+  competitivo: 'info',
+  perdendo: 'warning',
+  indefinido: 'muted',
 };
 
 export default function PainelRisco({ lance, nivel }: Props) {
@@ -93,61 +99,61 @@ export default function PainelRisco({ lance, nivel }: Props) {
   const dentroFaixa = lance.valorAtual >= faixa.min && lance.valorAtual <= faixa.max;
 
   return (
-    <div className="bg-card rounded-xl border border-border/50 p-4 space-y-4">
+    <div className="rounded-lg border border-border bg-card p-4 space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <h3 className="text-xs font-semibold flex items-center gap-2">
-          <ShieldAlert className="w-4 h-4 text-muted-foreground" />
+        <h3 className="text-lg font-semibold flex items-center gap-2">
+          <ShieldAlert className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
           Painel de Risco — Nível {nivel}
         </h3>
-        <Badge variant="outline" className={RISCO_CORES[risco.nivel]}>
+        <Badge variant={RISCO_VARIANTE[risco.nivel]}>
           Risco {risco.nivel.charAt(0).toUpperCase() + risco.nivel.slice(1)}
         </Badge>
       </div>
 
       {/* Position & Risk Grid */}
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         {/* Posição */}
-        <div className="bg-muted/50 rounded-lg p-2.5 text-center">
-          <Target className="w-3.5 h-3.5 mx-auto text-muted-foreground mb-1" />
+        <div className="bg-muted rounded-lg p-3 text-center">
+          <Target className="w-4 h-4 mx-auto text-muted-foreground mb-1" aria-hidden="true" />
           <p className="text-xs text-muted-foreground">Posição</p>
-          <Badge variant="outline" className={`text-xs mt-1 ${POSICAO_CORES[posicao.posicao]}`}>
+          <Badge variant={POSICAO_VARIANTE[posicao.posicao]} className="mt-1">
             {posicao.posicao === 'liderando' && '🏆 '}
             {posicao.posicao.charAt(0).toUpperCase() + posicao.posicao.slice(1)}
           </Badge>
         </div>
 
         {/* Desconto */}
-        <div className="bg-muted/50 rounded-lg p-2.5 text-center">
+        <div className="bg-muted rounded-lg p-3 text-center">
           {margem > 0 ? (
-            <TrendingDown className="w-3.5 h-3.5 mx-auto text-success mb-1" />
+            <TrendingDown className="w-4 h-4 mx-auto text-success mb-1" aria-hidden="true" />
           ) : (
-            <TrendingUp className="w-3.5 h-3.5 mx-auto text-destructive mb-1" />
+            <TrendingUp className="w-4 h-4 mx-auto text-destructive mb-1" aria-hidden="true" />
           )}
           <p className="text-xs text-muted-foreground">Desconto</p>
-          <p className={`text-xs font-bold ${margem > 50 ? 'text-destructive' : margem > 30 ? 'text-warning' : 'text-success'}`}>
+          <p className={`text-base font-bold tabular-nums ${margem > 50 ? 'text-destructive' : margem > 30 ? 'text-warning' : 'text-success'}`}>
             {margem.toFixed(1)}%
           </p>
         </div>
 
         {/* Faixa ideal */}
-        <div className="bg-muted/50 rounded-lg p-2.5 text-center">
-          <BarChart3 className="w-3.5 h-3.5 mx-auto text-muted-foreground mb-1" />
+        <div className="bg-muted rounded-lg p-3 text-center">
+          <BarChart3 className="w-4 h-4 mx-auto text-muted-foreground mb-1" aria-hidden="true" />
           <p className="text-xs text-muted-foreground">Faixa Ideal</p>
-          <p className="text-xs font-mono font-bold">
+          <p className="text-base font-bold tabular-nums">
             {formatCurrency(faixa.min)}
           </p>
-          <p className="text-xs text-muted-foreground">a {formatCurrency(faixa.max)}</p>
+          <p className="text-xs text-muted-foreground tabular-nums">a {formatCurrency(faixa.max)}</p>
         </div>
 
         {/* Status faixa */}
-        <div className="bg-muted/50 rounded-lg p-2.5 text-center">
+        <div className="bg-muted rounded-lg p-3 text-center">
           {dentroFaixa ? (
-            <CheckCircle2 className="w-3.5 h-3.5 mx-auto text-success mb-1" />
+            <CheckCircle2 className="w-4 h-4 mx-auto text-success mb-1" aria-hidden="true" />
           ) : (
-            <AlertTriangle className="w-3.5 h-3.5 mx-auto text-warning mb-1" />
+            <AlertTriangle className="w-4 h-4 mx-auto text-warning mb-1" aria-hidden="true" />
           )}
           <p className="text-xs text-muted-foreground">Na Faixa?</p>
-          <p className={`text-xs font-bold ${dentroFaixa ? 'text-success' : 'text-warning'}`}>
+          <p className={`text-base font-bold ${dentroFaixa ? 'text-success' : 'text-warning'}`}>
             {dentroFaixa ? 'Sim ✓' : 'Fora'}
           </p>
         </div>
@@ -155,7 +161,7 @@ export default function PainelRisco({ lance, nivel }: Props) {
 
       {/* Barra de faixa visual */}
       <div>
-        <div className="flex justify-between text-xs text-muted-foreground mb-1">
+        <div className="flex flex-wrap justify-between gap-x-3 gap-y-1 text-xs text-muted-foreground mb-1 tabular-nums">
           <span>Piso: {formatCurrency(lance.valorMinimo)}</span>
           <span className="text-foreground font-semibold">Ótimo: {formatCurrency(faixa.otimo)}</span>
           <span>Ref: {formatCurrency(lance.valorReferencia)}</span>
@@ -176,6 +182,7 @@ export default function PainelRisco({ lance, nivel }: Props) {
           <Progress
             value={lance.valorReferencia > 0 ? ((lance.valorReferencia - lance.valorAtual) / lance.valorReferencia) * 100 : 0}
             className="h-3"
+            aria-label="Desconto atual sobre o valor de referência"
           />
         </div>
       </div>
@@ -187,11 +194,11 @@ export default function PainelRisco({ lance, nivel }: Props) {
             Fatores de risco
           </p>
           {risco.fatores.map((f, i) => (
-            <div key={i} className="flex items-center gap-2 text-xs text-muted-foreground">
+            <div key={i} className="flex items-center gap-2 text-sm text-muted-foreground">
               {risco.nivel === 'baixo' ? (
-                <CheckCircle2 className="w-3 h-3 text-success shrink-0" />
+                <CheckCircle2 className="w-4 h-4 text-success shrink-0" aria-hidden="true" />
               ) : (
-                <AlertTriangle className="w-3 h-3 text-warning shrink-0" />
+                <AlertTriangle className="w-4 h-4 text-warning shrink-0" aria-hidden="true" />
               )}
               {f}
             </div>
@@ -200,10 +207,10 @@ export default function PainelRisco({ lance, nivel }: Props) {
       )}
 
       {/* Recomendação */}
-      <div className={`px-3 py-2 rounded-lg border text-xs ${
+      <div className={`px-4 py-3 rounded-lg border text-sm ${
         dentroFaixa
-          ? 'bg-success/5 border-success/20 text-success'
-          : 'bg-warning/5 border-warning/20 text-warning'
+          ? 'bg-success-tint border-success-line text-success-ink'
+          : 'bg-warning-tint border-warning-line text-warning-ink'
       }`}>
         {dentroFaixa ? (
           <p><strong>✅ Recomendação:</strong> Valor atual dentro da faixa ideal. Posição competitiva mantida.</p>

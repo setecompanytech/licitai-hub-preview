@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
@@ -118,23 +119,23 @@ export default function RelatorioGerencialPDF() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" variant="outline" className="gap-1.5 text-xs">
-          <BarChart3 className="w-3.5 h-3.5" /> Relatório PDF
+        <Button variant="outline">
+          <BarChart3 aria-hidden="true" /> Relatório PDF
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-base">
-            <FileText className="w-5 h-5 text-accent" />
+          <DialogTitle className="flex items-center gap-2">
+            <FileText className="w-5 h-5 text-primary" aria-hidden="true" />
             Relatório Gerencial
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 pt-2">
-          <div>
-            <label className="text-xs font-medium text-muted-foreground">Período</label>
+          <div className="space-y-2">
+            <Label htmlFor="rg-periodo">Período</Label>
             <Select value={periodo} onValueChange={setPeriodo}>
-              <SelectTrigger className="mt-1">
+              <SelectTrigger id="rg-periodo">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -145,9 +146,9 @@ export default function RelatorioGerencialPDF() {
             </Select>
           </div>
 
-          <div className="bg-muted/50 rounded-lg p-3 text-xs text-muted-foreground space-y-1">
+          <div className="rounded-md bg-muted p-3 text-sm text-muted-foreground space-y-1">
             <p>O relatório inclui:</p>
-            <ul className="list-disc pl-4 space-y-0.5">
+            <ul className="list-disc pl-4 space-y-1">
               <li>Resumo de KPIs (vitórias, derrotas, taxa, ROI)</li>
               <li>Valor total ganho no período</li>
               <li>Lista detalhada de processos</li>
@@ -157,9 +158,9 @@ export default function RelatorioGerencialPDF() {
 
           <Button onClick={handleGenerate} disabled={generating} className="w-full">
             {generating ? (
-              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Gerando...</>
+              <><Loader2 className="animate-spin" aria-hidden="true" /> Gerando...</>
             ) : (
-              <><Download className="w-4 h-4 mr-2" /> Gerar e Baixar PDF</>
+              <><Download aria-hidden="true" /> Gerar e Baixar PDF</>
             )}
           </Button>
         </div>

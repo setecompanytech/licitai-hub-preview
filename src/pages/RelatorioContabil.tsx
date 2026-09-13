@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -11,11 +13,10 @@ import {
 } from 'recharts';
 import {
   TrendingUp, DollarSign, Building2, Scale, FileText, Users,
-  Landmark, PieChart as PieIcon, BarChart3, Download,
+  Landmark, PieChart as PieIcon, BarChart3,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import {
-  cenarios, regimesTributarios, cargaEfetiva, mercadoPara, buildDre,
+  cenarios, cargaEfetiva, mercadoPara, buildDre,
   type CenarioClientes,
 } from '@/data/relatorio-contabil-data';
 
@@ -24,6 +25,10 @@ const fmt = (v: number) =>
 
 const fmtPct = (v: number) => `${v.toFixed(1)}%`;
 
+// ─── Cores dos gráficos ───
+// Recharts recebe cor como string, então as séries vivem aqui como
+// `hsl(var(--chart-N))` — a única exceção aprovada à regra "cor só por
+// token Tailwind". A cromia dos eixos, grade e tooltip também é a dos tokens.
 const COLORS_PIE = [
   'hsl(var(--chart-2))',
   'hsl(var(--chart-3))',
@@ -31,44 +36,35 @@ const COLORS_PIE = [
   'hsl(var(--chart-4))',
 ];
 
+const COR_GRADE = 'hsl(var(--border))';
+const TICK = { fontSize: 12, fill: 'hsl(var(--muted-foreground))' };
+const TOOLTIP_STYLE = {
+  background: 'hsl(var(--card))',
+  border: '1px solid hsl(var(--border))',
+  borderRadius: 10,
+  fontSize: 14,
+};
+
 // ─── KPI Card ───
+// `color` é a cor da série a que o número pertence (fatia do gráfico, linha
+// do regime); por isso fica no ícone e vem por style, não por classe.
 function KpiCard({ label, value, sub, icon: Icon, color }: {
   label: string; value: string; sub?: string; icon: React.ElementType; color: string;
 }) {
   return (
-    <div className="stat-card group animate-fade-in">
+    <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-xs text-muted-foreground font-medium truncate">{label}</p>
-          <p className="text-xl font-bold mt-0.5 tracking-tight">{value}</p>
-          {sub && <p className="text-xs text-muted-foreground mt-0.5 truncate">{sub}</p>}
+          <p className="text-sm text-muted-foreground font-medium truncate">{label}</p>
+          {/* Mesma régua do LinhaKpis compartilhado: 32/40 no desktop, um
+              degrau abaixo (2xl) até md para "R$ 1.118.000/mês" caber em
+              coluna de 4. `break-normal`: o valor só quebra no espaço após
+              "R$", nunca no meio do número. */}
+          <p className="mt-1 max-w-full break-normal text-2xl leading-8 md:text-[2rem] md:leading-10 font-bold tabular-nums">{value}</p>
+          {sub && <p className="text-xs text-muted-foreground mt-1 truncate">{sub}</p>}
         </div>
-        <div className="p-2 rounded-lg flex-shrink-0" style={{ background: `${color}15` }}>
-          <Icon className="w-4 h-4" style={{ color }} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Cabeçalho ABNT ───
-function CabecalhoABNT() {
-  return (
-    <div className="border border-border rounded-xl p-6 mb-6 bg-card">
-      <div className="text-center space-y-1">
-        <h1 className="text-xl font-bold text-foreground tracking-tight">
-          RELATÓRIO CONTÁBIL E TRIBUTÁRIO — ANÁLISE DE VIABILIDADE
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Plataforma Praefectus — SaaS B2B para Licitações Públicas
-        </p>
-        <p className="text-xs text-muted-foreground">
-          Elaborado conforme ABNT NBR 14724 · NBC TSP · Lei 14.133/2021 · Lei Complementar 123/2006
-        </p>
-        <div className="flex justify-center gap-4 pt-2">
-          <Badge variant="outline">Data: {new Date().toLocaleDateString('pt-BR')}</Badge>
-          <Badge variant="outline">Classificação: Confidencial</Badge>
-          <Badge variant="outline">Revisão: 1.0</Badge>
+        <div className="p-2 rounded-md bg-muted flex-shrink-0">
+          <Icon className="w-4 h-4" style={{ color }} aria-hidden="true" />
         </div>
       </div>
     </div>
@@ -93,7 +89,7 @@ function ComparativoCenarios() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {cenarios.map((c, i) => (
           <KpiCard
             key={c.clientes}
@@ -106,17 +102,17 @@ function ComparativoCenarios() {
         ))}
       </div>
 
-      <div className="grid md:grid-cols-2 gap-4">
-        <Card className="p-5">
-          <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-muted-foreground" /> Receita vs Custos vs Lucro (R$/mês)
-          </h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card className="p-6">
+          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <BarChart3 className="w-5 h-5 text-muted-foreground" aria-hidden="true" /> Receita vs Custos vs Lucro (R$/mês)
+          </h2>
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
-              <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={v => fmt(v)} />
-              <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke={COR_GRADE} />
+              <XAxis dataKey="name" tick={TICK} />
+              <YAxis tick={TICK} tickFormatter={v => fmt(v)} />
+              <Tooltip formatter={(v: number) => fmt(v)} contentStyle={TOOLTIP_STYLE} />
               <Legend />
               <Bar dataKey="receita" name="Receita" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
               <Bar dataKey="custos" name="Custos" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
@@ -125,16 +121,16 @@ function ComparativoCenarios() {
           </ResponsiveContainer>
         </Card>
 
-        <Card className="p-5">
-          <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-muted-foreground" /> Margens e Composição de Custos (%)
-          </h3>
+        <Card className="p-6">
+          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 text-muted-foreground" aria-hidden="true" /> Margens e Composição de Custos (%)
+          </h2>
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={margemData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
-              <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} unit="%" />
-              <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke={COR_GRADE} />
+              <XAxis dataKey="name" tick={TICK} />
+              <YAxis tick={TICK} unit="%" />
+              <Tooltip contentStyle={TOOLTIP_STYLE} />
               <Legend />
               <Line type="monotone" dataKey="margem" name="Margem Líquida" stroke="hsl(var(--success))" strokeWidth={2} dot={{ r: 4 }} />
               <Line type="monotone" dataKey="infraPct" name="Infra %" stroke="hsl(var(--chart-5))" strokeWidth={2} dot={{ r: 4 }} />
@@ -145,37 +141,39 @@ function ComparativoCenarios() {
       </div>
 
       {/* Tabela consolidada */}
-      <Card className="p-5 overflow-auto">
-        <h3 className="text-sm font-semibold mb-3">Tabela Consolidada — Todos os Cenários</h3>
-        <table className="w-full text-xs border-collapse">
-          <thead>
-            <tr className="border-b border-border">
-              <th className="text-left p-2 font-semibold text-muted-foreground">Indicador</th>
-              {cenarios.map(c => <th key={c.clientes} className="text-right p-2 font-semibold">{c.label}</th>)}
-            </tr>
-          </thead>
-          <tbody>
-            {[
-              { label: 'Receita Bruta/mês', fn: (c: CenarioClientes) => fmt(c.receitaBruta) },
-              { label: 'Equipe', fn: (c: CenarioClientes) => `${c.equipe} pessoas` },
-              { label: 'Custo Infra/mês', fn: (c: CenarioClientes) => fmt(c.custoInfra) },
-              { label: 'Custo Infra % receita', fn: (c: CenarioClientes) => fmtPct((c.custoInfra / c.receitaBruta) * 100) },
-              { label: 'Total Custos+Desp', fn: (c: CenarioClientes) => fmt(c.totalCustos) },
-              { label: 'EBITDA', fn: (c: CenarioClientes) => fmt(c.ebitda) },
-              { label: 'Lucro Líquido/mês', fn: (c: CenarioClientes) => fmt(c.lucroLiquido) },
-              { label: 'Margem Líquida', fn: (c: CenarioClientes) => fmtPct(c.margemLiquida) },
-              { label: 'Lucro Líquido/ano', fn: (c: CenarioClientes) => fmt(c.lucroAnual) },
-              { label: 'Custo por cliente', fn: (c: CenarioClientes) => fmt(c.custoCliente) },
-            ].map((row) => (
-              <tr key={row.label} className="border-b border-border/50 hover:bg-muted/50">
-                <td className="p-2 font-medium text-muted-foreground">{row.label}</td>
-                {cenarios.map(c => (
-                  <td key={c.clientes} className="p-2 text-right font-mono">{row.fn(c)}</td>
-                ))}
+      <Card className="p-6">
+        <h2 className="text-lg font-semibold mb-4">Tabela Consolidada — Todos os Cenários</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left p-2 text-sm font-semibold text-muted-foreground">Indicador</th>
+                {cenarios.map(c => <th key={c.clientes} className="text-right p-2 text-sm font-semibold">{c.label}</th>)}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {[
+                { label: 'Receita Bruta/mês', fn: (c: CenarioClientes) => fmt(c.receitaBruta) },
+                { label: 'Equipe', fn: (c: CenarioClientes) => `${c.equipe} pessoas` },
+                { label: 'Custo Infra/mês', fn: (c: CenarioClientes) => fmt(c.custoInfra) },
+                { label: 'Custo Infra % receita', fn: (c: CenarioClientes) => fmtPct((c.custoInfra / c.receitaBruta) * 100) },
+                { label: 'Total Custos+Desp', fn: (c: CenarioClientes) => fmt(c.totalCustos) },
+                { label: 'EBITDA', fn: (c: CenarioClientes) => fmt(c.ebitda) },
+                { label: 'Lucro Líquido/mês', fn: (c: CenarioClientes) => fmt(c.lucroLiquido) },
+                { label: 'Margem Líquida', fn: (c: CenarioClientes) => fmtPct(c.margemLiquida) },
+                { label: 'Lucro Líquido/ano', fn: (c: CenarioClientes) => fmt(c.lucroAnual) },
+                { label: 'Custo por cliente', fn: (c: CenarioClientes) => fmt(c.custoCliente) },
+              ].map((row) => (
+                <tr key={row.label} className="border-b border-border hover:bg-muted">
+                  <td className="p-2 font-medium text-muted-foreground">{row.label}</td>
+                  {cenarios.map(c => (
+                    <td key={c.clientes} className="p-2 text-right tabular-nums">{row.fn(c)}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </Card>
     </div>
   );
@@ -205,10 +203,10 @@ function DREComparativa() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <span className="text-sm font-medium">Cenário:</span>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+        <Label htmlFor="dre-cenario">Cenário</Label>
         <Select value={String(cenarioIdx)} onValueChange={v => setCenarioIdx(Number(v))}>
-          <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+          <SelectTrigger id="dre-cenario" className="w-full sm:w-72"><SelectValue /></SelectTrigger>
           <SelectContent>
             {cenarios.map((c, i) => <SelectItem key={i} value={String(i)}>{c.label} — {fmt(c.receitaBruta)}/mês</SelectItem>)}
           </SelectContent>
@@ -216,13 +214,13 @@ function DREComparativa() {
       </div>
 
       {!simplesDisponivel && (
-        <div className="bg-warning/10 border border-warning/30 rounded-lg p-3 text-sm text-warning">
-          <Scale className="inline w-4 h-4 mr-1" />
+        <div role="status" className="rounded-md border border-warning-line bg-warning-tint p-3 text-sm text-warning-ink">
+          <Scale className="inline w-4 h-4 mr-1" aria-hidden="true" />
           Simples Nacional <strong>indisponível</strong> para faturamento acima de R$ 4.800.000/ano (LC 123/2006, Art. 3º, II).
         </div>
       )}
 
-      <div className="grid md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {regimeLabels.map((label, i) => {
           const disabled = i === 0 && !simplesDisponivel;
           return (
@@ -238,15 +236,15 @@ function DREComparativa() {
         })}
       </div>
 
-      <div className="grid md:grid-cols-2 gap-4">
-        <Card className="p-5">
-          <h3 className="text-sm font-semibold mb-4">Tributos vs Lucro por Regime</h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card className="p-6">
+          <h2 className="text-lg font-semibold mb-4">Tributos vs Lucro por Regime</h2>
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={compData.filter((_, i) => i !== 0 || simplesDisponivel)}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="regime" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
-              <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={v => fmt(v)} />
-              <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke={COR_GRADE} />
+              <XAxis dataKey="regime" tick={TICK} />
+              <YAxis tick={TICK} tickFormatter={v => fmt(v)} />
+              <Tooltip formatter={(v: number) => fmt(v)} contentStyle={TOOLTIP_STYLE} />
               <Legend />
               <Bar dataKey="tributos" name="Tributos" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
               <Bar dataKey="lucro" name="Lucro Líquido" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
@@ -254,14 +252,14 @@ function DREComparativa() {
           </ResponsiveContainer>
         </Card>
 
-        <Card className="p-5">
-          <h3 className="text-sm font-semibold mb-4">Carga Tributária Efetiva por Escala</h3>
+        <Card className="p-6">
+          <h2 className="text-lg font-semibold mb-4">Carga Tributária Efetiva por Escala</h2>
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={cargaEfetiva}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="clientes" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
-              <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} unit="%" />
-              <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke={COR_GRADE} />
+              <XAxis dataKey="clientes" tick={TICK} />
+              <YAxis tick={TICK} unit="%" />
+              <Tooltip contentStyle={TOOLTIP_STYLE} />
               <Legend />
               <Line type="monotone" dataKey="simplesNacional" name="Simples" stroke="hsl(var(--success))" strokeWidth={2} />
               <Line type="monotone" dataKey="lucroPresumido" name="Presumido" stroke="hsl(var(--chart-2))" strokeWidth={2} />
@@ -272,37 +270,39 @@ function DREComparativa() {
       </div>
 
       {/* DRE Table */}
-      <Card className="p-5 overflow-auto">
-        <h3 className="text-sm font-semibold mb-3">DRE Comparativa — {cenario.label}</h3>
-        <table className="w-full text-xs border-collapse">
-          <thead>
-            <tr className="border-b border-border">
-              <th className="text-left p-2 font-semibold text-muted-foreground">Item</th>
-              {regimeLabels.map((r, i) => (
-                <th key={r} className="text-right p-2 font-semibold" style={{ color: regimeCores[i] }}>{r}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {dres[0].map((line, idx) => {
-              const isBold = line.grupo === 'receita' || line.grupo === 'resultado' || line.item === 'Total Tributos';
-              return (
-                <tr key={line.item} className={`border-b border-border/50 ${isBold ? 'bg-muted/30 font-semibold' : ''} hover:bg-muted/50`}>
-                  <td className="p-2">{line.item}</td>
-                  {dres.map((dre, ri) => {
-                    const disabled = ri === 0 && !simplesDisponivel;
-                    const val = dre[idx];
-                    return (
-                      <td key={ri} className={`p-2 text-right font-mono ${val.valor < 0 ? 'text-destructive' : ''}`}>
-                        {disabled ? '—' : fmt(Math.abs(val.valor))}
-                      </td>
-                    );
-                  })}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      <Card className="p-6">
+        <h2 className="text-lg font-semibold mb-4">DRE Comparativa — {cenario.label}</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left p-2 text-sm font-semibold text-muted-foreground">Item</th>
+                {regimeLabels.map((r, i) => (
+                  <th key={r} className="text-right p-2 text-sm font-semibold" style={{ color: regimeCores[i] }}>{r}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {dres[0].map((line, idx) => {
+                const isBold = line.grupo === 'receita' || line.grupo === 'resultado' || line.item === 'Total Tributos';
+                return (
+                  <tr key={line.item} className={`border-b border-border ${isBold ? 'bg-muted font-semibold' : ''} hover:bg-muted`}>
+                    <td className="p-2">{line.item}</td>
+                    {dres.map((dre, ri) => {
+                      const disabled = ri === 0 && !simplesDisponivel;
+                      const val = dre[idx];
+                      return (
+                        <td key={ri} className={`p-2 text-right tabular-nums ${val.valor < 0 ? 'text-destructive' : ''}`}>
+                          {disabled ? '—' : fmt(Math.abs(val.valor))}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </Card>
     </div>
   );
@@ -336,23 +336,23 @@ function ComposicaoCustos() {
 
   return (
     <div className="space-y-6">
-      <div className="grid md:grid-cols-2 gap-4">
-        <Card className="p-5">
-          <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
-            <PieIcon className="w-4 h-4 text-muted-foreground" /> Composição de Custos (500 clientes)
-          </h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card className="p-6">
+          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <PieIcon className="w-5 h-5 text-muted-foreground" aria-hidden="true" /> Composição de Custos (500 clientes)
+          </h2>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={110} paddingAngle={2} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
                 {pieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
               </Pie>
-              <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }} />
+              <Tooltip formatter={(v: number) => fmt(v)} contentStyle={TOOLTIP_STYLE} />
             </PieChart>
           </ResponsiveContainer>
         </Card>
 
-        <Card className="p-5">
-          <h3 className="text-sm font-semibold mb-4">Eficiência de Infraestrutura por Escala</h3>
+        <Card className="p-6">
+          <h2 className="text-lg font-semibold mb-4">Eficiência de Infraestrutura por Escala</h2>
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={escalaInfra}>
               <defs>
@@ -361,22 +361,22 @@ function ComposicaoCustos() {
                   <stop offset="95%" stopColor="hsl(var(--chart-3))" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
-              <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} unit="%" />
-              <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke={COR_GRADE} />
+              <XAxis dataKey="name" tick={TICK} />
+              <YAxis tick={TICK} unit="%" />
+              <Tooltip contentStyle={TOOLTIP_STYLE} />
               <Area type="monotone" dataKey="infraPct" name="Infra % Receita" stroke="hsl(var(--chart-3))" fill="url(#gradInfra)" strokeWidth={2} />
             </AreaChart>
           </ResponsiveContainer>
         </Card>
       </div>
 
-      <Card className="p-5">
-        <h3 className="text-sm font-semibold mb-4">Radar de Performance por Escala</h3>
+      <Card className="p-6">
+        <h2 className="text-lg font-semibold mb-4">Radar de Performance por Escala</h2>
         <ResponsiveContainer width="100%" height={320}>
           <RadarChart data={radarData}>
-            <PolarGrid stroke="hsl(var(--border))" />
-            <PolarAngleAxis dataKey="metric" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
+            <PolarGrid stroke={COR_GRADE} />
+            <PolarAngleAxis dataKey="metric" tick={TICK} />
             <PolarRadiusAxis tick={false} domain={[0, 100]} />
             <Radar name="20 clientes" dataKey="c20" stroke="hsl(var(--chart-5))" fill="hsl(var(--chart-5))" fillOpacity={0.1} />
             <Radar name="500 clientes" dataKey="c500" stroke="hsl(var(--chart-2))" fill="hsl(var(--chart-2))" fillOpacity={0.15} />
@@ -408,29 +408,29 @@ function MercadoRegional() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <KpiCard label="Municípios (PA)" value="144" icon={Building2} color="hsl(var(--chart-2))" />
         <KpiCard label="Volume Anual" value={mercadoPara.volumeAnual} icon={DollarSign} color="hsl(var(--success))" />
         <KpiCard label="Empresas Ativas" value={mercadoPara.empresasAtivas.toLocaleString('pt-BR')} icon={Users} color="hsl(var(--chart-3))" />
         <KpiCard label="Penetração Digital" value={`${mercadoPara.penetracaoDigital}%`} sub="Oportunidade: 82% sem solução" icon={TrendingUp} color="hsl(var(--chart-5))" />
       </div>
 
-      <div className="grid md:grid-cols-2 gap-4">
-        <Card className="p-5">
-          <h3 className="text-sm font-semibold mb-4">Penetração de Mercado — Pará</h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card className="p-6">
+          <h2 className="text-lg font-semibold mb-4">Penetração de Mercado — Pará</h2>
           <ResponsiveContainer width="100%" height={250}>
             <BarChart data={concData} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis type="number" unit="%" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
-              <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} width={120} />
-              <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke={COR_GRADE} />
+              <XAxis type="number" unit="%" tick={TICK} />
+              <YAxis type="category" dataKey="name" tick={TICK} width={120} />
+              <Tooltip contentStyle={TOOLTIP_STYLE} />
               <Bar dataKey="penetracao" fill="hsl(var(--chart-2))" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </Card>
 
-        <Card className="p-5">
-          <h3 className="text-sm font-semibold mb-4">Projeção de Crescimento — Regional PA</h3>
+        <Card className="p-6">
+          <h2 className="text-lg font-semibold mb-4">Projeção de Crescimento — Regional PA</h2>
           <ResponsiveContainer width="100%" height={250}>
             <AreaChart data={projecaoData}>
               <defs>
@@ -439,10 +439,10 @@ function MercadoRegional() {
                   <stop offset="95%" stopColor="hsl(var(--success))" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="mes" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
-              <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={v => fmt(v)} />
-              <Tooltip formatter={(v: number, name: string) => [name === 'receita' ? fmt(v) : v, name === 'receita' ? 'Receita' : 'Clientes']} contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke={COR_GRADE} />
+              <XAxis dataKey="mes" tick={TICK} />
+              <YAxis tick={TICK} tickFormatter={v => fmt(v)} />
+              <Tooltip formatter={(v: number, name: string) => [name === 'receita' ? fmt(v) : v, name === 'receita' ? 'Receita' : 'Clientes']} contentStyle={TOOLTIP_STYLE} />
               <Area type="monotone" dataKey="receita" name="Receita" stroke="hsl(var(--success))" fill="url(#gradProj)" strokeWidth={2} />
             </AreaChart>
           </ResponsiveContainer>
@@ -450,14 +450,14 @@ function MercadoRegional() {
       </div>
 
       {/* Polos */}
-      <Card className="p-5">
-        <h3 className="text-sm font-semibold mb-3">Polos Econômicos Estratégicos — Pará</h3>
+      <Card className="p-6">
+        <h2 className="text-lg font-semibold mb-4">Polos Econômicos Estratégicos — Pará</h2>
         <div className="flex flex-wrap gap-2">
           {mercadoPara.polos.map(p => (
-            <Badge key={p} variant="secondary" className="text-xs">{p}</Badge>
+            <Badge key={p} variant="muted">{p}</Badge>
           ))}
         </div>
-        <p className="text-xs text-muted-foreground mt-3">
+        <p className="text-xs text-muted-foreground mt-4">
           Fonte: IBGE/RAIS 2024 · SEBRAE-PA · Portal de Compras do Governo Federal
         </p>
       </Card>
@@ -468,14 +468,14 @@ function MercadoRegional() {
 // ─── Parecer Técnico ───
 function ParecerTecnico() {
   return (
-    <Card className="p-6 space-y-5">
-      <h2 className="text-lg font-bold flex items-center gap-2">
-        <FileText className="w-5 h-5 text-muted-foreground" /> Parecer Técnico-Contábil
+    <Card className="p-6 space-y-6">
+      <h2 className="text-lg font-semibold flex items-center gap-2">
+        <FileText className="w-5 h-5 text-muted-foreground" aria-hidden="true" /> Parecer Técnico-Contábil
       </h2>
 
-      <div className="space-y-4 text-sm leading-relaxed text-foreground">
+      <div className="space-y-4 text-base text-foreground">
         <div>
-          <h3 className="font-semibold mb-1">1. Objeto</h3>
+          <h3 className="text-base font-semibold mb-1">1. Objeto</h3>
           <p className="text-muted-foreground">
             Análise de viabilidade econômico-financeira da plataforma Praefectus, SaaS B2B destinado à gestão inteligente de licitações públicas,
             com projeções para 4 cenários de escala (20, 50, 500 e 1.000 clientes), comparação tributária entre Simples Nacional,
@@ -484,8 +484,8 @@ function ParecerTecnico() {
         </div>
 
         <div>
-          <h3 className="font-semibold mb-1">2. Fundamentação Legal</h3>
-          <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
+          <h3 className="text-base font-semibold mb-1">2. Fundamentação Legal</h3>
+          <ul className="list-disc pl-6 space-y-1 text-muted-foreground">
             <li><strong>Lei 14.133/2021</strong> — Nova Lei de Licitações e Contratos Administrativos</li>
             <li><strong>LC 123/2006</strong> — Estatuto da Microempresa e EPP (Simples Nacional)</li>
             <li><strong>NBC TSP / CPC</strong> — Normas Brasileiras de Contabilidade</li>
@@ -496,7 +496,7 @@ function ParecerTecnico() {
         </div>
 
         <div>
-          <h3 className="font-semibold mb-1">3. Análise Tributária</h3>
+          <h3 className="text-base font-semibold mb-1">3. Análise Tributária</h3>
           <p className="text-muted-foreground">
             <strong>Simples Nacional:</strong> Viável apenas até 500 clientes (faturamento ≤ R$ 4,8M/ano). Alíquota efetiva de 6% a 21%,
             com vantagem até ~50 clientes pela simplicidade operacional e carga reduzida.
@@ -512,7 +512,7 @@ function ParecerTecnico() {
         </div>
 
         <div>
-          <h3 className="font-semibold mb-1">4. Viabilidade Operacional</h3>
+          <h3 className="text-base font-semibold mb-1">4. Viabilidade Operacional</h3>
           <p className="text-muted-foreground">
             O modelo serverless (Cloud) demonstra escalabilidade excepcional: enquanto a receita multiplica por 66x (de 20 para 1.000 clientes),
             a infraestrutura multiplica apenas 12,7x, representando queda de 4,31% para 0,83% da receita. O break-even operacional
@@ -521,7 +521,7 @@ function ParecerTecnico() {
         </div>
 
         <div>
-          <h3 className="font-semibold mb-1">5. Mercado Regional — Estado do Pará</h3>
+          <h3 className="text-base font-semibold mb-1">5. Mercado Regional — Estado do Pará</h3>
           <p className="text-muted-foreground">
             O Pará apresenta 144 municípios com volume anual de compras públicas estimado entre R$ 15–20 bilhões, porém com penetração digital
             de apenas 18%. Há aproximadamente 3.200 empresas ativas em licitações, sendo que 60% ainda utilizam consultorias manuais
@@ -531,8 +531,8 @@ function ParecerTecnico() {
         </div>
 
         <div>
-          <h3 className="font-semibold mb-1">6. Recomendações</h3>
-          <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
+          <h3 className="text-base font-semibold mb-1">6. Recomendações</h3>
+          <ul className="list-disc pl-6 space-y-1 text-muted-foreground">
             <li>Adotar <strong>Simples Nacional</strong> até 50 clientes (bootstrap/validação).</li>
             <li>Migrar para <strong>Lucro Presumido</strong> entre 50–400 clientes (crescimento).</li>
             <li>Avaliar <strong>Lucro Real</strong> a partir de 400 clientes, quando despesas com equipe superam 10% da receita.</li>
@@ -559,24 +559,34 @@ export default function RelatorioContabil() {
   return (
     <AppLayout>
       <div className="space-y-6 max-w-7xl mx-auto">
-        <CabecalhoABNT />
+        <CabecalhoPagina
+          icone={<FileText />}
+          titulo="Relatório Contábil e Tributário"
+          descricao="Análise de viabilidade da plataforma Praefectus — SaaS B2B para licitações públicas. Elaborado conforme ABNT NBR 14724 · NBC TSP · Lei 14.133/2021 · Lei Complementar 123/2006."
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="info">Data: {new Date().toLocaleDateString('pt-BR')}</Badge>
+            <Badge variant="info">Classificação: Confidencial</Badge>
+            <Badge variant="info">Revisão: 1.0</Badge>
+          </div>
+        </CabecalhoPagina>
 
-        <Tabs defaultValue="comparativo" className="w-full">
-          <TabsList className="grid grid-cols-5 w-full max-w-2xl">
-            <TabsTrigger value="comparativo" className="text-xs">
-              <BarChart3 className="w-3.5 h-3.5 mr-1" /> Cenários
+        <Tabs defaultValue="comparativo" className="w-full space-y-4">
+          <TabsList className="flex-wrap h-auto gap-1">
+            <TabsTrigger value="comparativo">
+              <BarChart3 className="w-4 h-4 mr-1" aria-hidden="true" /> Cenários
             </TabsTrigger>
-            <TabsTrigger value="dre" className="text-xs">
-              <Scale className="w-3.5 h-3.5 mr-1" /> DRE Tributária
+            <TabsTrigger value="dre">
+              <Scale className="w-4 h-4 mr-1" aria-hidden="true" /> DRE Tributária
             </TabsTrigger>
-            <TabsTrigger value="custos" className="text-xs">
-              <PieIcon className="w-3.5 h-3.5 mr-1" /> Custos
+            <TabsTrigger value="custos">
+              <PieIcon className="w-4 h-4 mr-1" aria-hidden="true" /> Custos
             </TabsTrigger>
-            <TabsTrigger value="mercado" className="text-xs">
-              <Building2 className="w-3.5 h-3.5 mr-1" /> Mercado PA
+            <TabsTrigger value="mercado">
+              <Building2 className="w-4 h-4 mr-1" aria-hidden="true" /> Mercado PA
             </TabsTrigger>
-            <TabsTrigger value="parecer" className="text-xs">
-              <FileText className="w-3.5 h-3.5 mr-1" /> Parecer
+            <TabsTrigger value="parecer">
+              <FileText className="w-4 h-4 mr-1" aria-hidden="true" /> Parecer
             </TabsTrigger>
           </TabsList>
 

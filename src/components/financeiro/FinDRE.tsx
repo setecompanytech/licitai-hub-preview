@@ -3,6 +3,7 @@ import { mesLocal } from '@/lib/financeiro/data-local';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -116,38 +117,39 @@ export default function FinDRE() {
   const { atual, linhas, isLoading, competenciaComparada } = comparativa;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <FinDREporCentroCusto />
       <Card>
-        <CardHeader className="flex flex-row items-end justify-between gap-2 flex-wrap">
+        <CardHeader className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Scale className="w-4 h-4 text-muted-foreground" />
+            <CardTitle className="flex items-center gap-2">
+              <Scale className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
               DRE — Demonstração do Resultado do Exercício
             </CardTitle>
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               Estrutura conforme Lei 6.404/76, art. 187. Inclui Análise Vertical
               (AV) e Análise Horizontal (AH).
             </p>
           </div>
-          <div className="flex items-end gap-2 flex-wrap">
+          <div className="flex flex-wrap items-end gap-2">
             <div>
-              <label className="text-xs text-muted-foreground block mb-1">
+              <Label htmlFor="dre-competencia" className="block mb-2">
                 Competência
-              </label>
+              </Label>
               <Input
+                id="dre-competencia"
                 type="month"
                 value={competencia}
                 onChange={(e) => setCompetencia(e.target.value)}
-                className="w-40"
+                className="w-44"
               />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground block mb-1">
+              <Label htmlFor="dre-modo" className="block mb-2">
                 Comparar com
-              </label>
+              </Label>
               <Select value={modo} onValueChange={(v) => setModo(v as ModoComparacao)}>
-                <SelectTrigger className="w-44">
+                <SelectTrigger id="dre-modo" className="w-56">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -159,22 +161,21 @@ export default function FinDRE() {
             </div>
             <Button
               variant="outline"
-              size="sm"
               onClick={() => refresh.mutate()}
               disabled={refresh.isPending}
             >
               <RefreshCw
-                className={`h-4 w-4 mr-1.5 ${refresh.isPending ? "animate-spin" : ""}`}
+                className={`h-4 w-4 ${refresh.isPending ? "animate-spin" : ""}`}
+                aria-hidden="true"
               />
               Atualizar
             </Button>
             <Button
               variant="outline"
-              size="sm"
               onClick={() => exportCSV(competencia, comparativa)}
               disabled={!atual}
             >
-              <Download className="h-4 w-4 mr-1.5" />
+              <Download className="h-4 w-4" aria-hidden="true" />
               CSV
             </Button>
           </div>
@@ -219,18 +220,18 @@ export default function FinDRE() {
                 </TableBody>
               </Table>
 
-              <div className="flex items-center justify-between pt-3 mt-3 border-t border-border">
-                <span className="text-xs text-muted-foreground">
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-4 mt-4 border-t border-border">
+                <span className="text-sm text-muted-foreground">
                   Margem líquida (Lucro Líquido ÷ Receita Líquida)
                 </span>
                 <Badge
-                  variant={atual.margemLiquida >= 0 ? "default" : "destructive"}
-                  className="gap-1"
+                  variant={atual.margemLiquida >= 0 ? "success" : "danger"}
+                  className="gap-1 tabular-nums"
                 >
                   {atual.margemLiquida >= 0 ? (
-                    <TrendingUp className="h-3 w-3" />
+                    <TrendingUp className="h-3 w-3" aria-hidden="true" />
                   ) : (
-                    <TrendingDown className="h-3 w-3" />
+                    <TrendingDown className="h-3 w-3" aria-hidden="true" />
                   )}
                   {formatFracao(atual.margemLiquida)}
                 </Badge>
@@ -246,14 +247,14 @@ export default function FinDRE() {
           parecia completo justamente onde estava mais incompleto. */}
       {atual &&
         (atual.semClassificacao.linhas > 0 || atual.movimentacaoExcluida.linhas > 0) && (
-          <Card className="border-warning/40">
+          <Card className="border-warning-line">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-warning" />
+              <CardTitle className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-warning" aria-hidden="true" />
                 Fora do resultado
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-4">
               {atual.semClassificacao.linhas > 0 && (
                 <div>
                   <p className="text-sm font-medium">
@@ -291,16 +292,16 @@ export default function FinDRE() {
       {atual && atual.grupos.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Detalhamento por categoria</CardTitle>
+            <CardTitle>Detalhamento por categoria</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               {atual.grupos.map((g) => (
                 <div key={g.chave}>
-                  <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center justify-between gap-2 mb-2">
                     <span className="font-medium text-sm">{g.rotulo}</span>
                     <span
-                      className={`text-sm font-medium ${
+                      className={`text-sm font-medium text-right tabular-nums ${
                         g.natureza === "receita" ? "text-success" : "text-destructive"
                       }`}
                     >
@@ -311,10 +312,10 @@ export default function FinDRE() {
                     {g.itens.map((it, i) => (
                       <div
                         key={i}
-                        className="flex items-center justify-between text-xs text-muted-foreground py-0.5"
+                        className="flex items-center justify-between gap-2 text-xs text-muted-foreground py-0.5"
                       >
                         <span>{it.categoria}</span>
-                        <span>{formatBRL(it.total)}</span>
+                        <span className="text-right tabular-nums">{formatBRL(it.total)}</span>
                       </div>
                     ))}
                   </div>
@@ -369,28 +370,26 @@ function LinhaDRE({
 
   return (
     <TableRow
-      className={
-        subtotal ? "bg-muted/40 font-semibold" : nivel === 1 ? "" : ""
-      }
+      className={subtotal ? "bg-muted font-semibold" : ""}
     >
       <TableCell
         className={`${nivel === 1 ? "pl-8" : ""} ${
           subtotal ? "text-foreground" : ""
         }`}
       >
-        <span className="text-muted-foreground mr-1.5 font-mono text-xs">
+        <span className="text-muted-foreground mr-2 tabular-nums text-xs">
           {sinal}
         </span>
         {label}
       </TableCell>
       <TableCell
-        className={`text-right font-mono ${
+        className={`text-right tabular-nums ${
           valorAtual < 0 ? "text-destructive" : ""
         }`}
       >
         {formatBRL(valorAtual)}
       </TableCell>
-      <TableCell className="text-right text-xs text-muted-foreground font-mono">
+      <TableCell className="text-right text-xs text-muted-foreground tabular-nums">
         {valor.av != null && Math.abs(valor.av) > 0.0001
           ? `${(valor.av * 100).toFixed(1)}%`
           : "—"}
@@ -398,17 +397,17 @@ function LinhaDRE({
       {modo !== "nenhum" && (
         <>
           <TableCell
-            className={`text-right font-mono text-muted-foreground ${
+            className={`text-right tabular-nums text-muted-foreground ${
               valorComp != null && valorComp < 0 ? "text-destructive" : ""
             }`}
           >
             {valorComp != null ? formatBRL(valorComp) : "—"}
           </TableCell>
-          <TableCell className={`text-right font-mono text-xs ${corVariacao}`}>
+          <TableCell className={`text-right tabular-nums text-xs ${corVariacao}`}>
             <SetaVariacao valor={variacaoAbs} />
             {variacaoAbs != null ? formatBRL(variacaoAbs) : "—"}
           </TableCell>
-          <TableCell className={`text-right font-mono text-xs ${corVariacao}`}>
+          <TableCell className={`text-right tabular-nums text-xs ${corVariacao}`}>
             {valor.variacaoPct != null
               ? `${(valor.variacaoPct * (isLinhaCusto ? -1 : 1) * 100).toFixed(1)}%`
               : "—"}
@@ -421,10 +420,10 @@ function LinhaDRE({
 
 function SetaVariacao({ valor }: { valor: number | null }) {
   if (valor == null || Math.abs(valor) < 0.005)
-    return <Minus className="inline h-3 w-3 mr-0.5 opacity-50" />;
+    return <Minus className="inline h-3 w-3 mr-0.5 opacity-50" aria-hidden="true" />;
   return valor > 0 ? (
-    <TrendingUp className="inline h-3 w-3 mr-0.5" />
+    <TrendingUp className="inline h-3 w-3 mr-0.5" aria-hidden="true" />
   ) : (
-    <TrendingDown className="inline h-3 w-3 mr-0.5" />
+    <TrendingDown className="inline h-3 w-3 mr-0.5" aria-hidden="true" />
   );
 }

@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, MapPin } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { cn } from '@/lib/utils';
 import { CONTORNOS_UF, MAPA_VIEWBOX } from './mapa-brasil-contornos';
 
@@ -36,7 +38,13 @@ const DEGRAUS = 6;
  * Passar o cursor acende o estado no mapa E a linha na lista, nos dois
  * sentidos. Sem essa ligação, quem lê "São Paulo 22" na lista precisa procurar
  * São Paulo no mapa a olho.
+ *
+ * A cor do degrau é escolhida em runtime pelo DADO (`--map-${passo}`), por isso
+ * vai em `style` — classe dinâmica seria podada pelo Tailwind. É a única cor
+ * que não passa por classe neste arquivo.
  */
+const corDoDegrau = (passo: number) => `hsl(var(--map-${passo}))`;
+
 export default function MapaLicitacoesPorEstado({ dados, limite = 6 }: Props) {
   const [ufFoco, setUfFoco] = useState<string | null>(null);
 
@@ -70,13 +78,21 @@ export default function MapaLicitacoesPorEstado({ dados, limite = 6 }: Props) {
   const vazio = ranking.length === 0;
 
   return (
-    <Card className="p-5 sm:p-6">
+    <Card className="p-6">
       {vazio ? (
-        <p className="text-sm text-muted-foreground py-8 text-center">
-          Nenhuma licitação com estado informado ainda.
-        </p>
+        <EstadoVazio
+          tamanho="compacto"
+          icone={<MapPin />}
+          titulo="Nenhuma licitação com estado informado"
+          descricao="O mapa se pinta conforme a UF dos processos cadastrados. Informe o estado nas licitações para vê-las aqui."
+          acao={
+            <Button variant="outline" asChild>
+              <Link to="/licitacoes">Ver licitações</Link>
+            </Button>
+          }
+        />
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[1fr_1.2fr] lg:items-center [&>*]:min-w-0">
+        <div className="grid gap-6 grid-cols-1 lg:grid-cols-[1fr_1.2fr] lg:items-center [&>*]:min-w-0">
           <div>
             <ul className="flex flex-col list-none m-0 p-0">
               {ranking.map((e) => {
@@ -91,15 +107,16 @@ export default function MapaLicitacoesPorEstado({ dados, limite = 6 }: Props) {
                       onFocus={() => setUfFoco(e.uf)}
                       onBlur={() => setUfFoco(null)}
                       className={cn(
-                        'w-full flex items-center gap-3 px-2 -mx-2 py-2 rounded-lg text-left transition-colors',
-                        'border-b border-border/60 last:border-0 rounded-b-none',
-                        aceso && 'bg-muted/70',
+                        'w-full flex items-center gap-3 px-2 -mx-2 py-2 rounded-md text-left transition-colors',
+                        'border-b border-border last:border-0 rounded-b-none',
+                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                        aceso && 'bg-muted',
                       )}
                     >
                       <span
                         aria-hidden="true"
-                        className="w-2.5 h-2.5 rounded-sm shrink-0 ring-1 ring-inset ring-border/50"
-                        style={{ background: passo ? `hsl(var(--map-${passo}))` : 'hsl(var(--muted))' }}
+                        className={cn('w-3 h-3 rounded-sm shrink-0 ring-1 ring-inset ring-border', !passo && 'bg-muted')}
+                        style={passo ? { background: corDoDegrau(passo) } : undefined}
                       />
                       <span className="text-sm truncate flex-1">{nomeDe(e.uf)}</span>
                       <span className="text-sm tabular-nums text-muted-foreground shrink-0">
@@ -114,8 +131,8 @@ export default function MapaLicitacoesPorEstado({ dados, limite = 6 }: Props) {
             {semEstado > 0 && (
               /* Honestidade do gráfico: se um terço dos processos não entra no
                  mapa, dizer isso vale mais que pintar um estado a mais. */
-              <p className="text-xs text-muted-foreground mt-3 flex items-start gap-1.5">
-                <MapPin className="w-3.5 h-3.5 shrink-0 mt-px" aria-hidden="true" />
+              <p className="text-xs text-muted-foreground mt-3 flex items-start gap-2">
+                <MapPin className="w-4 h-4 shrink-0" aria-hidden="true" />
                 <span>
                   <strong className="text-foreground font-medium">{semEstado.toLocaleString('pt-BR')}</strong>{' '}
                   {semEstado === 1 ? 'processo está' : 'processos estão'} sem estado informado e
@@ -126,21 +143,21 @@ export default function MapaLicitacoesPorEstado({ dados, limite = 6 }: Props) {
 
             <Link
               to="/analytics"
-              className="inline-flex items-center gap-1.5 mt-3 text-sm font-medium text-accent hover:underline"
+              className="inline-flex items-center gap-1 mt-3 text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
             >
               Ver mais
-              <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
+              <ArrowRight className="w-4 h-4" aria-hidden="true" />
             </Link>
           </div>
 
           <div className="w-full">
             {/* Legenda da escala. Sem ela o degradê é decoração: nada diz que
-                azul-escuro é "mais". */}
+                verde-escuro é "mais". */}
             <div className="flex items-center gap-2 mb-2 text-xs text-muted-foreground">
               <span className="shrink-0">Menos</span>
-              <div className="flex flex-1 max-w-[160px] h-2 rounded-full overflow-hidden ring-1 ring-inset ring-border/60">
+              <div className="flex flex-1 max-w-[160px] h-2 rounded-full overflow-hidden ring-1 ring-inset ring-border">
                 {Array.from({ length: DEGRAUS }, (_, i) => (
-                  <span key={i} className="flex-1" style={{ background: `hsl(var(--map-${i + 1}))` }} />
+                  <span key={i} className="flex-1" style={{ background: corDoDegrau(i + 1) }} />
                 ))}
               </div>
               <span className="shrink-0">Mais</span>
@@ -164,10 +181,13 @@ export default function MapaLicitacoesPorEstado({ dados, limite = 6 }: Props) {
                       d={c.d}
                       onMouseEnter={() => setUfFoco(c.uf)}
                       onMouseLeave={() => setUfFoco(null)}
-                      className="transition-[fill,stroke] duration-150 cursor-default"
+                      className={cn(
+                        'transition-[fill,stroke] duration-150 cursor-default',
+                        !passo && 'fill-muted/70',
+                        aceso ? 'stroke-foreground' : 'stroke-card',
+                      )}
                       style={{
-                        fill: passo ? `hsl(var(--map-${passo}))` : 'hsl(var(--muted) / 0.7)',
-                        stroke: aceso ? 'hsl(var(--foreground))' : 'hsl(var(--card))',
+                        fill: passo ? corDoDegrau(passo) : undefined,
                         strokeWidth: aceso ? 1.6 : 0.8,
                         strokeLinejoin: 'round',
                         paintOrder: 'stroke',
@@ -187,14 +207,11 @@ export default function MapaLicitacoesPorEstado({ dados, limite = 6 }: Props) {
                     y={c.cy}
                     textAnchor="middle"
                     dominantBaseline="central"
-                    className="pointer-events-none select-none"
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 600,
-                      fill: (degrau(porUF.get(c.uf) ?? 0) ?? 0) >= 5
-                        ? 'hsl(var(--card))'
-                        : 'hsl(var(--muted-foreground))',
-                    }}
+                    className={cn(
+                      'pointer-events-none select-none',
+                      (degrau(porUF.get(c.uf) ?? 0) ?? 0) >= 5 ? 'fill-card' : 'fill-muted-foreground',
+                    )}
+                    style={{ fontSize: 11, fontWeight: 600 }}
                   >
                     {c.uf}
                   </text>

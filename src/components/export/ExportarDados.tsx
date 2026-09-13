@@ -33,7 +33,7 @@ export default function ExportarDados({ variant = 'button' }: { variant?: 'butto
     setLoading(true);
     try {
       const result: Record<string, unknown[]> = {};
-      
+
       await Promise.all(
         TABLES.map(async ({ key }) => {
           const query = (supabase.from(key as any) as any).select('*');
@@ -53,7 +53,7 @@ export default function ExportarDados({ variant = 'button' }: { variant?: 'butto
         .from('empresa_membros')
         .select('empresa_id')
         .eq('user_id', user.id);
-      
+
       if (memberships && memberships.length > 0) {
         const ids = memberships.map((m) => m.empresa_id);
         const { data: empresas } = await supabase
@@ -80,20 +80,23 @@ export default function ExportarDados({ variant = 'button' }: { variant?: 'butto
 
   if (variant === 'menu-item') {
     return (
-      <button
-        className="w-full flex items-center gap-3 px-5 py-2 text-[13px] text-foreground hover:bg-muted transition-colors text-left"
+      <Button
+        variant="ghost"
+        className="h-auto w-full justify-start gap-3 rounded-none px-5 py-2 text-sm font-normal text-foreground"
         onClick={handleExport}
         disabled={loading}
       >
-        {loading ? <Loader2 className="w-4 h-4 animate-spin shrink-0" /> : <Download className="w-4 h-4 text-muted-foreground shrink-0" />}
+        {loading
+          ? <Loader2 className="animate-spin" aria-hidden="true" />
+          : <Download className="text-muted-foreground" aria-hidden="true" />}
         <span>Exportar Meus Dados</span>
-      </button>
+      </Button>
     );
   }
 
   return (
-    <Button onClick={handleExport} disabled={loading} variant="outline" className="gap-2">
-      {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+    <Button onClick={handleExport} disabled={loading} variant="outline">
+      {loading ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Download aria-hidden="true" />}
       Exportar Meus Dados
     </Button>
   );

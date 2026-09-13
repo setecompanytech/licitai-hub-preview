@@ -196,47 +196,46 @@ export default function SimulacaoDisputa({ lance, onUpdate, licitacaoId }: Props
   const economia = lance.valorReferencia - valorAtual;
 
   return (
-    <div className="mt-3 pt-3 border-t border-border/50 space-y-3">
+    <div className="space-y-3">
       {/* Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+        <div className="flex flex-wrap items-center gap-2">
+          <h4 className="text-base font-semibold">
             Simulação de Disputa
           </h4>
           {running && (
-            <Badge variant="outline" className="bg-success/15 text-success border-success/30 text-xs animate-pulse">
+            <Badge variant="success" className="animate-pulse">
               Em andamento
             </Badge>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Mural sync toggle */}
           {lidAtivo && (
-            <button
+            <Button
+              type="button"
+              variant="outline"
+              aria-pressed={muralSync}
               onClick={() => setMuralSync(!muralSync)}
-              className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full border transition-colors ${
-                muralSync
-                  ? 'bg-success/10 text-success border-success/30'
-                  : 'bg-muted text-muted-foreground border-border'
-              }`}
+              className={muralSync ? 'border-success-line bg-success-tint text-success-ink hover:bg-success-tint' : 'text-muted-foreground'}
               title={muralSync ? 'Sincronizando com o Mural' : 'Mural desativado'}
             >
-              <MessageSquare className="w-3 h-3" />
+              <MessageSquare className="w-4 h-4" aria-hidden="true" />
               {muralSync ? 'Mural ativo' : 'Mural off'}
-            </button>
+            </Button>
           )}
-          <div className="flex gap-1">
+          <div className="flex flex-wrap gap-2">
             {!running ? (
-              <Button size="sm" variant="outline" onClick={iniciarSimulacao} disabled={rodada >= lance.maxLances}>
-                <Play className="w-3 h-3 mr-1" /> {rodada > 0 ? 'Retomar' : 'Iniciar'}
+              <Button variant="outline" onClick={iniciarSimulacao} disabled={rodada >= lance.maxLances}>
+                <Play className="w-4 h-4" aria-hidden="true" /> {rodada > 0 ? 'Retomar' : 'Iniciar'}
               </Button>
             ) : (
-              <Button size="sm" variant="outline" onClick={pararSimulacao}>
-                <Pause className="w-3 h-3 mr-1" /> Pausar
+              <Button variant="outline" onClick={pararSimulacao}>
+                <Pause className="w-4 h-4" aria-hidden="true" /> Pausar
               </Button>
             )}
-            <Button size="sm" variant="ghost" onClick={resetarSimulacao}>
-              <RotateCcw className="w-3 h-3 mr-1" /> Resetar
+            <Button variant="ghost" onClick={resetarSimulacao}>
+              <RotateCcw className="w-4 h-4" aria-hidden="true" /> Resetar
             </Button>
           </div>
         </div>
@@ -244,80 +243,73 @@ export default function SimulacaoDisputa({ lance, onUpdate, licitacaoId }: Props
 
       {/* Mural sync indicator */}
       {muralSync && lidAtivo && (
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/50 rounded-lg border border-border text-xs text-muted-foreground">
-          <Zap className="w-3 h-3" />
+        <div className="flex items-center gap-2 px-3 py-2 bg-muted rounded-md border border-border text-sm text-muted-foreground">
+          <Zap className="w-4 h-4 shrink-0" aria-hidden="true" />
           <span>Eventos da simulação serão publicados no Mural do Processo em tempo real</span>
         </div>
       )}
 
       {/* Stats row */}
-      <div className="grid grid-cols-5 gap-3">
-        <div className="bg-muted/50 rounded-lg p-2.5 text-center">
-          <DollarSign className="w-3 h-3 mx-auto text-muted-foreground mb-1" />
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+        <div className="bg-muted rounded-lg p-3 text-center">
+          <DollarSign className="w-4 h-4 mx-auto text-muted-foreground mb-1" aria-hidden="true" />
           <p className="text-xs text-muted-foreground">Valor Atual</p>
-          <p className="text-xs font-bold text-foreground">{formatCurrency(valorAtual)}</p>
+          <p className="text-base font-bold text-foreground tabular-nums">{formatCurrency(valorAtual)}</p>
         </div>
-        <div className="bg-muted/50 rounded-lg p-2.5 text-center">
-          <TrendingDown className="w-3 h-3 mx-auto text-success mb-1" />
+        <div className="bg-muted rounded-lg p-3 text-center">
+          <TrendingDown className="w-4 h-4 mx-auto text-success mb-1" aria-hidden="true" />
           <p className="text-xs text-muted-foreground">Economia</p>
-          <p className="text-xs font-bold text-success">{formatCurrency(economia)}</p>
+          <p className="text-base font-bold text-success-ink tabular-nums">{formatCurrency(economia)}</p>
         </div>
-        <div className="bg-muted/50 rounded-lg p-2.5 text-center">
-          <Hash className="w-3 h-3 mx-auto text-muted-foreground mb-1" />
+        <div className="bg-muted rounded-lg p-3 text-center">
+          <Hash className="w-4 h-4 mx-auto text-muted-foreground mb-1" aria-hidden="true" />
           <p className="text-xs text-muted-foreground">Rodada</p>
-          <p className="text-xs font-bold">{rodada} / {lance.maxLances}</p>
+          <p className="text-base font-bold tabular-nums">{rodada} / {lance.maxLances}</p>
         </div>
-        <div className="bg-muted/50 rounded-lg p-2.5 text-center">
-          <Clock className="w-3 h-3 mx-auto text-muted-foreground mb-1" />
+        <div className="bg-muted rounded-lg p-3 text-center">
+          <Clock className="w-4 h-4 mx-auto text-muted-foreground mb-1" aria-hidden="true" />
           <p className="text-xs text-muted-foreground">Próximo em</p>
-          <p className="text-xs font-bold">{running ? `${tempoRestante}s` : '—'}</p>
+          <p className="text-base font-bold tabular-nums">{running ? `${tempoRestante}s` : '—'}</p>
         </div>
-        <div className="bg-muted/50 rounded-lg p-2.5 text-center">
-          <DollarSign className="w-3 h-3 mx-auto text-destructive mb-1" />
+        <div className="bg-muted rounded-lg p-3 text-center">
+          <DollarSign className="w-4 h-4 mx-auto text-destructive mb-1" aria-hidden="true" />
           <p className="text-xs text-muted-foreground">Piso</p>
-          <p className="text-xs font-bold text-destructive">{formatCurrency(lance.valorMinimo)}</p>
+          <p className="text-base font-bold text-destructive-ink tabular-nums">{formatCurrency(lance.valorMinimo)}</p>
         </div>
       </div>
 
       {/* Progress bar */}
       <div>
-        <div className="flex justify-between text-xs text-muted-foreground mb-1">
+        <div className="flex flex-wrap justify-between gap-x-3 gap-y-1 text-xs text-muted-foreground mb-1 tabular-nums">
           <span>Referência: {formatCurrency(lance.valorReferencia)}</span>
           <span>Mínimo: {formatCurrency(lance.valorMinimo)}</span>
         </div>
-        <Progress value={Math.min(progresso, 100)} className="h-2" />
+        <Progress value={Math.min(progresso, 100)} className="h-2" aria-label="Progresso da simulação entre referência e piso" />
       </div>
 
       {/* History */}
       {historico.length > 0 && (
-        <div className="max-h-32 overflow-y-auto border border-border/30 rounded-lg">
-          <table className="w-full text-xs">
-            <thead className="sticky top-0 bg-muted/80">
+        <div className="max-h-32 overflow-auto border border-border rounded-lg">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-muted">
               <tr>
-                <th className="text-left px-2 py-1 font-medium text-muted-foreground">#</th>
-                <th className="text-left px-2 py-1 font-medium text-muted-foreground">Tipo</th>
-                <th className="text-right px-2 py-1 font-medium text-muted-foreground">Valor</th>
-                <th className="text-right px-2 py-1 font-medium text-muted-foreground">Hora</th>
+                <th className="text-left px-3 py-2 text-sm font-semibold">#</th>
+                <th className="text-left px-3 py-2 text-sm font-semibold">Tipo</th>
+                <th className="text-right px-3 py-2 text-sm font-semibold">Valor</th>
+                <th className="text-right px-3 py-2 text-sm font-semibold">Hora</th>
               </tr>
             </thead>
             <tbody>
               {historico.map((h) => (
-                <tr key={h.rodada} className="border-t border-border/20">
-                  <td className="px-2 py-1">{h.rodada}</td>
-                  <td className="px-2 py-1">
-                    <Badge
-                      variant="outline"
-                      className={`text-xs ${
-                        h.tipo === 'meu'
-                          ? 'bg-info/10 text-info border-info/30'
-                          : 'bg-warning/10 text-warning border-warning/30'
-                      }`}
-                    >
+                <tr key={h.rodada} className="border-t border-border">
+                  <td className="px-3 py-2 tabular-nums">{h.rodada}</td>
+                  <td className="px-3 py-2">
+                    <Badge variant={h.tipo === 'meu' ? 'info' : 'warning'}>
                       {h.tipo === 'meu' ? 'Meu Lance' : 'Concorrente'}
                     </Badge>
                   </td>
-                  <td className="px-2 py-1 text-right font-mono">{formatCurrency(h.valor)}</td>
-                  <td className="px-2 py-1 text-right text-muted-foreground">
+                  <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(h.valor)}</td>
+                  <td className="px-3 py-2 text-right text-muted-foreground tabular-nums">
                     {h.timestamp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                   </td>
                 </tr>

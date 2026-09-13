@@ -168,9 +168,12 @@ export default function EvolucaoMensalDashboard({ pedidos, podeVerCustos, valorG
 
   if (series.length === 0) {
     return (
-      <Card className="p-6 text-center text-muted-foreground text-xs">
-        <Calendar className="w-8 h-8 mx-auto mb-2 opacity-40" />
-        Nenhum pedido registrado ainda. Cadastre pedidos para visualizar a evolução mensal.
+      <Card className="p-6 text-center">
+        <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary" aria-hidden="true">
+          <Calendar className="w-6 h-6" />
+        </span>
+        <p className="text-lg font-semibold">Nenhum pedido registrado ainda</p>
+        <p className="text-sm text-muted-foreground mt-1">Cadastre pedidos para visualizar a evolução mensal.</p>
       </Card>
     );
   }
@@ -184,19 +187,19 @@ export default function EvolucaoMensalDashboard({ pedidos, podeVerCustos, valorG
     <Card className="p-4 space-y-4">
       {/* Header com controles */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <BarChart3 className="w-4 h-4 text-muted-foreground" />
-          <h4 className="text-xs sm:text-sm font-semibold">Evolução Mensal</h4>
-          <Badge variant="outline" className="text-xs">{series.length} {series.length === 1 ? 'mês' : 'meses'}</Badge>
+          <h4 className="text-lg font-semibold">Evolução Mensal</h4>
+          <Badge variant="outline">{series.length} {series.length === 1 ? 'mês' : 'meses'}</Badge>
           {expandidoAutomaticamente && (
-            <span className="text-[11px] text-muted-foreground">
+            <span className="text-xs text-muted-foreground">
               período expandido: os pedidos deste contrato são anteriores aos últimos 12 meses
             </span>
           )}
         </div>
-        <div className="flex items-center gap-1.5 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
           <Select value={periodo} onValueChange={(v: Periodo) => setPeriodo(v)}>
-            <SelectTrigger className="h-7 w-[110px] text-xs"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="h-9 w-[140px]" aria-label="Período"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="6m">Últimos 6m</SelectItem>
               <SelectItem value="12m">Últimos 12m</SelectItem>
@@ -204,45 +207,45 @@ export default function EvolucaoMensalDashboard({ pedidos, podeVerCustos, valorG
               <SelectItem value="all">Tudo</SelectItem>
             </SelectContent>
           </Select>
-          <div className="flex items-center border border-border rounded-md overflow-hidden">
-            <Button variant={visual === 'composto' ? 'default' : 'ghost'} size="sm" className="h-7 px-2 rounded-none" onClick={() => setVisual('composto')} title="Combinado">
-              <Activity className="w-3.5 h-3.5" />
+          <div className="flex items-center border border-border rounded-md overflow-hidden" role="group" aria-label="Tipo de gráfico">
+            <Button variant={visual === 'composto' ? 'default' : 'ghost'} size="sm" className="rounded-none" onClick={() => setVisual('composto')} title="Combinado" aria-label="Gráfico combinado" aria-pressed={visual === 'composto'}>
+              <Activity className="w-4 h-4" />
             </Button>
-            <Button variant={visual === 'barras' ? 'default' : 'ghost'} size="sm" className="h-7 px-2 rounded-none" onClick={() => setVisual('barras')} title="Barras">
-              <BarChart3 className="w-3.5 h-3.5" />
+            <Button variant={visual === 'barras' ? 'default' : 'ghost'} size="sm" className="rounded-none" onClick={() => setVisual('barras')} title="Barras" aria-label="Gráfico de barras" aria-pressed={visual === 'barras'}>
+              <BarChart3 className="w-4 h-4" />
             </Button>
-            <Button variant={visual === 'area' ? 'default' : 'ghost'} size="sm" className="h-7 px-2 rounded-none" onClick={() => setVisual('area')} title="Acumulado">
-              <LineIcon className="w-3.5 h-3.5" />
+            <Button variant={visual === 'area' ? 'default' : 'ghost'} size="sm" className="rounded-none" onClick={() => setVisual('area')} title="Acumulado" aria-label="Gráfico acumulado" aria-pressed={visual === 'area'}>
+              <LineIcon className="w-4 h-4" />
             </Button>
           </div>
-          <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={exportarCSV} title="Exportar CSV">
-            <Download className="w-3.5 h-3.5" />
+          <Button variant="outline" size="sm" onClick={exportarCSV} title="Exportar CSV" aria-label="Exportar CSV">
+            <Download className="w-4 h-4" />
           </Button>
         </div>
       </div>
 
       {/* KPIs do período */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <div className="rounded-lg border border-border p-2.5 bg-muted/30">
+        <div className="rounded-lg border border-border p-3 bg-muted/30">
           <p className="text-xs text-muted-foreground">Faturamento</p>
-          <p className="text-sm font-bold whitespace-nowrap tabular-nums">{fmtBRL(totais.faturamento)}</p>
+          <p className="text-xl font-bold whitespace-nowrap tabular-nums">{fmtBRL(totais.faturamento)}</p>
           <p className="text-xs text-muted-foreground whitespace-nowrap">Média/mês: {fmtBRL(totais.mediaMensal)}</p>
         </div>
-        <div className="rounded-lg border border-border p-2.5 bg-muted/30">
+        <div className="rounded-lg border border-border p-3 bg-muted/30">
           <p className="text-xs text-muted-foreground">Pedidos</p>
-          <p className="text-sm font-bold">{fmtNum(totais.pedidos)}</p>
+          <p className="text-xl font-bold tabular-nums">{fmtNum(totais.pedidos)}</p>
           <p className="text-xs text-muted-foreground whitespace-nowrap">Ticket: {fmtBRL(totais.ticketMedio)}</p>
         </div>
         {podeVerCustos ? (
           <>
-            <div className="rounded-lg border border-border p-2.5 bg-muted/30">
+            <div className="rounded-lg border border-border p-3 bg-muted/30">
               <p className="text-xs text-muted-foreground">Lucro Bruto</p>
-              <p className={`text-sm font-bold ${totais.lucro >= 0 ? 'text-success' : 'text-destructive'}`}>{fmtBRL(totais.lucro)}</p>
+              <p className={`text-xl font-bold tabular-nums ${totais.lucro >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>{fmtBRL(totais.lucro)}</p>
               <p className="text-xs text-muted-foreground">Margem: {totais.margem.toFixed(1)}%</p>
             </div>
-            <div className="rounded-lg border border-border p-2.5 bg-muted/30">
+            <div className="rounded-lg border border-border p-3 bg-muted/30">
               <p className="text-xs text-muted-foreground">Variação MoM</p>
-              <p className={`text-sm font-bold flex items-center gap-1 ${totais.variacao >= 0 ? 'text-success' : 'text-destructive'}`}>
+              <p className={`text-xl font-bold tabular-nums flex items-center gap-1 ${totais.variacao >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>
                 {totais.variacao >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
                 {totais.variacao.toFixed(1)}%
               </p>
@@ -250,9 +253,9 @@ export default function EvolucaoMensalDashboard({ pedidos, podeVerCustos, valorG
             </div>
           </>
         ) : (
-          <div className="rounded-lg border border-border p-2.5 bg-muted/30 col-span-2">
+          <div className="rounded-lg border border-border p-3 bg-muted/30 col-span-2">
             <p className="text-xs text-muted-foreground">Variação MoM</p>
-            <p className={`text-sm font-bold flex items-center gap-1 ${totais.variacao >= 0 ? 'text-success' : 'text-destructive'}`}>
+            <p className={`text-xl font-bold tabular-nums flex items-center gap-1 ${totais.variacao >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>
               {totais.variacao >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
               {totais.variacao.toFixed(1)}%
             </p>
@@ -267,16 +270,16 @@ export default function EvolucaoMensalDashboard({ pedidos, podeVerCustos, valorG
           {visual === 'composto' ? (
             <ComposedChart data={series} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-              <YAxis yAxisId="left" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => fmtBRLEixo(v)} />
-              <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" allowDecimals={false} />
+              <XAxis dataKey="label" tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
+              <YAxis yAxisId="left" tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => fmtBRLEixo(v)} />
+              <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" allowDecimals={false} />
               <Tooltip
                 formatter={tooltipFmt}
-                contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 11 }}
+                contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 10, fontSize: 12 }}
                 labelStyle={{ color: 'hsl(var(--foreground))', fontWeight: 600 }}
               />
-              <Legend wrapperStyle={{ fontSize: 10 }} />
-              <Bar yAxisId="left" dataKey="faturamento" name="Faturamento" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
+              <Bar yAxisId="left" dataKey="faturamento" name="Faturamento" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} />
               {podeVerCustos && <Bar yAxisId="left" dataKey="custos" name="Custos" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />}
               {podeVerCustos && <Line yAxisId="left" type="monotone" dataKey="lucro" name="Lucro" stroke="hsl(var(--success))" strokeWidth={2} dot={{ r: 3 }} />}
               <Line yAxisId="right" type="monotone" dataKey="pedidos" name="Pedidos" stroke="hsl(var(--primary))" strokeWidth={2} strokeDasharray="4 4" dot={{ r: 3 }} />
@@ -284,14 +287,14 @@ export default function EvolucaoMensalDashboard({ pedidos, podeVerCustos, valorG
           ) : visual === 'barras' ? (
             <BarChart data={series} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-              <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => fmtBRLEixo(v)} />
+              <XAxis dataKey="label" tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
+              <YAxis tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => fmtBRLEixo(v)} />
               <Tooltip
                 formatter={tooltipFmt}
-                contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 11 }}
+                contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 10, fontSize: 12 }}
               />
-              <Legend wrapperStyle={{ fontSize: 10 }} />
-              <Bar dataKey="faturamento" name="Faturamento" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
+              <Bar dataKey="faturamento" name="Faturamento" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} />
               {podeVerCustos && <Bar dataKey="custos" name="Custos" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />}
               {podeVerCustos && <Bar dataKey="lucro" name="Lucro" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />}
             </BarChart>
@@ -299,19 +302,19 @@ export default function EvolucaoMensalDashboard({ pedidos, podeVerCustos, valorG
             <AreaChart data={series} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="grad-acum" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="hsl(var(--accent))" stopOpacity={0.6} />
-                  <stop offset="100%" stopColor="hsl(var(--accent))" stopOpacity={0.05} />
+                  <stop offset="0%" stopColor="hsl(var(--chart-1))" stopOpacity={0.6} />
+                  <stop offset="100%" stopColor="hsl(var(--chart-1))" stopOpacity={0.05} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-              <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => fmtBRLEixo(v)} />
+              <XAxis dataKey="label" tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
+              <YAxis tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => fmtBRLEixo(v)} />
               <Tooltip
                 formatter={(v: any) => fmtBRLFull(v)}
-                contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 11 }}
+                contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 10, fontSize: 12 }}
               />
-              <Legend wrapperStyle={{ fontSize: 10 }} />
-              <Area type="monotone" dataKey="acumulado" name="Faturamento Acumulado" stroke="hsl(var(--accent))" strokeWidth={2} fill="url(#grad-acum)" />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
+              <Area type="monotone" dataKey="acumulado" name="Faturamento Acumulado" stroke="hsl(var(--chart-1))" strokeWidth={2} fill="url(#grad-acum)" />
               {valorGlobal > 0 && (
                 <Line type="monotone" dataKey={() => valorGlobal} name="Valor Global" stroke="hsl(var(--primary))" strokeWidth={1.5} strokeDasharray="6 6" dot={false} />
               )}

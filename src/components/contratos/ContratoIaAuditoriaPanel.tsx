@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { Sparkles, FileText, FileX, RefreshCw, Loader2, AlertTriangle, Calculator, ScrollText, Eye, Wand2 } from 'lucide-react';
 import EventoAuditoriaDetalheDialog from './EventoAuditoriaDetalheDialog';
@@ -171,7 +172,7 @@ export default function ContratoIaAuditoriaPanel({ contratoId }: { contratoId: s
       <li
         key={r.id}
         onClick={() => setEventoSelecionado(r)}
-        className={`border rounded-md p-3 cursor-pointer transition-colors hover:bg-accent/50 ${isAlerta ? 'bg-destructive/10 border-destructive/40 hover:bg-destructive/15' : 'bg-muted/30'}`}
+        className={`border rounded-md p-3 cursor-pointer transition-colors ${isAlerta ? 'bg-destructive-tint border-destructive-line' : 'bg-card border-border hover:bg-muted'}`}
       >
         <div className="flex items-start justify-between gap-2 mb-1">
           <div className="flex items-center gap-2 flex-wrap">
@@ -188,7 +189,7 @@ export default function ContratoIaAuditoriaPanel({ contratoId }: { contratoId: s
                  continua valendo — o documento é que saiu. */
               <span
                 className={`inline-flex items-center gap-1 text-xs ${
-                  r.arquivo_id ? 'text-muted-foreground' : 'text-warning'
+                  r.arquivo_id ? 'text-muted-foreground' : 'text-warning-ink'
                 }`}
                 title={r.arquivo_id ? undefined : 'O arquivo de origem foi excluído do contrato. O registro permanece.'}
               >
@@ -214,7 +215,7 @@ export default function ContratoIaAuditoriaPanel({ contratoId }: { contratoId: s
           </div>
           <div>
             <div className="text-muted-foreground">{isAlerta ? 'Situação detectada' : 'Valor preenchido'}</div>
-            <div className={`break-words ${isAlerta ? 'text-destructive font-semibold' : 'text-foreground font-medium'}`}>
+            <div className={`break-words ${isAlerta ? 'text-destructive-ink font-semibold' : 'text-foreground font-medium'}`}>
               {formatVal(r.campo, r.valor_novo, r.origem)}
             </div>
           </div>
@@ -225,10 +226,10 @@ export default function ContratoIaAuditoriaPanel({ contratoId }: { contratoId: s
 
   return (
     <Card className="p-4">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <div className="flex flex-wrap items-center gap-2">
           <Sparkles className="h-4 w-4 text-muted-foreground shrink-0" />
-          <h3 className="font-semibold text-sm">Auditoria & Recálculos Automáticos</h3>
+          <h3 className="text-lg font-semibold">Auditoria & Recálculos Automáticos</h3>
           <Badge variant="secondary">{rows.length}</Badge>
           {counts.alertas > 0 && (
             <Badge variant="destructive" className="gap-1">
@@ -251,7 +252,7 @@ export default function ContratoIaAuditoriaPanel({ contratoId }: { contratoId: s
               <span className="hidden sm:inline whitespace-nowrap">Reprocessar aditivos</span>
             </Button>
           )}
-          <Button variant="ghost" size="sm" onClick={load} disabled={loading} className="shrink-0">
+          <Button variant="ghost" size="sm" onClick={load} disabled={loading} className="shrink-0" aria-label="Atualizar lista" title="Atualizar lista">
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
           </Button>
           <Button variant="ghost" size="sm" onClick={alternarRecolhido} className="shrink-0"
@@ -274,7 +275,11 @@ export default function ContratoIaAuditoriaPanel({ contratoId }: { contratoId: s
 
         <TabsContent value={tab} className="mt-0">
           {loading ? (
-            <div className="text-sm text-muted-foreground py-6 text-center">Carregando…</div>
+            <div className="space-y-2" aria-busy="true" aria-label="Carregando eventos">
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-16 w-full" />
+            </div>
           ) : filtered.length === 0 ? (
             <div className="text-sm text-muted-foreground py-6 text-center">
               Nenhum evento registrado nesta categoria.

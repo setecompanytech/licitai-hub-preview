@@ -6,7 +6,9 @@ import { useContas } from "@/hooks/useFinanceiro";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -31,6 +33,7 @@ import {
   Clock,
   AlertCircle,
   TrendingUp,
+  Inbox,
 } from "lucide-react";
 import { format, parseISO, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -144,7 +147,7 @@ export default function FinRelatorioConciliacao() {
       );
     });
 
-    const csv = "\uFEFF" + linhas.join("\n");
+    const csv = "﻿" + linhas.join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -246,22 +249,22 @@ export default function FinRelatorioConciliacao() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Filtros */}
       <Card>
-        <CardContent className="pt-4 flex flex-wrap items-end gap-3">
+        <CardContent className="p-6 flex flex-wrap items-end gap-3">
           <div>
-            <label className="text-xs text-muted-foreground">Data inicial</label>
-            <Input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} className="h-9 mt-1 w-[160px]" />
+            <Label htmlFor="rel-conc-inicio" className="block mb-2">Data inicial</Label>
+            <Input id="rel-conc-inicio" type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} className="w-44" />
           </div>
           <div>
-            <label className="text-xs text-muted-foreground">Data final</label>
-            <Input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} className="h-9 mt-1 w-[160px]" />
+            <Label htmlFor="rel-conc-fim" className="block mb-2">Data final</Label>
+            <Input id="rel-conc-fim" type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} className="w-44" />
           </div>
           <div className="min-w-[200px]">
-            <label className="text-xs text-muted-foreground">Conta</label>
+            <Label htmlFor="rel-conc-conta" className="block mb-2">Conta</Label>
             <Select value={contaId} onValueChange={setContaId}>
-              <SelectTrigger className="h-9 mt-1"><SelectValue /></SelectTrigger>
+              <SelectTrigger id="rel-conc-conta"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="todas">Todas as contas</SelectItem>
                 {(contas ?? []).map((c) => (
@@ -270,45 +273,45 @@ export default function FinRelatorioConciliacao() {
               </SelectContent>
             </Select>
           </div>
-          <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
-            {isFetching ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <RefreshCcw className="w-4 h-4 mr-1.5" />}
+          <Button variant="outline" onClick={() => refetch()} disabled={isFetching}>
+            {isFetching ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <RefreshCcw className="w-4 h-4" aria-hidden="true" />}
             Atualizar
           </Button>
           <div className="flex-1" />
-          <Button variant="outline" size="sm" onClick={exportarCSV} disabled={movimentos.length === 0}>
-            <FileSpreadsheet className="w-4 h-4 mr-1.5" />Exportar CSV
+          <Button variant="outline" onClick={exportarCSV} disabled={movimentos.length === 0}>
+            <FileSpreadsheet className="w-4 h-4" aria-hidden="true" />Exportar CSV
           </Button>
-          <Button size="sm" onClick={exportarPDF} disabled={movimentos.length === 0}>
-            <FileText className="w-4 h-4 mr-1.5" />Exportar PDF
+          <Button onClick={exportarPDF} disabled={movimentos.length === 0}>
+            <FileText className="w-4 h-4" aria-hidden="true" />Exportar PDF
           </Button>
         </CardContent>
       </Card>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
-          icon={<TrendingUp className="w-4 h-4" />}
+          icon={<TrendingUp className="w-4 h-4" aria-hidden="true" />}
           label="Importados"
           valor={resumo.total}
           sublabel={formatBRL(resumo.valorTotal)}
           tone="default"
         />
         <KpiCard
-          icon={<CheckCircle2 className="w-4 h-4" />}
+          icon={<CheckCircle2 className="w-4 h-4" aria-hidden="true" />}
           label="Conciliados"
           valor={resumo.conciliados}
           sublabel={formatBRL(resumo.valorConciliado)}
           tone="success"
         />
         <KpiCard
-          icon={<Clock className="w-4 h-4" />}
+          icon={<Clock className="w-4 h-4" aria-hidden="true" />}
           label="Pendentes"
           valor={resumo.pendentes}
           sublabel={formatBRL(resumo.valorPendente)}
           tone="warning"
         />
         <KpiCard
-          icon={<AlertCircle className="w-4 h-4" />}
+          icon={<AlertCircle className="w-4 h-4" aria-hidden="true" />}
           label="Taxa conciliação"
           valor={`${resumo.taxa.toFixed(1)}%`}
           sublabel={resumo.total > 0 ? `${resumo.conciliados}/${resumo.total}` : "Sem dados"}
@@ -319,30 +322,32 @@ export default function FinRelatorioConciliacao() {
       {/* Resumo por conta */}
       {resumo.porConta.length > 1 && (
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-base">Resumo por conta</CardTitle></CardHeader>
+          <CardHeader className="pb-2"><CardTitle>Resumo por conta</CardTitle></CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Conta</TableHead>
-                  <TableHead className="text-right">Importados</TableHead>
-                  <TableHead className="text-right">Conciliados</TableHead>
-                  <TableHead className="text-right">Pendentes</TableHead>
-                  <TableHead className="text-right">Valor</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {resumo.porConta.map((c) => (
-                  <TableRow key={c.nome}>
-                    <TableCell className="font-medium">{c.nome}</TableCell>
-                    <TableCell className="text-right tabular-nums">{c.total}</TableCell>
-                    <TableCell className="text-right tabular-nums text-success">{c.conciliados}</TableCell>
-                    <TableCell className="text-right tabular-nums text-warning">{c.pendentes}</TableCell>
-                    <TableCell className="text-right tabular-nums">{formatBRL(c.valor)}</TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Conta</TableHead>
+                    <TableHead className="text-right">Importados</TableHead>
+                    <TableHead className="text-right">Conciliados</TableHead>
+                    <TableHead className="text-right">Pendentes</TableHead>
+                    <TableHead className="text-right">Valor</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {resumo.porConta.map((c) => (
+                    <TableRow key={c.nome}>
+                      <TableCell className="font-medium">{c.nome}</TableCell>
+                      <TableCell className="text-right tabular-nums">{c.total}</TableCell>
+                      <TableCell className="text-right tabular-nums text-success">{c.conciliados}</TableCell>
+                      <TableCell className="text-right tabular-nums text-warning">{c.pendentes}</TableCell>
+                      <TableCell className="text-right tabular-nums">{formatBRL(c.valor)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -350,19 +355,27 @@ export default function FinRelatorioConciliacao() {
       {/* Detalhe */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Movimentos do período ({movimentos.length})</CardTitle>
+          <CardTitle>Movimentos do período ({movimentos.length})</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            <div className="space-y-2" role="status" aria-label="Carregando movimentos">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-10" />
+              ))}
             </div>
           ) : movimentos.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-6">
-              Nenhum movimento no período selecionado.
-            </p>
+            <div className="flex flex-col items-center py-8 text-center">
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
+                <Inbox className="w-6 h-6" aria-hidden="true" />
+              </span>
+              <p className="mt-3 text-lg font-semibold">Nenhum movimento</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Nenhum movimento no período selecionado.
+              </p>
+            </div>
           ) : (
-            <div className="overflow-x-auto max-h-[480px]">
+            <div className="overflow-x-auto max-h-[480px] overflow-y-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -376,17 +389,17 @@ export default function FinRelatorioConciliacao() {
                 <TableBody>
                   {movimentos.slice(0, 500).map((m) => (
                     <TableRow key={m.id}>
-                      <TableCell className="whitespace-nowrap">{formatDate(m.data_movimento)}</TableCell>
-                      <TableCell className="text-xs">{m.conta?.nome ?? "—"}</TableCell>
+                      <TableCell nowrap>{formatDate(m.data_movimento)}</TableCell>
+                      <TableCell className="text-sm">{m.conta?.nome ?? "—"}</TableCell>
                       <TableCell className="text-sm max-w-[420px] truncate" title={m.descricao}>{m.descricao}</TableCell>
-                      <TableCell className={`text-right tabular-nums font-mono ${Number(m.valor) >= 0 ? "text-success" : "text-destructive"}`}>
+                      <TableCell className={`text-right tabular-nums whitespace-nowrap ${Number(m.valor) >= 0 ? "text-success" : "text-destructive"}`}>
                         {formatBRL(Number(m.valor))}
                       </TableCell>
                       <TableCell>
                         {m.conciliado ? (
-                          <Badge variant="default">conciliado</Badge>
+                          <Badge variant="success">Conciliado</Badge>
                         ) : (
-                          <Badge variant="secondary">pendente</Badge>
+                          <Badge variant="warning">Pendente</Badge>
                         )}
                       </TableCell>
                     </TableRow>
@@ -394,7 +407,7 @@ export default function FinRelatorioConciliacao() {
                 </TableBody>
               </Table>
               {movimentos.length > 500 && (
-                <p className="text-xs text-muted-foreground text-center py-2 italic">
+                <p className="text-xs text-muted-foreground text-center py-2">
                   Exibindo 500 de {movimentos.length} movimentos. Exporte para ver tudo.
                 </p>
               )}
@@ -427,12 +440,12 @@ function KpiCard({
   };
   return (
     <Card>
-      <CardContent className="pt-4">
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+      <CardContent className="p-6">
+        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
           {icon}<span>{label}</span>
         </div>
-        <p className={`text-2xl font-bold tabular-nums mt-1 ${toneClasses[tone]}`}>{valor}</p>
-        <p className="text-xs text-muted-foreground tabular-nums">{sublabel}</p>
+        <p className={`mt-1 text-[2rem] leading-10 font-bold tabular-nums ${toneClasses[tone]}`}>{valor}</p>
+        <p className="text-xs text-muted-foreground tabular-nums mt-1">{sublabel}</p>
       </CardContent>
     </Card>
   );

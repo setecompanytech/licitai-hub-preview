@@ -1,7 +1,6 @@
 import { useAlertas } from '@/hooks/useAlertas';
 import { Bell } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,31 +16,31 @@ export default function AlertaBadge() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="relative p-2 rounded-lg hover:bg-muted/50 transition-colors">
+        <button type="button" aria-label={naoLidos > 0 ? `Avisos: ${naoLidos} não lidos` : 'Avisos'} className="relative rounded-md p-2 transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <Bell className="w-4 h-4 text-muted-foreground" />
           {naoLidos > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center w-4 h-4 rounded-full bg-destructive text-xs font-bold text-white">
+            <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-xs font-bold text-destructive-foreground">
               {naoLidos > 9 ? '9+' : naoLidos}
             </span>
           )}
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-80 p-0">
-        <div className="p-3 border-b border-border/50">
-          <p className="text-sm font-semibold">Avisos Recentes</p>
+        <div className="border-b border-border p-3">
+          <p className="text-sm font-semibold">Avisos recentes</p>
         </div>
         <div className="max-h-[300px] overflow-y-auto">
           {recentes.length === 0 ? (
             <div className="p-4 text-center">
-              <p className="text-xs text-muted-foreground">Nenhum aviso recente</p>
+              <p className="text-sm text-muted-foreground">Nenhum aviso recente</p>
             </div>
           ) : (
             recentes.map(a => (
               <Link key={a.id} to="/avisos" className="block">
-                <div className={`px-3 py-2 hover:bg-muted/30 border-b border-border/20 ${!a.lido ? 'bg-accent/5' : ''}`}>
+                <div className={`border-b border-border px-3 py-2 hover:bg-muted ${!a.lido ? 'bg-primary-tint' : ''}`}>
                   <div className="flex items-center gap-1.5">
                     {a.urgente && <span className="w-1.5 h-1.5 rounded-full bg-destructive shrink-0" />}
-                    <p className={`text-xs truncate ${!a.lido ? 'font-bold' : ''}`}>{a.titulo}</p>
+                    <p className={`truncate text-sm ${!a.lido ? 'font-semibold' : ''}`}>{a.titulo}</p>
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {formatDistanceToNow(new Date(a.created_at), { addSuffix: true, locale: ptBR })}
@@ -51,8 +50,8 @@ export default function AlertaBadge() {
             ))
           )}
         </div>
-        <Link to="/avisos" className="block p-2 text-center border-t border-border/50">
-          <p className="text-xs text-accent font-medium hover:underline">Ver todos os avisos</p>
+        <Link to="/avisos" className="block border-t border-border p-2 text-center">
+          <p className="text-sm font-medium text-primary hover:underline">Ver todos os avisos</p>
         </Link>
       </DropdownMenuContent>
     </DropdownMenu>

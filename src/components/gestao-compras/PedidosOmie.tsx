@@ -114,7 +114,7 @@ function SelectPadrao({ valor, onChange, opcoes, placeholder, cfop }: {
               <button
                 type="button"
                 key={sug.codigo}
-                className="flex w-full items-baseline gap-2 px-2.5 py-1.5 text-left text-xs hover:bg-muted"
+                className="flex w-full items-baseline gap-2 px-3 py-2 text-left text-xs hover:bg-muted focus-visible:outline-none focus-visible:bg-muted"
                 // onMouseDown + preventDefault: o clique vence o blur do input.
                 onMouseDown={e => {
                   e.preventDefault();
@@ -143,6 +143,7 @@ function SelectPadrao({ valor, onChange, opcoes, placeholder, cfop }: {
 }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { CalendarDays } from 'lucide-react';
@@ -157,7 +158,7 @@ import {
   Plus, Search, MoreVertical, ShoppingCart, ShoppingBag, Pencil, Trash2,
   Loader2, X, Save, Printer, Copy, Check, Zap, Paperclip, Download,
   History, RefreshCw, User, LayoutGrid, List,
-  ChevronsUpDown, Filter, FileText, Link2,
+  ChevronsUpDown, Filter, Link2,
 } from 'lucide-react';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -221,12 +222,15 @@ type ItemForm = {
 // colunas de largura fixa deixavam um vão morto à direita — parecia
 // transparente. A cor da etapa pinta a barra do topo, o cabeçalho e a
 // lateral dos cartões, contando o fluxo de relance.
+// Identidade 12/09: chips nas famílias tint/ink (nada de alfa composto na
+// mão). Faturar e Entrega dividiam o mesmo verde depois que `accent` virou
+// `primary`; Entrega passa ao navy para o fluxo continuar legível de relance.
 const KANBAN_STATUS: { key: Pedido['status']; label: string; barra: string; texto: string; chip: string; borda: string }[] = [
-  { key: 'pedido',          label: 'Pedidos',         barra: 'bg-info',    texto: 'text-info',    chip: 'bg-info/15 text-info',       borda: 'border-l-info' },
-  { key: 'separar_estoque', label: 'Separar Estoque', barra: 'bg-warning', texto: 'text-warning', chip: 'bg-warning/15 text-warning', borda: 'border-l-warning' },
-  { key: 'faturar',         label: 'Faturar',         barra: 'bg-accent',  texto: 'text-accent',  chip: 'bg-accent/15 text-accent',   borda: 'border-l-accent' },
-  { key: 'faturado',        label: 'Faturado',        barra: 'bg-success', texto: 'text-success', chip: 'bg-success/15 text-success', borda: 'border-l-success' },
-  { key: 'entrega',         label: 'Entrega',         barra: 'bg-primary', texto: 'text-primary', chip: 'bg-primary/15 text-primary', borda: 'border-l-primary' },
+  { key: 'pedido',          label: 'Pedidos',         barra: 'bg-info',    texto: 'text-foreground',       chip: 'bg-muted text-foreground',                  borda: 'border-l-info' },
+  { key: 'separar_estoque', label: 'Separar Estoque', barra: 'bg-warning', texto: 'text-warning-ink',      chip: 'bg-warning-tint text-warning-ink',          borda: 'border-l-warning' },
+  { key: 'faturar',         label: 'Faturar',         barra: 'bg-primary', texto: 'text-primary',          chip: 'bg-primary-tint text-primary',              borda: 'border-l-primary' },
+  { key: 'faturado',        label: 'Faturado',        barra: 'bg-success', texto: 'text-success-ink',      chip: 'bg-success-tint text-success-ink',          borda: 'border-l-success' },
+  { key: 'entrega',         label: 'Entrega',         barra: 'bg-navy',    texto: 'text-navy',             chip: 'bg-navy-tint text-navy',                    borda: 'border-l-navy' },
 ];
 
 const STATUS_MSG: Record<string, string> = {
@@ -295,10 +299,10 @@ function DatePickerBtn({ value, onChange, placeholder }: {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button className={`flex items-center gap-1.5 h-7 px-2.5 rounded-md border text-xs transition-colors hover:bg-muted/50 ${value ? 'text-foreground border-accent/60' : 'text-muted-foreground'}`}>
-          <CalendarDays className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+        <Button type="button" variant="outline" size="sm" className={value ? 'border-primary text-foreground' : 'text-muted-foreground font-normal'}>
+          <CalendarDays className="w-4 h-4 shrink-0 text-muted-foreground" aria-hidden="true" />
           {label}
-        </button>
+        </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
         <Calendar
@@ -349,16 +353,17 @@ function PessoaCombobox({ pessoas, value, onChange }: {
           placeholder="Digite para buscar..."
           onChange={e => { setInputVal(e.target.value); setQ(e.target.value); setOpen(true); }}
           onFocus={() => setOpen(true)}
-          className="pr-8 text-sm"
+          className="pr-9"
+          aria-label="Buscar pessoa"
         />
-        <Search className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+        <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
       </div>
       {open && filtered.length > 0 && (
-        <div className="absolute z-50 top-full left-0 mt-1 w-full bg-popover border rounded-md shadow-lg max-h-48 overflow-y-auto text-sm">
+        <div className="absolute z-50 top-full left-0 mt-1 w-full rounded-md border border-border bg-popover shadow-md max-h-48 overflow-y-auto text-sm">
           {filtered.map(p => (
-            <button key={p.id} className="w-full text-left px-3 py-2 hover:bg-muted/60 transition-colors"
+            <button type="button" key={p.id} className="w-full text-left px-3 py-2 hover:bg-muted focus-visible:outline-none focus-visible:bg-muted transition-colors"
               onClick={() => { onChange(p.id); setInputVal(p.nome); setQ(''); setOpen(false); }}>
-              <div className="font-medium text-xs">{p.nome}</div>
+              <div className="font-medium text-sm">{p.nome}</div>
               {p.documento && <div className="text-xs text-muted-foreground">{p.documento}</div>}
             </button>
           ))}
@@ -409,32 +414,34 @@ function ItemDialog({ open, onOpenChange, produtos, initial, onConfirm }: {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col p-0 gap-0">
-        <DialogHeader className="px-4 py-3 border-b">
-          <DialogTitle className="text-sm font-semibold">
+        <DialogHeader className="px-4 py-3 border-b border-border">
+          <DialogTitle>
             {initial?.id ? 'Editar Item' : 'Incluir Item'}
           </DialogTitle>
         </DialogHeader>
 
         <div className="flex flex-col flex-1 overflow-hidden">
-          <div className="px-4 pt-3 pb-2 border-b space-y-2">
+          <div className="px-4 pt-3 pb-3 border-b border-border space-y-2">
             <div className="relative">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-              <Input value={search} onChange={e => setSearch(e.target.value)}
-                placeholder="Buscar produto por código ou descrição..." className="pl-8 text-sm" />
+              <Label htmlFor="item-busca-produto" className="sr-only">Buscar produto</Label>
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
+              <Input id="item-busca-produto" value={search} onChange={e => setSearch(e.target.value)}
+                placeholder="Buscar produto por código ou descrição..." className="pl-9" />
             </div>
-            <div className="max-h-36 overflow-y-auto border rounded-md bg-background">
+            <div className="max-h-36 overflow-y-auto rounded-md border border-border bg-background">
               {filtered.length === 0
                 ? <p className="px-3 py-3 text-xs text-muted-foreground text-center">Nenhum produto encontrado</p>
                 : filtered.map(p => (
-                  <button key={p.id}
-                    className={`w-full text-left px-3 py-1.5 text-xs hover:bg-accent/10 border-b last:border-0 transition-colors ${item.produto_id === p.id ? 'bg-accent/20' : ''}`}
+                  <button type="button" key={p.id}
+                    aria-pressed={item.produto_id === p.id}
+                    className={`w-full text-left px-3 py-2 text-sm hover:bg-primary-tint focus-visible:outline-none focus-visible:bg-primary-tint border-b border-border last:border-0 transition-colors ${item.produto_id === p.id ? 'bg-primary-tint' : ''}`}
                     onClick={() => selectProd(p)}
                   >
                     <span className="font-medium text-foreground mr-2">{p.codigo ?? '—'}</span>
                     <span>{p.descricao}</span>
                     <span className="ml-2 text-muted-foreground">({p.unidade})</span>
                     {p.preco_venda != null && p.preco_venda > 0 && (
-                      <span className="ml-2 text-success font-medium">R$ {fmtM(p.preco_venda)}</span>
+                      <span className="ml-2 text-success font-medium tabular-nums">R$ {fmtM(p.preco_venda)}</span>
                     )}
                   </button>
                 ))
@@ -442,39 +449,39 @@ function ItemDialog({ open, onOpenChange, produtos, initial, onConfirm }: {
             </div>
           </div>
 
-          <div className="px-4 py-3 space-y-3 overflow-y-auto">
-            <div className="grid grid-cols-2 gap-3">
+          <div className="px-4 py-3 space-y-4 overflow-y-auto">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <Label className="text-xs text-muted-foreground">Código</Label>
-                <Input value={item.codigo_produto} onChange={e => setItem(i => ({ ...i, codigo_produto: e.target.value }))} className="text-sm mt-1" />
+                <Label htmlFor="item-codigo">Código</Label>
+                <Input id="item-codigo" value={item.codigo_produto} onChange={e => setItem(i => ({ ...i, codigo_produto: e.target.value }))} className="mt-1" />
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">Unidade</Label>
-                <Input value={item.unidade} onChange={e => setItem(i => ({ ...i, unidade: e.target.value }))} className="text-sm mt-1" />
-              </div>
-            </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">Descrição do Produto *</Label>
-              <Input value={item.descricao} onChange={e => setItem(i => ({ ...i, descricao: e.target.value }))} className="text-sm mt-1" />
-            </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <Label className="text-xs text-muted-foreground">Quantidade</Label>
-                <Input value={item.quantidade} onChange={e => setItem(i => ({ ...i, quantidade: e.target.value }))}
-                  className="text-sm mt-1 text-right" type="number" min="0" step="0.001" />
-              </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">Preço Unitário</Label>
-                <Input value={item.preco_unitario} onChange={e => setItem(i => ({ ...i, preco_unitario: inputM(e.target.value) }))}
-                  className="text-sm mt-1 text-right" inputMode="numeric" />
-              </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">Valor Total</Label>
-                <Input value={fmtM(valorTotal)} readOnly className="text-sm mt-1 text-right bg-muted/30 text-muted-foreground" />
+                <Label htmlFor="item-unidade">Unidade</Label>
+                <Input id="item-unidade" value={item.unidade} onChange={e => setItem(i => ({ ...i, unidade: e.target.value }))} className="mt-1" />
               </div>
             </div>
             <div>
-              <Label className="text-xs text-muted-foreground">Local de Estoque</Label>
+              <Label htmlFor="item-descricao">Descrição do Produto *</Label>
+              <Input id="item-descricao" value={item.descricao} onChange={e => setItem(i => ({ ...i, descricao: e.target.value }))} className="mt-1" />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="item-qtd">Quantidade</Label>
+                <Input id="item-qtd" value={item.quantidade} onChange={e => setItem(i => ({ ...i, quantidade: e.target.value }))}
+                  className="mt-1 text-right tabular-nums" type="number" min="0" step="0.001" />
+              </div>
+              <div>
+                <Label htmlFor="item-preco">Preço Unitário</Label>
+                <Input id="item-preco" value={item.preco_unitario} onChange={e => setItem(i => ({ ...i, preco_unitario: inputM(e.target.value) }))}
+                  className="mt-1 text-right tabular-nums" inputMode="numeric" />
+              </div>
+              <div>
+                <Label htmlFor="item-total">Valor Total</Label>
+                <Input id="item-total" value={fmtM(valorTotal)} readOnly className="mt-1 text-right tabular-nums bg-muted text-muted-foreground" />
+              </div>
+            </div>
+            <div>
+              <Label>Local de Estoque</Label>
               <SelectPadrao
                 valor={item.local_estoque}
                 onChange={v => setItem(i => ({ ...i, local_estoque: v }))}
@@ -485,9 +492,9 @@ function ItemDialog({ open, onOpenChange, produtos, initial, onConfirm }: {
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 px-4 py-3 border-t">
-          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={handleConfirm}>
+        <div className="flex flex-wrap justify-end gap-2 px-4 py-3 border-t border-border">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button onClick={handleConfirm}>
             {initial?.id ? 'Salvar' : 'Incluir'}
           </Button>
         </div>
@@ -935,7 +942,7 @@ export default function PedidosOmie() {
           <h2>Pedido de ${isV ? 'Venda' : 'Compra'} Nº ${editingNum ?? '—'}</h2>
           <p style="color:#666;font-size:12px;margin:2px 0">${STATUS_MSG[editingStatus] ?? editingStatus}</p>
         </div>
-        <button class="no-print" onclick="window.print()" style="padding:6px 16px;background:#f59e0b;color:#fff;border:none;border-radius:6px;cursor:pointer">Imprimir</button>
+        <button class="no-print" onclick="window.print()" style="padding:6px 16px;background:#fff;color:#111;border:1px solid #ddd;border-radius:6px;cursor:pointer">Imprimir</button>
       </div>
       <h3>${isV ? 'Cliente' : 'Fornecedor'}</h3>
       <div class="row">
@@ -1116,14 +1123,14 @@ export default function PedidosOmie() {
 
   const selectedItemObj = itens.find(i => i._key === selectedItem);
 
-  // ── Status badge colors ────────────────────────────────────────────────
-  const STATUS_BADGE: Record<string, string> = {
-    pedido:          'border-border text-muted-foreground',
-    separar_estoque: 'border-border text-muted-foreground',
-    faturar:         'border-border text-muted-foreground',
-    faturado:        'border-success/30 text-success',
-    entrega:         'border-border text-muted-foreground',
-    cancelado:       'border-destructive/30 text-destructive',
+  // ── Status badge variants (sempre com texto; a cor é reforço) ──────────
+  const STATUS_BADGE: Record<string, 'info' | 'success' | 'danger'> = {
+    pedido:          'info',
+    separar_estoque: 'info',
+    faturar:         'info',
+    faturado:        'success',
+    entrega:         'info',
+    cancelado:       'danger',
   };
 
   // ── Delete Confirm Dialog ──────────────────────────────────────────────
@@ -1131,8 +1138,8 @@ export default function PedidosOmie() {
     <Dialog open={!!deleteConfirmId} onOpenChange={v => { if (!v) { setDeleteConfirmId(null); setDeleteMotivo(''); } }}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle className="text-base flex items-center gap-2 text-destructive">
-            <Trash2 className="w-4 h-4" /> Excluir Pedido
+          <DialogTitle className="flex items-center gap-2 text-destructive">
+            <Trash2 className="w-5 h-5" aria-hidden="true" /> Excluir Pedido
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-3 py-1">
@@ -1140,9 +1147,10 @@ export default function PedidosOmie() {
             Esta ação também removerá o vínculo deste pedido dentro da <strong>Gestão de Contratos</strong>, caso exista.
           </p>
           <div>
-            <Label className="text-xs">Motivo da exclusão <span className="text-destructive">*</span></Label>
+            <Label htmlFor="pedido-delete-motivo">Motivo da exclusão <span className="text-destructive">*</span></Label>
             <Textarea
-              className="mt-1 text-sm resize-none"
+              id="pedido-delete-motivo"
+              className="mt-1 resize-none"
               rows={3}
               placeholder="Descreva o motivo para excluir este pedido..."
               value={deleteMotivo}
@@ -1150,12 +1158,12 @@ export default function PedidosOmie() {
             />
           </div>
         </div>
-        <div className="flex justify-end gap-2 pt-1">
-          <Button variant="outline" size="sm" onClick={() => { setDeleteConfirmId(null); setDeleteMotivo(''); }}>
+        <div className="flex flex-wrap justify-end gap-2 pt-1">
+          <Button variant="outline" onClick={() => { setDeleteConfirmId(null); setDeleteMotivo(''); }}>
             Cancelar
           </Button>
-          <Button size="sm" variant="destructive" onClick={confirmarDelete} disabled={deletingPedido || !deleteMotivo.trim()}>
-            {deletingPedido ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Trash2 className="w-3.5 h-3.5 mr-1" />}
+          <Button variant="destructive" onClick={confirmarDelete} disabled={deletingPedido || !deleteMotivo.trim()}>
+            {deletingPedido ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
             Excluir
           </Button>
         </div>
@@ -1168,23 +1176,23 @@ export default function PedidosOmie() {
     <Dialog open={nfeAlertOpen} onOpenChange={setNfeAlertOpen}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-base">Faturar Pedido</DialogTitle>
+          <DialogTitle>Faturar Pedido</DialogTitle>
         </DialogHeader>
         <div className="space-y-3 py-1">
           <p className="text-sm text-muted-foreground">
             Ao mover para <strong>Faturado</strong>, o sistema pode emitir a NF-e automaticamente
             se houver um certificado A3 vinculado à conta.
           </p>
-          <div className="bg-warning/10 border border-warning/30 rounded-md p-3 text-xs text-warning flex items-start gap-2">
-            <Zap className="w-4 h-4 shrink-0 mt-0.5 text-warning" />
+          <div role="status" className="rounded-md border border-warning-line bg-warning-tint p-4 text-sm text-warning-ink flex items-start gap-2">
+            <Zap className="w-4 h-4 shrink-0 mt-1" aria-hidden="true" />
             <span>Nenhum certificado A3 vinculado. A NF-e <strong>não será emitida</strong> automaticamente.</span>
           </div>
         </div>
-        <div className="flex justify-end gap-2 pt-1">
-          <Button variant="outline" size="sm" onClick={() => { setNfeAlertOpen(false); setPendingFaturarId(null); }}>
+        <div className="flex flex-wrap justify-end gap-2 pt-1">
+          <Button variant="outline" onClick={() => { setNfeAlertOpen(false); setPendingFaturarId(null); }}>
             Cancelar
           </Button>
-          <Button size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground"
+          <Button
             onClick={async () => {
               if (pendingFaturarId) {
                 await updatePedidoStatus(pendingFaturarId, 'faturado');
@@ -1207,7 +1215,7 @@ export default function PedidosOmie() {
                 setPendingFaturarId(null);
               }
             }}>
-            <Zap className="w-3.5 h-3.5 mr-1" /> Faturar mesmo assim
+            <Zap className="w-4 h-4" /> Faturar mesmo assim
           </Button>
         </div>
       </DialogContent>
@@ -1222,30 +1230,30 @@ export default function PedidosOmie() {
     }}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle className="text-base">Lançar Conta a Receber</DialogTitle>
+          <DialogTitle>Lançar Conta a Receber</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-1">
           <p className="text-sm text-muted-foreground">
             Pedido faturado com sucesso. Deseja registrar uma conta a receber no Financeiro?
           </p>
           {faturadoPedido && (
-            <div className="bg-muted/40 border rounded-md p-3 text-sm space-y-1">
+            <div className="rounded-md border border-border bg-muted p-4 text-sm space-y-1">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Pedido</span>
-                <span className="font-medium">#{faturadoPedido.numero}</span>
+                <span className="font-medium tabular-nums">#{faturadoPedido.numero}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Valor total</span>
-                <span className="font-semibold text-foreground">
+                <span className="font-semibold text-foreground tabular-nums">
                   {faturadoPedido.valor_total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </span>
               </div>
             </div>
           )}
-          <div className="space-y-1.5">
-            <Label className="text-xs">Conta destino</Label>
+          <div className="space-y-2">
+            <Label htmlFor="faturado-conta">Conta destino</Label>
             <Select value={faturadoContaId} onValueChange={setFaturadoContaId}>
-              <SelectTrigger className="h-8 text-sm">
+              <SelectTrigger id="faturado-conta">
                 <SelectValue placeholder="Selecione a conta bancária..." />
               </SelectTrigger>
               <SelectContent>
@@ -1255,21 +1263,22 @@ export default function PedidosOmie() {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs">Número de parcelas</Label>
+          <div className="space-y-2">
+            <Label htmlFor="faturado-parcelas">Número de parcelas</Label>
             <Input
+              id="faturado-parcelas"
               type="number" min="1" max="60"
-              className="h-8 text-sm"
+              className="tabular-nums"
               value={faturadoParcelas}
               onChange={e => setFaturadoParcelas(e.target.value)}
             />
           </div>
         </div>
-        <div className="flex justify-end gap-2 pt-1">
-          <Button variant="ghost" size="sm" onClick={() => { setFaturadoContaOpen(false); setPendingFaturarId(null); }}>
+        <div className="flex flex-wrap justify-end gap-2 pt-1">
+          <Button variant="ghost" onClick={() => { setFaturadoContaOpen(false); setPendingFaturarId(null); }}>
             Pular
           </Button>
-          <Button size="sm" disabled={!faturadoContaId || savingFaturado}
+          <Button disabled={!faturadoContaId || savingFaturado}
             onClick={async () => {
               if (!faturadoPedido || !faturadoContaId) return;
               setSavingFaturado(true);
@@ -1312,8 +1321,8 @@ export default function PedidosOmie() {
               }
             }}>
             {savingFaturado
-              ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
-              : <Check className="w-3.5 h-3.5 mr-1" />}
+              ? <Loader2 className="w-4 h-4 animate-spin" />
+              : <Check className="w-4 h-4" />}
             Gerar {parseInt(faturadoParcelas) > 1 ? `${faturadoParcelas} parcelas` : 'conta'}
           </Button>
         </div>
@@ -1326,30 +1335,34 @@ export default function PedidosOmie() {
     <Dialog open={tipoOpen} onOpenChange={setTipoOpen}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle className="text-base">Novo Pedido</DialogTitle>
+          <DialogTitle>Novo Pedido</DialogTitle>
         </DialogHeader>
         <p className="text-sm text-muted-foreground">Selecione o tipo de pedido:</p>
-        <div className="grid grid-cols-2 gap-3 mt-2">
-          <button
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+          <Button
+            type="button"
+            variant="outline"
             onClick={() => openNovo('compra')}
-            className="flex flex-col items-center gap-3 p-5 border-2 border-accent/40 rounded-xl hover:border-accent hover:bg-accent/10 transition-all"
+            className="h-auto flex-col gap-3 rounded-lg p-5 whitespace-normal hover:border-primary"
           >
-            <ShoppingBag className="w-9 h-9 text-muted-foreground" />
-            <div className="text-center">
-              <p className="font-semibold text-sm">Pedido de Compra</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Vincular fornecedor</p>
-            </div>
-          </button>
-          <button
+            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary"><ShoppingBag className="w-6 h-6 !size-6" aria-hidden="true" /></span>
+            <span className="text-center">
+              <span className="block font-semibold text-sm">Pedido de Compra</span>
+              <span className="block text-xs font-normal text-muted-foreground mt-1">Vincular fornecedor</span>
+            </span>
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
             onClick={() => openNovo('venda')}
-            className="flex flex-col items-center gap-3 p-5 border-2 border-accent/40 rounded-xl hover:border-accent hover:bg-accent/10 transition-all"
+            className="h-auto flex-col gap-3 rounded-lg p-5 whitespace-normal hover:border-primary"
           >
-            <ShoppingCart className="w-9 h-9 text-muted-foreground" />
-            <div className="text-center">
-              <p className="font-semibold text-sm">Pedido de Venda</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Vincular cliente</p>
-            </div>
-          </button>
+            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary"><ShoppingCart className="w-6 h-6 !size-6" aria-hidden="true" /></span>
+            <span className="text-center">
+              <span className="block font-semibold text-sm">Pedido de Venda</span>
+              <span className="block text-xs font-normal text-muted-foreground mt-1">Vincular cliente</span>
+            </span>
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
@@ -1360,47 +1373,51 @@ export default function PedidosOmie() {
     <Dialog open={anexosOpen} onOpenChange={setAnexosOpen}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle className="text-base flex items-center gap-2">
-            <Paperclip className="w-4 h-4 text-muted-foreground" />
+          <DialogTitle className="flex items-center gap-2">
+            <Paperclip className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
             Anexos — Pedido Nº {editingNum}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="text-sm text-muted-foreground">{anexosList.length} arquivo(s)</span>
-            <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploadingAnexo}>
+            <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploadingAnexo}>
               {uploadingAnexo
-                ? <Loader2 className="w-4 h-4 animate-spin mr-1" />
-                : <Plus className="w-4 h-4 mr-1" />}
+                ? <Loader2 className="w-4 h-4 animate-spin" />
+                : <Plus className="w-4 h-4" />}
               Adicionar arquivo
             </Button>
           </div>
           {anexosLoading ? (
-            <div className="flex justify-center py-8">
-              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            <div role="status" aria-busy="true" className="space-y-2">
+              <span className="sr-only">Carregando</span>
+              <Skeleton className="h-11 rounded-md" />
+              <Skeleton className="h-11 rounded-md" />
             </div>
           ) : anexosList.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground text-sm border rounded-md border-dashed">
-              Nenhum arquivo anexado.
+            <div className="flex flex-col items-center justify-center rounded-md border border-dashed border-border py-8 text-center">
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary"><Paperclip className="w-6 h-6" aria-hidden="true" /></span>
+              <p className="mt-3 text-lg font-semibold">Nenhum arquivo anexado</p>
+              <p className="mt-1 text-sm text-muted-foreground">Anexe a nota, o empenho ou o comprovante deste pedido.</p>
             </div>
           ) : (
-            <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
+            <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
               {anexosList.map(f => (
-                <div key={f.name} className="flex items-center gap-2 p-2.5 rounded-md border text-sm">
-                  <Paperclip className="w-4 h-4 text-muted-foreground shrink-0" />
+                <div key={f.name} className="flex items-center gap-2 p-3 rounded-md border border-border text-sm">
+                  <Paperclip className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
                   <span className="flex-1 truncate font-medium">{f.name}</span>
-                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                  <span className="text-xs text-muted-foreground whitespace-nowrap tabular-nums">
                     {f.size > 1024 * 1024
                       ? `${(f.size / 1024 / 1024).toFixed(1)} MB`
                       : `${Math.max(1, Math.round(f.size / 1024))} KB`}
                   </span>
-                  <a href={f.url} target="_blank" rel="noopener noreferrer">
-                    <Button size="icon" variant="ghost" className="h-7 w-7">
-                      <Download className="w-3.5 h-3.5" />
-                    </Button>
-                  </a>
+                  <Button asChild size="sm" variant="ghost" className="w-9 px-0">
+                    <a href={f.url} target="_blank" rel="noopener noreferrer" aria-label={`Baixar ${f.name}`}>
+                      <Download className="w-4 h-4" />
+                    </a>
+                  </Button>
                   <Button
-                    size="icon" variant="ghost" className="h-7 w-7"
+                    size="sm" variant="ghost" className="w-9 px-0" aria-label={`Remover ${f.name}`}
                     onClick={async () => {
                       const path = `${empresaAtiva!.id}/${editingId}/${f.name}`;
                       await supabase.storage.from('pedidos-anexos').remove([path]);
@@ -1408,7 +1425,7 @@ export default function PedidosOmie() {
                       await loadAnexos();
                     }}
                   >
-                    <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                    <Trash2 className="w-4 h-4 text-destructive" />
                   </Button>
                 </div>
               ))}
@@ -1427,19 +1444,20 @@ export default function PedidosOmie() {
     <Dialog open={historicoOpen} onOpenChange={setHistoricoOpen}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-base flex items-center gap-2">
-            <History className="w-4 h-4 text-muted-foreground" />
+          <DialogTitle className="flex items-center gap-2">
+            <History className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
             Histórico — Pedido Nº {editingNum}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           {!historicoData ? (
-            <div className="flex justify-center py-8">
-              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            <div role="status" aria-busy="true" className="space-y-2">
+              <span className="sr-only">Carregando</span>
+              <Skeleton className="h-40 rounded-md" />
             </div>
           ) : (
             <>
-              <div className="space-y-2.5 border rounded-md p-3 bg-muted/20">
+              <div className="space-y-3 rounded-md border border-border bg-muted p-4">
                 {[
                   { label: 'Criado em',       value: new Date(historicoData.created_at).toLocaleString('pt-BR') },
                   { label: 'Última alteração', value: new Date(historicoData.updated_at).toLocaleString('pt-BR') },
@@ -1454,7 +1472,7 @@ export default function PedidosOmie() {
                   </div>
                 ))}
               </div>
-              <p className="text-xs text-muted-foreground bg-muted/30 rounded-md p-2.5">
+              <p className="text-xs text-muted-foreground rounded-md bg-muted p-3">
                 Registro detalhado de alterações requer configuração de auditoria no banco de dados.
               </p>
             </>
@@ -1476,114 +1494,127 @@ export default function PedidosOmie() {
         {DeleteConfirmDialog}
 
         {/* Search bar */}
-        <div className="flex items-center gap-3">
-          <div className="relative max-w-xs">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative w-full sm:w-72">
+            <Label htmlFor="pedidos-busca" className="sr-only">Pesquisar pedidos</Label>
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
             <Input
+              id="pedidos-busca"
               value={search} onChange={e => setSearch(e.target.value)}
               placeholder="Digite o que deseja pesquisar"
-              className="text-sm pr-8"
+              className="pl-9 pr-10"
             />
             {search && (
-              <button className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              <Button type="button" variant="ghost" size="sm" aria-label="Limpar busca"
+                className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 px-0 text-muted-foreground hover:text-foreground"
                 onClick={() => setSearch('')}>
-                <X className="w-3.5 h-3.5" />
-              </button>
+                <X className="w-4 h-4" />
+              </Button>
             )}
           </div>
-          <button onClick={() => setSearch('')}
-            className="text-xs text-accent hover:underline whitespace-nowrap">
+          <Button type="button" variant="link" size="sm" className="h-auto p-0" onClick={() => setSearch('')}>
             Exibindo tudo
-          </button>
+          </Button>
 
           {/* View mode toggle */}
-          <div className="flex items-center border rounded-md overflow-hidden">
-            <button
-              onClick={() => setViewMode('list')}
+          <div role="group" aria-label="Modo de visualização" className="flex items-center gap-1 rounded-md border border-input p-1">
+            <Button
+              type="button" size="sm" variant={viewMode === 'list' ? 'default' : 'ghost'}
+              className="h-8 w-8 px-0"
+              aria-pressed={viewMode === 'list'}
+              aria-label="Visualizar como lista"
               title="Visualizar como lista"
-              className={`px-2.5 py-1.5 transition-colors ${viewMode === 'list' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-muted/50'}`}
+              onClick={() => setViewMode('list')}
             >
-              <List className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={() => setViewMode('kanban')}
+              <List className="w-4 h-4" />
+            </Button>
+            <Button
+              type="button" size="sm" variant={viewMode === 'kanban' ? 'default' : 'ghost'}
+              className="h-8 w-8 px-0"
+              aria-pressed={viewMode === 'kanban'}
+              aria-label="Visualizar como kanban"
               title="Visualizar como kanban"
-              className={`px-2.5 py-1.5 transition-colors ${viewMode === 'kanban' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-muted/50'}`}
+              onClick={() => setViewMode('kanban')}
             >
-              <LayoutGrid className="w-3.5 h-3.5" />
-            </button>
+              <LayoutGrid className="w-4 h-4" />
+            </Button>
           </div>
 
           <div className="ml-auto">
-            <Button size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground"
-              onClick={() => setTipoOpen(true)}>
-              <Plus className="w-3.5 h-3.5 mr-1" /> Novo Pedido
+            <Button onClick={() => setTipoOpen(true)}>
+              <Plus className="w-4 h-4" /> Novo Pedido
             </Button>
           </div>
         </div>
 
         {/* Filtros + Somatório */}
-        <div className="flex flex-wrap items-center gap-3 bg-muted/20 border rounded-lg px-3 py-2">
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card px-4 py-3">
           {/* Filtro tipo */}
-          <div className="flex items-center gap-1.5">
-            <Filter className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-            <span className="text-xs text-muted-foreground whitespace-nowrap">Tipo:</span>
-            <div className="flex items-center rounded-md border overflow-hidden text-xs">
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
+            <span className="text-sm text-muted-foreground whitespace-nowrap">Tipo:</span>
+            <div role="group" aria-label="Filtrar por tipo" className="flex items-center gap-1 rounded-md border border-input p-1">
               {([['', 'Todos'], ['compra', 'Compra'], ['venda', 'Venda']] as const).map(([val, lbl]) => (
-                <button key={val}
-                  onClick={() => setTipoFilter(val)}
-                  className={`px-2.5 py-1 transition-colors ${tipoFilter === val ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-muted/60'}`}>
+                <Button key={val} type="button" size="sm" variant={tipoFilter === val ? 'default' : 'ghost'}
+                  className="h-8"
+                  aria-pressed={tipoFilter === val}
+                  onClick={() => setTipoFilter(val)}>
                   {lbl}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
 
           {/* Filtro data */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs text-muted-foreground whitespace-nowrap">Previsão:</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm text-muted-foreground whitespace-nowrap">Previsão:</span>
             <DatePickerBtn value={dateFrom} onChange={setDateFrom} placeholder="Data inicial" />
-            <span className="text-xs text-muted-foreground">até</span>
+            <span className="text-sm text-muted-foreground">até</span>
             <DatePickerBtn value={dateTo} onChange={setDateTo} placeholder="Data final" />
             {(dateFrom || dateTo) && (
-              <button onClick={() => { setDateFrom(''); setDateTo(''); }}
-                className="text-muted-foreground hover:text-foreground">
-                <X className="w-3 h-3" />
-              </button>
+              <Button type="button" variant="ghost" size="sm" className="w-9 px-0" aria-label="Limpar período"
+                onClick={() => { setDateFrom(''); setDateTo(''); }}>
+                <X className="w-4 h-4" />
+              </Button>
             )}
           </div>
 
           {/* Somatórios */}
-          <div className="ml-auto flex items-center gap-4">
-            <div className="flex items-center gap-1.5">
-              <ShoppingBag className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-              <span className="text-xs text-muted-foreground">Compras:</span>
-              <span className="text-xs font-semibold text-foreground">R$ {fmtM(totalCompras)}</span>
+          <div className="ml-auto flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <ShoppingBag className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
+              <span className="text-sm text-muted-foreground">Compras:</span>
+              <span className="text-sm font-semibold text-foreground tabular-nums">R$ {fmtM(totalCompras)}</span>
             </div>
-            <div className="w-px h-4 bg-border" />
-            <div className="flex items-center gap-1.5">
-              <ShoppingCart className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-              <span className="text-xs text-muted-foreground">Vendas:</span>
-              <span className="text-xs font-semibold text-foreground">R$ {fmtM(totalVendas)}</span>
+            <div className="w-px h-4 bg-border" aria-hidden="true" />
+            <div className="flex items-center gap-2">
+              <ShoppingCart className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
+              <span className="text-sm text-muted-foreground">Vendas:</span>
+              <span className="text-sm font-semibold text-foreground tabular-nums">R$ {fmtM(totalVendas)}</span>
             </div>
           </div>
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-16">
-            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+          <div role="status" aria-busy="true" className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            <span className="sr-only">Carregando</span>
+            {Array.from({ length: 5 }, (_, i) => <Skeleton key={i} className="h-64 rounded-lg" />)}
           </div>
         ) : viewMode === 'list' ? (
           /* ── LIST VIEW ── */
-          <div className="border rounded-lg overflow-hidden">
+          <div className="rounded-lg border border-border bg-card overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-background border-b z-10">
+              <thead className="sticky top-0 bg-card border-b border-border z-10">
                 <tr>
                   {['Nº', 'Tipo', 'Cliente / Fornecedor', 'Status', 'Previsão', 'Valor Total', ''].map(h => (
-                    <th key={h} className="py-2 px-3 text-left text-xs font-medium text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        {h} {h && h !== '' && <ChevronsUpDown className="w-3 h-3 opacity-40" />}
-                      </div>
-                      {h && <div className="h-px bg-border mt-1" />}
+                    <th key={h} className={`py-3 px-3 text-left text-sm font-semibold ${h === 'Valor Total' ? 'text-right' : ''}`}>
+                      {h ? (
+                        <span className={`inline-flex items-center gap-1 ${h === 'Valor Total' ? 'justify-end' : ''}`}>
+                          {h} <ChevronsUpDown className="w-3 h-3 text-muted-foreground" aria-hidden="true" />
+                        </span>
+                      ) : (
+                        <span className="sr-only">Ações</span>
+                      )}
                     </th>
                   ))}
                 </tr>
@@ -1596,47 +1627,41 @@ export default function PedidosOmie() {
                   const isHoje = p.previsao_faturamento === todayISO();
                   return (
                     <tr key={p.id}
-                      className="cursor-pointer hover:bg-muted/30 transition-colors"
+                      className="cursor-pointer hover:bg-muted transition-colors"
                       onDoubleClick={() => openEdit(p)}
                     >
-                      <td className="py-2 px-3 font-medium text-xs">#{p.numero}</td>
+                      <td className="py-2 px-3 font-medium tabular-nums">#{p.numero}</td>
                       <td className="py-2 px-3">
                         <div className="flex items-center gap-1 flex-wrap">
-                          <Badge variant="outline" className="text-xs px-1.5 py-0 border-border text-muted-foreground">
+                          <Badge variant="info">
                             {p.tipo === 'venda' ? 'Venda' : 'Compra'}
                           </Badge>
                           {p.contrato_id && (
-                            <Badge variant="secondary" className="text-xs px-1.5 py-0">
+                            <Badge variant="muted">
                               Contrato
                             </Badge>
                           )}
                         </div>
                       </td>
-                      <td className="py-2 px-3 text-xs font-medium">{pessoaNome ?? <span className="text-muted-foreground">—</span>}</td>
+                      <td className="py-2 px-3 font-medium">{pessoaNome ?? <span className="text-muted-foreground">—</span>}</td>
                       <td className="py-2 px-3">
-                        <Badge variant="outline" className="text-xs px-1.5 py-0 capitalize">
+                        <Badge variant={STATUS_BADGE[p.status] ?? 'info'}>
                           {STATUS_MSG[p.status]}
                         </Badge>
                       </td>
-                      <td className={`py-2 px-3 text-xs ${isHoje ? 'text-warning font-medium' : 'text-muted-foreground'}`}>
+                      <td className={`py-2 px-3 ${isHoje ? 'text-warning font-medium' : 'text-muted-foreground'}`}>
                         {p.previsao_faturamento ? fmtDateBR(p.previsao_faturamento) : '—'}
                         {isHoje && <span className="ml-1 text-xs">• hoje</span>}
                       </td>
-                      <td className="py-2 px-3 text-xs text-right font-semibold">R$ {fmtM(p.valor_total)}</td>
+                      <td className="py-2 px-3 text-right tabular-nums font-semibold">R$ {fmtM(p.valor_total)}</td>
                       <td className="py-2 px-3">
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => openEdit(p)}
-                            className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(p.id)}
-                            className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button type="button" variant="ghost" size="sm" className="w-9 px-0" aria-label={`Editar pedido ${p.numero}`} onClick={() => openEdit(p)}>
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                          <Button type="button" variant="ghost" size="sm" className="w-9 px-0" aria-label={`Excluir pedido ${p.numero}`} onClick={() => handleDelete(p.id)}>
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -1644,7 +1669,7 @@ export default function PedidosOmie() {
                 })}
               </tbody>
             </table>
-            <div className="border-t px-4 py-2 bg-muted/10 text-xs text-muted-foreground">
+            <div className="border-t border-border px-4 py-2 bg-muted text-xs text-muted-foreground">
               {filteredPedidos.length === 0 ? 'Nenhum registro' : `${filteredPedidos.length} pedido${filteredPedidos.length !== 1 ? 's' : ''}`}
             </div>
           </div>
@@ -1657,11 +1682,11 @@ export default function PedidosOmie() {
               return dp ? (
                 <div
                   style={{ position: 'fixed', left: ghostPos.x + 12, top: ghostPos.y + 8, zIndex: 9999, pointerEvents: 'none', width: 210 }}
-                  className="bg-background border-2 border-accent rounded-lg p-2.5 shadow-2xl opacity-90 rotate-1"
+                  className="bg-card border-2 border-primary rounded-lg p-3 shadow-md opacity-90 rotate-1"
                 >
                   <p className="text-xs font-semibold text-muted-foreground">Pedido Nº {dp.numero}</p>
-                  {getPessoaNome(dp.pessoa_id) && <p className="text-xs font-medium mt-0.5 truncate">{getPessoaNome(dp.pessoa_id)}</p>}
-                  <p className="text-xs font-bold mt-1">R$ {fmtM(dp.valor_total)}</p>
+                  {getPessoaNome(dp.pessoa_id) && <p className="text-xs font-medium mt-1 truncate">{getPessoaNome(dp.pessoa_id)}</p>}
+                  <p className="text-xs font-bold mt-1 tabular-nums">R$ {fmtM(dp.valor_total)}</p>
                 </div>
               ) : null;
             })()}
@@ -1669,13 +1694,13 @@ export default function PedidosOmie() {
             {kanbanCols.map((col, colIdx) => (
               <div key={col.key}
                 data-col={col.key}
-                className={`flex flex-col flex-1 min-w-[220px] rounded-lg border overflow-hidden transition-colors ${draggingId && dragOverCol === col.key ? 'bg-accent/10 border-accent/60 shadow-inner' : 'bg-card border-border shadow-sm'}`}
+                className={`flex flex-col flex-1 min-w-[220px] rounded-lg border overflow-hidden transition-colors ${draggingId && dragOverCol === col.key ? 'bg-primary-tint border-primary' : 'bg-card border-border shadow-sm'}`}
               >
                 {/* Barra de cor da etapa + cabeçalho */}
-                <div className={`h-1.5 ${col.barra}`} />
-                <div className="flex items-center justify-between px-3 py-2.5 border-b bg-muted/30">
+                <div className={`h-1.5 ${col.barra}`} aria-hidden="true" />
+                <div className="flex items-center justify-between px-3 py-3 border-b border-border bg-muted">
                   <span className={`font-bold text-sm ${col.texto}`}>{col.label}</span>
-                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full tabular-nums ${col.chip}`}>
+                  <span className={`text-xs font-semibold px-2 py-1 rounded-full tabular-nums ${col.chip}`}>
                     {col.items.length}
                   </span>
                 </div>
@@ -1683,7 +1708,7 @@ export default function PedidosOmie() {
                 {/* Cards */}
                 <div className="flex-1 overflow-y-auto p-2 space-y-2">
                   {col.items.length === 0 ? (
-                    <div className="border border-dashed border-border rounded-md py-8 text-center text-xs text-muted-foreground/70 mx-1 mt-1">
+                    <div className="border border-dashed border-border rounded-md py-8 text-center text-xs text-muted-foreground mx-1 mt-1">
                       Nenhum pedido nesta etapa
                     </div>
                   ) : col.items.map(p => {
@@ -1696,19 +1721,19 @@ export default function PedidosOmie() {
                       <div key={p.id}
                         onPointerDown={e => { if (!(e.target as HTMLElement).closest('button')) startDrag(e, p.id); }}
                         onDoubleClick={() => { if (!draggingId) openEdit(p); }}
-                        className={`bg-background border border-l-4 ${col.borda} rounded-lg p-3 shadow-sm hover:shadow-md transition-all select-none touch-none ${draggingId === p.id ? 'opacity-40 scale-95 cursor-grabbing' : 'cursor-grab'}`}
+                        className={`bg-card border border-border border-l-4 ${col.borda} rounded-lg p-3 shadow-sm hover:shadow-md transition-all select-none touch-none ${draggingId === p.id ? 'opacity-40 scale-95 cursor-grabbing' : 'cursor-grab'}`}
                       >
                         <div className="flex items-start justify-between gap-1">
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5 flex-wrap">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <span className="text-sm font-bold text-foreground">
                                 Pedido Nº {p.numero}
                               </span>
-                              <Badge variant="outline" className={`text-xs px-1.5 py-0 font-medium ${p.tipo === 'venda' ? 'bg-success/10 text-success border-success/30' : 'bg-info/10 text-info border-info/30'}`}>
+                              <Badge variant={p.tipo === 'venda' ? 'success' : 'info'}>
                                 {p.tipo === 'venda' ? 'Venda' : 'Compra'}
                               </Badge>
                               {p.contrato_id && (
-                                <Badge variant="secondary" className="text-xs px-1.5 py-0">
+                                <Badge variant="muted">
                                   Contrato
                                 </Badge>
                               )}
@@ -1716,8 +1741,8 @@ export default function PedidosOmie() {
                             {pessoaNome && (
                               <p className="text-sm font-medium mt-1 leading-tight truncate">{pessoaNome}</p>
                             )}
-                            <p className={`text-xs mt-0.5 ${isHoje ? 'text-warning font-semibold' : 'text-muted-foreground'}`}>{statusMsg}</p>
-                            <p className="text-base font-bold mt-1.5 text-foreground tabular-nums">
+                            <p className={`text-xs mt-1 ${isHoje ? 'text-warning font-semibold' : 'text-muted-foreground'}`}>{statusMsg}</p>
+                            <p className="text-base font-bold mt-2 text-foreground tabular-nums">
                               R$ {fmtM(p.valor_total)}
                               {/* Condição como está escrita — "em 30 Diasx" era o
                                   sufixo cego de quando o campo só guardava número. */}
@@ -1726,42 +1751,41 @@ export default function PedidosOmie() {
                               )}
                             </p>
                           </div>
-                          <button
-                            className="text-muted-foreground hover:text-foreground p-0.5 rounded shrink-0 mt-0.5"
+                          <Button
+                            type="button" variant="ghost" size="sm" className="w-9 px-0 shrink-0"
+                            aria-label={`Ações do pedido ${p.numero}`}
+                            aria-expanded={menuOpen}
                             onClick={e => {
                               e.stopPropagation();
                               setKanbanMenu(menuOpen ? null : p.id);
                             }}
                           >
-                            <MoreVertical className="w-3.5 h-3.5" />
-                          </button>
+                            <MoreVertical className="w-4 h-4" />
+                          </Button>
                         </div>
                         {menuOpen && (
-                          <div className="mt-2 border-t pt-2 space-y-0.5">
-                            <button
-                              className="w-full text-left text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5 px-1 py-1 rounded hover:bg-muted/50"
+                          <div className="mt-2 border-t border-border pt-2 flex flex-col gap-1">
+                            <Button type="button" variant="ghost" size="sm" className="w-full justify-start font-normal"
                               onClick={() => { setKanbanMenu(null); openEdit(p); }}
                             >
-                              <Pencil className="w-3 h-3 text-muted-foreground" /> Editar
-                            </button>
+                              <Pencil className="w-4 h-4 text-muted-foreground" aria-hidden="true" /> Editar
+                            </Button>
                             {KANBAN_STATUS.filter(s => s.key !== p.status).map(s => (
-                              <button key={s.key}
-                                className="w-full text-left text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5 px-1 py-1 rounded hover:bg-muted/50"
+                              <Button key={s.key} type="button" variant="ghost" size="sm" className="w-full justify-start font-normal"
                                 onClick={async () => {
                                   setKanbanMenu(null);
                                   if (s.key === 'faturado') { setPendingFaturarId(p.id); setNfeAlertOpen(true); }
                                   else await updatePedidoStatus(p.id, s.key);
                                 }}
                               >
-                                <ChevronsUpDown className="w-3 h-3 text-muted-foreground" /> Mover → {s.label}
-                              </button>
+                                <ChevronsUpDown className="w-4 h-4 text-muted-foreground" aria-hidden="true" /> Mover → {s.label}
+                              </Button>
                             ))}
-                            <button
-                              className="w-full text-left text-xs text-destructive flex items-center gap-1.5 px-1 py-1 rounded hover:bg-destructive/10"
+                            <Button type="button" variant="ghost" size="sm" className="w-full justify-start font-normal text-destructive hover:text-destructive hover:bg-destructive-tint"
                               onClick={() => handleDelete(p.id)}
                             >
-                              <Trash2 className="w-3 h-3" /> Excluir
-                            </button>
+                              <Trash2 className="w-4 h-4" aria-hidden="true" /> Excluir
+                            </Button>
                           </div>
                         )}
                       </div>
@@ -1770,27 +1794,24 @@ export default function PedidosOmie() {
                 </div>
 
                 {/* Column footer */}
-                <div className="p-2 border-t border-muted/40">
+                <div className="p-2 border-t border-border">
                   {colIdx === 0 && (
-                    <button
-                      onClick={() => setTipoOpen(true)}
-                      className="w-full text-center text-xs font-medium py-1.5 rounded-md bg-accent text-accent-foreground hover:bg-accent/90 transition-colors flex items-center justify-center gap-1"
-                    >
-                      <Plus className="w-3 h-3" /> Novo Pedido
-                    </button>
+                    <Button type="button" size="sm" className="w-full" onClick={() => setTipoOpen(true)}>
+                      <Plus className="w-4 h-4" /> Novo Pedido
+                    </Button>
                   )}
                   {colIdx === 2 && (
-                    <button className="w-full text-center text-xs py-1.5 rounded-md border text-muted-foreground hover:bg-muted/50 transition-colors flex items-center justify-center gap-1">
-                      <Zap className="w-3 h-3" /> Faturar Todos
-                    </button>
+                    <Button type="button" size="sm" variant="outline" className="w-full">
+                      <Zap className="w-4 h-4" /> Faturar Todos
+                    </Button>
                   )}
                   {colIdx === 3 && (
-                    <button className="w-full text-center text-xs py-1.5 rounded-md border text-muted-foreground hover:bg-muted/50 transition-colors flex items-center justify-center gap-1">
-                      <RefreshCw className="w-3 h-3" /> Comunicar com a SEFAZ
-                    </button>
+                    <Button type="button" size="sm" variant="outline" className="w-full">
+                      <RefreshCw className="w-4 h-4" /> Comunicar com a SEFAZ
+                    </Button>
                   )}
                   {colIdx !== 0 && colIdx !== 2 && colIdx !== 3 && (
-                    <div className="h-[30px]" />
+                    <div className="h-9" aria-hidden="true" />
                   )}
                 </div>
               </div>
@@ -1820,7 +1841,7 @@ export default function PedidosOmie() {
   ];
 
   return (
-    <div className="border rounded-lg overflow-hidden bg-background flex flex-col" style={{ height: 'calc(100vh - 220px)' }}>
+    <div className="rounded-lg border border-border bg-card overflow-hidden flex flex-col" style={{ height: 'calc(100vh - 220px)' }}>
       {TypeDialog}
       {NfeAlertDialog}
       {FaturadoContaDialog}
@@ -1851,24 +1872,27 @@ export default function PedidosOmie() {
       />
 
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/20 shrink-0 gap-4">
+      <div className="flex flex-wrap items-center justify-between px-4 py-3 border-b border-border bg-muted shrink-0 gap-3">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="font-semibold text-sm truncate">{formTitle}</span>
+          <h2 className="text-lg font-semibold truncate">{formTitle}</h2>
         </div>
 
         {/* Status changer — só exibe ao editar um pedido existente */}
         {editingId && (
-          <div className="flex items-center gap-2 shrink-0 text-xs">
+          <div className="flex flex-wrap items-center gap-2 text-sm">
             <span className="text-muted-foreground whitespace-nowrap">Coluna atual:</span>
-            <Badge variant="outline" className={`text-xs px-1.5 py-0 whitespace-nowrap ${STATUS_BADGE[editingStatus]}`}>
+            <Badge variant={STATUS_BADGE[editingStatus] ?? 'info'}>
               {STATUS_MSG[editingStatus]}
             </Badge>
-            <span className="text-muted-foreground">→</span>
+            <span className="text-muted-foreground" aria-hidden="true">→</span>
             <span className="text-muted-foreground whitespace-nowrap">Mover para:</span>
-            <div className="flex items-center gap-1">
+            <div className="flex flex-wrap items-center gap-1">
               {KANBAN_STATUS.filter(s => s.key !== editingStatus).map(s => (
-                <button
+                <Button
                   key={s.key}
+                  type="button"
+                  variant="outline"
+                  size="sm"
                   onClick={async () => {
                     if (s.key === 'faturado') {
                       setPendingFaturarId(editingId);
@@ -1878,86 +1902,87 @@ export default function PedidosOmie() {
                       setEditingStatus(s.key);
                     }
                   }}
-                  className={`px-2 py-0.5 rounded border text-xs transition-colors hover:bg-muted/60 whitespace-nowrap ${STATUS_BADGE[s.key]}`}
                 >
                   {s.label}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
         )}
 
-        <button onClick={closeForm} className="text-muted-foreground hover:text-foreground text-sm font-medium shrink-0">
-          Fechar ✕
-        </button>
+        <Button type="button" variant="ghost" size="sm" onClick={closeForm} className="shrink-0">
+          Fechar <X className="w-4 h-4" />
+        </Button>
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
         {/* Left: form */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto min-w-0">
           {/* Top section */}
-          <div className="p-4 border-b space-y-3">
+          <div className="p-4 border-b border-border space-y-4">
             {/* Pessoa + date */}
-            <div className="flex items-end gap-3">
-              <div className="shrink-0">
-                <User className="w-9 h-9 text-muted-foreground/40 border rounded-md p-1.5" />
+            <div className="flex flex-col sm:flex-row sm:items-end gap-3">
+              <div className="hidden sm:block shrink-0">
+                <User className="w-11 h-11 text-muted-foreground border border-border rounded-md p-2" aria-hidden="true" />
               </div>
               <div className="flex-1 space-y-1 min-w-0">
-                <Label className="text-xs text-muted-foreground">{isVenda ? 'Cliente' : 'Fornecedor'}</Label>
-                <div className="flex items-center gap-2">
+                <Label>{isVenda ? 'Cliente' : 'Fornecedor'}</Label>
+                <div className="flex flex-wrap items-center gap-2">
                   <PessoaCombobox
                     pessoas={pessoasParaTipo}
                     value={form.pessoa_id}
                     onChange={id => setForm(f => ({ ...f, pessoa_id: id }))}
                   />
                   {isVenda && (
-                    <span className="text-xs text-accent whitespace-nowrap cursor-pointer hover:underline">
+                    <span className="text-xs text-primary whitespace-nowrap cursor-pointer hover:underline">
                       @ Consulta de Crédito
                     </span>
                   )}
                 </div>
               </div>
               <div className="shrink-0">
-                <Label className="text-xs text-muted-foreground">Previsão de Faturamento</Label>
+                <Label htmlFor="pedido-previsao">Previsão de Faturamento</Label>
                 <Input
+                  id="pedido-previsao"
                   type="date"
                   value={form.previsao_faturamento}
                   onChange={e => setForm(f => ({ ...f, previsao_faturamento: e.target.value }))}
-                  className="text-sm mt-1 w-40"
+                  className="mt-1 w-full sm:w-44"
                 />
               </div>
             </div>
 
             {/* Vínculo com Contrato (opcional) */}
-            <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-muted/40 border border-border">
-              <Link2 className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-              <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">Contrato vinculado:</span>
+            <div className="flex flex-wrap items-center gap-2 px-3 py-2 rounded-md bg-muted border border-border">
+              <Link2 className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
+              <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">Contrato vinculado:</span>
               {form.contrato_id ? (
                 <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <span className="text-xs font-semibold text-foreground truncate">
+                  <span className="text-sm font-semibold text-foreground truncate">
                     {contratos.find(c => c.id === form.contrato_id)?.numero_contrato ?? '—'}
                     {contratos.find(c => c.id === form.contrato_id)?.orgao_contratante
                       ? ` · ${contratos.find(c => c.id === form.contrato_id)!.orgao_contratante}`
                       : ''}
                   </span>
-                  <button
+                  <Button
+                    type="button" variant="ghost" size="sm" className="w-9 px-0 shrink-0"
                     onClick={() => setForm(f => ({ ...f, contrato_id: '' }))}
-                    className="text-muted-foreground hover:text-destructive shrink-0"
+                    aria-label="Remover vínculo com contrato"
                     title="Remover vínculo"
                   >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
+                    <X className="w-4 h-4" />
+                  </Button>
                 </div>
               ) : (
                 <Select value="" onValueChange={v => setForm(f => ({ ...f, contrato_id: v }))}>
-                  <SelectTrigger className="h-7 text-xs flex-1 max-w-sm border-border bg-background">
+                  <SelectTrigger className="flex-1 max-w-sm bg-background" aria-label="Vincular a contrato">
                     <SelectValue placeholder="Nenhum — selecione para vincular (opcional)" />
                   </SelectTrigger>
                   <SelectContent>
                     {contratos.length === 0 ? (
                       <div className="px-3 py-2 text-xs text-muted-foreground">Nenhum contrato cadastrado</div>
                     ) : contratos.map(c => (
-                      <SelectItem key={c.id} value={c.id} className="text-xs">
+                      <SelectItem key={c.id} value={c.id}>
                         {c.numero_contrato}{c.orgao_contratante ? ` — ${c.orgao_contratante}` : ''}
                       </SelectItem>
                     ))}
@@ -1967,7 +1992,7 @@ export default function PedidosOmie() {
             </div>
 
             {/* Totals */}
-            <div className="grid grid-cols-5 gap-2">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               {([
                 { label: 'Total de Mercadorias',   val: fmtM(totalMerc),   editable: false },
                 { label: 'Valor do Desconto',       val: null,              editable: true  },
@@ -1976,24 +2001,25 @@ export default function PedidosOmie() {
                 { label: 'Valor Total do Pedido',   val: fmtM(valorTotal),  editable: false },
               ] as const).map(t => (
                 <div key={t.label}>
-                  <Label className="text-xs text-muted-foreground leading-tight">{t.label}</Label>
+                  <Label className="leading-tight">{t.label}</Label>
                   {t.editable ? (
                     <Input
+                      aria-label={t.label}
                       value={form.valor_desconto}
                       onChange={e => setForm(f => ({ ...f, valor_desconto: inputM(e.target.value) }))}
-                      className="text-sm mt-1 text-right" inputMode="numeric"
+                      className="mt-1 text-right tabular-nums" inputMode="numeric"
                     />
                   ) : (
-                    <Input value={t.val!} readOnly className="text-sm mt-1 text-right bg-muted/30 text-muted-foreground" />
+                    <Input aria-label={t.label} value={t.val!} readOnly className="mt-1 text-right tabular-nums bg-muted text-muted-foreground" />
                   )}
                 </div>
               ))}
             </div>
 
             {/* Vendedor / Parcelas / Cenário */}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <Label className="text-xs text-muted-foreground">{isVenda ? 'Vendedor' : 'Comprador'}</Label>
+                <Label>{isVenda ? 'Vendedor' : 'Comprador'}</Label>
                 <SelectPadrao
                   valor={form.vendedor}
                   onChange={v => setForm(f => ({ ...f, vendedor: v }))}
@@ -2002,11 +2028,11 @@ export default function PedidosOmie() {
                 />
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">
+                <Label>
                   Condição de Pagamento{' '}
-                  <button type="button" className="text-accent hover:underline" onClick={() => setCadastroCondicoesAberto(true)}>
+                  <Button type="button" variant="link" size="sm" className="h-auto p-0 text-sm font-normal" onClick={() => setCadastroCondicoesAberto(true)}>
                     (cadastro)
-                  </button>
+                  </Button>
                 </Label>
                 <SelectPadrao
                   valor={form.numero_parcelas}
@@ -2016,7 +2042,7 @@ export default function PedidosOmie() {
                 />
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">Cenário Fiscal</Label>
+                <Label>Cenário Fiscal</Label>
                 <SelectPadrao
                   valor={form.cenario_fiscal}
                   onChange={v => setForm(f => ({ ...f, cenario_fiscal: v }))}
@@ -2030,7 +2056,7 @@ export default function PedidosOmie() {
 
           {/* Tabs */}
           <Tabs defaultValue="itens">
-            <TabsList className="px-4 w-full justify-start rounded-none border-b bg-transparent h-auto pb-0 gap-0 shrink-0">
+            <TabsList className="mx-4 mt-3 shrink-0">
               {[
                 { value: 'itens',        label: `Itens da ${isVenda ? 'Venda' : 'Compra'}` },
                 { value: 'departamentos', label: 'Departamentos'          },
@@ -2040,8 +2066,7 @@ export default function PedidosOmie() {
                 { value: 'obs',          label: 'Observações'             },
                 { value: 'email',        label: `E-mail para o ${isVenda ? 'Cliente' : 'Fornecedor'}` },
               ].map(t => (
-                <TabsTrigger key={t.value} value={t.value}
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:text-accent text-xs px-3 pb-2 bg-transparent shadow-none">
+                <TabsTrigger key={t.value} value={t.value}>
                   {t.label}
                 </TabsTrigger>
               ))}
@@ -2049,32 +2074,32 @@ export default function PedidosOmie() {
 
             {/* Itens */}
             <TabsContent value="itens" className="p-4 m-0">
-              <div className="flex items-center gap-2 mb-3">
-                <Button size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground h-7 text-xs"
+              <div className="flex flex-wrap items-center gap-2 mb-3">
+                <Button size="sm"
                   onClick={() => { setEditingItem(undefined); setItemDialogOpen(true); }}>
-                  <Plus className="w-3 h-3 mr-1" /> Novo Item
+                  <Plus className="w-4 h-4" /> Novo Item
                 </Button>
-                <Button size="sm" variant="outline" className="h-7 text-xs" disabled={!selectedItem}
+                <Button size="sm" variant="outline" disabled={!selectedItem}
                   onClick={() => { setEditingItem(selectedItemObj); setItemDialogOpen(true); }}>
-                  <Pencil className="w-3 h-3 mr-1" /> Editar Item
+                  <Pencil className="w-4 h-4" /> Editar Item
                 </Button>
-                <Button size="sm" variant="outline" className="h-7 text-xs text-destructive hover:text-destructive"
+                <Button size="sm" variant="outline" className="text-destructive hover:text-destructive"
                   disabled={!selectedItem}
                   onClick={() => selectedItem && removeItem(selectedItem)}>
-                  <Trash2 className="w-3 h-3 mr-1" /> Excluir Item
+                  <Trash2 className="w-4 h-4" /> Excluir Item
                 </Button>
               </div>
 
-              <div className="border rounded-md overflow-hidden">
-                <table className="w-full text-xs">
-                  <thead className="bg-muted/30 border-b">
+              <div className="rounded-md border border-border overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted border-b border-border">
                     <tr>
-                      <th className="text-left py-2 px-2 font-medium text-muted-foreground w-24">Produto</th>
-                      <th className="text-left py-2 px-2 font-medium text-muted-foreground">Descrição do Produto</th>
-                      <th className="text-center py-2 px-2 font-medium text-muted-foreground w-24">Quantidade</th>
-                      <th className="text-left py-2 px-2 font-medium text-muted-foreground">Local de Estoque</th>
-                      <th className="text-right py-2 px-2 font-medium text-muted-foreground w-28">Preço Unitário</th>
-                      <th className="text-right py-2 px-2 font-medium text-muted-foreground w-24">Valor Total</th>
+                      <th className="text-left py-3 px-2 text-sm font-semibold w-24">Produto</th>
+                      <th className="text-left py-3 px-2 text-sm font-semibold">Descrição do Produto</th>
+                      <th className="text-center py-3 px-2 text-sm font-semibold w-24">Quantidade</th>
+                      <th className="text-left py-3 px-2 text-sm font-semibold">Local de Estoque</th>
+                      <th className="text-right py-3 px-2 text-sm font-semibold w-28">Preço Unitário</th>
+                      <th className="text-right py-3 px-2 text-sm font-semibold w-24">Valor Total</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
@@ -2085,22 +2110,23 @@ export default function PedidosOmie() {
                       const isSel = selectedItem === item._key;
                       return (
                         <tr key={item._key}
-                          className={`cursor-pointer transition-colors ${isSel ? 'bg-accent/10 border-l-2 border-l-accent' : 'hover:bg-muted/30'}`}
+                          aria-selected={isSel}
+                          className={`cursor-pointer transition-colors ${isSel ? 'bg-primary-tint border-l-2 border-l-primary' : 'hover:bg-muted'}`}
                           onClick={() => setSelectedItem(isSel ? null : item._key)}
                           onDoubleClick={() => { setEditingItem(item); setItemDialogOpen(true); }}
                         >
-                          <td className="py-1.5 px-2 text-foreground font-medium">{item.codigo_produto || '—'}</td>
-                          <td className="py-1.5 px-2">{item.descricao}</td>
-                          <td className="py-1.5 px-2 text-center">{item.quantidade} {item.unidade}</td>
-                          <td className="py-1.5 px-2 text-muted-foreground text-xs">{item.local_estoque}</td>
-                          <td className="py-1.5 px-2 text-right">{item.preco_unitario}</td>
-                          <td className="py-1.5 px-2 text-right font-medium">{fmtM(vt)}</td>
+                          <td className="py-2 px-2 text-foreground font-medium">{item.codigo_produto || '—'}</td>
+                          <td className="py-2 px-2">{item.descricao}</td>
+                          <td className="py-2 px-2 text-center tabular-nums">{item.quantidade} {item.unidade}</td>
+                          <td className="py-2 px-2 text-muted-foreground text-xs">{item.local_estoque}</td>
+                          <td className="py-2 px-2 text-right tabular-nums">{item.preco_unitario}</td>
+                          <td className="py-2 px-2 text-right tabular-nums font-medium">{fmtM(vt)}</td>
                         </tr>
                       );
                     })}
                   </tbody>
                 </table>
-                <div className="border-t px-3 py-1.5 bg-muted/10 text-xs text-muted-foreground">
+                <div className="border-t border-border px-3 py-2 bg-muted text-xs text-muted-foreground">
                   {itens.length === 0
                     ? 'Nenhum registro encontrado'
                     : `1 - ${itens.length} de ${itens.length} registro${itens.length !== 1 ? 's' : ''}`}
@@ -2120,9 +2146,9 @@ export default function PedidosOmie() {
 
             {/* Informações Adicionais */}
             <TabsContent value="adicional" className="p-4 m-0 space-y-4">
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <Label className="text-xs text-muted-foreground">Categoria</Label>
+                  <Label>Categoria</Label>
                   <SelectPadrao
                     valor={form.categoria}
                     onChange={v => setForm(f => ({ ...f, categoria: v }))}
@@ -2131,36 +2157,36 @@ export default function PedidosOmie() {
                   />
                 </div>
                 <div>
-                  <Label className="text-xs text-muted-foreground">Conta Corrente</Label>
-                  <Input value={form.conta_corrente} onChange={e => setForm(f => ({ ...f, conta_corrente: e.target.value }))} className="text-sm mt-1" />
+                  <Label htmlFor="pedido-conta-corrente">Conta Corrente</Label>
+                  <Input id="pedido-conta-corrente" value={form.conta_corrente} onChange={e => setForm(f => ({ ...f, conta_corrente: e.target.value }))} className="mt-1" />
                 </div>
                 <div>
-                  <Label className="text-xs text-muted-foreground">Etapa</Label>
-                  <Input value={form.etapa} onChange={e => setForm(f => ({ ...f, etapa: e.target.value }))} className="text-sm mt-1" />
+                  <Label htmlFor="pedido-etapa">Etapa</Label>
+                  <Input id="pedido-etapa" value={form.etapa} onChange={e => setForm(f => ({ ...f, etapa: e.target.value }))} className="mt-1" />
                 </div>
               </div>
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
-                  <Label className="text-xs text-muted-foreground">Nº do Pedido do Cliente</Label>
-                  <Input value={form.num_pedido_cliente} onChange={e => setForm(f => ({ ...f, num_pedido_cliente: e.target.value }))} className="text-sm mt-1" />
+                  <Label htmlFor="pedido-num-cliente">Nº do Pedido do Cliente</Label>
+                  <Input id="pedido-num-cliente" value={form.num_pedido_cliente} onChange={e => setForm(f => ({ ...f, num_pedido_cliente: e.target.value }))} className="mt-1" />
                 </div>
                 <div>
-                  <Label className="text-xs text-muted-foreground">Nº do Contrato de Venda</Label>
-                  <Input value={form.num_contrato_venda} onChange={e => setForm(f => ({ ...f, num_contrato_venda: e.target.value }))} className="text-sm mt-1" />
+                  <Label htmlFor="pedido-num-contrato">Nº do Contrato de Venda</Label>
+                  <Input id="pedido-num-contrato" value={form.num_contrato_venda} onChange={e => setForm(f => ({ ...f, num_contrato_venda: e.target.value }))} className="mt-1" />
                 </div>
                 <div>
-                  <Label className="text-xs text-muted-foreground">Contato</Label>
-                  <Input value={form.contato} onChange={e => setForm(f => ({ ...f, contato: e.target.value }))} className="text-sm mt-1" />
+                  <Label htmlFor="pedido-contato">Contato</Label>
+                  <Input id="pedido-contato" value={form.contato} onChange={e => setForm(f => ({ ...f, contato: e.target.value }))} className="mt-1" />
                 </div>
                 <div>
-                  <Label className="text-xs text-muted-foreground">Projeto +</Label>
-                  <Input value={form.projeto} onChange={e => setForm(f => ({ ...f, projeto: e.target.value }))} className="text-sm mt-1" />
+                  <Label htmlFor="pedido-projeto">Projeto +</Label>
+                  <Input id="pedido-projeto" value={form.projeto} onChange={e => setForm(f => ({ ...f, projeto: e.target.value }))} className="mt-1" />
                 </div>
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">Origem do Pedido</Label>
+                <Label htmlFor="pedido-origem">Origem do Pedido</Label>
                 <Select value={form.origem_pedido} onValueChange={v => setForm(f => ({ ...f, origem_pedido: v }))}>
-                  <SelectTrigger className="text-sm mt-1 w-48"><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="pedido-origem" className="mt-1 w-full sm:w-56"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="sistema">Sistema</SelectItem>
                     <SelectItem value="omie">Omie</SelectItem>
@@ -2172,11 +2198,12 @@ export default function PedidosOmie() {
                 </Select>
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">Dados Adicionais para a Nota Fiscal</Label>
+                <Label htmlFor="pedido-dados-nfe">Dados Adicionais para a Nota Fiscal</Label>
                 <Textarea
+                  id="pedido-dados-nfe"
                   value={form.dados_adicionais_nfe}
                   onChange={e => setForm(f => ({ ...f, dados_adicionais_nfe: e.target.value }))}
-                  className="text-sm mt-1 min-h-[80px] resize-none"
+                  className="mt-1 min-h-20 resize-none"
                 />
               </div>
               <div className="flex items-center gap-2">
@@ -2190,22 +2217,22 @@ export default function PedidosOmie() {
 
             {/* Parcelas */}
             <TabsContent value="parcelas" className="p-4 m-0">
-              <div className="border rounded-md overflow-hidden">
-                <table className="w-full text-xs">
-                  <thead className="bg-muted/30 border-b">
+              <div className="rounded-md border border-border overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted border-b border-border">
                     <tr>
-                      <th className="text-left py-2 px-3 font-medium text-muted-foreground">Parcela</th>
-                      <th className="text-left py-2 px-3 font-medium text-muted-foreground">Vencimento</th>
-                      <th className="text-right py-2 px-3 font-medium text-muted-foreground">Valor</th>
-                      <th className="text-left py-2 px-3 font-medium text-muted-foreground">Forma de Pagamento</th>
+                      <th className="text-left py-3 px-3 text-sm font-semibold">Parcela</th>
+                      <th className="text-left py-3 px-3 text-sm font-semibold">Vencimento</th>
+                      <th className="text-right py-3 px-3 text-sm font-semibold">Valor</th>
+                      <th className="text-left py-3 px-3 text-sm font-semibold">Forma de Pagamento</th>
                     </tr>
                   </thead>
                   <tbody>
                     {valorTotal > 0 ? (
-                      <tr className="border-b">
-                        <td className="py-2 px-3">1/1</td>
-                        <td className="py-2 px-3">{fmtDateBR(form.previsao_faturamento)}</td>
-                        <td className="py-2 px-3 text-right font-medium">R$ {fmtM(valorTotal)}</td>
+                      <tr className="border-b border-border">
+                        <td className="py-2 px-3 tabular-nums">1/1</td>
+                        <td className="py-2 px-3 tabular-nums">{fmtDateBR(form.previsao_faturamento)}</td>
+                        <td className="py-2 px-3 text-right tabular-nums font-medium">R$ {fmtM(valorTotal)}</td>
                         <td className="py-2 px-3 text-muted-foreground">{form.numero_parcelas}</td>
                       </tr>
                     ) : (
@@ -2218,11 +2245,12 @@ export default function PedidosOmie() {
 
             {/* Observações */}
             <TabsContent value="obs" className="p-4 m-0">
-              <Label className="text-xs text-muted-foreground">Observações</Label>
+              <Label htmlFor="pedido-observacoes">Observações</Label>
               <Textarea
+                id="pedido-observacoes"
                 value={form.observacoes}
                 onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))}
-                className="text-sm mt-1 min-h-[160px] resize-none"
+                className="mt-1 min-h-40 resize-none"
                 placeholder="Observações gerais do pedido..."
               />
             </TabsContent>
@@ -2230,11 +2258,12 @@ export default function PedidosOmie() {
             {/* E-mail */}
             <TabsContent value="email" className="p-4 m-0 space-y-4">
               <div>
-                <Label className="text-xs text-muted-foreground">Utilizar os seguintes endereços de e-mail</Label>
+                <Label htmlFor="pedido-emails">Utilizar os seguintes endereços de e-mail</Label>
                 <Textarea
+                  id="pedido-emails"
                   value={form.email_destinatario}
                   onChange={e => setForm(f => ({ ...f, email_destinatario: e.target.value }))}
-                  className="text-sm mt-1 min-h-[80px] resize-none"
+                  className="mt-1 min-h-20 resize-none"
                   placeholder="seuemail@empresa.com.br"
                 />
               </div>
@@ -2245,7 +2274,7 @@ export default function PedidosOmie() {
                   Enviar e-mail com o boleto de cobrança (juntamente com o DANFE e o XML da NF-e)
                 </Label>
               </div>
-              <div className="bg-warning/10 border border-warning/30 rounded-md p-3 text-xs text-warning">
+              <div className="rounded-md border border-warning-line bg-warning-tint p-4 text-sm text-warning-ink">
                 Apenas o DANFE e o XML da NF-e serão enviados por meio do Portal para o cliente
               </div>
             </TabsContent>
@@ -2253,8 +2282,8 @@ export default function PedidosOmie() {
 
           {/* Bottom status bar */}
           <div className="border-t px-4 py-2 bg-muted border-border shrink-0">
-            <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-muted-foreground shrink-0" />
+            <p className="text-xs text-muted-foreground flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-muted-foreground shrink-0" aria-hidden="true" />
               {form.previsao_faturamento
                 ? `Previsão de faturamento: ${fmtDateBR(form.previsao_faturamento)}`
                 : 'Sem previsão definida'}
@@ -2262,29 +2291,29 @@ export default function PedidosOmie() {
           </div>
         </div>
 
-        {/* Right panel */}
-        <div className="w-44 border-l bg-background shrink-0 overflow-y-auto">
-          <div className="p-2 space-y-0.5">
+        {/* Right panel — coluna no desktop, barra de ações embrulhada no celular */}
+        <div className="w-full md:w-44 border-t md:border-t-0 md:border-l border-border bg-card shrink-0 overflow-y-auto">
+          <div className="p-2 flex flex-wrap md:flex-col gap-1">
             {rightActions.map(({ label, icon: Icon, action, disabled, loading }) => (
-              <button key={label} onClick={action} disabled={disabled || loading}
-                className={`w-full flex items-center gap-2 px-2 py-2 rounded text-left transition-colors
-                  ${disabled ? 'opacity-30 cursor-not-allowed' : 'hover:bg-muted/50'}`}
+              <Button key={label} type="button" variant="ghost" size="sm" onClick={action} disabled={disabled || loading}
+                className="md:w-full justify-start font-normal"
               >
-                <Icon className="w-4 h-4 text-muted-foreground shrink-0" />
-                <span className="text-xs">{label}</span>
-                {loading && <Loader2 className="w-3 h-3 animate-spin ml-auto" />}
-              </button>
+                <Icon className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                <span>{label}</span>
+                {loading && <Loader2 className="w-4 h-4 animate-spin ml-auto" />}
+              </Button>
             ))}
             {editingId && (
               <>
-                <div className="border-t my-1" />
-                <button
+                <div className="hidden md:block border-t border-border my-1" aria-hidden="true" />
+                <Button
+                  type="button" variant="ghost" size="sm"
                   onClick={() => handleDelete(editingId)}
-                  className="w-full flex items-center gap-2 px-2 py-2 rounded text-left hover:bg-destructive/10 transition-colors text-destructive"
+                  className="md:w-full justify-start font-normal text-destructive hover:text-destructive hover:bg-destructive-tint"
                 >
-                  <Trash2 className="w-4 h-4 shrink-0" />
-                  <span className="text-xs">Excluir</span>
-                </button>
+                  <Trash2 className="w-4 h-4 shrink-0" aria-hidden="true" />
+                  <span>Excluir</span>
+                </Button>
               </>
             )}
           </div>

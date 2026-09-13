@@ -1,16 +1,19 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import {
   CheckCircle2, AlertTriangle, Edit3, DollarSign, Package,
-  TrendingUp, Shield, BarChart3, Loader2,
+  Shield, BarChart3, Loader2,
 } from 'lucide-react';
 
 interface ItemEdital {
@@ -35,13 +38,16 @@ interface ItemEdital {
   motivo_status: string | null;
 }
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
-  pendente_precificacao: { label: 'Pendente', color: 'text-muted-foreground', icon: Package },
-  aprovado_automaticamente: { label: 'Auto ✓', color: 'text-success', icon: CheckCircle2 },
-  aguardando_aprovacao_preco: { label: 'Revisar', color: 'text-warning', icon: AlertTriangle },
-  aprovado_manualmente: { label: 'Manual ✓', color: 'text-success', icon: CheckCircle2 },
-  rejeitado: { label: 'Rejeitado', color: 'text-destructive', icon: AlertTriangle },
-  proposta_enviada: { label: 'Enviado', color: 'text-info', icon: Shield },
+type VarianteStatus = 'success' | 'warning' | 'danger' | 'info' | 'muted';
+
+// Status em família semântica do Badge, sempre com texto.
+const STATUS_CONFIG: Record<string, { label: string; variant: VarianteStatus; icon: React.ElementType }> = {
+  pendente_precificacao: { label: 'Pendente', variant: 'muted', icon: Package },
+  aprovado_automaticamente: { label: 'Aprovado (auto)', variant: 'success', icon: CheckCircle2 },
+  aguardando_aprovacao_preco: { label: 'Revisar', variant: 'warning', icon: AlertTriangle },
+  aprovado_manualmente: { label: 'Aprovado (manual)', variant: 'success', icon: CheckCircle2 },
+  rejeitado: { label: 'Rejeitado', variant: 'danger', icon: AlertTriangle },
+  proposta_enviada: { label: 'Enviado', variant: 'info', icon: Shield },
 };
 
 export default function PrecificacaoReview({ licitacaoId }: { licitacaoId: string }) {
@@ -169,8 +175,10 @@ export default function PrecificacaoReview({ licitacaoId }: { licitacaoId: strin
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-32">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      <div className="space-y-2" role="status" aria-label="Carregando itens">
+        <Skeleton className="h-11 w-full" />
+        <Skeleton className="h-11 w-full" />
+        <Skeleton className="h-11 w-2/3" />
       </div>
     );
   }
@@ -178,27 +186,27 @@ export default function PrecificacaoReview({ licitacaoId }: { licitacaoId: strin
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-            <DollarSign className="h-5 w-5 text-primary" />
+            <DollarSign className="h-5 w-5 text-primary" aria-hidden="true" />
             Precificação — {itens.length} itens
           </h3>
           <p className="text-sm text-muted-foreground">
-            {itensAprovados}/{itens.length} aprovados • Total: <strong className="text-foreground">{formatCurrency(totalProposta)}</strong>
+            {itensAprovados}/{itens.length} aprovados • Total: <strong className="text-foreground tabular-nums">{formatCurrency(totalProposta)}</strong>
           </p>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {itens.length === 0 && (
-            <Button onClick={dispararPrecificacao} disabled={precificando} size="sm">
-              {precificando ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <BarChart3 className="h-4 w-4 mr-2" />}
+            <Button onClick={dispararPrecificacao} disabled={precificando}>
+              {precificando ? <Loader2 className="h-4 w-4 animate-spin" /> : <BarChart3 className="h-4 w-4" />}
               Extrair e Precificar
             </Button>
           )}
           {itens.length > 0 && (
-            <Button onClick={aprovarTodos} size="sm" variant="default">
-              <CheckCircle2 className="h-4 w-4 mr-2" />
+            <Button onClick={aprovarTodos} variant="default">
+              <CheckCircle2 className="h-4 w-4" />
               Aprovar Todos
             </Button>
           )}
@@ -206,49 +214,65 @@ export default function PrecificacaoReview({ licitacaoId }: { licitacaoId: strin
       </div>
 
       {itens.length === 0 ? (
-        <Card className="bg-card border-border">
+        <Card>
           <CardContent className="p-8 text-center">
-            <Package className="h-12 w-12 mx-auto mb-3 text-muted-foreground/30" />
-            <p className="text-muted-foreground">Nenhum item extraído ainda.</p>
+            <div aria-hidden="true" className="w-12 h-12 mx-auto rounded-full bg-primary-tint text-primary flex items-center justify-center mb-4">
+              <Package className="h-6 w-6" />
+            </div>
+            <p className="text-base font-semibold text-foreground">Nenhum item extraído ainda</p>
             <p className="text-sm text-muted-foreground mt-1">Clique em "Extrair e Precificar" para iniciar o motor autônomo.</p>
           </CardContent>
         </Card>
       ) : (
-        <ScrollArea className="h-[500px]">
-          <div className="space-y-2">
-            {itens.map((item) => {
-              const statusCfg = STATUS_CONFIG[item.status] || STATUS_CONFIG.pendente_precificacao;
-              const StatusIcon = statusCfg.icon;
+        <div className="rounded-lg border border-border bg-card max-h-[500px] overflow-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted">
+                <TableHead>Item</TableHead>
+                <TableHead className="text-right">Ref.</TableHead>
+                <TableHead className="text-right">Proposta</TableHead>
+                <TableHead className="text-right">Mín.</TableHead>
+                <TableHead className="text-right">Margem</TableHead>
+                <TableHead className="text-center">Fontes</TableHead>
+                <TableHead className="text-right">Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {itens.map((item) => {
+                const statusCfg = STATUS_CONFIG[item.status] || STATUS_CONFIG.pendente_precificacao;
+                const StatusIcon = statusCfg.icon;
 
-              return (
-                <Card key={item.id} className="bg-card border-border hover:border-primary/20 transition-colors">
-                  <CardContent className="p-4">
-                    <div className="grid grid-cols-12 gap-3 items-center text-sm">
-                      {/* Número + Descrição */}
-                      <div className="col-span-4 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-xs shrink-0">
-                            #{item.numero}
-                          </Badge>
-                          <span className="truncate text-foreground font-medium">{item.descricao}</span>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {item.quantidade?.toLocaleString('pt-BR')} {item.unidade}
-                          {item.marca_selecionada && ` • ${item.marca_selecionada} ${item.modelo_selecionado || ''}`}
+                return (
+                  <TableRow key={item.id}>
+                    {/* Número + Descrição */}
+                    <TableCell className="min-w-[16rem]">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="muted" className="shrink-0">#{item.numero}</Badge>
+                        <span className="text-foreground font-medium">{item.descricao}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {item.quantidade?.toLocaleString('pt-BR')} {item.unidade}
+                        {item.marca_selecionada && ` • ${item.marca_selecionada} ${item.modelo_selecionado || ''}`}
+                      </p>
+                      {/* Motivo */}
+                      {item.motivo_status && item.status === 'aguardando_aprovacao_preco' && (
+                        <p className="text-xs text-warning-ink mt-1 flex items-start gap-1">
+                          <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" aria-hidden="true" />
+                          {item.motivo_status}
                         </p>
-                      </div>
+                      )}
+                    </TableCell>
 
-                      {/* Ref. Mercado */}
-                      <div className="col-span-1 text-center">
-                        <p className="text-xs text-muted-foreground">Ref.</p>
-                        <p className="text-foreground">{formatCurrency(item.preco_referencia)}</p>
-                      </div>
+                    {/* Ref. Mercado */}
+                    <TableCell className="text-right tabular-nums whitespace-nowrap">{formatCurrency(item.preco_referencia)}</TableCell>
 
-                      {/* Proposta (editável) */}
-                      <div className="col-span-2 text-center">
-                        <p className="text-xs text-muted-foreground">Proposta</p>
-                        {editando === item.id ? (
+                    {/* Proposta (editável) */}
+                    <TableCell className="text-right whitespace-nowrap">
+                      {editando === item.id ? (
+                        <>
+                          <label htmlFor={`preco-${item.id}`} className="sr-only">Preço da proposta</label>
                           <Input
+                            id={`preco-${item.id}`}
                             value={editValue}
                             onChange={(e) => setEditValue(e.target.value)}
                             onKeyDown={(e) => {
@@ -256,91 +280,82 @@ export default function PrecificacaoReview({ licitacaoId }: { licitacaoId: strin
                               if (e.key === 'Escape') setEditando(null);
                             }}
                             onBlur={() => salvarPrecoEditado(item.id)}
-                            className="h-7 text-xs text-center"
+                            className="h-9 w-32 text-right tabular-nums ml-auto"
                             autoFocus
                           />
-                        ) : (
-                          <button
-                            onClick={() => {
-                              setEditando(item.id);
-                              setEditValue(item.preco_proposta?.toString() ?? '');
-                            }}
-                            className="text-foreground hover:text-primary transition-colors font-medium inline-flex items-center gap-1"
-                          >
-                            {formatCurrency(item.preco_proposta)}
-                            <Edit3 className="h-3 w-3 opacity-0 group-hover:opacity-100" />
-                          </button>
-                        )}
-                      </div>
+                        </>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setEditando(item.id);
+                            setEditValue(item.preco_proposta?.toString() ?? '');
+                          }}
+                          className="font-medium tabular-nums gap-1 px-2"
+                          aria-label={`Editar preço da proposta do item ${item.numero}`}
+                        >
+                          {formatCurrency(item.preco_proposta)}
+                          <Edit3 className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
+                        </Button>
+                      )}
+                    </TableCell>
 
-                      {/* Lance Mínimo */}
-                      <div className="col-span-1 text-center">
-                        <p className="text-xs text-muted-foreground">Mín.</p>
-                        <p className="text-foreground">{formatCurrency(item.preco_lance_minimo)}</p>
-                      </div>
+                    {/* Lance Mínimo */}
+                    <TableCell className="text-right tabular-nums whitespace-nowrap">{formatCurrency(item.preco_lance_minimo)}</TableCell>
 
-                      {/* Margem */}
-                      <div className="col-span-1 text-center">
-                        <p className="text-xs text-muted-foreground">Margem</p>
-                        <p className={`font-medium ${
-                          (item.margem_bruta_perc ?? 0) >= 15 ? 'text-success' :
-                          (item.margem_bruta_perc ?? 0) >= 8 ? 'text-warning' : 'text-destructive'
-                        }`}>
-                          {item.margem_bruta_perc?.toFixed(1) ?? '0'}%
-                        </p>
-                      </div>
+                    {/* Margem */}
+                    <TableCell className={`text-right tabular-nums font-medium whitespace-nowrap ${
+                      (item.margem_bruta_perc ?? 0) >= 15 ? 'text-success' :
+                      (item.margem_bruta_perc ?? 0) >= 8 ? 'text-warning' : 'text-destructive'
+                    }`}>
+                      {item.margem_bruta_perc?.toFixed(1) ?? '0'}%
+                    </TableCell>
 
-                      {/* Fontes + Confiança */}
-                      <div className="col-span-1 text-center">
-                        <p className="text-xs text-muted-foreground">Fontes</p>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="text-foreground cursor-help">
-                                {(item.fontes_consultadas as any[])?.length ?? 0}
-                                <span className="text-xs text-muted-foreground ml-1">
-                                  ({((item.confianca_calculo ?? 0) * 100).toFixed(0)}%)
-                                </span>
+                    {/* Fontes + Confiança */}
+                    <TableCell className="text-center whitespace-nowrap">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="text-foreground cursor-help tabular-nums">
+                              {(item.fontes_consultadas as any[])?.length ?? 0}
+                              <span className="text-xs text-muted-foreground ml-1">
+                                ({((item.confianca_calculo ?? 0) * 100).toFixed(0)}%)
                               </span>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <div className="text-xs space-y-1">
-                                {(item.fontes_consultadas as any[])?.map((f: any, i: number) => (
-                                  <div key={i}>{f.nome}: R$ {f.media?.toFixed(2)} ({f.registros} reg.)</div>
-                                )) ?? <p>Sem dados</p>}
-                              </div>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </div>
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <div className="text-xs space-y-1">
+                              {(item.fontes_consultadas as any[])?.map((f: any, i: number) => (
+                                <div key={i}>{f.nome}: R$ {f.media?.toFixed(2)} ({f.registros} reg.)</div>
+                              )) ?? <p>Sem dados</p>}
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </TableCell>
 
-                      {/* Status + Ação */}
-                      <div className="col-span-2 flex items-center justify-end gap-2">
-                        <Badge variant="outline" className={`${statusCfg.color} text-xs`}>
-                          <StatusIcon className="h-3 w-3 mr-1" />
+                    {/* Status + Ação */}
+                    <TableCell className="text-right whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-2">
+                        <Badge variant={statusCfg.variant} className="gap-1">
+                          <StatusIcon className="h-3 w-3" aria-hidden="true" />
                           {statusCfg.label}
                         </Badge>
 
                         {item.status === 'aguardando_aprovacao_preco' && (
-                          <Button size="sm" variant="default" className="text-xs h-7" onClick={() => aprovarItem(item.id)}>
-                            ✓ Aprovar
+                          <Button size="sm" variant="default" onClick={() => aprovarItem(item.id)}>
+                            <CheckCircle2 className="h-4 w-4" /> Aprovar
                           </Button>
                         )}
                       </div>
-                    </div>
-
-                    {/* Motivo */}
-                    {item.motivo_status && item.status === 'aguardando_aprovacao_preco' && (
-                      <p className="text-xs text-warning/80 mt-2 pl-8">
-                        ⚠ {item.motivo_status}
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </ScrollArea>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
       )}
     </div>
   );

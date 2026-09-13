@@ -10,13 +10,14 @@ import LocalDoOrgao from '@/components/contratos/LocalDoOrgao';
 import { salvarNaPastaDoProcesso } from '@/lib/processo/salvarNaPasta';
 import { ehMeu, noEscopo, type EscopoResponsavel } from '@/lib/equipe/escopoProprio';
 import AppLayout from '@/components/layout/AppLayout';
-import heroContratos from '@/assets/brand/hero-gestao-contratos.jpg';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -25,6 +26,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -58,32 +60,24 @@ const formatCurrency = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
 /**
- * O número dos cartões de resumo.
+ * O número dos cartões de resumo — o KPI da identidade 12/09: 32/40 em
+ * negrito, com dígitos tabulares, como em `shared/LinhaKpis`.
  *
- * `text-2xl` fixo cabia em "R$ 12.352.704,00" por um fio — e por um fio não
- * cabia: o último "0" caía sozinho na linha de baixo, e um saldo de doze
- * milhões passava a ler-se como doze milhões e setecentos mil, com um zero
- * órfão embaixo. Um cartão de valor não pode depender da largura da janela
- * para dizer a verdade.
- *
- * Daí o tamanho fluido: teto de 1.5rem (o text-2xl de antes, preservado nas
- * telas largas) e piso de 1.05rem, escalando com a viewport no meio. Como são
- * cinco colunas de largura igual, a mesma classe vai nos cinco cartões — o
- * contador ao lado do valor precisa ter o mesmo corpo, ou a fileira desalinha.
- *
- * `whitespace-nowrap` é a garantia dura: se algum dia um valor ainda estourar,
- * ele corta com reticências e o `title` mostra o número inteiro — melhor um
- * truncamento honesto do que um algarismo desgarrado que muda a ordem de
- * grandeza aos olhos de quem lê rápido.
+ * `break-normal` é o que impede a volta do defeito antigo: "R$ 12.352.704,00"
+ * só pode quebrar no espaço depois do "R$", nunca no meio do número — um
+ * algarismo desgarrado muda a ordem de grandeza aos olhos de quem lê rápido.
+ * A grade abaixo dá 220px de piso a cada cartão, então a quebra é rara; quando
+ * acontece, acontece no lugar certo.
  */
 const VALOR_KPI =
-  'text-[clamp(1.05rem,1.2vw,1.5rem)] font-bold whitespace-nowrap overflow-hidden text-ellipsis tabular-nums tracking-tight';
+  'block max-w-full break-normal font-bold tabular-nums text-[2rem] leading-10';
 
-const statusConfig: Record<string, { label: string; color: string; icon: typeof CheckCircle2 }> = {
-  vigente: { label: 'Vigente', color: 'bg-success/10 text-success', icon: CheckCircle2 },
-  vencendo: { label: 'Vencendo', color: 'bg-warning/10 text-warning', icon: AlertTriangle },
-  encerrado: { label: 'Encerrado', color: 'bg-muted text-muted-foreground', icon: Clock },
-  suspenso: { label: 'Suspenso', color: 'bg-destructive/10 text-destructive', icon: AlertTriangle },
+/** Vocabulário de situação: variante do Badge (tinta), rótulo e ícone. */
+const statusConfig: Record<string, { label: string; variante: 'success' | 'warning' | 'muted' | 'danger'; icon: typeof CheckCircle2 }> = {
+  vigente: { label: 'Vigente', variante: 'success', icon: CheckCircle2 },
+  vencendo: { label: 'Vencendo', variante: 'warning', icon: AlertTriangle },
+  encerrado: { label: 'Encerrado', variante: 'muted', icon: Clock },
+  suspenso: { label: 'Suspenso', variante: 'danger', icon: AlertTriangle },
 };
 
 /**
@@ -566,81 +560,90 @@ export default function GestaoContratos() {
     const ataOrigem = c.ata_srp_id ? contratos.find(x => x.id === c.ata_srp_id) : null;
     return (
       <AppLayout>
-        <div className="mb-4">
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                {isAta && <Badge className="bg-muted text-muted-foreground border-border text-xs"><ScrollText className="w-3 h-3 mr-1" />ATA SRP</Badge>}
-                <h1 className="text-xl font-bold">{c.numero_contrato}</h1>
-                {isAta && statusEfetivo(c.status, c.data_fim) === 'encerrado' ? (
-                  <>
-                    <Badge className={`${cfg.color} text-xs cursor-help`} title={EXPLICA_ATA_ENCERRADA}>Vigência encerrada</Badge>
-                    {(() => {
-                      const vivos = derivadosVigentesDa(c.id, contratos);
-                      return vivos > 0 ? (
-                        <Badge className="bg-success/10 text-success text-xs cursor-help" title={EXPLICA_ATA_ENCERRADA}>
-                          <CheckCircle2 className="w-3 h-3 mr-1" />
-                          Execução ativa — {vivos} contrato{vivos > 1 ? 's' : ''} vigente{vivos > 1 ? 's' : ''}
-                        </Badge>
-                      ) : null;
-                    })()}
-                  </>
-                ) : (
-                  <Badge className={`${cfg.color} text-xs`}>{cfg.label}</Badge>
-                )}
-                {isAta && c.permite_carona && <Badge variant="outline" className="text-xs">Permite carona</Badge>}
-              </div>
-              <p className="text-sm text-muted-foreground mt-1 line-clamp-2" title={c.objeto}>{c.objeto}</p>
-              <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1 flex-wrap">
-                <span className="flex items-center gap-1"><Building2 className="w-3 h-3" />{nomeDoOrgao(c.orgao_contratante)}</span>
-                {c.uf && <span>{c.uf}{c.municipio ? `/${c.municipio}` : ''}</span>}
-                {ataOrigem && (
-                  <button
-                    onClick={() => abrirContrato(ataOrigem)}
-                    className="flex items-center gap-1 text-accent hover:underline"
-                    title="Abrir ATA SRP de origem"
-                  >
-                    <ScrollText className="w-3 h-3" />
-                    Oriundo da ATA {ataOrigem.numero_ata || ataOrigem.numero_contrato}
-                  </button>
-                )}
-                {/* O caminho de volta ao certame. Diante de uma dúvida sobre
-                    cláusula, a resposta está no edital ou no Termo de
-                    Referência — e eles vivem na pasta do processo. O vínculo
-                    era exibido como texto morto; agora leva lá. */}
-                {c.licitacao_id && (() => {
-                  const l = licitacoes.find(x => x.id === c.licitacao_id);
-                  return l ? (
-                    <>
-                      <button
-                        onClick={() => navigate(`/processo/${c.licitacao_id}`)}
-                        className="flex items-center gap-1 text-accent hover:underline"
-                        title="Abrir a pasta do processo de origem"
-                      >
-                        <Link2 className="w-3 h-3" />
-                        Processo {l.numero}
-                      </button>
-                      <button
-                        onClick={() => navigate(`/processo/${c.licitacao_id}?aba=anexos`)}
-                        className="flex items-center gap-1 text-accent hover:underline"
-                        title="Edital, Termo de Referência e demais anexos do certame"
-                      >
-                        <FileText className="w-3 h-3" />
-                        Edital e anexos
-                      </button>
-                    </>
+        {/* A pasta do contrato NÃO é item de menu: título e descrição vêm do
+            próprio registro (número e objeto), e a trilha guarda o caminho de
+            volta à lista. O resto do cabeçalho é o padrão da identidade. */}
+        <CabecalhoPagina
+          titulo={c.numero_contrato}
+          descricao={c.objeto}
+          icone={isAta ? <ScrollText /> : <FileText />}
+          trilha={[
+            { rotulo: 'Painel', para: '/dashboard' },
+            { rotulo: 'Gestão de Processos' },
+            { rotulo: 'Gestão de contratos', para: '/gestao-contratos' },
+            { rotulo: c.numero_contrato },
+          ]}
+          acoes={
+            <div className="rounded-lg border border-border bg-card px-4 py-3 text-right">
+              <p className="text-sm text-muted-foreground">Valor global</p>
+              <p className="text-lg font-semibold tabular-nums whitespace-nowrap">{formatCurrency(c.valor_global)}</p>
+              <Progress value={Math.min(pct, 100)} className="h-1.5 w-40 mt-2" />
+              <p className="text-xs text-muted-foreground mt-1">{pct.toFixed(1)}% consumido</p>
+            </div>
+          }
+        >
+          <div className="flex items-center gap-2 flex-wrap">
+            {isAta && <Badge variant="muted"><ScrollText className="w-3 h-3 mr-1" />ATA SRP</Badge>}
+            {isAta && statusEfetivo(c.status, c.data_fim) === 'encerrado' ? (
+              <>
+                <Badge variant={cfg.variante} className="cursor-help" title={EXPLICA_ATA_ENCERRADA}>Vigência encerrada</Badge>
+                {(() => {
+                  const vivos = derivadosVigentesDa(c.id, contratos);
+                  return vivos > 0 ? (
+                    <Badge variant="success" className="cursor-help" title={EXPLICA_ATA_ENCERRADA}>
+                      <CheckCircle2 className="w-3 h-3 mr-1" />
+                      Execução ativa — {vivos} contrato{vivos > 1 ? 's' : ''} vigente{vivos > 1 ? 's' : ''}
+                    </Badge>
                   ) : null;
                 })()}
-              </div>
-            </div>
-            <div className="text-right shrink-0">
-              <p className="text-xs text-muted-foreground">Valor Global</p>
-              <p className="text-lg font-bold whitespace-nowrap">{formatCurrency(c.valor_global)}</p>
-              <Progress value={Math.min(pct, 100)} className="h-1.5 w-40 mt-1" />
-              <p className="text-xs text-muted-foreground">{pct.toFixed(1)}% consumido</p>
-            </div>
+              </>
+            ) : (
+              <Badge variant={cfg.variante}>{cfg.label}</Badge>
+            )}
+            {isAta && c.permite_carona && <Badge variant="outline">Permite carona</Badge>}
           </div>
-        </div>
+          <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
+            <span className="flex items-center gap-1"><Building2 className="w-3.5 h-3.5" />{nomeDoOrgao(c.orgao_contratante)}</span>
+            {c.uf && <span>{c.uf}{c.municipio ? `/${c.municipio}` : ''}</span>}
+            {ataOrigem && (
+              <button
+                onClick={() => abrirContrato(ataOrigem)}
+                className="flex items-center gap-1 text-primary hover:underline"
+                title="Abrir ATA SRP de origem"
+              >
+                <ScrollText className="w-3.5 h-3.5" />
+                Oriundo da ATA {ataOrigem.numero_ata || ataOrigem.numero_contrato}
+              </button>
+            )}
+            {/* O caminho de volta ao certame. Diante de uma dúvida sobre
+                cláusula, a resposta está no edital ou no Termo de
+                Referência — e eles vivem na pasta do processo. O vínculo
+                era exibido como texto morto; agora leva lá. */}
+            {c.licitacao_id && (() => {
+              const l = licitacoes.find(x => x.id === c.licitacao_id);
+              return l ? (
+                <>
+                  <button
+                    onClick={() => navigate(`/processo/${c.licitacao_id}`)}
+                    className="flex items-center gap-1 text-primary hover:underline"
+                    title="Abrir a pasta do processo de origem"
+                  >
+                    <Link2 className="w-3.5 h-3.5" />
+                    Processo {l.numero}
+                  </button>
+                  <button
+                    onClick={() => navigate(`/processo/${c.licitacao_id}?aba=anexos`)}
+                    className="flex items-center gap-1 text-primary hover:underline"
+                    title="Edital, Termo de Referência e demais anexos do certame"
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    Edital e anexos
+                  </button>
+                </>
+              ) : null;
+            })()}
+          </div>
+        </CabecalhoPagina>
 
         {/* key={c.id}: o Tabs é não-controlado e o componente NÃO remonta ao
             trocar de registro — quem vinha da aba "Contratos derivados" da ata
@@ -648,7 +651,7 @@ export default function GestaoContratos() {
             existe no contrato: conteúdo em branco, nenhuma aba acesa. A chave
             por identidade remonta e todo registro abre no Dashboard. */}
         <Tabs key={c.id} value={abaAtiva} className="space-y-4" onValueChange={trocarAba}>
-          <TabsList className="flex-wrap nao-imprime">
+          <TabsList className="nao-imprime">
             <TabsTrigger value="dashboard"><BarChart3 className="w-3.5 h-3.5 mr-1" /> Dashboard</TabsTrigger>
             <TabsTrigger value="itens"><Package className="w-3.5 h-3.5 mr-1" /> Itens/Lotes</TabsTrigger>
             {!isAta && <TabsTrigger value="pedidos"><ShoppingCart className="w-3.5 h-3.5 mr-1" /> Pedidos</TabsTrigger>}
@@ -741,72 +744,131 @@ export default function GestaoContratos() {
 
   return (
     <AppLayout>
-      {/* ── Herói do módulo ──
-          REBRAND — mesma anatomia dos outros cinco heróis: faixa navy de 232px,
-          foto sangrando na direita, texto sobre o navy sólido da esquerda.
-
-          O martelo mora aqui porque este é o módulo do OUTRO LADO da batida: a
-          homologação é o que transforma uma licitação em contrato, e é do
-          contrato que esta tela trata. Não colide com o martelo do Apoio
-          Jurídico — lá ele é a lei sendo aplicada, aqui é a decisão já tomada
-          virando obrigação.
-
-          Este arquivo é o menor do conjunto, 600×400, abaixo do piso de 640px
-          que o próprio documento fixou. Cabe porque o painel aqui é de 560px:
-          1,1× de ampliação, que não aparece atrás do véu. Foi a exceção
-          medida, não a regra afrouxada — em painel de 640 ela borraria.
-
-          `brightness-[.85]` pelo mesmo motivo do Contábil e da Precificação: a
-          madeira do martelo é quente e clara. Sob o véu ela vira bronze, que é
-          vizinho do dourado da marca em vez de concorrente dele. */}
-      <div className="mb-6 relative overflow-hidden rounded-xl bg-gradient-to-r from-navy-hover to-navy">
-        <div
-          aria-hidden="true"
-          className="absolute inset-y-0 right-0 hidden w-[560px] max-w-[48%] md:block"
-        >
-          <img
-            src={heroContratos}
-            alt=""
-            className="w-full h-full object-cover object-[center_45%] brightness-[.85]"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-navy via-navy/0 via-55% to-transparent" />
-          <div className="absolute inset-x-0 top-0 h-[70%] bg-gradient-to-b from-navy/55 to-transparent" />
-        </div>
-
-        <div className="relative flex flex-col justify-center gap-4 px-5 py-6 sm:px-7 sm:py-8 md:min-h-[232px]">
-          <div className="flex items-start gap-3">
-            <span className="flex items-center justify-center w-10 h-10 rounded-xl bg-white/10 ring-1 ring-white/20 text-gold shrink-0">
-              <ScrollText className="w-5 h-5" aria-hidden="true" />
-            </span>
-            <div className="min-w-0 max-w-xl">
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white leading-tight">Gestão de Contratos e ATAs SRP</h1>
-              <p className="text-sm text-white/75 mt-1 leading-relaxed">Controle ATAs de Registro de Preços, contratos derivados, aditivos, itens e pedidos</p>
+      {/* O topo é o CabecalhoPagina: título, descrição, ícone e trilha vêm do
+          registro (`lib/navegacao/paginas.ts`), a ação principal é o "Novo
+          contrato" do registro, e a linha de busca e recortes entra como
+          `filtros`. Os cartões de resumo ficam entre o título e os filtros,
+          que é onde a galeria os desenha. */}
+      <CabecalhoPagina
+        acoes={
+          <>
+            <ImportarContratoPDF
+              onExtracted={handleImportExtracted}
+              onCadastroManual={() => { resetForm(); setDialogOpen(true); }}
+            />
+            {/* Sem DialogTrigger: o diálogo já é controlado por `dialogOpen`, e
+                assim ele fica fora do cabeçalho, com o formulário inteiro. */}
+            <Button onClick={() => setDialogOpen(true)}><Plus className="w-4 h-4 mr-2" /> Novo contrato</Button>
+          </>
+        }
+        filtros={
+          <>
+            <div className="relative flex-1 min-w-[220px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input placeholder="Buscar por número, objeto ou órgão..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" aria-label="Buscar contratos" />
             </div>
+            <Select value={tipoFilter} onValueChange={(v: any) => setTipoFilter(v)}>
+              <SelectTrigger className="w-[200px]" aria-label="Tipo de documento"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os tipos</SelectItem>
+                <SelectItem value="contrato">Contratos Administrativos</SelectItem>
+                <SelectItem value="ata_srp">Apenas ATAs SRP</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={escopo} onValueChange={(v) => setEscopoFilter(v as EscopoResponsavel)}>
+              <SelectTrigger className="w-[200px]" aria-label="Responsável"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="meus">Meus contratos</SelectItem>
+                <SelectItem value="todos">Todos da equipe</SelectItem>
+                {isAdmin && (membrosEquipe ?? []).map((m) => (
+                  <SelectItem key={m.user_id} value={m.user_id}>{nomeExibido(m as never)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[160px]" aria-label="Situação"><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="vigente">Vigente</SelectItem>
+                <SelectItem value="vencendo">Vencendo</SelectItem>
+                <SelectItem value="encerrado">Encerrado</SelectItem>
+                <SelectItem value="suspenso">Suspenso</SelectItem>
+              </SelectContent>
+            </Select>
+          </>
+        }
+      >
+        {/* REBRAND — a anatomia `kpi-meta` do protótipo: rótulo e ícone em cima,
+            valor grande, e uma NOTA embaixo. A nota é o que faltava: "R$ 2,4 mi"
+            sozinho não diz se é muito, de quantos instrumentos veio nem quanto já
+            foi consumido. Todas as notas saem de dado já carregado — nenhuma
+            consulta nova, nenhum número inventado.
+            O cartão "Vencendo" NÃO virou botão de propósito: ele conta por
+            `data_fim` dentro de 60 dias, e o filtro de status conta pelo campo
+            `status` gravado. Os dois conjuntos não são o mesmo, e um clique que
+            entrega lista diferente do número clicado ensina o usuário a
+            desconfiar da tela. */}
+        <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr))] [&>*]:min-w-0">
+          <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+            <div className="flex items-start justify-between gap-2 mb-2">
+              <span className="text-sm text-muted-foreground">Contratos</span>
+              <FileText className="w-4 h-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            </div>
+            <p className={VALOR_KPI}>{soContratos.length}</p>
+            <p className="text-sm text-muted-foreground mt-2">
+              {derivadosDeAta > 0 ? `${derivadosDeAta} derivado(s) de ATA` : 'Nenhum derivado de ATA'}
+            </p>
+          </div>
+
+          <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+            <div className="flex items-start justify-between gap-2 mb-2">
+              <span className="text-sm text-muted-foreground">ATAs SRP</span>
+              <ScrollText className="w-4 h-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            </div>
+            <p className={VALOR_KPI}>{soAtas.length}</p>
+            <p className="text-sm text-muted-foreground mt-2">Registro de preços vigente</p>
+          </div>
+
+          <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+            <div className="flex items-start justify-between gap-2 mb-2">
+              <span className="text-sm text-muted-foreground">Valor total</span>
+              <DollarSign className="w-4 h-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            </div>
+            <p className={VALOR_KPI} title={formatCurrency(totalValor)}>{formatCurrency(totalValor)}</p>
+            <p className="text-sm text-muted-foreground mt-2">Soma dos contratos, sem as ATAs</p>
+          </div>
+
+          <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+            <div className="flex items-start justify-between gap-2 mb-2">
+              <span className="text-sm text-muted-foreground">Saldo remanescente</span>
+              <TrendingUp className="w-4 h-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            </div>
+            <p className={`${VALOR_KPI} text-success-ink`} title={formatCurrency(totalSaldo)}>{formatCurrency(totalSaldo)}</p>
+            <p className="text-sm text-muted-foreground mt-2">
+              {totalValor > 0 ? `${Math.round((totalSaldo / totalValor) * 100)}% do valor total` : 'Sem valor contratado'}
+            </p>
+          </div>
+
+          <div className={`rounded-lg border p-6 shadow-sm ${vencendo > 0 ? 'border-warning-line bg-warning-tint' : 'border-border bg-card'}`}>
+            <div className="flex items-start justify-between gap-2 mb-2">
+              <span className={`text-sm ${vencendo > 0 ? 'text-warning-ink' : 'text-muted-foreground'}`}>Vencendo em 60 dias</span>
+              <AlertTriangle className={`w-4 h-4 shrink-0 ${vencendo > 0 ? 'text-warning-ink' : 'text-muted-foreground'}`} aria-hidden="true" />
+            </div>
+            <p className={`${VALOR_KPI} ${vencendo > 0 ? 'text-warning-ink' : ''}`}>{vencendo}</p>
+            <p className={`text-sm mt-2 ${vencendo > 0 ? 'text-warning-ink' : 'text-muted-foreground'}`}>
+              {vencendo > 0 ? 'Prazo para prorrogar ou encerrar' : 'Nenhum prazo apertado'}
+            </p>
           </div>
         </div>
-      </div>
+      </CabecalhoPagina>
 
-      {/* As ações ficam FORA do herói, como no Robô de Lances e ao contrário da
-          Gestão de Compras. O critério é sempre o mesmo: sobrevive ao navy?
-          Ali o botão era só `bg-primary` e bastou trocar por branco sobre navy.
-          Aqui o `ImportarContratoPDF` traz `variant="outline"` de dentro do
-          próprio componente — variante feita para superfície de tema, que sobre
-          navy vira texto escuro em fundo escuro. Consertar exigiria abrir um
-          componente compartilhado para passar classe de fora, e a linha de ação
-          logo abaixo da faixa resolve sem tocar em nada de ninguém. */}
-      <div className="mb-6 flex gap-2">
-          <ImportarContratoPDF
-            onExtracted={handleImportExtracted}
-            onCadastroManual={() => { resetForm(); setDialogOpen(true); }}
-          />
-          <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) { resetForm(); setPendingItens([]); setArquivoAssinado(null); } }}>
-            <DialogTrigger asChild><Button><Plus className="w-4 h-4 mr-2" /> Novo</Button></DialogTrigger>
+      <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) { resetForm(); setPendingItens([]); setArquivoAssinado(null); } }}>
           <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
             <DialogHeader><DialogTitle>Cadastrar {isAtaForm ? 'ATA SRP' : 'Contrato Administrativo'}</DialogTitle></DialogHeader>
 
-            <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 p-3 rounded-lg border border-border bg-muted/20">
+            <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 p-3 rounded-lg border border-border bg-muted">
               <div>
-                <Label className="text-xs">Tipo de Documento *</Label>
+                <Label>Tipo de Documento *</Label>
                 <Select value={form.tipo_documento} onValueChange={(v: 'contrato' | 'ata_srp') => setForm(f => ({ ...f, tipo_documento: v, ata_srp_id: v === 'ata_srp' ? '' : f.ata_srp_id }))}>
                   <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -816,7 +878,7 @@ export default function GestaoContratos() {
                 </Select>
               </div>
               <div>
-                <Label className="text-xs">Estrutura *</Label>
+                <Label>Estrutura *</Label>
                 <Select value={form.tipo_estrutura} onValueChange={(v: 'itens' | 'lotes') => setForm(f => ({ ...f, tipo_estrutura: v }))}>
                   <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -828,7 +890,7 @@ export default function GestaoContratos() {
               {/* O que cada instrumento é, com o amparo legal — cadastrar ATA
                   como contrato quebra o controle de saldo, porque a ATA não
                   obriga a comprar e o contrato sim. */}
-              <div className="md:col-span-2 rounded-lg bg-muted/40 border border-border/60 p-3 space-y-1.5">
+              <div className="md:col-span-2 rounded-lg bg-card border border-border p-4 space-y-1.5">
                 <p className="text-sm font-medium">
                   {INSTRUMENTOS[isAtaForm ? 'ata_srp' : 'contrato'].nome}
                   <span className="ml-2 text-xs font-normal text-muted-foreground">
@@ -844,7 +906,7 @@ export default function GestaoContratos() {
                 {isAtaForm && (
                   <p className="text-xs text-muted-foreground">{VIGENCIA_ATA.observacao}</p>
                 )}
-                <p className="text-xs text-muted-foreground pt-1 border-t border-border/60">
+                <p className="text-xs text-muted-foreground pt-2 border-t border-border">
                   Alteração de contrato em execução é <strong>Termo Aditivo</strong>, lançado dentro
                   do próprio contrato — não um cadastro novo. {LIMITES_ADITIVO.observacao}
                 </p>
@@ -876,7 +938,7 @@ export default function GestaoContratos() {
                 <Label>{isAtaForm ? 'Nº ATA *' : 'Nº Contrato *'}</Label>
                 <Input value={form.numero_contrato} onChange={e => setForm(f => ({ ...f, numero_contrato: e.target.value }))} placeholder={isAtaForm ? 'ATA-001/2025' : 'CT-001/2025'} />
                 {pareceAtaMasEstaComoContrato && (
-                  <p className="text-xs text-warning mt-1 flex items-start gap-1">
+                  <p className="text-xs text-warning-ink mt-1 flex items-start gap-1">
                     <AlertTriangle className="w-3 h-3 shrink-0 mt-0.5" />
                     <span>
                       O número diz “ATA”, mas o tipo está como Contrato. São instrumentos
@@ -904,7 +966,7 @@ export default function GestaoContratos() {
                     </SelectContent>
                   </Select>
                 ) : (
-                  <Input value={nomeDoProprio} disabled className="bg-muted/40" />
+                  <Input value={nomeDoProprio} disabled className="bg-muted" />
                 )}
                 <p className="text-xs text-muted-foreground mt-1">
                   Conta o contrato nas metas dessa pessoa e define quem recebe a bonificação.
@@ -946,7 +1008,7 @@ export default function GestaoContratos() {
                   </div>
 
                   {form.forma_execucao === 'empenho' && (
-                    <div className="md:col-span-2 rounded-lg border border-warning/40 bg-warning/5 p-3">
+                    <div className="md:col-span-2 rounded-lg border border-warning-line bg-warning-tint p-4">
                       <Label>Hipótese que dispensa o contrato *</Label>
                       <Select
                         value={form.art95_fundamento}
@@ -966,7 +1028,7 @@ export default function GestaoContratos() {
                           {FUNDAMENTOS_ART95[form.art95_fundamento as keyof typeof FUNDAMENTOS_ART95]?.desc}
                         </p>
                       )}
-                      <p className="text-xs text-warning mt-2">
+                      <p className="text-xs text-warning-ink mt-2">
                         Fora dessas hipóteses, entrega parcelada ou serviço contínuo exige termo de
                         contrato. {AMPARO_ART95}.
                       </p>
@@ -1001,10 +1063,9 @@ export default function GestaoContratos() {
                     placeholder="Buscar por número ou órgão..."
                     value={licitacaoSearch}
                     onChange={e => setLicitacaoSearch(e.target.value)}
-                    className="text-xs"
                   />
                   {licitacaoSearch && (
-                    <div className="border rounded-md max-h-40 overflow-y-auto divide-y">
+                    <div className="border border-border rounded-md max-h-40 overflow-y-auto divide-y divide-border">
                       {licitacoes
                         .filter(l => `${l.numero} ${l.orgao} ${l.objeto}`.toLowerCase().includes(licitacaoSearch.toLowerCase()))
                         .slice(0, 6)
@@ -1012,7 +1073,7 @@ export default function GestaoContratos() {
                           <button
                             key={l.id}
                             type="button"
-                            className={`w-full text-left px-3 py-2 text-xs hover:bg-muted/50 ${form.licitacao_id === l.id ? 'bg-primary/10 font-semibold' : ''}`}
+                            className={`w-full text-left px-3 py-2 text-sm hover:bg-muted ${form.licitacao_id === l.id ? 'bg-primary-tint font-semibold' : ''}`}
                             onClick={() => { setForm(f => ({ ...f, licitacao_id: l.id })); setLicitacaoSearch(''); }}
                           >
                             <span className="font-medium">{l.numero}</span>
@@ -1021,14 +1082,14 @@ export default function GestaoContratos() {
                           </button>
                         ))}
                       {licitacoes.filter(l => `${l.numero} ${l.orgao} ${l.objeto}`.toLowerCase().includes(licitacaoSearch.toLowerCase())).length === 0 && (
-                        <p className="px-3 py-2 text-xs text-muted-foreground">Nenhum processo encontrado</p>
+                        <p className="px-3 py-2 text-sm text-muted-foreground">Nenhum processo encontrado</p>
                       )}
                     </div>
                   )}
                   {form.licitacao_id && !licitacaoSearch && (() => {
                     const l = licitacoes.find(x => x.id === form.licitacao_id);
                     return l ? (
-                      <div className="flex items-center gap-2 text-xs bg-muted border border-border rounded px-3 py-1.5">
+                      <div className="flex items-center gap-2 text-sm bg-muted border border-border rounded-md px-3 py-2">
                         <Link2 className="w-3 h-3 text-muted-foreground shrink-0" />
                         <span className="font-medium text-foreground">{l.numero}</span>
                         <span className="text-muted-foreground">— {l.orgao}</span>
@@ -1053,17 +1114,17 @@ export default function GestaoContratos() {
                 if (assinatura) updates.data_inicio = somarDias(assinatura, 1) ?? '';
                 setForm(f => ({ ...f, ...updates }));
               }} /></div>
-              <div><Label>Data Início</Label><Input type="date" value={form.data_inicio} readOnly className="bg-muted/50" /></div>
+              <div><Label>Data Início</Label><Input type="date" value={form.data_inicio} readOnly className="bg-muted" /></div>
               <div>
                 <Label>Data Fim</Label>
-                <Input type="date" value={form.data_fim} readOnly className="bg-muted/50" />
+                <Input type="date" value={form.data_fim} readOnly className="bg-muted" />
                 {vigenciaCalculada.inferido && form.data_fim && (
                   <p className="text-xs text-muted-foreground mt-1">
                     Calculada com 1 ano de vigência da ARP (Lei 14.133/2021, art. 84).
                     Informe a validade abaixo se o edital previr outro prazo.
                   </p>
                 )}
-                {avisoAta && <p className="text-xs text-warning mt-1">{avisoAta}</p>}
+                {avisoAta && <p className="text-xs text-warning-ink mt-1">{avisoAta}</p>}
               </div>
               <div className="md:col-span-2">
                 <Label>Espécie do objeto</Label>
@@ -1082,7 +1143,7 @@ export default function GestaoContratos() {
                     {ESPECIES_OBJETO[form.especie_objeto as keyof typeof ESPECIES_OBJETO].amparo}
                   </p>
                 )}
-                {avisoVigencia && <p className="text-xs text-warning mt-1">{avisoVigencia}</p>}
+                {avisoVigencia && <p className="text-xs text-warning-ink mt-1">{avisoVigencia}</p>}
               </div>
               <div className="md:col-span-2">
                 <Label>Forma de fornecimento</Label>
@@ -1131,96 +1192,9 @@ export default function GestaoContratos() {
             </div>
           </DialogContent>
         </Dialog>
-      </div>
-
-      {/* REBRAND — a anatomia `kpi-meta` do protótipo: rótulo e ícone em cima,
-          valor grande, e uma NOTA embaixo. A nota é o que faltava: "R$ 2,4 mi"
-          sozinho não diz se é muito, de quantos instrumentos veio nem quanto já
-          foi consumido. Todas as notas saem de dado já carregado — nenhuma
-          consulta nova, nenhum número inventado.
-          O cartão "Vencendo" NÃO virou botão de propósito: ele conta por
-          `data_fim` dentro de 60 dias, e o filtro de status conta pelo campo
-          `status` gravado. Os dois conjuntos não são o mesmo, e um clique que
-          entrega lista diferente do número clicado ensina o usuário a
-          desconfiar da tela. */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
-        <Card className="p-4 min-w-0">
-          <div className="flex items-start justify-between gap-2 mb-2">
-            <span className="text-xs text-muted-foreground">Contratos</span>
-            <FileText className="w-4 h-4 shrink-0 text-muted-foreground/70" aria-hidden="true" />
-          </div>
-          <p className={VALOR_KPI}>{soContratos.length}</p>
-          <p className="text-xs text-muted-foreground mt-1.5">
-            {derivadosDeAta > 0 ? `${derivadosDeAta} derivado(s) de ATA` : 'Nenhum derivado de ATA'}
-          </p>
-        </Card>
-
-        <Card className="p-4 min-w-0">
-          <div className="flex items-start justify-between gap-2 mb-2">
-            <span className="text-xs text-muted-foreground">ATAs SRP</span>
-            <ScrollText className="w-4 h-4 shrink-0 text-muted-foreground/70" aria-hidden="true" />
-          </div>
-          <p className={VALOR_KPI}>{soAtas.length}</p>
-          <p className="text-xs text-muted-foreground mt-1.5">Registro de preços vigente</p>
-        </Card>
-
-        <Card className="p-4 min-w-0">
-          <div className="flex items-start justify-between gap-2 mb-2">
-            <span className="text-xs text-muted-foreground">Valor total</span>
-            <DollarSign className="w-4 h-4 shrink-0 text-muted-foreground/70" aria-hidden="true" />
-          </div>
-          <p className={VALOR_KPI} title={formatCurrency(totalValor)}>{formatCurrency(totalValor)}</p>
-          <p className="text-xs text-muted-foreground mt-1.5">Soma dos contratos, sem as ATAs</p>
-        </Card>
-
-        <Card className="p-4 min-w-0">
-          <div className="flex items-start justify-between gap-2 mb-2">
-            <span className="text-xs text-muted-foreground">Saldo remanescente</span>
-            <TrendingUp className="w-4 h-4 shrink-0 text-muted-foreground/70" aria-hidden="true" />
-          </div>
-          <p className={`${VALOR_KPI} text-success`} title={formatCurrency(totalSaldo)}>{formatCurrency(totalSaldo)}</p>
-          <p className="text-xs text-muted-foreground mt-1.5">
-            {totalValor > 0 ? `${Math.round((totalSaldo / totalValor) * 100)}% do valor total` : 'Sem valor contratado'}
-          </p>
-        </Card>
-
-        <Card className={`p-4 min-w-0 ${vencendo > 0 ? 'border-warning-line bg-warning-tint' : ''}`}>
-          <div className="flex items-start justify-between gap-2 mb-2">
-            <span className={`text-xs ${vencendo > 0 ? 'text-warning-ink' : 'text-muted-foreground'}`}>Vencendo em 60 dias</span>
-            <AlertTriangle className={`w-4 h-4 shrink-0 ${vencendo > 0 ? 'text-warning-ink' : 'text-muted-foreground/70'}`} aria-hidden="true" />
-          </div>
-          <p className={`${VALOR_KPI} ${vencendo > 0 ? 'text-warning-ink' : ''}`}>{vencendo}</p>
-          <p className={`text-xs mt-1.5 ${vencendo > 0 ? 'text-warning-ink' : 'text-muted-foreground'}`}>
-            {vencendo > 0 ? 'Prazo para prorrogar ou encerrar' : 'Nenhum prazo apertado'}
-          </p>
-        </Card>
-      </div>
-
-      <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 mb-4">
-        <div className="relative flex-1 min-w-[220px]"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input placeholder="Buscar por número, objeto ou órgão..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" /></div>
-        <Select value={tipoFilter} onValueChange={(v: any) => setTipoFilter(v)}>
-          <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os tipos</SelectItem>
-            <SelectItem value="contrato">Contratos Administrativos</SelectItem>
-            <SelectItem value="ata_srp">Apenas ATAs SRP</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={escopo} onValueChange={(v) => setEscopoFilter(v as EscopoResponsavel)}>
-          <SelectTrigger className="w-[200px]"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="meus">Meus contratos</SelectItem>
-            <SelectItem value="todos">Todos da equipe</SelectItem>
-            {isAdmin && (membrosEquipe ?? []).map((m) => (
-              <SelectItem key={m.user_id} value={m.user_id}>{nomeExibido(m as never)}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={statusFilter} onValueChange={setStatusFilter}><SelectTrigger className="w-[160px]"><SelectValue placeholder="Status" /></SelectTrigger><SelectContent><SelectItem value="all">Todos</SelectItem><SelectItem value="vigente">Vigente</SelectItem><SelectItem value="vencendo">Vencendo</SelectItem><SelectItem value="encerrado">Encerrado</SelectItem><SelectItem value="suspenso">Suspenso</SelectItem></SelectContent></Select>
-      </div>
 
       {escopo !== 'todos' && ocultosPorEscopo > 0 && (
-        <p className="text-xs text-muted-foreground -mt-2 mb-4">
+        <p className="text-sm text-muted-foreground mb-4">
           {ocultosPorEscopo} contrato(s) sob responsabilidade de outros colaboradores não
           aparecem neste recorte.{' '}
           <button
@@ -1266,164 +1240,207 @@ export default function GestaoContratos() {
       {loading ? (
         <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
       ) : filtered.length === 0 ? (
-        <Card className="p-12 text-center"><FileText className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" /><p className="text-muted-foreground">Nenhum registro encontrado</p></Card>
+        <div className="rounded-lg border border-border bg-card shadow-sm">
+          <EstadoVazio
+            icone={<FileText />}
+            titulo="Nenhum registro encontrado"
+            descricao={search || statusFilter !== 'all' || tipoFilter !== 'all'
+              ? 'Nenhum contrato ou ATA atende a esta busca. Limpe os filtros para ver a carteira inteira.'
+              : 'Cadastre o primeiro contrato ou importe o PDF do documento assinado.'}
+            acao={<Button onClick={() => setDialogOpen(true)}><Plus className="w-4 h-4 mr-2" /> Novo contrato</Button>}
+          />
+        </div>
       ) : (
-        <div className="space-y-3">
-          {filtered.map(c => {
-            const isAta = c.tipo_documento === 'ata_srp';
-            const pct = c.valor_global > 0 ? (c.valor_consumido / c.valor_global) * 100 : 0;
-            const cfg = statusConfig[statusEfetivo(c.status, c.data_fim)] || statusConfig.vigente;
-            const Icon = cfg.icon;
-            const dias = c.data_fim ? Math.ceil((new Date(c.data_fim).getTime() - Date.now()) / 86400000) : null;
-            return (
-              <Card key={c.id} className={`p-4 hover:shadow-md transition-shadow cursor-pointer ${isAta ? 'border-l-4 border-l-accent' : ''}`} onClick={() => abrirContrato(c)}>
-                <div className="flex flex-col sm:flex-row sm:items-start gap-4">
-                  <div className="flex-1 min-w-0">
-                    {/* 1º — Órgão/cliente */}
-                    <div className="flex items-center gap-1.5 mb-0.5">
-                      <Building2 className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                      <span className="text-sm font-semibold truncate" title={nomeDoOrgao(c.orgao_contratante)}>{nomeDoOrgao(c.orgao_contratante)}</span>
-                    </div>
-                    {/* 2º — Número + tipo + badges de status */}
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <span className="text-xs font-medium text-foreground">
+        /* A lista é a TABELA do registro: identificação, órgão, prazo, situação
+           e valor, com as ações por linha. A linha inteira abre a pasta do
+           contrato; o botão do número faz o mesmo pelo teclado. */
+        <div className="rounded-lg border border-border bg-card shadow-sm overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Identificação</TableHead>
+                <TableHead>Órgão e objeto</TableHead>
+                <TableHead>Prazo</TableHead>
+                <TableHead>Situação</TableHead>
+                <TableHead>Responsável</TableHead>
+                <TableHead className="text-right">Valor e consumo</TableHead>
+                <TableHead><span className="sr-only">Ações</span></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map(c => {
+                const isAta = c.tipo_documento === 'ata_srp';
+                const pct = c.valor_global > 0 ? (c.valor_consumido / c.valor_global) * 100 : 0;
+                const cfg = statusConfig[statusEfetivo(c.status, c.data_fim)] || statusConfig.vigente;
+                const Icon = cfg.icon;
+                const dias = c.data_fim ? Math.ceil((new Date(c.data_fim).getTime() - Date.now()) / 86400000) : null;
+                return (
+                  <TableRow key={c.id} className="cursor-pointer align-top" onClick={() => abrirContrato(c)}>
+                    <TableCell className="min-w-[200px]">
+                      <button
+                        type="button"
+                        className="text-left text-sm font-semibold text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md"
+                        onClick={(e) => { e.stopPropagation(); abrirContrato(c); }}
+                      >
                         {isAta
                           ? rotuloDaAta(c.numero_ata || c.numero_contrato)
                           : rotuloDoContrato(c.numero_contrato)}
-                      </span>
-                      {isAta && statusEfetivo(c.status, c.data_fim) === 'encerrado' ? (
-                        <Badge className={`${cfg.color} text-xs cursor-help`} title={EXPLICA_ATA_ENCERRADA}>
-                          <Icon className="w-3 h-3 mr-1" />Vigência encerrada
-                        </Badge>
-                      ) : (
-                        <Badge className={`${cfg.color} text-xs`}><Icon className="w-3 h-3 mr-1" />{cfg.label}</Badge>
-                      )}
-                      {/* Ata expirada com derivado vigente: a OPERAÇÃO segue. */}
-                      {isAta && statusEfetivo(c.status, c.data_fim) === 'encerrado' && (() => {
-                        const vivos = derivadosVigentesDa(c.id, doEscopo);
-                        return vivos > 0 ? (
-                          <Badge className="bg-success/10 text-success text-xs cursor-help" title={EXPLICA_ATA_ENCERRADA}>
-                            <CheckCircle2 className="w-3 h-3 mr-1" />
-                            Execução ativa — {vivos} contrato{vivos > 1 ? 's' : ''} vigente{vivos > 1 ? 's' : ''}
-                          </Badge>
-                        ) : null;
-                      })()}
-                      {/* Os derivados moram dentro da pasta da ata; o cartão diz
-                          quantos, senão parecem ter sumido da lista. */}
-                      {isAta && (() => {
-                        const n = doEscopo.filter(x => x.ata_srp_id === c.id && x.tipo_documento === 'contrato').length;
-                        return n > 0 ? (
-                          <Badge variant="outline" className="text-xs text-info border-info/30">
-                            <FilePlus2 className="w-3 h-3 mr-1" />{n} contrato{n > 1 ? 's' : ''} derivado{n > 1 ? 's' : ''}
-                          </Badge>
-                        ) : null;
-                      })()}
-                      {dias !== null && dias <= 60 && dias > 0 && <Badge variant="outline" className="text-xs text-warning border-warning/30"><Clock className="w-3 h-3 mr-1" />{dias}d</Badge>}
-                      {/* Consumo total não é "saldo baixo" — é fim do contrato.
-                          O aviso servia para antecipar o esgotamento; depois
-                          dele, dizer que o saldo está baixo descreve o passado
-                          e sugere que ainda há o que consumir. */}
-                      {!isAta && pct >= 100 && (
-                        <Badge variant="outline" className="text-xs text-muted-foreground border-border">
-                          Saldo esgotado
-                        </Badge>
-                      )}
-                      {!isAta && pct >= 80 && pct < 100 && (
-                        <Badge variant="outline" className="text-xs text-destructive border-destructive/30">
-                          Saldo baixo
-                        </Badge>
-                      )}
-                      {c.ata_srp_id && <Badge variant="outline" className="text-xs text-muted-foreground border-border">Origem: ATA</Badge>}
-                    </div>
-                    {/* 3º — Objeto */}
-                    <p className="text-xs text-muted-foreground line-clamp-1" title={c.objeto}>{c.objeto}</p>
-                    {/* 4º — Data fim */}
-                    <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
-                      {c.data_fim && <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />Até {new Date(c.data_fim).toLocaleDateString('pt-BR')}</span>}
-                      {/* Vendedor na própria linha: os contratos existentes foram
-                          cadastrados pelo admin e ficaram sem dono, então metas e
-                          bonificação não os enxergavam. Aqui se atribui sem abrir o
-                          contrato. */}
-                      <span className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                        <UserIcon className="w-3 h-3" />
-                        {isAdmin ? (
-                          <Select
-                            value={c.vendedor_user_id || 'nenhum'}
-                            onValueChange={(v) => atribuirVendedor(c.id, v === 'nenhum' ? null : v)}
-                          >
-                            <SelectTrigger className="h-6 text-xs border-0 bg-transparent px-1 gap-1 w-auto">
-                              <SelectValue placeholder="Sem vendedor" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="nenhum">Sem vendedor</SelectItem>
-                              {(membrosEquipe ?? []).map((m) => (
-                                <SelectItem key={m.user_id} value={m.user_id}>{nomeExibido(m as never)}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        ) : (
-                          <span>{nomeDoVendedor(c) ?? 'Sem vendedor'}</span>
-                        )}
-                      </span>
-                    </div>
-                    <div className="mt-2">
-                      <div className="flex flex-wrap justify-between gap-x-3 text-xs text-muted-foreground mb-1">
-                        {/* Era "Saldo registrado", ao lado de um "Saldo" com outro
-                            número: dois saldos diferentes na mesma linha. Este
-                            valor é o que já saiu, não o que resta. */}
-                        <span className="whitespace-nowrap">{isAta ? 'Consumido da ata' : 'Consumido'}: {formatCurrency(c.valor_consumido)}</span>
-                        <span className="whitespace-nowrap">Saldo: {formatCurrency(c.saldo_remanescente || 0)}</span>
+                      </button>
+                      <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                        {isAta && <Badge variant="muted"><ScrollText className="w-3 h-3 mr-1" />ATA SRP</Badge>}
+                        {/* Os derivados moram dentro da pasta da ata; a linha diz
+                            quantos, senão parecem ter sumido da lista. */}
+                        {isAta && (() => {
+                          const n = doEscopo.filter(x => x.ata_srp_id === c.id && x.tipo_documento === 'contrato').length;
+                          return n > 0 ? (
+                            <Badge variant="info">
+                              <FilePlus2 className="w-3 h-3 mr-1" />{n} contrato{n > 1 ? 's' : ''} derivado{n > 1 ? 's' : ''}
+                            </Badge>
+                          ) : null;
+                        })()}
+                        {c.ata_srp_id && <Badge variant="muted">Origem: ATA</Badge>}
                       </div>
-                      <Progress value={Math.min(pct, 100)} className="h-2" />
-                    </div>
-                  </div>
-                  <div className="flex gap-1" onClick={e => e.stopPropagation()}>
-                    {podeExcluir(c) && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        title="Excluir contrato"
-                        onClick={(e) => { e.stopPropagation(); setAExcluir(c); }}
-                      >
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </Card>
-            );
-          })}
+                    </TableCell>
+
+                    <TableCell className="max-w-[280px]">
+                      <span className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+                        <Building2 className="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
+                        <span className="truncate" title={nomeDoOrgao(c.orgao_contratante)}>{nomeDoOrgao(c.orgao_contratante)}</span>
+                      </span>
+                      <p className="mt-1 text-sm text-muted-foreground line-clamp-2" title={c.objeto}>{c.objeto}</p>
+                    </TableCell>
+
+                    <TableCell nowrap className="text-sm text-muted-foreground">
+                      {c.data_fim ? (
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-3.5 h-3.5" aria-hidden="true" />
+                          Até {new Date(c.data_fim).toLocaleDateString('pt-BR')}
+                        </span>
+                      ) : '—'}
+                      {dias !== null && dias <= 60 && dias > 0 && (
+                        <Badge variant="warning" className="mt-1"><Clock className="w-3 h-3 mr-1" />{dias} dias</Badge>
+                      )}
+                    </TableCell>
+
+                    <TableCell>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {isAta && statusEfetivo(c.status, c.data_fim) === 'encerrado' ? (
+                          <Badge variant={cfg.variante} className="cursor-help" title={EXPLICA_ATA_ENCERRADA}>
+                            <Icon className="w-3 h-3 mr-1" />Vigência encerrada
+                          </Badge>
+                        ) : (
+                          <Badge variant={cfg.variante}><Icon className="w-3 h-3 mr-1" />{cfg.label}</Badge>
+                        )}
+                        {/* Ata expirada com derivado vigente: a OPERAÇÃO segue. */}
+                        {isAta && statusEfetivo(c.status, c.data_fim) === 'encerrado' && (() => {
+                          const vivos = derivadosVigentesDa(c.id, doEscopo);
+                          return vivos > 0 ? (
+                            <Badge variant="success" className="cursor-help" title={EXPLICA_ATA_ENCERRADA}>
+                              <CheckCircle2 className="w-3 h-3 mr-1" />
+                              Execução ativa — {vivos} contrato{vivos > 1 ? 's' : ''} vigente{vivos > 1 ? 's' : ''}
+                            </Badge>
+                          ) : null;
+                        })()}
+                        {/* Consumo total não é "saldo baixo" — é fim do contrato.
+                            O aviso servia para antecipar o esgotamento; depois
+                            dele, dizer que o saldo está baixo descreve o passado
+                            e sugere que ainda há o que consumir. */}
+                        {!isAta && pct >= 100 && <Badge variant="muted">Saldo esgotado</Badge>}
+                        {!isAta && pct >= 80 && pct < 100 && <Badge variant="danger">Saldo baixo</Badge>}
+                      </div>
+                    </TableCell>
+
+                    {/* Vendedor na própria linha: os contratos existentes foram
+                        cadastrados pelo admin e ficaram sem dono, então metas e
+                        bonificação não os enxergavam. Aqui se atribui sem abrir o
+                        contrato. */}
+                    <TableCell className="min-w-[170px]" onClick={(e) => e.stopPropagation()}>
+                      {isAdmin ? (
+                        <Select
+                          value={c.vendedor_user_id || 'nenhum'}
+                          onValueChange={(v) => atribuirVendedor(c.id, v === 'nenhum' ? null : v)}
+                        >
+                          <SelectTrigger className="h-9 text-sm" aria-label="Vendedor responsável">
+                            <SelectValue placeholder="Sem vendedor" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="nenhum">Sem vendedor</SelectItem>
+                            {(membrosEquipe ?? []).map((m) => (
+                              <SelectItem key={m.user_id} value={m.user_id}>{nomeExibido(m as never)}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <span className="flex items-center gap-1 text-sm text-muted-foreground">
+                          <UserIcon className="w-3.5 h-3.5" aria-hidden="true" />
+                          {nomeDoVendedor(c) ?? 'Sem vendedor'}
+                        </span>
+                      )}
+                    </TableCell>
+
+                    <TableCell className="min-w-[200px] text-right">
+                      <p className="text-sm font-semibold tabular-nums whitespace-nowrap">{formatCurrency(c.valor_global)}</p>
+                      {/* Era "Saldo registrado", ao lado de um "Saldo" com outro
+                          número: dois saldos diferentes na mesma linha. Este
+                          valor é o que já saiu, não o que resta. */}
+                      <p className="mt-1 text-sm text-muted-foreground tabular-nums whitespace-nowrap">
+                        {isAta ? 'Consumido da ata' : 'Consumido'}: {formatCurrency(c.valor_consumido)}
+                      </p>
+                      <p className="text-sm text-muted-foreground tabular-nums whitespace-nowrap">
+                        Saldo: {formatCurrency(c.saldo_remanescente || 0)}
+                      </p>
+                      <Progress value={Math.min(pct, 100)} className="h-2 mt-2" />
+                    </TableCell>
+
+                    <TableCell nowrap onClick={e => e.stopPropagation()}>
+                      {podeExcluir(c) && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          aria-label={`Excluir ${c.numero_contrato}`}
+                          title="Excluir contrato"
+                          onClick={(e) => { e.stopPropagation(); setAExcluir(c); }}
+                        >
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         </div>
       )}
 
       {/* ── Lixeira: excluído por engano tem volta ─────────────────────────── */}
       {!loading && excluidos.length > 0 && (
-        <Card className="mt-6 p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Trash2 className="w-4 h-4 text-muted-foreground" />
-            <span className="font-semibold text-sm">Lixeira</span>
-            <Badge variant="outline" className="text-xs">{excluidos.length}</Badge>
-            <span className="text-xs text-muted-foreground">
+        <section className="mt-6 rounded-lg border border-border bg-card p-6 shadow-sm">
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            <Trash2 className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+            <h2 className="text-lg font-semibold">Lixeira</h2>
+            <Badge variant="muted">{excluidos.length}</Badge>
+            <span className="text-sm text-muted-foreground">
               Fora das telas e dos cálculos — restaurar devolve tudo, inclusive a fatia na ATA.
             </span>
           </div>
-          <div className="divide-y divide-border/50">
+          <div className="divide-y divide-border">
             {excluidos.map(c => (
-              <div key={c.id} className="flex items-center gap-3 py-2.5 flex-wrap">
+              <div key={c.id} className="flex items-center gap-3 py-3 flex-wrap">
                 <span className="text-sm font-medium">
                   {rotuloDoDocumento(c.tipo_documento, c.tipo_documento === 'ata_srp' ? (c.numero_ata || c.numero_contrato) : c.numero_contrato)}
                 </span>
-                <span className="text-xs text-muted-foreground truncate max-w-[280px]" title={nomeDoOrgao(c.orgao_contratante)}>{nomeDoOrgao(c.orgao_contratante)}</span>
+                <span className="text-sm text-muted-foreground truncate max-w-[280px]" title={nomeDoOrgao(c.orgao_contratante)}>{nomeDoOrgao(c.orgao_contratante)}</span>
                 {c.excluido_em && (
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-sm text-muted-foreground">
                     excluído em {new Date(c.excluido_em).toLocaleDateString('pt-BR')}
                   </span>
                 )}
-                <div className="ml-auto flex gap-2">
-                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => restaurar(c.id)}>
+                <div className="ml-auto flex flex-wrap gap-2">
+                  <Button size="sm" variant="outline" onClick={() => restaurar(c.id)}>
                     Restaurar
                   </Button>
-                  <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive hover:text-destructive"
+                  <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive"
                     onClick={() => excluirDefinitivo(c)}>
                     Excluir definitivamente
                   </Button>
@@ -1431,7 +1448,7 @@ export default function GestaoContratos() {
               </div>
             ))}
           </div>
-        </Card>
+        </section>
       )}
     </AppLayout>
   );
@@ -1450,60 +1467,60 @@ function ContratosDerivadosList({ ataId, contratos, onSelect }: { ataId: string;
 
   if (derivados.length === 0) {
     return (
-      <Card className="p-8 text-center">
-        <FilePlus2 className="w-10 h-10 text-muted-foreground/40 mx-auto mb-2" />
-        <p className="text-sm text-muted-foreground">Nenhum contrato derivado desta ATA ainda.</p>
-        <p className="text-xs text-muted-foreground mt-1">
-          Ao criar um Contrato Administrativo, vincule-o a esta ATA para que os saldos sejam debitados automaticamente.
-        </p>
-      </Card>
+      <div className="rounded-lg border border-border bg-card shadow-sm">
+        <EstadoVazio
+          icone={<FilePlus2 />}
+          titulo="Nenhum contrato derivado desta ATA ainda"
+          descricao="Ao criar um Contrato Administrativo, vincule-o a esta ATA para que os saldos sejam debitados automaticamente."
+        />
+      </div>
     );
   }
 
   return (
     <div className="space-y-3">
-      <Card className="p-4 bg-muted/50 border-border">
-        <div className="flex items-center justify-between">
+      <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-xs text-muted-foreground">Contratos derivados</p>
-            <p className="text-2xl font-bold">{derivados.length}</p>
+            <p className="text-sm text-muted-foreground">Contratos derivados</p>
+            <p className="text-[2rem] leading-10 font-bold tabular-nums">{derivados.length}</p>
           </div>
           <div className="text-right">
-            <p className="text-xs text-muted-foreground">Valor total consumido</p>
-            <p className="text-2xl font-bold text-foreground whitespace-nowrap tabular-nums">{formatCurrency(totalConsumido)}</p>
+            <p className="text-sm text-muted-foreground">Valor total consumido</p>
+            <p className="text-[2rem] leading-10 font-bold text-foreground break-normal tabular-nums">{formatCurrency(totalConsumido)}</p>
             {pctDaAta(totalConsumido) !== null && (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 {pctDaAta(totalConsumido)!.toLocaleString('pt-BR')}% da ata · saldo {formatCurrency(Math.max(registradoAta - totalConsumido, 0))}
               </p>
             )}
           </div>
         </div>
-      </Card>
+      </div>
       <div className="space-y-2">
         {derivados.map(c => (
-          <Card key={c.id} className="p-3 hover:shadow-md cursor-pointer" onClick={() => onSelect(c)}>
+          <Card key={c.id} className="p-4 hover:shadow-md cursor-pointer" onClick={() => onSelect(c)}>
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold text-foreground">{c.numero_contrato}</span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-semibold text-foreground">{c.numero_contrato}</span>
                   {/* O status gravado envelhece sozinho; a data de fim manda — a
                       MESMA regra do cabeçalho, senão a lista diz "vigente" para
                       contrato vencido há um ano e as telas se contradizem. */}
                   {(() => {
                     const cfg = statusConfig[statusEfetivo(c.status, c.data_fim)] || statusConfig.vigente;
-                    return <Badge className={`${cfg.color} text-xs`}>{cfg.label}</Badge>;
+                    return <Badge variant={cfg.variante}>{cfg.label}</Badge>;
                   })()}
                   {pctDaAta(c.valor_global || 0) !== null && (
-                    <Badge variant="outline" className="text-xs text-info border-info/30">
+                    <Badge variant="info">
                       {pctDaAta(c.valor_global || 0)!.toLocaleString('pt-BR')}% da ata
                     </Badge>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5" title={c.objeto}>{c.objeto}</p>
+                <p className="text-sm text-muted-foreground line-clamp-1 mt-1" title={c.objeto}>{c.objeto}</p>
               </div>
               <div className="text-right shrink-0">
-                <p className="text-xs text-muted-foreground">Valor</p>
-                <p className="text-sm font-semibold">{formatCurrency(c.valor_global)}</p>
+                <p className="text-sm text-muted-foreground">Valor</p>
+                <p className="text-sm font-semibold tabular-nums">{formatCurrency(c.valor_global)}</p>
               </div>
             </div>
           </Card>

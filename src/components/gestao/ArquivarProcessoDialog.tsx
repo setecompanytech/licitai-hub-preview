@@ -35,7 +35,7 @@ export default function ArquivarProcessoDialog({
 }: Props) {
   return (
     <AlertDialog open={aberto} onOpenChange={(v) => !v && onFechar()}>
-      <AlertDialogContent className="sm:max-w-[520px]">
+      <AlertDialogContent className="sm:max-w-lg">
         <AlertDialogHeader>
           <AlertDialogTitle>Como este processo terminou?</AlertDialogTitle>
           <AlertDialogDescription asChild>
@@ -54,13 +54,13 @@ export default function ArquivarProcessoDialog({
         <div className="grid gap-2">
           <Button
             variant="outline"
-            className="justify-start h-auto py-3 text-left"
+            className="h-auto justify-start whitespace-normal py-3 text-left"
             onClick={() => onEscolher('vencida')}
           >
-            <Trophy className="w-4 h-4 mr-3 text-success shrink-0" />
-            <span>
-              <span className="font-medium block">Vencemos</span>
-              <span className="text-xs text-muted-foreground">
+            <Trophy className="mr-1 shrink-0 text-success" aria-hidden="true" />
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold">Vencemos</span>
+              <span className="block text-xs font-normal text-muted-foreground">
                 Marca como Vencida e arquiva. O contrato pode ser cadastrado depois.
               </span>
             </span>
@@ -68,13 +68,13 @@ export default function ArquivarProcessoDialog({
 
           <Button
             variant="outline"
-            className="justify-start h-auto py-3 text-left"
+            className="h-auto justify-start whitespace-normal py-3 text-left"
             onClick={() => onEscolher('perdida')}
           >
-            <XCircle className="w-4 h-4 mr-3 text-destructive shrink-0" />
-            <span>
-              <span className="font-medium block">Não vencemos</span>
-              <span className="text-xs text-muted-foreground">
+            <XCircle className="mr-1 shrink-0 text-destructive" aria-hidden="true" />
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold">Não vencemos</span>
+              <span className="block text-xs font-normal text-muted-foreground">
                 Pede o motivo — é o que alimenta a análise do comercial.
               </span>
             </span>
@@ -82,13 +82,13 @@ export default function ArquivarProcessoDialog({
 
           <Button
             variant="outline"
-            className="justify-start h-auto py-3 text-left"
+            className="h-auto justify-start whitespace-normal py-3 text-left"
             onClick={() => onEscolher('sem_disputa')}
           >
-            <Archive className="w-4 h-4 mr-3 text-muted-foreground shrink-0" />
-            <span>
-              <span className="font-medium block">Não participamos</span>
-              <span className="text-xs text-muted-foreground">
+            <Archive className="mr-1 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold">Não participamos</span>
+              <span className="block text-xs font-normal text-muted-foreground">
                 Só sai da mesa. Sem desfecho a registrar.
               </span>
             </span>

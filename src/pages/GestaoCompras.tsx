@@ -21,7 +21,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
 import { parseNFeXML, type NFeData, type NFeItemData } from '@/lib/parseNFe';
-import heroEstoque from '@/assets/brand/hero-gestao-estoque-pedidos.jpg';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
+import LinhaKpis from '@/components/shared/LinhaKpis';
+import { Skeleton } from '@/components/ui/skeleton';
 import { analisarParaMargem, precificarEntrada, situacaoDoPrecoContratado, type AnaliseMargemEmpresa } from '@/lib/financeiro/margem-sugerida';
 import {
   ShoppingCart, Plus, Search, Trash2, ArrowLeft, Loader2,
@@ -98,17 +100,18 @@ type NfeRecebida = {
 };
 
 // ── Config ────────────────────────────────────────────────────
-const statusConfig: Record<string, { label: string; color: string; icon: typeof CheckCircle2 }> = {
-  rascunho:   { label: 'Rascunho',   color: 'bg-muted text-muted-foreground',          icon: Clock },
-  aguardando: { label: 'Aguardando', color: 'bg-warning/10 text-warning',              icon: Truck },
-  entregue:   { label: 'Entregue',   color: 'bg-success/10 text-success',              icon: CheckCircle2 },
-  cancelado:  { label: 'Cancelado',  color: 'bg-destructive/10 text-destructive',      icon: X },
+// Status sempre com texto — a cor é reforço (famílias tint/ink do Badge).
+const statusConfig: Record<string, { label: string; variant: 'muted' | 'warning' | 'success' | 'danger'; icon: typeof CheckCircle2 }> = {
+  rascunho:   { label: 'Rascunho',   variant: 'muted',   icon: Clock },
+  aguardando: { label: 'Aguardando', variant: 'warning', icon: Truck },
+  entregue:   { label: 'Entregue',   variant: 'success', icon: CheckCircle2 },
+  cancelado:  { label: 'Cancelado',  variant: 'danger',  icon: X },
 };
 
 const movConfig = {
-  entrada: { label: 'Entrada', color: 'text-success',     bg: 'bg-success/10',     icon: TrendingUp,   sign: '+' },
-  saida:   { label: 'Saída',   color: 'text-destructive', bg: 'bg-destructive/10', icon: TrendingDown, sign: '-' },
-  ajuste:  { label: 'Ajuste',  color: 'text-info',        bg: 'bg-info/10',        icon: RotateCcw,    sign: '±' },
+  entrada: { label: 'Entrada', color: 'text-success-ink',     bg: 'bg-success-tint',     icon: TrendingUp,   sign: '+' },
+  saida:   { label: 'Saída',   color: 'text-destructive-ink', bg: 'bg-destructive-tint', icon: TrendingDown, sign: '-' },
+  ajuste:  { label: 'Ajuste',  color: 'text-foreground',      bg: 'bg-muted',            icon: RotateCcw,    sign: '±' },
 };
 
 // ── Form defaults ─────────────────────────────────────────────
@@ -810,48 +813,54 @@ export default function GestaoCompras() {
     const emAlerta = p.saldo_minimo > 0 && p.saldo_atual <= p.saldo_minimo;
     return (
       <AppLayout>
-        <div className="mb-4">
-          <Button variant="ghost" size="sm" onClick={() => setSelectedProduto(null)} className="mb-2">
-            <ArrowLeft className="w-4 h-4 mr-1" /> Voltar ao Estoque
-          </Button>
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-xl font-bold">{p.descricao}</h1>
-                {p.codigo && <Badge variant="outline" className="text-xs">{p.codigo}</Badge>}
-                {!p.ativo && <Badge className="text-xs bg-muted text-muted-foreground">Inativo</Badge>}
-                {emAlerta && <Badge variant="outline" className="text-xs text-destructive border-destructive/40"><AlertCircle className="w-3 h-3 mr-1" />Estoque baixo</Badge>}
-              </div>
-              <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
-                {p.categoria && <span>{p.categoria}</span>}
-                <span>Unidade: {p.unidade}</span>
-                <span>Mínimo: {p.saldo_minimo} {p.unidade}</span>
-                {p.preco_custo_medio > 0 && <span>Custo médio: {fmtCurrency(p.preco_custo_medio)}</span>}
-              </div>
-            </div>
-            <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
-              <div className={`text-right px-4 py-2 rounded-lg ${emAlerta ? 'bg-destructive/10' : 'bg-success/10'}`}>
-                <p className="text-xs text-muted-foreground">Saldo Atual</p>
-                <p className={`text-2xl font-bold ${emAlerta ? 'text-destructive' : 'text-success'}`}>
-                  {p.saldo_atual.toLocaleString('pt-BR')} <span className="text-sm font-normal">{p.unidade}</span>
-                </p>
-              </div>
-              <Button size="sm" variant="outline" onClick={() => { setEditingProduto(p); setProdutoForm({ codigo: p.codigo ?? '', descricao: p.descricao, unidade: p.unidade, categoria: p.categoria ?? '', saldo_minimo: String(p.saldo_minimo), preco_custo_medio: String(p.preco_custo_medio), ativo: p.ativo, ncm: p.ncm ?? '', cfop: p.cfop ?? '', cst_icms: p.cst_icms ?? '', csosn: p.csosn ?? '', cst_pis: p.cst_pis ?? '', cst_cofins: p.cst_cofins ?? '', p_icms: p.p_icms != null ? String(p.p_icms) : '', p_pis: p.p_pis != null ? String(p.p_pis) : '', p_cofins: p.p_cofins != null ? String(p.p_cofins) : '' }); setProdutoOpen(true); }}>
-                <Pencil className="w-4 h-4" />
+        <Button variant="ghost" size="sm" onClick={() => setSelectedProduto(null)} className="mb-4">
+          <ArrowLeft className="w-4 h-4" /> Voltar ao Estoque
+        </Button>
+        <CabecalhoPagina
+          titulo={p.descricao}
+          icone={<Package />}
+          descricao={
+            <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              {p.categoria && <span>{p.categoria}</span>}
+              <span>Unidade: {p.unidade}</span>
+              <span>Mínimo: {p.saldo_minimo} {p.unidade}</span>
+              {p.preco_custo_medio > 0 && <span>Custo médio: {fmtCurrency(p.preco_custo_medio)}</span>}
+            </span>
+          }
+          acoes={
+            <>
+              <Button variant="outline" aria-label="Editar produto" onClick={() => { setEditingProduto(p); setProdutoForm({ codigo: p.codigo ?? '', descricao: p.descricao, unidade: p.unidade, categoria: p.categoria ?? '', saldo_minimo: String(p.saldo_minimo), preco_custo_medio: String(p.preco_custo_medio), ativo: p.ativo, ncm: p.ncm ?? '', cfop: p.cfop ?? '', cst_icms: p.cst_icms ?? '', csosn: p.csosn ?? '', cst_pis: p.cst_pis ?? '', cst_cofins: p.cst_cofins ?? '', p_icms: p.p_icms != null ? String(p.p_icms) : '', p_pis: p.p_pis != null ? String(p.p_pis) : '', p_cofins: p.p_cofins != null ? String(p.p_cofins) : '' }); setProdutoOpen(true); }}>
+                <Pencil className="w-4 h-4" /> Editar
               </Button>
-              <Button size="sm" variant="outline" onClick={() => { setMovForm(f => ({ ...f, produto_id: p.id })); setMovOpen(true); }}>
-                <Plus className="w-4 h-4 mr-1" /> Movimentação
+              <Button onClick={() => { setMovForm(f => ({ ...f, produto_id: p.id })); setMovOpen(true); }}>
+                <Plus className="w-4 h-4" /> Movimentação
               </Button>
+            </>
+          }
+        >
+          <div className="flex flex-wrap items-center gap-3">
+            {p.codigo && <Badge variant="info">{p.codigo}</Badge>}
+            {!p.ativo && <Badge variant="muted">Inativo</Badge>}
+            {emAlerta && <Badge variant="danger"><AlertCircle className="w-3 h-3 mr-1" />Estoque baixo</Badge>}
+            <div className={`ml-auto rounded-lg border px-4 py-2 text-right ${emAlerta ? 'border-destructive-line bg-destructive-tint' : 'border-success-line bg-success-tint'}`}>
+              <p className="text-xs text-muted-foreground">Saldo atual</p>
+              <p className={`text-[2rem] leading-10 font-bold tabular-nums ${emAlerta ? 'text-destructive-ink' : 'text-success-ink'}`}>
+                {p.saldo_atual.toLocaleString('pt-BR')} <span className="text-sm font-normal">{p.unidade}</span>
+              </p>
             </div>
           </div>
-        </div>
+        </CabecalhoPagina>
 
-        <Card className="p-4">
-          <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
-            <RotateCcw className="w-4 h-4" /> Histórico de Movimentações
+        <Card className="p-6">
+          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <RotateCcw className="w-5 h-5 text-muted-foreground" /> Histórico de Movimentações
           </h2>
           {movimentos.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">Nenhuma movimentação registrada.</p>
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary"><RotateCcw className="w-6 h-6" aria-hidden="true" /></span>
+              <p className="mt-3 text-lg font-semibold">Nenhuma movimentação</p>
+              <p className="mt-1 text-sm text-muted-foreground">Entradas, saídas e ajustes deste produto aparecem aqui.</p>
+            </div>
           ) : (
             <div className="divide-y divide-border">
               {movimentos.map(m => {
@@ -862,21 +871,21 @@ export default function GestaoCompras() {
                 return (
                   <div key={m.id} className="flex items-center gap-3 py-3">
                     <div className={`flex items-center justify-center w-8 h-8 rounded-full ${cfg.bg} flex-shrink-0`}>
-                      <Icon className={`w-4 h-4 ${cfg.color}`} />
+                      <Icon className={`w-4 h-4 ${cfg.color}`} aria-hidden="true" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`text-sm font-semibold ${cfg.color}`}>
+                        <span className={`text-sm font-semibold tabular-nums ${cfg.color}`}>
                           {sign}{absQty.toLocaleString('pt-BR')} {p.unidade}
                         </span>
-                        <Badge variant="outline" className="text-xs">{cfg.label}</Badge>
+                        <Badge variant="info">{cfg.label}</Badge>
                         {m.origem && m.origem !== 'manual' && (
-                          <Badge variant="outline" className="text-xs text-muted-foreground capitalize">{m.origem.replace(/_/g, ' ')}</Badge>
+                          <Badge variant="muted" className="capitalize">{m.origem.replace(/_/g, ' ')}</Badge>
                         )}
                       </div>
-                      {m.observacoes && <p className="text-xs text-muted-foreground mt-0.5">{m.observacoes}</p>}
+                      {m.observacoes && <p className="text-xs text-muted-foreground mt-1">{m.observacoes}</p>}
                       {m.preco_unitario != null && m.preco_unitario > 0 && (
-                        <p className="text-xs text-muted-foreground">{fmtCurrency(m.preco_unitario)}/un · Total: {fmtCurrency(m.preco_unitario * absQty)}</p>
+                        <p className="text-xs text-muted-foreground tabular-nums">{fmtCurrency(m.preco_unitario)}/un · Total: {fmtCurrency(m.preco_unitario * absQty)}</p>
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground flex-shrink-0">
@@ -906,34 +915,27 @@ export default function GestaoCompras() {
     const isAtrasado = p.data_entrega_prevista && p.status !== 'entregue' && p.status !== 'cancelado' && p.data_entrega_prevista < todayStr;
     return (
       <AppLayout>
-        <div className="mb-4">
-          {/* Ver comentário equivalente em GestaoContratos: este devolve à
-              lista, o Voltar do layout sai da tela. */}
-          <Button variant="ghost" size="sm" onClick={() => setSelectedPedido(null)} className="mb-2">
-            <ArrowLeft className="w-4 h-4 mr-1" /> Todos os pedidos
-          </Button>
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-xl font-bold">{p.observacoes || 'Pedido de Compra'}</h1>
-                <Badge className={`${cfg.color} text-xs`}><Icon className="w-3 h-3 mr-1" />{cfg.label}</Badge>
-                {isAtrasado && <Badge variant="outline" className="text-xs text-destructive border-destructive/30"><AlertTriangle className="w-3 h-3 mr-1" />Atrasado</Badge>}
-              </div>
-              <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
-                {forn && <span className="flex items-center gap-1"><Truck className="w-3 h-3" />{forn.razao_social}</span>}
-                {cont && <span className="flex items-center gap-1"><Building2 className="w-3 h-3" />Contrato {cont.numero_contrato}</span>}
-                {p.data_pedido && <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />Pedido: {fmtDate(p.data_pedido)}</span>}
-                {p.data_entrega_prevista && <span className="flex items-center gap-1"><Truck className="w-3 h-3" />Previsto: {fmtDate(p.data_entrega_prevista)}</span>}
-                {p.data_entrega_real && <span className="flex items-center gap-1 text-success"><CheckCircle2 className="w-3 h-3" />Entregue: {fmtDate(p.data_entrega_real)}</span>}
-              </div>
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <div className="text-right mr-1">
-                <p className="text-xs text-muted-foreground">Valor Total</p>
-                <p className="text-lg font-bold">{fmtCurrency(p.valor_total)}</p>
-              </div>
+        {/* Ver comentário equivalente em GestaoContratos: este devolve à
+            lista, o Voltar do layout sai da tela. */}
+        <Button variant="ghost" size="sm" onClick={() => setSelectedPedido(null)} className="mb-4">
+          <ArrowLeft className="w-4 h-4" /> Todos os pedidos
+        </Button>
+        <CabecalhoPagina
+          titulo={p.observacoes || 'Pedido de Compra'}
+          icone={<ShoppingCart />}
+          descricao={
+            <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              {forn && <span className="flex items-center gap-1"><Truck className="w-4 h-4" aria-hidden="true" />{forn.razao_social}</span>}
+              {cont && <span className="flex items-center gap-1"><Building2 className="w-4 h-4" aria-hidden="true" />Contrato {cont.numero_contrato}</span>}
+              {p.data_pedido && <span className="flex items-center gap-1"><Calendar className="w-4 h-4" aria-hidden="true" />Pedido: {fmtDate(p.data_pedido)}</span>}
+              {p.data_entrega_prevista && <span className="flex items-center gap-1"><Truck className="w-4 h-4" aria-hidden="true" />Previsto: {fmtDate(p.data_entrega_prevista)}</span>}
+              {p.data_entrega_real && <span className="flex items-center gap-1 text-success"><CheckCircle2 className="w-4 h-4" aria-hidden="true" />Entregue: {fmtDate(p.data_entrega_real)}</span>}
+            </span>
+          }
+          acoes={
+            <>
               <Select value={p.status} onValueChange={(v: any) => handleUpdateStatus(v)}>
-                <SelectTrigger className="w-[150px] text-xs"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-44" aria-label="Status do pedido"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="rascunho">Rascunho</SelectItem>
                   <SelectItem value="aguardando">Aguardando</SelectItem>
@@ -941,25 +943,38 @@ export default function GestaoCompras() {
                   <SelectItem value="cancelado">Cancelado</SelectItem>
                 </SelectContent>
               </Select>
-              <Button size="sm" variant="ghost" onClick={e => handleDeletePedido(p.id, e)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+              <Button variant="ghost" aria-label="Excluir pedido" onClick={e => handleDeletePedido(p.id, e)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+            </>
+          }
+        >
+          <div className="flex flex-wrap items-center gap-3">
+            <Badge variant={cfg.variant}><Icon className="w-3 h-3 mr-1" />{cfg.label}</Badge>
+            {isAtrasado && <Badge variant="danger"><AlertTriangle className="w-3 h-3 mr-1" />Atrasado</Badge>}
+            <div className="ml-auto rounded-lg border border-border bg-card px-4 py-2 text-right">
+              <p className="text-xs text-muted-foreground">Valor total</p>
+              <p className="text-[2rem] leading-10 font-bold tabular-nums">{fmtCurrency(p.valor_total)}</p>
             </div>
           </div>
-        </div>
+        </CabecalhoPagina>
 
-        <Card className="p-4">
-          <h2 className="text-sm font-semibold mb-3 flex items-center gap-2"><Package className="w-4 h-4" /> Itens do Pedido</h2>
+        <Card className="p-6">
+          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2"><Package className="w-5 h-5 text-muted-foreground" /> Itens do Pedido</h2>
           {itensPedido.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-6">Nenhum item cadastrado.</p>
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary"><Package className="w-6 h-6" aria-hidden="true" /></span>
+              <p className="mt-3 text-lg font-semibold">Nenhum item cadastrado</p>
+              <p className="mt-1 text-sm text-muted-foreground">Este pedido foi salvo sem itens.</p>
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b text-xs text-muted-foreground">
-                    <th className="text-left py-2 pr-4 font-medium">Descrição</th>
-                    <th className="text-center py-2 px-2 font-medium w-16">Un.</th>
-                    <th className="text-right py-2 px-2 font-medium w-20">Qtd.</th>
-                    <th className="text-right py-2 px-2 font-medium w-32">Preço Unit.</th>
-                    <th className="text-right py-2 pl-2 font-medium w-32">Total</th>
+                  <tr className="border-b border-border text-sm font-semibold">
+                    <th className="text-left py-2 pr-4">Descrição</th>
+                    <th className="text-center py-2 px-2 w-16">Un.</th>
+                    <th className="text-right py-2 px-2 w-20">Qtd.</th>
+                    <th className="text-right py-2 px-2 w-32">Preço unit.</th>
+                    <th className="text-right py-2 pl-2 w-32">Total</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -967,16 +982,16 @@ export default function GestaoCompras() {
                     <tr key={item.id}>
                       <td className="py-2 pr-4">{item.descricao}</td>
                       <td className="py-2 px-2 text-center text-muted-foreground">{item.unidade}</td>
-                      <td className="py-2 px-2 text-right">{item.quantidade.toLocaleString('pt-BR')}</td>
-                      <td className="py-2 px-2 text-right">{fmtCurrency(item.preco_unitario)}</td>
-                      <td className="py-2 pl-2 text-right font-medium">{fmtCurrency(item.preco_total)}</td>
+                      <td className="py-2 px-2 text-right tabular-nums">{item.quantidade.toLocaleString('pt-BR')}</td>
+                      <td className="py-2 px-2 text-right tabular-nums">{fmtCurrency(item.preco_unitario)}</td>
+                      <td className="py-2 pl-2 text-right tabular-nums font-medium">{fmtCurrency(item.preco_total)}</td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
-                  <tr className="border-t">
-                    <td colSpan={4} className="py-2 text-right text-xs text-muted-foreground pr-2 font-medium">Total do Pedido</td>
-                    <td className="py-2 pl-2 text-right font-bold text-foreground">{fmtCurrency(p.valor_total)}</td>
+                  <tr className="border-t border-border">
+                    <td colSpan={4} className="py-2 text-right text-sm text-muted-foreground pr-2 font-medium">Total do pedido</td>
+                    <td className="py-2 pl-2 text-right tabular-nums font-bold text-foreground">{fmtCurrency(p.valor_total)}</td>
                   </tr>
                 </tfoot>
               </table>
@@ -993,11 +1008,12 @@ export default function GestaoCompras() {
             <p className="text-sm text-muted-foreground mb-3">Vincule cada item do pedido a um produto do catálogo para registrar a entrada no estoque. Itens sem vínculo serão ignorados.</p>
             <div className="space-y-3">
               {entregaMappings.map((m, idx) => (
-                <div key={m.item.id} className="border rounded-lg p-3 space-y-2">
+                <div key={m.item.id} className="rounded-lg border border-border p-4 space-y-2">
                   <p className="text-sm font-medium">{m.item.descricao}</p>
-                  <p className="text-xs text-muted-foreground">{m.item.quantidade} {m.item.unidade} · {fmtCurrency(m.item.preco_unitario)}/un</p>
+                  <p className="text-xs text-muted-foreground tabular-nums">{m.item.quantidade} {m.item.unidade} · {fmtCurrency(m.item.preco_unitario)}/un</p>
+                  <Label htmlFor={`entrega-prod-${idx}`}>Produto do catálogo</Label>
                   <Select value={m.produtoId} onValueChange={v => setEntregaMappings(arr => arr.map((x, i) => i === idx ? { ...x, produtoId: v } : x))}>
-                    <SelectTrigger className="text-xs"><SelectValue placeholder="— Não registrar —" /></SelectTrigger>
+                    <SelectTrigger id={`entrega-prod-${idx}`}><SelectValue placeholder="— Não registrar —" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="">— Não registrar —</SelectItem>
                       {produtosAtivosParaSelect.map(pr => (
@@ -1007,12 +1023,12 @@ export default function GestaoCompras() {
                     </SelectContent>
                   </Select>
                   {m.produtoId === '__new__' && (
-                    <Input className="text-xs" placeholder="Nome do novo produto" value={m.novaNome} onChange={e => setEntregaMappings(arr => arr.map((x, i) => i === idx ? { ...x, novaNome: e.target.value } : x))} />
+                    <Input aria-label="Nome do novo produto" placeholder="Nome do novo produto" value={m.novaNome} onChange={e => setEntregaMappings(arr => arr.map((x, i) => i === idx ? { ...x, novaNome: e.target.value } : x))} />
                   )}
                 </div>
               ))}
             </div>
-            <div className="flex justify-end gap-2 mt-4">
+            <div className="flex flex-wrap justify-end gap-2 mt-4">
               <Button variant="outline" onClick={() => setEntregaOpen(false)}>Pular</Button>
               <Button onClick={handleConfirmarEntrega} disabled={savingEntrega}>
                 {savingEntrega && <Loader2 className="w-4 h-4 animate-spin mr-2" />} Registrar no Estoque
@@ -1027,70 +1043,43 @@ export default function GestaoCompras() {
   // ══ LIST VIEW ════════════════════════════════════════════════
   return (
     <AppLayout>
-      {/* ── Herói do módulo ──
-          REBRAND — mesma anatomia dos outros heróis (Robô de Lances, os dois
-          Apoios, Precificação): faixa navy de 232px, foto sangrando na direita,
-          texto sobre o navy sólido da esquerda.
-
-          Esta imagem pede menos correção que as demais: já nasce em 1365×587,
-          quase a proporção da própria faixa, e o corredor de galpão é escuro e
-          acinzentado, da família do navy. Daí `brightness-[.95]` em vez de
-          `.85`, e nenhum recorte horizontal — a 620px de painel a foto entra
-          inteira na largura.
-
-          O botão de ação continua aqui dentro, mas trocou de pele: a variante
-          padrão é `bg-primary`, que é navy — navy sobre navy sumiria. Branco
-          com texto navy é o contraste certo para ação primária em faixa
-          escura, e é o mesmo par que a barra do topo já usa. */}
-      <div className="mb-6 relative overflow-hidden rounded-xl bg-gradient-to-r from-navy-hover to-navy">
-        <div
-          aria-hidden="true"
-          className="absolute inset-y-0 right-0 hidden w-[620px] max-w-[48%] md:block"
-        >
-          <img
-            src={heroEstoque}
-            alt=""
-            className="w-full h-full object-cover object-[center_50%] brightness-[.95]"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-navy via-navy/0 via-60% to-transparent" />
-          <div className="absolute inset-x-0 top-0 h-[70%] bg-gradient-to-b from-navy/55 to-transparent" />
-        </div>
-
-        <div className="relative flex flex-col justify-center gap-4 px-5 py-6 sm:px-7 sm:py-8 md:min-h-[232px]">
-          <div className="flex items-start gap-3">
-            <span className="flex items-center justify-center w-10 h-10 rounded-xl bg-white/10 ring-1 ring-white/20 text-gold shrink-0">
-              <Warehouse className="w-5 h-5" aria-hidden="true" />
-            </span>
-            <div className="min-w-0 max-w-xl">
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white leading-tight">
-                Gestão de Compras e Pedidos
-              </h1>
-              <p className="text-sm text-white/75 mt-1 leading-relaxed">
-                Pedidos, fornecedores, estoque e notas fiscais
-              </p>
-            </div>
-          </div>
-
-          {!isOnboarding && (
-            <div className="flex gap-2">
-              {mainTab === 'fornecedores' ? (
-                <Button className="bg-white text-navy hover:bg-white/90" onClick={() => { setEditingPessoa(null); setPessoaOpen(true); }}><Plus className="w-4 h-4 mr-2" /> Novo Fornecedor</Button>
-              ) : mainTab === 'estoque' ? (
-                <Button className="bg-white text-navy hover:bg-white/90" onClick={openNovoProduto}><Plus className="w-4 h-4 mr-2" /> Novo Produto</Button>
-              ) : mainTab === 'nfe' ? (
-                <Button className="bg-white text-navy hover:bg-white/90" onClick={() => { resetNfeDialog(); setNfeOpen(true); }}><Plus className="w-4 h-4 mr-2" /> Importar NF-e</Button>
-              ) : mainTab === 'produtos' ? null : mainTab === 'pedidos' ? null : (
-                <Button className="bg-white text-navy hover:bg-white/90" onClick={() => { resetPedidoForm(); setPedidoOpen(true); }}><Plus className="w-4 h-4 mr-2" /> Novo Pedido</Button>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
+      {/* Cabeçalho padrão da identidade 12/09 — substitui a faixa herói navy
+          com foto. A ação principal muda com a aba ativa (mesma regra de
+          antes: Produtos e Pedidos têm barra própria dentro da aba). */}
+      <CabecalhoPagina
+        titulo="Gestão de Compras e Pedidos"
+        descricao="Pedidos, fornecedores, estoque e notas fiscais"
+        icone={<Warehouse />}
+        acoes={!isOnboarding && (
+          mainTab === 'fornecedores' ? (
+            <Button onClick={() => { setEditingPessoa(null); setPessoaOpen(true); }}><Plus className="w-4 h-4" /> Novo Fornecedor</Button>
+          ) : mainTab === 'estoque' ? (
+            <Button onClick={openNovoProduto}><Plus className="w-4 h-4" /> Novo Produto</Button>
+          ) : mainTab === 'nfe' ? (
+            <Button onClick={() => { resetNfeDialog(); setNfeOpen(true); }}><Plus className="w-4 h-4" /> Importar NF-e</Button>
+          ) : mainTab === 'produtos' ? null : mainTab === 'pedidos' ? null : (
+            <Button onClick={() => { resetPedidoForm(); setPedidoOpen(true); }}><Plus className="w-4 h-4" /> Novo Pedido</Button>
+          )
+        )}
+      />
 
       {!empresaAtiva ? (
-        <Card className="p-12 text-center"><Building2 className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" /><p className="text-muted-foreground">Selecione uma empresa ativa para acessar o módulo de compras.</p></Card>
+        <Card className="flex flex-col items-center justify-center p-12 text-center">
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary"><Building2 className="w-6 h-6" aria-hidden="true" /></span>
+          <p className="mt-3 text-lg font-semibold">Nenhuma empresa ativa</p>
+          <p className="mt-1 text-sm text-muted-foreground">Selecione uma empresa ativa para acessar o módulo de compras.</p>
+        </Card>
       ) : loading ? (
-        <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+        <div role="status" aria-busy="true" className="space-y-4">
+          <span className="sr-only">Carregando</span>
+          <Skeleton className="h-11 w-full max-w-xl rounded-md" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Skeleton className="h-28 rounded-lg" />
+            <Skeleton className="h-28 rounded-lg" />
+            <Skeleton className="h-28 rounded-lg" />
+          </div>
+          <Skeleton className="h-64 rounded-lg" />
+        </div>
       ) : isOnboarding ? (
         <div className="min-h-[60vh] flex flex-col justify-center">
           <OnboardingCompras
@@ -1110,13 +1099,13 @@ export default function GestaoCompras() {
             if (v === 'estoque' || v === 'produtos') void loadAll();
           }}
         >
-          <TabsList className="mb-4">
-            <TabsTrigger value="pedidos"><ShoppingCart className="w-3.5 h-3.5 mr-1.5" /> Pedidos</TabsTrigger>
-            <TabsTrigger value="produtos"><Package className="w-3.5 h-3.5 mr-1.5" /> Produtos</TabsTrigger>
-            <TabsTrigger value="fornecedores"><Users className="w-3.5 h-3.5 mr-1.5" /> Fornecedores</TabsTrigger>
-            <TabsTrigger value="estoque"><Warehouse className="w-3.5 h-3.5 mr-1.5" /> Estoque</TabsTrigger>
-            <TabsTrigger value="nfe"><FileText className="w-3.5 h-3.5 mr-1.5" /> NF-e</TabsTrigger>
-            <TabsTrigger value="certificado"><ShieldCheck className="w-3.5 h-3.5 mr-1.5" /> Certificado</TabsTrigger>
+          <TabsList className="mb-4 h-auto flex-wrap justify-start">
+            <TabsTrigger value="pedidos"><ShoppingCart className="w-4 h-4 mr-2" aria-hidden="true" /> Pedidos</TabsTrigger>
+            <TabsTrigger value="produtos"><Package className="w-4 h-4 mr-2" aria-hidden="true" /> Produtos</TabsTrigger>
+            <TabsTrigger value="fornecedores"><Users className="w-4 h-4 mr-2" aria-hidden="true" /> Fornecedores</TabsTrigger>
+            <TabsTrigger value="estoque"><Warehouse className="w-4 h-4 mr-2" aria-hidden="true" /> Estoque</TabsTrigger>
+            <TabsTrigger value="nfe"><FileText className="w-4 h-4 mr-2" aria-hidden="true" /> NF-e</TabsTrigger>
+            <TabsTrigger value="certificado"><ShieldCheck className="w-4 h-4 mr-2" aria-hidden="true" /> Certificado</TabsTrigger>
           </TabsList>
 
           {/* ══ ABA PRODUTOS ══ */}
@@ -1131,9 +1120,18 @@ export default function GestaoCompras() {
 
           {/* ══ ABA FORNECEDORES ══ */}
           <TabsContent value="fornecedores" className="space-y-4">
-            <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input placeholder="Buscar fornecedor, CNPJ ou e-mail..." value={fornSearch} onChange={e => setFornSearch(e.target.value)} className="pl-9" /></div>
+            <div className="relative">
+              <Label htmlFor="busca-fornecedor" className="sr-only">Buscar fornecedor</Label>
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
+              <Input id="busca-fornecedor" placeholder="Buscar fornecedor, CNPJ ou e-mail..." value={fornSearch} onChange={e => setFornSearch(e.target.value)} className="pl-9" />
+            </div>
             {pessoasFornecedores.length === 0 ? (
-              <Card className="p-12 text-center"><Users className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" /><p className="text-muted-foreground">Nenhum fornecedor cadastrado</p></Card>
+              <Card className="flex flex-col items-center justify-center p-12 text-center">
+                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary"><Users className="w-6 h-6" aria-hidden="true" /></span>
+                <p className="mt-3 text-lg font-semibold">Nenhum fornecedor cadastrado</p>
+                <p className="mt-1 text-sm text-muted-foreground">Cadastre os fornecedores com quem a empresa compra.</p>
+                <Button className="mt-4" onClick={() => { setEditingPessoa(null); setPessoaOpen(true); }}><Plus className="w-4 h-4" /> Novo Fornecedor</Button>
+              </Card>
             ) : (
               <div className="space-y-2">
                 {pessoasFornecedores
@@ -1145,17 +1143,17 @@ export default function GestaoCompras() {
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-semibold">{f.nome}</span>
                           {f.nome_fantasia && <span className="text-xs text-muted-foreground">({f.nome_fantasia})</span>}
-                          {f.tipo === 'ambos' && <Badge variant="outline" className="text-xs">Cliente e Fornecedor</Badge>}
+                          {f.tipo === 'ambos' && <Badge variant="info">Cliente e Fornecedor</Badge>}
                         </div>
                         <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
                           {f.documento && <span>{f.documento}</span>}
                           {f.email && <span>{f.email}</span>}
-                          {f.telefone && <span className="flex items-center gap-1"><Users className="w-3 h-3" />{f.telefone}</span>}
+                          {f.telefone && <span className="flex items-center gap-1"><Users className="w-3 h-3" aria-hidden="true" />{f.telefone}</span>}
                         </div>
                       </div>
                       <div className="flex gap-1 shrink-0">
-                        <Button size="sm" variant="ghost" onClick={() => { setEditingPessoa(f); setPessoaOpen(true); }}><Pencil className="w-4 h-4" /></Button>
-                        <Button size="sm" variant="ghost" onClick={() => deletePessoa.mutate({ id: f.id })}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                        <Button size="sm" variant="ghost" aria-label={`Editar ${f.nome}`} onClick={() => { setEditingPessoa(f); setPessoaOpen(true); }}><Pencil className="w-4 h-4" /></Button>
+                        <Button size="sm" variant="ghost" aria-label={`Excluir ${f.nome}`} onClick={() => deletePessoa.mutate({ id: f.id })}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                       </div>
                     </div>
                   </Card>
@@ -1167,18 +1165,29 @@ export default function GestaoCompras() {
           {/* ══ ABA ESTOQUE ══ */}
           <TabsContent value="estoque" className="space-y-4">
             {/* Métricas */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              <Card className="p-4"><div className="flex items-center gap-2 text-muted-foreground text-xs mb-1"><Package className="w-4 h-4" /> Produtos Ativos</div><p className="text-2xl font-bold">{produtos.filter(p => p.ativo).length}</p></Card>
-              <Card className="p-4"><div className="flex items-center gap-2 text-muted-foreground text-xs mb-1"><AlertCircle className="w-4 h-4" /> Em Alerta</div><p className={`text-2xl font-bold ${prodAlerta > 0 ? 'text-destructive' : ''}`}>{prodAlerta}</p></Card>
-              <Card className="p-4 col-span-2 sm:col-span-1"><div className="flex items-center gap-2 text-muted-foreground text-xs mb-1"><DollarSign className="w-4 h-4" /> Valor em Estoque</div><p className="text-lg font-bold leading-tight">{fmtCurrency(valorEstoque)}</p></Card>
+            <LinhaKpis
+              itens={[
+                { rotulo: 'Produtos ativos', valor: String(produtos.filter(p => p.ativo).length), icone: Package },
+                { rotulo: 'Em alerta', valor: String(prodAlerta), icone: AlertCircle, tom: prodAlerta > 0 ? 'aviso' : 'neutro' },
+                { rotulo: 'Valor em estoque', valor: fmtCurrency(valorEstoque), icone: DollarSign, tom: 'ok' },
+              ]}
+            />
+
+            <div className="relative">
+              <Label htmlFor="busca-estoque" className="sr-only">Buscar produto</Label>
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
+              <Input id="busca-estoque" placeholder="Buscar produto, código ou categoria..." value={estoqSearch} onChange={e => setEstoqSearch(e.target.value)} className="pl-9" />
             </div>
 
-            <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input placeholder="Buscar produto, código ou categoria..." value={estoqSearch} onChange={e => setEstoqSearch(e.target.value)} className="pl-9" /></div>
-
             {filtProdutos.length === 0 ? (
-              <Card className="p-12 text-center"><Warehouse className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" /><p className="text-muted-foreground mb-3">Nenhum produto cadastrado</p><Button onClick={openNovoProduto}><Plus className="w-4 h-4 mr-2" />Novo Produto</Button></Card>
+              <Card className="flex flex-col items-center justify-center p-12 text-center">
+                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary"><Warehouse className="w-6 h-6" aria-hidden="true" /></span>
+                <p className="mt-3 text-lg font-semibold">Nenhum produto cadastrado</p>
+                <p className="mt-1 text-sm text-muted-foreground">Cadastre os produtos e materiais que a empresa controla em estoque.</p>
+                <Button className="mt-4" onClick={openNovoProduto}><Plus className="w-4 h-4" /> Novo Produto</Button>
+              </Card>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filtProdutos.map(p => {
                   const emAlerta = p.ativo && p.saldo_minimo > 0 && p.saldo_atual <= p.saldo_minimo;
                   return (
@@ -1186,31 +1195,31 @@ export default function GestaoCompras() {
                       <div className="flex items-start justify-between gap-2 mb-3">
                         <div className="min-w-0">
                           <p className="text-sm font-semibold truncate">{p.descricao}</p>
-                          <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                          <div className="flex items-center gap-1 mt-1 flex-wrap">
                             {p.codigo && <span className="text-xs text-muted-foreground">{p.codigo}</span>}
-                            {p.categoria && <Badge variant="outline" className="text-xs">{p.categoria}</Badge>}
-                            {!p.ativo && <Badge variant="outline" className="text-xs text-muted-foreground">Inativo</Badge>}
+                            {p.categoria && <Badge variant="info">{p.categoria}</Badge>}
+                            {!p.ativo && <Badge variant="muted">Inativo</Badge>}
                           </div>
                         </div>
                         <div className="flex gap-1 shrink-0" onClick={e => e.stopPropagation()}>
-                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => { setEditingProduto(p); setProdutoForm({ codigo: p.codigo ?? '', descricao: p.descricao, unidade: p.unidade, categoria: p.categoria ?? '', saldo_minimo: String(p.saldo_minimo), preco_custo_medio: String(p.preco_custo_medio), ativo: p.ativo, ncm: p.ncm ?? '', cfop: p.cfop ?? '', cst_icms: p.cst_icms ?? '', csosn: p.csosn ?? '', cst_pis: p.cst_pis ?? '', cst_cofins: p.cst_cofins ?? '', p_icms: p.p_icms != null ? String(p.p_icms) : '', p_pis: p.p_pis != null ? String(p.p_pis) : '', p_cofins: p.p_cofins != null ? String(p.p_cofins) : '' }); setProdutoOpen(true); }}><Pencil className="w-3.5 h-3.5" /></Button>
-                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={e => handleDeleteProduto(p.id, e)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
+                          <Button size="sm" variant="ghost" className="w-9 px-0" aria-label={`Editar ${p.descricao}`} onClick={() => { setEditingProduto(p); setProdutoForm({ codigo: p.codigo ?? '', descricao: p.descricao, unidade: p.unidade, categoria: p.categoria ?? '', saldo_minimo: String(p.saldo_minimo), preco_custo_medio: String(p.preco_custo_medio), ativo: p.ativo, ncm: p.ncm ?? '', cfop: p.cfop ?? '', cst_icms: p.cst_icms ?? '', csosn: p.csosn ?? '', cst_pis: p.cst_pis ?? '', cst_cofins: p.cst_cofins ?? '', p_icms: p.p_icms != null ? String(p.p_icms) : '', p_pis: p.p_pis != null ? String(p.p_pis) : '', p_cofins: p.p_cofins != null ? String(p.p_cofins) : '' }); setProdutoOpen(true); }}><Pencil className="w-4 h-4" /></Button>
+                          <Button size="sm" variant="ghost" className="w-9 px-0" aria-label={`Excluir ${p.descricao}`} onClick={e => handleDeleteProduto(p.id, e)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                         </div>
                       </div>
-                      <div className={`flex items-end justify-between p-3 rounded-lg ${emAlerta ? 'bg-destructive/10' : 'bg-success/10'}`}>
+                      <div className={`flex items-end justify-between gap-2 p-3 rounded-lg border ${emAlerta ? 'border-destructive-line bg-destructive-tint' : 'border-success-line bg-success-tint'}`}>
                         <div>
                           <p className="text-xs text-muted-foreground">Saldo</p>
-                          <p className={`text-2xl font-bold ${emAlerta ? 'text-destructive' : 'text-success'}`}>{p.saldo_atual.toLocaleString('pt-BR')}</p>
+                          <p className={`text-[2rem] leading-10 font-bold tabular-nums ${emAlerta ? 'text-destructive-ink' : 'text-success-ink'}`}>{p.saldo_atual.toLocaleString('pt-BR')}</p>
                           <p className="text-xs text-muted-foreground">{p.unidade}</p>
                         </div>
                         <div className="text-right">
-                          {emAlerta && <div className="flex items-center gap-1 text-destructive text-xs mb-1"><AlertCircle className="w-3 h-3" />Estoque baixo</div>}
+                          {emAlerta && <div className="flex items-center justify-end gap-1 text-destructive-ink text-xs mb-1"><AlertCircle className="w-3 h-3" aria-hidden="true" />Estoque baixo</div>}
                           <p className="text-xs text-muted-foreground">Mín: {p.saldo_minimo} {p.unidade}</p>
-                          {p.preco_custo_medio > 0 && <p className="text-xs text-muted-foreground">Custo: {fmtCurrency(p.preco_custo_medio)}/un</p>}
+                          {p.preco_custo_medio > 0 && <p className="text-xs text-muted-foreground tabular-nums">Custo: {fmtCurrency(p.preco_custo_medio)}/un</p>}
                         </div>
                       </div>
                       {p.saldo_atual > 0 && p.preco_custo_medio > 0 && (
-                        <p className="text-xs text-muted-foreground text-right mt-1">Valor: {fmtCurrency(p.saldo_atual * p.preco_custo_medio)}</p>
+                        <p className="text-xs text-muted-foreground text-right tabular-nums mt-1">Valor: {fmtCurrency(p.saldo_atual * p.preco_custo_medio)}</p>
                       )}
                     </Card>
                   );
@@ -1222,26 +1231,31 @@ export default function GestaoCompras() {
           {/* ══ ABA NF-e ══ */}
           <TabsContent value="nfe" className="space-y-4">
             {nfes.length === 0 ? (
-              <Card className="p-12 text-center"><FileText className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" /><p className="text-muted-foreground mb-3">Nenhuma NF-e importada</p><Button onClick={() => { resetNfeDialog(); setNfeOpen(true); }}><Plus className="w-4 h-4 mr-2" />Importar NF-e</Button></Card>
+              <Card className="flex flex-col items-center justify-center p-12 text-center">
+                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary"><FileText className="w-6 h-6" aria-hidden="true" /></span>
+                <p className="mt-3 text-lg font-semibold">Nenhuma NF-e importada</p>
+                <p className="mt-1 text-sm text-muted-foreground">Importe o XML ou o DANFE das notas recebidas para lançar o estoque.</p>
+                <Button className="mt-4" onClick={() => { resetNfeDialog(); setNfeOpen(true); }}><Plus className="w-4 h-4" /> Importar NF-e</Button>
+              </Card>
             ) : (
-              <div className="overflow-x-auto">
+              <Card className="overflow-x-auto p-0">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b text-xs text-muted-foreground">
-                      <th className="text-left py-2 pr-4 font-medium">Número / Série</th>
-                      <th className="text-left py-2 px-2 font-medium">Emitente</th>
-                      <th className="text-right py-2 px-2 font-medium">Valor</th>
-                      <th className="text-left py-2 px-2 font-medium hidden sm:table-cell">Pedido</th>
-                      <th className="text-left py-2 px-2 font-medium hidden sm:table-cell">Data Emissão</th>
-                      <th className="py-2 pl-2 w-10" />
+                    <tr className="border-b border-border text-sm font-semibold">
+                      <th className="text-left py-3 px-4">Número / Série</th>
+                      <th className="text-left py-3 px-2">Emitente</th>
+                      <th className="text-right py-3 px-2">Valor</th>
+                      <th className="text-left py-3 px-2 hidden sm:table-cell">Pedido</th>
+                      <th className="text-left py-3 px-2 hidden sm:table-cell">Emissão</th>
+                      <th className="py-3 pl-2 pr-4 w-10"><span className="sr-only">Ações</span></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
                     {nfes.map(n => {
                       const ped = pedidos.find(p => p.id === n.pedido_id);
                       return (
-                        <tr key={n.id} className="hover:bg-muted/30">
-                          <td className="py-3 pr-4">
+                        <tr key={n.id} className="hover:bg-muted">
+                          <td className="py-3 px-4">
                             <p className="font-medium">Nº {n.numero}</p>
                             <p className="text-xs text-muted-foreground">Série {n.serie}</p>
                           </td>
@@ -1249,22 +1263,22 @@ export default function GestaoCompras() {
                             <p className="font-medium truncate max-w-[180px]">{n.emitente_nome || '—'}</p>
                             {n.emitente_cnpj && <p className="text-xs text-muted-foreground">{n.emitente_cnpj}</p>}
                           </td>
-                          <td className="py-3 px-2 text-right font-medium">{fmtCurrency(n.valor_total)}</td>
+                          <td className="py-3 px-2 text-right tabular-nums font-medium">{fmtCurrency(n.valor_total)}</td>
                           <td className="py-3 px-2 hidden sm:table-cell">
-                            {ped ? <Badge variant="outline" className="text-xs">{ped.observacoes || 'Pedido'}</Badge> : <span className="text-muted-foreground text-xs">—</span>}
+                            {ped ? <Badge variant="info" truncate className="max-w-[180px]">{ped.observacoes || 'Pedido'}</Badge> : <span className="text-muted-foreground text-xs">—</span>}
                           </td>
                           <td className="py-3 px-2 hidden sm:table-cell text-muted-foreground text-xs">{fmtDate(n.data_emissao)}</td>
-                          <td className="py-3 pl-2">
+                          <td className="py-3 pl-2 pr-4">
                             <div className="flex items-center justify-end gap-1">
                               {nfesComEstoque.has(n.id) ? (
-                                <Badge variant="outline" className="text-xs font-normal bg-success/10 text-success border-success/30 whitespace-nowrap">Estoque lançado</Badge>
+                                <Badge variant="success">Estoque lançado</Badge>
                               ) : n.xml ? (
-                                <Button size="sm" variant="outline" className="text-xs whitespace-nowrap"
+                                <Button size="sm" variant="outline" className="whitespace-nowrap"
                                   onClick={e => { e.stopPropagation(); abrirLancamentoEstoque(n); }}>
-                                  <PackagePlus className="w-3.5 h-3.5 mr-1" /> Lançar estoque
+                                  <PackagePlus className="w-4 h-4" /> Lançar estoque
                                 </Button>
                               ) : null}
-                              <Button size="sm" variant="ghost" onClick={e => handleDeleteNfe(n.id, e)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                              <Button size="sm" variant="ghost" aria-label={`Excluir NF-e ${n.numero}`} onClick={e => handleDeleteNfe(n.id, e)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                             </div>
                           </td>
                         </tr>
@@ -1272,7 +1286,7 @@ export default function GestaoCompras() {
                     })}
                   </tbody>
                 </table>
-              </div>
+              </Card>
             )}
           </TabsContent>
 
@@ -1309,11 +1323,11 @@ export default function GestaoCompras() {
             <div className="md:col-span-2"><Label>Descrição / Observações</Label><Textarea value={pedidoForm.observacoes} onChange={e => setPedidoForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} placeholder="Descreva o objeto deste pedido..." /></div>
           </div>
           <div className="mt-4">
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
               <Label className="text-sm font-semibold">Itens do Pedido *</Label>
-              <Button type="button" size="sm" variant="outline" onClick={() => setFormItens(i => [...i, blankItem()])}><Plus className="w-3.5 h-3.5 mr-1" /> Adicionar Item</Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => setFormItens(i => [...i, blankItem()])}><Plus className="w-4 h-4" /> Adicionar Item</Button>
             </div>
-            <div className="hidden sm:grid grid-cols-12 gap-2 mb-1 text-xs text-muted-foreground px-1">
+            <div className="hidden sm:grid grid-cols-12 gap-2 mb-1 text-sm text-muted-foreground px-1">
               <span className="col-span-5">Descrição</span><span className="col-span-2">Unidade</span><span className="col-span-2 text-right">Quantidade</span><span className="col-span-2 text-right">Preço unit.</span><span className="col-span-1" />
             </div>
             <div className="space-y-2">
@@ -1322,22 +1336,22 @@ export default function GestaoCompras() {
                 return (
                   <div key={idx} className="space-y-1">
                     <div className="grid grid-cols-12 gap-2 items-center">
-                      <div className="col-span-12 sm:col-span-5"><Input placeholder="Descrição do item" value={item.descricao} onChange={e => setFormItens(arr => arr.map((x, i) => i === idx ? { ...x, descricao: e.target.value } : x))} className="text-xs" /></div>
-                      <div className="col-span-4 sm:col-span-2"><Input placeholder="UN" value={item.unidade} onChange={e => setFormItens(arr => arr.map((x, i) => i === idx ? { ...x, unidade: e.target.value } : x))} className="text-xs" /></div>
-                      <div className="col-span-3 sm:col-span-2"><Input type="number" min="0" step="1" placeholder="Qtd." value={item.quantidade} onChange={e => setFormItens(arr => arr.map((x, i) => i === idx ? { ...x, quantidade: e.target.value } : x))} className="text-xs" /></div>
-                      <div className="col-span-4 sm:col-span-2"><Input type="number" min="0" step="0.01" placeholder="R$ unit." value={item.preco_unitario} onChange={e => setFormItens(arr => arr.map((x, i) => i === idx ? { ...x, preco_unitario: e.target.value } : x))} className="text-xs" /></div>
-                      <div className="col-span-1 flex justify-center"><Button type="button" size="sm" variant="ghost" className="h-8 w-8 p-0" disabled={formItens.length === 1} onClick={() => setFormItens(arr => arr.filter((_, i) => i !== idx))}><X className="w-3.5 h-3.5 text-destructive" /></Button></div>
+                      <div className="col-span-12 sm:col-span-5"><Input aria-label={`Descrição do item ${idx + 1}`} placeholder="Descrição do item" value={item.descricao} onChange={e => setFormItens(arr => arr.map((x, i) => i === idx ? { ...x, descricao: e.target.value } : x))} /></div>
+                      <div className="col-span-4 sm:col-span-2"><Input aria-label={`Unidade do item ${idx + 1}`} placeholder="UN" value={item.unidade} onChange={e => setFormItens(arr => arr.map((x, i) => i === idx ? { ...x, unidade: e.target.value } : x))} /></div>
+                      <div className="col-span-3 sm:col-span-2"><Input aria-label={`Quantidade do item ${idx + 1}`} type="number" min="0" step="1" placeholder="Qtd." value={item.quantidade} onChange={e => setFormItens(arr => arr.map((x, i) => i === idx ? { ...x, quantidade: e.target.value } : x))} className="text-right tabular-nums" /></div>
+                      <div className="col-span-4 sm:col-span-2"><Input aria-label={`Preço unitário do item ${idx + 1}`} type="number" min="0" step="0.01" placeholder="R$ unit." value={item.preco_unitario} onChange={e => setFormItens(arr => arr.map((x, i) => i === idx ? { ...x, preco_unitario: e.target.value } : x))} className="text-right tabular-nums" /></div>
+                      <div className="col-span-1 flex justify-center"><Button type="button" size="sm" variant="ghost" className="w-9 px-0" aria-label={`Remover item ${idx + 1}`} disabled={formItens.length === 1} onClick={() => setFormItens(arr => arr.filter((_, i) => i !== idx))}><X className="w-4 h-4 text-destructive" /></Button></div>
                     </div>
-                    {sub > 0 && <p className="text-right text-xs text-muted-foreground pr-10">= {fmtCurrency(sub)}</p>}
+                    {sub > 0 && <p className="text-right text-xs text-muted-foreground tabular-nums pr-10">= {fmtCurrency(sub)}</p>}
                   </div>
                 );
               })}
             </div>
             {formItens.some(i => i.descricao.trim()) && (
-              <div className="mt-3 p-2 rounded bg-muted/40 text-sm font-semibold text-right">Total: {fmtCurrency(formItens.reduce((s, i) => s + parseNum(i.quantidade) * parseNum(i.preco_unitario), 0))}</div>
+              <div className="mt-3 rounded-md bg-muted px-3 py-2 text-sm font-semibold text-right tabular-nums">Total: {fmtCurrency(formItens.reduce((s, i) => s + parseNum(i.quantidade) * parseNum(i.preco_unitario), 0))}</div>
             )}
           </div>
-          <div className="flex justify-end gap-2 mt-4">
+          <div className="flex flex-wrap justify-end gap-2 mt-4">
             <Button variant="outline" onClick={() => { setPedidoOpen(false); resetPedidoForm(); }}>Cancelar</Button>
             <Button onClick={handleSavePedido} disabled={saving}>{saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}Salvar Pedido</Button>
           </div>
@@ -1385,18 +1399,18 @@ export default function GestaoCompras() {
           {/* ── ETAPA 1: Upload ── */}
           {(nfeMode === 'manual' || (nfeMode === 'xml' && nfeStep === 1)) && (
             <div className="space-y-4">
-              <div className="flex gap-2">
-                <Button size="sm" variant={nfeMode === 'xml' ? 'default' : 'outline'} onClick={() => { setNfeMode('xml'); setNfeParsed(null); setTimeout(() => fileRef.current?.click(), 0); }}>
-                  <Upload className="w-3.5 h-3.5 mr-1.5" />Importar Arquivo
+              <div className="flex flex-wrap gap-2">
+                <Button variant={nfeMode === 'xml' ? 'default' : 'outline'} aria-pressed={nfeMode === 'xml'} onClick={() => { setNfeMode('xml'); setNfeParsed(null); setTimeout(() => fileRef.current?.click(), 0); }}>
+                  <Upload className="w-4 h-4" /> Importar Arquivo
                 </Button>
-                <Button size="sm" variant={nfeMode === 'manual' ? 'default' : 'outline'} onClick={() => setNfeMode('manual')}>
-                  <Pencil className="w-3.5 h-3.5 mr-1.5" />Preencher manualmente
+                <Button variant={nfeMode === 'manual' ? 'default' : 'outline'} aria-pressed={nfeMode === 'manual'} onClick={() => setNfeMode('manual')}>
+                  <Pencil className="w-4 h-4" /> Preencher manualmente
                 </Button>
               </div>
 
               {nfeMode === 'xml' && (
                 <div
-                  className={`border-2 border-dashed rounded-lg p-10 text-center transition-colors ${nfePdfLoading ? 'border-border bg-muted/40 cursor-wait' : `cursor-pointer ${nfeDragging ? 'border-primary bg-primary/5' : 'border-muted-foreground/30 hover:border-primary/50'}`}`}
+                  className={`rounded-lg border-2 border-dashed p-8 text-center transition-colors ${nfePdfLoading ? 'border-border bg-muted cursor-wait' : `cursor-pointer ${nfeDragging ? 'border-primary bg-primary-tint' : 'border-border hover:border-primary hover:bg-primary-tint'}`}`}
                   onClick={() => { if (!nfePdfLoading) fileRef.current?.click(); }}
                   onDragOver={e => { e.preventDefault(); if (!nfePdfLoading) setNfeDragging(true); }}
                   onDragLeave={() => setNfeDragging(false)}
@@ -1412,7 +1426,7 @@ export default function GestaoCompras() {
                     </>
                   ) : (
                     <>
-                      <Upload className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                      <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary"><Upload className="w-6 h-6" aria-hidden="true" /></span>
                       <p className="text-sm font-medium">Clique ou arraste o arquivo aqui</p>
                       <p className="text-xs text-muted-foreground mt-1">O sistema detecta o fornecedor e os produtos automaticamente</p>
                       <p className="text-xs text-muted-foreground">Formatos aceitos: XML (NF-e 4.0) ou PDF (DANFE)</p>
@@ -1433,7 +1447,7 @@ export default function GestaoCompras() {
                     <div><Label>CNPJ Emitente</Label><Input value={nfeForm.cnpj_emitente} onChange={e => setNfeForm(f => ({ ...f, cnpj_emitente: e.target.value }))} placeholder="00.000.000/0001-00" /></div>
                     <div><Label>Razão Social Emitente</Label><Input value={nfeForm.nome_emitente} onChange={e => setNfeForm(f => ({ ...f, nome_emitente: e.target.value }))} /></div>
                   </div>
-                  <div className="border-t pt-4 space-y-4">
+                  <div className="border-t border-border pt-4 space-y-4">
                     <div>
                       <Label>Vincular a pedido (opcional)</Label>
                       <Select value={nfeForm.pedido_id || 'none'} onValueChange={v => setNfeForm(f => ({ ...f, pedido_id: v === 'none' ? '' : v }))}>
@@ -1447,7 +1461,7 @@ export default function GestaoCompras() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="flex justify-end gap-2">
+                    <div className="flex flex-wrap justify-end gap-2">
                       <Button variant="outline" onClick={() => { setNfeOpen(false); resetNfeDialog(); }}>Cancelar</Button>
                       <Button onClick={handleSaveNfe} disabled={saving}>
                         {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />} Salvar NF-e
@@ -1462,31 +1476,31 @@ export default function GestaoCompras() {
           {/* ── ETAPA 2: Resumo NF-e + Fornecedor ── */}
           {nfeMode === 'xml' && nfeStep === 2 && nfeParsed && (
             <div className="space-y-4">
-              <Card className="p-4 bg-success/5 border-success/30">
-                <p className="text-xs font-semibold text-success mb-2 flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" />NF-e lida com sucesso
+              <div className="rounded-lg border border-success-line bg-success-tint p-4">
+                <p className="text-sm font-semibold text-success-ink mb-2 flex items-center gap-1">
+                  <CheckCircle2 className="w-4 h-4" aria-hidden="true" />NF-e lida com sucesso
                 </p>
-                <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-sm">
                   <div><span className="text-muted-foreground">Número:</span> {nfeParsed.numero_nf} / Série {nfeParsed.serie}</div>
-                  <div><span className="text-muted-foreground">Valor total:</span> <span className="font-semibold">{fmtCurrency(nfeParsed.v_nf)}</span></div>
-                  <div className="col-span-2"><span className="text-muted-foreground">Emitente:</span> {nfeParsed.nome_emitente}{nfeParsed.cnpj_emitente ? ` — CNPJ ${nfeParsed.cnpj_emitente}` : ''}</div>
+                  <div><span className="text-muted-foreground">Valor total:</span> <span className="font-semibold tabular-nums">{fmtCurrency(nfeParsed.v_nf)}</span></div>
+                  <div className="sm:col-span-2"><span className="text-muted-foreground">Emitente:</span> {nfeParsed.nome_emitente}{nfeParsed.cnpj_emitente ? ` — CNPJ ${nfeParsed.cnpj_emitente}` : ''}</div>
                   <div><span className="text-muted-foreground">Emissão:</span> {nfeParsed.data_emissao ? fmtDate(nfeParsed.data_emissao.split('T')[0]) : '—'}</div>
                   <div><span className="text-muted-foreground">Itens:</span> {nfeParsed.itens.length}</div>
                 </div>
-              </Card>
+              </div>
 
               {nfeFornMatch ? (
-                <div className="flex items-center gap-3 p-3 rounded-lg border border-success/30 bg-success/5">
-                  <CheckCircle2 className="w-5 h-5 text-success shrink-0" />
+                <div className="flex items-center gap-3 rounded-lg border border-success-line bg-success-tint p-4">
+                  <CheckCircle2 className="w-5 h-5 text-success-ink shrink-0" aria-hidden="true" />
                   <div>
                     <p className="text-sm font-medium">Fornecedor já cadastrado</p>
                     <p className="text-xs text-muted-foreground">{nfeFornMatch.razao_social}{nfeFornMatch.cnpj ? ` — CNPJ ${nfeFornMatch.cnpj}` : ''}</p>
                   </div>
                 </div>
               ) : (
-                <div className="p-3 rounded-lg border border-warning/30 bg-warning/5 space-y-2">
+                <div className="rounded-lg border border-warning-line bg-warning-tint p-4 space-y-2">
                   <div className="flex items-center gap-2">
-                    <AlertTriangle className="w-4 h-4 text-warning shrink-0" />
+                    <AlertTriangle className="w-4 h-4 text-warning-ink shrink-0" aria-hidden="true" />
                     <p className="text-sm font-medium">Novo fornecedor detectado</p>
                   </div>
                   <p className="text-xs text-muted-foreground">{nfeParsed.nome_emitente || '—'}{nfeParsed.cnpj_emitente ? ` — CNPJ ${nfeParsed.cnpj_emitente}` : ''}</p>
@@ -1516,9 +1530,9 @@ export default function GestaoCompras() {
                 </Select>
               </div>
 
-              <div className="flex justify-between pt-2 border-t">
-                <Button variant="ghost" size="sm" onClick={() => { setNfeParsed(null); setNfeXmlStr(''); setNfeStep(1); setNfeFornMatch(null); setNfeCriarForn(false); setNfeItemMaps([]); }}>
-                  ← Trocar arquivo
+              <div className="flex flex-wrap justify-between gap-2 pt-4 border-t border-border">
+                <Button variant="ghost" onClick={() => { setNfeParsed(null); setNfeXmlStr(''); setNfeStep(1); setNfeFornMatch(null); setNfeCriarForn(false); setNfeItemMaps([]); }}>
+                  <ArrowLeft className="w-4 h-4" /> Trocar arquivo
                 </Button>
                 {nfeParsed.itens.length > 0 ? (
                   <Button onClick={() => setNfeStep(3)}>Próximo: Produtos →</Button>
@@ -1540,17 +1554,18 @@ export default function GestaoCompras() {
               </p>
               <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
                 {nfeItemMaps.map((m, idx) => (
-                  <div key={idx} className={`border rounded-lg p-3 space-y-2 transition-opacity ${!m.incluir ? 'opacity-50' : ''}`}>
+                  <div key={idx} className={`rounded-lg border border-border p-4 space-y-2 transition-opacity ${!m.incluir ? 'opacity-50' : ''}`}>
                     <div className="flex items-start gap-2">
                       <Checkbox checked={m.incluir}
+                        aria-label={`Incluir ${m.item.x_prod}`}
                         onCheckedChange={v => setNfeItemMaps(arr => arr.map((x, i) => i === idx ? { ...x, incluir: !!v } : x))}
-                        className="mt-0.5" />
+                        className="mt-1" />
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium truncate">{m.item.x_prod}</p>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs text-muted-foreground tabular-nums">
                           {m.item.q_com} {m.item.u_com} · {fmtCurrency(m.item.v_un_com)}/un
                           {m.item.c_prod ? ` · Cód: ${m.item.c_prod}` : ''}
-                          {m.produtoId && m.produtoId !== '__new__' && <span className="text-success ml-1">· Auto-vinculado</span>}
+                          {m.produtoId && m.produtoId !== '__new__' && <span className="text-success-ink ml-1">· Auto-vinculado</span>}
                         </p>
                         {(m.item.ncm || m.item.cfop || m.item.cst_icms || m.item.csosn) && (
                           <p className="text-xs text-muted-foreground">
@@ -1564,8 +1579,9 @@ export default function GestaoCompras() {
                         {/* value="" derruba o Radix (pitfall conhecido) — o
                             "não registrar" vive num sentinel e volta a '' no
                             estado, que é o que o salvar entende. */}
+                        <Label htmlFor={`nfe-prod-${idx}`} className="sr-only">Produto do catálogo para {m.item.x_prod}</Label>
                         <Select value={m.produtoId || '__skip__'} onValueChange={v => setNfeItemMaps(arr => arr.map((x, i) => i === idx ? { ...x, produtoId: v === '__skip__' ? '' : v } : x))}>
-                          <SelectTrigger className="text-xs h-8"><SelectValue placeholder="— Não registrar no estoque —" /></SelectTrigger>
+                          <SelectTrigger id={`nfe-prod-${idx}`}><SelectValue placeholder="— Não registrar no estoque —" /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="__skip__">— Não registrar no estoque —</SelectItem>
                             {produtosAtivosParaSelect.map(pr => (
@@ -1575,7 +1591,7 @@ export default function GestaoCompras() {
                           </SelectContent>
                         </Select>
                         {m.produtoId === '__new__' && (
-                          <Input className="text-xs h-8" placeholder="Nome do novo produto"
+                          <Input aria-label="Nome do novo produto" placeholder="Nome do novo produto"
                             value={m.novaNome}
                             onChange={e => setNfeItemMaps(arr => arr.map((x, i) => i === idx ? { ...x, novaNome: e.target.value } : x))} />
                         )}
@@ -1592,9 +1608,9 @@ export default function GestaoCompras() {
                           const ref = m.produtoId && m.produtoId !== '__new__' ? precosContrato.get(m.produtoId) : undefined;
                           const sit = ref ? situacaoDoPrecoContratado(ref.preco, s) : 'sem_referencia';
                           return (
-                            <div className="text-xs rounded-md bg-muted/40 px-2 py-1.5 space-y-0.5">
+                            <div className="text-xs rounded-md bg-muted px-3 py-2 space-y-1">
                               <p>
-                                Venda sugerida: <b>{s.precoSugerido != null ? fmtCurrency(s.precoSugerido) : '—'}</b>
+                                Venda sugerida: <b className="tabular-nums">{s.precoSugerido != null ? fmtCurrency(s.precoSugerido) : '—'}</b>
                                 <span className="text-muted-foreground">
                                   {s.precoMinimo != null ? ` (mínimo ${fmtCurrency(s.precoMinimo)})` : ''} · tributos {margemInfo.analise.cargaTributariaPerc.toFixed(1).replace('.', ',')}% + despesas {margemInfo.analise.despesaOperacionalPerc.toFixed(1).replace('.', ',')}% + alvo {margemInfo.alvo}% — {margemInfo.analise.regimeRotulo}
                                 </span>
@@ -1619,8 +1635,8 @@ export default function GestaoCompras() {
                   </div>
                 ))}
               </div>
-              <div className="flex justify-between pt-2 border-t">
-                <Button variant="ghost" size="sm" onClick={() => setNfeStep(2)}>← Voltar</Button>
+              <div className="flex flex-wrap justify-between gap-2 pt-4 border-t border-border">
+                <Button variant="ghost" onClick={() => setNfeStep(2)}><ArrowLeft className="w-4 h-4" /> Voltar</Button>
                 <Button onClick={handleSaveNfe} disabled={saving}>
                   {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />} Salvar NF-e
                 </Button>
@@ -1654,7 +1670,7 @@ function ProdutoDialog({ open, onOpenChange, editing, form, setForm, saving, onS
               value={form.codigo}
               readOnly={!editing}
               onChange={e => { if (editing) setForm(f => ({ ...f, codigo: e.target.value })); }}
-              className={!editing ? 'bg-muted/50 cursor-default select-none' : ''}
+              className={!editing ? 'bg-muted cursor-default select-none' : ''}
             />
             {!editing && <p className="text-xs text-muted-foreground mt-1">Gerado automaticamente pelo sistema</p>}
           </div>
@@ -1663,22 +1679,22 @@ function ProdutoDialog({ open, onOpenChange, editing, form, setForm, saving, onS
           <div><Label>Saldo Mínimo</Label><Input type="number" min="0" step="0.01" value={form.saldo_minimo} onChange={e => setForm(f => ({ ...f, saldo_minimo: e.target.value }))} /></div>
           <div className="sm:col-span-2"><Label>Preço de Custo unitário (R$)</Label><Input type="number" min="0" step="0.01" value={form.preco_custo_medio} onChange={e => setForm(f => ({ ...f, preco_custo_medio: e.target.value }))} placeholder="0,00" /></div>
           <div className="flex items-center gap-3 sm:col-span-2 mt-1"><Switch id="prod-ativo" checked={form.ativo} onCheckedChange={v => setForm(f => ({ ...f, ativo: v }))} /><Label htmlFor="prod-ativo" className="cursor-pointer">Produto ativo</Label></div>
-          <div className="sm:col-span-2 border-t pt-3 mt-1">
-            <p className="text-xs font-semibold text-muted-foreground mb-2">Dados Fiscais (preenchidos automaticamente via NF-e)</p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              <div><Label className="text-xs">NCM</Label><Input className="text-xs h-8" value={form.ncm} onChange={e => setForm(f => ({ ...f, ncm: e.target.value }))} placeholder="00000000" /></div>
-              <div><Label className="text-xs">CFOP</Label><Input className="text-xs h-8" value={form.cfop} onChange={e => setForm(f => ({ ...f, cfop: e.target.value }))} placeholder="0000" /></div>
-              <div><Label className="text-xs">CST ICMS</Label><Input className="text-xs h-8" value={form.cst_icms} onChange={e => setForm(f => ({ ...f, cst_icms: e.target.value }))} placeholder="00" /></div>
-              <div><Label className="text-xs">CSOSN</Label><Input className="text-xs h-8" value={form.csosn} onChange={e => setForm(f => ({ ...f, csosn: e.target.value }))} placeholder="102" /></div>
-              <div><Label className="text-xs">Alíq. ICMS %</Label><Input type="number" className="text-xs h-8" value={form.p_icms} onChange={e => setForm(f => ({ ...f, p_icms: e.target.value }))} placeholder="12" /></div>
-              <div><Label className="text-xs">Alíq. PIS %</Label><Input type="number" className="text-xs h-8" value={form.p_pis} onChange={e => setForm(f => ({ ...f, p_pis: e.target.value }))} placeholder="0.65" /></div>
-              <div><Label className="text-xs">Alíq. COFINS %</Label><Input type="number" className="text-xs h-8" value={form.p_cofins} onChange={e => setForm(f => ({ ...f, p_cofins: e.target.value }))} placeholder="3.00" /></div>
-              <div><Label className="text-xs">CST PIS</Label><Input className="text-xs h-8" value={form.cst_pis} onChange={e => setForm(f => ({ ...f, cst_pis: e.target.value }))} placeholder="07" /></div>
-              <div><Label className="text-xs">CST COFINS</Label><Input className="text-xs h-8" value={form.cst_cofins} onChange={e => setForm(f => ({ ...f, cst_cofins: e.target.value }))} placeholder="07" /></div>
+          <div className="sm:col-span-2 border-t border-border pt-4 mt-1">
+            <p className="text-sm font-semibold text-muted-foreground mb-3">Dados Fiscais (preenchidos automaticamente via NF-e)</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              <div><Label>NCM</Label><Input value={form.ncm} onChange={e => setForm(f => ({ ...f, ncm: e.target.value }))} placeholder="00000000" /></div>
+              <div><Label>CFOP</Label><Input value={form.cfop} onChange={e => setForm(f => ({ ...f, cfop: e.target.value }))} placeholder="0000" /></div>
+              <div><Label>CST ICMS</Label><Input value={form.cst_icms} onChange={e => setForm(f => ({ ...f, cst_icms: e.target.value }))} placeholder="00" /></div>
+              <div><Label>CSOSN</Label><Input value={form.csosn} onChange={e => setForm(f => ({ ...f, csosn: e.target.value }))} placeholder="102" /></div>
+              <div><Label>Alíq. ICMS %</Label><Input type="number" value={form.p_icms} onChange={e => setForm(f => ({ ...f, p_icms: e.target.value }))} placeholder="12" /></div>
+              <div><Label>Alíq. PIS %</Label><Input type="number" value={form.p_pis} onChange={e => setForm(f => ({ ...f, p_pis: e.target.value }))} placeholder="0.65" /></div>
+              <div><Label>Alíq. COFINS %</Label><Input type="number" value={form.p_cofins} onChange={e => setForm(f => ({ ...f, p_cofins: e.target.value }))} placeholder="3.00" /></div>
+              <div><Label>CST PIS</Label><Input value={form.cst_pis} onChange={e => setForm(f => ({ ...f, cst_pis: e.target.value }))} placeholder="07" /></div>
+              <div><Label>CST COFINS</Label><Input value={form.cst_cofins} onChange={e => setForm(f => ({ ...f, cst_cofins: e.target.value }))} placeholder="07" /></div>
             </div>
           </div>
         </div>
-        <div className="flex justify-end gap-2 mt-4">
+        <div className="flex flex-wrap justify-end gap-2 mt-4">
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
           <Button onClick={onSave} disabled={saving}>{saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}Salvar</Button>
         </div>
@@ -1712,9 +1728,9 @@ function MovDialog({ open, onOpenChange, form, setForm, saving, onSave, produtos
             <Select value={form.tipo} onValueChange={(v: any) => setForm(f => ({ ...f, tipo: v }))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="entrada"><span className="flex items-center gap-2"><TrendingUp className="w-3.5 h-3.5 text-success" />Entrada</span></SelectItem>
-                <SelectItem value="saida"><span className="flex items-center gap-2"><TrendingDown className="w-3.5 h-3.5 text-destructive" />Saída</span></SelectItem>
-                <SelectItem value="ajuste"><span className="flex items-center gap-2"><RotateCcw className="w-3.5 h-3.5 text-info" />Ajuste</span></SelectItem>
+                <SelectItem value="entrada"><span className="flex items-center gap-2"><TrendingUp className="w-4 h-4 text-success" aria-hidden="true" />Entrada</span></SelectItem>
+                <SelectItem value="saida"><span className="flex items-center gap-2"><TrendingDown className="w-4 h-4 text-destructive" aria-hidden="true" />Saída</span></SelectItem>
+                <SelectItem value="ajuste"><span className="flex items-center gap-2"><RotateCcw className="w-4 h-4 text-muted-foreground" aria-hidden="true" />Ajuste</span></SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -1745,7 +1761,7 @@ function MovDialog({ open, onOpenChange, form, setForm, saving, onSave, produtos
             <Textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} placeholder="Motivo, referência, etc." />
           </div>
         </div>
-        <div className="flex justify-end gap-2 mt-4">
+        <div className="flex flex-wrap justify-end gap-2 mt-4">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button onClick={onSave} disabled={saving}>{saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}Registrar</Button>
         </div>
@@ -1781,17 +1797,17 @@ function OnboardingCompras({ onCadastrarFornecedor, onNovoPedido, onEstoque, onI
           const StepIcon = step.icon;
           const isLast   = idx === steps.length - 1;
           return (
-            <li key={idx} className="flex gap-5">
-              <div className="flex flex-col items-center pt-0.5">
-                <div className="flex items-center justify-center w-11 h-11 rounded-full border-2 border-border bg-muted text-foreground text-sm font-bold flex-shrink-0">{idx + 1}</div>
-                {!isLast && <div className="w-px flex-1 bg-border mt-2 mb-2 min-h-[32px]" />}
+            <li key={idx} className="flex gap-4">
+              <div className="flex flex-col items-center">
+                <div className="flex items-center justify-center w-11 h-11 rounded-full bg-primary-tint text-primary text-sm font-bold flex-shrink-0">{idx + 1}</div>
+                {!isLast && <div className="w-px flex-1 bg-border my-2 min-h-8" />}
               </div>
-              <div className={`flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 flex-1 ${isLast ? 'pb-0' : 'pb-10'}`}>
+              <div className={`flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 flex-1 ${isLast ? 'pb-0' : 'pb-8'}`}>
                 <div className="flex items-start gap-3 flex-1">
-                  <StepIcon className="w-5 h-5 text-muted-foreground mt-0.5 flex-shrink-0" />
+                  <StepIcon className="w-5 h-5 text-muted-foreground mt-1 flex-shrink-0" aria-hidden="true" />
                   <div><p className="text-base font-semibold leading-tight">{step.title}</p><p className="text-sm text-muted-foreground mt-1">{step.desc}</p></div>
                 </div>
-                <Button size="sm" variant="outline" onClick={step.onClick} className="shrink-0 self-start sm:self-auto">{step.btn}</Button>
+                <Button variant="outline" onClick={step.onClick} className="shrink-0 self-start sm:self-auto">{step.btn}</Button>
               </div>
             </li>
           );

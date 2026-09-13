@@ -92,19 +92,19 @@ type NotaFiscalSync = {
 };
 
 const statusCfg: Record<string, { label: string; color: string }> = {
-  pendente: { label: 'Pendente', color: 'bg-warning/10 text-warning' },
-  entregue: { label: 'Entregue', color: 'bg-success/10 text-success' },
-  parcial: { label: 'Parcial', color: 'bg-info/10 text-info' },
-  cancelado: { label: 'Cancelado', color: 'bg-destructive/10 text-destructive' },
+  pendente: { label: 'Pendente', color: 'bg-warning-tint text-warning-ink' },
+  entregue: { label: 'Entregue', color: 'bg-success-tint text-success-ink' },
+  parcial: { label: 'Parcial', color: 'bg-muted text-foreground' },
+  cancelado: { label: 'Cancelado', color: 'bg-destructive-tint text-destructive-ink' },
 };
 
 const kanbanCfg: Record<string, { label: string; color: string }> = {
   pedido:          { label: 'Aguard. Faturamento', color: 'bg-muted text-muted-foreground border-border' },
-  separar_estoque: { label: 'Separar Estoque',     color: 'bg-warning/10 text-warning border-warning/20' },
-  faturar:         { label: 'Faturar',             color: 'bg-warning/10 text-warning border-warning/20' },
-  faturado:        { label: 'Faturado',            color: 'bg-success/10 text-success border-success/20' },
-  entrega:         { label: 'Em Entrega',          color: 'bg-info/10 text-info border-info/20' },
-  cancelado:       { label: 'Cancelado',           color: 'bg-destructive/10 text-destructive border-destructive/20' },
+  separar_estoque: { label: 'Separar Estoque',     color: 'bg-warning-tint text-warning-ink border-warning-line' },
+  faturar:         { label: 'Faturar',             color: 'bg-warning-tint text-warning-ink border-warning-line' },
+  faturado:        { label: 'Faturado',            color: 'bg-success-tint text-success-ink border-success-line' },
+  entrega:         { label: 'Em Entrega',          color: 'bg-muted text-foreground border-border' },
+  cancelado:       { label: 'Cancelado',           color: 'bg-destructive-tint text-destructive-ink border-destructive-line' },
 };
 
 /** Uma linha do documento recém-lido, antes de a cota ser decidida. */
@@ -1780,14 +1780,14 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   return (
     <div className="space-y-4">
       {avisoExecucao && (
-        <div className="flex items-start gap-3 rounded-lg border border-warning/40 bg-warning/5 px-4 py-3">
-          <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+        <div className="flex items-start gap-3 rounded-lg border border-warning-line bg-warning-tint px-4 py-3">
+          <AlertTriangle className="w-4 h-4 text-warning-ink shrink-0 mt-0.5" />
           <p className="text-sm text-muted-foreground">{avisoExecucao}</p>
         </div>
       )}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
-          <h3 className="text-sm font-semibold flex items-center gap-2">
+          <h3 className="text-lg font-semibold flex items-center gap-2">
             <ShoppingCart className="w-4 h-4 text-muted-foreground" /> Pedidos / Ordens de Fornecimento
           </h3>
           <p className="text-xs text-muted-foreground">
@@ -1877,9 +1877,9 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
 
               <TabsContent value="manual" className="space-y-3 mt-3">
                 {extractedData && (
-                  <div className="p-3 rounded-lg bg-success/5 border border-success/20">
+                  <div className="p-3 rounded-lg bg-success-tint border border-success-line">
                     <p className="text-xs font-medium flex items-center gap-1.5">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-success" />
+                      <CheckCircle2 className="w-3.5 h-3.5 text-success-ink" />
                       Dados extraídos — revise e corrija se necessário
                     </p>
                   </div>
@@ -1943,11 +1943,11 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     Empenhar não é entregar: enquanto a nota criava pedidos, o
                     saldo caía no instante em que o dinheiro era reservado. */}
                 {extractedData && documentoCria === 'empenho' && (
-                    <div className="p-3 rounded-lg border border-info/40 bg-info/10 space-y-2">
-                      <p className="text-xs font-semibold text-info">
+                    <div className="p-3 rounded-lg border border-border bg-muted space-y-2">
+                      <p className="text-xs font-semibold text-foreground">
                         Nota de empenho — <b>autoriza</b>, não consome
                       </p>
-                      <p className="text-xs text-info/80">
+                      <p className="text-xs text-muted-foreground">
                         Vai ser registrada como empenho do contrato. Nenhum saldo de item ou de
                         contrato é abatido: isso acontece quando as entregas forem lançadas contra
                         ela.
@@ -1975,7 +1975,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                           {/* Lida do documento é fato; escolhida à mão é
                               declaração. O mesmo excesso é irregularidade num
                               ordinário e rotina num estimativo. */}
-                          <p className="text-[11px] text-muted-foreground mt-1">
+                          <p className="text-xs text-muted-foreground mt-1">
                             {tipoDeEmpenho(extractedData?.especie_empenho)
                               ? 'Lida do documento.'
                               : 'Não veio rotulada no documento — a escolha fica registrada como manual.'}
@@ -2027,7 +2027,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                             <div className="flex items-center justify-between">
                               <span className="text-xs font-semibold text-muted-foreground">Item {idx + 1}</span>
                               <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => removeExtractedItem(ei.key)}>
-                                <Trash2 className="w-3 h-3 text-destructive" />
+                                <Trash2 className="w-3 h-3 text-destructive-ink" />
                               </Button>
                             </div>
                             <div>
@@ -2094,7 +2094,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                                   Não dizer qual das duas é apresentar palpite
                                   com a mesma cara de fato. */}
                               {ei.cota_origem === 'proporcao' && (
-                                <p className="text-[11px] text-warning mt-1">
+                                <p className="text-xs text-warning-ink mt-1">
                                   {ROTULO_DA_ORIGEM_DA_COTA.proporcao}
                                 </p>
                               )}
@@ -2218,7 +2218,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                         const qtd = parseFloat(form.quantidade) || 0;
                         const falta = qtd > 0 && qtd > e.disponivel;
                         return (
-                          <p className={`text-[11px] mt-1 ${falta ? 'text-warning' : 'text-muted-foreground'}`}>
+                          <p className={`text-xs mt-1 ${falta ? 'text-warning-ink' : 'text-muted-foreground'}`}>
                             Estoque: {e.fisico.toLocaleString('pt-BR')} físico · {e.reservado.toLocaleString('pt-BR')} reservado ·{' '}
                             <b>{e.disponivel.toLocaleString('pt-BR')} disponível</b>
                             {falta ? ' — quantidade acima do disponível' : ''}
@@ -2286,8 +2286,8 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
         );
         if (suspeitas.length === 0) return null;
         return (
-          <Card className="p-4 mb-3 border-warning/40 bg-warning/5">
-            <h4 className="text-sm font-semibold text-warning mb-2">
+          <Card className="p-4 mb-3 border-warning-line bg-warning-tint">
+            <h4 className="text-lg font-semibold text-warning-ink mb-2">
               Auditoria dos lançamentos — {suspeitas.length} ponto(s) a revisar
             </h4>
             <div className="space-y-2">
@@ -2317,7 +2317,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
           <button type="button" className="w-full flex items-center justify-between gap-2 text-left"
             onClick={() => setEmpenhosAbertos((v) => !v)}
             title={empenhosAbertos ? 'Recolher os empenhos' : 'Expandir os empenhos'}>
-            <h4 className="text-sm font-semibold flex items-center gap-2">
+            <h4 className="text-lg font-semibold flex items-center gap-2">
               <FileText className="w-4 h-4 text-muted-foreground" />
               Empenhos registrados ({empenhosDoContrato.length})
             </h4>
@@ -2334,14 +2334,14 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
               const cotas = saldosDeEmpenho.filter(s => s.empenho_id === e.id);
               return (
                 <div key={e.id} className={`rounded-md border p-2.5 ${
-                  e.cancelado ? 'border-destructive/40 bg-destructive/5' : ''
+                  e.cancelado ? 'border-destructive-line bg-destructive-tint' : ''
                 }`}>
                   <div className="flex items-center justify-between gap-2 flex-wrap">
                     <div className="flex items-center gap-2">
                       <span className={`text-sm font-medium tabular-nums ${
                         e.cancelado ? 'line-through text-muted-foreground' : ''
                       }`}>{e.numero}</span>
-                      <Badge variant="outline" className="text-[11px]">
+                      <Badge variant="outline" className="text-xs">
                         {ROTULO_DO_EMPENHO[e.tipo as 'ordinario'] ?? e.tipo}
                       </Badge>
                       {/* O painel é o que se olha. Sem isto o empenho cancelado
@@ -2349,7 +2349,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                           quem lançar entrega sobre ele produz despesa sem
                           cobertura sem nenhum sinal na tela. */}
                       {e.cancelado && (
-                        <Badge className="text-[11px] bg-destructive/10 text-destructive border border-destructive/30">
+                        <Badge className="text-xs bg-destructive-tint text-destructive-ink border border-destructive-line">
                           <Ban className="w-3 h-3 mr-1 inline" /> Cancelado
                         </Badge>
                       )}
@@ -2373,7 +2373,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     ) : (
                       // Empenho sem PDF é autorização que não se prova. Dizer
                       // qual está sem documento é o que permite ir buscá-lo.
-                      <span className="text-[11px] text-warning">
+                      <span className="text-xs text-warning-ink">
                         sem documento anexado
                       </span>
                     )}
@@ -2384,7 +2384,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     // não mexe em quantidade. Mostrá-la aqui faria o empenho
                     // parecer disponível — o que vale dizer é que ele não
                     // autoriza mais nada.
-                    <p className="text-xs text-destructive mt-1.5">
+                    <p className="text-xs text-destructive-ink mt-1.5">
                       Anulado por inteiro. Não autoriza mais nenhuma entrega — entregar sob empenho
                       cancelado é despesa sem cobertura (Lei 4.320/64, art. 60).
                     </p>
@@ -2583,7 +2583,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                           // número e estado disputavam a mesma linha e a leitura
                           // vinha espremida.
                           const quitada = p.nf_quitada && p.data_quitacao && (
-                            <p className="text-xs text-success">
+                            <p className="text-xs text-success-ink">
                               Quitada {new Date(p.data_quitacao + 'T00:00:00').toLocaleDateString('pt-BR')}
                             </p>
                           );
@@ -2605,7 +2605,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                                 onClick={() => abrirDocumentoDoFinanceiro(nd.storage_path!, nd.arquivo_nome ?? 'Nota fiscal')}
                                 title={`Abrir ${nd.arquivo_nome} em nova aba`}>
                                 <Badge variant="outline"
-                                  className="text-xs text-foreground border-primary/40 hover:bg-primary/5 cursor-pointer transition-colors">
+                                  className="text-xs text-foreground border-primary/40 hover:bg-primary-tint cursor-pointer transition-colors">
                                   {rotulo}
                                   <ExternalLink className="w-3 h-3 ml-1 inline text-primary" />
                                 </Badge>
@@ -2633,7 +2633,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                             </>
                           );
                           const quitada = p.nf_quitada && p.data_quitacao && (
-                            <p className="text-xs text-success">
+                            <p className="text-xs text-success-ink">
                               Quitada {new Date(p.data_quitacao + 'T00:00:00').toLocaleDateString('pt-BR')}
                             </p>
                           );
@@ -2662,7 +2662,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                                 className="block w-fit"
                               >
                                 <Badge variant="outline"
-                                  className="text-xs text-foreground border-primary/40 hover:bg-primary/5 cursor-pointer transition-colors">
+                                  className="text-xs text-foreground border-primary/40 hover:bg-primary-tint cursor-pointer transition-colors">
                                   {conteudo}
                                   <ExternalLink className="w-3 h-3 ml-1 inline text-primary" />
                                 </Badge>
@@ -2683,9 +2683,9 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                             numeroNfeComoInteiro(p.nota_fiscal) !== numeroNfeComoInteiro(nf.numero_nf);
                           return (
                             <Badge key={nf.id} variant="outline" className={`text-xs block w-fit ${
-                              diverge ? 'border-warning/50 text-warning' :
-                              nf.status === 'autorizada' ? 'border-success/30 text-success' :
-                              nf.status === 'rejeitada' ? 'border-destructive/30 text-destructive' :
+                              diverge ? 'border-warning-line text-warning-ink' :
+                              nf.status === 'autorizada' ? 'border-success-line text-success-ink' :
+                              nf.status === 'rejeitada' ? 'border-destructive-line text-destructive-ink' :
                               'border-muted-foreground/30 text-muted-foreground'
                             }`}
                             title={diverge
@@ -2747,7 +2747,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                         {!p.nf_quitada && p.status === 'entregue' && (isFinanceiro || isAdmin) && (
                           <Button
                             size="sm" variant="outline"
-                            className="h-7 px-2 text-xs text-success border-success/30 hover:bg-success/5"
+                            className="h-7 px-2 text-xs text-success-ink border-success-line hover:bg-success-tint"
                             onClick={() => openNfDialog(p)}
                             title="Registrar pagamento da NF-e e gerar bonificação"
                           >
@@ -2783,7 +2783,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                             title="Excluir pedido (motivo obrigatório — fica no histórico do Admin)"
                             onClick={() => openDeleteDialog(p.id, p.numero_pedido)}
                           >
-                            <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                            <Trash2 className="w-3.5 h-3.5 text-destructive-ink" />
                           </Button>
                         )}
                         {(isFinanceiro || isAdmin) && !p.nf_quitada && (
@@ -2808,7 +2808,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
 
         {nfsSync.length > 0 && (
           <Card className="p-4 mt-4">
-            <h4 className="text-xs font-semibold flex items-center gap-2 mb-3">
+            <h4 className="text-lg font-semibold flex items-center gap-2 mb-3">
               <FileText className="w-4 h-4 text-muted-foreground" />
               Notas Fiscais Sincronizadas do Financeiro
               <Badge variant="outline" className="text-xs">{nfsSync.length} NFs</Badge>
@@ -2826,11 +2826,11 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
               </div>
               <div className="text-center p-2 rounded bg-muted/50">
                 <p className="text-xs text-muted-foreground">Autorizadas</p>
-                <p className="text-sm font-bold text-success">{nfsSync.filter(n => n.status === 'autorizada').length}</p>
+                <p className="text-sm font-bold text-success-ink">{nfsSync.filter(n => n.status === 'autorizada').length}</p>
               </div>
               <div className="text-center p-2 rounded bg-muted/50">
                 <p className="text-xs text-muted-foreground">Pendentes</p>
-                <p className="text-sm font-bold text-warning">{nfsSync.filter(n => n.status !== 'autorizada' && n.status !== 'cancelada').length}</p>
+                <p className="text-sm font-bold text-warning-ink">{nfsSync.filter(n => n.status !== 'autorizada' && n.status !== 'cancelada').length}</p>
               </div>
             </div>
             <p className="text-xs text-muted-foreground italic">
@@ -2846,7 +2846,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <DollarSign className="w-5 h-5 text-success" />
+              <DollarSign className="w-5 h-5 text-success-ink" />
               Registrar Pagamento de NF-e
             </DialogTitle>
           </DialogHeader>
@@ -2900,7 +2900,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       {/* Pré-Notas Fiscais */}
       {preNotas.length > 0 && (
         <Card className="p-4">
-          <h4 className="text-xs font-semibold flex items-center gap-2 mb-3">
+          <h4 className="text-lg font-semibold flex items-center gap-2 mb-3">
             <Receipt className="w-4 h-4 text-muted-foreground" />
             Pré-Notas Fiscais Solicitadas
             <Badge variant="outline" className="text-xs">{preNotas.length}</Badge>
@@ -2908,11 +2908,11 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
           <div className="space-y-2">
             {preNotas.map((pn: any) => {
               const statusMap: Record<string, { label: string; color: string }> = {
-                pendente: { label: 'Pendente', color: 'bg-warning/10 text-warning' },
-                em_revisao: { label: 'Em Revisão', color: 'bg-info/10 text-info' },
-                aprovada: { label: 'Aprovada', color: 'bg-success/10 text-success' },
-                rejeitada: { label: 'Rejeitada', color: 'bg-destructive/10 text-destructive' },
-                devolvida: { label: 'Devolvida', color: 'bg-warning/10 text-warning' },
+                pendente: { label: 'Pendente', color: 'bg-warning-tint text-warning-ink' },
+                em_revisao: { label: 'Em Revisão', color: 'bg-muted text-foreground' },
+                aprovada: { label: 'Aprovada', color: 'bg-success-tint text-success-ink' },
+                rejeitada: { label: 'Rejeitada', color: 'bg-destructive-tint text-destructive-ink' },
+                devolvida: { label: 'Devolvida', color: 'bg-warning-tint text-warning-ink' },
               };
               const st = statusMap[pn.status] || statusMap.pendente;
               return (
@@ -2925,12 +2925,12 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                   <div className="flex items-center gap-2">
                     <span className="text-muted-foreground">{new Date(pn.created_at).toLocaleDateString('pt-BR')}</span>
                     {pn.motivo_devolucao && (
-                      <Badge variant="outline" className="text-xs text-warning" title={pn.motivo_devolucao}>
+                      <Badge variant="outline" className="text-xs text-warning-ink" title={pn.motivo_devolucao}>
                         <AlertTriangle className="w-3 h-3 mr-1" /> Devolvida
                       </Badge>
                     )}
                     {pn.motivo_rejeicao && (
-                      <Badge variant="outline" className="text-xs text-destructive" title={pn.motivo_rejeicao}>
+                      <Badge variant="outline" className="text-xs text-destructive-ink" title={pn.motivo_rejeicao}>
                         <XCircle className="w-3 h-3 mr-1" /> Rejeitada
                       </Badge>
                     )}
@@ -2946,14 +2946,14 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       <Dialog open={!!deleteDialog} onOpenChange={v => { if (!v && !deleting) { setDeleteDialog(null); setDeleteReason(''); } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-destructive">
+            <DialogTitle className="flex items-center gap-2 text-destructive-ink">
               <Trash2 className="w-5 h-5" /> Excluir Pedido
             </DialogTitle>
           </DialogHeader>
           {deleteDialog && (
             <div className="space-y-4">
-              <div className="p-3 rounded-lg bg-destructive/5 border border-destructive/20 text-xs space-y-1">
-                <p className="font-medium text-destructive">Atenção: esta ação não pode ser desfeita.</p>
+              <div className="p-3 rounded-lg bg-destructive-tint border border-destructive-line text-xs space-y-1">
+                <p className="font-medium text-destructive-ink">Atenção: esta ação não pode ser desfeita.</p>
                 <p className="text-muted-foreground">Pedido: <strong className="text-foreground">{deleteDialog.numero}</strong></p>
               </div>
               <div>
@@ -3077,7 +3077,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-[11px] text-muted-foreground mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   É deste empenho que a cota consome — e é ele que o kit de faturamento pré-seleciona.
                 </p>
               </div>
@@ -3090,7 +3090,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                   disabled={reenviandoOrdem}
                   onChange={e => { const f = e.target.files?.[0]; if (f) void reenviarOrdem(f); e.target.value = ''; }}
                 />
-                <p className="text-[11px] text-muted-foreground mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   {reenviandoOrdem
                     ? 'Enviando…'
                     : 'Atualiza o documento que o dossiê aponta; o anterior permanece no histórico de arquivos.'}
@@ -3113,12 +3113,12 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
               const estoura = saldo > 0 && total - anterior > saldo;
               if (q <= 0 || u <= 0) return null;
               return (
-                <div className={`rounded-lg border p-2.5 text-xs ${estoura ? 'border-destructive/40 bg-destructive/5' : 'border-border bg-muted/30'}`}>
-                  <p className={estoura ? 'text-destructive font-medium' : 'text-muted-foreground'}>
+                <div className={`rounded-lg border p-2.5 text-xs ${estoura ? 'border-destructive-line bg-destructive-tint' : 'border-border bg-muted/30'}`}>
+                  <p className={estoura ? 'text-destructive-ink font-medium' : 'text-muted-foreground'}>
                     {q} × {fmt(u)} = <strong>{fmt(total)}</strong>
                   </p>
                   {estoura && (
-                    <p className="text-destructive mt-1">
+                    <p className="text-destructive-ink mt-1">
                       Isso passa em {fmt(total - anterior - saldo)} o saldo que resta no contrato
                       ({fmt(saldo)}). Confira se o valor digitado é o UNITÁRIO e não o total.
                     </p>

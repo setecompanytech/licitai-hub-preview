@@ -4,9 +4,10 @@ import { useEmpresa } from "@/contexts/EmpresaContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Save, Copy, TrendingUp } from "lucide-react";
+import { Loader2, Save, Copy, TrendingUp, BookOpen, Building2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -36,6 +37,9 @@ interface Realizado {
 const MESES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 const fmt = (v: number) =>
   v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+const TH = "p-2 text-sm font-semibold text-foreground";
+const TH_NUM = `${TH} text-right`;
 
 export default function FinOrcamento() {
   const { empresaAtiva } = useEmpresa();
@@ -175,8 +179,14 @@ export default function FinOrcamento() {
   if (!empresaAtiva) {
     return (
       <Card>
-        <CardContent className="py-12 text-center text-sm text-muted-foreground">
-          Selecione uma empresa ativa para gerenciar o orçamento.
+        <CardContent className="flex flex-col items-center py-12 text-center">
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
+            <Building2 className="w-6 h-6" aria-hidden="true" />
+          </span>
+          <p className="mt-3 text-lg font-semibold">Nenhuma empresa ativa</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Selecione uma empresa ativa para gerenciar o orçamento.
+          </p>
         </CardContent>
       </Card>
     );
@@ -185,21 +195,22 @@ export default function FinOrcamento() {
   const isReceita = filtroNatureza === "receita";
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5" />
+              <TrendingUp className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
               Orçamento Empresarial — Budget vs Actual
             </CardTitle>
             <CardDescription>
               Plano orçamentário mensal por conta contábil. Compare orçado x realizado.
             </CardDescription>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <label htmlFor="orc-ano" className="sr-only">Ano</label>
             <Select value={String(ano)} onValueChange={(v) => setAno(Number(v))}>
-              <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+              <SelectTrigger id="orc-ano" className="w-32" aria-label="Ano"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {[ano - 1, ano, ano + 1].map((y) => (
                   <SelectItem key={y} value={String(y)}>{y}</SelectItem>
@@ -207,7 +218,7 @@ export default function FinOrcamento() {
               </SelectContent>
             </Select>
             <Select value={filtroNatureza} onValueChange={setFiltroNatureza}>
-              <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-44" aria-label="Natureza"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="receita">Receitas</SelectItem>
                 <SelectItem value="despesa">Despesas</SelectItem>
@@ -215,20 +226,27 @@ export default function FinOrcamento() {
                 <SelectItem value="passivo">Passivos</SelectItem>
               </SelectContent>
             </Select>
-            <Button onClick={salvar} disabled={saving || loading} size="sm">
-              {saving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
+            <Button onClick={salvar} disabled={saving || loading}>
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Save className="w-4 h-4" aria-hidden="true" />}
               Salvar
             </Button>
           </div>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="py-12 text-center text-muted-foreground">
-              <Loader2 className="w-6 h-6 animate-spin mx-auto" />
+            <div className="space-y-2" role="status" aria-label="Carregando orçamento">
+              <Skeleton className="h-10 w-80 max-w-full" />
+              <Skeleton className="h-64" />
             </div>
           ) : contasFiltradas.length === 0 ? (
-            <div className="py-12 text-center text-sm text-muted-foreground">
-              Nenhuma conta analítica de {filtroNatureza} encontrada. Cadastre o Plano de Contas primeiro.
+            <div className="flex flex-col items-center py-12 text-center">
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
+                <BookOpen className="w-6 h-6" aria-hidden="true" />
+              </span>
+              <p className="mt-3 text-lg font-semibold">Nenhuma conta analítica</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Nenhuma conta analítica de {filtroNatureza} encontrada. Cadastre o Plano de Contas primeiro.
+              </p>
             </div>
           ) : (
             <Tabs defaultValue="orcado">
@@ -240,15 +258,15 @@ export default function FinOrcamento() {
               </TabsList>
 
               <TabsContent value="orcado" className="overflow-x-auto">
-                <table className="w-full text-xs">
+                <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b">
-                      <th className="text-left p-2 sticky left-0 bg-background min-w-[260px]">Conta</th>
+                    <tr className="border-b border-border">
+                      <th className={`${TH} text-left sticky left-0 bg-card min-w-[260px]`}>Conta</th>
                       {MESES.map((m) => (
-                        <th key={m} className="p-1 text-right min-w-[88px]">{m}</th>
+                        <th key={m} className={`${TH_NUM} min-w-[96px]`}>{m}</th>
                       ))}
-                      <th className="p-2 text-right font-semibold">Total</th>
-                      <th className="p-1 w-10"></th>
+                      <th className={TH_NUM}>Total</th>
+                      <th className={`${TH} w-12`}><span className="sr-only">Ações</span></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -256,21 +274,22 @@ export default function FinOrcamento() {
                       const linha = metas[c.id] ?? {};
                       const total = totalLinha(linha);
                       return (
-                        <tr key={c.id} className="border-b hover:bg-muted/30">
-                          <td className="p-2 sticky left-0 bg-background">
+                        <tr key={c.id} className="border-b border-border hover:bg-muted/50">
+                          <td className="p-2 sticky left-0 bg-card">
                             <div className="font-mono text-xs text-muted-foreground">{c.codigo}</div>
                             <div>{c.nome}</div>
                           </td>
                           {MESES.map((_, idx) => {
                             const m = idx + 1;
                             return (
-                              <td key={m} className="p-0.5">
+                              <td key={m} className="p-1">
                                 <Input
                                   type="number"
                                   step="0.01"
                                   value={linha[m] ?? ""}
                                   onChange={(e) => setMetaCell(c.id, m, Number(e.target.value) || 0)}
-                                  className="h-7 text-right text-xs px-1"
+                                  aria-label={`${c.nome} — ${MESES[idx]}`}
+                                  className="h-9 text-right text-sm px-2 tabular-nums"
                                 />
                               </td>
                             );
@@ -280,11 +299,12 @@ export default function FinOrcamento() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-7 w-7"
+                              className="h-9 w-9"
                               title="Replicar Jan para todos os meses"
+                              aria-label={`Replicar janeiro para todos os meses de ${c.nome}`}
                               onClick={() => replicarLinha(c.id, linha[1] ?? 0)}
                             >
-                              <Copy className="w-3 h-3" />
+                              <Copy className="w-4 h-4" aria-hidden="true" />
                             </Button>
                           </td>
                         </tr>
@@ -295,12 +315,12 @@ export default function FinOrcamento() {
               </TabsContent>
 
               <TabsContent value="realizado" className="overflow-x-auto">
-                <table className="w-full text-xs">
+                <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b">
-                      <th className="text-left p-2 min-w-[260px]">Conta</th>
-                      {MESES.map((m) => <th key={m} className="p-2 text-right">{m}</th>)}
-                      <th className="p-2 text-right font-semibold">Total</th>
+                    <tr className="border-b border-border">
+                      <th className={`${TH} text-left min-w-[260px]`}>Conta</th>
+                      {MESES.map((m) => <th key={m} className={TH_NUM}>{m}</th>)}
+                      <th className={TH_NUM}>Total</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -308,7 +328,7 @@ export default function FinOrcamento() {
                       const r = realizado[c.id] ?? {};
                       const total = totalLinha(r);
                       return (
-                        <tr key={c.id} className="border-b">
+                        <tr key={c.id} className="border-b border-border">
                           <td className="p-2">
                             <div className="font-mono text-xs text-muted-foreground">{c.codigo}</div>
                             <div>{c.nome}</div>
@@ -327,12 +347,12 @@ export default function FinOrcamento() {
               </TabsContent>
 
               <TabsContent value="variacao_abs" className="overflow-x-auto">
-                <table className="w-full text-xs">
+                <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b">
-                      <th className="text-left p-2 min-w-[260px]">Conta</th>
-                      {MESES.map((m) => <th key={m} className="p-2 text-right">{m}</th>)}
-                      <th className="p-2 text-right font-semibold">Total</th>
+                    <tr className="border-b border-border">
+                      <th className={`${TH} text-left min-w-[260px]`}>Conta</th>
+                      {MESES.map((m) => <th key={m} className={TH_NUM}>{m}</th>)}
+                      <th className={TH_NUM}>Total</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -341,7 +361,7 @@ export default function FinOrcamento() {
                       const r = realizado[c.id] ?? {};
                       let totalDif = 0;
                       return (
-                        <tr key={c.id} className="border-b">
+                        <tr key={c.id} className="border-b border-border">
                           <td className="p-2">
                             <div className="font-mono text-xs text-muted-foreground">{c.codigo}</div>
                             <div>{c.nome}</div>
@@ -367,12 +387,12 @@ export default function FinOrcamento() {
               </TabsContent>
 
               <TabsContent value="variacao_pct" className="overflow-x-auto">
-                <table className="w-full text-xs">
+                <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b">
-                      <th className="text-left p-2 min-w-[260px]">Conta</th>
-                      {MESES.map((m) => <th key={m} className="p-2 text-right">{m}</th>)}
-                      <th className="p-2 text-right font-semibold">Anual</th>
+                    <tr className="border-b border-border">
+                      <th className={`${TH} text-left min-w-[260px]`}>Conta</th>
+                      {MESES.map((m) => <th key={m} className={TH_NUM}>{m}</th>)}
+                      <th className={TH_NUM}>Anual</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -383,7 +403,7 @@ export default function FinOrcamento() {
                       const tR = totalLinha(r);
                       const pctTotal = tO > 0 ? (tR / tO) * 100 : 0;
                       return (
-                        <tr key={c.id} className="border-b">
+                        <tr key={c.id} className="border-b border-border">
                           <td className="p-2">
                             <div className="font-mono text-xs text-muted-foreground">{c.codigo}</div>
                             <div>{c.nome}</div>
@@ -409,7 +429,7 @@ export default function FinOrcamento() {
             </Tabs>
           )}
 
-          <div className="mt-4 text-xs text-muted-foreground border-t pt-3">
+          <div className="mt-4 text-xs text-muted-foreground border-t border-border pt-3">
             <strong>Legenda:</strong>{" "}
             {isReceita ? (
               <>Receitas — <span className="text-success">verde ≥100%</span>, <span className="text-warning">amarelo 80–99%</span>, <span className="text-destructive">vermelho &lt;80%</span></>

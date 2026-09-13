@@ -99,6 +99,8 @@ const CENARIOS: { v: Cenario; l: string; entradaMul: number; saidaMul: number; c
   { v: "otimista", l: "Otimista", entradaMul: 1.10, saidaMul: 0.95, cor: "hsl(var(--primary))" },
 ];
 
+const KPI_VALOR = "mt-1 text-[2rem] leading-10 font-bold tabular-nums truncate";
+
 export default function FinFluxoCaixa() {
   const [dias, setDias] = useState(90);
   const [mesesDFC, setMesesDFC] = useState(6);
@@ -136,33 +138,33 @@ export default function FinFluxoCaixa() {
       </TabsList>
 
       {/* ========== TAB: Projeção diária ========== */}
-      <TabsContent value="projecao" className="space-y-4 mt-0">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <TabsContent value="projecao" className="space-y-6 mt-0">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card>
-            <CardContent className="pt-4">
-              <p className="text-xs text-muted-foreground">Saldo atual</p>
-              <p className="text-xl font-semibold mt-1">{formatBRL(dadosUI?.saldoInicial ?? 0)}</p>
+            <CardContent className="p-6">
+              <p className="text-sm font-medium text-muted-foreground">Saldo atual</p>
+              <p className={KPI_VALOR}>{formatBRL(dadosUI?.saldoInicial ?? 0)}</p>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="pt-4">
-              <p className="text-xs text-muted-foreground">Saldo projetado ({dias}d · {CENARIOS.find(c => c.v === cenario)?.l})</p>
-              <p className={`text-xl font-semibold mt-1 ${saldoFinal < 0 ? "text-destructive" : ""}`}>{formatBRL(saldoFinal)}</p>
+            <CardContent className="p-6">
+              <p className="text-sm font-medium text-muted-foreground">Saldo projetado ({dias}d · {CENARIOS.find(c => c.v === cenario)?.l})</p>
+              <p className={`${KPI_VALOR} ${saldoFinal < 0 ? "text-destructive" : ""}`}>{formatBRL(saldoFinal)}</p>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="pt-4">
-              <p className="text-xs text-muted-foreground">Menor saldo no período</p>
-              <p className={`text-xl font-semibold mt-1 ${menorSaldo < 0 ? "text-destructive" : ""}`}>{formatBRL(menorSaldo)}</p>
+            <CardContent className="p-6">
+              <p className="text-sm font-medium text-muted-foreground">Menor saldo no período</p>
+              <p className={`${KPI_VALOR} ${menorSaldo < 0 ? "text-destructive" : ""}`}>{formatBRL(menorSaldo)}</p>
             </CardContent>
           </Card>
         </div>
 
         {/* Seletor de cenário */}
         <Card>
-          <CardContent className="pt-4">
+          <CardContent className="p-6">
             <div className="flex flex-wrap items-center gap-3">
-              <p className="text-xs text-muted-foreground">Cenário de projeção:</p>
+              <p className="text-sm font-medium text-muted-foreground">Cenário de projeção:</p>
               <Tabs value={cenario} onValueChange={(v) => setCenario(v as Cenario)}>
                 <TabsList>
                   {CENARIOS.map((c) => (
@@ -170,7 +172,7 @@ export default function FinFluxoCaixa() {
                   ))}
                 </TabsList>
               </Tabs>
-              <p className="text-xs text-muted-foreground ml-auto">
+              <p className="text-xs text-muted-foreground md:ml-auto">
                 Pessimista: −15% receitas, +10% despesas · Otimista: +10% receitas, −5% despesas
               </p>
             </div>
@@ -178,28 +180,26 @@ export default function FinFluxoCaixa() {
         </Card>
 
         {diasNegativos.length > 0 && (
-          <Card className="border-destructive/30 bg-destructive/5">
-            <CardContent className="pt-4 flex items-start gap-2">
-              <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
-              <div className="text-sm">
-                <p className="font-medium text-destructive">
-                  Atenção: saldo projetado fica negativo em {diasNegativos.length} dia(s)
-                </p>
-                <p className="text-xs text-destructive/80 mt-0.5">
-                  Primeiro dia crítico: {formatDate(diasNegativos[0].data)} — saldo previsto {formatBRL(diasNegativos[0].saldo_acumulado)}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+          <div role="alert" className="flex items-start gap-3 rounded-lg border border-destructive-line bg-destructive-tint p-4">
+            <AlertTriangle className="h-5 w-5 text-destructive-ink shrink-0 mt-0.5" aria-hidden="true" />
+            <div className="text-sm text-destructive-ink">
+              <p className="font-medium">
+                Atenção: saldo projetado fica negativo em {diasNegativos.length} dia(s)
+              </p>
+              <p className="text-xs mt-0.5">
+                Primeiro dia crítico: {formatDate(diasNegativos[0].data)} — saldo previsto <span className="tabular-nums">{formatBRL(diasNegativos[0].saldo_acumulado)}</span>
+              </p>
+            </div>
+          </div>
         )}
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
+          <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
-              <CardTitle className="text-base">Fluxo de caixa projetado</CardTitle>
-              <p className="text-xs text-muted-foreground mt-1">Baseado em previstos + realizados.</p>
+              <CardTitle>Fluxo de caixa projetado</CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">Baseado em previstos + realizados.</p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Tabs value={String(dias)} onValueChange={(v) => setDias(Number(v))}>
                 <TabsList>
                   {PERIODOS.map((p) => (
@@ -209,12 +209,12 @@ export default function FinFluxoCaixa() {
                   ))}
                 </TabsList>
               </Tabs>
-              <Button variant="outline" size="sm" onClick={() => refresh.mutate()} disabled={refresh.isPending}>
-                <RefreshCw className={`h-4 w-4 mr-1.5 ${refresh.isPending ? "animate-spin" : ""}`} />
+              <Button variant="outline" onClick={() => refresh.mutate()} disabled={refresh.isPending}>
+                <RefreshCw className={`h-4 w-4 ${refresh.isPending ? "animate-spin" : ""}`} aria-hidden="true" />
                 Atualizar
               </Button>
-              <Button variant="outline" size="sm" onClick={() => exportCSV(data)} disabled={!data}>
-                <Download className="h-4 w-4 mr-1.5" />
+              <Button variant="outline" onClick={() => exportCSV(data)} disabled={!data}>
+                <Download className="h-4 w-4" aria-hidden="true" />
                 CSV
               </Button>
             </div>
@@ -266,21 +266,21 @@ export default function FinFluxoCaixa() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Detalhamento diário</CardTitle>
+            <CardTitle>Detalhamento diário</CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading || !dadosUI ? (
               <Skeleton className="w-full h-48" />
             ) : (
-              <div className="overflow-auto max-h-96">
-                <table className="w-full text-xs">
-                  <thead className="sticky top-0 bg-background border-b">
+              <div className="overflow-x-auto max-h-96 overflow-y-auto">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-card border-b border-border text-sm font-semibold">
                     <tr className="text-left">
-                      <th className="py-2 px-2">Data</th>
-                      <th className="py-2 px-2 text-right">Entradas</th>
-                      <th className="py-2 px-2 text-right">Saídas</th>
-                      <th className="py-2 px-2 text-right">Saldo do dia</th>
-                      <th className="py-2 px-2 text-right">Acumulado</th>
+                      <th className="py-2 px-3">Data</th>
+                      <th className="py-2 px-3 text-right">Entradas</th>
+                      <th className="py-2 px-3 text-right">Saídas</th>
+                      <th className="py-2 px-3 text-right">Saldo do dia</th>
+                      <th className="py-2 px-3 text-right">Acumulado</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -288,18 +288,18 @@ export default function FinFluxoCaixa() {
                       const entrada = d.entradas_previstas + d.entradas_realizadas;
                       const saida = d.saidas_previstas + d.saidas_realizadas;
                       return (
-                        <tr key={d.data} className="border-b border-border/50 hover:bg-muted/30">
-                          <td className="py-1.5 px-2">{formatDate(d.data)}</td>
-                          <td className="py-1.5 px-2 text-right text-success">{entrada > 0 ? formatBRL(entrada) : "—"}</td>
-                          <td className="py-1.5 px-2 text-right text-destructive">{saida > 0 ? formatBRL(saida) : "—"}</td>
-                          <td className={`py-1.5 px-2 text-right ${d.saldo_dia < 0 ? "text-destructive" : ""}`}>
+                        <tr key={d.data} className="border-b border-border hover:bg-muted/50">
+                          <td className="py-2 px-3 whitespace-nowrap">{formatDate(d.data)}</td>
+                          <td className="py-2 px-3 text-right tabular-nums text-success">{entrada > 0 ? formatBRL(entrada) : "—"}</td>
+                          <td className="py-2 px-3 text-right tabular-nums text-destructive">{saida > 0 ? formatBRL(saida) : "—"}</td>
+                          <td className={`py-2 px-3 text-right tabular-nums ${d.saldo_dia < 0 ? "text-destructive" : ""}`}>
                             {formatBRL(d.saldo_dia)}
                           </td>
-                          <td className={`py-1.5 px-2 text-right font-medium ${d.saldo_acumulado < 0 ? "text-destructive" : ""}`}>
+                          <td className={`py-2 px-3 text-right tabular-nums font-medium whitespace-nowrap ${d.saldo_acumulado < 0 ? "text-destructive" : ""}`}>
                             {formatBRL(d.saldo_acumulado)}
                             {d.saldo_acumulado < 0 && (
-                              <Badge variant="destructive" className="ml-1.5 text-xs px-1 py-0">
-                                ⚠
+                              <Badge variant="danger" className="ml-2">
+                                Negativo
                               </Badge>
                             )}
                           </td>
@@ -315,40 +315,40 @@ export default function FinFluxoCaixa() {
       </TabsContent>
 
       {/* ========== TAB: DFC CPC 03 ========== */}
-      <TabsContent value="dfc" className="space-y-4 mt-0">
+      <TabsContent value="dfc" className="space-y-6 mt-0">
         {/* KPIs principais */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card>
-            <CardContent className="pt-4">
-              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                <Hourglass className="h-3.5 w-3.5" /> Saldo de caixa
+            <CardContent className="p-6">
+              <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <Hourglass className="h-4 w-4" aria-hidden="true" /> Saldo de caixa
               </p>
-              <p className="text-xl font-semibold mt-1">{formatBRL(dfc?.saldoAtual ?? 0)}</p>
+              <p className={KPI_VALOR}>{formatBRL(dfc?.saldoAtual ?? 0)}</p>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="pt-4">
-              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                <Flame className="h-3.5 w-3.5" /> Burn Rate (média 3m)
+            <CardContent className="p-6">
+              <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <Flame className="h-4 w-4" aria-hidden="true" /> Burn Rate (média 3m)
               </p>
-              <p className={`text-xl font-semibold mt-1 ${(dfc?.burnRateMensal ?? 0) > 0 ? "text-destructive" : ""}`}>
+              <p className={`${KPI_VALOR} ${(dfc?.burnRateMensal ?? 0) > 0 ? "text-destructive" : ""}`}>
                 {dfc?.burnRateMensal ? formatBRL(dfc.burnRateMensal) + "/mês" : "—"}
               </p>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="pt-4">
-              <p className="text-xs text-muted-foreground">Runway</p>
-              <p className={`text-xl font-semibold mt-1 ${formatRunway(dfc?.runwayMeses ?? null).cor}`}>
+            <CardContent className="p-6">
+              <p className="text-sm font-medium text-muted-foreground">Runway</p>
+              <p className={`${KPI_VALOR} ${formatRunway(dfc?.runwayMeses ?? null).cor}`}>
                 {formatRunway(dfc?.runwayMeses ?? null).label}
               </p>
-              <p className="text-xs text-muted-foreground mt-0.5">Saldo ÷ Burn Rate</p>
+              <p className="text-xs text-muted-foreground mt-1">Saldo ÷ Burn Rate</p>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="pt-4">
-              <p className="text-xs text-muted-foreground">Caixa líquido ({mesesDFC}m)</p>
-              <p className={`text-xl font-semibold mt-1 ${(dfc?.totalCaixaLiquido ?? 0) < 0 ? "text-destructive" : "text-success"}`}>
+            <CardContent className="p-6">
+              <p className="text-sm font-medium text-muted-foreground">Caixa líquido ({mesesDFC}m)</p>
+              <p className={`${KPI_VALOR} ${(dfc?.totalCaixaLiquido ?? 0) < 0 ? "text-destructive" : "text-success"}`}>
                 {formatBRL(dfc?.totalCaixaLiquido ?? 0)}
               </p>
             </CardContent>
@@ -357,15 +357,15 @@ export default function FinFluxoCaixa() {
 
         {/* Gráfico DFC */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
+          <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
-              <CardTitle className="text-base">DFC pelo método indireto — CPC 03</CardTitle>
-              <p className="text-xs text-muted-foreground mt-1">
+              <CardTitle>DFC pelo método indireto — CPC 03</CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
                 Operacional (atividade-fim) · Investimento (imobilizado) · Financiamento (capital próprio/terceiros).
                 Classifique cada categoria no Plano de Contas.
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Tabs value={String(mesesDFC)} onValueChange={(v) => setMesesDFC(Number(v))}>
                 <TabsList>
                   <TabsTrigger value="3">3 meses</TabsTrigger>
@@ -373,8 +373,8 @@ export default function FinFluxoCaixa() {
                   <TabsTrigger value="12">12 meses</TabsTrigger>
                 </TabsList>
               </Tabs>
-              <Button variant="outline" size="sm" onClick={() => exportDFCcsv(dfc)} disabled={!dfc}>
-                <Download className="h-4 w-4 mr-1.5" />
+              <Button variant="outline" onClick={() => exportDFCcsv(dfc)} disabled={!dfc}>
+                <Download className="h-4 w-4" aria-hidden="true" />
                 CSV
               </Button>
             </div>
@@ -407,61 +407,61 @@ export default function FinFluxoCaixa() {
         {/* Tabela DFC */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Demonstração mensal</CardTitle>
+            <CardTitle>Demonstração mensal</CardTitle>
           </CardHeader>
           <CardContent>
             {loadingDFC || !dfc ? (
               <Skeleton className="w-full h-48" />
             ) : (
-              <div className="overflow-auto">
-                <table className="w-full text-xs">
-                  <thead className="border-b bg-muted/30">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="border-b border-border bg-muted text-sm font-semibold">
                     <tr className="text-left">
-                      <th className="py-2 px-2">Competência</th>
-                      <th className="py-2 px-2 text-right">Operacional</th>
-                      <th className="py-2 px-2 text-right">Investimento</th>
-                      <th className="py-2 px-2 text-right">Financiamento</th>
-                      <th className="py-2 px-2 text-right">Caixa Líquido</th>
-                      <th className="py-2 px-2 text-center w-10"></th>
+                      <th className="py-2 px-3">Competência</th>
+                      <th className="py-2 px-3 text-right">Operacional</th>
+                      <th className="py-2 px-3 text-right">Investimento</th>
+                      <th className="py-2 px-3 text-right">Financiamento</th>
+                      <th className="py-2 px-3 text-right">Caixa Líquido</th>
+                      <th className="py-2 px-3 text-center w-12"><span className="sr-only">Tendência</span></th>
                     </tr>
                   </thead>
                   <tbody>
                     {dfc.meses.map((m) => (
-                      <tr key={m.competencia} className="border-b border-border/50 hover:bg-muted/30">
-                        <td className="py-1.5 px-2 font-medium">{monthLabel(m.competencia)}</td>
-                        <td className={`py-1.5 px-2 text-right tabular-nums ${m.operacional < 0 ? "text-destructive" : "text-success"}`}>
+                      <tr key={m.competencia} className="border-b border-border hover:bg-muted/50">
+                        <td className="py-2 px-3 font-medium">{monthLabel(m.competencia)}</td>
+                        <td className={`py-2 px-3 text-right tabular-nums ${m.operacional < 0 ? "text-destructive" : "text-success"}`}>
                           {formatBRL(m.operacional)}
                         </td>
-                        <td className={`py-1.5 px-2 text-right tabular-nums ${m.investimento < 0 ? "text-destructive" : "text-success"}`}>
+                        <td className={`py-2 px-3 text-right tabular-nums ${m.investimento < 0 ? "text-destructive" : "text-success"}`}>
                           {formatBRL(m.investimento)}
                         </td>
-                        <td className={`py-1.5 px-2 text-right tabular-nums ${m.financiamento < 0 ? "text-destructive" : "text-success"}`}>
+                        <td className={`py-2 px-3 text-right tabular-nums ${m.financiamento < 0 ? "text-destructive" : "text-success"}`}>
                           {formatBRL(m.financiamento)}
                         </td>
-                        <td className={`py-1.5 px-2 text-right font-semibold tabular-nums ${m.caixaLiquido < 0 ? "text-destructive" : ""}`}>
+                        <td className={`py-2 px-3 text-right font-semibold tabular-nums ${m.caixaLiquido < 0 ? "text-destructive" : ""}`}>
                           {formatBRL(m.caixaLiquido)}
                         </td>
-                        <td className="py-1.5 px-2 text-center">
+                        <td className="py-2 px-3 text-center">
                           {m.caixaLiquido > 0 ? (
-                            <TrendingUp className="h-3.5 w-3.5 text-success inline" />
+                            <TrendingUp className="h-4 w-4 text-success inline" aria-label="Positivo" />
                           ) : m.caixaLiquido < 0 ? (
-                            <TrendingDown className="h-3.5 w-3.5 text-destructive inline" />
+                            <TrendingDown className="h-4 w-4 text-destructive inline" aria-label="Negativo" />
                           ) : null}
                         </td>
                       </tr>
                     ))}
-                    <tr className="border-t-2 bg-muted/40 font-semibold">
-                      <td className="py-2 px-2">Total {mesesDFC}m</td>
-                      <td className={`py-2 px-2 text-right tabular-nums ${dfc.totalOperacional < 0 ? "text-destructive" : "text-success"}`}>
+                    <tr className="border-t-2 border-border bg-muted font-semibold">
+                      <td className="py-2 px-3">Total {mesesDFC}m</td>
+                      <td className={`py-2 px-3 text-right tabular-nums ${dfc.totalOperacional < 0 ? "text-destructive" : "text-success"}`}>
                         {formatBRL(dfc.totalOperacional)}
                       </td>
-                      <td className={`py-2 px-2 text-right tabular-nums ${dfc.totalInvestimento < 0 ? "text-destructive" : "text-success"}`}>
+                      <td className={`py-2 px-3 text-right tabular-nums ${dfc.totalInvestimento < 0 ? "text-destructive" : "text-success"}`}>
                         {formatBRL(dfc.totalInvestimento)}
                       </td>
-                      <td className={`py-2 px-2 text-right tabular-nums ${dfc.totalFinanciamento < 0 ? "text-destructive" : "text-success"}`}>
+                      <td className={`py-2 px-3 text-right tabular-nums ${dfc.totalFinanciamento < 0 ? "text-destructive" : "text-success"}`}>
                         {formatBRL(dfc.totalFinanciamento)}
                       </td>
-                      <td className={`py-2 px-2 text-right tabular-nums ${dfc.totalCaixaLiquido < 0 ? "text-destructive" : ""}`}>
+                      <td className={`py-2 px-3 text-right tabular-nums ${dfc.totalCaixaLiquido < 0 ? "text-destructive" : ""}`}>
                         {formatBRL(dfc.totalCaixaLiquido)}
                       </td>
                       <td></td>

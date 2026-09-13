@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import { MoneyInput } from '@/components/ui/money-input';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -151,6 +153,9 @@ const ROTULO_ORIGEM: Record<string, { texto: string; titulo: string }> = {
 
 const paraBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+/** Variantes semânticas do Badge de ui — status sempre com texto. */
+type BadgeVariant = 'success' | 'warning' | 'danger' | 'info' | 'muted';
+
 /**
  * A linha de UM item na tabela de itens da disputa.
  *
@@ -178,8 +183,8 @@ function LinhaDeItem({
 
   return (
     <TableRow>
-      <TableCell className="text-xs text-center font-medium">{item.numero}</TableCell>
-      <TableCell className={`text-xs ${larguraDescricao}`}>
+      <TableCell className="text-sm text-center font-medium tabular-nums">{item.numero}</TableCell>
+      <TableCell className={`text-sm ${larguraDescricao}`}>
         <span className="block truncate">{item.descricao}</span>
         {(item.marca || item.modelo) && (
           <span className="block truncate text-muted-foreground">
@@ -189,18 +194,18 @@ function LinhaDeItem({
         {rotulo && (
           <span
             title={rotulo.titulo}
-            className="inline-block mt-0.5 px-1 py-px rounded bg-muted text-[10px] leading-tight text-muted-foreground"
+            className="inline-block mt-0.5 px-1.5 py-px rounded bg-muted text-xs text-muted-foreground"
           >
             {rotulo.texto}
           </span>
         )}
       </TableCell>
-      <TableCell className="text-xs text-center">{item.quantidade}</TableCell>
-      <TableCell className="text-xs text-center">{item.unidade}</TableCell>
-      <TableCell className="text-xs text-right font-mono">
+      <TableCell className="text-sm text-center tabular-nums">{item.quantidade}</TableCell>
+      <TableCell className="text-sm text-center">{item.unidade}</TableCell>
+      <TableCell className="text-sm text-right tabular-nums">
         {item.valorReferencia > 0 ? paraBRL(item.valorReferencia) : '—'}
       </TableCell>
-      <TableCell className="text-xs text-right font-mono font-semibold">
+      <TableCell className="text-sm text-right tabular-nums font-semibold">
         {item.valorReferencia > 0 ? paraBRL(item.valorReferencia * item.quantidade) : '—'}
       </TableCell>
       <TableCell className="text-right">
@@ -209,13 +214,14 @@ function LinhaDeItem({
           onChange={(e) => aoMudarPiso(item.id, e.target.value)}
           placeholder="definir"
           inputMode="decimal"
+          aria-label={`Piso do item ${item.numero}`}
           title={
             item.custoUnitario !== null && item.custoUnitario !== undefined
               ? `Sugerido a partir do custo da Precificação: ${paraBRL(item.custoUnitario)}`
               : 'Sem custo conhecido para sugerir — defina o piso deste item'
           }
-          className={`h-7 w-[88px] text-xs text-right font-mono px-1.5 ml-auto ${
-            semPiso ? 'border-warning/60 placeholder:text-warning' : ''
+          className={`h-9 w-28 text-sm text-right tabular-nums px-2 ml-auto ${
+            semPiso ? 'border-warning-line placeholder:text-warning-ink' : ''
           }`}
         />
       </TableCell>
@@ -223,10 +229,11 @@ function LinhaDeItem({
         <Button
           variant="ghost"
           size="sm"
-          className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+          className="h-9 w-9 p-0 text-destructive hover:text-destructive"
+          aria-label={`Remover item ${item.numero}`}
           onClick={() => aoRemover(item.id)}
         >
-          <Trash2 className="w-3 h-3" />
+          <Trash2 className="w-4 h-4" aria-hidden="true" />
         </Button>
       </TableCell>
     </TableRow>
@@ -880,16 +887,16 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
     return matchSearch && matchStatus;
   });
 
-  const statusColor = (s: string) => {
-    const map: Record<string, string> = {
-      'Monitorando': 'bg-info/10 text-info border-info/30',
-      'Analisando': 'bg-warning/10 text-warning border-warning/30',
-      'Proposta': 'bg-muted text-foreground border-border',
-      'Em Disputa': 'bg-accent/10 text-accent border-accent/30',
-      'Vencida': 'bg-success/10 text-success border-success/30',
-      'Homologada': 'bg-success/10 text-success border-success/30',
+  const statusVariant = (s: string): BadgeVariant => {
+    const map: Record<string, BadgeVariant> = {
+      'Monitorando': 'info',
+      'Analisando': 'warning',
+      'Proposta': 'info',
+      'Em Disputa': 'success',
+      'Vencida': 'success',
+      'Homologada': 'success',
     };
-    return map[s] || 'bg-muted text-muted-foreground border-border';
+    return map[s] || 'muted';
   };
 
   const stepLabels = editingLance
@@ -902,8 +909,8 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
       <DialogTrigger asChild>
         {trigger || (
-          <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
-            <Plus className="w-4 h-4 mr-1" /> Nova Sessão de Lance
+          <Button>
+            <Plus className="w-4 h-4" aria-hidden="true" /> Nova Sessão de Lance
           </Button>
         )}
       </DialogTrigger>
@@ -922,8 +929,8 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
         <DialogHeader className="px-6 pt-6 pb-4 border-b border-border shrink-0 space-y-3">
           <div className="space-y-1.5">
             <DialogTitle className="flex items-center gap-2.5">
-              <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary/10 text-primary shrink-0">
-                <Bot className="w-5 h-5" />
+              <span className="flex items-center justify-center w-9 h-9 rounded-md bg-primary-tint text-primary shrink-0">
+                <Bot className="w-5 h-5" aria-hidden="true" />
               </span>
               {editingLance ? 'Editar Sessão de Lance' : 'Configurar Nova Sessão de Lance'}
             </DialogTitle>
@@ -934,8 +941,8 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
             </DialogDescription>
           </div>
 
-          {/* Trilha de passos. Azul vivo no passo atual é o papel certo dele
-              (estado ativo), não ação — a ação fica no rodapé, em navy. */}
+          {/* Trilha de passos. Verde cheio no passo atual é estado ativo, não
+              ação — a ação fica no rodapé. Passo concluído em tinta suave. */}
           <ol className="flex items-center gap-2 flex-wrap" aria-label="Passos">
             {stepLabels.map((label, idx) => (
               <li key={label} className="flex items-center gap-2">
@@ -943,11 +950,11 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                 <div
                   aria-current={currentStepIndex === idx ? 'step' : undefined}
                   className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                    currentStepIndex === idx ? 'bg-accent text-accent-foreground' :
-                    currentStepIndex > idx ? 'bg-success/15 text-success' : 'bg-muted text-muted-foreground'
+                    currentStepIndex === idx ? 'bg-primary text-primary-foreground' :
+                    currentStepIndex > idx ? 'bg-success-tint text-success-ink' : 'bg-muted text-muted-foreground'
                   }`}
                 >
-                  {currentStepIndex > idx && <CheckCircle2 className="w-3 h-3" />}
+                  {currentStepIndex > idx && <CheckCircle2 className="w-3 h-3" aria-hidden="true" />}
                   {label}
                 </div>
               </li>
@@ -968,57 +975,57 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
               <button
                 type="button"
                 onClick={() => setStep(1)}
-                className="flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-border hover:border-accent/50 hover:bg-muted/30 transition-all text-center group"
+                className="flex flex-col items-center gap-3 p-6 rounded-lg border-2 border-border bg-card hover:border-primary/40 hover:bg-muted transition-colors text-center group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
-                <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center group-hover:bg-accent/10 transition-colors">
-                  <Pencil className="w-5 h-5 text-muted-foreground group-hover:text-accent" />
+                <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center group-hover:bg-primary-tint transition-colors">
+                  <Pencil className="w-5 h-5 text-muted-foreground group-hover:text-primary" aria-hidden="true" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-foreground">Cadastro Manual</p>
-                  <p className="text-xs text-muted-foreground mt-1">Preencha todos os dados manualmente.</p>
+                  <p className="text-base font-semibold text-foreground">Cadastro Manual</p>
+                  <p className="text-sm text-muted-foreground mt-1">Preencha todos os dados manualmente.</p>
                 </div>
               </button>
               <button
                 type="button"
                 aria-pressed={!showEditalUpload}
                 onClick={() => setShowEditalUpload(false)}
-                className="relative flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-accent/40 bg-accent/5 hover:bg-accent/10 transition-all text-center group"
+                className="relative flex flex-col items-center gap-3 p-6 rounded-lg border-2 border-primary/40 bg-primary-tint hover:border-primary transition-colors text-center group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
-                <span className="absolute top-2.5 right-2.5 text-[11px] font-semibold uppercase tracking-wider text-accent bg-accent/10 rounded px-1.5 py-0.5">
+                <span className="absolute top-3 right-3 text-xs font-semibold uppercase tracking-wider text-primary bg-card rounded px-1.5 py-0.5">
                   Recomendado
                 </span>
-                <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
-                  <FileSearch className="w-5 h-5 text-accent" />
+                <div className="w-12 h-12 rounded-full bg-card flex items-center justify-center">
+                  <FileSearch className="w-5 h-5 text-primary" aria-hidden="true" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-foreground">Importar do Kanban</p>
-                  <p className="text-xs text-muted-foreground mt-1">Importe dados + itens precificados.</p>
+                  <p className="text-base font-semibold text-foreground">Importar do Kanban</p>
+                  <p className="text-sm text-muted-foreground mt-1">Importe dados + itens precificados.</p>
                 </div>
               </button>
               <button
                 type="button"
                 aria-pressed={showEditalUpload}
                 onClick={() => setShowEditalUpload(true)}
-                className="flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-border hover:border-accent/50 hover:bg-muted/30 transition-all text-center group"
+                className="flex flex-col items-center gap-3 p-6 rounded-lg border-2 border-border bg-card hover:border-primary/40 hover:bg-muted transition-colors text-center group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
-                <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center group-hover:bg-accent/10 transition-colors">
-                  <Sparkles className="w-5 h-5 text-muted-foreground group-hover:text-accent" />
+                <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center group-hover:bg-primary-tint transition-colors">
+                  <Sparkles className="w-5 h-5 text-muted-foreground group-hover:text-primary" aria-hidden="true" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-foreground">Extrair do Edital (IA)</p>
-                  <p className="text-xs text-muted-foreground mt-1">Envie o edital e a IA extrai itens e valores.</p>
+                  <p className="text-base font-semibold text-foreground">Extrair do Edital (IA)</p>
+                  <p className="text-sm text-muted-foreground mt-1">Envie o edital e a IA extrai itens e valores.</p>
                 </div>
               </button>
             </div>
 
             {/* AI Edital Upload area */}
             {showEditalUpload && (
-              <div className="space-y-3 border border-border/50 rounded-xl bg-muted/30 p-4">
+              <div className="space-y-3 border border-border rounded-lg bg-muted p-4">
                 <div className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-muted-foreground" />
-                  <h4 className="text-sm font-semibold text-foreground">Extração Inteligente do Edital</h4>
+                  <Sparkles className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+                  <h4 className="text-base font-semibold text-foreground">Extração Inteligente do Edital</h4>
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-sm text-muted-foreground">
                   Envie o Edital ou Termo de Referência. A IA extrairá automaticamente: Nº do item, Descrição, Quantidade, Unidade, Valor Unitário e Valor Total de referência.
                 </p>
 
@@ -1026,39 +1033,37 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                   <button
                     type="button"
                     onClick={() => editalFileRef.current?.click()}
-                    className="w-full border-2 border-dashed border-border rounded-lg p-6 flex flex-col items-center gap-2 hover:border-primary/50 hover:bg-muted/30 transition-colors"
+                    className="w-full border-2 border-dashed border-border bg-card rounded-lg p-6 flex flex-col items-center gap-2 hover:border-primary/50 hover:bg-primary-tint transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   >
-                    <Upload className="w-6 h-6 text-muted-foreground" />
-                    <span className="text-xs font-medium text-foreground">Clique para enviar o arquivo</span>
+                    <Upload className="w-6 h-6 text-muted-foreground" aria-hidden="true" />
+                    <span className="text-sm font-medium text-foreground">Clique para enviar o arquivo</span>
                     <span className="text-xs text-muted-foreground">PDF, DOC, DOCX, TXT — Máx. 15MB</span>
                   </button>
                 ) : (
-                  <div className="bg-card rounded-lg p-3 border border-border/50 flex items-center gap-3">
-                    <FileText className="w-6 h-6 text-muted-foreground shrink-0" />
+                  <div className="bg-card rounded-lg p-4 border border-border flex flex-wrap items-center gap-3">
+                    <FileText className="w-6 h-6 text-muted-foreground shrink-0" aria-hidden="true" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium truncate">{editalFile.name}</p>
+                      <p className="text-sm font-medium truncate">{editalFile.name}</p>
                       <p className="text-xs text-muted-foreground">{(editalFile.size / 1024).toFixed(0)} KB</p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       <Button
                         onClick={handleExtractFromEdital}
                         disabled={isExtracting}
-                        size="sm"
-                        className="text-xs"
                       >
                         {isExtracting ? (
-                          <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> Extraindo...</>
+                          <><Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Extraindo...</>
                         ) : (
-                          <><Sparkles className="w-3.5 h-3.5 mr-1" /> Extrair Itens e Valores</>
+                          <><Sparkles className="w-4 h-4" aria-hidden="true" /> Extrair Itens e Valores</>
                         )}
                       </Button>
                       <Button
                         variant="outline"
                         size="icon"
-                        className="h-8 w-8"
+                        aria-label="Remover arquivo"
                         onClick={() => { setEditalFile(null); if (editalFileRef.current) editalFileRef.current.value = ''; }}
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-4 h-4" aria-hidden="true" />
                       </Button>
                     </div>
                   </div>
@@ -1066,8 +1071,8 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                 <input ref={editalFileRef} type="file" accept=".pdf,.doc,.docx,.txt" className="hidden" onChange={handleEditalFileChange} />
 
                 {isExtracting && (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
+                    <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
                     Analisando o documento e extraindo itens, quantidades e valores de referência...
                   </div>
                 )}
@@ -1078,12 +1083,12 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                 dispararia lances no pregão errado — então a lista de outros
                 processos exige um passo explícito. */}
             {!showEditalUpload && processoAtivoId && licitacaoIdRef === processoAtivoId && !trocarProcesso && (
-              <div className="rounded-lg border border-accent/30 bg-accent/5 px-3 py-2.5 flex items-center gap-2 flex-wrap">
-                <Target className="w-4 h-4 text-accent shrink-0" />
-                <span className="text-xs text-muted-foreground">Disputa do processo aberto:</span>
-                <span className="text-xs font-semibold">{edital || '—'}</span>
+              <div className="rounded-lg border border-primary/30 bg-primary-tint px-4 py-3 flex items-center gap-2 flex-wrap">
+                <Target className="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
+                <span className="text-sm text-muted-foreground">Disputa do processo aberto:</span>
+                <span className="text-sm font-semibold">{edital || '—'}</span>
                 <Button
-                  size="sm" variant="ghost" className="h-7 text-xs ml-auto"
+                  size="sm" variant="ghost" className="ml-auto"
                   onClick={() => setTrocarProcesso(true)}
                 >
                   Escolher outro processo
@@ -1094,33 +1099,34 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
             {/* Licitações list */}
             {!showEditalUpload && !(processoAtivoId && licitacaoIdRef === processoAtivoId && !trocarProcesso) && (
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                    <FileSearch className="w-4 h-4 text-muted-foreground" />
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h4 className="text-base font-semibold text-foreground flex items-center gap-2">
+                    <FileSearch className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
                     Seus Processos Licitatórios
                   </h4>
-                  <Badge variant="outline" className="text-xs">
+                  <Badge variant="muted">
                     {filteredLicitacoes.length} {filteredLicitacoes.length === 1 ? 'processo' : 'processos'}
                   </Badge>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <div className="relative flex-1">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
                     <Input
                       placeholder="Buscar por número, órgão ou objeto..."
+                      aria-label="Buscar processo"
                       value={searchLic}
                       onChange={(e) => setSearchLic(e.target.value)}
-                      className="h-8 pl-8 text-xs"
+                      className="pl-9"
                     />
                   </div>
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="h-8 w-40 text-xs">
+                    <SelectTrigger className="w-full sm:w-44" aria-label="Filtrar por status">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       {statusOptions.map(s => (
-                        <SelectItem key={s} value={s} className="text-xs">
+                        <SelectItem key={s} value={s}>
                           {s === 'todos' ? 'Todos os status' : s}
                         </SelectItem>
                       ))}
@@ -1129,14 +1135,23 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                 </div>
 
                 {loadingLicitacoes ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground ml-2">Carregando processos...</span>
+                  <div className="space-y-2 py-2" role="status" aria-busy="true">
+                    <span className="sr-only">Carregando processos</span>
+                    {[0, 1, 2].map((i) => (
+                      <div key={i} className="rounded-lg border border-border bg-card p-4 space-y-2">
+                        <Skeleton className="h-4 w-1/3" />
+                        <Skeleton className="h-3 w-2/3" />
+                        <Skeleton className="h-3 w-1/2" />
+                      </div>
+                    ))}
                   </div>
                 ) : filteredLicitacoes.length === 0 ? (
-                  <div className="text-center py-8 border border-dashed border-border rounded-lg bg-muted/20">
-                    <Building2 className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
-                    <p className="text-xs text-muted-foreground">
+                  <div className="text-center py-8 border border-dashed border-border rounded-lg bg-muted">
+                    <div className="w-10 h-10 rounded-full bg-primary-tint text-primary flex items-center justify-center mx-auto mb-2">
+                      <Building2 className="w-5 h-5" aria-hidden="true" />
+                    </div>
+                    <p className="text-base font-semibold">Nenhum processo</p>
+                    <p className="text-sm text-muted-foreground mt-1">
                       {licitacoes.length === 0
                         ? 'Nenhum processo na gestão. Inicie um processo pelo Monitoramento ou Kanban.'
                         : 'Nenhum processo encontrado com os filtros selecionados.'}
@@ -1144,7 +1159,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                   </div>
                 ) : (
                   <div
-                    className="min-h-[14rem] max-h-[42vh] w-full min-w-0 overflow-y-auto rounded-lg border border-border/60 bg-muted/10 [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2.5 [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-muted/30"
+                    className="min-h-[14rem] max-h-[42vh] w-full min-w-0 overflow-y-auto rounded-lg border border-border bg-muted/30 [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2.5 [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-muted/30"
                   >
                     <div className="space-y-2 p-2.5">
                       {filteredLicitacoes.map((lic) => {
@@ -1159,9 +1174,9 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                           type="button"
                           onClick={() => handleImportLicitacao(lic)}
                           disabled={loadingItems && selectedLicId === lic.id}
-                          className={`w-full min-w-0 text-left rounded-lg border bg-card p-3.5 transition-all hover:border-accent/50 hover:bg-accent/5 group ${
+                          className={`w-full min-w-0 text-left rounded-lg border bg-card p-4 transition-colors hover:border-primary/40 hover:bg-primary-tint group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                             selectedLicId === lic.id && loadingItems
-                              ? 'border-accent bg-accent/5'
+                              ? 'border-primary bg-primary-tint'
                               : 'border-border'
                           }`}
                         >
@@ -1169,27 +1184,27 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span
-                                  className="text-sm font-bold text-foreground cursor-help"
+                                  className="text-base font-bold text-foreground cursor-help"
                                   title={identidade.reescrito ? `Como o portal publica: ${identidade.bruto}` : undefined}
                                 >
                                   {identidade.rotulo}
                                 </span>
                                 {identidade.srpNoTexto && (
-                                  <Badge variant="outline" className="text-xs">SRP</Badge>
+                                  <Badge variant="muted">SRP</Badge>
                                 )}
-                                <Badge variant="outline" className={`text-xs ${statusColor(lic.status)}`}>
+                                <Badge variant={statusVariant(lic.status)}>
                                   {lic.status}
                                 </Badge>
                               </div>
                               {/* `truncate` (nowrap) foi o que estourava o modal
                                   em grid; aqui o pai tem min-w-0 e o modal é
                                   flex, então corta o texto, não o layout. */}
-                              <p className="text-xs text-muted-foreground mt-1 truncate">{lic.orgao}</p>
-                              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{lic.objeto}</p>
+                              <p className="text-sm text-muted-foreground mt-1 truncate">{lic.orgao}</p>
+                              <p className="text-sm text-muted-foreground mt-0.5 line-clamp-1">{lic.objeto}</p>
                               <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
                                 {lic.portal && <span className="truncate">{lic.portal}</span>}
                                 {lic.valor_estimado && (
-                                  <span className="font-mono font-medium text-foreground shrink-0">
+                                  <span className="tabular-nums font-medium text-foreground shrink-0">
                                     {formatCurrency(lic.valor_estimado)}
                                   </span>
                                 )}
@@ -1197,9 +1212,9 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                             </div>
                             <div className="shrink-0 self-center">
                               {loadingItems && selectedLicId === lic.id ? (
-                                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" aria-hidden="true" />
                               ) : (
-                                <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-accent transition-colors" />
+                                <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" aria-hidden="true" />
                               )}
                             </div>
                           </div>
@@ -1218,8 +1233,8 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
         {step === 1 && (
           <div className="space-y-5 py-2">
             {(licitacaoIdRef || itens.length > 0) && (
-              <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-success/10 border border-success/30 text-xs text-success">
-                <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+              <div className="flex items-start gap-2 px-4 py-3 rounded-lg bg-success-tint border border-success-line text-sm text-success-ink">
+                <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
                 <div className="space-y-0.5">
                   <p className="font-semibold">
                     {licitacaoIdRef
@@ -1228,7 +1243,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                     }
                   </p>
                   {licitacaoIdRef && (
-                    <p className="text-xs text-success/80 font-normal">
+                    <p className="text-xs text-success-ink font-normal">
                       🔗 Fonte única: estes mesmos itens estão sincronizados com a <strong>Proposta Comercial</strong> e a <strong>Precificação</strong>.
                     </p>
                   )}
@@ -1237,11 +1252,12 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
             )}
 
             <div className="space-y-3">
-              <h4 className="text-sm font-semibold text-foreground">Identificação da Licitação</h4>
-              <div className="grid grid-cols-2 gap-3">
+              <h4 className="text-base font-semibold text-foreground">Identificação da Licitação</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs text-muted-foreground">Nº do Edital / Pregão *</label>
+                  <Label htmlFor="disputa-edital">Nº do Edital / Pregão *</Label>
                   <Input
+                    id="disputa-edital"
                     value={edital}
                     onChange={(e) => setEdital(e.target.value)}
                     placeholder={ehComprasGov ? '90012/2025' : 'PE-001/2026'}
@@ -1251,15 +1267,15 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                     /* O robô só consegue buscar no Compras.gov com número e ano;
                        "TESTE-COMPRASGOV" é recusado antes de abrir o portal. Dizer
                        aqui poupa um envio para descobrir. */
-                    <p className={cn('text-[11px] mt-1', /\d{1,6}\s*\/\s*\d{4}/.test(edital) ? 'text-muted-foreground' : 'text-warning')}>
+                    <p className={cn('text-xs mt-1', /\d{1,6}\s*\/\s*\d{4}/.test(edital) ? 'text-muted-foreground' : 'text-warning-ink')}>
                       No Compras.gov, use o <b>número da compra</b> no formato número/ano — ex.: 90012/2025.
                     </p>
                   )}
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground">Portal *</label>
+                  <Label htmlFor="disputa-portal">Portal *</Label>
                   <Select value={portal} onValueChange={setPortal}>
-                    <SelectTrigger className="mt-1"><SelectValue placeholder="Selecione o portal" /></SelectTrigger>
+                    <SelectTrigger id="disputa-portal" className="mt-1"><SelectValue placeholder="Selecione o portal" /></SelectTrigger>
                     <SelectContent>
                       {portaisDisponiveis.map((p) => (
                         <SelectItem key={p.id} value={p.nome}>{p.nome}</SelectItem>
@@ -1270,55 +1286,56 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
               </div>
               {ehComprasGov && (
                 <div>
-                  <label className="text-xs text-muted-foreground">UASG (código da unidade compradora)</label>
+                  <Label htmlFor="disputa-uasg">UASG (código da unidade compradora)</Label>
                   <Input
+                    id="disputa-uasg"
                     value={uasg}
                     onChange={(e) => setUasg(e.target.value.replace(/\D/g, '').slice(0, 6))}
                     inputMode="numeric"
                     placeholder="170162"
-                    className="mt-1 w-40"
+                    className="mt-1 w-full sm:w-40"
                   />
-                  <p className="text-[11px] text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     O número da compra se repete entre órgãos; a UASG é o que torna a busca exata. Está no edital e na lista do portal (ex.: <b>170162</b> - MINISTERIO DA FAZENDA).
                   </p>
                 </div>
               )}
               <div>
-                <label className="text-xs text-muted-foreground">Horário da Sessão</label>
-                <Input type="time" value={horario} onChange={(e) => setHorario(e.target.value)} className="mt-1 w-40" />
+                <Label htmlFor="disputa-horario">Horário da Sessão</Label>
+                <Input id="disputa-horario" type="time" value={horario} onChange={(e) => setHorario(e.target.value)} className="mt-1 w-full sm:w-40" />
               </div>
             </div>
 
             <div className="space-y-3">
-              <h4 className="text-sm font-semibold text-foreground">Regras de Decremento Automático</h4>
-              <div className="grid grid-cols-2 gap-3">
+              <h4 className="text-base font-semibold text-foreground">Regras de Decremento Automático</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs text-muted-foreground">Decremento Mínimo (R$)</label>
-                  <MoneyInput value={Number(decrementoMin) || 0} onValueChange={(v) => setDecrementoMin(String(v))} placeholder="R$ 50.000,00" className="mt-1" />
+                  <Label htmlFor="disputa-decremento-min">Decremento Mínimo (R$)</Label>
+                  <MoneyInput id="disputa-decremento-min" value={Number(decrementoMin) || 0} onValueChange={(v) => setDecrementoMin(String(v))} placeholder="R$ 50.000,00" className="mt-1" />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground">Decremento Percentual (%)</label>
-                  <Input type="number" step="0.1" value={decrementoPercentual} onChange={(e) => setDecrementoPercentual(e.target.value)} placeholder="1.5" className="mt-1" />
+                  <Label htmlFor="disputa-decremento-pct">Decremento Percentual (%)</Label>
+                  <Input id="disputa-decremento-pct" type="number" step="0.1" value={decrementoPercentual} onChange={(e) => setDecrementoPercentual(e.target.value)} placeholder="1.5" className="mt-1" />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs text-muted-foreground">Intervalo entre lances (seg)</label>
-                  <Input type="number" value={intervaloSegundos} onChange={(e) => setIntervaloSegundos(e.target.value)} placeholder="30" className="mt-1" />
+                  <Label htmlFor="disputa-intervalo">Intervalo entre lances (seg)</Label>
+                  <Input id="disputa-intervalo" type="number" value={intervaloSegundos} onChange={(e) => setIntervaloSegundos(e.target.value)} placeholder="30" className="mt-1" />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground">Máx. lances por sessão</label>
-                  <Input type="number" value={maxLances} onChange={(e) => setMaxLances(e.target.value)} placeholder="20" className="mt-1" />
+                  <Label htmlFor="disputa-max-lances">Máx. lances por sessão</Label>
+                  <Input id="disputa-max-lances" type="number" value={maxLances} onChange={(e) => setMaxLances(e.target.value)} placeholder="20" className="mt-1" />
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-between bg-muted/50 rounded-lg p-3 border border-border/50">
+            <div className="flex items-center justify-between gap-4 bg-muted rounded-lg p-4 border border-border">
               <div>
-                <p className="text-sm font-medium">Modo Automático</p>
-                <p className="text-xs text-muted-foreground">O robô enviará lances automaticamente respeitando os parâmetros configurados</p>
+                <Label htmlFor="disputa-modo-automatico" className="text-base font-medium">Modo Automático</Label>
+                <p className="text-sm text-muted-foreground mt-1">O robô enviará lances automaticamente respeitando os parâmetros configurados</p>
               </div>
-              <Switch checked={modoAutomatico} onCheckedChange={setModoAutomatico} />
+              <Switch id="disputa-modo-automatico" checked={modoAutomatico} onCheckedChange={setModoAutomatico} />
             </div>
           </div>
         )}
@@ -1328,10 +1345,10 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
           <div className="space-y-5 py-2">
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-2 flex-wrap">
-                <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                  <Layers className="w-4 h-4 text-muted-foreground" /> Tipo de Disputa
+                <h4 className="text-base font-semibold text-foreground flex flex-wrap items-center gap-2">
+                  <Layers className="w-5 h-5 text-muted-foreground" aria-hidden="true" /> Tipo de Disputa
                   {(licitacaoIdRef || editalFile) && (
-                    <Badge variant="outline" className="text-xs bg-info/10 text-info border-info/30 ml-1">
+                    <Badge variant="info">
                       Detectado automaticamente
                     </Badge>
                   )}
@@ -1345,25 +1362,25 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                   />
                 )}
               </div>
-              <div className="flex gap-3">
-                <button
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant={tipoDisputa === 'item' ? 'default' : 'outline'}
+                  aria-pressed={tipoDisputa === 'item'}
                   onClick={() => setTipoDisputa('item')}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
-                    tipoDisputa === 'item' ? 'bg-accent text-accent-foreground border-accent' : 'bg-card text-muted-foreground border-border hover:border-accent/50'
-                  }`}
                 >
-                  <Package className="w-4 h-4" /> Por Item
-                </button>
-                <button
+                  <Package className="w-4 h-4" aria-hidden="true" /> Por Item
+                </Button>
+                <Button
+                  type="button"
+                  variant={tipoDisputa === 'lote' ? 'default' : 'outline'}
+                  aria-pressed={tipoDisputa === 'lote'}
                   onClick={() => setTipoDisputa('lote')}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
-                    tipoDisputa === 'lote' ? 'bg-accent text-accent-foreground border-accent' : 'bg-card text-muted-foreground border-border hover:border-accent/50'
-                  }`}
                 >
-                  <Layers className="w-4 h-4" /> Por Lote
-                </button>
+                  <Layers className="w-4 h-4" aria-hidden="true" /> Por Lote
+                </Button>
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 {tipoDisputa === 'item'
                   ? 'Cada item será disputado individualmente. Os lances são enviados item a item.'
                   : 'Os itens são agrupados em lotes. O lance é enviado para o lote como um todo. Remova lotes ou itens que não deseja disputar.'}
@@ -1372,36 +1389,36 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
 
             {/* Add item form */}
             <div className="space-y-3">
-              <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <Plus className="w-4 h-4 text-muted-foreground" /> Adicionar {tipoDisputa === 'lote' ? 'Item ao Lote' : 'Item'}
+              <h4 className="text-base font-semibold text-foreground flex items-center gap-2">
+                <Plus className="w-5 h-5 text-muted-foreground" aria-hidden="true" /> Adicionar {tipoDisputa === 'lote' ? 'Item ao Lote' : 'Item'}
               </h4>
-              <div className="grid grid-cols-12 gap-2">
-                <div className="col-span-5">
-                  <label className="text-xs text-muted-foreground">Descrição *</label>
-                  <Input value={novoDesc} onChange={(e) => setNovoDesc(e.target.value)} placeholder="Ex: Toner HP 26A" className="mt-0.5 h-8 text-xs" />
+              <div className="grid grid-cols-2 md:grid-cols-12 gap-2 items-end">
+                <div className="col-span-2 md:col-span-5">
+                  <Label htmlFor="novo-item-descricao">Descrição *</Label>
+                  <Input id="novo-item-descricao" value={novoDesc} onChange={(e) => setNovoDesc(e.target.value)} placeholder="Ex: Toner HP 26A" className="mt-1" />
                 </div>
-                <div className="col-span-1">
-                  <label className="text-xs text-muted-foreground">Qtd</label>
-                  <Input type="number" min="1" value={novoQtd} onChange={(e) => setNovoQtd(e.target.value)} className="mt-0.5 h-8 text-xs" />
+                <div className="md:col-span-1">
+                  <Label htmlFor="novo-item-qtd">Qtd</Label>
+                  <Input id="novo-item-qtd" type="number" min="1" value={novoQtd} onChange={(e) => setNovoQtd(e.target.value)} className="mt-1" />
                 </div>
-                <div className="col-span-1">
-                  <label className="text-xs text-muted-foreground">Unid.</label>
-                  <Input value={novoUnidade} onChange={(e) => setNovoUnidade(e.target.value)} placeholder="UN" className="mt-0.5 h-8 text-xs" />
+                <div className="md:col-span-1">
+                  <Label htmlFor="novo-item-unidade">Unid.</Label>
+                  <Input id="novo-item-unidade" value={novoUnidade} onChange={(e) => setNovoUnidade(e.target.value)} placeholder="UN" className="mt-1" />
                 </div>
-                <div className="col-span-2">
-                  <label className="text-xs text-muted-foreground">Valor Unit. (R$)</label>
-                  <MoneyInput value={Number(novoValorRef) || 0} onValueChange={(v) => setNovoValorRef(String(v))} placeholder="R$ 0,00" className="mt-0.5 h-8 text-xs" />
+                <div className="md:col-span-2">
+                  <Label htmlFor="novo-item-valor">Valor Unit. (R$)</Label>
+                  <MoneyInput id="novo-item-valor" value={Number(novoValorRef) || 0} onValueChange={(v) => setNovoValorRef(String(v))} placeholder="R$ 0,00" className="mt-1" />
                 </div>
                 {tipoDisputa === 'lote' && (
-                  <div className="col-span-2">
-                    <label className="text-xs text-muted-foreground">Lote</label>
-                    <Input value={novoLote} onChange={(e) => setNovoLote(e.target.value)} placeholder="Lote 1" className="mt-0.5 h-8 text-xs" />
+                  <div className="md:col-span-2">
+                    <Label htmlFor="novo-item-lote">Lote</Label>
+                    <Input id="novo-item-lote" value={novoLote} onChange={(e) => setNovoLote(e.target.value)} placeholder="Lote 1" className="mt-1" />
                   </div>
                 )}
-                <div className={tipoDisputa === 'lote' ? 'col-span-1' : 'col-span-3'}>
-                  <label className="text-xs text-muted-foreground invisible">+</label>
-                  <Button onClick={handleAddItem} size="sm" disabled={!novoDesc.trim()} className="mt-0.5 h-8 w-full bg-accent hover:bg-accent/90 text-accent-foreground text-xs">
-                    <Plus className="w-3.5 h-3.5" />
+                <div className={tipoDisputa === 'lote' ? 'col-span-2 md:col-span-1' : 'col-span-2 md:col-span-3'}>
+                  <Button onClick={handleAddItem} disabled={!novoDesc.trim()} className="w-full" aria-label="Adicionar item">
+                    <Plus className="w-4 h-4" aria-hidden="true" />
+                    <span className="md:sr-only">Adicionar</span>
                   </Button>
                 </div>
               </div>
@@ -1410,15 +1427,15 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
             {/* Items list */}
             {itens.length > 0 && (
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-semibold text-foreground">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h4 className="text-base font-semibold text-foreground">
                     {itens.length} {itens.length === 1 ? 'item cadastrado' : 'itens cadastrados'}
                     {tipoDisputa === 'lote' && lotes.length > 0 && (
                       <span className="font-normal text-muted-foreground ml-2">em {lotes.length} {lotes.length === 1 ? 'lote' : 'lotes'}</span>
                     )}
                   </h4>
                   {licitacaoIdRef && (
-                    <Badge variant="outline" className="text-xs bg-success/10 text-success border-success/30">
+                    <Badge variant="success">
                       Importados do Kanban
                     </Badge>
                   )}
@@ -1432,33 +1449,33 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                       const loteTotal = loteItens.reduce((s, i) => s + (i.valorReferencia * i.quantidade), 0);
                       return (
                         <div key={lote} className="border border-border rounded-lg overflow-hidden">
-                          <div className="flex items-center justify-between bg-muted/60 px-3 py-1.5 border-b border-border">
-                            <div className="flex items-center gap-2">
-                              <Layers className="w-3.5 h-3.5 text-muted-foreground" />
-                              <span className="text-xs font-bold text-foreground">{lote}</span>
-                              <Badge variant="outline" className="text-xs">{loteItens.length} {loteItens.length === 1 ? 'item' : 'itens'}</Badge>
-                              <span className="text-xs font-mono text-muted-foreground">{formatCurrency(loteTotal)}</span>
+                          <div className="flex flex-wrap items-center justify-between gap-2 bg-muted px-3 py-2 border-b border-border">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Layers className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+                              <span className="text-sm font-bold text-foreground">{lote}</span>
+                              <Badge variant="muted">{loteItens.length} {loteItens.length === 1 ? 'item' : 'itens'}</Badge>
+                              <span className="text-xs tabular-nums text-muted-foreground">{formatCurrency(loteTotal)}</span>
                             </div>
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-6 px-2 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                              className="text-destructive hover:text-destructive"
                               onClick={() => handleRemoveLote(lote)}
                             >
-                              <Trash2 className="w-3 h-3 mr-1" /> Remover Lote
+                              <Trash2 className="w-4 h-4" aria-hidden="true" /> Remover Lote
                             </Button>
                           </div>
                           <Table>
                             <TableHeader>
                               <TableRow className="bg-muted/30">
-                                <TableHead className="text-xs w-10 text-center">Nº</TableHead>
-                                <TableHead className="text-xs">Descrição</TableHead>
-                                <TableHead className="text-xs text-center">Qtd</TableHead>
-                                <TableHead className="text-xs text-center">Unid.</TableHead>
-                                <TableHead className="text-xs text-right">Vlr Unit.</TableHead>
-                                <TableHead className="text-xs text-right">Vlr Total</TableHead>
-                                <TableHead className="text-xs text-right" title="Piso deste item — o robô não desce abaixo dele">Piso</TableHead>
-                                <TableHead className="text-xs w-10" />
+                                <TableHead className="w-10 text-center">Nº</TableHead>
+                                <TableHead>Descrição</TableHead>
+                                <TableHead className="text-center">Qtd</TableHead>
+                                <TableHead className="text-center">Unid.</TableHead>
+                                <TableHead className="text-right">Vlr Unit.</TableHead>
+                                <TableHead className="text-right">Vlr Total</TableHead>
+                                <TableHead className="text-right" title="Piso deste item — o robô não desce abaixo dele">Piso</TableHead>
+                                <TableHead className="w-10"><span className="sr-only">Ações</span></TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -1479,18 +1496,18 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                   </div>
                 ) : (
                   /* Flat item view */
-                  <div className="border border-border rounded-lg overflow-hidden max-h-44 overflow-y-auto">
+                  <div className="border border-border rounded-lg max-h-56 overflow-auto">
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-muted/50">
-                          <TableHead className="text-xs w-10 text-center">Nº</TableHead>
-                          <TableHead className="text-xs">Descrição</TableHead>
-                          <TableHead className="text-xs text-center">Qtd</TableHead>
-                          <TableHead className="text-xs text-center">Unid.</TableHead>
-                          <TableHead className="text-xs text-right">Vlr Unit.</TableHead>
-                          <TableHead className="text-xs text-right">Vlr Total</TableHead>
-                          <TableHead className="text-xs text-right" title="Piso deste item — o robô não desce abaixo dele">Piso</TableHead>
-                          <TableHead className="text-xs w-10" />
+                          <TableHead className="w-10 text-center">Nº</TableHead>
+                          <TableHead>Descrição</TableHead>
+                          <TableHead className="text-center">Qtd</TableHead>
+                          <TableHead className="text-center">Unid.</TableHead>
+                          <TableHead className="text-right">Vlr Unit.</TableHead>
+                          <TableHead className="text-right">Vlr Total</TableHead>
+                          <TableHead className="text-right" title="Piso deste item — o robô não desce abaixo dele">Piso</TableHead>
+                          <TableHead className="w-10"><span className="sr-only">Ações</span></TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1511,37 +1528,43 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
             )}
 
             {itens.length === 0 && !isExtracting && (
-              <div className="text-center py-6 border border-dashed border-border rounded-lg bg-muted/20 space-y-3">
-                <Package className="w-8 h-8 text-muted-foreground/40 mx-auto" />
-                <p className="text-xs text-muted-foreground">Nenhum item cadastrado ainda.</p>
-                <p className="text-xs text-muted-foreground">
+              <div className="text-center py-8 border border-dashed border-border rounded-lg bg-muted space-y-3">
+                <div className="w-12 h-12 rounded-full bg-primary-tint text-primary flex items-center justify-center mx-auto">
+                  <Package className="w-6 h-6" aria-hidden="true" />
+                </div>
+                <p className="text-base font-semibold">Nenhum item cadastrado ainda</p>
+                <p className="text-sm text-muted-foreground">
                   Extraia automaticamente via IA ou preencha o formulário acima.
                 </p>
                 <div className="flex flex-col items-center gap-2">
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap justify-center gap-2">
                     <Button
-                      size="sm"
                       variant="outline"
-                      className="text-xs border-primary/40 text-primary hover:bg-primary/10"
                       onClick={() => editalFileRef.current?.click()}
                     >
-                      <Upload className="w-3.5 h-3.5 mr-1" /> Enviar Edital (PDF/DOC)
+                      <Upload className="w-4 h-4" aria-hidden="true" /> Enviar Edital (PDF/DOC)
                     </Button>
                     {editalFile && (
                       <Button
-                        size="sm"
-                        className="text-xs"
                         onClick={handleAutoExtractItems}
                       >
-                        <Sparkles className="w-3.5 h-3.5 mr-1" /> Extrair Itens via IA
+                        <Sparkles className="w-4 h-4" aria-hidden="true" /> Extrair Itens via IA
                       </Button>
                     )}
                   </div>
                   {editalFile && (
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <FileText className="w-3 h-3" />
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <FileText className="w-4 h-4" aria-hidden="true" />
                       <span className="truncate max-w-[200px]">{editalFile.name}</span>
-                      <button onClick={() => { setEditalFile(null); if (editalFileRef.current) editalFileRef.current.value = ''; }} className="text-destructive hover:underline">remover</button>
+                      <Button
+                        type="button"
+                        variant="link"
+                        size="sm"
+                        className="h-auto p-0 text-destructive"
+                        onClick={() => { setEditalFile(null); if (editalFileRef.current) editalFileRef.current.value = ''; }}
+                      >
+                        remover
+                      </Button>
                     </div>
                   )}
                 </div>
@@ -1550,10 +1573,10 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
             )}
 
             {itens.length === 0 && isExtracting && (
-              <div className="text-center py-8 border border-border/50 rounded-lg bg-muted/30 space-y-3">
-                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground mx-auto" />
-                <p className="text-sm font-medium text-foreground">Extraindo itens automaticamente...</p>
-                <p className="text-xs text-muted-foreground">
+              <div className="text-center py-8 border border-border rounded-lg bg-muted space-y-3" role="status" aria-busy="true">
+                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground mx-auto" aria-hidden="true" />
+                <p className="text-base font-medium text-foreground">Extraindo itens automaticamente...</p>
+                <p className="text-sm text-muted-foreground">
                   A IA está analisando o edital para identificar descrição, quantidade, unidade e valores de referência.
                 </p>
               </div>
@@ -1561,38 +1584,39 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
 
             {/* ── Values panel ── */}
             {itens.length > 0 && (
-              <div className="space-y-3 border border-border rounded-xl bg-muted/30 p-4">
-                <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                  <Calculator className="w-4 h-4 text-muted-foreground" />
+              <div className="space-y-3 border border-border rounded-lg bg-muted p-4">
+                <h4 className="text-base font-semibold text-foreground flex flex-wrap items-center gap-2">
+                  <Calculator className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
                   Valores da Disputa
-                  <Badge variant="outline" className="text-xs bg-muted text-muted-foreground border-border ml-auto">
+                  <Badge variant="muted" className="sm:ml-auto">
                     Desconto calculado automaticamente
                   </Badge>
                 </h4>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-sm text-muted-foreground">
                   Edite os valores em R$ abaixo. O percentual de desconto é calculado automaticamente com base no Valor de Referência.
                 </p>
 
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* Valor de Referência – read-only sum */}
-                  <div className="bg-card rounded-lg border border-border p-3 text-center">
+                  <div className="bg-card rounded-lg border border-border p-4 text-center">
                     <p className="text-xs text-muted-foreground uppercase tracking-wider">Valor de Referência</p>
-                    <p className="text-lg font-bold text-foreground mt-1 font-mono">{formatCurrency(somaReferencia)}</p>
+                    <p className="text-[2rem] leading-10 font-bold text-foreground mt-1 tabular-nums">{formatCurrency(somaReferencia)}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">Σ (Qtd × Vlr Unit.)</p>
                   </div>
 
                   {/* Valor Inicial – editable R$ */}
-                  <div className={`bg-card rounded-lg border p-3 text-center ${inexequibilidadeInicial ? 'border-destructive' : 'border-border'}`}>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wider">Valor Inicial (1º lance)</p>
-                    <div className="flex items-center justify-center gap-1 mt-1.5">
+                  <div className={`bg-card rounded-lg border p-4 text-center ${inexequibilidadeInicial ? 'border-destructive' : 'border-border'}`}>
+                    <Label htmlFor="disputa-valor-inicial" className="text-xs text-muted-foreground uppercase tracking-wider font-normal">Valor Inicial (1º lance)</Label>
+                    <div className="flex items-center justify-center gap-1 mt-2">
                       <MoneyInput
+                        id="disputa-valor-inicial"
                         value={Number(valorInicialInput) || 0}
                         onValueChange={(v) => setValorInicialInput(String(v))}
                         placeholder="R$ 0,00"
-                        className="h-8 w-40 text-sm text-center px-1 font-mono font-bold"
+                        className="w-40 text-center tabular-nums font-bold"
                       />
                     </div>
-                    <p className={`text-xs font-semibold mt-1.5 ${inexequibilidadeInicial ? 'text-destructive' : 'text-foreground'}`}>
+                    <p className={`text-xs font-semibold mt-2 ${inexequibilidadeInicial ? 'text-destructive' : 'text-foreground'}`}>
                       {pctDescontoInicial >= 0 ? `↓ ${pctDescontoInicial.toFixed(2)}% de desconto` : `↑ ${Math.abs(pctDescontoInicial).toFixed(2)}% acima`}
                     </p>
                     {inexequibilidadeInicial && (
@@ -1601,17 +1625,18 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                   </div>
 
                   {/* Valor Mínimo – editable R$ */}
-                  <div className={`bg-card rounded-lg border p-3 text-center ${inexequibilidadeMinimo ? 'border-destructive' : 'border-destructive/30'}`}>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wider">Valor Mínimo (piso)</p>
-                    <div className="flex items-center justify-center gap-1 mt-1.5">
+                  <div className={`bg-card rounded-lg border p-4 text-center ${inexequibilidadeMinimo ? 'border-destructive' : 'border-destructive-line'}`}>
+                    <Label htmlFor="disputa-valor-minimo" className="text-xs text-muted-foreground uppercase tracking-wider font-normal">Valor Mínimo (piso)</Label>
+                    <div className="flex items-center justify-center gap-1 mt-2">
                       <MoneyInput
+                        id="disputa-valor-minimo"
                         value={Number(valorMinimoInput) || 0}
                         onValueChange={(v) => setValorMinimoInput(String(v))}
                         placeholder="R$ 0,00"
-                        className="h-8 w-40 text-sm text-center px-1 font-mono font-bold"
+                        className="w-40 text-center tabular-nums font-bold"
                       />
                     </div>
-                    <p className={`text-xs font-semibold mt-1.5 ${inexequibilidadeMinimo ? 'text-destructive' : 'text-destructive/80'}`}>
+                    <p className={`text-xs font-semibold mt-2 ${inexequibilidadeMinimo ? 'text-destructive' : 'text-destructive-ink'}`}>
                       {pctDescontoMinimo >= 0 ? `↓ ${pctDescontoMinimo.toFixed(2)}% de desconto` : `↑ ${Math.abs(pctDescontoMinimo).toFixed(2)}% acima`}
                     </p>
                     {inexequibilidadeMinimo && (
@@ -1622,11 +1647,11 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
 
                 {/* Inexequibilidade alert banner */}
                 {(inexequibilidadeInicial || inexequibilidadeMinimo) && (
-                  <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-destructive/10 border border-destructive/40 text-xs text-destructive">
-                    <span className="text-base leading-none mt-0.5">🚨</span>
+                  <div className="flex items-start gap-2 px-4 py-3 rounded-lg bg-destructive-tint border border-destructive-line text-sm text-destructive-ink" role="alert">
+                    <span className="text-base leading-none mt-0.5" aria-hidden="true">🚨</span>
                     <div>
                       <p className="font-bold">Risco de Inexequibilidade (Art. 59, §4º da Lei 14.133/2021)</p>
-                      <p className="mt-0.5 text-destructive/80">
+                      <p className="mt-0.5">
                         Propostas com desconto superior a 50% do valor de referência podem ser consideradas inexequíveis pelo pregoeiro, exigindo comprovação de viabilidade econômica.
                       </p>
                     </div>
@@ -1634,7 +1659,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                 )}
 
                 {valorMinimo > valorInicial && (
-                  <p className="text-xs text-destructive flex items-center gap-1">
+                  <p className="text-sm text-destructive-ink flex items-center gap-1" role="alert">
                     ⚠️ O valor mínimo (piso) está acima do valor inicial. Revise os valores.
                   </p>
                 )}
@@ -1645,10 +1670,9 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
 
         </div>
 
-        {/* Rodapé fixo. A ação principal é `default` (navy), como o protótipo
-            manda para botão de ação; o azul vivo ficou para a trilha de passos,
-            onde significa "aqui", não "clique". */}
-        <DialogFooter className="px-6 py-4 border-t border-border bg-muted/30 shrink-0 flex-row items-center justify-between sm:justify-between gap-3">
+        {/* Rodapé fixo. A ação principal é o `default` verde do Button de ui;
+            a trilha de passos usa o mesmo verde só para dizer "aqui". */}
+        <DialogFooter className="px-6 py-4 border-t border-border bg-muted shrink-0 flex-row flex-wrap items-center justify-between sm:justify-between gap-3">
           <div>
             {step > 0 && (
               <Button variant="outline" onClick={() => setStep((step - 1) as 0 | 1)}>
@@ -1656,17 +1680,17 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
               </Button>
             )}
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button variant="ghost" onClick={() => { setOpen(false); resetForm(); }}>Cancelar</Button>
             {step === 0 && (
               <Button onClick={() => setStep(1)} variant="outline">
-                <Pencil className="w-4 h-4 mr-1.5" /> Pular para cadastro manual
+                <Pencil className="w-4 h-4" aria-hidden="true" /> Pular para cadastro manual
               </Button>
             )}
             {step === 1 && (
               <Button onClick={() => setStep(2)} disabled={!step1Valid}>
                 Próximo: Itens / Lotes
-                <ArrowRight className="w-4 h-4 ml-1.5" />
+                <ArrowRight className="w-4 h-4" aria-hidden="true" />
               </Button>
             )}
             {step === 2 && (
@@ -1674,7 +1698,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                 onClick={handleSave}
                 disabled={itens.length === 0 || somaReferencia <= 0 || valorMinimo > valorInicial}
               >
-                <CheckCircle2 className="w-4 h-4 mr-1.5" />
+                <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
                 {editingLance ? 'Salvar Alterações' : 'Cadastrar Sessão'}
               </Button>
             )}

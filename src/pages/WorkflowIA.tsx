@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -7,8 +8,8 @@ import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Bot, Search, CheckCircle2, CalendarDays, Bell, Crosshair, Shield,
-  ArrowRight, Loader2, RefreshCw, Brain, Play, Pause, Building2,
-  FileText, DollarSign, Zap,
+  ArrowRight, Loader2, Brain, Play, Building2,
+  FileText, DollarSign,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -105,55 +106,47 @@ Seja objetivo e formate em Markdown limpo com seções numeradas. NÃO utilize e
   return (
     <AppLayout>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-              <Bot className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground flex-shrink-0" />
-              Workflow Autônomo IA
-            </h1>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-              A IA executa todo o trajeto: pesquisa → seleção → agendamento → lances. Você aprova no final.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Select value={empresaId} onValueChange={setEmpresaId}>
-              <SelectTrigger className="w-[220px]">
-                <SelectValue placeholder="Selecione a empresa" />
-              </SelectTrigger>
-              <SelectContent>
-                {empresas.map(e => (
-                  <SelectItem key={e.empresa_id} value={e.empresa_id}>
-                    <span className="flex items-center gap-2">
-                      <Building2 className="w-3.5 h-3.5" />
-                      {e.empresa.nome_fantasia || e.empresa.razao_social}
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button
-              onClick={runWorkflow}
-              disabled={running || !empresaId}
-              className="bg-accent hover:bg-accent/90 text-accent-foreground"
-            >
-              {running ? (
-                <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Executando...</>
-              ) : (
-                <><Play className="w-4 h-4 mr-1" /> Iniciar Workflow</>
-              )}
-            </Button>
-          </div>
-        </div>
+        <CabecalhoPagina
+          icone={<Bot />}
+          titulo="Workflow Autônomo IA"
+          descricao="A IA executa todo o trajeto: pesquisa → seleção → agendamento → lances. Você aprova no final."
+          acoes={
+            <>
+              <label htmlFor="workflow-empresa" className="sr-only">Empresa</label>
+              <Select value={empresaId} onValueChange={setEmpresaId}>
+                <SelectTrigger id="workflow-empresa" className="w-full sm:w-[240px]">
+                  <SelectValue placeholder="Selecione a empresa" />
+                </SelectTrigger>
+                <SelectContent>
+                  {empresas.map(e => (
+                    <SelectItem key={e.empresa_id} value={e.empresa_id}>
+                      <span className="flex items-center gap-2">
+                        <Building2 className="w-4 h-4" />
+                        {e.empresa.nome_fantasia || e.empresa.razao_social}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button onClick={runWorkflow} disabled={running || !empresaId}>
+                {running ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /> Executando...</>
+                ) : (
+                  <><Play className="w-4 h-4" /> Iniciar Workflow</>
+                )}
+              </Button>
+            </>
+          }
+        />
 
         {/* Progress */}
         {running && (
-          <Card className="p-4 space-y-2">
+          <Card className="p-6 space-y-2">
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Progresso do Workflow</span>
-              <span className="font-medium">{Math.round(progressPercent)}%</span>
+              <span className="font-medium tabular-nums">{Math.round(progressPercent)}%</span>
             </div>
-            <Progress value={progressPercent} className="h-2" />
+            <Progress value={progressPercent} className="h-2" aria-label="Progresso do workflow" />
           </Card>
         )}
 
@@ -168,24 +161,24 @@ Seja objetivo e formate em Markdown limpo com seções numeradas. NÃO utilize e
             return (
               <Card
                 key={step.key}
-                className={`p-4 transition-all ${isActive ? 'ring-2 ring-accent shadow-lg' : ''} ${isDone ? 'border-success/30' : ''}`}
+                className={`p-6 transition-colors ${isActive ? 'ring-2 ring-ring' : ''} ${isDone ? 'border-success-line' : ''}`}
               >
                 <div className="flex items-start gap-3">
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-                    isDone ? 'bg-success/20 text-success' : isActive ? 'bg-warning/20 text-warning animate-pulse' : 'bg-muted text-muted-foreground'
+                    isDone ? 'bg-success-tint text-success-ink' : isActive ? 'bg-warning-tint text-warning-ink' : 'bg-muted text-muted-foreground'
                   }`}>
                     {isDone ? <CheckCircle2 className="w-5 h-5" /> : isActive ? <Loader2 className="w-5 h-5 animate-spin" /> : <Icon className="w-5 h-5" />}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-sm">{step.label}</h3>
-                      {isDone && <Badge variant="outline" className="bg-success/10 text-success border-success/20 text-xs">Concluído</Badge>}
-                      {isActive && <Badge variant="outline" className="bg-warning/10 text-warning border-warning/20 text-xs">Em execução</Badge>}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-base font-semibold">{step.label}</h3>
+                      {isDone && <Badge variant="success">Concluído</Badge>}
+                      {isActive && <Badge variant="warning">Em execução</Badge>}
                     </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">{step.desc}</p>
+                    <p className="text-sm text-muted-foreground mt-1">{step.desc}</p>
 
                     {hasResult && (
-                      <div className="mt-3 bg-muted/30 rounded-lg p-3 border border-border/50">
+                      <div className="mt-3 bg-muted rounded-lg p-4 border border-border">
                         <div className="prose prose-sm dark:prose-invert max-w-none text-sm">
                           <ReactMarkdown>{stepResults[step.key]}</ReactMarkdown>
                         </div>
@@ -193,7 +186,7 @@ Seja objetivo e formate em Markdown limpo com seções numeradas. NÃO utilize e
                     )}
                   </div>
                   {idx < WORKFLOW_STEPS.length - 1 && (
-                    <ArrowRight className="w-4 h-4 text-muted-foreground/30 flex-shrink-0 mt-3" />
+                    <ArrowRight aria-hidden="true" className="hidden sm:block w-4 h-4 text-muted-foreground flex-shrink-0 mt-3" />
                   )}
                 </div>
               </Card>
@@ -203,14 +196,14 @@ Seja objetivo e formate em Markdown limpo com seções numeradas. NÃO utilize e
 
         {/* Completion message */}
         {!running && completed.size === WORKFLOW_STEPS.length && (
-          <Card className="p-6 text-center bg-success/5 border-success/20">
-            <CheckCircle2 className="w-12 h-12 mx-auto text-success mb-3" />
-            <h3 className="text-lg font-bold">Workflow Completo!</h3>
+          <Card className="p-6 text-center bg-success-tint border-success-line">
+            <CheckCircle2 className="w-12 h-12 mx-auto text-success-ink mb-3" />
+            <h3 className="text-lg font-semibold text-success-ink">Workflow Completo!</h3>
             <p className="text-sm text-muted-foreground mt-1">
               Revise os resultados acima e acesse seus <strong>Compromissos</strong> para aprovar ou rejeitar os processos sugeridos.
             </p>
-            <Button className="mt-4 bg-accent hover:bg-accent/90 text-accent-foreground" onClick={() => window.location.href = '/meus-compromissos'}>
-              <ArrowRight className="w-4 h-4 mr-1" /> Ver Meus Compromissos
+            <Button className="mt-4" onClick={() => window.location.href = '/meus-compromissos'}>
+              <ArrowRight className="w-4 h-4" /> Ver Meus Compromissos
             </Button>
           </Card>
         )}

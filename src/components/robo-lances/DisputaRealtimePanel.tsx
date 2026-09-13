@@ -63,35 +63,30 @@ export default function DisputaRealtimePanel() {
   }, [user]);
 
   return (
-    <div className="bg-card rounded-xl border border-border/50 p-4 space-y-3">
+    <div className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-3">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <h3 className="text-xs font-semibold flex items-center gap-2">
-          <Zap className="w-4 h-4 text-muted-foreground" />
+        <h3 className="text-lg font-semibold flex items-center gap-2">
+          <Zap className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
           Disputas em Tempo Real
         </h3>
-        <Badge
-          variant="outline"
-          className={`text-xs gap-1 ${
-            connected
-              ? 'bg-success/15 text-success border-success/30'
-              : 'bg-destructive/15 text-destructive border-destructive/30'
-          }`}
-        >
+        <Badge variant={connected ? 'success' : 'danger'} className="gap-1">
           {connected ? (
-            <><Wifi className="w-3 h-3" /> WebSocket Conectado</>
+            <><Wifi className="w-3 h-3" aria-hidden="true" /> WebSocket Conectado</>
           ) : (
-            <><WifiOff className="w-3 h-3" /> Desconectado</>
+            <><WifiOff className="w-3 h-3" aria-hidden="true" /> Desconectado</>
           )}
         </Badge>
       </div>
 
       {events.length === 0 ? (
-        <div className="text-center py-4">
-          <Wifi className="w-6 h-6 text-muted-foreground/30 mx-auto mb-2" />
-          <p className="text-xs text-muted-foreground">
-            {connected ? 'Aguardando eventos em tempo real...' : 'Conectando ao canal de disputas...'}
+        <div className="text-center py-6">
+          <div className="w-10 h-10 rounded-full bg-primary-tint text-primary flex items-center justify-center mx-auto mb-2">
+            <Wifi className="w-5 h-5" aria-hidden="true" />
+          </div>
+          <p className="text-base font-semibold">
+            {connected ? 'Aguardando eventos em tempo real' : 'Conectando ao canal de disputas'}
           </p>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Lances, alertas e paradas emergenciais aparecerão aqui instantaneamente.
           </p>
         </div>
@@ -100,18 +95,18 @@ export default function DisputaRealtimePanel() {
           {events.map((evt) => (
             <div
               key={evt.id}
-              className="flex items-center gap-2 text-xs py-1 px-2 rounded hover:bg-muted/30"
+              className="flex flex-wrap items-center gap-2 text-sm py-1 px-2 rounded-md hover:bg-muted"
             >
               {evt.evento === 'lance_enviado' ? (
-                <TrendingDown className="w-3 h-3 text-info shrink-0" />
+                <TrendingDown className="w-4 h-4 text-foreground shrink-0" aria-hidden="true" />
               ) : evt.evento === 'lance_concorrente' ? (
-                <TrendingDown className="w-3 h-3 text-warning shrink-0" />
+                <TrendingDown className="w-4 h-4 text-warning shrink-0" aria-hidden="true" />
               ) : (
-                <Zap className="w-3 h-3 text-muted-foreground shrink-0" />
+                <Zap className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
               )}
               <span className="font-medium">{evt.evento.replace(/_/g, ' ')}</span>
               {evt.valor_lance && (
-                <span className="font-mono font-semibold text-foreground">{formatCurrency(evt.valor_lance)}</span>
+                <span className="tabular-nums font-semibold text-foreground">{formatCurrency(evt.valor_lance)}</span>
               )}
               {evt.rodada && (
                 <span className="text-muted-foreground">R{evt.rodada}</span>
@@ -121,8 +116,8 @@ export default function DisputaRealtimePanel() {
                   #{evt.hash_registro.slice(0, 8)}
                 </span>
               )}
-              <span className="text-xs text-muted-foreground ml-auto shrink-0">
-                <Clock className="w-2.5 h-2.5 inline mr-0.5" />
+              <span className="text-xs text-muted-foreground ml-auto shrink-0 tabular-nums">
+                <Clock className="w-3 h-3 inline mr-0.5" aria-hidden="true" />
                 {new Date(evt.created_at).toLocaleTimeString('pt-BR', {
                   hour: '2-digit', minute: '2-digit', second: '2-digit',
                 })}

@@ -3,6 +3,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Popover,
@@ -17,7 +19,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Loader2,
   Plus,
   ChevronLeft,
   ChevronRight,
@@ -37,7 +38,6 @@ import {
   addMonths,
   subMonths,
   isSameMonth,
-  isSameDay,
   isToday,
   parseISO,
   differenceInDays,
@@ -60,14 +60,28 @@ type LancamentoCal = Lancamento & {
 
 const NOMES_DIAS = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
 
-function corStatus(l: LancamentoCal): string {
-  if (l.status === "realizado" || l.status === "conciliado") return "bg-success/15 text-success border-success/30";
-  if (l.status === "cancelado") return "bg-muted text-muted-foreground border-border";
+type TomStatus = "success" | "muted" | "danger" | "warning" | "info";
+
+function tomStatus(l: LancamentoCal): TomStatus {
+  if (l.status === "realizado" || l.status === "conciliado") return "success";
+  if (l.status === "cancelado") return "muted";
   const venc = l.data_vencimento ?? l.data_competencia;
   const dias = differenceInDays(parseISO(venc), new Date());
-  if (dias < 0) return "bg-destructive/15 text-destructive border-destructive/30";
-  if (dias <= 7) return "bg-warning/15 text-warning border-warning/30";
-  return "bg-info/15 text-info border-info/30";
+  if (dias < 0) return "danger";
+  if (dias <= 7) return "warning";
+  return "info";
+}
+
+const CHIP_STATUS: Record<TomStatus, string> = {
+  success: "bg-success-tint text-success-ink border-success-line",
+  muted: "bg-muted text-muted-foreground border-border",
+  danger: "bg-destructive-tint text-destructive-ink border-destructive-line",
+  warning: "bg-warning-tint text-warning-ink border-warning-line",
+  info: "bg-muted text-foreground border-border",
+};
+
+function corStatus(l: LancamentoCal): string {
+  return CHIP_STATUS[tomStatus(l)];
 }
 
 export default function FinCalendarioLancamentos({ tipo }: Props) {
@@ -158,50 +172,52 @@ export default function FinCalendarioLancamentos({ tipo }: Props) {
     window.dispatchEvent(new CustomEvent("fin:navigate", { detail: view }));
   };
 
+  const idBase = `cal-${tipo}`;
+
   return (
     <div className="space-y-4">
       {/* Cabeçalho de navegação */}
       <Card>
-        <CardContent className="pt-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setRefDate(subMonths(refDate, 1))}>
-              <ChevronLeft className="w-4 h-4" />
+        <CardContent className="p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="icon" aria-label="Mês anterior" onClick={() => setRefDate(subMonths(refDate, 1))}>
+              <ChevronLeft className="w-4 h-4" aria-hidden="true" />
             </Button>
             <div className="min-w-[180px] text-center">
-              <p className="text-xs text-muted-foreground uppercase tracking-wide">
+              <p className="text-sm text-muted-foreground">
                 {tipo === "a_pagar" ? "Contas a pagar" : "Contas a receber"}
               </p>
               <p className="text-lg font-semibold capitalize">
                 {format(refDate, "MMMM 'de' yyyy", { locale: ptBR })}
               </p>
             </div>
-            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setRefDate(addMonths(refDate, 1))}>
-              <ChevronRight className="w-4 h-4" />
+            <Button variant="outline" size="icon" aria-label="Próximo mês" onClick={() => setRefDate(addMonths(refDate, 1))}>
+              <ChevronRight className="w-4 h-4" aria-hidden="true" />
             </Button>
-            <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setRefDate(new Date())}>
-              <CalendarDays className="w-3.5 h-3.5 mr-1" />Hoje
+            <Button variant="ghost" onClick={() => setRefDate(new Date())}>
+              <CalendarDays className="w-4 h-4" aria-hidden="true" />Hoje
             </Button>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-4">
             <div className="text-right">
-              <p className="text-xs text-muted-foreground">Em aberto no mês</p>
-              <p className="text-base font-bold tabular-nums">
+              <p className="text-sm text-muted-foreground">Em aberto no mês</p>
+              <p className="text-lg font-bold tabular-nums">
                 {totalAberto.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
               </p>
             </div>
             <div className="text-right">
-              <p className="text-xs text-muted-foreground">{tipo === "a_pagar" ? "Pago" : "Recebido"}</p>
-              <p className="text-base font-bold tabular-nums text-success">
+              <p className="text-sm text-muted-foreground">{tipo === "a_pagar" ? "Pago" : "Recebido"}</p>
+              <p className="text-lg font-bold tabular-nums text-success">
                 {totalRealizado.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
               </p>
             </div>
-            <div className="flex gap-1">
-              <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => irRelatorio("fluxo_caixa")}>
-                <BarChart3 className="w-3.5 h-3.5 mr-1" />Fluxo
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" onClick={() => irRelatorio("fluxo_caixa")}>
+                <BarChart3 className="w-4 h-4" aria-hidden="true" />Fluxo
               </Button>
-              <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => irRelatorio("dre")}>
-                <FileText className="w-3.5 h-3.5 mr-1" />DRE
+              <Button variant="outline" onClick={() => irRelatorio("dre")}>
+                <FileText className="w-4 h-4" aria-hidden="true" />DRE
               </Button>
             </div>
           </div>
@@ -210,32 +226,37 @@ export default function FinCalendarioLancamentos({ tipo }: Props) {
 
       {/* Filtros */}
       <Card>
-        <CardContent className="pt-4 flex flex-wrap items-end gap-3">
+        <CardContent className="p-6 flex flex-wrap items-end gap-3">
           <div className="flex-1 min-w-[220px]">
-            <label className="text-xs text-muted-foreground">Buscar por descrição, pessoa ou categoria</label>
-            <div className="relative mt-1">
-              <Search className="w-4 h-4 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Label htmlFor={`${idBase}-busca`}>Buscar por descrição, pessoa ou categoria</Label>
+            <div className="relative mt-2">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
               <Input
+                id={`${idBase}-busca`}
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
                 placeholder="Ex.: aluguel, fornecedor X, energia…"
-                className="pl-8 h-9"
+                className="pl-9 pr-10"
               />
               {busca && (
-                <button
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
                   onClick={() => setBusca("")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   title="Limpar"
+                  aria-label="Limpar busca"
                 >
-                  <X className="w-3.5 h-3.5" />
-                </button>
+                  <X className="w-4 h-4" aria-hidden="true" />
+                </Button>
               )}
             </div>
           </div>
           <div className="min-w-[160px]">
-            <label className="text-xs text-muted-foreground">Status</label>
+            <Label htmlFor={`${idBase}-status`}>Status</Label>
             <Select value={filtroStatus} onValueChange={(v) => setFiltroStatus(v as typeof filtroStatus)}>
-              <SelectTrigger className="h-9 mt-1"><SelectValue /></SelectTrigger>
+              <SelectTrigger id={`${idBase}-status`} className="mt-2"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="todos">Todos</SelectItem>
                 <SelectItem value="previsto">Em aberto (no prazo)</SelectItem>
@@ -244,137 +265,147 @@ export default function FinCalendarioLancamentos({ tipo }: Props) {
               </SelectContent>
             </Select>
           </div>
-          <div className="text-xs text-muted-foreground pb-2">
-            <span className="font-semibold text-foreground">{lancamentos.length}</span> de {todos.length} lançamentos
-          </div>
+          <p className="text-sm text-muted-foreground pb-3">
+            <span className="font-semibold text-foreground tabular-nums">{lancamentos.length}</span> de {todos.length} lançamentos
+          </p>
         </CardContent>
       </Card>
 
       {/* Grade do calendário */}
       <Card>
-        <CardContent className="p-2">
+        <CardContent className="p-2 md:p-3">
           {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            <div className="grid grid-cols-7 gap-1" role="status" aria-label="Carregando calendário">
+              {Array.from({ length: 35 }).map((_, i) => (
+                <Skeleton key={i} className="h-28" />
+              ))}
             </div>
           ) : (
-            <>
-              <div className="grid grid-cols-7 gap-1 mb-1">
-                {NOMES_DIAS.map((d) => (
-                  <div key={d} className="text-xs uppercase tracking-wide text-muted-foreground text-center font-medium py-1">
-                    {d}
-                  </div>
-                ))}
-              </div>
-              <div className="grid grid-cols-7 gap-1">
-                {dias.map((d) => {
-                  const key = format(d, "yyyy-MM-dd");
-                  const items = porDia.get(key) ?? [];
-                  const foraMes = !isSameMonth(d, refDate);
-                  const hoje = isToday(d);
-                  const totalDia = items.reduce((s, l) => s + Number(l.valor), 0);
-                  return (
-                    <div
-                      key={key}
-                      className={`relative min-h-[110px] rounded-md border p-1.5 flex flex-col gap-1 transition-colors ${
-                        foraMes ? "bg-muted/20 opacity-60" : "bg-card"
-                      } ${hoje ? "ring-2 ring-primary" : ""}`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className={`text-xs font-medium ${hoje ? "text-foreground font-bold" : ""}`}>
-                          {format(d, "d")}
-                        </span>
-                        {!foraMes && (
-                          <button
-                            onClick={() => novoNoDia(d)}
-                            className="opacity-0 hover:opacity-100 group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity"
-                            title="Novo lançamento neste dia"
-                          >
-                            <Plus className="w-3 h-3" />
-                          </button>
-                        )}
-                      </div>
-
-                      <div className="flex-1 space-y-0.5">
-                        {items.slice(0, 3).map((l) => (
-                          <button
-                            key={l.id}
-                            onClick={() => { setEditing(l); setDialogOpen(true); }}
-                            className={`w-full text-left rounded px-1 py-0.5 text-xs border truncate ${corStatus(l)}`}
-                            title={`${l.descricao} — ${Number(l.valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`}
-                          >
-                            <span className="font-medium">
-                              {Number(l.valor).toLocaleString("pt-BR", { notation: "compact", style: "currency", currency: "BRL" })}
-                            </span>{" "}
-                            <span className="opacity-80">{l.descricao}</span>
-                          </button>
-                        ))}
-                        {items.length > 3 && (
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <button className="w-full text-left text-xs text-muted-foreground hover:text-foreground px-1">
-                                +{items.length - 3} mais…
-                              </button>
-                            </PopoverTrigger>
-                            <PopoverContent
-                              className="w-72 max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] overflow-hidden p-2"
-                              align="start"
-                              sideOffset={6}
-                              collisionPadding={12}
-                            >
-                              <p className="text-xs font-semibold mb-2 shrink-0">
-                                {format(d, "EEEE, d 'de' MMMM", { locale: ptBR })}
-                              </p>
-                              <ScrollArea
-                                className="h-[min(60vh,420px)] pr-3"
-                                onWheel={(e) => e.stopPropagation()}
-                              >
-                                <div className="space-y-1 pb-1">
-                                  {items.map((l) => (
-                                    <button
-                                      key={l.id}
-                                      onClick={() => { setEditing(l); setDialogOpen(true); }}
-                                      className={`w-full text-left rounded border px-2 py-1.5 hover:bg-muted/50 transition-colors`}
-                                    >
-                                      <div className="flex items-center justify-between gap-2">
-                                        <span className="text-xs font-medium truncate">{l.descricao}</span>
-                                        <span className="text-xs tabular-nums font-semibold whitespace-nowrap">
-                                          {Number(l.valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                                        </span>
-                                      </div>
-                                      {l.pessoa?.nome && (
-                                        <p className="text-xs text-muted-foreground truncate">{l.pessoa.nome}</p>
-                                      )}
-                                      <Badge variant="outline" className={`text-xs mt-0.5 ${corStatus(l)}`}>
-                                        {l.status}
-                                      </Badge>
-                                    </button>
-                                  ))}
-                                </div>
-                              </ScrollArea>
-                            </PopoverContent>
-                          </Popover>
-                        )}
-                      </div>
-
-                      {totalDia > 0 && !foraMes && (
-                        <div className="text-xs text-muted-foreground tabular-nums text-right border-t pt-0.5">
-                          {totalDia.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                        </div>
-                      )}
+            <div className="overflow-x-auto">
+              <div className="min-w-[640px]">
+                <div className="grid grid-cols-7 gap-1 mb-1">
+                  {NOMES_DIAS.map((d) => (
+                    <div key={d} className="text-xs uppercase tracking-wide text-muted-foreground text-center font-medium py-1">
+                      {d}
                     </div>
-                  );
-                })}
+                  ))}
+                </div>
+                <div className="grid grid-cols-7 gap-1">
+                  {dias.map((d) => {
+                    const key = format(d, "yyyy-MM-dd");
+                    const items = porDia.get(key) ?? [];
+                    const foraMes = !isSameMonth(d, refDate);
+                    const hoje = isToday(d);
+                    const totalDia = items.reduce((s, l) => s + Number(l.valor), 0);
+                    return (
+                      <div
+                        key={key}
+                        className={`group relative min-h-[110px] rounded-md border border-border p-2 flex flex-col gap-1 transition-colors ${
+                          foraMes ? "bg-muted/40 text-muted-foreground" : "bg-card"
+                        } ${hoje ? "ring-2 ring-primary" : ""}`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className={`text-xs font-medium ${hoje ? "text-primary font-bold" : ""}`}>
+                            {format(d, "d")}
+                          </span>
+                          {!foraMes && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
+                              onClick={() => novoNoDia(d)}
+                              title="Novo lançamento neste dia"
+                              aria-label={`Novo lançamento em ${format(d, "dd/MM")}`}
+                            >
+                              <Plus className="w-4 h-4" aria-hidden="true" />
+                            </Button>
+                          )}
+                        </div>
+
+                        <div className="flex-1 space-y-0.5">
+                          {items.slice(0, 3).map((l) => (
+                            <button
+                              key={l.id}
+                              type="button"
+                              onClick={() => { setEditing(l); setDialogOpen(true); }}
+                              className={`w-full text-left rounded px-1 py-0.5 text-xs border truncate focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${corStatus(l)}`}
+                              title={`${l.descricao} — ${Number(l.valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`}
+                            >
+                              <span className="font-medium tabular-nums">
+                                {Number(l.valor).toLocaleString("pt-BR", { notation: "compact", style: "currency", currency: "BRL" })}
+                              </span>{" "}
+                              <span className="opacity-80">{l.descricao}</span>
+                            </button>
+                          ))}
+                          {items.length > 3 && (
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button type="button" variant="link" className="h-auto w-full justify-start px-1 py-0 text-xs text-muted-foreground hover:text-foreground">
+                                  +{items.length - 3} mais…
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent
+                                className="w-72 max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] overflow-hidden p-2"
+                                align="start"
+                                sideOffset={6}
+                                collisionPadding={12}
+                              >
+                                <p className="text-sm font-semibold mb-2 shrink-0 capitalize">
+                                  {format(d, "EEEE, d 'de' MMMM", { locale: ptBR })}
+                                </p>
+                                <ScrollArea
+                                  className="h-[min(60vh,420px)] pr-3"
+                                  onWheel={(e) => e.stopPropagation()}
+                                >
+                                  <div className="space-y-1 pb-1">
+                                    {items.map((l) => (
+                                      <button
+                                        key={l.id}
+                                        type="button"
+                                        onClick={() => { setEditing(l); setDialogOpen(true); }}
+                                        className="w-full text-left rounded-md border border-border px-2 py-2 hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                      >
+                                        <div className="flex items-center justify-between gap-2">
+                                          <span className="text-xs font-medium truncate">{l.descricao}</span>
+                                          <span className="text-xs text-right tabular-nums font-semibold whitespace-nowrap">
+                                            {Number(l.valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                                          </span>
+                                        </div>
+                                        {l.pessoa?.nome && (
+                                          <p className="text-xs text-muted-foreground truncate">{l.pessoa.nome}</p>
+                                        )}
+                                        <Badge variant={tomStatus(l)} className="mt-1">
+                                          {l.status}
+                                        </Badge>
+                                      </button>
+                                    ))}
+                                  </div>
+                                </ScrollArea>
+                              </PopoverContent>
+                            </Popover>
+                          )}
+                        </div>
+
+                        {totalDia > 0 && !foraMes && (
+                          <div className="text-xs text-muted-foreground tabular-nums text-right border-t border-border pt-0.5">
+                            {totalDia.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Legenda */}
               <div className="flex flex-wrap items-center gap-3 mt-3 px-2 text-xs text-muted-foreground">
-                <span className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-info/40 border border-info/40" />Em aberto</span>
-                <span className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-warning/40 border border-warning/40" />Vence ≤ 7 dias</span>
-                <span className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-destructive/40 border border-destructive/40" />Vencido</span>
-                <span className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-success/40 border border-success/40" />{tipo === "a_pagar" ? "Pago" : "Recebido"}</span>
+                <span className="inline-flex items-center gap-1"><span className={`w-3 h-3 rounded-sm border ${CHIP_STATUS.info}`} aria-hidden="true" />Em aberto</span>
+                <span className="inline-flex items-center gap-1"><span className={`w-3 h-3 rounded-sm border ${CHIP_STATUS.warning}`} aria-hidden="true" />Vence ≤ 7 dias</span>
+                <span className="inline-flex items-center gap-1"><span className={`w-3 h-3 rounded-sm border ${CHIP_STATUS.danger}`} aria-hidden="true" />Vencido</span>
+                <span className="inline-flex items-center gap-1"><span className={`w-3 h-3 rounded-sm border ${CHIP_STATUS.success}`} aria-hidden="true" />{tipo === "a_pagar" ? "Pago" : "Recebido"}</span>
               </div>
-            </>
+            </div>
           )}
         </CardContent>
       </Card>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Brain, TrendingDown, Target, BarChart3, Loader2, Sparkles, DollarSign,
 } from 'lucide-react';
@@ -72,7 +73,7 @@ Responda em português, com dados numéricos claros e recomendações práticas.
 
       // Parse the streaming response
       const text = typeof data === 'string' ? data : JSON.stringify(data);
-      
+
       setResult({
         decremento_sugerido: lance ? lance.decrementoMin * 0.8 : 1.5,
         valor_minimo_sugerido: lance ? lance.valorReferencia * 0.7 : 0,
@@ -91,35 +92,37 @@ Responda em português, com dados numéricos claros e recomendações práticas.
   };
 
   return (
-    <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm space-y-4">
+    <div className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold flex items-center gap-2">
-          <Brain className="w-4 h-4 text-muted-foreground" />
+        <h3 className="text-lg font-semibold flex items-center gap-2">
+          <Brain className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
           Estratégia Preditiva IA
         </h3>
-        <Badge variant="outline" className="bg-muted text-muted-foreground border-border text-xs">
-          <Sparkles className="w-3 h-3 mr-1" /> Gemini AI
+        <Badge variant="muted">
+          <Sparkles className="w-3 h-3 mr-1" aria-hidden="true" /> Gemini AI
         </Badge>
       </div>
 
       {/* Input fields */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="text-xs text-muted-foreground font-medium">Órgão contratante</label>
+          <Label htmlFor="estrategia-orgao">Órgão contratante</Label>
           <Input
+            id="estrategia-orgao"
             value={orgao}
             onChange={(e) => setOrgao(e.target.value)}
             placeholder="Ex: UFPA, Prefeitura de Belém..."
-            className="mt-1 h-8 text-xs"
+            className="mt-1"
           />
         </div>
         <div>
-          <label className="text-xs text-muted-foreground font-medium">Objeto / Descrição</label>
+          <Label htmlFor="estrategia-objeto">Objeto / Descrição</Label>
           <Input
+            id="estrategia-objeto"
             value={objeto}
             onChange={(e) => setObjeto(e.target.value)}
             placeholder="Ex: Material de escritório, Equipamentos de TI..."
-            className="mt-1 h-8 text-xs"
+            className="mt-1"
           />
         </div>
       </div>
@@ -127,49 +130,48 @@ Responda em português, com dados numéricos claros e recomendações práticas.
       <Button
         onClick={analisar}
         disabled={loading}
-        className="w-full bg-accent hover:bg-accent/90 text-accent-foreground gap-2"
-        size="sm"
+        className="w-full sm:w-auto"
       >
         {loading ? (
-          <><Loader2 className="w-4 h-4 animate-spin" /> Analisando com IA...</>
+          <><Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Analisando com IA...</>
         ) : (
-          <><Brain className="w-4 h-4" /> Gerar Estratégia Preditiva</>
+          <><Brain className="w-4 h-4" aria-hidden="true" /> Gerar Estratégia Preditiva</>
         )}
       </Button>
 
       {/* Results */}
       {result && (
-        <div className="space-y-3 border-t border-border/50 pt-3">
+        <div className="space-y-3 border-t border-border pt-4">
           {/* KPI Cards */}
-          <div className="grid grid-cols-4 gap-2">
-            <div className="bg-muted/50 rounded-lg p-2.5 text-center">
-              <TrendingDown className="w-3 h-3 mx-auto text-success mb-1" />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            <div className="bg-muted rounded-lg p-3 text-center">
+              <TrendingDown className="w-4 h-4 mx-auto text-success mb-1" aria-hidden="true" />
               <p className="text-xs text-muted-foreground">Desconto Médio</p>
-              <p className="text-xs font-bold text-success">{result.desconto_medio}%</p>
+              <p className="text-lg font-bold text-success-ink tabular-nums">{result.desconto_medio}%</p>
             </div>
-            <div className="bg-muted/50 rounded-lg p-2.5 text-center">
-              <DollarSign className="w-3 h-3 mx-auto text-muted-foreground mb-1" />
+            <div className="bg-muted rounded-lg p-3 text-center">
+              <DollarSign className="w-4 h-4 mx-auto text-muted-foreground mb-1" aria-hidden="true" />
               <p className="text-xs text-muted-foreground">Decremento</p>
-              <p className="text-xs font-bold text-foreground">{formatCurrency(result.decremento_sugerido)}</p>
+              <p className="text-lg font-bold text-foreground tabular-nums">{formatCurrency(result.decremento_sugerido)}</p>
             </div>
-            <div className="bg-muted/50 rounded-lg p-2.5 text-center">
-              <Target className="w-3 h-3 mx-auto text-warning mb-1" />
+            <div className="bg-muted rounded-lg p-3 text-center">
+              <Target className="w-4 h-4 mx-auto text-warning mb-1" aria-hidden="true" />
               <p className="text-xs text-muted-foreground">Piso Seguro</p>
-              <p className="text-xs font-bold text-warning">{formatCurrency(result.valor_minimo_sugerido)}</p>
+              <p className="text-lg font-bold text-warning-ink tabular-nums">{formatCurrency(result.valor_minimo_sugerido)}</p>
             </div>
-            <div className="bg-muted/50 rounded-lg p-2.5 text-center">
-              <BarChart3 className="w-3 h-3 mx-auto text-info mb-1" />
+            <div className="bg-muted rounded-lg p-3 text-center">
+              <BarChart3 className="w-4 h-4 mx-auto text-muted-foreground mb-1" aria-hidden="true" />
               <p className="text-xs text-muted-foreground">Confiança</p>
-              <p className="text-xs font-bold text-info">{result.confianca}%</p>
+              <p className="text-lg font-bold text-foreground tabular-nums">{result.confianca}%</p>
             </div>
           </div>
 
           {/* AI Analysis */}
-          <div className="bg-muted/30 rounded-lg p-3 max-h-48 overflow-y-auto">
+          <div className="bg-muted rounded-lg p-4 max-h-48 overflow-y-auto">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
               Briefing Estratégico
             </p>
-            <div className="prose prose-sm dark:prose-invert max-w-none text-xs [&>p]:mb-1.5 [&>ul]:pl-4 [&>ul]:mb-1.5">
+            <div className="prose prose-sm dark:prose-invert max-w-none text-sm [&>p]:mb-2 [&>ul]:pl-4 [&>ul]:mb-2">
               <ReactMarkdown>{result.analise}</ReactMarkdown>
             </div>
           </div>

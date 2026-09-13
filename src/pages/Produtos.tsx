@@ -1,11 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
 import { UNIDADES, unidadesMaisUsadas } from '@/lib/unidades';
 import AppLayout from '@/components/layout/AppLayout';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
@@ -100,24 +105,24 @@ function formatMoeda(v: string): string {
 }
 
 // ── Sub-components ─────────────────────────────────────────────────────────
+// Os ícones de ordenar/filtrar do cabeçalho eram <button> sem handler — parada
+// de foco que não fazia nada. Ficam decorativos (aria-hidden) até ganharem função.
 function ColHeader({ label, className = '' }: { label: string; className?: string }) {
   return (
-    <th className={`py-2 px-2 text-left text-xs font-medium text-muted-foreground whitespace-nowrap ${className}`}>
+    <th className={cn('py-2 px-2 text-left text-sm font-semibold text-muted-foreground whitespace-nowrap', className)}>
       <div className="flex items-center gap-1">
         <span>{label}</span>
-        <button className="opacity-50 hover:opacity-100"><ChevronsUpDown className="w-3 h-3" /></button>
-        <button className="opacity-50 hover:opacity-100"><Filter className="w-3 h-3" /></button>
+        <ChevronsUpDown className="w-3 h-3 opacity-50" aria-hidden="true" />
+        <Filter className="w-3 h-3 opacity-50" aria-hidden="true" />
       </div>
-      <div className="h-px bg-muted mt-1" />
-      <button className="mt-0.5 opacity-30 hover:opacity-60"><Filter className="w-3 h-3" /></button>
     </th>
   );
 }
 
 function Field({ label, children, className = '' }: { label: string; children: React.ReactNode; className?: string }) {
   return (
-    <div className={`relative ${className}`}>
-      <span className="absolute -top-2 left-2 text-xs text-muted-foreground bg-background px-1 z-10">{label}</span>
+    <div className={cn('relative', className)}>
+      <span className="absolute -top-2 left-2 text-xs text-muted-foreground bg-card px-1 z-10">{label}</span>
       {children}
     </div>
   );
@@ -149,39 +154,57 @@ function UnidadeCombobox({ value, onChange }: { value: string; onChange: (v: str
       <div className="relative">
         <Input
           value={search}
+          aria-label="Unidade"
           // Abrir a lista limpa a BUSCA, não a seleção: com "PC" no campo, o
           // filtro deixava só "Peça (PC)" e "Pacote (PCT)" à vista.
           onFocus={() => { setOpen(true); setSearch(''); }}
           onChange={e => { setSearch(e.target.value); setOpen(true); onChange(e.target.value); }}
-          className="pt-1 pr-7"
+          className="pt-1 pr-9"
           placeholder="PC"
         />
-        <button className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" onClick={() => { setSearch(''); onChange(''); setOpen(true); }}>
-          {search ? <X className="w-3 h-3" /> : <ChevronsUpDown className="w-3 h-3" />}
-        </button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-muted-foreground"
+          aria-label={search ? 'Limpar unidade' : 'Abrir lista de unidades'}
+          onClick={() => { setSearch(''); onChange(''); setOpen(true); }}
+        >
+          {search ? <X className="w-4 h-4" aria-hidden="true" /> : <ChevronsUpDown className="w-4 h-4" aria-hidden="true" />}
+        </Button>
       </div>
       {open && (
-        <div className="absolute z-50 top-full left-0 mt-1 w-56 bg-popover border rounded-md shadow-lg max-h-60 overflow-y-auto text-sm">
+        <div className="absolute z-50 top-full left-0 mt-1 w-56 rounded-md border border-border bg-popover shadow-md max-h-60 overflow-y-auto text-sm">
           {topFiltered.length > 0 && (
             <>
               <div className="px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Mais Utilizadas</div>
               {topFiltered.map(u => (
-                <button key={u.value} className={`w-full text-left px-3 py-1.5 hover:bg-muted/60 transition-colors ${value === u.value ? 'bg-primary/10 text-primary font-medium' : ''}`}
-                  onClick={() => { onChange(u.value); setSearch(u.value); setOpen(false); }}>
+                <Button
+                  key={u.value}
+                  type="button"
+                  variant="ghost"
+                  className={cn('h-auto w-full justify-start rounded-none px-3 py-1.5 text-sm font-normal', value === u.value && 'bg-primary-tint text-primary font-medium hover:bg-primary-tint hover:text-primary')}
+                  onClick={() => { onChange(u.value); setSearch(u.value); setOpen(false); }}
+                >
                   {u.label}
-                </button>
+                </Button>
               ))}
-              {todasFiltered.length > 0 && <div className="border-t mx-2 my-1" />}
+              {todasFiltered.length > 0 && <div className="border-t border-border mx-2 my-1" />}
             </>
           )}
           {todasFiltered.length > 0 && (
             <>
               <div className="px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Todas as Unidades</div>
               {todasFiltered.map(u => (
-                <button key={u.value} className={`w-full text-left px-3 py-1.5 hover:bg-muted/60 transition-colors ${value === u.value ? 'bg-primary/10 text-primary font-medium' : ''}`}
-                  onClick={() => { onChange(u.value); setSearch(u.value); setOpen(false); }}>
+                <Button
+                  key={u.value}
+                  type="button"
+                  variant="ghost"
+                  className={cn('h-auto w-full justify-start rounded-none px-3 py-1.5 text-sm font-normal', value === u.value && 'bg-primary-tint text-primary font-medium hover:bg-primary-tint hover:text-primary')}
+                  onClick={() => { onChange(u.value); setSearch(u.value); setOpen(false); }}
+                >
                   {u.label}
-                </button>
+                </Button>
               ))}
             </>
           )}
@@ -509,9 +532,19 @@ export default function Produtos() {
   if (!empresaAtiva) {
     return (
       <AppLayout>
-        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-          <Building2 className="w-16 h-16 text-muted-foreground/30" />
-          <p className="text-muted-foreground">Selecione uma empresa ativa para acessar o cadastro de produtos.</p>
+        <div className="space-y-6">
+          <CabecalhoPagina
+            icone={<Package />}
+            titulo="Produtos"
+            descricao="Cadastro de produtos da empresa — código, unidade, NCM, CEST, EAN e preço de venda."
+          />
+          <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+            <EstadoVazio
+              icone={<Building2 />}
+              titulo="Nenhuma empresa ativa"
+              descricao="Selecione uma empresa ativa para acessar o cadastro de produtos."
+            />
+          </div>
         </div>
       </AppLayout>
     );
@@ -523,23 +556,34 @@ export default function Produtos() {
 
     return (
       <AppLayout>
-        <div className="border rounded-lg overflow-hidden bg-background">
-          <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/30">
-            <span className="font-semibold text-sm">{editingId ? 'Editar Produto' : 'Incluir Produto'}</span>
-            <button onClick={closeForm} className="text-muted-foreground hover:text-foreground text-sm font-medium">Fechar ✕</button>
-          </div>
+        <div className="space-y-6">
+          <CabecalhoPagina
+            icone={<Package />}
+            trilha={[{ rotulo: 'Produtos' }, { rotulo: editingId ? 'Editar produto' : 'Novo produto' }]}
+            titulo={editingId ? 'Editar Produto' : 'Incluir Produto'}
+            descricao={codigoDisplay ? `Código ${codigoDisplay}` : undefined}
+            acoes={
+              <>
+                <Button variant="outline" onClick={closeForm}>Cancelar</Button>
+                <Button onClick={handleSave} disabled={saving}>
+                  {saving && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />} Salvar
+                </Button>
+              </>
+            }
+          />
 
-          <div className="p-4 space-y-4 overflow-y-auto max-h-[calc(100vh-140px)]">
+        <div className="rounded-lg border border-border bg-card shadow-sm">
+          <div className="p-6 space-y-6">
             {/* Top: image + fields + definição */}
-            <div className="flex gap-4">
+            <div className="flex flex-col md:flex-row gap-4">
               {/* Image */}
               <div className="flex flex-col items-center gap-1 shrink-0">
-                <div className="w-24 h-24 rounded bg-muted flex items-center justify-center text-muted-foreground font-bold text-xs text-center p-1 leading-tight">
+                <div className="w-24 h-24 rounded-md bg-muted flex items-center justify-center text-muted-foreground font-bold text-xs text-center p-1">
                   {codigoDisplay || 'Novo'}
                 </div>
-                <button className="flex items-center gap-1 text-xs text-accent hover:text-accent/80">
-                  <Pencil className="w-3 h-3" /> Alterar
-                </button>
+                <Button type="button" variant="link" size="sm" className="h-auto p-0 text-xs">
+                  <Pencil className="w-3 h-3" aria-hidden="true" /> Alterar
+                </Button>
                 <span className="text-xs text-muted-foreground">1 imagem</span>
               </div>
 
@@ -551,7 +595,7 @@ export default function Produtos() {
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <Field label="Código do Produto">
-                    <Input value={codigoDisplay} readOnly className="pt-1 bg-muted/30 text-muted-foreground" />
+                    <Input value={codigoDisplay} readOnly className="pt-1 bg-muted text-muted-foreground" />
                   </Field>
                   <Field label="Código EAN (GTIN)">
                     <div className="relative">
@@ -593,8 +637,10 @@ export default function Produtos() {
                   </Field>
                   <Field label="Família de Produto">
                     <div className="relative">
-                      <Input value={form.familia_produto} onChange={e => setForm(f => ({ ...f, familia_produto: e.target.value }))} className="pt-1 pr-7" placeholder="Opcional" />
-                      <button className="absolute right-2 top-1/2 -translate-y-1/2 text-accent"><Pencil className="w-3 h-3" /></button>
+                      <Input value={form.familia_produto} onChange={e => setForm(f => ({ ...f, familia_produto: e.target.value }))} className="pt-1 pr-9" placeholder="Opcional" />
+                      <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-muted-foreground" aria-label="Editar família de produto">
+                        <Pencil className="w-4 h-4" aria-hidden="true" />
+                      </Button>
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">Opcional (mas importante para os seus relatórios de estoque e de faturamento)</p>
                   </Field>
@@ -602,8 +648,8 @@ export default function Produtos() {
               </div>
 
               {/* Definição do Produto */}
-              <div className="shrink-0 w-44 border rounded-lg p-3 space-y-3">
-                <p className="text-xs font-semibold">Definição do Produto</p>
+              <div className="shrink-0 w-full md:w-44 rounded-lg border border-border p-3 space-y-3">
+                <p className="text-sm font-semibold">Definição do Produto</p>
                 <div className="flex items-center justify-between">
                   <Label className="text-sm flex items-center gap-1">Simples <span className="text-muted-foreground cursor-help" title="Produto simples, sem variações">ⓘ</span></Label>
                   <Switch checked={form.tipo_simples} onCheckedChange={v => setForm(f => ({ ...f, tipo_simples: v }))} />
@@ -621,7 +667,7 @@ export default function Produtos() {
 
             {/* Tabs — sem "Custo do Estoque" */}
             <Tabs defaultValue="estoque" className="w-full">
-              <TabsList className="flex flex-wrap h-auto gap-0.5 bg-muted/30 p-1">
+              <TabsList>
                 {[
                   { value: 'estoque', label: 'Estoque' },
                   { value: 'fornecedores', label: 'Fornecedores' },
@@ -630,40 +676,39 @@ export default function Produtos() {
                   { value: 'caracteristicas', label: 'Características' },
                   { value: 'fiscal', label: 'Recomendações Fiscais' },
                   { value: 'observacoes', label: 'Observações' },
-                ].map(t => <TabsTrigger key={t.value} value={t.value} className="text-xs px-3 py-1.5">{t.label}</TabsTrigger>)}
+                ].map(t => <TabsTrigger key={t.value} value={t.value}>{t.label}</TabsTrigger>)}
               </TabsList>
 
               {/* Estoque */}
-              <TabsContent value="estoque" className="border rounded-lg p-4 mt-2 space-y-3">
+              <TabsContent value="estoque" className="rounded-lg border border-border p-4 mt-2 space-y-3">
                 <div>
-                  <h3 className="text-sm font-semibold mb-1">Estoque Mínimo</h3>
-                  <p className="text-xs text-muted-foreground">Clique diretamente em qualquer célula desta coluna para atualizar o estoque mínimo de cada local de estoque</p>
+                  <h3 className="text-lg font-semibold mb-1">Estoque Mínimo</h3>
+                  <p className="text-sm text-muted-foreground">Clique diretamente em qualquer célula desta coluna para atualizar o estoque mínimo de cada local de estoque</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <Switch id="ctrl-lote" />
                   <Label htmlFor="ctrl-lote" className="text-sm flex items-center gap-1">Este produto possui controle de lote <span className="text-muted-foreground cursor-help">ⓘ</span></Label>
                 </div>
-                <div className="overflow-x-auto border rounded">
-                  <table className="w-full text-xs">
-                    <thead className="bg-muted/50">
+                <div className="overflow-x-auto rounded-md border border-border">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted">
                       <tr>
                         {['Local de Estoque','Estoque Disponível','CMC Unitário','CMC Total','Estoque Mínimo','Previsão de Entrada','Previsão de Saída'].map(col => (
-                          <th key={col} className="py-2 px-3 text-left font-medium text-muted-foreground whitespace-nowrap">
-                            <div className="flex items-center gap-1">{col}<ChevronsUpDown className="w-3 h-3 opacity-40" /><Filter className="w-3 h-3 opacity-40" /></div>
-                            <div className="h-px bg-border mt-1" /><Filter className="w-3 h-3 opacity-20 mt-0.5" />
+                          <th key={col} className="py-2 px-3 text-left text-sm font-semibold text-muted-foreground whitespace-nowrap">
+                            <div className="flex items-center gap-1">{col}<ChevronsUpDown className="w-3 h-3 opacity-40" aria-hidden="true" /><Filter className="w-3 h-3 opacity-40" aria-hidden="true" /></div>
                           </th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
-                      <tr className="bg-muted border-t">
+                      <tr className="border-t border-border">
                         <td className="py-2 px-3 font-medium">PADRAO - Local de Estoque Padrão</td>
-                        <td className="py-2 px-3 text-center">0 {form.unidade}</td>
-                        <td className="py-2 px-3 text-center">0,00</td>
-                        <td className="py-2 px-3 text-center">0,00</td>
-                        <td className="py-2 px-3 text-center"><Input className="h-6 w-16 text-xs text-center p-1" defaultValue="0" /></td>
-                        <td className="py-2 px-3 text-center">0.000000 {form.unidade}</td>
-                        <td className="py-2 px-3 text-center text-muted-foreground">—</td>
+                        <td className="py-2 px-3 text-right tabular-nums">0 {form.unidade}</td>
+                        <td className="py-2 px-3 text-right tabular-nums">0,00</td>
+                        <td className="py-2 px-3 text-right tabular-nums">0,00</td>
+                        <td className="py-2 px-3 text-right"><Input aria-label="Estoque mínimo" className="h-9 w-20 text-sm text-right tabular-nums ml-auto" defaultValue="0" /></td>
+                        <td className="py-2 px-3 text-right tabular-nums">0.000000 {form.unidade}</td>
+                        <td className="py-2 px-3 text-right text-muted-foreground">—</td>
                       </tr>
                     </tbody>
                   </table>
@@ -671,32 +716,36 @@ export default function Produtos() {
               </TabsContent>
 
               {/* Fornecedores */}
-              <TabsContent value="fornecedores" className="border rounded-lg p-4 mt-2">
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-sm font-medium">Fornecedores vinculados</p>
-                  <Button size="sm" variant="outline" className="text-accent border-accent/30 hover:bg-accent/10" onClick={() => { setFornBusca(''); setVincularOpen(true); }}>
-                    <Link className="w-3.5 h-3.5 mr-1.5" /> Vincular Fornecedor
+              <TabsContent value="fornecedores" className="rounded-lg border border-border p-4 mt-2">
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                  <p className="text-lg font-semibold">Fornecedores vinculados</p>
+                  <Button variant="outline" onClick={() => { setFornBusca(''); setVincularOpen(true); }}>
+                    <Link className="w-4 h-4" aria-hidden="true" /> Vincular Fornecedor
                   </Button>
                 </div>
                 {form.fornecedoresVinculados.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-10 text-muted-foreground gap-2">
-                    <Package className="w-8 h-8 opacity-30" />
-                    <p className="text-sm">Nenhum fornecedor vinculado a este produto.</p>
-                    <Button size="sm" variant="ghost" className="text-accent" onClick={() => { setFornBusca(''); setVincularOpen(true); }}>
-                      <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar fornecedor
-                    </Button>
-                  </div>
+                  <EstadoVazio
+                    tamanho="compacto"
+                    icone={<Package />}
+                    titulo="Nenhum fornecedor vinculado"
+                    descricao="Nenhum fornecedor vinculado a este produto."
+                    acao={
+                      <Button variant="outline" onClick={() => { setFornBusca(''); setVincularOpen(true); }}>
+                        <Plus className="w-4 h-4" aria-hidden="true" /> Adicionar fornecedor
+                      </Button>
+                    }
+                  />
                 ) : (
                   <div className="space-y-2">
                     {form.fornecedoresVinculados.map(f => (
-                      <div key={f.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div key={f.id} className="flex items-center justify-between gap-2 p-3 rounded-lg border border-border">
                         <div>
                           <p className="text-sm font-medium">{f.nome}</p>
                           {f.documento && <p className="text-xs text-muted-foreground">{f.documento}</p>}
                         </div>
-                        <button onClick={() => desvincularFornecedor(f.id)} className="text-muted-foreground hover:text-destructive transition-colors">
-                          <X className="w-4 h-4" />
-                        </button>
+                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive-tint" aria-label={`Desvincular ${f.nome}`} onClick={() => desvincularFornecedor(f.id)}>
+                          <X className="w-4 h-4" aria-hidden="true" />
+                        </Button>
                       </div>
                     ))}
                   </div>
@@ -704,15 +753,17 @@ export default function Produtos() {
               </TabsContent>
 
               {/* Histórico */}
-              <TabsContent value="historico" className="border rounded-lg p-4 mt-2">
-                <div className="flex items-center justify-center py-12 text-muted-foreground gap-2">
-                  <History className="w-8 h-8 opacity-30" />
-                  <p className="text-sm">Nenhum histórico de compras disponível.</p>
-                </div>
+              <TabsContent value="historico" className="rounded-lg border border-border p-4 mt-2">
+                <EstadoVazio
+                  tamanho="compacto"
+                  icone={<History />}
+                  titulo="Sem histórico"
+                  descricao="Nenhum histórico de compras disponível."
+                />
               </TabsContent>
 
               {/* Informações Adicionais */}
-              <TabsContent value="info" className="border rounded-lg p-4 mt-2 space-y-4">
+              <TabsContent value="info" className="rounded-lg border border-border p-4 mt-2 space-y-4">
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   <Field label="Peso Líquido (Kg)"><Input value={form.peso_liquido} onChange={e => setForm(f => ({ ...f, peso_liquido: e.target.value }))} className="pt-1" /></Field>
                   <Field label="Peso Bruto (Kg)"><Input value={form.peso_bruto} onChange={e => setForm(f => ({ ...f, peso_bruto: e.target.value }))} className="pt-1" /></Field>
@@ -734,15 +785,17 @@ export default function Produtos() {
               </TabsContent>
 
               {/* Características */}
-              <TabsContent value="caracteristicas" className="border rounded-lg p-4 mt-2">
-                <div className="flex items-center justify-center py-12 text-muted-foreground gap-2">
-                  <ClipboardList className="w-8 h-8 opacity-30" />
-                  <p className="text-sm">Nenhuma característica cadastrada.</p>
-                </div>
+              <TabsContent value="caracteristicas" className="rounded-lg border border-border p-4 mt-2">
+                <EstadoVazio
+                  tamanho="compacto"
+                  icone={<ClipboardList />}
+                  titulo="Sem características"
+                  descricao="Nenhuma característica cadastrada."
+                />
               </TabsContent>
 
               {/* Recomendações Fiscais */}
-              <TabsContent value="fiscal" className="border rounded-lg p-4 mt-2 space-y-4">
+              <TabsContent value="fiscal" className="rounded-lg border border-border p-4 mt-2 space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Field label="Origem da Mercadoria">
                     <Select value={form.origem_mercadoria} onValueChange={v => setForm(f => ({ ...f, origem_mercadoria: v }))}>
@@ -796,7 +849,7 @@ export default function Produtos() {
                     <Input value={form.numero_fci} onChange={e => setForm(f => ({ ...f, numero_fci: e.target.value }))} className="pt-1" placeholder="Opcional" />
                   </Field>
                 </div>
-                <div className="border-t pt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="border-t border-border pt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
                   <Field label="CST ICMS"><Input value={form.cst_icms} onChange={e => setForm(f => ({ ...f, cst_icms: e.target.value }))} className="pt-1" placeholder="00" /></Field>
                   <Field label="CSOSN"><Input value={form.csosn} onChange={e => setForm(f => ({ ...f, csosn: e.target.value }))} className="pt-1" placeholder="102" /></Field>
                   <Field label="CST PIS"><Input value={form.cst_pis} onChange={e => setForm(f => ({ ...f, cst_pis: e.target.value }))} className="pt-1" placeholder="07" /></Field>
@@ -809,16 +862,17 @@ export default function Produtos() {
               </TabsContent>
 
               {/* Observações */}
-              <TabsContent value="observacoes" className="border rounded-lg p-4 mt-2">
-                <textarea className="w-full h-32 text-sm bg-background border rounded p-2 resize-none focus:outline-none focus:ring-1 focus:ring-primary" placeholder="Observações sobre este produto..." />
+              <TabsContent value="observacoes" className="rounded-lg border border-border p-4 mt-2">
+                <Label htmlFor="produto-observacoes" className="text-sm">Observações</Label>
+                <Textarea id="produto-observacoes" className="mt-1 min-h-32 resize-none" placeholder="Observações sobre este produto..." />
               </TabsContent>
             </Tabs>
 
             {/* Actions */}
-            <div className="flex justify-end gap-2 pt-2 border-t">
+            <div className="flex flex-wrap justify-end gap-2 pt-4 border-t border-border">
               <Button variant="outline" onClick={closeForm}>Cancelar</Button>
-              <Button onClick={handleSave} disabled={saving} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-                {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />} Salvar
+              <Button onClick={handleSave} disabled={saving}>
+                {saving && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />} Salvar
               </Button>
             </div>
           </div>
@@ -830,8 +884,8 @@ export default function Produtos() {
                 <DialogTitle>Vincular Fornecedor</DialogTitle>
               </DialogHeader>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input placeholder="Buscar fornecedor..." value={fornBusca} onChange={e => setFornBusca(e.target.value)} className="pl-9" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
+                <Input aria-label="Buscar fornecedor" placeholder="Buscar fornecedor..." value={fornBusca} onChange={e => setFornBusca(e.target.value)} className="pl-9" />
               </div>
               <div className="flex-1 overflow-y-auto space-y-1 min-h-0">
                 {fornFiltrados.length === 0 ? (
@@ -840,17 +894,17 @@ export default function Produtos() {
                   </p>
                 ) : (
                   fornFiltrados.map(f => (
-                    <button key={f.id} onClick={() => vincularFornecedor(f)} className="w-full text-left p-3 rounded-lg border hover:bg-muted/50 transition-colors">
-                      <p className="text-sm font-medium">{f.nome}</p>
-                      {f.documento && <p className="text-xs text-muted-foreground">{f.documento}</p>}
-                      {f.email && <p className="text-xs text-muted-foreground">{f.email}</p>}
-                    </button>
+                    <Button key={f.id} type="button" variant="outline" onClick={() => vincularFornecedor(f)} className="h-auto w-full flex-col items-start whitespace-normal p-3 text-left font-normal">
+                      <span className="text-sm font-medium">{f.nome}</span>
+                      {f.documento && <span className="text-xs text-muted-foreground">{f.documento}</span>}
+                      {f.email && <span className="text-xs text-muted-foreground">{f.email}</span>}
+                    </Button>
                   ))
                 )}
               </div>
-              <div className="border-t pt-3">
+              <div className="border-t border-border pt-3">
                 <Button variant="outline" className="w-full" onClick={() => { setVincularOpen(false); setNovoFornOpen(true); }}>
-                  <Plus className="w-4 h-4 mr-2" /> Cadastrar novo fornecedor
+                  <Plus className="w-4 h-4" aria-hidden="true" /> Cadastrar novo fornecedor
                 </Button>
               </div>
             </DialogContent>
@@ -880,6 +934,7 @@ export default function Produtos() {
             onSelect={(codigo, descricao) => setForm(f => ({ ...f, cest: codigo, cest_descricao: descricao }))}
           />
         </div>
+        </div>
       </AppLayout>
     );
   }
@@ -887,41 +942,57 @@ export default function Produtos() {
   // ══ LIST VIEW ══════════════════════════════════════════════════
   return (
     <AppLayout>
-      <div className="border rounded-lg overflow-hidden bg-background flex flex-col" style={{ minHeight: '500px' }}>
-        <div className="flex items-center gap-3 px-4 py-2 border-b bg-muted/30">
-          <Button size="sm" variant="ghost" className="text-accent hover:text-accent hover:bg-accent/10 gap-1 text-sm font-medium" onClick={openNovo}>
-            <Plus className="w-4 h-4" /> Incluir
-          </Button>
-          <Button size="sm" variant="ghost" className="text-accent hover:text-accent hover:bg-accent/10 gap-1 text-sm font-medium">
-            <Upload className="w-4 h-4" /> Importar Planilha
-          </Button>
-          <div className="ml-auto">
-            <div className="relative">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-              <Input placeholder="Buscar produto..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} className="pl-7 h-7 text-xs w-52" />
-            </div>
+      <div className="space-y-6">
+      <CabecalhoPagina
+        icone={<Package />}
+        titulo="Produtos"
+        descricao="Cadastro de produtos da empresa — código, unidade, NCM, CEST, EAN e preço de venda."
+        acoes={
+          <>
+            <Button variant="outline">
+              <Upload className="w-4 h-4" aria-hidden="true" /> Importar Planilha
+            </Button>
+            <Button onClick={openNovo}>
+              <Plus className="w-4 h-4" aria-hidden="true" /> Incluir
+            </Button>
+          </>
+        }
+        filtros={
+          <div className="relative w-full sm:w-80">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
+            <Input aria-label="Buscar produto" placeholder="Buscar produto..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} className="pl-9" />
           </div>
-        </div>
+        }
+      />
 
-        <div className="bg-muted/40 border-b px-4 py-1.5 text-center text-xs text-muted-foreground">
+      <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden flex flex-col" style={{ minHeight: '500px' }}>
+        <div className="bg-muted border-b border-border px-4 py-2 text-center text-xs text-muted-foreground">
           Arraste uma ou mais colunas aqui para agrupar
         </div>
 
         <div className="flex flex-1 overflow-hidden">
-          <div className="flex-1 overflow-auto">
+          <div className="flex-1 overflow-x-auto">
             {loading ? (
-              <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
-            ) : filtered.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 gap-3">
-                <Package className="w-12 h-12 text-muted-foreground/30" />
-                <p className="text-muted-foreground text-sm">Nenhum produto encontrado</p>
-                <Button size="sm" onClick={openNovo}><Plus className="w-4 h-4 mr-1" /> Incluir primeiro produto</Button>
+              <div className="p-4 space-y-2" role="status" aria-label="Carregando produtos">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
               </div>
+            ) : filtered.length === 0 ? (
+              <EstadoVazio
+                icone={<Package />}
+                titulo="Nenhum produto encontrado"
+                descricao="Cadastre o primeiro produto ou ajuste a busca."
+                acao={
+                  <Button onClick={openNovo}><Plus className="w-4 h-4" aria-hidden="true" /> Incluir primeiro produto</Button>
+                }
+              />
             ) : (
               <table className="w-full text-sm">
-                <thead className="sticky top-0 bg-background z-10 border-b">
+                <thead className="sticky top-0 bg-card z-10 border-b border-border">
                   <tr>
-                    <th className="w-8 py-2 px-2"><Checkbox checked={allChecked} onCheckedChange={toggleAll} /></th>
+                    <th className="w-8 py-2 px-2"><Checkbox aria-label="Selecionar todos da página" checked={allChecked} onCheckedChange={toggleAll} /></th>
                     <ColHeader label="Situação" className="w-28" />
                     <ColHeader label="Descrição" />
                     <ColHeader label="Código" className="w-28" />
@@ -929,28 +1000,25 @@ export default function Produtos() {
                     <ColHeader label="Código NCM" className="w-28" />
                     <ColHeader label="CEST" className="w-24" />
                     <ColHeader label="Código EAN (GTIN)" className="w-36" />
-                    <ColHeader label="Preço Unitário de Venda" className="w-40" />
+                    <ColHeader label="Preço Unitário de Venda" className="w-40 text-right" />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {pageItems.map(p => {
                     const isSel = selected === p.id;
                     return (
-                      <tr key={p.id} className={`cursor-pointer transition-colors ${isSel ? 'bg-accent/10 border-l-2 border-l-accent' : 'hover:bg-muted/30'}`} onClick={() => setSelected(isSel ? null : p.id)} onDoubleClick={() => openEdit(p)}>
-                        <td className="py-2 px-2" onClick={e => e.stopPropagation()}><Checkbox checked={checked.has(p.id)} onCheckedChange={v => setChecked(prev => { const n = new Set(prev); v ? n.add(p.id) : n.delete(p.id); return n; })} /></td>
+                      <tr key={p.id} className={cn('cursor-pointer transition-colors', isSel ? 'bg-primary-tint border-l-2 border-l-primary' : 'hover:bg-muted')} onClick={() => setSelected(isSel ? null : p.id)} onDoubleClick={() => openEdit(p)}>
+                        <td className="py-2 px-2" onClick={e => e.stopPropagation()}><Checkbox aria-label={`Selecionar ${p.descricao}`} checked={checked.has(p.id)} onCheckedChange={v => setChecked(prev => { const n = new Set(prev); if (v) n.add(p.id); else n.delete(p.id); return n; })} /></td>
                         <td className="py-2 px-2">
-                          <div className="flex items-center gap-1.5">
-                            <span className={`w-2 h-2 rounded-full ${p.ativo ? 'bg-success' : 'bg-muted-foreground'}`} />
-                            <Badge variant="outline" className={`text-xs px-1.5 py-0 ${p.ativo ? 'bg-success/10 text-success border-success/30' : 'bg-muted text-muted-foreground'}`}>{p.ativo ? 'Ativo' : 'Inativo'}</Badge>
-                          </div>
+                          <Badge variant={p.ativo ? 'success' : 'muted'}>{p.ativo ? 'Ativo' : 'Inativo'}</Badge>
                         </td>
                         <td className="py-2 px-2 font-medium">{p.descricao}</td>
-                        <td className="py-2 px-2 text-xs text-muted-foreground">{p.codigo ?? '—'}</td>
-                        <td className="py-2 px-2 text-xs text-muted-foreground italic">{p.categoria ?? <span className="opacity-40">{'<não informado>'}</span>}</td>
-                        <td className="py-2 px-2 text-xs text-foreground font-medium">{p.ncm ?? '—'}</td>
-                        <td className="py-2 px-2 text-xs text-muted-foreground">{p.cest ?? <span className="opacity-40">—</span>}</td>
-                        <td className="py-2 px-2 text-xs text-muted-foreground">{p.codigo_ean ?? <span className="opacity-40">—</span>}</td>
-                        <td className="py-2 px-2 text-xs text-right">{p.preco_venda != null && p.preco_venda > 0 ? `R$ ${fmtPreco(p.preco_venda)}` : <span className="text-muted-foreground">—</span>}</td>
+                        <td className="py-2 px-2 text-sm text-muted-foreground">{p.codigo ?? '—'}</td>
+                        <td className="py-2 px-2 text-sm text-muted-foreground italic">{p.categoria ?? <span className="opacity-60">{'<não informado>'}</span>}</td>
+                        <td className="py-2 px-2 text-sm text-foreground font-medium">{p.ncm ?? '—'}</td>
+                        <td className="py-2 px-2 text-sm text-muted-foreground">{p.cest ?? <span className="opacity-60">—</span>}</td>
+                        <td className="py-2 px-2 text-sm text-muted-foreground">{p.codigo_ean ?? <span className="opacity-60">—</span>}</td>
+                        <td className="py-2 px-2 text-sm text-right tabular-nums">{p.preco_venda != null && p.preco_venda > 0 ? `R$ ${fmtPreco(p.preco_venda)}` : <span className="text-muted-foreground">—</span>}</td>
                       </tr>
                     );
                   })}
@@ -959,15 +1027,23 @@ export default function Produtos() {
             )}
           </div>
 
-          <button className="w-6 bg-muted/30 border-l flex items-center justify-center hover:bg-muted/60 shrink-0" onClick={() => setPanelOpen(o => !o)}>
-            <ChevronRight className={`w-3 h-3 text-muted-foreground transition-transform ${panelOpen ? '' : 'rotate-180'}`} />
-          </button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-auto w-6 shrink-0 rounded-none border-l border-border bg-muted hover:bg-muted/80"
+            aria-label={panelOpen ? 'Recolher painel de ações' : 'Expandir painel de ações'}
+            aria-expanded={panelOpen}
+            onClick={() => setPanelOpen(o => !o)}
+          >
+            <ChevronRight className={cn('w-3 h-3 text-muted-foreground transition-transform', panelOpen ? '' : 'rotate-180')} aria-hidden="true" />
+          </Button>
 
           {panelOpen && (
-            <div className="w-56 border-l bg-background shrink-0 overflow-y-auto">
+            <div className="w-56 border-l border-border bg-card shrink-0 overflow-y-auto">
               {selectedProduto ? (
                 <div className="p-3 space-y-1">
-                  <p className="font-semibold text-sm leading-snug">{selectedProduto.descricao}</p>
+                  <p className="font-semibold text-sm">{selectedProduto.descricao}</p>
                   <p className="text-xs text-muted-foreground mb-3">{selectedProduto.codigo ?? '—'}</p>
                   {[
                     { icon: Pencil, label: 'Editar', action: () => openEdit(selectedProduto), disabled: false },
@@ -977,14 +1053,14 @@ export default function Produtos() {
                     { icon: History, label: 'Histórico de Alterações', action: () => {}, disabled: true },
                     { icon: ClipboardList, label: 'Tarefas', action: () => {}, disabled: true },
                   ].map(({ icon: Icon, label, action, disabled }) => (
-                    <button key={label} onClick={action} disabled={disabled} className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm text-left transition-colors ${disabled ? 'opacity-30 cursor-not-allowed' : 'hover:bg-muted/50'}`}>
-                      <Icon className="w-4 h-4 text-muted-foreground shrink-0" /><span>{label}</span>
-                    </button>
+                    <Button key={label} type="button" variant="ghost" size="sm" onClick={action} disabled={disabled} className="w-full justify-start gap-2 px-2 font-normal">
+                      <Icon className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" /><span>{label}</span>
+                    </Button>
                   ))}
-                  <div className="border-t pt-1">
-                    <button onClick={() => handleDelete(selectedProduto.id)} className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm text-left hover:bg-destructive/10 transition-colors text-destructive">
-                      <Trash2 className="w-4 h-4 shrink-0" /><span>Excluir</span>
-                    </button>
+                  <div className="border-t border-border pt-1">
+                    <Button type="button" variant="ghost" size="sm" onClick={() => handleDelete(selectedProduto.id)} className="w-full justify-start gap-2 px-2 font-normal text-destructive hover:text-destructive hover:bg-destructive-tint">
+                      <Trash2 className="w-4 h-4 shrink-0" aria-hidden="true" /><span>Excluir</span>
+                    </Button>
                   </div>
                 </div>
               ) : (
@@ -996,16 +1072,17 @@ export default function Produtos() {
           )}
         </div>
 
-        <div className="flex items-center justify-between px-4 py-2 border-t bg-muted/20 text-xs text-muted-foreground">
+        <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 border-t border-border bg-muted text-xs text-muted-foreground">
           <span>{filtered.length === 0 ? 'Nenhum registro' : `${(curPage - 1) * PAGE_SIZE + 1} - ${Math.min(curPage * PAGE_SIZE, filtered.length)} de ${filtered.length} registros`}</span>
           <div className="flex items-center gap-1">
-            <button className="p-1 hover:text-foreground disabled:opacity-30" disabled={curPage <= 1} onClick={() => setPage(1)}><ChevronsLeft className="w-4 h-4" /></button>
-            <button className="p-1 hover:text-foreground disabled:opacity-30" disabled={curPage <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}><ChevronLeft className="w-4 h-4" /></button>
-            <span className="px-2 py-0.5 rounded bg-accent text-accent-foreground text-xs font-medium">{curPage}</span>
-            <button className="p-1 hover:text-foreground disabled:opacity-30" disabled={curPage >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))}><ChevronRight className="w-4 h-4" /></button>
-            <button className="p-1 hover:text-foreground disabled:opacity-30" disabled={curPage >= totalPages} onClick={() => setPage(totalPages)}><ChevronsRight className="w-4 h-4" /></button>
+            <Button type="button" variant="ghost" size="icon" className="h-8 w-8" aria-label="Primeira página" disabled={curPage <= 1} onClick={() => setPage(1)}><ChevronsLeft className="w-4 h-4" aria-hidden="true" /></Button>
+            <Button type="button" variant="ghost" size="icon" className="h-8 w-8" aria-label="Página anterior" disabled={curPage <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}><ChevronLeft className="w-4 h-4" aria-hidden="true" /></Button>
+            <span className="px-2 py-0.5 rounded-md bg-primary text-primary-foreground text-xs font-medium" aria-current="page">{curPage}</span>
+            <Button type="button" variant="ghost" size="icon" className="h-8 w-8" aria-label="Próxima página" disabled={curPage >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))}><ChevronRight className="w-4 h-4" aria-hidden="true" /></Button>
+            <Button type="button" variant="ghost" size="icon" className="h-8 w-8" aria-label="Última página" disabled={curPage >= totalPages} onClick={() => setPage(totalPages)}><ChevronsRight className="w-4 h-4" aria-hidden="true" /></Button>
           </div>
         </div>
+      </div>
       </div>
     </AppLayout>
   );

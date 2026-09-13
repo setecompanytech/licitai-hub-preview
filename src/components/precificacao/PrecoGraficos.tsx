@@ -78,22 +78,24 @@ export default function PrecoGraficos({ stats }: Props) {
           Uma série só, então sem legenda: o título já a nomeia. Barra
           horizontal porque descrição de item de edital é texto longo — em
           barra vertical o rótulo vira diagonal ilegível. */}
-      <div className="lg:col-span-3 rounded-xl border border-border bg-card p-5">
-        <div className="flex items-center justify-between gap-3 mb-4">
-          <h3 className="text-sm font-semibold flex items-center gap-2">
-            <TrendingDown className="w-4 h-4 text-success" aria-hidden="true" />
+      <div className="lg:col-span-3 rounded-lg border border-border bg-card p-6 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <TrendingDown className="w-5 h-5 text-success" aria-hidden="true" />
             Economia por item
           </h3>
-          <span className="rounded-md border border-border bg-muted/50 px-2 py-0.5 text-xs text-muted-foreground">
+          <span className="rounded-md border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground">
             Referência do edital × cotado
           </span>
         </div>
 
         {semEconomia ? (
           <div className="flex flex-col items-center justify-center gap-2 py-14 text-center">
-            <Info className="w-6 h-6 text-muted-foreground/50" aria-hidden="true" />
-            <p className="text-sm text-muted-foreground">Nenhum item cotado abaixo da referência ainda.</p>
-            <p className="text-xs text-muted-foreground/80 max-w-xs">
+            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
+              <Info className="w-6 h-6" aria-hidden="true" />
+            </span>
+            <p className="mt-2 text-base font-semibold">Nenhum item cotado abaixo da referência ainda</p>
+            <p className="text-sm text-muted-foreground max-w-xs">
               O gráfico aparece quando um item tiver valor de referência e valor cotado, e o cotado for menor.
             </p>
           </div>
@@ -138,12 +140,12 @@ export default function PrecoGraficos({ stats }: Props) {
       {/* ── Confiança das cotações ────────────────────────────────────────
           Quatro linhas nomeadas. A contagem e a proporção estão escritas,
           então quem não distingue as cores lê o mesmo que todo mundo. */}
-      <div className="lg:col-span-2 rounded-xl border border-border bg-card p-5">
-        <h3 className="text-sm font-semibold flex items-center gap-2 mb-1">
-          <ShieldCheck className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+      <div className="lg:col-span-2 rounded-lg border border-border bg-card p-6 shadow-sm">
+        <h3 className="text-lg font-semibold flex items-center gap-2 mb-1">
+          <ShieldCheck className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
           Confiança das cotações
         </h3>
-        <p className="text-xs text-muted-foreground mb-4">
+        <p className="text-sm text-muted-foreground mb-4">
           Quantas fontes independentes sustentam o preço de cada item.
         </p>
 
@@ -157,9 +159,9 @@ export default function PrecoGraficos({ stats }: Props) {
               return (
                 <li key={l.chave}>
                   <div className="flex items-center gap-2 mb-1.5">
-                    <Icone className={`w-3.5 h-3.5 shrink-0 ${l.texto}`} aria-hidden="true" />
-                    <span className="text-xs text-foreground">{l.rotulo}</span>
-                    <span className="ml-auto text-xs tabular-nums text-muted-foreground">
+                    <Icone className={`w-4 h-4 shrink-0 ${l.texto}`} aria-hidden="true" />
+                    <span className="text-sm text-foreground">{l.rotulo}</span>
+                    <span className="ml-auto text-sm tabular-nums text-muted-foreground">
                       <span className="font-semibold text-foreground">{l.n}</span> · {pct}%
                     </span>
                   </div>
@@ -175,7 +177,7 @@ export default function PrecoGraficos({ stats }: Props) {
           </ul>
         )}
 
-        <p className="text-xs text-muted-foreground mt-4 pt-3 border-t border-border/60 leading-relaxed">
+        <p className="text-xs text-muted-foreground mt-4 pt-3 border-t border-border">
           A Lei 14.133/2021 (art. 23) trata a pesquisa de preços como conjunto de
           fontes. Item com uma fonte só sustenta menos a estimativa.
         </p>

@@ -6,6 +6,9 @@ import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import {
   Select,
   SelectContent,
@@ -17,7 +20,7 @@ import { cn } from '@/lib/utils';
 import {
   Search, Filter, RefreshCw, ExternalLink, Calendar, MapPin,
   ArrowUpDown, ChevronLeft, ChevronRight, Eye, Kanban, Crosshair,
-  FileText, Loader2, MessageSquare, Archive, RotateCcw, AlertTriangle, Calculator,
+  FileText, MessageSquare, Archive, RotateCcw, AlertTriangle, Calculator,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -274,41 +277,75 @@ export default function PainelLicitacoes() {
     else { setSortField(field); setSortAsc(false); }
   }
 
+  /** Volta os filtros ao estado inicial — a ação do estado vazio. */
+  function limparFiltros() {
+    setSearch('');
+    setStatusFilter('todos');
+    setModalidadeFilter('todos');
+    setUfFilter('todos');
+    setFaixasAtivas(FAIXAS_PADRAO);
+  }
+
   if (loading) {
     return (
-      <div className="bg-card rounded-xl border border-border/50 p-8 flex items-center justify-center">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-        <span className="ml-2 text-sm text-muted-foreground">Carregando processos...</span>
+      <div className="space-y-4" role="status" aria-label="Carregando processos">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
+          {Array.from({ length: 5 }, (_, i) => (
+            <Skeleton key={i} className="h-20 w-full" />
+          ))}
+        </div>
+        <Skeleton className="h-16 w-full" />
+        <Skeleton className="h-28 w-full" />
+        <Skeleton className="h-64 w-full" />
+        <span className="sr-only">Carregando processos...</span>
       </div>
     );
   }
 
+  const opcoesOrdenacao = [
+    { field: 'created_at' as const, label: 'Recente' },
+    { field: 'data_encerramento' as const, label: 'Encerramento' },
+    { field: 'valor_estimado' as const, label: 'Valor' },
+  ];
+
   return (
     <div className="space-y-4">
-      {/* Summary stats bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+      {/* Resumo do que os filtros deixaram passar. Cinco colunas só a partir de
+          lg: em 640px cada célula teria 128px e o valor estimado, que é moeda
+          por extenso, seria truncado no meio dos dígitos.
+
+          Por que 20/28 e não o KPI de 32/40 da régua: a régua de 32 é a do
+          número do TOPO da tela, e o Painel já tem a dela (os StatCard do
+          cabeçalho). Este aqui é o resumo do que o filtro desta seção deixou
+          passar, quatro rolagens abaixo — repetir o mesmo peso faria duas
+          paredes de número disputando a mesma página. Rótulo em 14 (label da
+          régua) e dígitos tabulares seguem iguais. */}
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5 [&>*]:min-w-0">
         {[
           { label: 'Total', value: stats.total.toString(), color: 'text-foreground' },
           { label: 'Ativas', value: stats.ativas.toString(), color: 'text-foreground' },
-          { label: 'Valor Estimado', value: formatCurrency(stats.valorTotal), color: 'text-accent' },
+          { label: 'Valor estimado', value: formatCurrency(stats.valorTotal), color: 'text-primary' },
           { label: 'Urgentes (≤3d)', value: stats.urgentes.toString(), color: stats.urgentes > 0 ? 'text-destructive' : 'text-muted-foreground' },
           { label: 'Prazo perdido', value: stats.prazoPerdido.toString(), color: stats.prazoPerdido > 0 ? 'text-warning' : 'text-muted-foreground' },
         ].map((s) => (
-          <div key={s.label} className="bg-card rounded-xl border border-border/50 p-3 text-center">
-            <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">{s.label}</p>
-            <p className={cn('text-lg font-bold mt-0.5', s.color)}>{s.value}</p>
+          <div key={s.label} className="rounded-lg border border-border bg-card p-4 shadow-sm">
+            <p className="text-sm font-medium text-muted-foreground truncate">{s.label}</p>
+            <p className={cn('mt-1 text-xl font-bold tabular-nums truncate', s.color)} title={s.value}>{s.value}</p>
           </div>
         ))}
       </div>
 
       {/* Faixas do ciclo de vida — a triagem que o sistema passa a fazer pelo usuário */}
-      <div className="bg-card rounded-xl border border-border/50 p-3">
+      <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
         <div className="flex flex-wrap items-center gap-2">
           {FAIXAS.map((f) => {
             const ativa = faixasAtivas.includes(f.id);
             return (
-              <button
+              <Button
                 key={f.id}
+                type="button"
+                variant="outline"
+                size="sm"
                 title={f.descricao}
                 aria-pressed={ativa}
                 onClick={() =>
@@ -317,16 +354,15 @@ export default function PainelLicitacoes() {
                   )
                 }
                 className={cn(
-                  'flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm transition-colors',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  'rounded-full',
                   ativa
-                    ? 'bg-accent/10 border-accent/30 text-accent font-medium'
-                    : 'bg-transparent border-border/60 text-muted-foreground hover:bg-muted'
+                    ? 'border-primary/40 bg-primary-tint text-primary hover:bg-primary-tint'
+                    : 'text-muted-foreground'
                 )}
               >
                 {f.label}
                 <span className="text-xs tabular-nums opacity-70">{contagemPorFaixa[f.id]}</span>
-              </button>
+              </Button>
             );
           })}
           <span className="text-xs text-muted-foreground ml-auto hidden sm:block">
@@ -335,102 +371,127 @@ export default function PainelLicitacoes() {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="bg-card rounded-xl border border-border/50 p-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative flex-1 min-w-0">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por objeto, órgão ou número..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 h-9 text-sm"
-            />
+      {/* Filtros */}
+      <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="flex-1 min-w-[200px] space-y-2">
+            <Label htmlFor="painel-busca">Buscar</Label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
+              <Input
+                id="painel-busca"
+                placeholder="Buscar por objeto, órgão ou número..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
           </div>
 
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[140px] h-9 text-sm">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos Status</SelectItem>
-              {uniqueStatus.map((s) => (
-                <SelectItem key={s} value={s}>{rotuloStatus(s)}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="space-y-2">
+            <Label htmlFor="painel-status">Status</Label>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger id="painel-status" className="w-[160px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos Status</SelectItem>
+                {uniqueStatus.map((s) => (
+                  <SelectItem key={s} value={s}>{rotuloStatus(s)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-          <Select value={modalidadeFilter} onValueChange={setModalidadeFilter}>
-            <SelectTrigger className="w-[160px] h-9 text-sm">
-              <SelectValue placeholder="Modalidade" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todas Modalidades</SelectItem>
-              {uniqueModalidades.map((m) => (
-                <SelectItem key={m} value={m}>{m}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="space-y-2">
+            <Label htmlFor="painel-modalidade">Modalidade</Label>
+            <Select value={modalidadeFilter} onValueChange={setModalidadeFilter}>
+              <SelectTrigger id="painel-modalidade" className="w-[180px]">
+                <SelectValue placeholder="Modalidade" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todas Modalidades</SelectItem>
+                {uniqueModalidades.map((m) => (
+                  <SelectItem key={m} value={m}>{m}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-          <Select value={ufFilter} onValueChange={setUfFilter}>
-            <SelectTrigger className="w-[100px] h-9 text-sm">
-              <SelectValue placeholder="UF" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todas UFs</SelectItem>
-              {uniqueUfs.map((u) => (
-                <SelectItem key={u} value={u}>{u}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="space-y-2">
+            <Label htmlFor="painel-uf">UF</Label>
+            <Select value={ufFilter} onValueChange={setUfFilter}>
+              <SelectTrigger id="painel-uf" className="w-[120px]">
+                <SelectValue placeholder="UF" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todas UFs</SelectItem>
+                {uniqueUfs.map((u) => (
+                  <SelectItem key={u} value={u}>{u}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing} className="h-9">
-            <RefreshCw className={cn('w-4 h-4', refreshing && 'animate-spin')} />
+          <Button type="button" variant="outline" onClick={handleRefresh} disabled={refreshing}>
+            <RefreshCw className={cn(refreshing && 'animate-spin')} aria-hidden="true" />
+            Atualizar
           </Button>
         </div>
 
-        {/* Sort buttons */}
-        <div className="flex items-center gap-2 mt-3 text-xs text-muted-foreground">
-          <Filter className="w-3.5 h-3.5" />
+        {/* Ordenação */}
+        <div className="flex flex-wrap items-center gap-2 mt-3 text-xs text-muted-foreground">
+          <Filter className="w-4 h-4" aria-hidden="true" />
           <span>Ordenar:</span>
-          {[
-            { field: 'created_at' as const, label: 'Recente' },
-            { field: 'data_encerramento' as const, label: 'Encerramento' },
-            { field: 'valor_estimado' as const, label: 'Valor' },
-          ].map((opt) => (
-            <button
-              key={opt.field}
-              onClick={() => toggleSort(opt.field)}
-              className={cn(
-                'flex items-center gap-1 px-2 py-1 rounded-md transition-colors',
-                sortField === opt.field ? 'bg-accent/10 text-accent font-medium' : 'hover:bg-muted'
-              )}
-            >
-              {opt.label}
-              {sortField === opt.field && <ArrowUpDown className="w-3 h-3" />}
-            </button>
-          ))}
-          <span className="ml-auto">{filtered.length} resultado(s)</span>
+          {opcoesOrdenacao.map((opt) => {
+            const ativo = sortField === opt.field;
+            return (
+              <Button
+                key={opt.field}
+                type="button"
+                variant="ghost"
+                size="sm"
+                aria-pressed={ativo}
+                onClick={() => toggleSort(opt.field)}
+                /* Sem `text-xs`: o Button de ui já define a escala do rótulo de
+                   controle (14). Encolher o texto de um botão abaixo dela era o
+                   que fazia esta fileira parecer legenda, e não coisa clicável. */
+                className={cn(ativo && 'bg-primary-tint text-primary hover:bg-primary-tint')}
+              >
+                {opt.label}
+                {ativo && <ArrowUpDown aria-hidden="true" />}
+              </Button>
+            );
+          })}
+          <span className="ml-auto tabular-nums">{filtered.length} resultado(s)</span>
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-card rounded-xl border border-border/50 overflow-hidden">
+      {/* Tabela */}
+      <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
         {paginated.length === 0 ? (
-          <div className="p-8 text-center text-sm text-muted-foreground">
-            Nenhuma licitação encontrada com os filtros selecionados.
-          </div>
+          <EstadoVazio
+            tamanho="compacto"
+            icone={<Search />}
+            titulo="Nenhuma licitação encontrada"
+            descricao="Nenhuma licitação encontrada com os filtros selecionados."
+            acao={
+              <Button type="button" variant="outline" onClick={limparFiltros}>
+                Limpar filtros
+              </Button>
+            }
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border/50 bg-muted/30">
-                  <th className="text-left p-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Nº / Objeto</th>
-                  <th className="text-left p-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground hidden md:table-cell">Órgão</th>
-                  <th className="text-left p-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground hidden lg:table-cell">Local</th>
-                  <th className="text-right p-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Valor Est.</th>
-                  <th className="text-center p-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Status</th>
-                  <th className="text-center p-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground w-[240px]">Ações</th>
+                <tr className="border-b border-border bg-muted/50">
+                  <th scope="col" className="text-left p-3 text-sm font-semibold text-muted-foreground">Nº / Objeto</th>
+                  <th scope="col" className="text-left p-3 text-sm font-semibold text-muted-foreground hidden md:table-cell">Órgão</th>
+                  <th scope="col" className="text-left p-3 text-sm font-semibold text-muted-foreground hidden lg:table-cell">Local</th>
+                  <th scope="col" className="text-right p-3 text-sm font-semibold text-muted-foreground">Valor Est.</th>
+                  <th scope="col" className="text-center p-3 text-sm font-semibold text-muted-foreground">Status</th>
+                  <th scope="col" className="text-center p-3 text-sm font-semibold text-muted-foreground">Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -448,27 +509,27 @@ export default function PainelLicitacoes() {
                         transition={{ delay: i * 0.03 }}
                         onClick={() => navigate(`/processo/${lic.id}`)}
                         className={cn(
-                          'border-b border-border/30 hover:bg-muted/40 transition-colors cursor-pointer',
-                          isUrgent && 'bg-destructive/5',
+                          'border-b border-border last:border-0 hover:bg-muted/50 transition-colors cursor-pointer',
+                          isUrgent && 'bg-destructive-tint/60',
                           lic.arquivado_em && 'opacity-60'
                         )}
                       >
                         <td className="p-3">
                           <span className="text-xs tabular-nums text-muted-foreground block">{lic.numero}</span>
-                          <p className="text-base font-medium truncate max-w-[300px]">{lic.objeto}</p>
-                          <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                          <p className="text-sm font-medium truncate max-w-[300px]">{lic.objeto}</p>
+                          <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-muted-foreground">
                             {lic.modalidade && <span>{lic.modalidade}</span>}
                             {lic.data_encerramento && (
-                              <span className={cn('flex items-center gap-0.5', isUrgent && 'text-destructive font-semibold')}>
-                                <Calendar className="w-3 h-3" />
+                              <span className={cn('flex items-center gap-1', isUrgent && 'text-destructive font-semibold')}>
+                                <Calendar className="w-4 h-4" aria-hidden="true" />
                                 {new Date(lic.data_encerramento).toLocaleDateString('pt-BR')}
                               </span>
                             )}
                             {/* Sinaliza a falha operacional em vez de escondê-la:
                                 arquivar automaticamente aqui apagaria a evidência. */}
                             {perdeuPrazo && (
-                              <span className="flex items-center gap-0.5 text-warning font-semibold">
-                                <AlertTriangle className="w-3 h-3" />
+                              <span className="flex items-center gap-1 text-warning font-semibold">
+                                <AlertTriangle className="w-4 h-4" aria-hidden="true" />
                                 Prazo perdido
                               </span>
                             )}
@@ -478,12 +539,12 @@ export default function PainelLicitacoes() {
                         <td className="p-3 text-sm text-muted-foreground hidden lg:table-cell">
                           {lic.municipio && lic.uf ? (
                             <span className="flex items-center gap-1">
-                              <MapPin className="w-3 h-3" />
+                              <MapPin className="w-4 h-4" aria-hidden="true" />
                               {lic.municipio}/{lic.uf}
                             </span>
                           ) : lic.uf || '—'}
                         </td>
-                        <td className="p-3 text-right font-semibold text-sm">
+                        <td className="p-3 text-right text-sm font-semibold tabular-nums whitespace-nowrap">
                           {lic.valor_estimado ? formatCurrency(lic.valor_estimado) : '—'}
                         </td>
                         {/* stopPropagation: a linha inteira abre o prontuário, então
@@ -493,14 +554,19 @@ export default function PainelLicitacoes() {
                             value={lic.status}
                             onValueChange={(val) => handleStatusChange(lic.id, val)}
                           >
-                            <SelectTrigger className="h-7 w-[120px] mx-auto text-xs border-0 bg-transparent p-0 justify-center">
-                              <Badge variant="outline" className={cn('text-xs px-2 py-0.5', st.className)}>
+                            {/* A aparência do status vem de `aparenciaStatus` (lib/licitacao/status,
+                                a autoridade do vocabulário) — o painel não redeclara cores. */}
+                            <SelectTrigger
+                              aria-label={`Status: ${st.label}. Alterar status`}
+                              className="h-9 w-auto mx-auto gap-1 border-0 bg-transparent px-1 justify-center focus:ring-offset-0"
+                            >
+                              <Badge variant="outline" className={cn('text-xs', st.className)}>
                                 {st.label}
                               </Badge>
                             </SelectTrigger>
                             <SelectContent>
                               {STATUS_PROCESSO.map((s) => (
-                                <SelectItem key={s} value={s} className="text-xs">{rotuloStatus(s)}</SelectItem>
+                                <SelectItem key={s} value={s}>{rotuloStatus(s)}</SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
@@ -510,77 +576,85 @@ export default function PainelLicitacoes() {
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="h-7 w-7 p-0"
+                              className="h-9 w-9 p-0"
                               title="Abrir processo"
+                              aria-label="Abrir processo"
                               onClick={() => navigate(`/processo/${lic.id}`)}
                             >
-                              <Eye className="w-3.5 h-3.5" />
+                              <Eye aria-hidden="true" />
                             </Button>
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="h-7 w-7 p-0"
+                              className="h-9 w-9 p-0"
                               title="Kanban"
+                              aria-label="Abrir no Kanban"
                               onClick={() => navigate(`/kanban?focus=${lic.id}`)}
                             >
-                              <Kanban className="w-3.5 h-3.5" />
+                              <Kanban aria-hidden="true" />
                             </Button>
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="h-7 w-7 p-0"
+                              className="h-9 w-9 p-0"
                               title="Documentos e proposta"
+                              aria-label="Documentos e proposta"
                               onClick={() => navigate(`/processo/${lic.id}?aba=documentos`)}
                             >
-                              <FileText className="w-3.5 h-3.5" />
+                              <FileText aria-hidden="true" />
                             </Button>
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="h-7 w-7 p-0"
+                              className="h-9 w-9 p-0"
                               title="Precificação"
+                              aria-label="Precificação"
                               onClick={() => navigate(`/processo/${lic.id}?aba=precificacao`)}
                             >
-                              <Calculator className="w-3.5 h-3.5" />
+                              <Calculator aria-hidden="true" />
                             </Button>
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="h-7 w-7 p-0"
+                              className="h-9 w-9 p-0"
                               title="Mural / Chat"
+                              aria-label="Mural e chat"
                               onClick={() => navigate(`/monitoramento-chat?lid=${lic.id}&num=${encodeURIComponent(lic.numero)}`)}
                             >
-                              <MessageSquare className="w-3.5 h-3.5" />
+                              <MessageSquare aria-hidden="true" />
                             </Button>
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="h-7 w-7 p-0"
+                              className="h-9 w-9 p-0"
                               title="Robô de Lances"
+                              aria-label="Robô de Lances"
                               onClick={() => navigate(`/robo-lances?licitacao=${lic.id}`)}
                             >
-                              <Crosshair className="w-3.5 h-3.5" />
+                              <Crosshair aria-hidden="true" />
                             </Button>
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="h-7 w-7 p-0"
+                              className="h-9 w-9 p-0"
                               title={lic.arquivado_em ? 'Restaurar processo' : 'Arquivar processo'}
+                              aria-label={lic.arquivado_em ? 'Restaurar processo' : 'Arquivar processo'}
                               onClick={() => handleArquivar(lic)}
                             >
                               {lic.arquivado_em
-                                ? <RotateCcw className="w-3.5 h-3.5" />
-                                : <Archive className="w-3.5 h-3.5" />}
+                                ? <RotateCcw aria-hidden="true" />
+                                : <Archive aria-hidden="true" />}
                             </Button>
                             {lic.url_edital && (
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                className="h-7 w-7 p-0"
+                                className="h-9 w-9 p-0"
                                 title="Edital"
+                                aria-label="Abrir edital"
                                 onClick={() => window.open(lic.url_edital!, '_blank')}
                               >
-                                <ExternalLink className="w-3.5 h-3.5" />
+                                <ExternalLink aria-hidden="true" />
                               </Button>
                             )}
                           </div>
@@ -594,30 +668,32 @@ export default function PainelLicitacoes() {
           </div>
         )}
 
-        {/* Pagination */}
+        {/* Paginação */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-border/30">
-            <span className="text-xs text-muted-foreground">
+          <div className="flex items-center justify-between px-4 py-3 border-t border-border">
+            <span className="text-sm text-muted-foreground tabular-nums">
               Página {page + 1} de {totalPages}
             </span>
             <div className="flex items-center gap-1">
               <Button
                 variant="outline"
                 size="sm"
-                className="h-7 w-7 p-0"
+                className="h-9 w-9 p-0"
+                aria-label="Página anterior"
                 disabled={page === 0}
                 onClick={() => setPage(page - 1)}
               >
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft aria-hidden="true" />
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                className="h-7 w-7 p-0"
+                className="h-9 w-9 p-0"
+                aria-label="Próxima página"
                 disabled={page >= totalPages - 1}
                 onClick={() => setPage(page + 1)}
               >
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight aria-hidden="true" />
               </Button>
             </div>
           </div>

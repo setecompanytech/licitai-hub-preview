@@ -9,7 +9,7 @@ import {
   FolderTree, LineChart, FileBarChart, Briefcase, ScanLine, Plug, FileText, Inbox, BookOpen, Scale, Target,
   FileDown, Calculator, Eye, ArrowRightLeft, Upload, CheckCheck, FileSpreadsheet, ShieldCheck, Receipt,
   Building2, Sparkles, Activity, QrCode, History, Landmark, CalendarDays, Star, Clock4, Plus, Zap,
-  TrendingUp, TrendingDown, AlertTriangle, ArrowRight, Command, ChevronRight, Bell, Pin, PinOff,
+  TrendingUp, TrendingDown, AlertTriangle, ArrowRight, Command, ChevronRight, Bell, Pin,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useResumoVisorFinanceiro } from "@/hooks/useFinanceiro";
@@ -84,20 +84,12 @@ export const HUB_ITEMS: HubItem[] = [
 ];
 
 const GROUPS = [
-  { id: "operacao", label: "Operação Diária", short: "Operação", description: "Lançamentos, contas, fluxo de caixa", icon: Zap, accent: "primary" },
-  { id: "bancos", label: "Bancos & Conciliação", short: "Bancos", description: "Contas correntes, OFX, Open Finance", icon: Banknote, accent: "blue" },
-  { id: "fiscal", label: "Fiscal & Documentos", short: "Fiscal", description: "NF-e, NFS-e, PIX, OCR", icon: FileText, accent: "amber" },
-  { id: "relatorios", label: "Análises & Relatórios", short: "Análises", description: "DRE, dashboards, aprovações", icon: FileBarChart, accent: "emerald" },
-  { id: "cadastros", label: "Cadastros & Configuração", short: "Cadastros", description: "Pessoas, categorias, plano de contas", icon: FolderTree, accent: "muted" },
+  { id: "operacao", label: "Operação Diária", short: "Operação", description: "Lançamentos, contas, fluxo de caixa", icon: Zap },
+  { id: "bancos", label: "Bancos & Conciliação", short: "Bancos", description: "Contas correntes, OFX, Open Finance", icon: Banknote },
+  { id: "fiscal", label: "Fiscal & Documentos", short: "Fiscal", description: "NF-e, NFS-e, PIX, OCR", icon: FileText },
+  { id: "relatorios", label: "Análises & Relatórios", short: "Análises", description: "DRE, dashboards, aprovações", icon: FileBarChart },
+  { id: "cadastros", label: "Cadastros & Configuração", short: "Cadastros", description: "Pessoas, categorias, plano de contas", icon: FolderTree },
 ] as const;
-
-const ACCENT_MAP: Record<string, { icon: string; bg: string; ring: string; bar: string }> = {
-  primary: { icon: "text-muted-foreground", bg: "bg-muted", ring: "ring-border", bar: "bg-muted-foreground/40" },
-  blue: { icon: "text-muted-foreground", bg: "bg-muted", ring: "ring-border", bar: "bg-muted-foreground/40" },
-  amber: { icon: "text-muted-foreground", bg: "bg-muted", ring: "ring-border", bar: "bg-muted-foreground/40" },
-  emerald: { icon: "text-muted-foreground", bg: "bg-muted", ring: "ring-border", bar: "bg-muted-foreground/40" },
-  muted: { icon: "text-muted-foreground", bg: "bg-muted", ring: "ring-border", bar: "bg-muted-foreground/40" },
-};
 
 const QUICK_ACTIONS: Array<{ id: string; label: string; icon: React.ComponentType<{ className?: string }>; primary?: boolean }> = [
   { id: "lancamentos", label: "Novo Lançamento", icon: Plus, primary: true },
@@ -210,43 +202,33 @@ export default function FinHomeHub({ onNavigate }: FinHomeHubProps) {
   }, [resumo]);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {/* A conferência vem ANTES do saldo, de propósito: saber se o número
           fecha é condição para lê-lo, não um detalhe a conferir depois. */}
       <FinConferencia />
 
-      {/* ============ HERO COMMAND CENTER ============ */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-primary/[0.08] via-card to-background">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -top-24 -right-24 w-80 h-80 rounded-full bg-muted blur-3xl"
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -bottom-32 -left-20 w-96 h-96 rounded-full bg-muted/50 blur-3xl"
-        />
-        <div className="relative grid lg:grid-cols-[1.4fr_1fr] gap-6 p-5 md:p-6">
+      {/* ============ SALDO + AÇÕES RÁPIDAS ============ */}
+      <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+        <div className="grid lg:grid-cols-[1.4fr_1fr] gap-6">
           {/* Saldo destaque */}
           <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-success" />
-                </span>
-                Saldo consolidado
-              </div>
+            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <span className="relative flex h-2 w-2" aria-hidden="true">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-success" />
+              </span>
+              Saldo consolidado
             </div>
             <div className="space-y-1">
               {loadingResumo ? (
-                <Skeleton className="h-12 w-72" />
+                <Skeleton className="h-10 w-72" />
               ) : (
-                <h2 className="text-4xl md:text-5xl font-semibold tabular-nums tracking-tight">
+                <p className="text-[2rem] leading-10 font-bold tabular-nums text-foreground">
                   {kpis ? formatBRL(kpis.saldo) : "—"}
-                </h2>
+                </p>
               )}
               {kpis && !loadingResumo && (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-sm text-muted-foreground">
                   Projetado para hoje:{" "}
                   <span className={cn(
                     "font-medium tabular-nums",
@@ -255,15 +237,15 @@ export default function FinHomeHub({ onNavigate }: FinHomeHubProps) {
                     {formatBRL(kpis.saldoProjetado)}
                   </span>
                   {kpis.saldoProjetado >= kpis.saldo
-                    ? <TrendingUp className="inline w-3 h-3 ml-1 text-success" />
-                    : <TrendingDown className="inline w-3 h-3 ml-1 text-destructive" />}
+                    ? <TrendingUp className="inline w-4 h-4 ml-1 text-success" aria-hidden="true" />
+                    : <TrendingDown className="inline w-4 h-4 ml-1 text-destructive" aria-hidden="true" />}
                 </p>
               )}
               {/* Número apurado sobre amostra não pode ter a cara de número
                   exato. O hook marca quais recortes bateram no teto. */}
               {resumo && resumo.truncado.length > 0 && (
-                <p className="text-xs text-warning flex items-center gap-1.5">
-                  <AlertTriangle className="w-3 h-3 flex-shrink-0" />
+                <p className="text-xs text-warning flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
                   Volume acima do teto de consulta em {resumo.truncado.join(", ")} —
                   inadimplência e runway saem incompletos.
                 </p>
@@ -277,16 +259,10 @@ export default function FinHomeHub({ onNavigate }: FinHomeHubProps) {
                 return (
                   <Button
                     key={a.id}
-                    size="sm"
                     variant={a.primary ? "default" : "outline"}
                     onClick={() => handleNavigate(a.id)}
-                    className={cn(
-                      "h-8 text-xs gap-1.5 transition-all hover:-translate-y-0.5",
-                      a.primary && "shadow-sm shadow-primary/20",
-                      !a.primary && "bg-card/60 backdrop-blur hover:border-primary/40 hover:text-primary hover:bg-primary/5",
-                    )}
                   >
-                    <Icon className="w-3.5 h-3.5" />
+                    <Icon className="w-4 h-4" aria-hidden="true" />
                     {a.label}
                   </Button>
                 );
@@ -295,7 +271,7 @@ export default function FinHomeHub({ onNavigate }: FinHomeHubProps) {
           </div>
 
           {/* Mini KPIs lateral */}
-          <div className="grid grid-cols-2 gap-3 self-center">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 self-center">
             <MiniMetric
               loading={loadingResumo}
               icon={ArrowDownCircle}
@@ -338,37 +314,37 @@ export default function FinHomeHub({ onNavigate }: FinHomeHubProps) {
 
       {/* ============ Alerta de atrasos (contextual) ============ */}
       {kpis && kpis.atrasoTotal > 0 && (
-        <div className="flex items-center justify-between gap-3 rounded-xl border border-warning/30 bg-warning/5 px-4 py-2.5 animate-in fade-in slide-in-from-top-1">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="shrink-0 w-7 h-7 rounded-full bg-warning/15 flex items-center justify-center">
-              <Bell className="w-3.5 h-3.5 text-warning" />
-            </div>
-            <div className="text-xs min-w-0">
-              <span className="font-medium text-warning">Há lançamentos em atraso.</span>{" "}
-              <span className="text-muted-foreground">
+        <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-warning-line bg-warning-tint px-4 py-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <Bell className="w-4 h-4 shrink-0 text-warning-ink" aria-hidden="true" />
+            <p className="text-sm min-w-0 text-warning-ink">
+              <span className="font-medium">Há lançamentos em atraso.</span>{" "}
+              <span>
                 {formatBRL(kpis.atrasoPagar)} a pagar e {formatBRL(kpis.atrasoReceber)} a receber.
               </span>
-            </div>
+            </p>
           </div>
-          <Button size="sm" variant="ghost" className="h-7 text-xs shrink-0" onClick={() => handleNavigate("panorama")}>
-            Resolver <ArrowRight className="w-3 h-3 ml-1" />
+          <Button variant="outline" onClick={() => handleNavigate("panorama")}>
+            Resolver <ArrowRight className="w-4 h-4" aria-hidden="true" />
           </Button>
         </div>
       )}
 
       {/* ============ Busca + Command palette hint ============ */}
       <div className="relative">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <label htmlFor="fin-hub-busca" className="sr-only">Buscar funcionalidade</label>
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
         <Input
+          id="fin-hub-busca"
           ref={inputRef}
           placeholder="Buscar funcionalidade... (ex: conciliação, NF-e, bonificação)"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="pl-11 pr-28 h-12 text-sm bg-card border-border/60 shadow-sm focus-visible:ring-primary/30"
+          className="pl-11 pr-28"
         />
-        <div className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:flex items-center gap-1.5">
+        <div className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:flex items-center gap-2" aria-hidden="true">
           <kbd className="inline-flex h-5 items-center gap-1 rounded border border-border bg-muted px-1.5 text-xs font-mono text-muted-foreground">
-            <Command className="w-2.5 h-2.5" />K
+            <Command className="w-3 h-3" />K
           </kbd>
           <span className="text-xs text-muted-foreground">ou</span>
           <kbd className="inline-flex h-5 items-center justify-center rounded border border-border bg-muted px-1.5 text-xs font-mono text-muted-foreground">
@@ -378,19 +354,18 @@ export default function FinHomeHub({ onNavigate }: FinHomeHubProps) {
       </div>
 
       {/* ============ Layout 2 colunas: Sidebar categorias + conteúdo ============ */}
-      <div className="grid lg:grid-cols-[220px_1fr] gap-5">
+      <div className="grid lg:grid-cols-[220px_1fr] gap-6">
         {/* Sidebar de categorias */}
         <aside className="lg:sticky lg:top-4 lg:self-start space-y-1">
-          <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-2 py-1.5">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-2 py-2">
             Categorias
-          </div>
+          </p>
           <NavChip
             label="Todos os módulos"
             icon={LayoutDashboard}
             count={HUB_ITEMS.length}
             active={activeGroup === "all"}
             onClick={() => setActiveGroup("all")}
-            accent="primary"
           />
           {GROUPS.map((g) => (
             <NavChip
@@ -400,16 +375,15 @@ export default function FinHomeHub({ onNavigate }: FinHomeHubProps) {
               count={HUB_ITEMS.filter((i) => i.group === g.id).length}
               active={activeGroup === g.id}
               onClick={() => setActiveGroup(g.id)}
-              accent={g.accent}
             />
           ))}
 
           {/* Stats lateral */}
-          <div className="mt-4 pt-4 border-t border-border/60 space-y-2">
-            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-2">
+          <div className="mt-4 pt-4 border-t border-border space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-2">
               Resumo
-            </div>
-            <div className="px-2 space-y-1.5 text-xs">
+            </p>
+            <div className="px-2 space-y-2 text-sm">
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Favoritos</span>
                 <span className="font-medium tabular-nums">{favorites.length}</span>
@@ -427,16 +401,15 @@ export default function FinHomeHub({ onNavigate }: FinHomeHubProps) {
         </aside>
 
         {/* Conteúdo principal */}
-        <div className="space-y-6 min-w-0">
+        <div className="space-y-8 min-w-0">
           {/* Favoritos */}
           {favoriteItems.length > 0 && !search && activeGroup === "all" && (
             <SectionBlock
               title="Favoritos"
               subtitle="Pinados por você"
               icon={Star}
-              iconClass="fill-muted-foreground text-muted-foreground"
             >
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
                 {favoriteItems.map((item, idx) => (
                   <ModuleRow
                     key={item.id}
@@ -456,20 +429,19 @@ export default function FinHomeHub({ onNavigate }: FinHomeHubProps) {
             <SectionBlock
               title="Acessados recentemente"
               icon={Clock4}
-              iconClass="text-muted-foreground"
             >
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap gap-2">
                 {recentItems.map((item) => {
                   const Icon = item.icon;
-                  const accent = ACCENT_MAP[GROUPS.find((g) => g.id === item.group)?.accent ?? "primary"];
                   return (
                     <button
                       key={item.id}
+                      type="button"
                       onClick={() => handleNavigate(item.id)}
-                      className="group inline-flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-full border border-border/60 bg-card hover:border-primary/40 hover:bg-primary/5 transition-all text-xs"
+                      className="inline-flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-full border border-border bg-card text-sm transition-colors hover:border-primary/40 hover:bg-primary-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     >
-                      <span className={cn("inline-flex items-center justify-center w-5 h-5 rounded-full", accent.bg)}>
-                        <Icon className={cn("w-3 h-3", accent.icon)} />
+                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary-tint text-primary">
+                        <Icon className="w-3 h-3" />
                       </span>
                       <span className="font-medium">{item.label}</span>
                     </button>
@@ -483,7 +455,6 @@ export default function FinHomeHub({ onNavigate }: FinHomeHubProps) {
           {GROUPS.map((group) => {
             const items = grouped.get(group.id);
             if (!items?.length) return null;
-            const accent = ACCENT_MAP[group.accent];
             const GroupIcon = group.icon;
             return (
               <SectionBlock
@@ -491,11 +462,10 @@ export default function FinHomeHub({ onNavigate }: FinHomeHubProps) {
                 title={group.label}
                 subtitle={group.description}
                 icon={GroupIcon}
-                iconClass={accent.icon}
-                accentBar={accent.bar}
+                accentBar
                 count={items.length}
               >
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
                   {items.map((item, idx) => (
                     <ModuleRow
                       key={item.id}
@@ -513,10 +483,13 @@ export default function FinHomeHub({ onNavigate }: FinHomeHubProps) {
 
           {filtered.length === 0 && (
             <Card>
-              <CardContent className="py-12 text-center text-sm text-muted-foreground space-y-2">
-                <Search className="w-8 h-8 mx-auto text-muted-foreground" />
-                <p>Nenhuma funcionalidade encontrada para "{search}".</p>
-                <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setActiveGroup("all"); }}>
+              <CardContent className="flex flex-col items-center py-12 text-center">
+                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
+                  <Search className="w-6 h-6" aria-hidden="true" />
+                </span>
+                <p className="mt-3 text-lg font-semibold">Nenhuma funcionalidade encontrada</p>
+                <p className="mt-1 text-sm text-muted-foreground">Nenhuma funcionalidade encontrada para "{search}".</p>
+                <Button variant="outline" className="mt-4" onClick={() => { setSearch(""); setActiveGroup("all"); }}>
                   Limpar filtros
                 </Button>
               </CardContent>
@@ -533,38 +506,37 @@ export default function FinHomeHub({ onNavigate }: FinHomeHubProps) {
 // ============================================================================
 
 function NavChip({
-  label, icon: Icon, count, active, onClick, accent,
+  label, icon: Icon, count, active, onClick,
 }: {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   count: number;
   active: boolean;
   onClick: () => void;
-  accent: string;
 }) {
-  const a = ACCENT_MAP[accent] ?? ACCENT_MAP.primary;
   return (
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={active}
       className={cn(
-        "w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs transition-all group relative",
+        "w-full flex items-center gap-2 px-2 py-2 rounded-md text-sm transition-colors group relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
         active
-          ? "bg-primary/10 text-foreground font-medium"
+          ? "bg-primary-tint text-foreground font-medium"
           : "text-muted-foreground hover:bg-muted hover:text-foreground",
       )}
     >
-      {active && <span className={cn("absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-r", a.bar)} />}
+      {active && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-r bg-primary" aria-hidden="true" />}
       <span className={cn(
-        "shrink-0 inline-flex items-center justify-center w-6 h-6 rounded-md transition-all",
-        active ? a.bg : "bg-transparent group-hover:bg-muted-foreground/10",
+        "shrink-0 inline-flex items-center justify-center w-6 h-6 rounded-md transition-colors",
+        active ? "bg-card text-primary" : "bg-transparent group-hover:bg-muted",
       )}>
-        <Icon className={cn("w-3.5 h-3.5", active ? a.icon : "")} />
+        <Icon className="w-4 h-4" />
       </span>
       <span className="flex-1 text-left truncate">{label}</span>
       <span className={cn(
         "shrink-0 text-xs tabular-nums px-1.5 py-0.5 rounded",
-        active ? "bg-background text-foreground" : "bg-muted text-muted-foreground",
+        active ? "bg-card text-foreground" : "bg-muted text-muted-foreground",
       )}>
         {count}
       </span>
@@ -573,25 +545,24 @@ function NavChip({
 }
 
 function SectionBlock({
-  title, subtitle, icon: Icon, iconClass, accentBar, count, children,
+  title, subtitle, icon: Icon, accentBar, count, children,
 }: {
   title: string;
   subtitle?: string;
   icon: React.ComponentType<{ className?: string }>;
-  iconClass?: string;
-  accentBar?: string;
+  accentBar?: boolean;
   count?: number;
   children: React.ReactNode;
 }) {
   return (
-    <section className="space-y-3 animate-in fade-in slide-in-from-bottom-1">
-      <div className="flex items-center gap-2.5">
-        {accentBar && <span className={cn("w-1 h-5 rounded-full", accentBar)} />}
-        <Icon className={cn("w-4 h-4", iconClass)} />
-        <h2 className="text-sm font-semibold tracking-tight">{title}</h2>
-        {subtitle && <span className="text-xs text-muted-foreground hidden sm:inline">— {subtitle}</span>}
+    <section className="space-y-3">
+      <div className="flex items-center gap-2">
+        {accentBar && <span className="w-1 h-5 rounded-full bg-primary" aria-hidden="true" />}
+        <Icon className="w-5 h-5 text-muted-foreground" />
+        <h2 className="text-lg font-semibold">{title}</h2>
+        {subtitle && <span className="text-sm text-muted-foreground hidden sm:inline">— {subtitle}</span>}
         {typeof count === "number" && (
-          <Badge variant="outline" className="ml-auto text-xs h-5 px-1.5 bg-card">
+          <Badge variant="muted" className="ml-auto">
             {count}
           </Badge>
         )}
@@ -611,45 +582,34 @@ function ModuleRow({
   onToggleFav: (e: React.MouseEvent, id: string) => void;
 }) {
   const Icon = item.icon;
-  const accent = ACCENT_MAP[GROUPS.find((g) => g.id === item.group)?.accent ?? "primary"];
   return (
     <button
       type="button"
       onClick={() => onNavigate(item.id)}
       className={cn(
-        "group relative w-full text-left flex items-center gap-3 p-2.5 pr-2 rounded-xl border bg-card transition-all duration-200",
-        "hover:border-primary/40 hover:shadow-sm hover:-translate-y-0.5 hover:bg-card",
+        "group relative w-full text-left flex items-center gap-3 p-3 pr-2 rounded-lg border bg-card shadow-sm transition-colors duration-200",
+        "hover:border-primary/40 hover:shadow-md",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
         "animate-in fade-in",
-        item.highlight ? "border-primary/40 ring-1 ring-primary/15" : "border-border/60",
+        item.highlight ? "border-primary/40" : "border-border",
       )}
       style={{ animationDelay: `${Math.min(idx * 20, 240)}ms`, animationFillMode: "backwards" }}
     >
-      {/* Accent bar à esquerda */}
-      <span className={cn(
-        "absolute left-0 top-3 bottom-3 w-0.5 rounded-r-full opacity-0 group-hover:opacity-100 transition-opacity",
-        accent.bar,
-      )} />
+      {/* Barra de destaque à esquerda */}
+      <span
+        className="absolute left-0 top-3 bottom-3 w-0.5 rounded-r-full bg-primary opacity-0 group-hover:opacity-100 transition-opacity"
+        aria-hidden="true"
+      />
 
-      <div className={cn(
-        "shrink-0 w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200",
-        "group-hover:scale-105",
-        item.highlight ? "bg-muted text-foreground" : cn(accent.bg, accent.icon),
-      )}>
-        <Icon className="w-4 h-4" />
+      <div className="shrink-0 w-10 h-10 rounded-md flex items-center justify-center bg-primary-tint text-primary">
+        <Icon className="w-5 h-5" />
       </div>
 
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="font-medium text-sm leading-tight truncate">{item.label}</span>
           {item.badge && (
-            <Badge
-              variant="secondary"
-              className={cn(
-                "text-xs px-1.5 py-0 h-4 shrink-0 font-medium",
-                (item.badge === "Novo" || item.badge.startsWith("Fase")) &&
-                  "bg-foreground text-background border-transparent hover:bg-foreground/90",
-              )}
-            >
+            <Badge variant={item.badge === "Novo" ? "success" : "info"} className="shrink-0">
               {item.badge}
             </Badge>
           )}
@@ -657,26 +617,26 @@ function ModuleRow({
         <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{item.description}</p>
       </div>
 
-      <div className="shrink-0 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="shrink-0 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
         <span
           role="button"
           tabIndex={0}
           onClick={(e) => onToggleFav(e as any, item.id)}
           onKeyDown={(e) => { if (e.key === "Enter") onToggleFav(e as any, item.id); }}
-          className="p-1.5 rounded-md hover:bg-muted transition-colors"
+          className="p-1.5 rounded-md hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           aria-label={isFav ? "Remover dos favoritos" : "Fixar nos favoritos"}
         >
           {isFav
-            ? <Pin className="w-3.5 h-3.5 fill-accent text-accent" />
-            : <Pin className="w-3.5 h-3.5 text-muted-foreground" />}
+            ? <Pin className="w-4 h-4 fill-primary text-primary" />
+            : <Pin className="w-4 h-4 text-muted-foreground" />}
         </span>
-        <ChevronRight className="w-4 h-4 text-muted-foreground" />
+        <ChevronRight className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
       </div>
 
       {/* Pin sempre visível se favorito */}
       {isFav && (
-        <span className="absolute top-1.5 right-1.5 group-hover:opacity-0 transition-opacity">
-          <Pin className="w-3 h-3 fill-accent text-accent" />
+        <span className="absolute top-1.5 right-1.5 group-hover:opacity-0 transition-opacity" aria-hidden="true">
+          <Pin className="w-3 h-3 fill-primary text-primary" />
         </span>
       )}
     </button>
@@ -700,17 +660,17 @@ function MiniMetric({
     negative: "text-destructive",
     warning: "text-warning",
   }[tone];
-  const toneBg = {
-    neutral: "bg-muted",
-    positive: "bg-success/10",
-    negative: "bg-destructive/10",
-    warning: "bg-warning/10",
+  const toneIcon = {
+    neutral: "bg-muted text-foreground",
+    positive: "bg-success-tint text-success-ink",
+    negative: "bg-destructive-tint text-destructive-ink",
+    warning: "bg-warning-tint text-warning-ink",
   }[tone];
   const toneBorder = {
-    neutral: "hover:border-primary/40",
-    positive: "hover:border-success/40",
-    negative: "hover:border-destructive/40",
-    warning: "border-warning/40 hover:border-warning/60",
+    neutral: "border-border hover:border-primary/40",
+    positive: "border-border hover:border-success-line",
+    negative: "border-border hover:border-destructive-line",
+    warning: "border-warning-line hover:border-warning-ink",
   }[tone];
 
   return (
@@ -718,30 +678,29 @@ function MiniMetric({
       type="button"
       onClick={onClick}
       className={cn(
-        "group text-left rounded-xl border bg-card/80 backdrop-blur-sm p-3 transition-all duration-200",
-        "hover:shadow-sm hover:-translate-y-0.5",
+        "group text-left rounded-lg border bg-card p-4 transition-colors duration-200",
+        "hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
         toneBorder,
-        tone === "warning" ? "border-warning/40" : "border-border/60",
       )}
     >
-      <div className="flex items-center justify-between mb-1.5">
-        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider truncate">
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <span className="text-xs font-medium text-muted-foreground truncate">
           {label}
         </span>
-        <span className={cn("inline-flex items-center justify-center w-6 h-6 rounded-md", toneBg)}>
-          <Icon className={cn("w-3.5 h-3.5", toneText)} />
+        <span className={cn("inline-flex items-center justify-center w-6 h-6 rounded-md shrink-0", toneIcon)}>
+          <Icon className="w-4 h-4" />
         </span>
       </div>
       {loading ? (
         <Skeleton className="h-6 w-3/4" />
       ) : (
         <div className={cn(
-          "font-semibold tabular-nums tracking-tight",
-          isAction ? "text-sm text-primary group-hover:translate-x-0.5 transition-transform inline-flex items-center gap-1" : "text-lg",
+          "font-semibold tabular-nums",
+          isAction ? "text-sm text-primary inline-flex items-center gap-1" : "text-lg",
           !isAction && toneText,
         )}>
           {value}
-          {isAction && <ArrowRight className="w-3.5 h-3.5" />}
+          {isAction && <ArrowRight className="w-4 h-4" aria-hidden="true" />}
         </div>
       )}
     </button>

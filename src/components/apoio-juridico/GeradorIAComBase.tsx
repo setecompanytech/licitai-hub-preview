@@ -4,8 +4,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Sparkles, Loader2, BookOpen, Copy, TrendingUp, Download, FileText } from 'lucide-react';
 import { streamAIChat } from '@/lib/ai-stream';
@@ -18,10 +22,26 @@ type DocRef = { id: string; titulo: string; tipo: string; ementa: string | null;
 type Indice = { id: string; nome: string; sigla: string; valor: number; variacao_mensal: number | null; acumulado_12m: number | null; periodo: string; fonte: string };
 type CCT = { id: string; categoria_profissional: string; piso_salarial: number | null; reajuste_percentual: number | null; indice_reajuste: string | null; vigencia_inicio: string | null; vigencia_fim: string | null; sindicato_laboral: string | null; abrangencia_uf: string | null };
 
+const TIPOS_DOCUMENTO = [
+  'Impugnação ao Edital',
+  'Pedido de Esclarecimento',
+  'Recurso Administrativo',
+  'Contrarrazões',
+  'Pedido de Reconsideração',
+  'Reajuste Contratual',
+  'Repactuação (MO/CCT)',
+  'Revisão / Reequilíbrio',
+];
 const TIPOS_REEQUILIBRIO = ['Reajuste Contratual', 'Repactuação (MO/CCT)', 'Revisão / Reequilíbrio'];
 const TIPOS_COM_ANALISE_EDITAL = ['Impugnação ao Edital', 'Pedido de Esclarecimento'];
 const TIPOS_COM_UPLOAD_DOCS = ['Recurso Administrativo', 'Contrarrazões', 'Pedido de Reconsideração'];
 const fmtPerc = (v: number | null) => v != null ? `${v >= 0 ? '+' : ''}${v.toFixed(2)}%` : '—';
+
+const GRAVIDADE_VARIANTE: Record<'alta' | 'media' | 'baixa', 'danger' | 'warning' | 'info'> = {
+  alta: 'danger',
+  media: 'warning',
+  baixa: 'info',
+};
 
 export default function GeradorIAComBase() {
   const { user } = useAuth();
@@ -248,7 +268,7 @@ Linguagem técnica, formal, objetiva e impessoal.\n`;
     // Specific instructions for edital analysis types
     let specificInstructions = '';
     if (isAnaliseEdital && irregularidades.length > 0) {
-      specificInstructions = `\n\nINSTRUÇÃO ESPECÍFICA: Gere um documento de "${tipoDoc}" completo e profissional com base nas ${irregularidades.length} irregularidades identificadas abaixo. 
+      specificInstructions = `\n\nINSTRUÇÃO ESPECÍFICA: Gere um documento de "${tipoDoc}" completo e profissional com base nas ${irregularidades.length} irregularidades identificadas abaixo.
 Para CADA irregularidade:
 1. Descreva os fatos de forma clara e objetiva
 2. Apresente a fundamentação jurídica completa (Lei 14.133/2021, jurisprudência TCU)
@@ -291,39 +311,51 @@ Linguagem técnica, formal, objetiva e impessoal. Cite artigos, incisos e parág
     toast.success('Copiado!');
   };
 
+  const exportMeta = () => ({
+    empresa: activeEmpresa?.razao_social,
+    cnpj: activeEmpresa?.cnpj,
+    edital: editalNum || undefined,
+    timbradoUrl: activeEmpresa?.timbrado_url,
+    certificado_nome: activeEmpresa?.certificado_nome,
+    certificado_tipo: activeEmpresa?.certificado_tipo,
+    rep_nome: activeEmpresa?.rep_nome || undefined,
+    rep_cpf: activeEmpresa?.rep_cpf || undefined,
+    rep_cargo: activeEmpresa?.rep_cargo || undefined,
+  });
+
   const isShowingUploader = showExtractor || showPeticaoUploader;
+
+  const contextoLabel = (isAnaliseEdital && irregularidades.length > 0) || (isUploadDocs && fatosPeticao.length > 0)
+    ? 'Contexto adicional (opcional — complementa os fatos extraídos)'
+    : 'Fundamentação / Contexto';
 
   return (
     <div className="space-y-4">
-      <div className="bg-card rounded-xl border border-border/50 p-6 shadow-sm space-y-4">
-        <div className="flex items-center gap-2 mb-2">
-          <Sparkles className="w-5 h-5 text-muted-foreground" />
-          <h3 className="text-sm font-semibold">Gerador de Documentos com IA</h3>
+      <section className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-4">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+          <h3 className="text-lg font-semibold">Gerador de Documentos com IA</h3>
         </div>
 
         {/* Doc type selector */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-xs text-muted-foreground">Tipo de Documento</label>
-            <select
-              value={tipoDoc}
-              onChange={e => setTipoDoc(e.target.value)}
-              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            >
-              <option>Impugnação ao Edital</option>
-              <option>Pedido de Esclarecimento</option>
-              <option>Recurso Administrativo</option>
-              <option>Contrarrazões</option>
-              <option>Pedido de Reconsideração</option>
-              <option>Reajuste Contratual</option>
-              <option>Repactuação (MO/CCT)</option>
-              <option>Revisão / Reequilíbrio</option>
-            </select>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="gerador-tipo">Tipo de Documento</Label>
+            <Select value={tipoDoc} onValueChange={setTipoDoc}>
+              <SelectTrigger id="gerador-tipo">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TIPOS_DOCUMENTO.map(t => (
+                  <SelectItem key={t} value={t}>{t}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           {!isAnaliseEdital && !isUploadDocs && (
-            <div>
-              <label className="text-xs text-muted-foreground">Nº do Edital / Contrato</label>
-              <Input value={editalNum} onChange={e => setEditalNum(e.target.value)} placeholder="PE-001/2026 ou CT-001/2026" className="mt-1" />
+            <div className="space-y-2">
+              <Label htmlFor="gerador-edital">Nº do Edital / Contrato</Label>
+              <Input id="gerador-edital" value={editalNum} onChange={e => setEditalNum(e.target.value)} placeholder="PE-001/2026 ou CT-001/2026" />
             </div>
           )}
         </div>
@@ -340,29 +372,25 @@ Linguagem técnica, formal, objetiva e impessoal. Cite artigos, incisos e parág
             ) : (
               <>
                 {irregularidades.length > 0 ? (
-                  <div className="bg-muted/30 border border-border/50 rounded-lg p-4 space-y-2">
-                    <div className="flex items-center justify-between">
+                  <div className="rounded-md border border-border bg-muted/50 p-4 space-y-3">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-2">
-                        <div className="flex items-center justify-center w-6 h-6 rounded-full bg-muted text-foreground text-xs font-bold">3</div>
-                        <h4 className="text-sm font-semibold">Etapa 3 — Geração do Documento</h4>
+                        <span className="flex items-center justify-center w-7 h-7 rounded-full bg-primary-tint text-primary text-xs font-bold" aria-hidden="true">3</span>
+                        <h4 className="text-base font-semibold">Etapa 3 — Geração do Documento</h4>
                       </div>
-                      <Button variant="ghost" size="sm" onClick={() => setShowExtractor(true)} className="text-xs text-accent">
+                      <Button variant="ghost" size="sm" onClick={() => setShowExtractor(true)} className="text-primary hover:text-primary">
                         Reanalisar edital
                       </Button>
                     </div>
-                    <div className="flex flex-wrap gap-1.5 mt-2">
+                    <div className="flex flex-wrap gap-2">
                       {irregularidades.map((irr, idx) => (
-                        <Badge
-                          key={irr.id}
-                          variant="outline"
-                          className={`text-xs ${irr.gravidade === 'alta' ? 'border-destructive/40 text-destructive' : irr.gravidade === 'media' ? 'border-warning/40 text-warning' : 'border-info/40 text-info'}`}
-                        >
+                        <Badge key={irr.id} variant={GRAVIDADE_VARIANTE[irr.gravidade]} truncate className="max-w-full">
                           {idx + 1}. {irr.descricao.slice(0, 50)}{irr.descricao.length > 50 ? '...' : ''}
-                          {irr.origem === 'manual' && ' ✏️'}
+                          {irr.origem === 'manual' && ' (manual)'}
                         </Badge>
                       ))}
                     </div>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-sm text-muted-foreground">
                       {irregularidades.length} irregularidade(s) selecionada(s) • Edital: {editalNum || 'N/I'}
                     </p>
                   </div>
@@ -370,9 +398,9 @@ Linguagem técnica, formal, objetiva e impessoal. Cite artigos, incisos e parág
                   <Button
                     variant="outline"
                     onClick={() => setShowExtractor(true)}
-                    className="w-full border-dashed border-2 py-6 hover:border-accent/50 hover:bg-accent/5"
+                    className="w-full h-auto min-h-11 py-6 border-2 border-dashed whitespace-normal hover:border-primary/40 hover:bg-primary-tint"
                   >
-                    <FileText className="w-5 h-5 mr-2 text-muted-foreground" />
+                    <FileText className="text-muted-foreground" aria-hidden="true" />
                     <span className="text-sm">Analisar edital e extrair irregularidades</span>
                   </Button>
                 )}
@@ -394,30 +422,26 @@ Linguagem técnica, formal, objetiva e impessoal. Cite artigos, incisos e parág
             ) : (
               <>
                 {fatosPeticao.length > 0 ? (
-                  <div className="bg-muted/30 border border-border/50 rounded-lg p-4 space-y-2">
-                    <div className="flex items-center justify-between">
+                  <div className="rounded-md border border-border bg-muted/50 p-4 space-y-3">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-2">
-                        <div className="flex items-center justify-center w-6 h-6 rounded-full bg-muted text-foreground text-xs font-bold">3</div>
-                        <h4 className="text-sm font-semibold">Etapa 3 — Geração do {tipoDoc}</h4>
+                        <span className="flex items-center justify-center w-7 h-7 rounded-full bg-primary-tint text-primary text-xs font-bold" aria-hidden="true">3</span>
+                        <h4 className="text-base font-semibold">Etapa 3 — Geração do {tipoDoc}</h4>
                       </div>
-                      <Button variant="ghost" size="sm" onClick={() => setShowPeticaoUploader(true)} className="text-xs text-accent">
+                      <Button variant="ghost" size="sm" onClick={() => setShowPeticaoUploader(true)} className="text-primary hover:text-primary">
                         Reanalisar documentos
                       </Button>
                     </div>
-                    <div className="flex flex-wrap gap-1.5 mt-2">
+                    <div className="flex flex-wrap gap-2">
                       {fatosPeticao.map((fato, idx) => (
-                        <Badge
-                          key={fato.id}
-                          variant="outline"
-                          className={`text-xs ${fato.gravidade === 'alta' ? 'border-destructive/40 text-destructive' : fato.gravidade === 'media' ? 'border-warning/40 text-warning' : 'border-info/40 text-info'}`}
-                        >
+                        <Badge key={fato.id} variant={GRAVIDADE_VARIANTE[fato.gravidade]} truncate className="max-w-full">
                           {idx + 1}. {fato.descricao.slice(0, 50)}{fato.descricao.length > 50 ? '...' : ''}
-                          {fato.origem === 'manual' && ' ✏️'}
-                          {fato.origem === 'concorrente' && ' 🏢'}
+                          {fato.origem === 'manual' && ' (manual)'}
+                          {fato.origem === 'concorrente' && ' (concorrente)'}
                         </Badge>
                       ))}
                     </div>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-sm text-muted-foreground">
                       {fatosPeticao.length} fato(s) jurídico(s) selecionado(s) • Edital: {editalNum || 'N/I'}
                     </p>
                   </div>
@@ -425,9 +449,9 @@ Linguagem técnica, formal, objetiva e impessoal. Cite artigos, incisos e parág
                   <Button
                     variant="outline"
                     onClick={() => setShowPeticaoUploader(true)}
-                    className="w-full border-dashed border-2 py-6 hover:border-accent/50 hover:bg-accent/5"
+                    className="w-full h-auto min-h-11 py-6 border-2 border-dashed whitespace-normal hover:border-primary/40 hover:bg-primary-tint"
                   >
-                    <FileText className="w-5 h-5 mr-2 text-muted-foreground" />
+                    <FileText className="text-muted-foreground" aria-hidden="true" />
                     <span className="text-sm">
                       {tipoDoc === 'Recurso Administrativo' && 'Anexar decisão da CPL e extrair fatos'}
                       {tipoDoc === 'Contrarrazões' && 'Anexar recurso do concorrente e extrair argumentos'}
@@ -442,31 +466,31 @@ Linguagem técnica, formal, objetiva e impessoal. Cite artigos, incisos e parág
 
         {/* Reequilibrio indices */}
         {isReequilibrio && (
-          <div className="bg-muted border border-border rounded-lg p-3 space-y-2">
+          <div className="rounded-md border border-border bg-muted p-4 space-y-2">
             <div className="flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-muted-foreground" />
-              <span className="text-xs font-semibold text-foreground">Dados econômicos sincronizados automaticamente</span>
+              <TrendingUp className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+              <span className="text-sm font-semibold text-foreground">Dados econômicos sincronizados automaticamente</span>
             </div>
             {loadingIndices ? (
-              <p className="text-xs text-muted-foreground flex items-center gap-1">
-                <Loader2 className="w-3 h-3 animate-spin" /> Carregando índices e CCTs...
+              <p className="text-sm text-muted-foreground flex items-center gap-1" role="status">
+                <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Carregando índices e CCTs...
               </p>
             ) : (
               <div className="flex flex-wrap gap-1">
                 {indices.slice(0, 6).map(i => (
-                  <Badge key={i.id} variant="outline" className="text-xs">
+                  <Badge key={i.id} variant="info" className="tabular-nums">
                     {i.sigla}: {fmtPerc(i.acumulado_12m)} (12m)
                   </Badge>
                 ))}
-                {indices.length > 6 && <Badge variant="outline" className="text-xs">+{indices.length - 6} índices</Badge>}
+                {indices.length > 6 && <Badge variant="muted">+{indices.length - 6} índices</Badge>}
                 {ccts.map(c => (
-                  <Badge key={c.id} variant="outline" className="text-xs">
-                    👷 {c.categoria_profissional}: {c.reajuste_percentual ? `+${c.reajuste_percentual}%` : 'N/I'}
+                  <Badge key={c.id} variant="info" className="tabular-nums">
+                    CCT {c.categoria_profissional}: {c.reajuste_percentual ? `+${c.reajuste_percentual}%` : 'N/I'}
                   </Badge>
                 ))}
               </div>
             )}
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               Estes dados serão injetados automaticamente como contexto para a IA gerar o documento com fundamentação numérica.
             </p>
           </div>
@@ -474,14 +498,10 @@ Linguagem técnica, formal, objetiva e impessoal. Cite artigos, incisos e parág
 
         {/* Context field */}
         {!isShowingUploader && (
-          <div>
-            <label className="text-xs text-muted-foreground">
-              {(isAnaliseEdital && irregularidades.length > 0) || (isUploadDocs && fatosPeticao.length > 0)
-                ? 'Contexto adicional (opcional — complementa os fatos extraídos)'
-                : 'Fundamentação / Contexto'
-              }
-            </label>
+          <div className="space-y-2">
+            <Label htmlFor="gerador-contexto">{contextoLabel}</Label>
             <Textarea
+              id="gerador-contexto"
               value={contexto}
               onChange={e => setContexto(e.target.value)}
               placeholder={isReequilibrio
@@ -492,90 +512,74 @@ Linguagem técnica, formal, objetiva e impessoal. Cite artigos, incisos e parág
                 ? "Descreva os fatos, a decisão contestada e os fundamentos jurídicos para a peça..."
                 : "Descreva os fatos, a cláusula contestada e os fundamentos jurídicos..."
               }
-              className="mt-1 min-h-[100px]"
+              className="min-h-[100px]"
             />
           </div>
         )}
 
         {/* Document selection */}
         {!isShowingUploader && docsBase.length > 0 && (
-          <div>
-            <label className="text-xs text-muted-foreground flex items-center gap-1 mb-2">
-              <BookOpen className="w-3 h-3" />
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-medium flex items-center gap-1 mb-2">
+              <BookOpen className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
               Documentos da Base Jurídica como referência ({selectedDocs.length} selecionados)
-            </label>
-            <div className="flex flex-wrap gap-2 max-h-[120px] overflow-y-auto p-2 rounded-md bg-muted/30">
-              {docsBase.map(doc => (
-                <Badge
-                  key={doc.id}
-                  variant={selectedDocs.includes(doc.id) ? 'default' : 'outline'}
-                  className="cursor-pointer text-xs transition-colors"
-                  onClick={() => toggleDoc(doc.id)}
-                >
-                  {doc.titulo.slice(0, 40)}{doc.titulo.length > 40 ? '...' : ''}
-                </Badge>
-              ))}
+            </legend>
+            <div className="flex flex-wrap gap-2 max-h-[120px] overflow-y-auto p-2 rounded-md bg-muted/50">
+              {docsBase.map(doc => {
+                const selecionado = selectedDocs.includes(doc.id);
+                return (
+                  <Button
+                    key={doc.id}
+                    type="button"
+                    size="sm"
+                    variant={selecionado ? 'default' : 'outline'}
+                    aria-pressed={selecionado}
+                    className="h-8 px-3 text-xs font-medium"
+                    onClick={() => toggleDoc(doc.id)}
+                  >
+                    {doc.titulo.slice(0, 40)}{doc.titulo.length > 40 ? '...' : ''}
+                  </Button>
+                );
+              })}
             </div>
-          </div>
+          </fieldset>
         )}
 
         {!isShowingUploader && (
-          <Button onClick={handleGerar} disabled={gerando} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-            {gerando ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Sparkles className="w-4 h-4 mr-1" />}
+          <Button onClick={handleGerar} disabled={gerando}>
+            {gerando ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Sparkles aria-hidden="true" />}
             Gerar Documento
           </Button>
         )}
-      </div>
+      </section>
 
       {/* Result */}
       {resultado && (
-        <div className="bg-card rounded-xl border border-border/50 p-6 shadow-sm space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold">Documento Gerado</h3>
-            <div className="flex gap-2">
-              <Button size="sm" variant="outline" onClick={copyToClipboard}>
-                <Copy className="w-3 h-3 mr-1" /> Copiar
+        <section className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <h3 className="text-lg font-semibold">Documento Gerado</h3>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" onClick={copyToClipboard}>
+                <Copy aria-hidden="true" /> Copiar
               </Button>
-              <Button size="sm" variant="outline" onClick={async () => {
-                const meta = {
-                  empresa: activeEmpresa?.razao_social,
-                  cnpj: activeEmpresa?.cnpj,
-                  edital: editalNum || undefined,
-                  timbradoUrl: activeEmpresa?.timbrado_url,
-                  certificado_nome: activeEmpresa?.certificado_nome,
-                  certificado_tipo: activeEmpresa?.certificado_tipo,
-                  rep_nome: activeEmpresa?.rep_nome || undefined,
-                  rep_cpf: activeEmpresa?.rep_cpf || undefined,
-                  rep_cargo: activeEmpresa?.rep_cargo || undefined,
-                };
-                await exportLegalPDF(resultado, tipoDoc, meta);
+              <Button variant="outline" onClick={async () => {
+                await exportLegalPDF(resultado, tipoDoc, exportMeta());
                 toast.success('PDF ABNT gerado com sucesso!');
               }}>
-                <Download className="w-3 h-3 mr-1" /> PDF (ABNT)
+                <Download aria-hidden="true" /> PDF (ABNT)
               </Button>
-              <Button size="sm" variant="outline" onClick={() => {
-                const meta = {
-                  empresa: activeEmpresa?.razao_social,
-                  cnpj: activeEmpresa?.cnpj,
-                  edital: editalNum || undefined,
-                  timbradoUrl: activeEmpresa?.timbrado_url,
-                  certificado_nome: activeEmpresa?.certificado_nome,
-                  certificado_tipo: activeEmpresa?.certificado_tipo,
-                  rep_nome: activeEmpresa?.rep_nome || undefined,
-                  rep_cpf: activeEmpresa?.rep_cpf || undefined,
-                  rep_cargo: activeEmpresa?.rep_cargo || undefined,
-                };
-                exportLegalWord(resultado, tipoDoc, meta);
+              <Button variant="outline" onClick={() => {
+                exportLegalWord(resultado, tipoDoc, exportMeta());
                 toast.success('Word ABNT gerado com sucesso!');
               }}>
-                <Download className="w-3 h-3 mr-1" /> Word (ABNT)
+                <Download aria-hidden="true" /> Word (ABNT)
               </Button>
             </div>
           </div>
           <div className="prose prose-sm max-w-none dark:prose-invert text-sm">
             <ReactMarkdown>{resultado}</ReactMarkdown>
           </div>
-        </div>
+        </section>
       )}
     </div>
   );

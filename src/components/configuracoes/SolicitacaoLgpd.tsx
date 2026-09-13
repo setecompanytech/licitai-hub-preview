@@ -3,7 +3,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FileWarning, Loader2, Send, Clock, CheckCircle2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
@@ -33,11 +35,13 @@ const TIPOS = [
   { value: 'portabilidade', label: 'Portabilidade de dados' },
 ];
 
-const STATUS_MAP: Record<string, { label: string; color: string; icon: typeof Clock }> = {
-  pendente: { label: 'Pendente', color: 'bg-warning/10 text-warning border-warning/20', icon: Clock },
-  em_analise: { label: 'Em análise', color: 'bg-muted text-foreground border-border/60', icon: Loader2 },
-  concluida: { label: 'Concluída', color: 'bg-success/10 text-success border-success/20', icon: CheckCircle2 },
-  recusada: { label: 'Recusada', color: 'bg-destructive/10 text-destructive border-destructive/20', icon: AlertCircle },
+type VarianteStatus = 'warning' | 'info' | 'success' | 'danger';
+
+const STATUS_MAP: Record<string, { label: string; variant: VarianteStatus; icon: typeof Clock }> = {
+  pendente: { label: 'Pendente', variant: 'warning', icon: Clock },
+  em_analise: { label: 'Em análise', variant: 'info', icon: Loader2 },
+  concluida: { label: 'Concluída', variant: 'success', icon: CheckCircle2 },
+  recusada: { label: 'Recusada', variant: 'danger', icon: AlertCircle },
 };
 
 export default function SolicitacaoLgpd() {
@@ -88,16 +92,16 @@ export default function SolicitacaoLgpd() {
   };
 
   return (
-    <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
-      <div className="flex items-center justify-between mb-4">
+    <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <FileWarning className="w-5 h-5 text-muted-foreground" />
-          <h2 className="text-sm font-semibold">Meus Dados (LGPD — Art. 18)</h2>
+          <FileWarning className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+          <h2 className="text-lg font-semibold text-foreground">Meus Dados (LGPD — Art. 18)</h2>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground">
-              <Send className="w-3 h-3 mr-1" />
+            <Button>
+              <Send aria-hidden="true" />
               Nova Solicitação
             </Button>
           </DialogTrigger>
@@ -110,9 +114,9 @@ export default function SolicitacaoLgpd() {
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <label className="text-xs font-medium mb-1.5 block">Tipo de solicitação *</label>
+                <Label htmlFor="lgpd-tipo" className="mb-2 block">Tipo de solicitação *</Label>
                 <Select value={tipo} onValueChange={setTipo}>
-                  <SelectTrigger>
+                  <SelectTrigger id="lgpd-tipo">
                     <SelectValue placeholder="Selecione..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -123,8 +127,9 @@ export default function SolicitacaoLgpd() {
                 </Select>
               </div>
               <div>
-                <label className="text-xs font-medium mb-1.5 block">Descrição (opcional)</label>
+                <Label htmlFor="lgpd-descricao" className="mb-2 block">Descrição (opcional)</Label>
                 <Textarea
+                  id="lgpd-descricao"
                   value={descricao}
                   onChange={e => setDescricao(e.target.value)}
                   placeholder="Descreva detalhes adicionais sobre sua solicitação..."
@@ -134,9 +139,9 @@ export default function SolicitacaoLgpd() {
               <Button
                 onClick={handleSubmit}
                 disabled={submitting || !tipo}
-                className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
+                className="w-full"
               >
-                {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
+                {submitting ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Send aria-hidden="true" />}
                 Enviar Solicitação
               </Button>
             </div>
@@ -144,33 +149,35 @@ export default function SolicitacaoLgpd() {
         </Dialog>
       </div>
 
-      <p className="text-xs text-muted-foreground mb-4">
+      <p className="mb-4 text-sm text-muted-foreground">
         Você pode solicitar acesso, correção, exclusão ou portabilidade dos seus dados pessoais a qualquer momento, conforme previsto na LGPD.
       </p>
 
       {loading ? (
-        <div className="flex items-center justify-center py-6">
-          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+        <div role="status" aria-busy="true" className="space-y-2">
+          <span className="sr-only">Carregando solicitações</span>
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
         </div>
       ) : requests.length === 0 ? (
-        <div className="text-center py-6 text-xs text-muted-foreground">
+        <p className="py-4 text-sm text-muted-foreground">
           Nenhuma solicitação registrada.
-        </div>
+        </p>
       ) : (
-        <div className="space-y-2 max-h-64 overflow-y-auto">
+        <div className="max-h-64 space-y-2 overflow-y-auto">
           {requests.map(req => {
             const statusInfo = STATUS_MAP[req.status] || STATUS_MAP.pendente;
             const StatusIcon = statusInfo.icon;
             return (
-              <div key={req.id} className="flex items-center justify-between text-xs py-2.5 px-3 border border-border/30 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className={statusInfo.color}>
-                    <StatusIcon className={`w-3 h-3 mr-1 ${req.status === 'em_analise' ? 'animate-spin' : ''}`} />
+              <div key={req.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-3 py-3 text-sm">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant={statusInfo.variant} className="gap-1">
+                    <StatusIcon className={`h-4 w-4 ${req.status === 'em_analise' ? 'animate-spin' : ''}`} aria-hidden="true" />
                     {statusInfo.label}
                   </Badge>
-                  <span className="font-medium">{TIPOS.find(t => t.value === req.tipo)?.label || req.tipo}</span>
+                  <span className="font-medium text-foreground">{TIPOS.find(t => t.value === req.tipo)?.label || req.tipo}</span>
                 </div>
-                <span className="text-muted-foreground">
+                <span className="text-xs text-muted-foreground">
                   {new Date(req.created_at).toLocaleDateString('pt-BR')}
                 </span>
               </div>
@@ -179,9 +186,9 @@ export default function SolicitacaoLgpd() {
         </div>
       )}
 
-      <div className="mt-4 pt-3 border-t border-border/30">
+      <div className="mt-4 border-t border-border pt-3">
         <p className="text-xs text-muted-foreground">
-          Contato do DPO: <a href="mailto:dpo@praefectus.com.br" className="text-accent hover:underline">dpo@praefectus.com.br</a> | 
+          Contato do DPO: <a href="mailto:dpo@praefectus.com.br" className="text-primary hover:underline">dpo@praefectus.com.br</a> |
           Prazo legal de resposta: 15 dias (Art. 18, §5º da LGPD)
         </p>
       </div>

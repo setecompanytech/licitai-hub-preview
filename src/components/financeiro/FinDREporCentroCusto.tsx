@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { FolderTree } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
@@ -113,8 +114,8 @@ export default function FinDREporCentroCusto() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base flex items-center gap-2">
-          <FolderTree className="w-4 h-4" />
+        <CardTitle className="flex items-center gap-2">
+          <FolderTree className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
           Análise por Centro de Custo
         </CardTitle>
         <CardDescription>
@@ -123,11 +124,11 @@ export default function FinDREporCentroCusto() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="space-y-1.5">
-            <Label className="text-xs">Centro de custo</Label>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="dre-cc-centro">Centro de custo</Label>
             <Select value={centroId} onValueChange={setCentroId}>
-              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+              <SelectTrigger id="dre-cc-centro"><SelectValue placeholder="Selecione" /></SelectTrigger>
               <SelectContent>
                 {centros.map((c) => (
                   <SelectItem key={c.id} value={c.id}>{c.codigo} · {c.nome}</SelectItem>
@@ -135,20 +136,24 @@ export default function FinDREporCentroCusto() {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs">Início</Label>
-            <Input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} />
+          <div className="space-y-2">
+            <Label htmlFor="dre-cc-inicio">Início</Label>
+            <Input id="dre-cc-inicio" type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} />
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs">Fim</Label>
-            <Input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} />
+          <div className="space-y-2">
+            <Label htmlFor="dre-cc-fim">Fim</Label>
+            <Input id="dre-cc-fim" type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} />
           </div>
         </div>
 
         {loading ? (
-          <p className="text-sm text-muted-foreground">Calculando…</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4" role="status" aria-label="Calculando">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-24" />
+            ))}
+          </div>
         ) : resultado ? (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-sm">
             <KPI label="Receita" value={formatBRL(resultado.receita)} />
             <KPI label="(–) Custos" value={formatBRL(resultado.custo)} muted />
             <KPI label="(–) Despesas" value={formatBRL(resultado.despesa)} muted />
@@ -159,9 +164,9 @@ export default function FinDREporCentroCusto() {
               hint={`Margem ${margem.toFixed(2)}%`}
             />
             {resultado.rateado > 0 && (
-              <div className="col-span-2 md:col-span-4 text-xs text-muted-foreground">
-                <Badge variant="secondary" className="mr-2">Rateio</Badge>
-                {formatBRL(resultado.rateado)} provenientes de lançamentos com rateio percentual.
+              <div className="sm:col-span-2 md:col-span-4 text-xs text-muted-foreground flex flex-wrap items-center gap-2">
+                <Badge variant="info">Rateio</Badge>
+                <span className="tabular-nums">{formatBRL(resultado.rateado)} provenientes de lançamentos com rateio percentual.</span>
               </div>
             )}
           </div>
@@ -180,10 +185,10 @@ function KPI({
     accent === "positive" ? "text-success" :
     accent === "negative" ? "text-destructive" : "";
   return (
-    <div className="rounded-md border p-3 space-y-1">
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className={`text-lg font-semibold tabular-nums ${muted ? "text-muted-foreground" : accentClass}`}>{value}</div>
-      {hint && <div className="text-xs text-muted-foreground">{hint}</div>}
+    <div className="rounded-lg border border-border bg-card p-4 space-y-1">
+      <p className="text-sm text-muted-foreground">{label}</p>
+      <p className={`text-lg font-semibold tabular-nums ${muted ? "text-muted-foreground" : accentClass}`}>{value}</p>
+      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
     </div>
   );
 }

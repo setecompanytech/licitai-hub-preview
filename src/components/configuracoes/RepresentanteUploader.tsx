@@ -1,6 +1,6 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Upload, FileText, Loader2, X, CheckCircle, UserCheck } from 'lucide-react';
+import { Upload, FileText, Loader2, X, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -125,40 +125,45 @@ export default function RepresentanteUploader({ onExtracted }: RepresentanteUplo
   return (
     <div className="space-y-3">
       {file ? (
-        <div className="flex items-center gap-4 bg-muted/30 rounded-lg p-4 border border-border/50">
-          <FileText className="w-8 h-8 text-muted-foreground shrink-0" />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-foreground truncate">{file.name}</p>
+        <div className="flex flex-wrap items-center gap-4 rounded-lg border border-border bg-muted p-4">
+          <FileText className="h-6 w-6 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-foreground">{file.name}</p>
             <p className="text-xs text-muted-foreground">
               {(file.size / 1024).toFixed(0)} KB
-              {extracted && <span className="text-success ml-2">✓ Dados extraídos</span>}
+              {extracted && (
+                <span className="ml-2 inline-flex items-center gap-1 text-success">
+                  <CheckCircle className="h-4 w-4" aria-hidden="true" /> Dados extraídos
+                </span>
+              )}
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {!extracted && (
-              <Button size="sm" onClick={handleExtract} disabled={isExtracting} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+              <Button onClick={handleExtract} disabled={isExtracting}>
                 {isExtracting ? (
-                  <><Loader2 className="w-4 h-4 animate-spin mr-1" /> Extraindo...</>
+                  <><Loader2 className="animate-spin" aria-hidden="true" /> Extraindo...</>
                 ) : (
-                  <><CheckCircle className="w-4 h-4 mr-1" /> Extrair Dados</>
+                  <><CheckCircle aria-hidden="true" /> Extrair Dados</>
                 )}
               </Button>
             )}
-            <Button variant="outline" size="sm" onClick={handleRemove}>
-              <X className="w-4 h-4" />
+            <Button variant="outline" size="icon" className="h-11 w-11" onClick={handleRemove} aria-label="Remover arquivo">
+              <X aria-hidden="true" />
             </Button>
           </div>
         </div>
       ) : (
-        <button
+        <Button
           type="button"
+          variant="outline"
           onClick={() => fileRef.current?.click()}
-          className="w-full border-2 border-dashed border-border rounded-lg p-4 flex flex-col items-center gap-2 hover:border-accent/50 hover:bg-muted/30 transition-colors"
+          className="h-auto w-full flex-col gap-2 whitespace-normal border-2 border-dashed border-border py-6 font-normal hover:border-primary"
         >
-          <Upload className="w-6 h-6 text-muted-foreground" />
-          <span className="text-xs font-medium text-foreground">Upload de documento para extração por IA</span>
+          <Upload className="!size-6 text-muted-foreground" aria-hidden="true" />
+          <span className="text-sm font-medium text-foreground">Upload de documento para extração por IA</span>
           <span className="text-xs text-muted-foreground">Contrato social, procuração, RG/CPF, CNH — PDF, Word, TXT ou imagem (máx. 10MB)</span>
-        </button>
+        </Button>
       )}
       <input
         ref={fileRef}

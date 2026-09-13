@@ -68,20 +68,20 @@ export default function ProcessoContextoBanner() {
   const irPara = (aba: string) => navigate(`/processo/${processoId}?aba=${aba}`, { replace: true });
 
   return (
-    <div className="flex items-center gap-2.5 rounded-lg border border-accent/30 bg-accent/5 px-4 py-2.5 text-sm flex-wrap">
-      <FolderOpen className="w-4 h-4 text-accent shrink-0" />
+    <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-primary-tint px-4 py-3 text-sm">
+      <FolderOpen className="w-4 h-4 shrink-0 text-primary" aria-hidden="true" />
       <span className="text-muted-foreground">Trabalhando no processo:</span>
-      <span className="font-semibold">
+      <span className="font-semibold text-foreground">
         {meta ? `${meta.numero}${meta.orgao ? ` — ${meta.orgao}` : ''}` : '…'}
       </span>
-      <div className="flex items-center gap-1.5 ml-auto">
-        <Button size="sm" variant="ghost" className="h-7" onClick={() => irPara('visao')}>
-          <ArrowLeft className="w-3.5 h-3.5 mr-1.5" /> Voltar ao prontuário
+      <div className="ml-auto flex flex-wrap items-center gap-2">
+        <Button size="sm" variant="ghost" onClick={() => irPara('visao')}>
+          <ArrowLeft className="w-4 h-4" aria-hidden="true" /> Voltar ao prontuário
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button size="sm" variant="outline" className="h-7">
-              Ir para <ChevronDown className="w-3.5 h-3.5 ml-1.5" />
+            <Button size="sm" variant="outline">
+              Ir para <ChevronDown className="w-4 h-4" aria-hidden="true" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -100,7 +100,7 @@ export default function ProcessoContextoBanner() {
               onClick={() => setProcessoId(null)}
               className="text-sm text-muted-foreground"
             >
-              <Unlink className="w-3.5 h-3.5 mr-2" /> Desvincular processo
+              <Unlink className="w-4 h-4 mr-2" aria-hidden="true" /> Desvincular processo
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

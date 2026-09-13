@@ -106,7 +106,7 @@ export default function LocalDoOrgao({ uf, municipio, onChange }: Props) {
                   <Loader2 className="h-4 w-4 animate-spin" /> Carregando municípios de {uf}…
                 </div>
               )}
-              {erro && <p className="px-3 py-3 text-sm text-destructive">{erro}</p>}
+              {erro && <p className="px-3 py-3 text-sm text-destructive-ink">{erro}</p>}
               {!carregando && !erro && filtrados.length === 0 && (
                 <p className="px-3 py-3 text-sm text-muted-foreground">Nenhum município encontrado.</p>
               )}

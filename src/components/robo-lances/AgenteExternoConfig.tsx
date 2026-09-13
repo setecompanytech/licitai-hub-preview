@@ -6,9 +6,10 @@ import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import {
-  Server, Wifi, WifiOff, Loader2, CheckCircle2, XCircle, Clock,
+  Server, WifiOff, Loader2, CheckCircle2, XCircle, Clock,
   Layers, Cpu, HardDrive, Rocket, ShieldCheck, RefreshCw, Upload, Link2, Copy,
 } from 'lucide-react';
 
@@ -33,6 +34,8 @@ const PLAN_SESSION_LIMITS: Record<string, { sessions: number; label: string }> =
 
 const MANAGED_AGENT_URL = 'https://agente.praefectus.com.br';
 const MANAGED_AGENT_KEY = 'praefectus_agente_2026_secreto';
+
+type BadgeVariant = 'success' | 'warning' | 'danger' | 'info' | 'muted';
 
 export default function AgenteExternoConfig() {
   const { user, subscription } = useAuth();
@@ -130,53 +133,58 @@ export default function AgenteExternoConfig() {
 
   const statusIcon = (status: string) => {
     switch (status) {
-      case 'ativo': return <CheckCircle2 className="w-4 h-4 text-success" />;
-      case 'offline': return <WifiOff className="w-4 h-4 text-destructive" />;
-      case 'verificando': return <Loader2 className="w-4 h-4 animate-spin text-warning" />;
-      default: return <XCircle className="w-4 h-4 text-muted-foreground" />;
+      case 'ativo': return <CheckCircle2 className="w-4 h-4 text-success" aria-hidden="true" />;
+      case 'offline': return <WifiOff className="w-4 h-4 text-destructive" aria-hidden="true" />;
+      case 'verificando': return <Loader2 className="w-4 h-4 animate-spin text-warning" aria-hidden="true" />;
+      default: return <XCircle className="w-4 h-4 text-muted-foreground" aria-hidden="true" />;
     }
   };
 
-  const statusBadge = (status: string) => {
-    const map: Record<string, string> = {
-      ativo: 'bg-success/15 text-success border-success/30',
-      offline: 'bg-destructive/15 text-destructive border-destructive/30',
-      verificando: 'bg-warning/15 text-warning border-warning/30',
-      inativo: 'bg-muted text-muted-foreground border-border',
-      erro: 'bg-destructive/15 text-destructive border-destructive/30',
+  const statusBadge = (status: string): BadgeVariant => {
+    const map: Record<string, BadgeVariant> = {
+      ativo: 'success',
+      offline: 'danger',
+      verificando: 'warning',
+      inativo: 'muted',
+      erro: 'danger',
     };
     return map[status] || map.inativo;
   };
 
+  /** O selo do agente sai com inicial maiúscula, como os demais da tela. */
+  const rotuloStatus = (status: string) => status.charAt(0).toUpperCase() + status.slice(1);
+
   return (
-    <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm space-y-4">
+    <div className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold flex items-center gap-2">
-          <Server className="w-4 h-4 text-muted-foreground" />
+        <h3 className="text-lg font-semibold flex items-center gap-2">
+          <Server className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
           Agente Cloud de Lances
         </h3>
         {planConfig && (
-          <Badge variant="outline" className="text-xs gap-1">
-            <ShieldCheck className="w-3 h-3" />
+          <Badge variant="muted" className="gap-1">
+            <ShieldCheck className="w-3 h-3" aria-hidden="true" />
             Plano {planConfig.label} — até {planConfig.sessions} sessão(ões)
           </Badge>
         )}
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-4">
-          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+        <div className="space-y-3" role="status" aria-busy="true">
+          <span className="sr-only">Carregando agente</span>
+          <Skeleton className="h-5 w-1/3" />
+          <Skeleton className="h-20 w-full rounded-lg" />
         </div>
       ) : agentes.length === 0 ? (
         <div className="text-center py-8 space-y-4">
-          <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mx-auto">
-            <Rocket className="w-7 h-7 text-muted-foreground" />
+          <div className="w-14 h-14 rounded-full bg-primary-tint text-primary flex items-center justify-center mx-auto">
+            <Rocket className="w-7 h-7" aria-hidden="true" />
           </div>
           <div className="space-y-1">
-            <p className="text-sm font-semibold text-foreground">
+            <p className="text-lg font-semibold text-foreground">
               Ative seu Agente Cloud com um clique
             </p>
-            <p className="text-xs text-muted-foreground max-w-md mx-auto">
+            <p className="text-sm text-muted-foreground max-w-md mx-auto">
               O sistema configura automaticamente o servidor de automação de acordo com seu plano.
               Sem necessidade de configuração técnica — tudo é gerenciado pela plataforma.
             </p>
@@ -184,25 +192,25 @@ export default function AgenteExternoConfig() {
 
           {planConfig ? (
             <div className="space-y-3">
-              <div className="bg-muted/30 rounded-lg p-3 max-w-sm mx-auto text-left space-y-1.5">
+              <div className="bg-muted rounded-lg p-4 max-w-sm mx-auto text-left space-y-2">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   O que será configurado:
                 </p>
-                <ul className="text-xs text-muted-foreground space-y-1">
+                <ul className="text-sm text-muted-foreground space-y-1">
                   <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-3 h-3 text-success shrink-0" />
+                    <CheckCircle2 className="w-4 h-4 text-success shrink-0" aria-hidden="true" />
                     Servidor dedicado em nuvem
                   </li>
                   <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-3 h-3 text-success shrink-0" />
+                    <CheckCircle2 className="w-4 h-4 text-success shrink-0" aria-hidden="true" />
                     {planConfig.sessions} sessão(ões) paralela(s) de navegador
                   </li>
                   <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-3 h-3 text-success shrink-0" />
+                    <CheckCircle2 className="w-4 h-4 text-success shrink-0" aria-hidden="true" />
                     Certificado digital seguro (configurado localmente)
                   </li>
                   <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-3 h-3 text-success shrink-0" />
+                    <CheckCircle2 className="w-4 h-4 text-success shrink-0" aria-hidden="true" />
                     Monitoramento 24/7 e auto-recuperação
                   </li>
                 </ul>
@@ -211,19 +219,19 @@ export default function AgenteExternoConfig() {
               <Button
                 onClick={handleAutoProvision}
                 disabled={provisioning}
-                className="bg-accent hover:bg-accent/90 text-accent-foreground font-bold px-8"
+                className="px-8"
               >
                 {provisioning ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
                 ) : (
-                  <Rocket className="w-4 h-4 mr-2" />
+                  <Rocket className="w-4 h-4" aria-hidden="true" />
                 )}
                 Ativar Agente Cloud
               </Button>
             </div>
           ) : (
-            <div className="bg-warning/10 border border-warning/20 rounded-lg p-3 max-w-sm mx-auto">
-              <p className="text-xs text-warning">
+            <div className="bg-warning-tint border border-warning-line rounded-lg p-4 max-w-sm mx-auto">
+              <p className="text-sm text-warning-ink">
                 O Robô de Lances em nuvem está disponível a partir do plano <strong>Profissional</strong>.
                 Faça upgrade para ativar essa funcionalidade.
               </p>
@@ -238,12 +246,12 @@ export default function AgenteExternoConfig() {
             const usagePercent = Math.min(100, (ativas / maxSess) * 100);
 
             return (
-              <div key={agente.id} className="border border-border/50 rounded-lg p-4 space-y-3">
-                <div className="flex items-center justify-between">
+              <div key={agente.id} className="border border-border rounded-lg p-4 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-3">
                     {statusIcon(agente.status)}
                     <div>
-                      <p className="text-sm font-medium">{agente.nome}</p>
+                      <p className="text-base font-medium">{agente.nome}</p>
                       {agente.versao_agente && (
                         <p className="text-xs text-muted-foreground">v{agente.versao_agente}</p>
                       )}
@@ -252,36 +260,36 @@ export default function AgenteExternoConfig() {
                   <div className="flex items-center gap-2">
                     {agente.ultimo_heartbeat && (
                       <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
+                        <Clock className="w-3 h-3" aria-hidden="true" />
                         {new Date(agente.ultimo_heartbeat).toLocaleTimeString('pt-BR')}
                       </span>
                     )}
-                    <Badge variant="outline" className={statusBadge(agente.status)}>
-                      {agente.status}
+                    <Badge variant={statusBadge(agente.status)}>
+                      {rotuloStatus(agente.status)}
                     </Badge>
                   </div>
                 </div>
 
                 {/* Capacidade de sessões paralelas */}
-                <div className="bg-muted/30 rounded-lg p-3 space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="flex items-center gap-1.5 text-muted-foreground">
-                      <Layers className="w-3.5 h-3.5" />
+                <div className="bg-muted rounded-lg p-4 space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="flex items-center gap-2 text-muted-foreground">
+                      <Layers className="w-4 h-4" aria-hidden="true" />
                       Sessões Paralelas
                     </span>
-                    <span className="font-medium">
+                    <span className="font-medium tabular-nums">
                       {ativas} / {maxSess} ativas
                     </span>
                   </div>
-                  <Progress value={usagePercent} className="h-1.5" />
+                  <Progress value={usagePercent} className="h-2" />
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
-                      <Cpu className="w-3 h-3" />
+                      <Cpu className="w-3 h-3" aria-hidden="true" />
                       {maxSess - ativas} slot{maxSess - ativas !== 1 ? 's' : ''} disponíve{maxSess - ativas !== 1 ? 'is' : 'l'}
                     </span>
                     {agente.ram_mb && (
                       <span className="flex items-center gap-1">
-                        <HardDrive className="w-3 h-3" />
+                        <HardDrive className="w-3 h-3" aria-hidden="true" />
                         {agente.ram_mb}MB RAM
                       </span>
                     )}
@@ -289,8 +297,8 @@ export default function AgenteExternoConfig() {
                 </div>
 
                 {/* Gerenciado pela plataforma badge */}
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <ShieldCheck className="w-3.5 h-3.5 text-success" />
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <ShieldCheck className="w-4 h-4 text-success shrink-0" aria-hidden="true" />
                   <span>Gerenciado automaticamente pela plataforma — sem configuração técnica necessária</span>
                 </div>
               </div>
@@ -298,51 +306,47 @@ export default function AgenteExternoConfig() {
           })}
 
           {/* Certificate Upload Section */}
-          <div className="border border-border/50 rounded-lg p-4 space-y-3 bg-muted/30">
+          <div className="border border-border rounded-lg p-4 space-y-3 bg-muted">
             <div className="flex items-center gap-2">
-              <Upload className="w-4 h-4 text-muted-foreground" />
-              <h4 className="text-sm font-semibold">Certificado Digital</h4>
+              <Upload className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+              <h4 className="text-base font-semibold">Certificado Digital</h4>
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               Gere um link seguro e temporário (24h) para enviar seu certificado digital (.pfx).
               O link será enviado também por <strong>e-mail</strong> e <strong>WhatsApp</strong>.
             </p>
 
             {certUploadUrl ? (
               <div className="space-y-2">
-                <div className="flex items-center gap-2 bg-muted/50 rounded-lg p-2.5">
-                  <Link2 className="w-4 h-4 text-muted-foreground shrink-0" />
-                  <span className="text-xs text-foreground truncate flex-1">{certUploadUrl}</span>
-                  <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={handleCopyLink}>
-                    <Copy className="w-3.5 h-3.5" />
+                <div className="flex items-center gap-2 bg-card border border-border rounded-md p-2">
+                  <Link2 className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                  <span className="text-sm text-foreground truncate flex-1">{certUploadUrl}</span>
+                  <Button size="icon" variant="ghost" className="shrink-0" onClick={handleCopyLink} aria-label="Copiar link">
+                    <Copy className="w-4 h-4" aria-hidden="true" />
                   </Button>
                 </div>
-                <div className="flex items-center gap-2 text-xs text-success">
-                  <CheckCircle2 className="w-3 h-3" />
+                <div className="flex items-center gap-2 text-sm text-success-ink">
+                  <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
                   <span>Link enviado por e-mail e WhatsApp. Válido por 24 horas.</span>
                 </div>
                 <Button
-                  size="sm"
                   variant="outline"
                   onClick={handleGerarLinkCertificado}
                   disabled={certLinkLoading}
-                  className="text-xs"
                 >
-                  {certLinkLoading ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5 mr-1" />}
+                  {certLinkLoading ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <RefreshCw className="w-4 h-4" aria-hidden="true" />}
                   Gerar novo link
                 </Button>
               </div>
             ) : (
               <Button
-                size="sm"
                 onClick={handleGerarLinkCertificado}
                 disabled={certLinkLoading || !empresaAtiva?.id}
-                className="bg-accent hover:bg-accent/90 text-accent-foreground text-xs"
               >
                 {certLinkLoading ? (
-                  <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
                 ) : (
-                  <ShieldCheck className="w-3.5 h-3.5 mr-1" />
+                  <ShieldCheck className="w-4 h-4" aria-hidden="true" />
                 )}
                 Gerar Link de Upload Seguro
               </Button>

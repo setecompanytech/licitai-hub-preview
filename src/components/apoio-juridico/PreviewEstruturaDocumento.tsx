@@ -97,57 +97,56 @@ REGRAS:
   };
 
   return (
-    <div className="bg-card border border-border/50 rounded-lg p-4 space-y-3">
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <div className="flex items-center gap-2 min-w-0">
-          <FileSearch className="w-4 h-4 text-muted-foreground shrink-0" />
-          <h4 className="text-sm font-semibold whitespace-nowrap">Pré-visualização da estrutura</h4>
+    <section className="rounded-lg border border-border bg-card p-6 space-y-4">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2 min-w-0 flex-wrap">
+          <FileSearch className="w-5 h-5 text-muted-foreground shrink-0" aria-hidden="true" />
+          <h4 className="text-lg font-semibold">Pré-visualização da estrutura</h4>
           {preview && (
-            <Badge className="text-xs gap-1 bg-success/10 text-success border-success/30 shrink-0">
-              <CheckCircle className="w-2.5 h-2.5" /> Estrutura pronta
+            <Badge variant="success" className="gap-1 shrink-0">
+              <CheckCircle className="w-3 h-3" aria-hidden="true" /> Estrutura pronta
             </Badge>
           )}
         </div>
-        <div className="flex gap-2 shrink-0">
+        <div className="flex flex-wrap gap-2 shrink-0">
           <Button
-            size="sm" variant="outline" className="h-8 text-xs"
+            variant="outline"
             onClick={gerarPreview} disabled={loading || gerandoFinal}
           >
             {loading
-              ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Analisando…</>
-              : <><ListTree className="w-3 h-3 mr-1" /> {preview ? 'Recalcular' : 'Pré-visualizar'}</>}
+              ? <><Loader2 className="animate-spin" aria-hidden="true" /> Analisando…</>
+              : <><ListTree aria-hidden="true" /> {preview ? 'Recalcular' : 'Pré-visualizar'}</>}
           </Button>
           <Button
-            size="sm" className="h-8 text-xs bg-accent hover:bg-accent/90 text-accent-foreground"
             onClick={onConfirmar} disabled={gerandoFinal || disabledConfirmar}
           >
             {gerandoFinal
-              ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Gerando…</>
-              : <><Sparkles className="w-3 h-3 mr-1" /> Confirmar geração</>}
+              ? <><Loader2 className="animate-spin" aria-hidden="true" /> Gerando…</>
+              : <><Sparkles aria-hidden="true" /> Confirmar geração</>}
           </Button>
         </div>
       </div>
 
       {erro && (
-        <div className="flex items-start gap-2 text-xs text-destructive bg-destructive/5 border border-destructive/20 rounded p-2">
-          <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" /> {erro}
+        <div role="alert" className="flex items-start gap-2 rounded-md border border-destructive-line bg-destructive-tint p-3 text-sm text-destructive-ink">
+          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" /> {erro}
         </div>
       )}
 
       {!preview && !loading && !erro && (
-        <p className="text-xs text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           Clique em <strong>Pré-visualizar</strong> para gerar um resumo e o esqueleto do documento (seções,
           fundamentos, pedidos e riscos) antes de produzir a redação completa. Isso evita gerações desperdiçadas.
         </p>
       )}
 
       {preview && (
-        <div className="space-y-3 text-xs">
+        <div className="space-y-4 text-sm">
           <div>
             <p className="font-semibold text-foreground mb-1">Resumo executivo</p>
-            <p className="text-muted-foreground leading-relaxed">{preview.resumo}</p>
+            <p className="text-muted-foreground">{preview.resumo}</p>
             {preview.paginasEstimadas != null && (
-              <Badge variant="outline" className="text-xs mt-1.5">
+              <Badge variant="info" className="mt-2">
                 Estimativa: {preview.paginasEstimadas} {preview.paginasEstimadas === 1 ? 'página' : 'páginas'}
               </Badge>
             )}
@@ -163,16 +162,16 @@ REGRAS:
           </div>
         </div>
       )}
-    </div>
+    </section>
   );
 }
 
 function Bloco({ titulo, itens, accent, warn }: { titulo: string; itens: string[]; accent?: boolean; warn?: boolean }) {
   return (
-    <div className={`rounded p-2 border ${warn ? 'border-warning/30 bg-warning/5' : accent ? 'border-l-2 border-l-accent border-border/50 bg-muted/40' : 'border-border/50 bg-muted/20'}`}>
-      <p className={`font-semibold mb-1 ${warn ? 'text-warning' : ''}`}>{titulo}</p>
-      <ul className="space-y-0.5 list-disc pl-4">
-        {itens.map((t, i) => <li key={i} className="text-muted-foreground">{t}</li>)}
+    <div className={`rounded-md border p-3 ${warn ? 'border-warning-line bg-warning-tint' : accent ? 'border-l-2 border-l-primary border-border bg-muted/50' : 'border-border bg-muted/50'}`}>
+      <p className={`font-semibold mb-1 ${warn ? 'text-warning-ink' : ''}`}>{titulo}</p>
+      <ul className="space-y-1 list-disc pl-4">
+        {itens.map((t, i) => <li key={i} className={warn ? 'text-warning-ink' : 'text-muted-foreground'}>{t}</li>)}
       </ul>
     </div>
   );

@@ -6,7 +6,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Building2, Bell, Mail, MessageSquare, CalendarDays, Zap, CheckCircle2 } from 'lucide-react';
+import { Building2, Bell, Mail, MessageSquare, Zap, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
@@ -101,19 +101,19 @@ export default function MarcarInteresseDialog({ open, onOpenChange, edital, onSu
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <CheckCircle2 className="w-5 h-5 text-success" />
-            Marcar Interesse no Processo
+            <CheckCircle2 className="h-5 w-5 text-success" aria-hidden="true" />
+            Marcar interesse no processo
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
           {/* Edital info */}
-          <div className="bg-muted/50 rounded-lg p-3 space-y-1">
+          <div className="space-y-1 rounded-lg border border-border bg-muted p-4">
             <p className="text-sm font-semibold">{edital.numero}</p>
             <p className="text-xs text-muted-foreground">{edital.orgao}</p>
             <p className="text-xs text-muted-foreground line-clamp-2">{edital.objeto}</p>
             {edital.valor_estimado && (
-              <Badge variant="outline" className="text-xs mt-1">
+              <Badge variant="muted" className="mt-1 tabular-nums">
                 {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(edital.valor_estimado)}
               </Badge>
             )}
@@ -121,12 +121,12 @@ export default function MarcarInteresseDialog({ open, onOpenChange, edital, onSu
 
           {/* Empresa selection */}
           <div className="space-y-2">
-            <Label className="flex items-center gap-2">
-              <Building2 className="w-4 h-4" />
+            <Label htmlFor="interesse-empresa" className="flex items-center gap-2">
+              <Building2 className="h-4 w-4" aria-hidden="true" />
               Empresa participante
             </Label>
             <Select value={empresaId} onValueChange={setEmpresaId}>
-              <SelectTrigger>
+              <SelectTrigger id="interesse-empresa">
                 <SelectValue placeholder="Selecione a empresa" />
               </SelectTrigger>
               <SelectContent>
@@ -140,50 +140,51 @@ export default function MarcarInteresseDialog({ open, onOpenChange, edital, onSu
           </div>
 
           {/* Alert channels */}
-          <div className="space-y-3">
-            <Label className="flex items-center gap-2">
-              <Bell className="w-4 h-4" />
-              Canais de Alerta (7, 3 e 1 dia antes)
-            </Label>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm flex items-center gap-2">
-                  <Bell className="w-3.5 h-3.5 text-accent" /> Notificação no sistema
-                </span>
-                <Switch checked={alertaSistema} onCheckedChange={setAlertaSistema} />
+          <fieldset className="space-y-3">
+            <legend className="flex items-center gap-2 text-sm font-medium">
+              <Bell className="h-4 w-4" aria-hidden="true" />
+              Canais de alerta (7, 3 e 1 dia antes)
+            </legend>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <Label htmlFor="alerta-sistema" className="flex items-center gap-2 text-sm font-normal">
+                  <Bell className="h-4 w-4 text-primary" aria-hidden="true" /> Notificação no sistema
+                </Label>
+                <Switch id="alerta-sistema" checked={alertaSistema} onCheckedChange={setAlertaSistema} />
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm flex items-center gap-2">
-                  <Mail className="w-3.5 h-3.5 text-info" /> E-mail
-                </span>
-                <Switch checked={alertaEmail} onCheckedChange={setAlertaEmail} />
+              <div className="flex items-center justify-between gap-3">
+                <Label htmlFor="alerta-email" className="flex items-center gap-2 text-sm font-normal">
+                  <Mail className="h-4 w-4 text-info" aria-hidden="true" /> E-mail
+                </Label>
+                <Switch id="alerta-email" checked={alertaEmail} onCheckedChange={setAlertaEmail} />
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm flex items-center gap-2">
-                  <MessageSquare className="w-3.5 h-3.5 text-success" /> WhatsApp
-                </span>
-                <Switch checked={alertaWhatsapp} onCheckedChange={setAlertaWhatsapp} />
+              <div className="flex items-center justify-between gap-3">
+                <Label htmlFor="alerta-whatsapp" className="flex items-center gap-2 text-sm font-normal">
+                  <MessageSquare className="h-4 w-4 text-success" aria-hidden="true" /> WhatsApp
+                </Label>
+                <Switch id="alerta-whatsapp" checked={alertaWhatsapp} onCheckedChange={setAlertaWhatsapp} />
               </div>
             </div>
-          </div>
+          </fieldset>
 
           {/* Auto-cadastro */}
-          <div className="flex items-center justify-between bg-accent/5 rounded-lg p-3 border border-accent/20">
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary-tint p-4">
             <div>
-              <p className="text-sm font-medium flex items-center gap-2">
-                <Zap className="w-4 h-4 text-accent" /> Cadastro automático
-              </p>
-              <p className="text-xs text-muted-foreground">
+              <Label htmlFor="auto-cadastro" className="flex items-center gap-2 text-sm font-medium">
+                <Zap className="h-4 w-4 text-primary" aria-hidden="true" /> Cadastro automático
+              </Label>
+              <p className="mt-1 text-xs text-muted-foreground">
                 IA valida preços e cadastra automaticamente no portal
               </p>
             </div>
-            <Switch checked={autoCadastro} onCheckedChange={setAutoCadastro} />
+            <Switch id="auto-cadastro" checked={autoCadastro} onCheckedChange={setAutoCadastro} />
           </div>
 
           {/* Notas */}
           <div className="space-y-2">
-            <Label>Observações (opcional)</Label>
+            <Label htmlFor="interesse-notas">Observações (opcional)</Label>
             <Textarea
+              id="interesse-notas"
               value={notas}
               onChange={(e) => setNotas(e.target.value)}
               placeholder="Notas sobre o processo..."
@@ -194,7 +195,7 @@ export default function MarcarInteresseDialog({ open, onOpenChange, edital, onSu
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={handleSalvar} disabled={salvando} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+          <Button onClick={handleSalvar} disabled={salvando}>
             {salvando ? 'Salvando...' : 'Confirmar Interesse'}
           </Button>
         </DialogFooter>

@@ -4,9 +4,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import EstadoVazio from '@/components/shared/EstadoVazio';
+import LinhaKpis, { type ItemKpi } from '@/components/shared/LinhaKpis';
 import { toast } from 'sonner';
 import {
   Calculator, Save, Loader2, TrendingUp, AlertTriangle,
@@ -46,6 +47,8 @@ function formatInputBRL(v: string): string {
 }
 
 type MonthData = { ano_mes: string; valor_faturamento: number; id?: string };
+
+type RegimeSlug = 'simples_nacional' | 'lucro_presumido' | 'lucro_real';
 
 export default function ApuracaoRegimeTributario() {
   const { empresaAtiva, reloadEmpresas } = useEmpresa();
@@ -215,56 +218,97 @@ export default function ApuracaoRegimeTributario() {
 
   if (!empresaAtiva) {
     return (
-      <div className="text-center py-8 text-muted-foreground text-sm">
-        <Calculator className="w-8 h-8 mx-auto mb-2 opacity-50" />
-        Selecione uma empresa ativa para configurar o regime tributário.
-      </div>
+      <section className="rounded-lg border border-border bg-card shadow-sm">
+        <EstadoVazio
+          icone={<Calculator />}
+          titulo="Nenhuma empresa ativa"
+          descricao="Selecione uma empresa ativa para configurar o regime tributário."
+        />
+      </section>
     );
   }
+
+  const kpis: ItemKpi[] = [
+    { rotulo: 'RBT12', valor: formatBRL(rbt12), icone: DollarSign, tom: 'info' },
+    { rotulo: 'Média mensal', valor: formatBRL(mediaMensal), icone: TrendingUp },
+    { rotulo: 'Meses informados', valor: `${mesesPreenchidos}/12`, icone: BarChart3 },
+    ...(regimeRecomendado
+      ? [{
+          rotulo: `Regime sugerido · ~${regimeRecomendado.carga.toFixed(2)}% de carga`,
+          valor: regimeRecomendado.label,
+          icone: Lightbulb,
+          tom: 'ok' as const,
+        }]
+      : []),
+  ];
+
+  /** A célula de status de cada regime: "Atual", "Adotar" e a etiqueta de recomendação. */
+  const celulaStatus = (regime: RegimeSlug) => (
+    <div className="flex flex-wrap items-center justify-center gap-2">
+      {regimeAtual === regime
+        ? <Badge variant="info">Atual</Badge>
+        : (
+          <Button size="sm" variant="ghost"
+            disabled={trocando} onClick={() => trocarRegime(regime)}>
+            Adotar
+          </Button>
+        )}
+      {regimeRecomendado?.regime === regime && regimeAtual !== regime && (
+        <Badge variant="success">Recomendado</Badge>
+      )}
+    </div>
+  );
+
+  const linhaRecomendada = (regime: RegimeSlug) =>
+    regimeRecomendado?.regime === regime ? 'bg-success-tint hover:bg-success-tint' : '';
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
-        <div className="flex items-center gap-2 mb-3">
-          <BarChart3 className="w-5 h-5 text-muted-foreground" />
-          <h2 className="text-sm font-semibold">Apuração de Faturamento — Últimos 12 Meses</h2>
+      <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
+        <div className="mb-3 flex items-center gap-2">
+          <BarChart3 className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+          <h2 className="text-lg font-semibold text-foreground">Apuração de Faturamento — Últimos 12 Meses</h2>
         </div>
-        <p className="text-xs text-muted-foreground mb-4">
+        <p className="mb-4 text-sm text-muted-foreground">
           Preencha o faturamento bruto mensal da empresa. O sistema calculará automaticamente o RBT12,
           identificará a faixa tributária ideal e alimentará a Calculadora de Precificação.
         </p>
 
         {regimeAtual && (
-          <div className="flex items-center gap-2 mb-4">
-            <Badge variant="secondary" className="text-xs">
+          <div className="mb-4 flex items-center gap-2">
+            <Badge variant="info">
               Regime Atual: {regimeLabels[regimeAtual] || regimeAtual}
             </Badge>
           </div>
         )}
 
         {loading ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          <div role="status" aria-busy="true" className="space-y-2">
+            <span className="sr-only">Carregando faturamento</span>
+            {Array.from({ length: 6 }, (_, i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
           </div>
         ) : (
           <>
-            <div className="rounded-lg border border-border/50 overflow-hidden">
+            <div className="overflow-hidden rounded-lg border border-border">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-xs w-[180px]">Mês/Ano</TableHead>
-                    <TableHead className="text-xs">Faturamento Bruto (R$)</TableHead>
+                    <TableHead className="w-[180px]">Mês/Ano</TableHead>
+                    <TableHead>Faturamento Bruto (R$)</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {meses.map((m, i) => (
                     <TableRow key={m.ano_mes}>
-                      <TableCell className="text-xs font-medium py-2">
-                        {last12Months[i]?.label}
+                      <TableCell className="py-2 font-medium">
+                        <label htmlFor={`faturamento-${m.ano_mes}`}>{last12Months[i]?.label}</label>
                       </TableCell>
                       <TableCell className="py-2">
                         <Input
+                          id={`faturamento-${m.ano_mes}`}
                           value={drafts[i] !== undefined
                             ? drafts[i]
                             : (m.valor_faturamento > 0 ? formatInputBRL(String(m.valor_faturamento)) : '')}
@@ -277,7 +321,8 @@ export default function ApuracaoRegimeTributario() {
                             }
                           }}
                           placeholder="0,00"
-                          className="h-8 text-xs max-w-[200px]"
+                          inputMode="decimal"
+                          className="h-9 max-w-xs text-right tabular-nums"
                         />
                       </TableCell>
                     </TableRow>
@@ -286,12 +331,12 @@ export default function ApuracaoRegimeTributario() {
               </Table>
             </div>
 
-            <div className="flex items-center justify-between mt-4">
-              <p className="text-xs text-muted-foreground">
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm text-muted-foreground">
                 {mesesPreenchidos}/12 meses preenchidos
               </p>
-              <Button onClick={handleSave} disabled={saving} size="sm" className="gap-1.5 bg-accent hover:bg-accent/90 text-accent-foreground">
-                {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+              <Button onClick={handleSave} disabled={saving}>
+                {saving ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Save aria-hidden="true" />}
                 Salvar Faturamento
               </Button>
             </div>
@@ -303,149 +348,85 @@ export default function ApuracaoRegimeTributario() {
       {rbt12 > 0 && (
         <>
           {/* KPIs */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <Card className="p-3">
-              <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1">
-                <DollarSign className="w-3 h-3" /> RBT12
-              </div>
-              <p className="text-sm font-bold">{formatBRL(rbt12)}</p>
-            </Card>
-            <Card className="p-3">
-              <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1">
-                <TrendingUp className="w-3 h-3" /> Média Mensal
-              </div>
-              <p className="text-sm font-bold">{formatBRL(mediaMensal)}</p>
-            </Card>
-            <Card className="p-3">
-              <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1">
-                <BarChart3 className="w-3 h-3" /> Meses Informados
-              </div>
-              <p className="text-sm font-bold">{mesesPreenchidos}/12</p>
-            </Card>
-            {regimeRecomendado && (
-              <Card className="p-3 border-border/50 bg-muted/30">
-                <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1">
-                  <Lightbulb className="w-3 h-3" /> Regime Sugerido
-                </div>
-                <p className="text-sm font-bold text-foreground">{regimeRecomendado.label}</p>
-                <p className="text-xs text-muted-foreground">~{regimeRecomendado.carga.toFixed(2)}% carga</p>
-              </Card>
-            )}
-          </div>
+          <LinhaKpis itens={kpis} />
 
           {/* Comparison table */}
-          <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-3">
-              <Calculator className="w-5 h-5 text-muted-foreground" />
-              <h3 className="text-sm font-semibold">Comparativo de Regimes Tributários</h3>
+          <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
+            <div className="mb-3 flex items-center gap-2">
+              <Calculator className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+              <h3 className="text-lg font-semibold text-foreground">Comparativo de Regimes Tributários</h3>
             </div>
-            <p className="text-xs text-muted-foreground mb-4">
+            <p className="mb-4 text-sm text-muted-foreground">
               Estimativa baseada no faturamento informado. Valores aproximados para fins de planejamento.
             </p>
 
-            <div className="rounded-lg border border-border/50 overflow-hidden">
+            <div className="overflow-hidden rounded-lg border border-border">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-xs">Regime</TableHead>
-                    <TableHead className="text-xs text-right">Carga Efetiva</TableHead>
-                    <TableHead className="text-xs text-right">Tributo Mensal Est.</TableHead>
-                    <TableHead className="text-xs text-center">Elegível</TableHead>
-                    <TableHead className="text-xs text-center">Status</TableHead>
+                    <TableHead>Regime</TableHead>
+                    <TableHead className="text-right">Carga Efetiva</TableHead>
+                    <TableHead className="text-right">Tributo Mensal Est.</TableHead>
+                    <TableHead className="text-center">Elegível</TableHead>
+                    <TableHead className="text-center">Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {/* Simples */}
-                  <TableRow className={regimeRecomendado?.regime === 'simples_nacional' ? 'bg-success/10 hover:bg-success/15' : ''}>
-                    <TableCell className="text-xs font-medium">Simples Nacional</TableCell>
-                    <TableCell className="text-xs text-right font-mono">
+                  <TableRow className={linhaRecomendada('simples_nacional')}>
+                    <TableCell className="font-medium">Simples Nacional</TableCell>
+                    <TableCell className="text-right tabular-nums">
                       {simplesInfo?.elegivel ? `${simplesInfo.aliquotaEfetiva.toFixed(2)}%` : '—'}
                     </TableCell>
-                    <TableCell className="text-xs text-right font-mono">
+                    <TableCell className="text-right tabular-nums">
                       {simplesInfo?.elegivel ? formatBRL(simplesInfo.valorDAS) : '—'}
                     </TableCell>
-                    <TableCell className="text-xs text-center">
-                      {simplesInfo?.elegivel
-                        ? <CheckCircle2 className="w-4 h-4 text-success mx-auto" />
-                        : <AlertTriangle className="w-4 h-4 text-warning mx-auto" />}
-                    </TableCell>
                     <TableCell className="text-center">
-                      {regimeAtual === 'simples_nacional'
-                        ? <Badge className="text-xs bg-muted text-foreground">Atual</Badge>
-                        : (
-                          <Button size="sm" variant="ghost" className="h-6 text-xs px-2"
-                            disabled={trocando} onClick={() => trocarRegime('simples_nacional')}>
-                            Adotar
-                          </Button>
-                        )}
-                      {regimeRecomendado?.regime === 'simples_nacional' && regimeAtual !== 'simples_nacional' && (
-                        <Badge className="text-xs bg-success/15 text-success">Recomendado</Badge>
-                      )}
+                      {simplesInfo?.elegivel
+                        ? <span className="inline-flex items-center gap-1 text-success"><CheckCircle2 className="h-4 w-4" aria-hidden="true" /> Sim</span>
+                        : <span className="inline-flex items-center gap-1 text-warning"><AlertTriangle className="h-4 w-4" aria-hidden="true" /> Não</span>}
                     </TableCell>
+                    <TableCell>{celulaStatus('simples_nacional')}</TableCell>
                   </TableRow>
 
                   {/* Presumido */}
-                  <TableRow className={regimeRecomendado?.regime === 'lucro_presumido' ? 'bg-success/10 hover:bg-success/15' : ''}>
-                    <TableCell className="text-xs font-medium">Lucro Presumido</TableCell>
-                    <TableCell className="text-xs text-right font-mono">
+                  <TableRow className={linhaRecomendada('lucro_presumido')}>
+                    <TableCell className="font-medium">Lucro Presumido</TableCell>
+                    <TableCell className="text-right tabular-nums">
                       {presumidoInfo?.elegivel ? `${presumidoInfo.cargaEfetiva.toFixed(2)}%` : '—'}
                     </TableCell>
-                    <TableCell className="text-xs text-right font-mono">
+                    <TableCell className="text-right tabular-nums">
                       {presumidoInfo?.elegivel ? formatBRL(presumidoInfo.totalMensal) : '—'}
                     </TableCell>
-                    <TableCell className="text-xs text-center">
-                      {presumidoInfo?.elegivel
-                        ? <CheckCircle2 className="w-4 h-4 text-success mx-auto" />
-                        : <AlertTriangle className="w-4 h-4 text-warning mx-auto" />}
-                    </TableCell>
                     <TableCell className="text-center">
-                      {regimeAtual === 'lucro_presumido'
-                        ? <Badge className="text-xs bg-muted text-foreground">Atual</Badge>
-                        : (
-                          <Button size="sm" variant="ghost" className="h-6 text-xs px-2"
-                            disabled={trocando} onClick={() => trocarRegime('lucro_presumido')}>
-                            Adotar
-                          </Button>
-                        )}
-                      {regimeRecomendado?.regime === 'lucro_presumido' && regimeAtual !== 'lucro_presumido' && (
-                        <Badge className="text-xs bg-success/15 text-success">Recomendado</Badge>
-                      )}
+                      {presumidoInfo?.elegivel
+                        ? <span className="inline-flex items-center gap-1 text-success"><CheckCircle2 className="h-4 w-4" aria-hidden="true" /> Sim</span>
+                        : <span className="inline-flex items-center gap-1 text-warning"><AlertTriangle className="h-4 w-4" aria-hidden="true" /> Não</span>}
                     </TableCell>
+                    <TableCell>{celulaStatus('lucro_presumido')}</TableCell>
                   </TableRow>
 
                   {/* Lucro Real */}
-                  <TableRow className={regimeRecomendado?.regime === 'lucro_real' ? 'bg-success/10 hover:bg-success/15' : ''}>
-                    <TableCell className="text-xs font-medium">Lucro Real</TableCell>
-                    <TableCell className="text-xs text-right font-mono">
+                  <TableRow className={linhaRecomendada('lucro_real')}>
+                    <TableCell className="font-medium">Lucro Real</TableCell>
+                    <TableCell className="text-right tabular-nums">
                       {lucroRealInfo ? `${lucroRealInfo.cargaEfetiva.toFixed(2)}%` : '—'}
                     </TableCell>
-                    <TableCell className="text-xs text-right font-mono">
+                    <TableCell className="text-right tabular-nums">
                       {lucroRealInfo ? formatBRL(lucroRealInfo.totalMensal) : '—'}
                     </TableCell>
-                    <TableCell className="text-xs text-center">
-                      <CheckCircle2 className="w-4 h-4 text-success mx-auto" />
-                    </TableCell>
                     <TableCell className="text-center">
-                      {regimeAtual === 'lucro_real'
-                        ? <Badge className="text-xs bg-muted text-foreground">Atual</Badge>
-                        : (
-                          <Button size="sm" variant="ghost" className="h-6 text-xs px-2"
-                            disabled={trocando} onClick={() => trocarRegime('lucro_real')}>
-                            Adotar
-                          </Button>
-                        )}
-                      {regimeRecomendado?.regime === 'lucro_real' && regimeAtual !== 'lucro_real' && (
-                        <Badge className="text-xs bg-success/15 text-success">Recomendado</Badge>
-                      )}
+                      <span className="inline-flex items-center gap-1 text-success"><CheckCircle2 className="h-4 w-4" aria-hidden="true" /> Sim</span>
                     </TableCell>
+                    <TableCell>{celulaStatus('lucro_real')}</TableCell>
                   </TableRow>
                 </TableBody>
               </Table>
             </div>
 
             {simplesInfo?.faixa && simplesInfo.elegivel && (
-              <div className="mt-3 bg-muted/30 rounded-lg p-3 text-xs">
-                <p className="font-semibold text-foreground mb-1">Simples Nacional — Detalhamento</p>
+              <div className="mt-3 rounded-lg bg-muted p-4 text-sm">
+                <p className="mb-1 font-semibold text-foreground">Simples Nacional — Detalhamento</p>
                 <p><strong>Faixa:</strong> {simplesInfo.faixa.faixa} ({formatBRL(simplesInfo.faixa.min)} a {formatBRL(simplesInfo.faixa.max)})</p>
                 <p><strong>Alíquota Nominal:</strong> {simplesInfo.faixa.aliquota}% | <strong>Dedução:</strong> {formatBRL(simplesInfo.faixa.deducao)}</p>
                 <p><strong>Alíquota Efetiva:</strong> {simplesInfo.aliquotaEfetiva.toFixed(2)}%</p>
@@ -454,9 +435,9 @@ export default function ApuracaoRegimeTributario() {
           </section>
 
           {/* Info box */}
-          <section className="bg-muted/30 border border-border/50 rounded-xl p-4 flex gap-3">
-            <Info className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-0.5" />
-            <div className="text-xs text-muted-foreground space-y-1">
+          <section className="flex gap-3 rounded-lg border border-border bg-muted p-4">
+            <Info className="mt-1 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+            <div className="space-y-1 text-sm text-muted-foreground">
               <p className="font-semibold text-foreground">Como funciona a integração com a Calculadora?</p>
               <p>• O valor do <strong>RBT12 ({formatBRL(rbt12)})</strong> será preenchido automaticamente no campo "Faturamento 12 meses" da Calculadora de Precificação.</p>
               <p>• Você pode sobrescrever manualmente o valor na Calculadora a qualquer momento.</p>

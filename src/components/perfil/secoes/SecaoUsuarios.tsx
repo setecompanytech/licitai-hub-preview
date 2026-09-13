@@ -3,7 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Loader2, Mail, ShieldCheck, Users } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Skeleton } from '@/components/ui/skeleton';
+import EstadoVazio from '@/components/shared/EstadoVazio';
+import { AlertTriangle, ArrowRight, Building2, Mail, ShieldCheck, Users } from 'lucide-react';
 
 type Membro = {
   id: string;
@@ -52,60 +56,76 @@ export default function SecaoUsuarios() {
 
   if (carregando) {
     return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground py-8">
-        <Loader2 className="w-4 h-4 animate-spin" /> Carregando usuários...
+      <div role="status" aria-busy="true" className="space-y-2">
+        <span className="sr-only">Carregando usuários</span>
+        {Array.from({ length: 3 }, (_, i) => (
+          <div key={i} className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3">
+            <Skeleton className="h-9 w-9 rounded-full" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-4 w-40" />
+              <Skeleton className="h-3 w-56" />
+            </div>
+          </div>
+        ))}
       </div>
     );
   }
 
   if (!empresaAtiva) {
     return (
-      <p className="text-sm text-muted-foreground py-8">
-        Selecione uma empresa no topo para ver quem tem acesso a ela.
-      </p>
+      <EstadoVazio
+        tamanho="compacto"
+        icone={<Building2 />}
+        titulo="Nenhuma empresa selecionada"
+        descricao="Selecione uma empresa no topo para ver quem tem acesso a ela."
+      />
     );
   }
 
   return (
     <>
       {erro && (
-        <div className="mb-5 rounded-xl border border-destructive-line bg-destructive-tint px-4 py-3 text-sm text-destructive-ink">
-          Não foi possível carregar os usuários: {erro}
-        </div>
+        <Alert variant="destructive" className="mb-6">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>Não foi possível carregar os usuários: {erro}</AlertDescription>
+        </Alert>
       )}
 
       {membros.length === 0 && !erro ? (
-        <p className="text-sm text-muted-foreground py-6">
-          Nenhum usuário além de você tem acesso a esta empresa.
-        </p>
+        <EstadoVazio
+          tamanho="compacto"
+          icone={<Users />}
+          titulo="Só você tem acesso"
+          descricao="Nenhum usuário além de você tem acesso a esta empresa."
+        />
       ) : (
-        <ul className="divide-y divide-border rounded-xl border border-border overflow-hidden">
+        <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border">
           {membros.map((m) => (
-            <li key={m.id} className="flex items-center gap-3 px-4 py-3 bg-card">
-              <span className="w-9 h-9 rounded-full bg-navy-tint text-navy flex items-center justify-center text-xs font-bold shrink-0">
+            <li key={m.id} className="flex items-center gap-3 bg-card px-4 py-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold text-foreground">
                 {(m.nome || m.email || '?').slice(0, 2).toUpperCase()}
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium truncate">{m.nome || 'Sem nome'}</p>
-                <p className="flex items-center gap-1.5 text-xs text-muted-foreground truncate">
-                  <Mail className="w-3 h-3 shrink-0" aria-hidden="true" />
+                <p className="truncate text-sm font-medium text-foreground">{m.nome || 'Sem nome'}</p>
+                <p className="flex items-center gap-2 truncate text-xs text-muted-foreground">
+                  <Mail className="h-4 w-4 shrink-0" aria-hidden="true" />
                   {m.email || 'sem e-mail'}
                 </p>
               </div>
-              <span className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-muted text-muted-foreground shrink-0">
-                {m.papel === 'admin' && <ShieldCheck className="w-3 h-3" aria-hidden="true" />}
+              <Badge variant={m.papel === 'admin' ? 'info' : 'muted'} className="shrink-0 gap-1">
+                {m.papel === 'admin' && <ShieldCheck className="h-4 w-4" aria-hidden="true" />}
                 {m.papel}
-              </span>
+              </Badge>
             </li>
           ))}
         </ul>
       )}
 
-      <div className="mt-7 pt-5 border-t border-border flex flex-wrap items-center gap-4">
+      <div className="mt-8 flex flex-wrap items-center gap-4 border-t border-border pt-6">
         <Button variant="outline" onClick={() => navigate('/equipe')}>
-          <Users className="w-4 h-4 mr-2" />
+          <Users aria-hidden="true" />
           Gerenciar equipe
-          <ArrowRight className="w-4 h-4 ml-2" />
+          <ArrowRight aria-hidden="true" />
         </Button>
         <p className="text-xs text-muted-foreground">
           Convidar, remover e definir permissões acontece na tela de Equipe.

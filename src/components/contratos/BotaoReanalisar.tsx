@@ -18,7 +18,7 @@ export default function BotaoReanalisar() {
     <Button
       size="sm"
       variant="outline"
-      className="h-8 text-xs mt-1"
+      className="mt-1"
       onClick={() => {
         const next = new URLSearchParams(searchParams);
         next.set('aba', 'contratos-aditivos');
@@ -26,7 +26,7 @@ export default function BotaoReanalisar() {
         setSearchParams(next);
       }}
     >
-      <ScanSearch className="w-3.5 h-3.5 mr-1" />
+      <ScanSearch className="w-4 h-4" />
       Reanalisar documentos anexados
     </Button>
   );

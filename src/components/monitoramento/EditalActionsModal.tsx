@@ -99,7 +99,7 @@ export default function EditalActionsModal({ open, onOpenChange, edital, existin
           <DialogTitle>
             {existingId ? 'Este edital já está na gestão' : 'Iniciar processo'}
           </DialogTitle>
-          <DialogDescription className="text-xs">
+          <DialogDescription>
             {edital?.numero} — {edital?.orgao}
           </DialogDescription>
         </DialogHeader>
@@ -109,29 +109,30 @@ export default function EditalActionsModal({ open, onOpenChange, edital, existin
             const Icon = d.icon;
             const isLoading = working === d.id;
             return (
-              <button
+              <Button
                 key={d.id}
+                variant="outline"
                 onClick={() => handleAcao(d)}
                 disabled={!!working}
-                className="group flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border hover:border-accent/40 hover:bg-accent/5 transition-colors text-left disabled:opacity-50"
+                className="group h-auto justify-start gap-3 px-3 py-2.5 text-left"
               >
-                <span className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center shrink-0 group-hover:bg-accent/10">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted text-foreground group-hover:bg-primary-tint group-hover:text-primary">
                   {isLoading
-                    ? <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                    : <Icon className="w-4 h-4 text-foreground group-hover:text-accent" />}
+                    ? <Loader2 className="animate-spin text-muted-foreground" aria-hidden="true" />
+                    : <Icon aria-hidden="true" />}
                 </span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground">{d.label}</p>
-                  <p className="text-xs text-muted-foreground">{d.desc}</p>
-                </div>
-                <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-accent" />
-              </button>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold text-foreground">{d.label}</span>
+                  <span className="block whitespace-normal text-xs font-normal text-muted-foreground">{d.desc}</span>
+                </span>
+                <ArrowRight className="text-muted-foreground group-hover:text-primary" aria-hidden="true" />
+              </Button>
             );
           })}
         </div>
 
         <DialogFooter>
-          <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)} disabled={!!working}>
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={!!working}>
             Cancelar
           </Button>
         </DialogFooter>

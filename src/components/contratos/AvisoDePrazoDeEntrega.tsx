@@ -19,12 +19,12 @@ type Props = {
 };
 
 const ESTILO = {
-  vencido: { cor: 'text-destructive', fundo: 'bg-destructive/5 border-destructive/30', Icone: AlertTriangle },
-  vence_hoje: { cor: 'text-destructive', fundo: 'bg-destructive/5 border-destructive/30', Icone: AlertTriangle },
-  apertado: { cor: 'text-warning', fundo: 'bg-warning/5 border-warning/30', Icone: CalendarClock },
-  no_prazo: { cor: 'text-muted-foreground', fundo: 'bg-muted/30 border-border', Icone: CalendarClock },
-  entregue: { cor: 'text-muted-foreground', fundo: 'bg-muted/30 border-border', Icone: CheckCircle2 },
-  sem_prazo: { cor: 'text-warning', fundo: 'bg-warning/5 border-warning/30', Icone: Info },
+  vencido: { cor: 'text-destructive-ink', fundo: 'bg-destructive-tint border-destructive-line', Icone: AlertTriangle },
+  vence_hoje: { cor: 'text-destructive-ink', fundo: 'bg-destructive-tint border-destructive-line', Icone: AlertTriangle },
+  apertado: { cor: 'text-warning-ink', fundo: 'bg-warning-tint border-warning-line', Icone: CalendarClock },
+  no_prazo: { cor: 'text-muted-foreground', fundo: 'bg-muted border-border', Icone: CalendarClock },
+  entregue: { cor: 'text-muted-foreground', fundo: 'bg-muted border-border', Icone: CheckCircle2 },
+  sem_prazo: { cor: 'text-warning-ink', fundo: 'bg-warning-tint border-warning-line', Icone: Info },
 } as const;
 
 /**
@@ -91,7 +91,7 @@ export default function AvisoDePrazoDeEntrega({ contrato, dataDoPedido, dataDeEn
             </p>
           )}
           {contrato?.prazo_entrega_clausula && (
-            <p className="text-[11px] text-muted-foreground/80 italic border-l-2 border-border pl-2 mt-1">
+            <p className="text-xs text-muted-foreground italic border-l-2 border-border pl-2 mt-1">
               “{contrato.prazo_entrega_clausula}”
             </p>
           )}

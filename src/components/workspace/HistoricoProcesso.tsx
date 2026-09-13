@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { History, Loader2, ArrowRight } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
+import { History, ArrowRight } from 'lucide-react';
 
 type Evento = {
   id: string;
@@ -15,6 +15,8 @@ type Evento = {
   metadata: Record<string, unknown> | null;
 };
 
+type TomRotulo = 'muted' | 'info' | 'warning' | 'danger';
+
 /**
  * Linha do tempo de um processo, lida de `atividades_colaborador`.
  *
@@ -22,13 +24,13 @@ type Evento = {
  * não tem FK para `licitacoes` de propósito, para que o expurgo de 120 dias
  * apague o processo sem levar junto o registro de quem fez o quê com ele.
  */
-const ROTULOS: Record<string, { texto: string; tom: string }> = {
-  processo_iniciado: { texto: 'Processo iniciado', tom: 'bg-muted text-muted-foreground border-border' },
-  status_alterado: { texto: 'Status alterado', tom: 'bg-primary/10 text-primary border-primary/20' },
-  processo_arquivado: { texto: 'Arquivado', tom: 'bg-muted text-muted-foreground border-border' },
-  processo_restaurado: { texto: 'Restaurado', tom: 'bg-warning/10 text-warning border-warning/20' },
-  perda_registrada: { texto: 'Perda registrada', tom: 'bg-destructive/10 text-destructive border-destructive/20' },
-  processo_excluido: { texto: 'Excluído', tom: 'bg-destructive/10 text-destructive border-destructive/20' },
+const ROTULOS: Record<string, { texto: string; tom: TomRotulo }> = {
+  processo_iniciado: { texto: 'Processo iniciado', tom: 'muted' },
+  status_alterado: { texto: 'Status alterado', tom: 'info' },
+  processo_arquivado: { texto: 'Arquivado', tom: 'muted' },
+  processo_restaurado: { texto: 'Restaurado', tom: 'warning' },
+  perda_registrada: { texto: 'Perda registrada', tom: 'danger' },
+  processo_excluido: { texto: 'Excluído', tom: 'danger' },
 };
 
 export default function HistoricoProcesso({ licitacaoId }: { licitacaoId: string }) {
@@ -74,47 +76,58 @@ export default function HistoricoProcesso({ licitacaoId }: { licitacaoId: string
 
   if (loading) {
     return (
-      <Card className="p-8 flex items-center justify-center gap-2 text-muted-foreground">
-        <Loader2 className="w-5 h-5 animate-spin" />
-        <span className="text-base">Carregando histórico…</span>
+      <Card className="p-6" role="status" aria-busy="true">
+        <span className="sr-only">Carregando histórico…</span>
+        <div className="space-y-4">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="space-y-2">
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-3 w-48" />
+            </div>
+          ))}
+        </div>
       </Card>
     );
   }
 
   if (!eventos.length) {
     return (
-      <Card className="p-8 text-center">
-        <History className="w-10 h-10 mx-auto text-muted-foreground mb-2" />
-        <p className="text-base text-muted-foreground">
-          Nenhuma movimentação registrada ainda. As próximas alterações deste processo aparecem aqui.
+      <Card className="p-6 text-center">
+        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
+          <History className="w-6 h-6" aria-hidden="true" />
+        </div>
+        <p className="text-lg font-semibold">Nenhuma movimentação registrada ainda.</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          As próximas alterações deste processo aparecem aqui.
         </p>
       </Card>
     );
   }
 
   return (
-    <Card className="p-5">
-      <ol className="relative border-l border-border/60 ml-2 space-y-5">
+    <Card className="p-6">
+      <ol className="relative ml-2 space-y-6 border-l border-border">
         {eventos.map((ev) => {
-          const rotulo = ROTULOS[ev.acao] || { texto: ev.acao, tom: 'bg-muted text-muted-foreground border-border' };
+          const rotulo = ROTULOS[ev.acao] || { texto: ev.acao, tom: 'muted' as TomRotulo };
           const de = ev.metadata?.de as string | undefined;
           const para = ev.metadata?.para as string | undefined;
           return (
             <li key={ev.id} className="ml-5">
               <span className="absolute -left-[5px] mt-1.5 w-2.5 h-2.5 rounded-full bg-border" aria-hidden="true" />
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="outline" className={cn('text-xs', rotulo.tom)}>{rotulo.texto}</Badge>
+                <Badge variant={rotulo.tom}>{rotulo.texto}</Badge>
                 {de && para && (
                   <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                    {de} <ArrowRight className="w-3 h-3" /> <span className="font-medium text-foreground">{para}</span>
+                    {de} <ArrowRight className="w-4 h-4" aria-hidden="true" /> <span className="font-medium text-foreground">{para}</span>
                   </span>
                 )}
                 {!de && para && (
                   <span className="text-xs text-muted-foreground">para <span className="font-medium text-foreground">{para}</span></span>
                 )}
               </div>
-              {ev.descricao && <p className="text-sm mt-1">{ev.descricao}</p>}
-              <p className="text-xs text-muted-foreground mt-1 tabular-nums">
+              {ev.descricao && <p className="mt-1 text-sm">{ev.descricao}</p>}
+              <p className="mt-1 text-xs text-muted-foreground tabular-nums">
                 {new Date(ev.created_at).toLocaleString('pt-BR')}
                 {' · '}
                 {nomes[ev.user_id] || 'Colaborador'}

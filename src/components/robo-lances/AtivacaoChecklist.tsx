@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import {
-  CheckCircle2, Circle, AlertTriangle, Server, Key, Shield, 
+  CheckCircle2, Circle, AlertTriangle, Server, Key, Shield,
   FileCheck, Rocket, Loader2, Award, RefreshCw, Send,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -374,45 +374,52 @@ export default function AtivacaoChecklist() {
 
   const statusIcon = (status: string) => {
     switch (status) {
-      case 'ok': return <CheckCircle2 className="w-4 h-4 text-success shrink-0" />;
-      case 'erro': return <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />;
-      case 'verificando': return <Loader2 className="w-4 h-4 animate-spin text-warning shrink-0" />;
-      default: return <Circle className="w-4 h-4 text-muted-foreground shrink-0" />;
+      case 'ok': return <CheckCircle2 className="w-5 h-5 text-success shrink-0" aria-hidden="true" />;
+      case 'erro': return <AlertTriangle className="w-5 h-5 text-destructive shrink-0" aria-hidden="true" />;
+      case 'verificando': return <Loader2 className="w-5 h-5 animate-spin text-warning shrink-0" aria-hidden="true" />;
+      default: return <Circle className="w-5 h-5 text-muted-foreground shrink-0" aria-hidden="true" />;
+    }
+  };
+
+  const statusTexto = (status: string) => {
+    switch (status) {
+      case 'ok': return 'Concluído';
+      case 'erro': return 'Atenção';
+      case 'verificando': return 'Verificando';
+      default: return 'Pendente';
     }
   };
 
   return (
     <>
-      <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm space-y-4">
+      <div className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold flex items-center gap-2">
-            <Rocket className="w-4 h-4 text-muted-foreground" />
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <Rocket className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
             Checklist de Ativação — Robô de Lances
           </h3>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {pronto ? (
-              <Badge className="bg-success/15 text-success border-success/30 text-xs">
+              <Badge variant="success">
                 Pronto
               </Badge>
             ) : (
-              <Badge variant="outline" className="text-xs">
+              <Badge variant="muted">
                 {okCount}/{total} etapas
               </Badge>
             )}
             <Button
-              size="sm"
               variant="outline"
-              className="text-xs h-7 gap-1"
               onClick={verificarStatus}
               disabled={checking}
             >
-              {checking ? <Loader2 className="w-3 h-3 animate-spin" /> : <Shield className="w-3 h-3" />}
+              {checking ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Shield className="w-4 h-4" aria-hidden="true" />}
               Reverificar
             </Button>
           </div>
         </div>
 
-        <Progress value={progress} className="h-2" />
+        <Progress value={progress} className="h-2" aria-label={`${okCount} de ${total} etapas concluídas`} />
 
         <div className="space-y-2">
           {items.map(item => {
@@ -420,29 +427,32 @@ export default function AtivacaoChecklist() {
             return (
               <div
                 key={item.id}
-                className={`flex items-start gap-3 rounded-lg border p-3 ${
+                className={`flex flex-col sm:flex-row sm:items-start gap-3 rounded-lg border p-4 ${
                   item.status === 'ok'
-                    ? 'border-success/20 bg-success/5'
+                    ? 'border-success-line bg-success-tint'
                     : item.status === 'erro'
-                    ? 'border-destructive/20 bg-destructive/5'
-                    : 'border-border/50 bg-muted/10'
+                    ? 'border-destructive-line bg-destructive-tint'
+                    : 'border-border bg-card'
                 }`}
               >
-                {statusIcon(item.status)}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <Icon className="w-3.5 h-3.5 text-muted-foreground" />
-                    <p className="text-xs font-semibold">{item.label}</p>
+                <div className="flex items-start gap-3 flex-1 min-w-0">
+                  <span title={statusTexto(item.status)}>{statusIcon(item.status)}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <Icon className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                      <p className="text-sm font-semibold">{item.label}</p>
+                      <span className="sr-only">— {statusTexto(item.status)}</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-0.5">{item.descricao}</p>
+                    {item.rodape && (
+                      <p className="text-xs text-muted-foreground mt-2 border-l-2 border-border pl-2">
+                        {item.rodape}
+                      </p>
+                    )}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-0.5">{item.descricao}</p>
-                  {item.rodape && (
-                    <p className="text-xs text-muted-foreground/70 mt-1.5 leading-snug border-l-2 border-border pl-2">
-                      {item.rodape}
-                    </p>
-                  )}
                 </div>
                 {item.acao && (
-                  <Button size="sm" variant="outline" className="text-xs h-6" onClick={item.acao}>
+                  <Button size="sm" variant="outline" className="shrink-0 self-start" onClick={item.acao}>
                     {item.acaoLabel || 'Configurar'}
                   </Button>
                 )}
@@ -452,8 +462,8 @@ export default function AtivacaoChecklist() {
         </div>
 
         {pronto && (
-          <div className="bg-success/10 border border-success/20 rounded-lg p-3 text-center">
-            <p className="text-xs text-success font-semibold">
+          <div className="bg-success-tint border border-success-line rounded-lg p-4 text-center">
+            <p className="text-sm text-success-ink font-semibold">
               Sistema pronto para disputas reais. O robô pode participar de licitações no Compras.gov e outros portais.
             </p>
           </div>
@@ -465,7 +475,7 @@ export default function AtivacaoChecklist() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <Send className="w-4 h-4 text-muted-foreground" />
+              <Send className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
               Enviar Certificado Digital
             </AlertDialogTitle>
             <AlertDialogDescription className="text-left space-y-2">
@@ -479,7 +489,7 @@ export default function AtivacaoChecklist() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={gerarNovoLink} disabled={reenviando}>
-              {reenviando ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
+              {reenviando ? <Loader2 className="w-4 h-4 animate-spin mr-2" aria-hidden="true" /> : <Send className="w-4 h-4 mr-2" aria-hidden="true" />}
               Gerar Link de Upload
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -491,7 +501,7 @@ export default function AtivacaoChecklist() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <RefreshCw className="w-4 h-4 text-destructive" />
+              <RefreshCw className="w-5 h-5 text-destructive" aria-hidden="true" />
               Substituir Certificado Digital
             </AlertDialogTitle>
             <AlertDialogDescription className="text-left space-y-2">
@@ -513,9 +523,9 @@ export default function AtivacaoChecklist() {
                 await gerarNovoLink();
               }}
               disabled={invalidando || reenviando}
-              className="bg-destructive hover:bg-destructive/90"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {(invalidando || reenviando) ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+              {(invalidando || reenviando) ? <Loader2 className="w-4 h-4 animate-spin mr-2" aria-hidden="true" /> : <RefreshCw className="w-4 h-4 mr-2" aria-hidden="true" />}
               Invalidar e Gerar Novo Link
             </AlertDialogAction>
           </AlertDialogFooter>

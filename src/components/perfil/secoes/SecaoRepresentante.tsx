@@ -3,8 +3,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { toast } from 'sonner';
-import { BadgeCheck, Briefcase, Flag, IdCard, Loader2, MapPin, ShieldCheck, User } from 'lucide-react';
+import { BadgeCheck, Briefcase, Building2, Flag, IdCard, Loader2, MapPin, ShieldCheck, User } from 'lucide-react';
 import RepresentanteUploader from '@/components/configuracoes/RepresentanteUploader';
 import type { ExtractedRepresentanteData } from '@/components/configuracoes/RepresentanteUploader';
 import { CampoHub, GradeHub, RodapeHub } from '../PerfilPrimitivos';
@@ -99,17 +101,26 @@ export default function SecaoRepresentante() {
 
   if (carregando) {
     return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground py-8">
-        <Loader2 className="w-4 h-4 animate-spin" /> Carregando...
+      <div role="status" aria-busy="true" className="grid gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
+        <span className="sr-only">Carregando representante legal</span>
+        {Array.from({ length: 6 }, (_, i) => (
+          <div key={i} className="space-y-2">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-11 w-full" />
+          </div>
+        ))}
       </div>
     );
   }
 
   if (!empresaAtiva) {
     return (
-      <p className="text-sm text-muted-foreground py-8">
-        Selecione uma empresa no topo para editar o representante legal dela.
-      </p>
+      <EstadoVazio
+        tamanho="compacto"
+        icone={<Building2 />}
+        titulo="Nenhuma empresa selecionada"
+        descricao="Selecione uma empresa no topo para editar o representante legal dela."
+      />
     );
   }
 
@@ -147,7 +158,7 @@ export default function SecaoRepresentante() {
 
       <RodapeHub>
         <Button onClick={salvar} disabled={salvando}>
-          {salvando ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <BadgeCheck className="w-4 h-4 mr-2" />}
+          {salvando ? <Loader2 className="animate-spin" aria-hidden="true" /> : <BadgeCheck aria-hidden="true" />}
           Salvar alterações
         </Button>
         <p className="text-xs text-muted-foreground">

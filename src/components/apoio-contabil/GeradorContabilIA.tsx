@@ -3,15 +3,29 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Sparkles, Loader2, BookOpen, Copy, Upload, FileText, Archive } from 'lucide-react';
+import { Sparkles, Loader2, BookOpen, Copy, Upload, FileText, Archive, X } from 'lucide-react';
 import { streamAIChat } from '@/lib/ai-stream';
 import ReactMarkdown from 'react-markdown';
 
 type DocRef = { id: string; titulo: string; tipo: string; ementa: string | null; texto_integral: string | null };
+
+const TIPOS_ANALISE = [
+  'Análise de Balanço Patrimonial',
+  'Análise de DRE',
+  'Composição de Custos / BDI',
+  'Parecer Contábil',
+  'Análise Tributária',
+  'Verificação de Conformidade NBC',
+  'Cálculo de Inexequibilidade (Art. 59)',
+  'Precificação para Licitação',
+  'Análise de Fluxo de Caixa',
+];
 
 export default function GeradorContabilIA() {
   const { user } = useAuth();
@@ -137,50 +151,44 @@ export default function GeradorContabilIA() {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="bg-card rounded-xl border border-border/50 p-6 shadow-sm space-y-4">
-        <div className="flex items-center gap-2 mb-2">
-          <Sparkles className="w-5 h-5 text-accent" />
-          <h3 className="text-sm font-semibold">Gerador de Análises Contábeis com IA</h3>
-        </div>
+    <div className="space-y-6">
+      <section className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-4">
+        <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+          <Sparkles className="w-5 h-5 text-primary" aria-hidden="true" />
+          Gerador de Análises Contábeis com IA
+        </h2>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-xs text-muted-foreground">Tipo de Análise</label>
-            <select value={tipoDoc} onChange={e => setTipoDoc(e.target.value)}
-              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-              <option>Análise de Balanço Patrimonial</option>
-              <option>Análise de DRE</option>
-              <option>Composição de Custos / BDI</option>
-              <option>Parecer Contábil</option>
-              <option>Análise Tributária</option>
-              <option>Verificação de Conformidade NBC</option>
-              <option>Cálculo de Inexequibilidade (Art. 59)</option>
-              <option>Precificação para Licitação</option>
-              <option>Análise de Fluxo de Caixa</option>
-            </select>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="gc-tipo">Tipo de Análise</Label>
+            <Select value={tipoDoc} onValueChange={setTipoDoc}>
+              <SelectTrigger id="gc-tipo"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {TIPOS_ANALISE.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
-          <div>
-            <label className="text-xs text-muted-foreground">Referência / Nº Edital</label>
-            <Input value={referencia} onChange={e => setReferencia(e.target.value)} placeholder="PE-001/2026 ou NBC TG 26" className="mt-1" />
+          <div className="space-y-2">
+            <Label htmlFor="gc-referencia">Referência / Nº Edital</Label>
+            <Input id="gc-referencia" value={referencia} onChange={e => setReferencia(e.target.value)} placeholder="PE-001/2026 ou NBC TG 26" />
           </div>
         </div>
 
-        <div className="border border-dashed border-border rounded-lg p-4 space-y-3">
-          <div className="flex items-center gap-2">
-            <Upload className="w-4 h-4 text-accent" />
-            <label className="text-xs font-medium">Upload de Arquivos (PDF, TXT, CSV, XLS, ZIP)</label>
-          </div>
+        <div className="rounded-md border border-dashed border-border p-4 space-y-3">
+          <Label htmlFor="gc-arquivos" className="flex items-center gap-2">
+            <Upload className="w-4 h-4 text-primary" aria-hidden="true" />
+            Upload de Arquivos (PDF, TXT, CSV, XLS, ZIP)
+          </Label>
           <Input
+            id="gc-arquivos"
             type="file"
             accept=".pdf,.txt,.csv,.xls,.xlsx,.xml,.doc,.docx,.zip"
             multiple
             onChange={handleFileUpload}
             disabled={extracting}
-            className="text-xs"
           />
           {extracting && (
-            <div className="space-y-1">
+            <div className="space-y-1" role="status">
               <Progress value={extractProgress} className="h-2" />
               <p className="text-xs text-muted-foreground">Extraindo texto... {extractProgress}%</p>
             </div>
@@ -188,58 +196,77 @@ export default function GeradorContabilIA() {
           {uploadedFiles.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {uploadedFiles.map((f, i) => (
-                <Badge key={i} variant="secondary" className="text-xs gap-1">
-                  {f.name.endsWith('.zip') ? <Archive className="w-2.5 h-2.5" /> : <FileText className="w-2.5 h-2.5" />}
+                <Badge key={i} variant="muted" className="gap-1">
+                  {f.name.endsWith('.zip') ? <Archive className="w-3 h-3" aria-hidden="true" /> : <FileText className="w-3 h-3" aria-hidden="true" />}
                   {f.name.slice(0, 30)}
-                  <button onClick={() => removeFile(i)} className="ml-1 text-destructive hover:text-destructive/80">×</button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeFile(i)}
+                    aria-label={`Remover ${f.name}`}
+                    className="ml-1 h-5 w-5 rounded-full p-0 text-muted-foreground hover:text-destructive [&_svg]:size-3"
+                  >
+                    <X aria-hidden="true" />
+                  </Button>
                 </Badge>
               ))}
             </div>
           )}
         </div>
 
-        <div>
-          <label className="text-xs text-muted-foreground">Contexto / Dados para Análise</label>
-          <Textarea value={contexto} onChange={e => setContexto(e.target.value)}
+        <div className="space-y-2">
+          <Label htmlFor="gc-contexto">Contexto / Dados para Análise</Label>
+          <Textarea id="gc-contexto" value={contexto} onChange={e => setContexto(e.target.value)}
             placeholder="Descreva os dados contábeis, valores do balanço, itens a precificar, alíquotas, ou cole o conteúdo do demonstrativo para análise..."
-            className="mt-1 min-h-[120px]" />
+            className="min-h-32" />
         </div>
 
         {docsBase.length > 0 && (
-          <div>
-            <label className="text-xs text-muted-foreground flex items-center gap-1 mb-2">
-              <BookOpen className="w-3 h-3" />
+          <div className="space-y-2">
+            <p className="text-sm font-medium leading-none flex items-center gap-1">
+              <BookOpen className="w-4 h-4 text-primary" aria-hidden="true" />
               Documentos da Base Contábil como referência ({selectedDocs.length} selecionados)
-            </label>
-            <div className="flex flex-wrap gap-2 max-h-[120px] overflow-y-auto p-2 rounded-md bg-muted/30">
-              {docsBase.map(doc => (
-                <Badge key={doc.id} variant={selectedDocs.includes(doc.id) ? 'default' : 'outline'}
-                  className="cursor-pointer text-xs transition-colors" onClick={() => toggleDoc(doc.id)}>
-                  {doc.titulo.slice(0, 40)}{doc.titulo.length > 40 ? '...' : ''}
-                </Badge>
-              ))}
+            </p>
+            <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto rounded-md border border-border p-2">
+              {docsBase.map(doc => {
+                const selecionado = selectedDocs.includes(doc.id);
+                return (
+                  <Button
+                    key={doc.id}
+                    type="button"
+                    size="sm"
+                    variant={selecionado ? 'default' : 'outline'}
+                    aria-pressed={selecionado}
+                    className="h-8 rounded-full text-xs"
+                    onClick={() => toggleDoc(doc.id)}
+                  >
+                    {doc.titulo.slice(0, 40)}{doc.titulo.length > 40 ? '...' : ''}
+                  </Button>
+                );
+              })}
             </div>
           </div>
         )}
 
-        <Button onClick={handleGerar} disabled={gerando} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-          {gerando ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Sparkles className="w-4 h-4 mr-1" />}
+        <Button onClick={handleGerar} disabled={gerando}>
+          {gerando ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Sparkles aria-hidden="true" />}
           Gerar Análise Contábil
         </Button>
-      </div>
+      </section>
 
       {resultado && (
-        <div className="bg-card rounded-xl border border-border/50 p-6 shadow-sm space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold">Resultado da Análise</h3>
-            <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(resultado); toast.success('Copiado!'); }}>
-              <Copy className="w-3 h-3 mr-1" /> Copiar
+        <section className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-lg font-semibold text-foreground">Resultado da Análise</h2>
+            <Button variant="outline" onClick={() => { navigator.clipboard.writeText(resultado); toast.success('Copiado!'); }}>
+              <Copy aria-hidden="true" /> Copiar
             </Button>
           </div>
           <div className="prose prose-sm max-w-none dark:prose-invert text-sm">
             <ReactMarkdown>{resultado}</ReactMarkdown>
           </div>
-        </div>
+        </section>
       )}
     </div>
   );

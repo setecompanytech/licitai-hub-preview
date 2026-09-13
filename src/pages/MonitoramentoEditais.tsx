@@ -13,10 +13,17 @@ import { identidadeDoEdital } from '@/lib/licitacao/identidade-edital';
 import { fetchMunicipiosUF } from '@/lib/ibge-municipios';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
+import EstadoVazio from '@/components/shared/EstadoVazio';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -132,12 +139,15 @@ const TIPOS_LEILAO = [
 
 const ALL_MODALIDADE_IDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
 
-const STATUS_CONFIG = {
-  aberto:     { label: 'Aberto',     Icon: CheckCircle2, cls: 'bg-success/15 text-success border-success/30' },
-  aguardando: { label: 'Aguardando', Icon: Clock,        cls: 'bg-info/15 text-info border-info/30' },
-  suspenso:   { label: 'Suspenso',   Icon: PauseCircle,  cls: 'bg-warning/15 text-warning border-warning/30' },
-  homologado: { label: 'Homologado', Icon: CheckCircle2, cls: 'bg-success/15 text-success border-success/30' },
-  encerrado:  { label: 'Encerrado',  Icon: XCircle,      cls: 'bg-muted/50 text-muted-foreground border-border' },
+/** Famílias semânticas do Badge (identidade 12/09) — situação sempre com texto. */
+type VarianteBadge = 'success' | 'warning' | 'danger' | 'info' | 'muted';
+
+const STATUS_CONFIG: Record<string, { label: string; Icon: typeof CheckCircle2; variante: VarianteBadge }> = {
+  aberto:     { label: 'Aberto',     Icon: CheckCircle2, variante: 'success' },
+  aguardando: { label: 'Aguardando', Icon: Clock,        variante: 'info' },
+  suspenso:   { label: 'Suspenso',   Icon: PauseCircle,  variante: 'warning' },
+  homologado: { label: 'Homologado', Icon: CheckCircle2, variante: 'success' },
+  encerrado:  { label: 'Encerrado',  Icon: XCircle,      variante: 'muted' },
 };
 
 const ESFERA_LABELS: Record<string, string> = {
@@ -1173,51 +1183,49 @@ export default function MonitoramentoEditais() {
 
   return (
     <AppLayout>
-      <div className="space-y-5">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-semibold text-foreground tracking-tight">
-              Licitações do Governo Federal
-            </h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Pesquisa avançada estilo SIASG/Compras.gov.br · Cache PNCP local
+      <div className="space-y-6">
+        <CabecalhoPagina
+          acoes={
+            <>
+              <Button
+                variant="outline"
+                onClick={() => buscar(pagina)}
+                disabled={carregando || !buscaRealizada}
+              >
+                <RefreshCw className={carregando ? 'animate-spin' : undefined} aria-hidden="true" />
+                Atualizar
+              </Button>
+              <Button onClick={() => buscar(1)} disabled={carregando}>
+                <Search aria-hidden="true" />
+                Buscar editais
+              </Button>
+            </>
+          }
+        >
+          {resultado && (
+            <p className="text-sm text-muted-foreground">
+              <span className="font-semibold text-foreground tabular-nums">
+                {resultado.total.toLocaleString('pt-BR')}
+              </span>{' '}
+              editais encontrados na base do PNCP
             </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {resultado && (
-              <span className="text-sm text-muted-foreground">
-                <span className="text-foreground font-medium">
-                  {resultado.total.toLocaleString('pt-BR')}
-                </span> editais encontrados
-              </span>
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => buscar(pagina)}
-              disabled={carregando || !buscaRealizada}
-            >
-              <RefreshCw className={`w-4 h-4 mr-1.5 ${carregando ? 'animate-spin' : ''}`} />
-              Atualizar
-            </Button>
-          </div>
-        </div>
+          )}
+        </CabecalhoPagina>
 
         {/* Painel de filtros estilo SIASG */}
-        <div className="rounded-xl border border-border bg-card overflow-hidden">
+        <div className="rounded-lg border border-border bg-card overflow-hidden shadow-sm">
           <button
             type="button"
             onClick={() => setPainelAberto(v => !v)}
             aria-expanded={painelAberto}
-            className="w-full text-left px-5 py-3 border-b border-border bg-muted/30 hover:bg-muted/50 transition-colors flex items-center gap-3"
+            className="w-full text-left px-6 py-3 border-b border-border bg-muted hover:bg-muted/70 transition-colors flex items-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <Search className="w-4 h-4 text-muted-foreground shrink-0" />
             <span className="font-semibold text-foreground text-sm">Pesquisa de licitações</span>
             {filtrosAtivosCount > 0 && (
-              <span className="px-2 py-0.5 rounded-full bg-navy text-primary-foreground text-xs font-semibold shrink-0">
-                {filtrosAtivosCount}
-              </span>
+              <Badge variant="info" className="shrink-0">
+                {filtrosAtivosCount} filtro{filtrosAtivosCount > 1 ? 's' : ''}
+              </Badge>
             )}
             <span className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground shrink-0">
               {painelAberto ? 'Recolher' : 'Alterar filtros'}
@@ -1231,32 +1239,30 @@ export default function MonitoramentoEditais() {
               esconderia o que está filtrando, e o número de resultados passaria
               a ser um dado sem contexto. */}
           {!painelAberto && (
-            <div className="px-5 py-3 flex flex-wrap items-center gap-1.5">
+            <div className="px-6 py-3 flex flex-wrap items-center gap-2">
               {resumoFiltros.length === 0 ? (
                 <span className="text-xs text-muted-foreground">Nenhum filtro aplicado</span>
               ) : (
                 resumoFiltros.map((t) => (
-                  <span
-                    key={t}
-                    className="max-w-[280px] truncate rounded-md border border-border bg-muted/50 px-2 py-1 text-xs text-foreground"
-                    title={t}
-                  >
+                  <Badge key={t} variant="info" truncate className="max-w-[280px]">
                     {t}
-                  </span>
+                  </Badge>
                 ))
               )}
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="sm"
                 onClick={limparFiltros}
-                className="ml-auto inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                className="ml-auto shrink-0"
               >
-                <Eraser className="w-3.5 h-3.5" />
+                <Eraser aria-hidden="true" />
                 Limpar
-              </button>
+              </Button>
             </div>
           )}
 
-          <div className={painelAberto ? 'p-5 space-y-5' : 'hidden'}>
+          <div className={painelAberto ? 'p-6 space-y-6' : 'hidden'}>
             <p className="text-xs text-muted-foreground -mb-1">
               Caso não seja informado o número da licitação, será obrigatório informar o
               Período de Publicação e Modalidade.
@@ -1264,25 +1270,25 @@ export default function MonitoramentoEditais() {
 
             {/* Linha 1: Número / Período */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
-              <Label className="md:col-span-2 text-xs text-muted-foreground pt-2">Número da Licitação</Label>
+              <Label className="md:col-span-2 pt-2 text-sm text-foreground">Número da Licitação</Label>
               <div className="md:col-span-4 flex items-center gap-2">
                 <Input
                   placeholder="Ex: 102005"
                   value={filtros.numero}
                   onChange={e => setFiltros(p => ({ ...p, numero: e.target.value.replace(/\D/g, '').slice(0, 6) }))}
-                  className="h-9 max-w-[160px]"
+                  className="max-w-[160px]"
                 />
                 <span className="text-xs text-muted-foreground">/</span>
                 <Input
                   placeholder="aaaa"
                   value={filtros.ano}
                   onChange={e => setFiltros(p => ({ ...p, ano: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
-                  className="h-9 max-w-[90px]"
+                  className="max-w-[90px]"
                 />
                 <span className="text-xs text-muted-foreground">(número e ano)</span>
               </div>
 
-              <Label className="md:col-span-2 text-xs text-muted-foreground pt-2">Período de Publicação</Label>
+              <Label className="md:col-span-2 pt-2 text-sm text-foreground">Período de Publicação</Label>
               <div className="md:col-span-4 flex items-center gap-2">
                 <DateField
                   value={filtros.dataIni}
@@ -1300,7 +1306,7 @@ export default function MonitoramentoEditais() {
 
             {/* Linha 2: Objeto */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
-              <Label className="md:col-span-2 text-xs text-muted-foreground">Objeto</Label>
+              <Label className="md:col-span-2 text-sm text-foreground">Objeto</Label>
               <div className="md:col-span-10 relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
                 <Input
@@ -1308,16 +1314,16 @@ export default function MonitoramentoEditais() {
                   value={filtros.objeto}
                   onChange={e => setFiltros(p => ({ ...p, objeto: e.target.value }))}
                   onKeyDown={e => { if (e.key === 'Enter') buscar(1); }}
-                  className="pl-9 h-9"
+                  className="pl-9"
                 />
               </div>
             </div>
 
             {/* Linha 3: Modalidades — Lei 14.133/2021 (Art. 28) */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
-              <Label className="md:col-span-2 text-xs text-muted-foreground pt-2">
+              <Label className="md:col-span-2 pt-2 text-sm text-foreground">
                 Modalidades
-                <span className="block text-xs text-muted-foreground font-normal mt-0.5">
+                <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
                   Lei 14.133/2021
                 </span>
               </Label>
@@ -1326,7 +1332,7 @@ export default function MonitoramentoEditais() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-3">
                   {/* Coluna 1: Modalidades base */}
                   <div className="space-y-1.5">
-                    <p className="text-xs font-semibold text-foreground mb-1">Modalidades de Licitação</p>
+                    <p className="mb-1 text-sm font-semibold text-foreground">Modalidades de Licitação</p>
                     {MODALIDADES_LEI14133.map(m => (
                       <CheckboxRow
                         key={m.id}
@@ -1342,7 +1348,7 @@ export default function MonitoramentoEditais() {
 
                   {/* Coluna 2: Tipos de Concorrência */}
                   <div className="space-y-1.5">
-                    <p className="text-xs font-semibold text-foreground mb-1">Tipos de Concorrência</p>
+                    <p className="mb-1 text-sm font-semibold text-foreground">Tipos de Concorrência</p>
                     {TIPOS_CONCORRENCIA.map(t => (
                       <CheckboxRow
                         key={t.id}
@@ -1360,7 +1366,7 @@ export default function MonitoramentoEditais() {
 
                   {/* Coluna 3: Tipos de Pregão */}
                   <div className="space-y-1.5">
-                    <p className="text-xs font-semibold text-foreground mb-1">Tipos de Pregão</p>
+                    <p className="mb-1 text-sm font-semibold text-foreground">Tipos de Pregão</p>
                     {TIPOS_PREGAO.map(t => (
                       <CheckboxRow
                         key={t.id}
@@ -1378,7 +1384,7 @@ export default function MonitoramentoEditais() {
 
                   {/* Coluna 4: Tipos de Leilão */}
                   <div className="space-y-1.5">
-                    <p className="text-xs font-semibold text-foreground mb-1">Tipos de Leilão</p>
+                    <p className="mb-1 text-sm font-semibold text-foreground">Tipos de Leilão</p>
                     {TIPOS_LEILAO.map(t => (
                       <CheckboxRow
                         key={t.id}
@@ -1397,7 +1403,7 @@ export default function MonitoramentoEditais() {
 
                 {/* Bloco 2: Contratações Diretas (Arts. 74–79) */}
                 <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
-                  <p className="text-xs font-semibold text-foreground mb-2">
+                  <p className="mb-2 text-sm font-semibold text-foreground">
                     Contratações Diretas
                     <span className="text-xs text-muted-foreground font-normal ml-1.5">
                       (Arts. 74–79 — Lei 14.133/2021)
@@ -1538,39 +1544,39 @@ export default function MonitoramentoEditais() {
 
             {/* Linha 11: Órgão */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
-              <Label className="md:col-span-2 text-xs text-muted-foreground">Órgão</Label>
+              <Label className="md:col-span-2 text-sm text-foreground">Órgão</Label>
               <div className="md:col-span-10 relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
                 <Input
                   placeholder="Busca parcial por nome do órgão…"
                   value={filtros.orgaoTexto}
                   onChange={e => setFiltros(p => ({ ...p, orgaoTexto: e.target.value }))}
-                  className="pl-9 h-9"
+                  className="pl-9"
                 />
               </div>
             </div>
 
             {/* Linha 12: Unidade */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
-              <Label className="md:col-span-2 text-xs text-muted-foreground">Unidade</Label>
+              <Label className="md:col-span-2 text-sm text-foreground">Unidade</Label>
               <div className="md:col-span-10 relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
                 <Input
                   placeholder="Busca parcial por nome da unidade…"
                   value={filtros.unidadeTexto}
                   onChange={e => setFiltros(p => ({ ...p, unidadeTexto: e.target.value }))}
-                  className="pl-9 h-9"
+                  className="pl-9"
                 />
               </div>
             </div>
 
             {/* Linha 13: Conteúdo Nacional / Emenda Parlamentar */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
-              <Label className="md:col-span-2 text-xs text-muted-foreground pt-1">Outros filtros</Label>
+              <Label className="md:col-span-2 pt-1 text-sm text-foreground">Outros filtros</Label>
               <div className="md:col-span-10 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Conteúdo Nacional */}
                 <div className="space-y-1.5">
-                  <p className="text-xs font-semibold text-foreground">Exigência de Conteúdo Nacional</p>
+                  <p className="text-sm font-semibold text-foreground">Exigência de Conteúdo Nacional</p>
                   <div className="flex items-center gap-4">
                     {(['', 'sim', 'nao'] as const).map(v => (
                       <label key={v} className="flex items-center gap-1.5 cursor-pointer text-xs text-muted-foreground hover:text-foreground transition-colors">
@@ -1580,7 +1586,7 @@ export default function MonitoramentoEditais() {
                           value={v}
                           checked={filtros.conteudoNacional === v}
                           onChange={() => setFiltros(p => ({ ...p, conteudoNacional: v }))}
-                          className="accent-accent w-3.5 h-3.5"
+                          className="h-4 w-4 accent-primary"
                         />
                         {v === '' ? 'Todos' : v === 'sim' ? 'Sim' : 'Não'}
                       </label>
@@ -1589,7 +1595,7 @@ export default function MonitoramentoEditais() {
                 </div>
                 {/* Emenda Parlamentar */}
                 <div className="space-y-1.5">
-                  <p className="text-xs font-semibold text-foreground">Emenda Parlamentar</p>
+                  <p className="text-sm font-semibold text-foreground">Emenda Parlamentar</p>
                   <div className="flex items-center gap-4">
                     {(['', 'sim', 'nao'] as const).map(v => (
                       <label key={v} className="flex items-center gap-1.5 cursor-pointer text-xs text-muted-foreground hover:text-foreground transition-colors">
@@ -1599,7 +1605,7 @@ export default function MonitoramentoEditais() {
                           value={v}
                           checked={filtros.emendaParlamentar === v}
                           onChange={() => setFiltros(p => ({ ...p, emendaParlamentar: v }))}
-                          className="accent-accent w-3.5 h-3.5"
+                          className="h-4 w-4 accent-primary"
                         />
                         {v === '' ? 'Todos' : v === 'sim' ? 'Sim' : 'Não'}
                       </label>
@@ -1620,14 +1626,14 @@ export default function MonitoramentoEditais() {
                 placeholder={fontesOrcamentariasOpts.length === 0 ? 'Dados ainda não disponíveis' : 'Todas as fontes'}
                 info={
                   <div className="space-y-2">
-                    <p className="font-semibold text-warning">Fonte Orçamentária</p>
+                    <p className="font-semibold text-foreground">Fonte Orçamentária</p>
                     <p>Indica de onde vêm os recursos da licitação — ex: <span className="font-medium">Tesouro Nacional</span>, <span className="font-medium">Recursos Próprios</span>, <span className="font-medium">Convênio</span>.</p>
-                    <div className="border-t border-white/10 pt-2 space-y-1">
-                      <p className="font-medium text-warning/80 text-xs uppercase tracking-wide">Por que está vazio?</p>
+                    <div className="space-y-1 border-t border-border pt-2">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-warning-ink">Por que está vazio?</p>
                       <p>A API pública do PNCP <span className="font-semibold">não retorna esse campo na listagem</span> de editais — ele só existe no endpoint de detalhe individual de cada edital.</p>
                     </div>
-                    <div className="border-t border-white/10 pt-2 space-y-1">
-                      <p className="font-medium text-success/80 text-xs uppercase tracking-wide">Como preencher?</p>
+                    <div className="space-y-1 border-t border-border pt-2">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-success-ink">Como preencher?</p>
                       <p>Nesta página, faça uma busca e clique em <span className="font-semibold">"Ver detalhes"</span> em qualquer edital dos resultados. O sistema consultará o PNCP e salvará a fonte automaticamente. Repita para alguns editais — as opções começarão a aparecer aqui.</p>
                     </div>
                   </div>
@@ -1642,14 +1648,14 @@ export default function MonitoramentoEditais() {
                 placeholder={margensPreferenciaOpts.length === 0 ? 'Dados ainda não disponíveis' : 'Todas as margens'}
                 info={
                   <div className="space-y-2">
-                    <p className="font-semibold text-warning">Margem de Preferência</p>
+                    <p className="font-semibold text-foreground">Margem de Preferência</p>
                     <p>Indica se a licitação aplica vantagem de preço para produtos ou serviços nacionais — ex: <span className="font-medium">Normal</span>, <span className="font-medium">Ampliada</span>.</p>
-                    <div className="border-t border-white/10 pt-2 space-y-1">
-                      <p className="font-medium text-warning/80 text-xs uppercase tracking-wide">Por que está vazio?</p>
+                    <div className="space-y-1 border-t border-border pt-2">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-warning-ink">Por que está vazio?</p>
                       <p>A API pública do PNCP <span className="font-semibold">não retorna esse campo na listagem</span> de editais. Dependendo da versão da API, ele pode aparecer só no detalhe individual.</p>
                     </div>
-                    <div className="border-t border-white/10 pt-2 space-y-1">
-                      <p className="font-medium text-success/80 text-xs uppercase tracking-wide">Como preencher?</p>
+                    <div className="space-y-1 border-t border-border pt-2">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-success-ink">Como preencher?</p>
                       <p>O sistema tenta extrair esse dado automaticamente a cada coleta periódica do PNCP. As opções aparecerão aqui assim que estiverem disponíveis na próxima atualização.</p>
                     </div>
                   </div>
@@ -1663,26 +1669,22 @@ export default function MonitoramentoEditais() {
                 <Info className="w-3.5 h-3.5 text-muted-foreground" />
                 <strong className="text-foreground">Materiais (CATMAT) e Serviços (CATSER):</strong>
                 serão integrados via{' '}
-                <a href="/preferencias-alertas" className="text-accent hover:underline font-medium">
+                <a href="/preferencias-alertas" className="font-medium text-primary hover:underline">
                   Preferências de Alertas
                 </a>
                 {' '}— em desenvolvimento.
               </p>
             </div>
 
-            {/* Botões OK / Limpar (estilo SIASG) */}
-            <div className="flex items-center gap-2 pt-2 border-t border-border">
-              <Button
-                onClick={() => buscar(1)}
-                disabled={carregando}
-                className="bg-accent hover:bg-accent/90 text-accent-foreground font-semibold px-8"
-              >
+            {/* Botões de busca / limpeza (estilo SIASG) */}
+            <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border">
+              <Button onClick={() => buscar(1)} disabled={carregando} className="px-8">
                 {carregando
-                  ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Pesquisando…</>
-                  : <>OK</>}
+                  ? <><Loader2 className="animate-spin" aria-hidden="true" />Pesquisando…</>
+                  : <><Search aria-hidden="true" />Buscar editais</>}
               </Button>
-              <Button variant="outline" onClick={limparFiltros} className="gap-1.5">
-                <Eraser className="w-4 h-4" />
+              <Button variant="outline" onClick={limparFiltros}>
+                <Eraser aria-hidden="true" />
                 Limpar
               </Button>
             </div>
@@ -1691,21 +1693,19 @@ export default function MonitoramentoEditais() {
 
         {/* Erro */}
         {erro && (
-          <div className="flex items-start gap-3 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3.5 text-sm text-destructive">
-            <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-            <div>
-              <p className="font-medium">Erro na consulta</p>
-              <p className="text-destructive/70 mt-0.5">{erro}</p>
-            </div>
-          </div>
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" aria-hidden="true" />
+            <AlertTitle>Erro na consulta</AlertTitle>
+            <AlertDescription>{erro}</AlertDescription>
+          </Alert>
         )}
 
         {/* Aviso */}
         {resultado?.aviso && (
-          <div className="flex items-start gap-3 rounded-xl border border-warning/20 bg-warning/5 px-4 py-3.5 text-sm text-warning">
-            <Info className="w-4 h-4 mt-0.5 shrink-0" />
-            <p>{resultado.aviso}</p>
-          </div>
+          <Alert variant="warning">
+            <Info className="h-4 w-4" aria-hidden="true" />
+            <AlertDescription>{resultado.aviso}</AlertDescription>
+          </Alert>
         )}
 
         {/* Espera — esqueleto com a forma do que vem, não um spinner girando no
@@ -1717,50 +1717,37 @@ export default function MonitoramentoEditais() {
               <Skeleton className="h-4 w-56" />
               <Skeleton className="h-4 w-28" />
             </div>
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="rounded-xl border border-border bg-card p-4 space-y-3">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="space-y-2 flex-1 min-w-0">
-                    <Skeleton className="h-4 w-2/3" />
-                    <Skeleton className="h-3 w-1/3" />
-                  </div>
-                  <Skeleton className="h-6 w-24 rounded-full shrink-0" />
+            <div className="rounded-lg border border-border bg-card p-4 space-y-3 shadow-sm">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-4">
+                  <Skeleton className="h-4 w-32 shrink-0" />
+                  <Skeleton className="h-4 flex-1" />
+                  <Skeleton className="h-4 w-28 shrink-0" />
+                  <Skeleton className="h-6 w-20 shrink-0 rounded-full" />
+                  <Skeleton className="h-4 w-24 shrink-0" />
                 </div>
-                <Skeleton className="h-3 w-full" />
-                <Skeleton className="h-3 w-4/5" />
-                <div className="flex flex-wrap gap-2 pt-1">
-                  <Skeleton className="h-6 w-20 rounded-md" />
-                  <Skeleton className="h-6 w-28 rounded-md" />
-                  <Skeleton className="h-6 w-24 rounded-md" />
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
             <span className="sr-only">Consultando base de editais…</span>
           </div>
         )}
 
         {/* Estado inicial */}
         {!buscaRealizada && !carregando && (
-          <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center">
-              <Search className="w-8 h-8 text-muted-foreground" />
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold text-foreground">Preencha os critérios de seleção e clique em OK</h2>
-              <p className="text-sm text-muted-foreground mt-1 max-w-md">
-                Caso não informe o número da licitação, é obrigatório selecionar o <strong>Período de Publicação</strong> e a <strong>Modalidade</strong>.
-              </p>
-            </div>
-          </div>
+          <EstadoVazio
+            icone={<Search />}
+            titulo="Preencha os critérios e clique em Buscar editais"
+            descricao="Sem o número da licitação, é obrigatório selecionar o Período de Publicação e a Modalidade."
+          />
         )}
 
-        {/* Resultados */}
+        {/* Resultados — tabela densa com ações por linha */}
         {buscaRealizada && resultado && !carregando && (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between text-sm px-1">
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-sm px-1">
               <span className="text-muted-foreground">
-                Exibindo <span className="text-foreground font-medium">{resultado.data.length}</span> de{' '}
-                <span className="text-foreground font-medium">{resultado.total.toLocaleString('pt-BR')}</span> editais
+                Exibindo <span className="font-semibold text-foreground tabular-nums">{resultado.data.length}</span> de{' '}
+                <span className="font-semibold text-foreground tabular-nums">{resultado.total.toLocaleString('pt-BR')}</span> editais
               </span>
               <span className="text-muted-foreground">
                 Página {pagina} de {resultado.paginas}
@@ -1768,51 +1755,69 @@ export default function MonitoramentoEditais() {
             </div>
 
             {resultado.data.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 gap-3 text-muted-foreground">
-                <FileText className="w-10 h-10 opacity-30" />
-                <p className="text-sm">Nenhum edital encontrado para os filtros selecionados.</p>
-              </div>
+              <EstadoVazio
+                icone={<FileText />}
+                titulo="Nenhum edital encontrado"
+                descricao="Nenhum edital corresponde aos filtros selecionados. Amplie o período ou remova filtros."
+                acao={<Button variant="outline" onClick={limparFiltros}><Eraser aria-hidden="true" />Limpar filtros</Button>}
+              />
             ) : (
-              resultado.data.map((edital) => {
-                const key = `${edital.numeroCompra}||${edital.orgao}`;
-                return (
-                  <EditalCard
-                    key={edital.id}
-                    edital={edital}
-                    favoritado={favoritos.has(edital.id)}
-                    onFavoritar={() => toggleFavorito(edital.id)}
-                    licitacaoId={emGestao.get(key) || null}
-                    compromissoId={emCompromissos.get(key) || null}
-                    onIniciarProcesso={() => abrirModalEdital({
-                      numero: edital.numeroCompra,
-                      orgao: edital.orgao,
-                      objeto: edital.objeto,
-                      modalidade: edital.modalidade,
-                      valor_estimado: edital.valorEstimado,
-                      uf: edital.uf,
-                      municipio: edital.municipio,
-                      data_encerramento: edital.dataEncerramento,
-                      portal: 'PNCP',
-                      url: edital.linkPncp || null,
-                      pncpNumero: edital.numeroControlePncp || null,
-                      cnpjOrgao: edital.cnpj || null,
-                      anoCompra: edital.anoCompra || null,
-                      sequencialCompra: edital.sequencialCompra || null,
+              <div className="overflow-x-auto rounded-lg border border-border bg-card shadow-sm">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="min-w-[240px]">Identificação</TableHead>
+                      <TableHead className="min-w-[200px]">Órgão</TableHead>
+                      <TableHead className="min-w-[180px]">Prazo</TableHead>
+                      <TableHead>Situação</TableHead>
+                      <TableHead className="text-right">Valor estimado</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {resultado.data.map((edital) => {
+                      const key = `${edital.numeroCompra}||${edital.orgao}`;
+                      return (
+                        <EditalLinha
+                          key={edital.id}
+                          edital={edital}
+                          favoritado={favoritos.has(edital.id)}
+                          onFavoritar={() => toggleFavorito(edital.id)}
+                          licitacaoId={emGestao.get(key) || null}
+                          compromissoId={emCompromissos.get(key) || null}
+                          onIniciarProcesso={() => abrirModalEdital({
+                            numero: edital.numeroCompra,
+                            orgao: edital.orgao,
+                            objeto: edital.objeto,
+                            modalidade: edital.modalidade,
+                            valor_estimado: edital.valorEstimado,
+                            uf: edital.uf,
+                            municipio: edital.municipio,
+                            data_encerramento: edital.dataEncerramento,
+                            portal: 'PNCP',
+                            url: edital.linkPncp || null,
+                            pncpNumero: edital.numeroControlePncp || null,
+                            cnpjOrgao: edital.cnpj || null,
+                            anoCompra: edital.anoCompra || null,
+                            sequencialCompra: edital.sequencialCompra || null,
+                          })}
+                        />
+                      );
                     })}
-                  />
-                );
-              })
+                  </TableBody>
+                </Table>
+              </div>
             )}
 
             {resultado.paginas > 1 && (
-              <div className="flex items-center justify-center gap-2 pt-2">
+              <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
                 <Button
                   variant="outline"
                   size="sm"
                   disabled={pagina <= 1 || carregando}
                   onClick={() => buscar(pagina - 1)}
                 >
-                  <ChevronLeft className="w-4 h-4 mr-1" />Anterior
+                  <ChevronLeft aria-hidden="true" />Anterior
                 </Button>
                 <div className="flex items-center gap-1">
                   {Array.from({ length: Math.min(resultado.paginas, 7) }, (_, i) => {
@@ -1821,17 +1826,16 @@ export default function MonitoramentoEditais() {
                       : pagina - 3 + i;
                     if (p < 1 || p > resultado.paginas) return null;
                     return (
-                      <button
+                      <Button
                         key={p}
+                        variant={p === pagina ? 'default' : 'ghost'}
+                        size="sm"
+                        aria-current={p === pagina ? 'page' : undefined}
                         onClick={() => buscar(p)}
-                        className={`w-8 h-8 rounded-lg text-sm transition-colors ${
-                          p === pagina
-                            ? 'bg-accent text-accent-foreground font-semibold'
-                            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                        }`}
+                        className="w-9 px-0 tabular-nums"
                       >
                         {p}
-                      </button>
+                      </Button>
                     );
                   })}
                 </div>
@@ -1841,7 +1845,7 @@ export default function MonitoramentoEditais() {
                   disabled={pagina >= resultado.paginas || carregando}
                   onClick={() => buscar(pagina + 1)}
                 >
-                  Próxima<ChevronRight className="w-4 h-4 ml-1" />
+                  Próxima<ChevronRight aria-hidden="true" />
                 </Button>
               </div>
             )}
@@ -1867,8 +1871,8 @@ function CheckboxRow({
   checked, onChange, label, disabled,
 }: { checked: boolean; onChange: () => void; label: string; disabled?: boolean }) {
   return (
-    <label className={`flex items-center gap-2 text-xs ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer hover:text-foreground'} text-muted-foreground transition-colors`}>
-      <Checkbox checked={checked} onCheckedChange={() => !disabled && onChange()} disabled={disabled} className="h-3.5 w-3.5" />
+    <label className={`flex items-center gap-2 text-sm text-foreground transition-colors ${disabled ? 'cursor-not-allowed opacity-40' : 'cursor-pointer'}`}>
+      <Checkbox checked={checked} onCheckedChange={() => !disabled && onChange()} disabled={disabled} className="h-4 w-4" />
       <span>{label}</span>
     </label>
   );
@@ -1889,10 +1893,10 @@ function ChipMultiSelect({
   const [open, setOpen] = useState(false);
   return (
     <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
-      <Label className="md:col-span-2 text-xs text-muted-foreground pt-2">
+      <Label className="md:col-span-2 pt-2 text-sm text-foreground">
         {label}
         {labelSub && (
-          <span className="block text-xs text-muted-foreground font-normal mt-0.5">{labelSub}</span>
+          <span className="mt-0.5 block text-xs font-normal text-muted-foreground">{labelSub}</span>
         )}
       </Label>
       <div className="md:col-span-10 space-y-2">
@@ -1907,7 +1911,7 @@ function ChipMultiSelect({
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <span
-                        className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-warning/15 text-warning text-xs font-bold cursor-help shrink-0"
+                        className="inline-flex h-4 w-4 shrink-0 cursor-help items-center justify-center rounded-full bg-warning-tint text-xs font-bold text-warning-ink"
                         onClick={e => e.stopPropagation()}
                       >
                         !
@@ -1923,9 +1927,9 @@ function ChipMultiSelect({
             </span>
           ) : (
             valores.map(v => (
-              <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-accent/15 text-accent text-xs font-medium">
+              <span key={v} className="inline-flex items-center gap-1 rounded-md bg-primary-tint px-2 py-0.5 text-xs font-medium text-primary">
                 {v}
-                <button onClick={(e) => { e.stopPropagation(); onToggle(v); }} className="hover:text-accent-foreground">
+                <button onClick={(e) => { e.stopPropagation(); onToggle(v); }} className="rounded-sm hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                   <X className="w-3 h-3" />
                 </button>
               </span>
@@ -1933,11 +1937,11 @@ function ChipMultiSelect({
           )}
           <div className="ml-auto flex items-center gap-1">
             {valores.length > 0 && (
-              <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onClear(); }} className="h-6 text-xs px-2 text-muted-foreground hover:text-destructive">
+              <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onClear(); }} className="h-8 px-2 text-xs text-muted-foreground hover:text-destructive">
                 Excluir
               </Button>
             )}
-            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setOpen(o => !o); }} className="h-6 text-xs px-2">
+            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setOpen(o => !o); }} className="h-8 px-2 text-xs">
               {open ? <ChevronUp className="w-3 h-3 mr-1" /> : <ChevronDown className="w-3 h-3 mr-1" />}
               Selecionar
             </Button>
@@ -1957,7 +1961,7 @@ function ChipMultiSelect({
                 onClick={() => onToggle(opt)}
                 className={`px-2 py-1 rounded text-xs font-medium border transition-colors ${
                   valores.includes(opt)
-                    ? 'bg-accent text-accent-foreground border-accent'
+                    ? 'border-primary bg-primary text-primary-foreground'
                     : 'bg-muted/30 text-muted-foreground border-border/50 hover:bg-muted/50'
                 }`}
               >
@@ -1986,7 +1990,7 @@ function ChipFreeInput({
 }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
-      <Label className="md:col-span-2 text-xs text-muted-foreground pt-2">{label}</Label>
+      <Label className="md:col-span-2 pt-2 text-sm text-foreground">{label}</Label>
       <div className="md:col-span-10 space-y-2">
         {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
         <div className="flex items-center gap-2">
@@ -2000,18 +2004,18 @@ function ChipFreeInput({
               }
             }}
             placeholder={placeholder}
-            className="h-9 max-w-md"
+            className="max-w-md"
           />
-          <Button variant="outline" size="sm" onClick={() => onAdd(tempValue)} className="h-9">
+          <Button variant="outline" onClick={() => onAdd(tempValue)}>
             Selecionar
           </Button>
         </div>
         {valores.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {valores.map((v, i) => (
-              <span key={`${v}-${i}`} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-accent/15 text-accent text-xs font-medium">
+              <span key={`${v}-${i}`} className="inline-flex items-center gap-1 rounded-md bg-primary-tint px-2 py-0.5 text-xs font-medium text-primary">
                 {v}
-                <button onClick={() => onRemove(i)} className="hover:text-accent-foreground">
+                <button onClick={() => onRemove(i)} className="rounded-sm hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                   <X className="w-3 h-3" />
                 </button>
               </span>
@@ -2023,9 +2027,12 @@ function ChipFreeInput({
   );
 }
 
-// ─── Card do Edital (preservado do código original) ──────────────────────────
+// ─── Linha do Edital (padrão "tabela" do registro de páginas) ────────────────
+// A consulta ao PNCP, o favorito e o modal de início de processo são os mesmos
+// do cartão anterior — só a apresentação virou linha de tabela com detalhe
+// expansível, como a galeria desenha para /monitoramento-editais.
 
-interface EditalCardProps {
+interface EditalLinhaProps {
   edital: Edital;
   favoritado: boolean;
   onFavoritar: () => void;
@@ -2038,7 +2045,7 @@ const PNCP_API = 'https://pncp.gov.br/api/consulta/v1';
 
 type AbaDetalhe = 'itens' | 'arquivos' | 'atas' | 'contratos' | 'historico';
 
-function EditalCard({ edital, favoritado, onFavoritar, licitacaoId, compromissoId, onIniciarProcesso }: EditalCardProps) {
+function EditalLinha({ edital, favoritado, onFavoritar, licitacaoId, compromissoId, onIniciarProcesso }: EditalLinhaProps) {
   const emGestao = !!licitacaoId;
   const emCompromisso = !!compromissoId;
   const [expandido, setExpandido] = useState(false);
@@ -2127,211 +2134,177 @@ function EditalCard({ edital, favoritado, onFavoritar, licitacaoId, compromissoI
   }, [expandido, carregarDetalhes]);
 
   return (
-    <div className={`rounded-xl border transition-colors ${
-      expandido
-        ? 'border-accent/30 bg-card'
-        : 'border-border bg-card hover:border-border/80'
-    }`}>
-      <div className="px-4 py-3.5">
-        <div className="flex items-start gap-3">
-          <span className={`mt-0.5 flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-xs font-medium ${statusCfg.cls}`}>
-            <StatusIcon className="w-3 h-3" />
-            {statusCfg.label}
-          </span>
-
-          <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center flex-wrap gap-2 mb-1">
-                  {/* Identidade padronizada: cada portal publica o número do
-                      seu jeito ("011/2026", "PE nº 9/2026-0025 PMPD", "007
-                      SRP"); aqui todos leem igual — modalidade + nº N/AAAA,
-                      derivados dos dados oficiais. O tooltip preserva a forma
-                      bruta (é ela que consta no diário e na sala de disputa). */}
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-foreground px-2 py-0.5 rounded-md bg-muted border border-border cursor-help">
-                          {identidade.rotulo}
-                          {(identidade.reescrito || edital.numeroControlePncp) && (
-                            <Info className="w-3 h-3 text-muted-foreground" />
-                          )}
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="max-w-sm text-xs leading-relaxed p-3">
-                        <p>
-                          <strong>Como o portal publica:</strong>{' '}
-                          <span className="font-mono">{identidade.bruto || 'sem número'}</span>
-                        </p>
-                        {edital.numeroControlePncp && (
-                          <p className="mt-1">
-                            <strong>Controle PNCP:</strong>{' '}
-                            <span className="font-mono">{edital.numeroControlePncp}</span>
-                          </p>
-                        )}
-                        <p className="mt-1 text-muted-foreground">
-                          Identificação padronizada a partir dos dados oficiais — use a forma do
-                          portal ao peticionar ou falar com o pregoeiro.
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  {edital.srp && (
-                    <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">
-                      SRP
-                    </span>
-                  )}
-                  {edital.esfera && (
-                    <span className="text-xs text-muted-foreground">
-                      {ESFERA_LABELS[edital.esfera] || edital.esfera}
-                    </span>
-                  )}
-                  {emGestao && (
-                    <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-success/15 text-success border border-success/30">
-                      <CheckCircle className="w-3 h-3" />
-                      Em gestão
-                    </span>
-                  )}
-                  {emCompromisso && (
-                    <a
-                      href="/meus-compromissos"
-                      className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-info/15 text-info border border-info/30 hover:bg-info/25 transition-colors"
-                      title="Abrir em Meus Compromissos"
-                    >
-                      <ListChecks className="w-3 h-3" />
-                      Em compromissos
-                    </a>
-                  )}
-                </div>
-
-                <p className="text-sm font-medium text-foreground leading-snug line-clamp-2">
-                  {edital.objeto}
-                </p>
-
-                <div className="flex items-center flex-wrap gap-3 mt-1.5">
-                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Building2 className="w-3 h-3" />
-                    {edital.orgao}
+    <>
+      <TableRow className={expandido ? 'bg-muted/50' : undefined}>
+        {/* Identificação: número padronizado, marcas do processo e objeto */}
+        <TableCell className="align-top">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Identidade padronizada: cada portal publica o número do
+                seu jeito ("011/2026", "PE nº 9/2026-0025 PMPD", "007
+                SRP"); aqui todos leem igual — modalidade + nº N/AAAA,
+                derivados dos dados oficiais. O tooltip preserva a forma
+                bruta (é ela que consta no diário e na sala de disputa). */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex cursor-help items-center gap-1.5 rounded-md border border-border bg-muted px-2 py-0.5 text-sm font-semibold text-foreground">
+                    {identidade.rotulo}
+                    {(identidade.reescrito || edital.numeroControlePncp) && (
+                      <Info className="w-3 h-3 text-muted-foreground" />
+                    )}
                   </span>
-                  {(edital.municipio || edital.uf) && (
-                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <MapPin className="w-3 h-3" />
-                      {[edital.municipio, edital.uf].filter(Boolean).join(' — ')}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex flex-col items-end gap-2 shrink-0 ml-2">
-                <div className="text-right">
-                  <p className="text-xs text-muted-foreground">Valor estimado</p>
-                  <p className={`text-sm font-semibold ${
-                    edital.valorEstimado ? 'text-success' : 'text-muted-foreground'
-                  }`}>
-                    {formatMoeda(edital.valorEstimado)}
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-sm p-3 text-xs leading-relaxed">
+                  <p>
+                    <strong>Como o portal publica:</strong>{' '}
+                    <span className="font-mono">{identidade.bruto || 'sem número'}</span>
                   </p>
-                </div>
-
-                {diasRestantes !== null && diasRestantes >= 0 && (
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                    diasRestantes <= 1
-                      ? 'bg-destructive/15 text-destructive'
-                      : diasRestantes <= 3
-                        ? 'bg-warning/15 text-warning'
-                        : 'bg-success/10 text-success'
-                  }`}>
-                    {diasRestantes === 0 ? 'Encerra hoje' : `${diasRestantes}d restantes`}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-center flex-wrap gap-4 mt-2">
-              {edital.dataAbertura && (
-                <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <CalendarIcon className="w-3 h-3" />
-                  Abertura: <span className="text-foreground">{formatData(edital.dataAbertura)}</span>
-                </span>
-              )}
-              {edital.dataEncerramento && (
-                <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <Clock className="w-3 h-3" />
-                  Encerramento: <span className={`${
-                    edital.status === 'aberto' && (calcularDiasRestantes(edital.dataEncerramento) ?? 99) <= 3
-                      ? 'text-warning font-medium'
-                      : 'text-foreground'
-                  }`}>{formatData(edital.dataEncerramento)}</span>
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => setExpandido(!expandido)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            >
-              {expandido ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-              {expandido ? 'Menos detalhes' : 'Ver detalhes'}
-            </button>
-            <button
-              onClick={onFavoritar}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-colors ${
-                favoritado
-                  ? 'text-accent hover:bg-accent/10'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-              }`}
-            >
-              {favoritado
-                ? <BookmarkCheck className="w-3.5 h-3.5" />
-                : <Bookmark className="w-3.5 h-3.5" />}
-              {favoritado ? 'Salvo' : 'Salvar'}
-            </button>
-          </div>
-          <div className="flex items-center gap-1.5">
-            {edital.link && (
-              <a
-                href={edital.link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-              >
-                <ExternalLink className="w-3.5 h-3.5" />
-                Sistema origem
+                  {edital.numeroControlePncp && (
+                    <p className="mt-1">
+                      <strong>Controle PNCP:</strong>{' '}
+                      <span className="font-mono">{edital.numeroControlePncp}</span>
+                    </p>
+                  )}
+                  <p className="mt-1 text-muted-foreground">
+                    Identificação padronizada a partir dos dados oficiais — use a forma do
+                    portal ao peticionar ou falar com o pregoeiro.
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            {edital.srp && <Badge variant="muted">SRP</Badge>}
+            {emGestao && (
+              <Badge variant="success" className="gap-1">
+                <CheckCircle className="w-3 h-3" aria-hidden="true" />
+                Em gestão
+              </Badge>
+            )}
+            {emCompromisso && (
+              <a href="/meus-compromissos" title="Abrir em Meus Compromissos" className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <Badge variant="info" className="gap-1">
+                  <ListChecks className="w-3 h-3" aria-hidden="true" />
+                  Em compromissos
+                </Badge>
               </a>
+            )}
+          </div>
+          <p className="mt-1.5 line-clamp-2 max-w-lg text-sm text-foreground">{edital.objeto}</p>
+        </TableCell>
+
+        {/* Órgão e localidade */}
+        <TableCell className="align-top">
+          <p className="flex items-start gap-1.5 text-sm text-foreground">
+            <Building2 className="mt-0.5 w-3.5 h-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <span className="line-clamp-2">{edital.orgao}</span>
+          </p>
+          <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            {(edital.municipio || edital.uf) && (
+              <span className="flex items-center gap-1">
+                <MapPin className="w-3 h-3" aria-hidden="true" />
+                {[edital.municipio, edital.uf].filter(Boolean).join(' — ')}
+              </span>
+            )}
+            {edital.esfera && <span>{ESFERA_LABELS[edital.esfera] || edital.esfera}</span>}
+          </p>
+        </TableCell>
+
+        {/* Prazo: abertura, encerramento e a contagem regressiva */}
+        <TableCell className="align-top text-sm">
+          {edital.dataAbertura && (
+            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <CalendarIcon className="w-3 h-3" aria-hidden="true" />
+              Abertura: <span className="text-foreground">{formatData(edital.dataAbertura)}</span>
+            </p>
+          )}
+          {edital.dataEncerramento && (
+            <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Clock className="w-3 h-3" aria-hidden="true" />
+              Encerramento: <span className="text-foreground">{formatData(edital.dataEncerramento)}</span>
+            </p>
+          )}
+          {!edital.dataAbertura && !edital.dataEncerramento && (
+            <span className="text-xs text-muted-foreground">—</span>
+          )}
+          {diasRestantes !== null && diasRestantes >= 0 && (
+            <Badge
+              variant={diasRestantes <= 1 ? 'danger' : diasRestantes <= 3 ? 'warning' : 'success'}
+              className="mt-1.5"
+            >
+              {diasRestantes === 0 ? 'Encerra hoje' : `${diasRestantes} dia${diasRestantes === 1 ? '' : 's'} restantes`}
+            </Badge>
+          )}
+        </TableCell>
+
+        {/* Situação */}
+        <TableCell className="align-top">
+          <Badge variant={statusCfg.variante} className="gap-1">
+            <StatusIcon className="w-3 h-3" aria-hidden="true" />
+            {statusCfg.label}
+          </Badge>
+        </TableCell>
+
+        {/* Valor estimado */}
+        <TableCell className="align-top text-right text-sm font-semibold tabular-nums" nowrap>
+          {edital.valorEstimado
+            ? formatMoeda(edital.valorEstimado)
+            : <span className="font-normal text-muted-foreground">Não informado</span>}
+        </TableCell>
+
+        {/* Ações da linha */}
+        <TableCell className="align-top">
+          <div className="flex flex-wrap items-center justify-end gap-1.5">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setExpandido(!expandido)}
+              aria-expanded={expandido}
+            >
+              {expandido ? <ChevronUp aria-hidden="true" /> : <ChevronDown aria-hidden="true" />}
+              {expandido ? 'Menos detalhes' : 'Ver detalhes'}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onFavoritar}
+              aria-pressed={favoritado}
+              className={favoritado ? 'text-primary' : undefined}
+            >
+              {favoritado ? <BookmarkCheck aria-hidden="true" /> : <Bookmark aria-hidden="true" />}
+              {favoritado ? 'Salvo' : 'Salvar'}
+            </Button>
+            {edital.link && (
+              <Button variant="ghost" size="sm" asChild>
+                <a href={edital.link} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink aria-hidden="true" />
+                  Sistema origem
+                </a>
+              </Button>
             )}
             {edital.linkPncp && (
-              <a
-                href={edital.linkPncp}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-              >
-                <ExternalLink className="w-3.5 h-3.5" />
-                PNCP
-              </a>
+              <Button variant="ghost" size="sm" asChild>
+                <a href={edital.linkPncp} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink aria-hidden="true" />
+                  PNCP
+                </a>
+              </Button>
             )}
-            <button
+            <Button
+              variant={emGestao ? 'outline' : 'default'}
+              size="sm"
               onClick={onIniciarProcesso}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                emGestao
-                  ? 'bg-success/10 text-success border-success/30 hover:bg-success/20'
-                  : 'bg-accent text-accent-foreground border-accent hover:bg-accent/90'
-              }`}
             >
-              {emGestao ? <ArrowRight className="w-3.5 h-3.5" /> : <Rocket className="w-3.5 h-3.5" />}
+              {emGestao ? <ArrowRight aria-hidden="true" /> : <Rocket aria-hidden="true" />}
               {emGestao ? 'Abrir processo' : 'Iniciar processo'}
-            </button>
+            </Button>
           </div>
-        </div>
-      </div>
+        </TableCell>
+      </TableRow>
 
       {expandido && (
-        <div className="border-t border-border">
+        <TableRow className="hover:bg-transparent">
+          <TableCell colSpan={6} className="bg-muted/30 p-0">
           {carregandoDetalhe ? (
-            <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground text-xs">
+            <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground text-sm">
               <Loader2 className="w-4 h-4 animate-spin" />
               Carregando detalhes completos do PNCP…
             </div>
@@ -2445,9 +2418,9 @@ function EditalCard({ edital, favoritado, onFavoritar, licitacaoId, compromissoI
                     <button
                       key={key}
                       onClick={() => setAbaAtiva(key)}
-                      className={`px-3 py-2 text-xs font-medium whitespace-nowrap border-b-2 -mb-px transition-colors ${
+                      className={`-mb-px whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                         abaAtiva === key
-                          ? 'border-accent text-accent'
+                          ? 'border-primary text-primary'
                           : 'border-transparent text-muted-foreground hover:text-foreground'
                       }`}
                     >
@@ -2465,27 +2438,27 @@ function EditalCard({ edital, favoritado, onFavoritar, licitacaoId, compromissoI
                 {abaAtiva === 'itens' && (
                   itens.length === 0 ? (
                     <div className="py-6 text-center space-y-2">
-                      <p className="text-xs text-muted-foreground">Nenhum item retornado pela API.</p>
+                      <p className="text-sm text-muted-foreground">Nenhum item retornado pela API.</p>
                       {edital.linkPncp && (
                         <a href={edital.linkPncp} target="_blank" rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-xs text-accent hover:underline">
+                          className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
                           <ExternalLink className="w-3 h-3" />Ver itens no portal PNCP
                         </a>
                       )}
                     </div>
                   ) : (
-                    <div className="overflow-x-auto rounded border border-border/60">
-                      <table className="w-full text-xs">
+                    <div className="overflow-x-auto rounded-md border border-border bg-card">
+                      <table className="w-full text-sm">
                         <thead>
-                          <tr className="bg-muted/40 border-b border-border text-muted-foreground">
-                            <th className="text-left px-3 py-2 font-medium w-10">Nº</th>
-                            <th className="text-left px-3 py-2 font-medium">Descrição</th>
-                            <th className="text-right px-3 py-2 font-medium w-24">Quantidade</th>
-                            <th className="text-right px-3 py-2 font-medium w-32">Vlr. unit. est.</th>
-                            <th className="text-right px-3 py-2 font-medium w-32">Vlr. total est.</th>
+                          <tr className="border-b border-border bg-muted text-foreground">
+                            <th className="w-10 px-3 py-2 text-left text-sm font-semibold">Nº</th>
+                            <th className="px-3 py-2 text-left text-sm font-semibold">Descrição</th>
+                            <th className="w-24 px-3 py-2 text-right text-sm font-semibold">Quantidade</th>
+                            <th className="w-32 px-3 py-2 text-right text-sm font-semibold">Vlr. unit. est.</th>
+                            <th className="w-32 px-3 py-2 text-right text-sm font-semibold">Vlr. total est.</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-border/40">
+                        <tbody className="divide-y divide-border">
                           {itens.map((item: any, i: number) => {
                             const qtd = item.quantidade ?? item.quantidadeItens;
                             const vUnit = item.valorUnitarioEstimado ?? item.valorUnitario;
@@ -2497,16 +2470,16 @@ function EditalCard({ edital, favoritado, onFavoritar, licitacaoId, compromissoI
                                 <td className="px-3 py-2 text-foreground">
                                   {item.descricao || item.descricaoItem || '—'}
                                   {item.unidadeMedida && (
-                                    <span className="ml-1.5 text-xs text-muted-foreground border border-border/60 px-1 rounded">
+                                    <span className="ml-1.5 rounded border border-border px-1 text-xs text-muted-foreground">
                                       {item.unidadeMedida}
                                     </span>
                                   )}
                                 </td>
-                                <td className="px-3 py-2 text-right">{qtd?.toLocaleString('pt-BR') ?? '—'}</td>
-                                <td className="px-3 py-2 text-right text-foreground">
+                                <td className="px-3 py-2 text-right tabular-nums">{qtd?.toLocaleString('pt-BR') ?? '—'}</td>
+                                <td className="px-3 py-2 text-right tabular-nums text-foreground">
                                   {vUnit != null ? formatMoeda(vUnit) : '—'}
                                 </td>
-                                <td className="px-3 py-2 text-right font-medium text-success">
+                                <td className="px-3 py-2 text-right font-semibold tabular-nums text-foreground">
                                   {vTotal != null ? formatMoeda(vTotal) : '—'}
                                 </td>
                               </tr>
@@ -2522,10 +2495,10 @@ function EditalCard({ edital, favoritado, onFavoritar, licitacaoId, compromissoI
                 {abaAtiva === 'arquivos' && (
                   arquivos.length === 0 ? (
                     <div className="py-6 text-center space-y-2">
-                      <p className="text-xs text-muted-foreground">Nenhum arquivo retornado pela API.</p>
+                      <p className="text-sm text-muted-foreground">Nenhum arquivo retornado pela API.</p>
                       {edital.linkPncp && (
                         <a href={edital.linkPncp} target="_blank" rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-xs text-accent hover:underline">
+                          className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
                           <ExternalLink className="w-3 h-3" />Ver arquivos no portal PNCP
                         </a>
                       )}
@@ -2534,11 +2507,11 @@ function EditalCard({ edital, favoritado, onFavoritar, licitacaoId, compromissoI
                     <div className="space-y-2">
                       {arquivos.map((arq: any, i: number) => (
                         <div key={arq.sequencialDocumento ?? i}
-                          className="flex items-center justify-between p-2.5 rounded border border-border bg-muted/20 hover:bg-muted/40 transition-colors">
+                          className="flex items-center justify-between rounded-md border border-border bg-card p-2.5 transition-colors hover:bg-muted">
                           <div className="flex items-center gap-2 min-w-0">
                             <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
                             <div className="min-w-0">
-                              <p className="text-xs font-medium text-foreground truncate">
+                              <p className="truncate text-sm font-medium text-foreground">
                                 {arq.titulo || arq.nomeArquivo || `Arquivo ${i + 1}`}
                               </p>
                               {arq.dataPublicacao && (
@@ -2547,11 +2520,12 @@ function EditalCard({ edital, favoritado, onFavoritar, licitacaoId, compromissoI
                             </div>
                           </div>
                           {arq.url && (
-                            <a href={arq.url} target="_blank" rel="noopener noreferrer"
-                              className="flex items-center gap-1 text-xs text-accent hover:text-accent/80 shrink-0 ml-3 px-2 py-1 rounded border border-accent/30 hover:bg-accent/10 transition-colors">
-                              <ExternalLink className="w-3 h-3" />
-                              Abrir
-                            </a>
+                            <Button variant="outline" size="sm" asChild className="ml-3 shrink-0">
+                              <a href={arq.url} target="_blank" rel="noopener noreferrer">
+                                <ExternalLink aria-hidden="true" />
+                                Abrir
+                              </a>
+                            </Button>
                           )}
                         </div>
                       ))}
@@ -2569,7 +2543,7 @@ function EditalCard({ edital, favoritado, onFavoritar, licitacaoId, compromissoI
                     </p>
                     {edital.linkPncp && (
                       <a href={edital.linkPncp} target="_blank" rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs text-accent hover:underline">
+                        className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
                         <ExternalLink className="w-3.5 h-3.5" />
                         Abrir no portal PNCP
                       </a>
@@ -2580,9 +2554,10 @@ function EditalCard({ edital, favoritado, onFavoritar, licitacaoId, compromissoI
 
             </div>
           )}
-        </div>
+          </TableCell>
+        </TableRow>
       )}
-    </div>
+    </>
   );
 }
 
@@ -2594,7 +2569,7 @@ function DetalheItem({
   return (
     <div>
       <p className="text-xs text-muted-foreground mb-0.5">{label}</p>
-      <p className={`text-sm ${mono ? 'font-mono' : ''} ${destaque ? 'text-success font-semibold' : 'text-foreground'}`}>
+      <p className={`text-sm text-foreground ${mono ? 'font-mono' : ''} ${destaque ? 'font-semibold tabular-nums' : ''}`}>
         {valor}
       </p>
     </div>
@@ -2641,7 +2616,7 @@ function DateField({
         placeholder={placeholder}
         value={value}
         onChange={e => onChange(formatDateInputBR(e.target.value))}
-        className="h-9 max-w-[140px]"
+        className="max-w-[140px]"
       />
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
@@ -2649,7 +2624,7 @@ function DateField({
             type="button"
             variant="outline"
             size="icon"
-            className="h-9 w-9 shrink-0"
+            className="h-11 w-11 shrink-0"
             aria-label="Abrir calendário"
           >
             <CalendarIcon className="w-4 h-4" />

@@ -197,28 +197,28 @@ export default function GerarPreNotaDialog({ open, onOpenChange, contratoId, ped
           </DialogTitle>
         </DialogHeader>
 
-        <div className="p-3 rounded-lg bg-muted/50 border border-border text-xs text-muted-foreground">
+        <div className="p-3 rounded-lg bg-muted/50 border border-border text-sm text-muted-foreground">
           <p className="font-medium text-foreground mb-1">Fluxo de aprovação</p>
           <p>A Pré-NF será enviada ao setor <strong>Financeiro</strong> para revisão. O financeiro pode aprovar, rejeitar ou devolver para correção antes de emitir a NF-e/NFS-e oficial.</p>
         </div>
 
         {/* 1. Selecionar Pedidos (faturamento parcial) */}
         <div className="space-y-3">
-          <h4 className="text-xs font-semibold flex items-center gap-2">
-            <Package className="w-3.5 h-3.5 text-muted-foreground" />
+          <h4 className="text-lg font-semibold flex items-center gap-2">
+            <Package className="w-4 h-4 text-muted-foreground" />
             Selecionar Pedidos para Faturar
             <Badge variant="outline" className="text-xs">{selected.length} selecionados</Badge>
           </h4>
 
           {eligiblePedidos.length === 0 ? (
-            <Card className="p-4 text-center text-xs text-muted-foreground">Nenhum pedido elegível para faturamento</Card>
+            <Card className="p-4 text-center text-sm text-muted-foreground">Nenhum pedido elegível para faturamento</Card>
           ) : (
             <div className="space-y-2 max-h-[30vh] overflow-y-auto pr-1">
               {eligiblePedidos.map(p => {
                 const sel = selectedPedidos[p.id];
                 const item = itens.find(i => i.id === p.contrato_item_id);
                 return (
-                  <Card key={p.id} className={`p-3 transition-colors ${sel?.selected ? 'border-primary/40 bg-primary/5' : ''}`}>
+                  <Card key={p.id} className={`p-3 transition-colors ${sel?.selected ? 'border-primary bg-primary-tint' : ''}`}>
                     <div className="flex items-start gap-3">
                       <Checkbox
                         checked={sel?.selected || false}
@@ -234,7 +234,7 @@ export default function GerarPreNotaDialog({ open, onOpenChange, contratoId, ped
                         {sel?.selected && (
                           <div className="mt-2">
                             <div className="flex items-center gap-2">
-                              <Label className="text-xs whitespace-nowrap">Qtd a faturar:</Label>
+                              <Label className="whitespace-nowrap">Qtd a faturar:</Label>
                               <Input
                                 type="number"
                                 step="0.001"
@@ -242,15 +242,15 @@ export default function GerarPreNotaDialog({ open, onOpenChange, contratoId, ped
                                 max={p.quantidade}
                                 value={sel.quantidade}
                                 onChange={e => updateQtd(p.id, e.target.value)}
-                                className={`h-7 w-24 text-xs ${erroDe(`pedido:${p.id}:quantidade`) ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+                                className={`w-28 ${erroDe(`pedido:${p.id}:quantidade`) ? 'border-destructive focus-visible:ring-destructive' : ''}`}
                               />
                               <span className="text-xs text-muted-foreground">de {p.quantidade} {item?.unidade || 'UN'}</span>
                             </div>
                             {erroDe(`pedido:${p.id}:quantidade`) && (
-                              <p className="text-xs font-bold text-destructive mt-1">{erroDe(`pedido:${p.id}:quantidade`)}</p>
+                              <p className="text-xs font-bold text-destructive-ink mt-1">{erroDe(`pedido:${p.id}:quantidade`)}</p>
                             )}
                             {erroDe(`pedido:${p.id}:preco`) && (
-                              <p className="text-xs font-bold text-destructive mt-1">{erroDe(`pedido:${p.id}:preco`)}</p>
+                              <p className="text-xs font-bold text-destructive-ink mt-1">{erroDe(`pedido:${p.id}:preco`)}</p>
                             )}
                           </div>
                         )}
@@ -263,7 +263,7 @@ export default function GerarPreNotaDialog({ open, onOpenChange, contratoId, ped
           )}
 
           {selected.length > 0 && (
-            <Card className="p-2 bg-muted/50 border-border">
+            <Card className="p-3 bg-muted/50 border-border">
               <div className="flex justify-between items-center text-xs">
                 <span className="font-medium">{selected.length} pedidos selecionados</span>
                 <span className="font-bold text-foreground">{fmt(totalValue)}</span>
@@ -275,13 +275,13 @@ export default function GerarPreNotaDialog({ open, onOpenChange, contratoId, ped
         {/* Todos os erros de uma vez, em vermelho — corrigir um por um às
             cegas é tortura, e o botão só destrava quando a lista zera. */}
         {errosDeEmissao.length > 0 && selected.length > 0 && (
-          <div className="rounded-md border border-destructive/40 bg-destructive/5 p-2.5">
-            <p className="text-xs font-bold text-destructive mb-1">
+          <div className="rounded-md border border-destructive-line bg-destructive-tint p-3" role="alert">
+            <p className="text-sm font-semibold text-destructive-ink mb-1">
               A emissão está travada — {errosDeEmissao.length} ponto(s) a corrigir:
             </p>
-            <ul className="space-y-0.5">
+            <ul className="space-y-1">
               {errosDeEmissao.map((e, i) => (
-                <li key={i} className="text-xs font-bold text-destructive">• {e.mensagem}</li>
+                <li key={i} className="text-sm text-destructive-ink">• {e.mensagem}</li>
               ))}
             </ul>
           </div>
@@ -291,12 +291,12 @@ export default function GerarPreNotaDialog({ open, onOpenChange, contratoId, ped
 
         {/* 2. Natureza da Operação */}
         <div className="space-y-3">
-          <h4 className="text-xs font-semibold flex items-center gap-2">
-            <FileText className="w-3.5 h-3.5 text-muted-foreground" />
+          <h4 className="text-lg font-semibold flex items-center gap-2">
+            <FileText className="w-4 h-4 text-muted-foreground" />
             Dados da Operação
           </h4>
           <div>
-            <Label className="text-xs">Natureza da Operação <span className="text-destructive">*</span></Label>
+            <Label>Natureza da Operação <span className="text-destructive-ink">*</span></Label>
             <Select value={natureza} onValueChange={setNatureza}>
               <SelectTrigger className={erroDe('natureza') ? 'border-destructive' : ''}><SelectValue placeholder="Selecione..." /></SelectTrigger>
               <SelectContent>
@@ -305,11 +305,11 @@ export default function GerarPreNotaDialog({ open, onOpenChange, contratoId, ped
             </Select>
           </div>
           <div>
-            <Label className="text-xs">Observações / Instruções ao Financeiro</Label>
+            <Label>Observações / Instruções ao Financeiro</Label>
             <Textarea value={observacoes} onChange={e => setObservacoes(e.target.value)} rows={2} placeholder="Informações relevantes para emissão da NF (prazo, condição especial...)" />
           </div>
           <div>
-            <Label className="text-xs">Justificativa</Label>
+            <Label>Justificativa</Label>
             <Textarea value={justificativa} onChange={e => setJustificativa(e.target.value)} rows={2} placeholder="Motivo/justificativa da solicitação" />
           </div>
         </div>
@@ -318,13 +318,13 @@ export default function GerarPreNotaDialog({ open, onOpenChange, contratoId, ped
 
         {/* 3. Transporte/Entrega */}
         <div className="space-y-3">
-          <h4 className="text-xs font-semibold flex items-center gap-2">
-            <Truck className="w-3.5 h-3.5 text-muted-foreground" />
+          <h4 className="text-lg font-semibold flex items-center gap-2">
+            <Truck className="w-4 h-4 text-muted-foreground" />
             Dados de Entrega / Transporte
           </h4>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <Label className="text-xs">Modalidade de Frete</Label>
+              <Label>Modalidade de Frete</Label>
               <Select value={freteModalidade} onValueChange={setFreteModalidade}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -336,17 +336,17 @@ export default function GerarPreNotaDialog({ open, onOpenChange, contratoId, ped
               </Select>
             </div>
             <div>
-              <Label className="text-xs">Valor do Frete (R$)</Label>
+              <Label>Valor do Frete (R$)</Label>
               <MoneyInput value={parseFloat(freteValor) || 0} onValueChange={v => setFreteValor(String(v))} />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <Label className="text-xs">Transportadora</Label>
+              <Label>Transportadora</Label>
               <Input value={transportadora} onChange={e => setTransportadora(e.target.value)} placeholder="Nome da transportadora" />
             </div>
             <div>
-              <Label className="text-xs">Endereço de Entrega</Label>
+              <Label>Endereço de Entrega</Label>
               <Input value={enderecoEntrega} onChange={e => setEnderecoEntrega(e.target.value)} placeholder="Endereço completo" />
             </div>
           </div>
@@ -367,7 +367,7 @@ export default function GerarPreNotaDialog({ open, onOpenChange, contratoId, ped
           <Separator className="my-2" />
           <div className="flex justify-between items-center">
             <span className="text-sm font-semibold">Total Pré-NF:</span>
-            <span className="text-lg font-bold text-foreground">{fmt(totalValue + (parseFloat(freteValor) || 0))}</span>
+            <span className="text-xl font-bold text-foreground tabular-nums">{fmt(totalValue + (parseFloat(freteValor) || 0))}</span>
           </div>
         </Card>
 

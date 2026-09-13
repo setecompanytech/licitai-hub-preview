@@ -353,69 +353,68 @@ Use códigos CNAE reais da tabela IBGE/CONCLA. Não invente códigos.`;
   };
 
   return (
-    <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
-      <div className="flex items-center justify-between mb-4">
+    <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <Tag className="w-5 h-5 text-muted-foreground" />
-          <h2 className="text-sm font-semibold">CNAEs Secundários para Busca de Licitações</h2>
+          <Tag className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+          <h2 className="text-lg font-semibold text-foreground">CNAEs Secundários para Busca de Licitações</h2>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => void syncFromCnpj()}
-          disabled={loadingSync || !empresaAtiva?.cnpj}
-          className="text-xs gap-1.5"
-        >
-          {loadingSync ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-          {loadingSync ? 'Sincronizando...' : 'Sincronizar CNPJ'}
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={buscarCnaesIA}
-          disabled={loadingIA || !cnaePrincipal}
-          className="text-xs gap-1.5"
-        >
-          {loadingIA ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 text-muted-foreground" />}
-          {loadingIA ? 'Buscando...' : 'Gerar via IA'}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            onClick={() => void syncFromCnpj()}
+            disabled={loadingSync || !empresaAtiva?.cnpj}
+          >
+            {loadingSync ? <Loader2 className="animate-spin" aria-hidden="true" /> : <RefreshCw aria-hidden="true" />}
+            {loadingSync ? 'Sincronizando...' : 'Sincronizar CNPJ'}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={buscarCnaesIA}
+            disabled={loadingIA || !cnaePrincipal}
+          >
+            {loadingIA ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Sparkles aria-hidden="true" />}
+            {loadingIA ? 'Buscando...' : 'Gerar via IA'}
+          </Button>
+        </div>
       </div>
 
-      <p className="text-xs text-muted-foreground mb-4">
+      <p className="mb-4 text-sm text-muted-foreground">
         O sistema sincroniza os CNAEs secundários reais do CNPJ e permite complementar a lista com IA ou busca oficial por código/descrição.
       </p>
 
       {/* CNAE principal (read-only) */}
-      <div className="mb-4 p-3 rounded-lg bg-muted border border-border/50">
-        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">CNAE Principal</p>
-        <p className="text-sm font-semibold text-foreground">
+      <div className="mb-4 rounded-lg border border-border bg-muted p-4">
+        <p className="mb-1 text-xs uppercase tracking-wider text-muted-foreground">CNAE Principal</p>
+        <p className="text-base font-semibold text-foreground">
           {cnaePrincipal ? `${cnaePrincipal} – ${empresaAtiva?.razao_social || ''}` : 'Nenhum CNAE principal cadastrado'}
         </p>
       </div>
 
       {/* CNAEs cadastrados */}
       <div className="mb-4">
-        <p className="text-xs text-muted-foreground mb-2">CNAEs Secundários Cadastrados ({cnaes.length})</p>
+        <p className="mb-2 text-sm text-muted-foreground">CNAEs Secundários Cadastrados ({cnaes.length})</p>
         <div className="flex flex-wrap gap-2">
           {cnaes.map((cnae) => (
             <Badge
               key={cnae.codigo}
-              variant="outline"
-              className="bg-muted text-foreground border-border/60 pr-1 flex items-center gap-1"
+              variant="info"
+              className="flex items-center gap-1 whitespace-normal pr-1"
             >
               <span className="font-mono text-xs">{cnae.codigo}</span>
-              <span className="text-xs">– {cnae.descricao}</span>
-               <button
-                 type="button"
-                 onClick={() => void removeCnae(cnae.codigo)}
-                className="ml-1 p-0.5 rounded hover:bg-destructive/20 transition-colors"
+              <span className="text-xs font-normal">– {cnae.descricao}</span>
+              <button
+                type="button"
+                onClick={() => void removeCnae(cnae.codigo)}
+                aria-label={`Remover CNAE ${cnae.codigo}`}
+                className="ml-1 rounded-full p-1 text-destructive transition-colors hover:bg-destructive-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <X className="w-3 h-3 text-destructive" />
+                <X className="h-3 w-3" aria-hidden="true" />
               </button>
             </Badge>
           ))}
           {cnaes.length === 0 && (
-            <p className="text-xs text-muted-foreground italic">
+            <p className="text-sm italic text-muted-foreground">
               {loadingIA ? 'Buscando CNAEs via IA...' : 'Nenhum CNAE secundário cadastrado. Clique em "Gerar via IA" para começar.'}
             </p>
           )}
@@ -424,22 +423,24 @@ Use códigos CNAE reais da tabela IBGE/CONCLA. Não invente códigos.`;
 
       {/* Sugestões IA extras */}
       {sugestoesIA.length > 0 && (
-        <div className="mb-4 p-3 rounded-lg bg-muted/30 border border-border/50">
-          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1">
-            <Sparkles className="w-3 h-3 text-muted-foreground" /> Sugestões da IA – Clique para adicionar
+        <div className="mb-4 rounded-lg border border-border bg-muted p-4">
+          <p className="mb-2 flex items-center gap-1 text-xs uppercase tracking-wider text-muted-foreground">
+            <Sparkles className="h-4 w-4" aria-hidden="true" /> Sugestões da IA – Clique para adicionar
           </p>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-2">
             {sugestoesIA.map((cnae) => (
-              <button
+              <Button
                 key={cnae.codigo}
-                  type="button"
-                  onClick={() => void addCnae(cnae)}
-                className="text-xs px-2 py-1 rounded-md border border-border/60 hover:border-accent hover:bg-accent/10 text-muted-foreground hover:text-accent transition-colors flex items-center gap-1"
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => void addCnae(cnae)}
+                className="h-auto whitespace-normal py-2 text-left font-normal"
               >
-                <Plus className="w-2.5 h-2.5" />
+                <Plus aria-hidden="true" />
                 <span className="font-mono">{cnae.codigo}</span>
                 <span>– {cnae.descricao}</span>
-              </button>
+              </Button>
             ))}
           </div>
         </div>
@@ -449,9 +450,10 @@ Use códigos CNAE reais da tabela IBGE/CONCLA. Não invente códigos.`;
       <div className="relative">
         <div className="flex gap-2">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-             <Input
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+            <Input
               placeholder="Buscar CNAE por código ou descrição..."
+              aria-label="Buscar CNAE por código ou descrição"
               value={busca}
               onChange={(e) => {
                 setBusca(e.target.value);
@@ -464,28 +466,29 @@ Use códigos CNAE reais da tabela IBGE/CONCLA. Não invente códigos.`;
         </div>
 
         {/* Dropdown sugestões */}
-         {showSugestoes && busca.length > 0 && (
-          <div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
-             {busca.trim().length < SEARCH_MIN_LENGTH ? (
-               <p className="px-4 py-3 text-xs text-muted-foreground">Digite pelo menos 2 caracteres para buscar na base oficial.</p>
-             ) : loadingBusca ? (
-               <p className="px-4 py-3 text-xs text-muted-foreground">Buscando CNAEs oficiais...</p>
-             ) : resultadosBusca.length > 0 ? (
-               resultadosBusca.map((cnae) => (
-                <button
+        {showSugestoes && busca.length > 0 && (
+          <div className="absolute z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-border bg-card shadow-md">
+            {busca.trim().length < SEARCH_MIN_LENGTH ? (
+              <p className="px-4 py-3 text-sm text-muted-foreground">Digite pelo menos 2 caracteres para buscar na base oficial.</p>
+            ) : loadingBusca ? (
+              <p className="px-4 py-3 text-sm text-muted-foreground">Buscando CNAEs oficiais...</p>
+            ) : resultadosBusca.length > 0 ? (
+              resultadosBusca.map((cnae) => (
+                <Button
                   key={cnae.codigo}
-                   type="button"
-                   onClick={() => void addCnae(cnae)}
-                  className="w-full text-left px-4 py-2 hover:bg-muted/50 flex items-center gap-2 text-sm transition-colors"
+                  type="button"
+                  variant="ghost"
+                  onClick={() => void addCnae(cnae)}
+                  className="h-auto w-full justify-start whitespace-normal rounded-none px-4 py-2 text-left font-normal"
                 >
-                  <Plus className="w-3 h-3 text-muted-foreground" />
+                  <Plus className="text-muted-foreground" aria-hidden="true" />
                   <span className="font-mono text-xs">{cnae.codigo}</span>
                   <span className="text-muted-foreground">–</span>
                   <span>{cnae.descricao}</span>
-                </button>
+                </Button>
               ))
             ) : (
-                 <p className="px-4 py-3 text-xs text-muted-foreground">Nenhum CNAE encontrado na base oficial</p>
+              <p className="px-4 py-3 text-sm text-muted-foreground">Nenhum CNAE encontrado na base oficial</p>
             )}
           </div>
         )}
@@ -493,21 +496,23 @@ Use códigos CNAE reais da tabela IBGE/CONCLA. Não invente códigos.`;
 
       {/* Quick add popular */}
       <div className="mt-4">
-        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Sugestões rápidas</p>
-        <div className="flex flex-wrap gap-1.5">
+        <p className="mb-2 text-xs uppercase tracking-wider text-muted-foreground">Sugestões rápidas</p>
+        <div className="flex flex-wrap gap-2">
           {cnaesPopulares
             .filter((c) => !cnaes.some((e) => e.codigo === c.codigo))
             .slice(0, 6)
             .map((cnae) => (
-               <button
-                 type="button"
+              <Button
+                type="button"
                 key={cnae.codigo}
-                 onClick={() => void addCnae(cnae)}
-                className="text-xs px-2 py-1 rounded-md border border-border/50 hover:border-accent hover:text-accent transition-colors"
+                variant="outline"
+                size="sm"
+                onClick={() => void addCnae(cnae)}
+                title={cnae.descricao}
               >
-                <Plus className="w-2.5 h-2.5 inline mr-0.5" />
+                <Plus aria-hidden="true" />
                 {cnae.codigo}
-              </button>
+              </Button>
             ))}
         </div>
       </div>

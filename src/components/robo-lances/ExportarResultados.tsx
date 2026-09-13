@@ -93,25 +93,25 @@ export default function ExportarResultados({ lances }: Props) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button size="sm" variant="outline" className="text-xs gap-1.5">
-          <Download className="w-3.5 h-3.5" /> Exportar
+        <Button variant="outline">
+          <Download className="w-4 h-4" aria-hidden="true" /> Exportar
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuItem onClick={handleExportPDF}>
-          <FileText className="w-3.5 h-3.5 mr-2" /> Disputas — PDF
+          <FileText className="w-4 h-4 mr-2" aria-hidden="true" /> Disputas — PDF
         </DropdownMenuItem>
         <DropdownMenuItem onClick={handleExportItemsPDF}>
-          <FileText className="w-3.5 h-3.5 mr-2" /> Itens detalhados — PDF
+          <FileText className="w-4 h-4 mr-2" aria-hidden="true" /> Itens detalhados — PDF
         </DropdownMenuItem>
         <DropdownMenuItem onClick={handleExportCSV}>
-          <FileSpreadsheet className="w-3.5 h-3.5 mr-2" /> Disputas — CSV/Excel
+          <FileSpreadsheet className="w-4 h-4 mr-2" aria-hidden="true" /> Disputas — CSV/Excel
         </DropdownMenuItem>
         <DropdownMenuItem onClick={handleExportItemsCSV}>
-          <FileSpreadsheet className="w-3.5 h-3.5 mr-2" /> Itens detalhados — CSV/Excel
+          <FileSpreadsheet className="w-4 h-4 mr-2" aria-hidden="true" /> Itens detalhados — CSV/Excel
         </DropdownMenuItem>
         <DropdownMenuItem onClick={handleExportJSON}>
-          <Download className="w-3.5 h-3.5 mr-2" /> JSON completo
+          <Download className="w-4 h-4 mr-2" aria-hidden="true" /> JSON completo
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

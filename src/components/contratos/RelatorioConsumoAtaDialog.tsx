@@ -192,8 +192,8 @@ export default function RelatorioConsumoAtaDialog({ ataId, ataNumero }: Props) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" variant="outline" className="gap-1.5 text-xs">
-          <FileBarChart2 className="w-3.5 h-3.5" /> Relatório de Consumo
+        <Button size="sm" variant="outline">
+          <FileBarChart2 className="w-4 h-4" /> Relatório de Consumo
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-md">
@@ -204,17 +204,17 @@ export default function RelatorioConsumoAtaDialog({ ataId, ataNumero }: Props) {
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4 pt-2">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <Label className="text-xs">Data início</Label>
-              <Input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)} className="h-9" />
+              <Label>Data início</Label>
+              <Input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)} />
             </div>
             <div>
-              <Label className="text-xs">Data fim</Label>
-              <Input type="date" value={dataFim} onChange={e => setDataFim(e.target.value)} className="h-9" />
+              <Label>Data fim</Label>
+              <Input type="date" value={dataFim} onChange={e => setDataFim(e.target.value)} />
             </div>
           </div>
-          <div className="bg-muted/40 rounded-md p-3 text-xs text-muted-foreground space-y-1">
+          <div className="bg-muted/40 rounded-md p-3 text-sm text-muted-foreground space-y-1">
             <p className="font-medium text-foreground">O relatório inclui:</p>
             <ul className="list-disc pl-4 space-y-0.5">
               <li>Resumo por contrato derivado (qtd itens e valor consumido)</li>

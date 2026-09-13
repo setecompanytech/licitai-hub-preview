@@ -3,11 +3,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  Loader2,
   Plus,
   ChevronLeft,
   ChevronRight,
@@ -53,23 +54,39 @@ function ehPago(l: LancamentoCal) {
   return l.status === "realizado" || l.status === "conciliado";
 }
 
+function estaAtrasado(l: LancamentoCal) {
+  const venc = l.data_vencimento ?? l.data_competencia;
+  const dias = differenceInDays(parseISO(venc), new Date());
+  return !ehPago(l) && dias < 0;
+}
+
+/**
+ * Cor do chip no calendário — famílias semânticas (tint/ink/line). Entrada é
+ * verde, saída é vermelha; liquidado ganha contorno cheio e peso; vencido
+ * ganha contorno tracejado.
+ */
 function corItem(l: LancamentoCal): string {
   if (l.status === "cancelado") return "bg-muted text-muted-foreground border-border line-through";
   const pago = ehPago(l);
-  const venc = l.data_vencimento ?? l.data_competencia;
-  const dias = differenceInDays(parseISO(venc), new Date());
-  const atrasado = !pago && dias < 0;
+  const atrasado = estaAtrasado(l);
 
   if (l.tipo === "a_receber") {
     // Verde — entradas
-    if (pago) return "bg-success/25 text-success border-success/50 font-semibold";
-    if (atrasado) return "bg-success/10 text-success border-success border-dashed";
-    return "bg-success/15 text-success border-success/40";
+    if (pago) return "bg-success-tint text-success-ink border-success-ink font-semibold";
+    if (atrasado) return "bg-success-tint text-success-ink border-success-ink border-dashed";
+    return "bg-success-tint text-success-ink border-success-line";
   }
   // Vermelho — saídas (a_pagar e demais)
-  if (pago) return "bg-destructive/25 text-destructive border-destructive/50 font-semibold";
-  if (atrasado) return "bg-destructive/10 text-destructive border-destructive border-dashed";
-  return "bg-destructive/15 text-destructive border-destructive/40";
+  if (pago) return "bg-destructive-tint text-destructive-ink border-destructive-ink font-semibold";
+  if (atrasado) return "bg-destructive-tint text-destructive-ink border-destructive-ink border-dashed";
+  return "bg-destructive-tint text-destructive-ink border-destructive-line";
+}
+
+function badgeStatus(l: LancamentoCal): "success" | "muted" | "danger" | "info" {
+  if (l.status === "cancelado") return "muted";
+  if (ehPago(l)) return "success";
+  if (estaAtrasado(l)) return "danger";
+  return "info";
 }
 
 export default function FinCalendarioFinanceiro() {
@@ -170,38 +187,38 @@ export default function FinCalendarioFinanceiro() {
     <div className="space-y-4">
       {/* Cabeçalho de navegação + KPIs proporcionais */}
       <Card>
-        <CardContent className="pt-4 space-y-4">
+        <CardContent className="p-6 space-y-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setRefDate(subMonths(refDate, 1))}>
-                <ChevronLeft className="w-4 h-4" />
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" size="icon" aria-label="Mês anterior" onClick={() => setRefDate(subMonths(refDate, 1))}>
+                <ChevronLeft className="w-4 h-4" aria-hidden="true" />
               </Button>
               <div className="min-w-[200px] text-center">
-                <p className="text-xs text-muted-foreground uppercase tracking-wide">Calendário Financeiro</p>
+                <p className="text-sm text-muted-foreground">Calendário Financeiro</p>
                 <p className="text-lg font-semibold capitalize">
                   {format(refDate, "MMMM 'de' yyyy", { locale: ptBR })}
                 </p>
               </div>
-              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setRefDate(addMonths(refDate, 1))}>
-                <ChevronRight className="w-4 h-4" />
+              <Button variant="outline" size="icon" aria-label="Próximo mês" onClick={() => setRefDate(addMonths(refDate, 1))}>
+                <ChevronRight className="w-4 h-4" aria-hidden="true" />
               </Button>
-              <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setRefDate(new Date())}>
-                <CalendarDays className="w-3.5 h-3.5 mr-1" />Hoje
+              <Button variant="ghost" onClick={() => setRefDate(new Date())}>
+                <CalendarDays className="w-4 h-4" aria-hidden="true" />Hoje
               </Button>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <Button size="sm" variant="default" className="h-8 text-xs" onClick={() => novoNoDia(new Date(), "a_pagar")}>
-                <Plus className="w-3.5 h-3.5 mr-1" />A pagar
+              <Button variant="default" onClick={() => novoNoDia(new Date(), "a_pagar")}>
+                <Plus className="w-4 h-4" aria-hidden="true" />A pagar
               </Button>
-              <Button size="sm" variant="default" className="h-8 text-xs" onClick={() => novoNoDia(new Date(), "a_receber")}>
-                <Plus className="w-3.5 h-3.5 mr-1" />A receber
+              <Button variant="default" onClick={() => novoNoDia(new Date(), "a_receber")}>
+                <Plus className="w-4 h-4" aria-hidden="true" />A receber
               </Button>
             </div>
           </div>
 
           {/* KPIs compactos do mês */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
             <KpiMini icon={ArrowUpCircle} label="A pagar" value={formatBRL(totaisMes.pagar)} tone="danger" />
             <KpiMini icon={ArrowDownCircle} label="A receber" value={formatBRL(totaisMes.receber)} tone="success" />
             <KpiMini icon={TrendingDown} label="Pago" value={formatBRL(totaisMes.pago)} tone="muted" />
@@ -218,32 +235,37 @@ export default function FinCalendarioFinanceiro() {
 
       {/* Filtros */}
       <Card>
-        <CardContent className="pt-4 flex flex-wrap items-end gap-3">
+        <CardContent className="p-6 flex flex-wrap items-end gap-3">
           <div className="flex-1 min-w-[220px]">
-            <label className="text-xs text-muted-foreground">Buscar por descrição, pessoa ou categoria</label>
-            <div className="relative mt-1">
-              <Search className="w-4 h-4 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Label htmlFor="cal-fin-busca">Buscar por descrição, pessoa ou categoria</Label>
+            <div className="relative mt-2">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
               <Input
+                id="cal-fin-busca"
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
                 placeholder="Ex.: aluguel, fornecedor X, energia…"
-                className="pl-8 h-9"
+                className="pl-9 pr-10"
               />
               {busca && (
-                <button
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
                   onClick={() => setBusca("")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   title="Limpar"
+                  aria-label="Limpar busca"
                 >
-                  <X className="w-3.5 h-3.5" />
-                </button>
+                  <X className="w-4 h-4" aria-hidden="true" />
+                </Button>
               )}
             </div>
           </div>
           <div className="min-w-[160px]">
-            <label className="text-xs text-muted-foreground">Tipo</label>
+            <Label htmlFor="cal-fin-tipo">Tipo</Label>
             <Select value={filtroTipo} onValueChange={(v) => setFiltroTipo(v as FiltroTipo)}>
-              <SelectTrigger className="h-9 mt-1"><SelectValue /></SelectTrigger>
+              <SelectTrigger id="cal-fin-tipo" className="mt-2"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="todos">Pagar + Receber</SelectItem>
                 <SelectItem value="a_pagar">Apenas a pagar</SelectItem>
@@ -252,9 +274,9 @@ export default function FinCalendarioFinanceiro() {
             </Select>
           </div>
           <div className="min-w-[160px]">
-            <label className="text-xs text-muted-foreground">Status</label>
+            <Label htmlFor="cal-fin-status">Status</Label>
             <Select value={filtroStatus} onValueChange={(v) => setFiltroStatus(v as FiltroStatus)}>
-              <SelectTrigger className="h-9 mt-1"><SelectValue /></SelectTrigger>
+              <SelectTrigger id="cal-fin-status" className="mt-2"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="todos">Todos</SelectItem>
                 <SelectItem value="previsto">Em aberto (no prazo)</SelectItem>
@@ -263,202 +285,216 @@ export default function FinCalendarioFinanceiro() {
               </SelectContent>
             </Select>
           </div>
-          <div className="text-xs text-muted-foreground pb-2 whitespace-nowrap">
-            <span className="font-semibold text-foreground">{lancamentos.length}</span> de {todos.length} lançamentos
-          </div>
+          <p className="text-sm text-muted-foreground pb-3 whitespace-nowrap">
+            <span className="font-semibold text-foreground tabular-nums">{lancamentos.length}</span> de {todos.length} lançamentos
+          </p>
         </CardContent>
       </Card>
 
       {/* Grade do calendário — proporcional, com altura adaptativa */}
       <Card>
-        <CardContent className="p-2">
+        <CardContent className="p-2 md:p-3">
           {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            <div className="grid grid-cols-7 gap-1" role="status" aria-label="Carregando calendário">
+              {Array.from({ length: 35 }).map((_, i) => (
+                <Skeleton key={i} className="h-28" />
+              ))}
             </div>
           ) : (
-            <>
-              <div className="grid grid-cols-7 gap-1 mb-1">
-                {NOMES_DIAS.map((d) => (
-                  <div key={d} className="text-xs uppercase tracking-wide text-muted-foreground text-center font-medium py-1">
-                    {d}
-                  </div>
-                ))}
-              </div>
-              <div className="grid grid-cols-7 gap-1 auto-rows-fr">
-                {dias.map((d) => {
-                  const key = format(d, "yyyy-MM-dd");
-                  const items = porDia.get(key) ?? [];
-                  const foraMes = !isSameMonth(d, refDate);
-                  const hoje = isToday(d);
-                  // Total proporcional do dia: receber positivo, pagar negativo
-                  let saldoDia = 0;
-                  let totalPagar = 0;
-                  let totalReceber = 0;
-                  for (const it of items) {
-                    const v = Number(it.valor);
-                    if (it.tipo === "a_pagar") { totalPagar += v; saldoDia -= v; }
-                    if (it.tipo === "a_receber") { totalReceber += v; saldoDia += v; }
-                  }
-                  return (
-                    <div
-                      key={key}
-                      className={`relative min-h-[120px] rounded-md border p-1.5 flex flex-col gap-1 transition-colors group ${
-                        foraMes ? "bg-muted/20 opacity-60" : "bg-card"
-                      } ${hoje ? "ring-2 ring-primary" : ""}`}
-                    >
-                      <div className="flex items-center justify-between gap-1">
-                        <span className={`text-xs font-medium ${hoje ? "text-foreground font-bold" : ""}`}>
-                          {format(d, "d")}
-                        </span>
-                        {!foraMes && (
-                          <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="overflow-x-auto">
+              <div className="min-w-[640px]">
+                <div className="grid grid-cols-7 gap-1 mb-1">
+                  {NOMES_DIAS.map((d) => (
+                    <div key={d} className="text-xs uppercase tracking-wide text-muted-foreground text-center font-medium py-1">
+                      {d}
+                    </div>
+                  ))}
+                </div>
+                <div className="grid grid-cols-7 gap-1 auto-rows-fr">
+                  {dias.map((d) => {
+                    const key = format(d, "yyyy-MM-dd");
+                    const items = porDia.get(key) ?? [];
+                    const foraMes = !isSameMonth(d, refDate);
+                    const hoje = isToday(d);
+                    // Total proporcional do dia: receber positivo, pagar negativo
+                    let saldoDia = 0;
+                    let totalPagar = 0;
+                    let totalReceber = 0;
+                    for (const it of items) {
+                      const v = Number(it.valor);
+                      if (it.tipo === "a_pagar") { totalPagar += v; saldoDia -= v; }
+                      if (it.tipo === "a_receber") { totalReceber += v; saldoDia += v; }
+                    }
+                    return (
+                      <div
+                        key={key}
+                        className={`relative min-h-[120px] rounded-md border border-border p-2 flex flex-col gap-1 transition-colors group ${
+                          foraMes ? "bg-muted/40 text-muted-foreground" : "bg-card"
+                        } ${hoje ? "ring-2 ring-primary" : ""}`}
+                      >
+                        <div className="flex items-center justify-between gap-1">
+                          <span className={`text-xs font-medium ${hoje ? "text-primary font-bold" : ""}`}>
+                            {format(d, "d")}
+                          </span>
+                          {!foraMes && (
+                            <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-destructive hover:text-destructive"
+                                onClick={() => novoNoDia(d, "a_pagar")}
+                                title="Novo a pagar"
+                                aria-label={`Novo a pagar em ${format(d, "dd/MM")}`}
+                              >
+                                <ArrowUpCircle className="w-4 h-4" aria-hidden="true" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-success hover:text-success"
+                                onClick={() => novoNoDia(d, "a_receber")}
+                                title="Novo a receber"
+                                aria-label={`Novo a receber em ${format(d, "dd/MM")}`}
+                              >
+                                <ArrowDownCircle className="w-4 h-4" aria-hidden="true" />
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Barra proporcional pagar vs receber */}
+                        {!foraMes && (totalPagar > 0 || totalReceber > 0) && (
+                          <div className="flex h-1 rounded-full overflow-hidden bg-muted">
+                            {totalReceber > 0 && (
+                              <div
+                                className="bg-success"
+                                style={{ width: `${(totalReceber / (totalPagar + totalReceber)) * 100}%` }}
+                                title={`Receber: ${formatBRL(totalReceber)}`}
+                              />
+                            )}
+                            {totalPagar > 0 && (
+                              <div
+                                className="bg-destructive"
+                                style={{ width: `${(totalPagar / (totalPagar + totalReceber)) * 100}%` }}
+                                title={`Pagar: ${formatBRL(totalPagar)}`}
+                              />
+                            )}
+                          </div>
+                        )}
+
+                        <div className="flex-1 space-y-0.5 overflow-hidden">
+                          {items.slice(0, 3).map((l) => (
                             <button
-                              onClick={() => novoNoDia(d, "a_pagar")}
-                              className="text-destructive hover:text-destructive/80"
-                              title="Novo a pagar"
+                              key={l.id}
+                              type="button"
+                              onClick={() => { setEditing(l); setDialogOpen(true); }}
+                              className={`w-full text-left rounded px-1 py-0.5 text-xs border truncate flex items-center gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${corItem(l)}`}
+                              title={`${l.descricao} — ${formatBRL(Number(l.valor))}`}
                             >
-                              <ArrowUpCircle className="w-3.5 h-3.5" />
+                              {l.tipo === "a_pagar" ? (
+                                <ArrowUpCircle className="w-3 h-3 shrink-0" aria-hidden="true" />
+                              ) : (
+                                <ArrowDownCircle className="w-3 h-3 shrink-0" aria-hidden="true" />
+                              )}
+                              <span className="font-medium tabular-nums">
+                                {Number(l.valor).toLocaleString("pt-BR", { notation: "compact", style: "currency", currency: "BRL" })}
+                              </span>
+                              <span className="opacity-80 truncate">{l.descricao}</span>
                             </button>
-                            <button
-                              onClick={() => novoNoDia(d, "a_receber")}
-                              className="text-success hover:text-success/80"
-                              title="Novo a receber"
-                            >
-                              <ArrowDownCircle className="w-3.5 h-3.5" />
-                            </button>
+                          ))}
+                          {items.length > 3 && (
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button type="button" variant="link" className="h-auto w-full justify-start px-1 py-0 text-xs text-muted-foreground hover:text-foreground">
+                                  +{items.length - 3} mais…
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent
+                                className="w-80 max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] overflow-hidden p-2"
+                                align="start"
+                                sideOffset={6}
+                                collisionPadding={12}
+                              >
+                                <p className="text-sm font-semibold mb-2 shrink-0 capitalize">
+                                  {format(d, "EEEE, d 'de' MMMM", { locale: ptBR })}
+                                </p>
+                                <ScrollArea
+                                  className="h-[min(60vh,420px)] pr-3"
+                                  onWheel={(e) => e.stopPropagation()}
+                                >
+                                  <div className="space-y-1 pb-1">
+                                    {items.map((l) => (
+                                      <button
+                                        key={l.id}
+                                        type="button"
+                                        onClick={() => { setEditing(l); setDialogOpen(true); }}
+                                        className="w-full text-left rounded-md border border-border px-2 py-2 hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                      >
+                                        <div className="flex items-center justify-between gap-2">
+                                          <span className="text-xs font-medium truncate flex items-center gap-1">
+                                            {l.tipo === "a_pagar" ? (
+                                              <ArrowUpCircle className="w-3 h-3 text-destructive" aria-hidden="true" />
+                                            ) : (
+                                              <ArrowDownCircle className="w-3 h-3 text-success" aria-hidden="true" />
+                                            )}
+                                            {l.descricao}
+                                          </span>
+                                          <span className="text-xs text-right tabular-nums font-semibold whitespace-nowrap">
+                                            {formatBRL(Number(l.valor))}
+                                          </span>
+                                        </div>
+                                        {l.pessoa?.nome && (
+                                          <p className="text-xs text-muted-foreground truncate">{l.pessoa.nome}</p>
+                                        )}
+                                        <Badge variant={badgeStatus(l)} className="mt-1">
+                                          {l.status}
+                                        </Badge>
+                                      </button>
+                                    ))}
+                                  </div>
+                                </ScrollArea>
+                              </PopoverContent>
+                            </Popover>
+                          )}
+                        </div>
+
+                        {/* Saldo do dia */}
+                        {!foraMes && (totalPagar > 0 || totalReceber > 0) && (
+                          <div className={`text-xs tabular-nums text-right border-t border-border pt-0.5 font-medium ${
+                            saldoDia >= 0 ? "text-success" : "text-destructive"
+                          }`}>
+                            {saldoDia >= 0 ? "+" : ""}{formatBRL(saldoDia)}
                           </div>
                         )}
                       </div>
-
-                      {/* Barra proporcional pagar vs receber */}
-                      {!foraMes && (totalPagar > 0 || totalReceber > 0) && (
-                        <div className="flex h-1 rounded-full overflow-hidden bg-muted">
-                          {totalReceber > 0 && (
-                            <div
-                              className="bg-success"
-                              style={{ width: `${(totalReceber / (totalPagar + totalReceber)) * 100}%` }}
-                              title={`Receber: ${formatBRL(totalReceber)}`}
-                            />
-                          )}
-                          {totalPagar > 0 && (
-                            <div
-                              className="bg-destructive"
-                              style={{ width: `${(totalPagar / (totalPagar + totalReceber)) * 100}%` }}
-                              title={`Pagar: ${formatBRL(totalPagar)}`}
-                            />
-                          )}
-                        </div>
-                      )}
-
-                      <div className="flex-1 space-y-0.5 overflow-hidden">
-                        {items.slice(0, 3).map((l) => (
-                          <button
-                            key={l.id}
-                            onClick={() => { setEditing(l); setDialogOpen(true); }}
-                            className={`w-full text-left rounded px-1 py-0.5 text-xs border truncate flex items-center gap-1 ${corItem(l)}`}
-                            title={`${l.descricao} — ${formatBRL(Number(l.valor))}`}
-                          >
-                            {l.tipo === "a_pagar" ? (
-                              <ArrowUpCircle className="w-2.5 h-2.5 shrink-0" />
-                            ) : (
-                              <ArrowDownCircle className="w-2.5 h-2.5 shrink-0" />
-                            )}
-                            <span className="font-medium tabular-nums">
-                              {Number(l.valor).toLocaleString("pt-BR", { notation: "compact", style: "currency", currency: "BRL" })}
-                            </span>
-                            <span className="opacity-80 truncate">{l.descricao}</span>
-                          </button>
-                        ))}
-                        {items.length > 3 && (
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <button className="w-full text-left text-xs text-muted-foreground hover:text-foreground px-1">
-                                +{items.length - 3} mais…
-                              </button>
-                            </PopoverTrigger>
-                            <PopoverContent
-                              className="w-80 max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] overflow-hidden p-2"
-                              align="start"
-                              sideOffset={6}
-                              collisionPadding={12}
-                            >
-                              <p className="text-xs font-semibold mb-2 shrink-0">
-                                {format(d, "EEEE, d 'de' MMMM", { locale: ptBR })}
-                              </p>
-                              <ScrollArea
-                                className="h-[min(60vh,420px)] pr-3"
-                                onWheel={(e) => e.stopPropagation()}
-                              >
-                                <div className="space-y-1 pb-1">
-                                  {items.map((l) => (
-                                    <button
-                                      key={l.id}
-                                      onClick={() => { setEditing(l); setDialogOpen(true); }}
-                                      className="w-full text-left rounded border px-2 py-1.5 hover:bg-muted/50 transition-colors"
-                                    >
-                                      <div className="flex items-center justify-between gap-2">
-                                        <span className="text-xs font-medium truncate flex items-center gap-1">
-                                          {l.tipo === "a_pagar" ? (
-                                            <ArrowUpCircle className="w-3 h-3 text-destructive" />
-                                          ) : (
-                                            <ArrowDownCircle className="w-3 h-3 text-success" />
-                                          )}
-                                          {l.descricao}
-                                        </span>
-                                        <span className="text-xs tabular-nums font-semibold whitespace-nowrap">
-                                          {formatBRL(Number(l.valor))}
-                                        </span>
-                                      </div>
-                                      {l.pessoa?.nome && (
-                                        <p className="text-xs text-muted-foreground truncate">{l.pessoa.nome}</p>
-                                      )}
-                                      <Badge variant="outline" className={`text-xs mt-0.5 ${corItem(l)}`}>
-                                        {l.status}
-                                      </Badge>
-                                    </button>
-                                  ))}
-                                </div>
-                              </ScrollArea>
-                            </PopoverContent>
-                          </Popover>
-                        )}
-                      </div>
-
-                      {/* Saldo do dia */}
-                      {!foraMes && (totalPagar > 0 || totalReceber > 0) && (
-                        <div className={`text-xs tabular-nums text-right border-t pt-0.5 font-medium ${
-                          saldoDia >= 0 ? "text-success" : "text-destructive"
-                        }`}>
-                          {saldoDia >= 0 ? "+" : ""}{formatBRL(saldoDia)}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Legenda */}
               <div className="flex flex-wrap items-center gap-3 mt-3 px-2 text-xs text-muted-foreground">
                 <span className="inline-flex items-center gap-1">
-                  <span className="w-2.5 h-2.5 rounded-sm bg-success/15 border border-success/40" />
-                  <ArrowDownCircle className="w-3 h-3 text-success" />A receber (entrada)
+                  <span className="w-3 h-3 rounded-sm bg-success-tint border border-success-line" aria-hidden="true" />
+                  <ArrowDownCircle className="w-3 h-3 text-success" aria-hidden="true" />A receber (entrada)
                 </span>
                 <span className="inline-flex items-center gap-1">
-                  <span className="w-2.5 h-2.5 rounded-sm bg-destructive/15 border border-destructive/40" />
-                  <ArrowUpCircle className="w-3 h-3 text-destructive" />A pagar (saída)
+                  <span className="w-3 h-3 rounded-sm bg-destructive-tint border border-destructive-line" aria-hidden="true" />
+                  <ArrowUpCircle className="w-3 h-3 text-destructive" aria-hidden="true" />A pagar (saída)
                 </span>
                 <span className="inline-flex items-center gap-1">
-                  <span className="w-2.5 h-2.5 rounded-sm bg-success/25 border border-success/50" />Recebido
+                  <span className="w-3 h-3 rounded-sm bg-success-tint border border-success-ink" aria-hidden="true" />Recebido
                 </span>
                 <span className="inline-flex items-center gap-1">
-                  <span className="w-2.5 h-2.5 rounded-sm bg-destructive/25 border border-destructive/50" />Pago
+                  <span className="w-3 h-3 rounded-sm bg-destructive-tint border border-destructive-ink" aria-hidden="true" />Pago
                 </span>
                 <span className="inline-flex items-center gap-1">
-                  <span className="w-2.5 h-2.5 rounded-sm border border-dashed border-destructive" />Vencido
+                  <span className="w-3 h-3 rounded-sm border border-dashed border-destructive-ink" aria-hidden="true" />Vencido
                 </span>
               </div>
-            </>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -490,12 +526,12 @@ function KpiMini({
     muted: "text-muted-foreground",
   }[tone];
   return (
-    <div className="rounded-lg border bg-card p-3 flex items-start justify-between gap-2">
+    <div className="rounded-lg border border-border bg-card p-4 flex items-start justify-between gap-2">
       <div className="min-w-0">
-        <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
-        <p className={`text-base font-semibold tabular-nums truncate ${cor}`}>{value}</p>
+        <p className="text-sm text-muted-foreground">{label}</p>
+        <p className={`text-lg font-semibold tabular-nums truncate ${cor}`}>{value}</p>
       </div>
-      <Icon className={`w-4 h-4 shrink-0 ${cor}`} />
+      <Icon className={`w-5 h-5 shrink-0 ${cor}`} aria-hidden="true" />
     </div>
   );
 }

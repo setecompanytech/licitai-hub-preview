@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { ImageIcon, Loader2, Save, Eye } from 'lucide-react';
 import { AJUSTES_PADRAO, aplicarTimbrado, carregarTimbrado, limparCacheTimbrado, type Timbrado } from '@/lib/timbrado/timbrado';
@@ -140,17 +141,29 @@ export default function TimbradoConfig() {
   };
 
   if (carregando) {
-    return <div className="flex items-center gap-2 text-sm text-muted-foreground p-4"><Loader2 className="w-4 h-4 animate-spin" /> Carregando timbrado…</div>;
+    return (
+      <section className="rounded-lg border border-border bg-card p-6 shadow-sm" role="status" aria-busy="true">
+        <span className="sr-only">Carregando timbrado</span>
+        <Skeleton className="mb-4 h-6 w-48" />
+        <div className="grid gap-4 sm:grid-cols-[200px_1fr]">
+          <Skeleton className="h-24 w-full" />
+          <div className="space-y-3">
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-16 w-full" />
+          </div>
+        </div>
+      </section>
+    );
   }
 
   return (
-    <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm space-y-4">
+    <section className="space-y-4 rounded-lg border border-border bg-card p-6 shadow-sm">
       <div className="flex items-center gap-2">
-        <ImageIcon className="w-5 h-5 text-muted-foreground" />
-        <h2 className="text-sm font-semibold">Timbrado da empresa</h2>
+        <ImageIcon className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+        <h2 className="text-lg font-semibold text-foreground">Timbrado da empresa</h2>
       </div>
-      <p className="text-xs text-muted-foreground">
-        Logotipo, cabeçalho e rodapé que vestem <span className="font-medium">todo documento gerado</span> —
+      <p className="text-sm text-muted-foreground">
+        Logotipo, cabeçalho e rodapé que vestem <span className="font-medium text-foreground">todo documento gerado</span> —
         recibos, relatórios, planilhas e peças — em retrato e paisagem. Configura-se uma vez; quem gera
         nunca mais pensa nisso.
         {!isCompanyAdmin && ' Somente o Admin da empresa pode alterar.'}
@@ -158,45 +171,45 @@ export default function TimbradoConfig() {
 
       <div className="grid gap-4 sm:grid-cols-[200px_1fr]">
         <div>
-          <Label className="text-xs">Logotipo (PNG/JPG)</Label>
-          <div className="mt-1 border border-dashed border-border rounded-lg h-24 flex items-center justify-center overflow-hidden bg-muted/20">
+          <Label htmlFor="timbrado-logo">Logotipo (PNG/JPG)</Label>
+          <div className="mt-1 flex h-24 items-center justify-center overflow-hidden rounded-lg border border-dashed border-border bg-muted">
             {logoPreview
               ? <img src={logoPreview} alt="Logotipo" className="max-h-20 max-w-full object-contain" />
               : <span className="text-xs text-muted-foreground">sem logotipo</span>}
           </div>
           {isCompanyAdmin && (
-            <Input type="file" accept="image/png,image/jpeg" className="mt-2 h-8 text-xs"
+            <Input id="timbrado-logo" type="file" accept="image/png,image/jpeg" className="mt-2"
               onChange={(e) => escolherLogo(e.target.files?.[0] ?? null)} />
           )}
         </div>
-        <div className="space-y-3">
+        <div className="space-y-4">
           <div>
-            <Label className="text-xs">Cabeçalho — qualificação (razão social, CNPJ, IE, endereço…)</Label>
-            <Textarea value={cabecalho} onChange={(e) => setCabecalho(e.target.value)} rows={3}
-              disabled={!isCompanyAdmin} className="mt-1 text-xs"
+            <Label htmlFor="timbrado-cabecalho">Cabeçalho — qualificação (razão social, CNPJ, IE, endereço…)</Label>
+            <Textarea id="timbrado-cabecalho" value={cabecalho} onChange={(e) => setCabecalho(e.target.value)} rows={3}
+              disabled={!isCompanyAdmin} className="mt-1"
               placeholder={'RAZÃO SOCIAL DA EMPRESA LTDA\nCNPJ 00.000.000/0000-00 · IE 00.000.000-0\nRua Exemplo, 100 · Bairro · Cidade/UF · CEP 00000-000'} />
           </div>
           <div>
-            <Label className="text-xs">Rodapé — contatos (endereço, site, e-mail, telefones)</Label>
-            <Textarea value={rodape} onChange={(e) => setRodape(e.target.value)} rows={2}
-              disabled={!isCompanyAdmin} className="mt-1 text-xs"
+            <Label htmlFor="timbrado-rodape">Rodapé — contatos (endereço, site, e-mail, telefones)</Label>
+            <Textarea id="timbrado-rodape" value={rodape} onChange={(e) => setRodape(e.target.value)} rows={2}
+              disabled={!isCompanyAdmin} className="mt-1"
               placeholder={'www.suaempresa.com.br · contato@suaempresa.com.br\n(00) 0000-0000 / 00000-0000'} />
           </div>
         </div>
       </div>
 
-      <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex flex-wrap items-center gap-2">
         {isCompanyAdmin && (
-          <Button size="sm" onClick={salvar} disabled={salvando}>
-            {salvando ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1.5" />}
+          <Button onClick={salvar} disabled={salvando}>
+            {salvando ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Save aria-hidden="true" />}
             Salvar timbrado
           </Button>
         )}
-        <Button size="sm" variant="outline" onClick={() => visualizar('portrait')}>
-          <Eye className="w-3.5 h-3.5 mr-1.5" /> Prévia retrato
+        <Button variant="outline" onClick={() => visualizar('portrait')}>
+          <Eye aria-hidden="true" /> Prévia retrato
         </Button>
-        <Button size="sm" variant="outline" onClick={() => visualizar('landscape')}>
-          <Eye className="w-3.5 h-3.5 mr-1.5" /> Prévia paisagem
+        <Button variant="outline" onClick={() => visualizar('landscape')}>
+          <Eye aria-hidden="true" /> Prévia paisagem
         </Button>
       </div>
     </section>

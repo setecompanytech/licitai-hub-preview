@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CheckCircle2, Circle, Key, Settings, BarChart3, ChevronDown, ChevronUp } from 'lucide-react';
+import { Circle, Key, Settings, BarChart3, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const STEPS = [
@@ -53,16 +53,15 @@ export default function GuiaPassoAPasso() {
   if (dismissed) return null;
 
   return (
-    <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-semibold flex items-center gap-2">
-          <BarChart3 className="w-4 h-4 text-muted-foreground" />
+    <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+        <h3 className="text-lg font-semibold flex items-center gap-2">
+          <BarChart3 className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
           Como usar o Robô de Lances
         </h3>
         <Button
-          size="sm"
           variant="ghost"
-          className="text-xs text-muted-foreground"
+          className="text-muted-foreground"
           onClick={() => setDismissed(true)}
         >
           Ocultar guia
@@ -77,33 +76,35 @@ export default function GuiaPassoAPasso() {
           return (
             <div
               key={step.id}
-              className="border border-border/50 rounded-lg overflow-hidden"
+              className="border border-border rounded-lg overflow-hidden"
             >
               <button
+                type="button"
                 onClick={() => setExpanded(isExpanded ? null : step.id)}
-                className="w-full flex items-center gap-3 p-3 hover:bg-muted/50 transition-colors text-left"
+                aria-expanded={isExpanded}
+                className="w-full flex items-center gap-3 p-4 hover:bg-muted transition-colors text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
               >
-                <div className="flex items-center justify-center w-7 h-7 rounded-full bg-muted text-foreground shrink-0">
-                  <span className="text-xs font-bold">{step.id}</span>
+                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary-tint text-primary shrink-0">
+                  <span className="text-sm font-bold">{step.id}</span>
                 </div>
-                <StepIcon className="w-4 h-4 text-muted-foreground shrink-0" />
+                <StepIcon className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium">{step.title}</p>
-                  <p className="text-xs text-muted-foreground truncate">{step.description}</p>
+                  <p className="text-base font-medium">{step.title}</p>
+                  <p className="text-sm text-muted-foreground truncate">{step.description}</p>
                 </div>
                 {isExpanded ? (
-                  <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
                 ) : (
-                  <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
                 )}
               </button>
 
               {isExpanded && (
-                <div className="px-4 pb-3 pt-1 border-t border-border/30">
-                  <ul className="space-y-1.5">
+                <div className="px-4 pb-4 pt-2 border-t border-border">
+                  <ul className="space-y-2">
                     {step.details.map((detail, i) => (
-                      <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
-                        <Circle className="w-2 h-2 mt-1 shrink-0 text-muted-foreground" />
+                      <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <Circle className="w-2 h-2 mt-2 shrink-0 text-muted-foreground" aria-hidden="true" />
                         {detail}
                       </li>
                     ))}

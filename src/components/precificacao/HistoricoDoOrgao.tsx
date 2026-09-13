@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { History, Loader2, ExternalLink, RefreshCw } from 'lucide-react';
 
@@ -81,57 +82,59 @@ export default function HistoricoDoOrgao({
   };
 
   return (
-    <Card className="p-4">
-      <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
-        <p className="text-sm font-semibold flex items-center gap-1.5">
-          <History className="w-4 h-4 text-primary" /> Histórico do órgão
-        </p>
+    <Card className="p-6">
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+        <h3 className="flex items-center gap-2 text-lg font-semibold">
+          <History className="w-5 h-5 text-primary" aria-hidden="true" /> Histórico do órgão
+        </h3>
         {buscou && !buscando && (
-          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={buscar}>
-            <RefreshCw className="w-3 h-3 mr-1" /> Buscar de novo
+          <Button size="sm" variant="ghost" onClick={buscar}>
+            <RefreshCw className="w-4 h-4" aria-hidden="true" /> Buscar de novo
           </Button>
         )}
       </div>
-      <p className="text-xs text-muted-foreground mb-3">
+      <p className="mb-4 text-sm text-muted-foreground">
         Contratações {cnpj ? 'deste órgão' : 'do acervo (qualquer órgão)'} com objeto similar,
         últimos 3 anos. A comparação usa a <span className="font-medium">descrição do objeto</span> —
         o campo fiel do PNCP; marca não é critério de busca.
       </p>
 
       {permitirEditarCnpj && (
-        <div className="flex items-center gap-2 mb-3 flex-wrap">
+        <div className="mb-4 w-full sm:max-w-sm">
+          <Label htmlFor="historico-cnpj" className="text-sm">CNPJ do órgão</Label>
           <Input
+            id="historico-cnpj"
             value={cnpj}
             onChange={(e) => setCnpj(e.target.value)}
-            placeholder="CNPJ do órgão (opcional — vazio = todos)"
-            className="h-8 text-xs w-72"
+            placeholder="Opcional — vazio = todos os órgãos"
+            className="mt-1"
           />
         </div>
       )}
 
       {!buscou && !buscando && (
-        <Button size="sm" variant="outline" className="h-8 text-xs" onClick={buscar}>
-          <History className="w-3.5 h-3.5 mr-1.5" /> Buscar histórico
+        <Button variant="outline" onClick={buscar}>
+          <History className="w-4 h-4" aria-hidden="true" /> Buscar histórico
         </Button>
       )}
 
       {buscando && (
-        <p className="text-xs text-muted-foreground flex items-center gap-2">
-          <Loader2 className="w-4 h-4 animate-spin" /> Comparando descrições no acervo…
+        <p className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
+          <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Comparando descrições no acervo…
         </p>
       )}
 
       {erro && !buscando && (
-        <p className="text-xs text-destructive">
-          {erro}{' '}
-          <button type="button" className="underline underline-offset-2" onClick={buscar}>
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-destructive-line bg-destructive-tint px-4 py-3 text-sm text-destructive-ink" role="alert">
+          <span>{erro}</span>
+          <Button type="button" variant="link" size="sm" className="h-auto p-0 text-destructive-ink underline underline-offset-2" onClick={buscar}>
             Tentar novamente
-          </button>
-        </p>
+          </Button>
+        </div>
       )}
 
       {buscou && !buscando && !erro && irmaos.length === 0 && (
-        <p className="text-xs text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           Nenhuma contratação similar {cnpj ? 'deste órgão ' : ''}no acervo dos últimos 3 anos.
           O acervo cresce a cada pesquisa — processo que nunca passou por uma busca ainda não
           consta nele; ausência aqui não prova inexistência no PNCP.
@@ -139,20 +142,20 @@ export default function HistoricoDoOrgao({
       )}
 
       {irmaos.length > 0 && (
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           {provedor === 'textual' && (
-            <p className="text-[11px] text-warning">
+            <p className="text-xs text-warning">
               Comparação semântica indisponível agora — resultados por palavras da descrição.
             </p>
           )}
           {irmaos.map((h) => (
-            <div key={h.id} className="rounded border border-border/60 px-3 py-2 text-xs flex items-start gap-3">
+            <div key={h.id} className="flex items-start gap-3 rounded-md border border-border px-3 py-2 text-sm">
               <div className="min-w-0 flex-1">
                 <p className="font-medium line-clamp-2">{h.objeto || '—'}</p>
-                <p className="text-muted-foreground mt-0.5">
+                <p className="mt-1 text-xs text-muted-foreground">
                   {[h.orgao, h.municipio && h.uf ? `${h.municipio}/${h.uf}` : h.uf].filter(Boolean).join(' · ')}
                 </p>
-                <p className="text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   {[
                     h.numero_compra ? `Nº ${h.numero_compra}${h.ano_compra ? `/${h.ano_compra}` : ''}` : null,
                     h.modalidade_nome,
@@ -160,19 +163,19 @@ export default function HistoricoDoOrgao({
                   ].filter(Boolean).join(' · ')}
                 </p>
               </div>
-              <div className="shrink-0 text-right space-y-1">
+              <div className="shrink-0 space-y-1 text-right">
                 {h.valor_total_estimado != null && (
                   <p className="font-semibold tabular-nums">{brl(Number(h.valor_total_estimado))}</p>
                 )}
                 {typeof h.similaridade === 'number' && (
-                  <Badge variant="outline" className="text-[10px]">
+                  <Badge variant="outline">
                     {Math.round(h.similaridade * 100)}% similar
                   </Badge>
                 )}
                 {h.url_pncp && (
                   <a href={h.url_pncp} target="_blank" rel="noreferrer"
-                    className="text-accent hover:underline flex items-center gap-1 justify-end">
-                    PNCP <ExternalLink className="w-3 h-3" />
+                    className="flex items-center justify-end gap-1 text-xs text-primary hover:underline">
+                    PNCP <ExternalLink className="w-3 h-3" aria-hidden="true" />
                   </a>
                 )}
               </div>

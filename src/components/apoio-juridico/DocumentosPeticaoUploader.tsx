@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -275,10 +276,11 @@ REGRAS:
   },
 };
 
-const GRAVIDADE_COLORS: Record<string, string> = {
-  alta: 'bg-destructive/10 text-destructive border-destructive/30',
-  media: 'bg-warning/10 text-warning border-warning/30',
-  baixa: 'bg-info/10 text-info border-info/30',
+// Status sempre com texto (GRAVIDADE_LABELS); a cor é reforço via família semântica.
+const GRAVIDADE_VARIANTE: Record<FatoPeticao['gravidade'], 'danger' | 'warning' | 'info'> = {
+  alta: 'danger',
+  media: 'warning',
+  baixa: 'info',
 };
 
 const GRAVIDADE_LABELS: Record<string, string> = {
@@ -536,64 +538,65 @@ ${truncated}`
   if (step === 1) {
     return (
       <div className="space-y-4">
-        <div className="flex items-center gap-2 mb-1">
-          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-muted text-foreground text-xs font-bold">1</div>
-          <h4 className="text-sm font-semibold">Etapa 1 — Anexar Documentos para {config.label}</h4>
+        <div className="flex items-center gap-2">
+          <span className="flex items-center justify-center w-7 h-7 rounded-full bg-primary-tint text-primary text-xs font-bold" aria-hidden="true">1</span>
+          <h4 className="text-base font-semibold">Etapa 1 — Anexar Documentos para {config.label}</h4>
         </div>
 
-        <p className="text-xs text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           {config.uploadDesc}
         </p>
 
         {/* Edital number */}
-        <div>
-          <label className="text-xs text-muted-foreground">Nº do Edital / Processo</label>
-          <Input value={editalNum} onChange={e => setEditalNum(e.target.value)} placeholder="PE-001/2026" className="mt-1" />
+        <div className="space-y-2">
+          <Label htmlFor="peticao-edital-num">Nº do Edital / Processo</Label>
+          <Input id="peticao-edital-num" value={editalNum} onChange={e => setEditalNum(e.target.value)} placeholder="PE-001/2026" />
         </div>
 
         {/* File upload */}
         <div className="space-y-2">
-          <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-            <FileText className="w-3.5 h-3.5" />
+          <p className="text-sm font-medium flex items-center gap-2">
+            <FileText className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
             {config.uploadLabel}
-          </label>
+          </p>
 
           {arquivos.length > 0 && (
-            <div className="bg-card rounded-xl border border-border/50 divide-y divide-border/30">
+            <ul className="rounded-md border border-border bg-card divide-y divide-border">
               {arquivos.map((arq) => (
-                <div key={arq.id} className="flex items-center gap-3 px-4 py-2.5">
+                <li key={arq.id} className="flex items-center gap-3 px-4 py-2">
                   {arq.nome.endsWith('.zip') ? (
-                    <FileArchive className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <FileArchive className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
                   ) : (
-                    <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <FileText className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
                   )}
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium truncate">{arq.nome}</p>
-                    <p className="text-xs text-muted-foreground">{formatSize(arq.tamanho)}</p>
+                    <p className="text-sm font-medium truncate">{arq.nome}</p>
+                    <p className="text-xs text-muted-foreground tabular-nums">{formatSize(arq.tamanho)}</p>
                   </div>
-                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeFile(arq.id)}>
-                    <X className="w-3 h-3" />
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => removeFile(arq.id)} aria-label={`Remover ${arq.nome}`}>
+                    <X aria-hidden="true" />
                   </Button>
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
           )}
 
-          <button
+          <Button
             type="button"
+            variant="outline"
             onClick={() => fileRef.current?.click()}
-            className="w-full border-2 border-dashed border-border/60 rounded-xl p-5 flex flex-col items-center gap-2 cursor-pointer hover:border-accent/50 hover:bg-accent/5 transition-all"
+            className="w-full h-auto min-h-11 flex-col gap-2 rounded-lg border-2 border-dashed p-6 whitespace-normal hover:border-primary/40 hover:bg-primary-tint"
           >
-            <Upload className="w-6 h-6 text-muted-foreground" />
-            <span className="text-xs font-medium">Anexar documentos</span>
-            <div className="flex gap-1">
-              <Badge variant="outline" className="text-xs">PDF</Badge>
-              <Badge variant="outline" className="text-xs">DOC</Badge>
-              <Badge variant="outline" className="text-xs">TXT</Badge>
-              <Badge variant="outline" className="text-xs">ZIP</Badge>
-            </div>
-          </button>
-          <input ref={fileRef} type="file" multiple accept=".pdf,.doc,.docx,.txt,.zip" className="hidden" onChange={handleAddFiles} />
+            <Upload className="text-muted-foreground" aria-hidden="true" />
+            <span className="text-sm font-medium">Anexar documentos</span>
+            <span className="flex gap-1">
+              <Badge variant="muted">PDF</Badge>
+              <Badge variant="muted">DOC</Badge>
+              <Badge variant="muted">TXT</Badge>
+              <Badge variant="muted">ZIP</Badge>
+            </span>
+          </Button>
+          <input ref={fileRef} type="file" multiple accept=".pdf,.doc,.docx,.txt,.zip" className="hidden" onChange={handleAddFiles} aria-hidden="true" tabIndex={-1} />
         </div>
 
         {/* Divider */}
@@ -601,50 +604,57 @@ ${truncated}`
           <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center justify-center">
             <span className="bg-card px-2 text-xs text-muted-foreground">ou cole o texto</span>
           </div>
-          <div className="border-t border-border/40 my-3" />
+          <div className="border-t border-border my-3" />
         </div>
 
         {/* Paste area */}
-        <Textarea
-          value={textoColado}
-          onChange={e => setTextoColado(e.target.value)}
-          placeholder={config.uploadPlaceholder}
-          className="min-h-[150px] text-xs"
-        />
+        <div className="space-y-2">
+          <Label htmlFor="peticao-texto-colado" className="sr-only">Texto do documento</Label>
+          <Textarea
+            id="peticao-texto-colado"
+            value={textoColado}
+            onChange={e => setTextoColado(e.target.value)}
+            placeholder={config.uploadPlaceholder}
+            className="min-h-[150px]"
+          />
+        </div>
 
         {/* Concorrentes integration */}
-        <div className="bg-muted/30 rounded-lg border border-border/50 p-4 space-y-3">
-          <div className="flex items-center gap-2">
-            <Users className="w-4 h-4 text-muted-foreground" />
-            <span className="text-xs font-semibold">Dados da Inteligência de Concorrentes</span>
-            <Badge variant="outline" className="text-xs">Opcional</Badge>
+        <div className="rounded-md border border-border bg-muted/50 p-4 space-y-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Users className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+            <span className="text-sm font-semibold">Dados da Inteligência de Concorrentes</span>
+            <Badge variant="muted">Opcional</Badge>
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Selecione um concorrente da base para enriquecer a análise com dados já coletados (CNPJ, situação cadastral, etc.).
           </p>
           {loadingConcorrentes ? (
-            <p className="text-xs text-muted-foreground flex items-center gap-1">
-              <Loader2 className="w-3 h-3 animate-spin" /> Carregando concorrentes...
+            <p className="text-sm text-muted-foreground flex items-center gap-1" role="status">
+              <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Carregando concorrentes...
             </p>
           ) : concorrentes.length > 0 ? (
-            <Select value={concorrenteSelecionado} onValueChange={setConcorrenteSelecionado}>
-              <SelectTrigger className="text-xs">
-                <SelectValue placeholder="Selecionar concorrente da base..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Nenhum</SelectItem>
-                {concorrentes.map(c => (
-                  <SelectItem key={c.id} value={c.id}>
-                    <span className="flex items-center gap-2">
-                      <Building2 className="w-3 h-3" />
-                      {c.razao_social} — {c.cnpj}
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="space-y-2">
+              <Label htmlFor="peticao-concorrente" className="sr-only">Concorrente da base</Label>
+              <Select value={concorrenteSelecionado} onValueChange={setConcorrenteSelecionado}>
+                <SelectTrigger id="peticao-concorrente">
+                  <SelectValue placeholder="Selecionar concorrente da base..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nenhum</SelectItem>
+                  {concorrentes.map(c => (
+                    <SelectItem key={c.id} value={c.id}>
+                      <span className="flex items-center gap-2">
+                        <Building2 className="w-4 h-4" aria-hidden="true" />
+                        {c.razao_social} — {c.cnpj}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           ) : (
-            <p className="text-xs text-muted-foreground italic">
+            <p className="text-sm text-muted-foreground italic">
               Nenhum concorrente cadastrado. Acesse Inteligência → Concorrentes para adicionar.
             </p>
           )}
@@ -654,12 +664,12 @@ ${truncated}`
         <Button
           onClick={handleExtract}
           disabled={extracting || (arquivos.length === 0 && !textoColado.trim() && !concorrenteAnalise)}
-          className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
+          className="w-full"
         >
           {extracting ? (
-            <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {progress || 'Analisando...'}</>
+            <><Loader2 className="animate-spin" aria-hidden="true" /> {progress || 'Analisando...'}</>
           ) : (
-            <><Sparkles className="w-4 h-4 mr-2" /> Extrair Fatos Jurídicos com IA</>
+            <><Sparkles aria-hidden="true" /> Extrair Fatos Jurídicos com IA</>
           )}
         </Button>
       </div>
@@ -671,23 +681,23 @@ ${truncated}`
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-muted text-foreground text-xs font-bold">2</div>
-          <h4 className="text-sm font-semibold">Etapa 2 — Revisão dos Fatos Jurídicos</h4>
+          <span className="flex items-center justify-center w-7 h-7 rounded-full bg-primary-tint text-primary text-xs font-bold" aria-hidden="true">2</span>
+          <h4 className="text-base font-semibold">Etapa 2 — Revisão dos Fatos Jurídicos</h4>
         </div>
-        <Button variant="ghost" size="sm" onClick={() => setStep(1)} className="text-xs">
-          <ChevronLeft className="w-3 h-3 mr-1" /> Voltar
+        <Button variant="ghost" size="sm" onClick={() => setStep(1)}>
+          <ChevronLeft aria-hidden="true" /> Voltar
         </Button>
       </div>
 
-      <p className="text-xs text-muted-foreground">
+      <p className="text-sm text-muted-foreground">
         Revise os fatos extraídos pela IA. Desmarque os que não deseja incluir e adicione fatos manualmente.
       </p>
 
       {/* Stats */}
-      <div className="flex gap-3 flex-wrap">
-        <Badge variant="outline" className="text-xs">{fatos.length} identificado(s)</Badge>
-        <Badge className="bg-muted text-foreground border-border text-xs">{selectedCount} selecionado(s)</Badge>
-        <Badge variant="outline" className="text-xs">{fatos.filter(f => f.origem === 'manual').length} manual(is)</Badge>
+      <div className="flex gap-2 flex-wrap">
+        <Badge variant="info" className="tabular-nums">{fatos.length} identificado(s)</Badge>
+        <Badge variant="success" className="tabular-nums">{selectedCount} selecionado(s)</Badge>
+        <Badge variant="muted" className="tabular-nums">{fatos.filter(f => f.origem === 'manual').length} manual(is)</Badge>
       </div>
 
       {/* Fatos list */}
@@ -695,89 +705,106 @@ ${truncated}`
         {fatos.map(item => (
           <div
             key={item.id}
-            className={`rounded-lg border p-3 space-y-2 transition-all ${
-              item.selecionado ? 'bg-card border-border' : 'bg-muted/20 border-border/30 opacity-60'
+            className={`rounded-md border p-3 space-y-2 transition-colors ${
+              item.selecionado ? 'bg-card border-border' : 'bg-muted/50 border-border opacity-60'
             }`}
           >
             <div className="flex items-start gap-3">
-              <Checkbox checked={item.selecionado} onCheckedChange={() => toggleFato(item.id)} className="mt-0.5" />
-              <div className="flex-1 min-w-0 space-y-1.5">
+              <Checkbox
+                checked={item.selecionado}
+                onCheckedChange={() => toggleFato(item.id)}
+                className="mt-0.5"
+                aria-label={`Incluir fato: ${item.descricao.slice(0, 60)}`}
+              />
+              <div className="flex-1 min-w-0 space-y-2">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <Badge className={`text-xs border ${GRAVIDADE_COLORS[item.gravidade]}`}>
-                    <AlertTriangle className="w-2.5 h-2.5 mr-0.5" />
+                  <Badge variant={GRAVIDADE_VARIANTE[item.gravidade]} className="gap-1">
+                    <AlertTriangle className="w-3 h-3" aria-hidden="true" />
                     {GRAVIDADE_LABELS[item.gravidade]}
                   </Badge>
-                  <Badge variant="outline" className="text-xs">
-                    {item.origem === 'ia' ? '🤖 IA' : item.origem === 'concorrente' ? '🏢 Concorrente' : '✏️ Manual'}
+                  <Badge variant="muted">
+                    {item.origem === 'ia' ? 'IA' : item.origem === 'concorrente' ? 'Concorrente' : 'Manual'}
                   </Badge>
-                  <Badge variant="outline" className="text-xs bg-muted">{item.categoria}</Badge>
+                  <Badge variant="info">{item.categoria}</Badge>
                 </div>
-                <p className="text-xs text-foreground leading-relaxed">{item.descricao}</p>
-                <p className="text-xs text-muted-foreground leading-relaxed italic">📖 {item.fundamentacao}</p>
+                <p className="text-sm text-foreground">{item.descricao}</p>
+                <p className="text-sm text-muted-foreground italic">{item.fundamentacao}</p>
               </div>
-              <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 text-muted-foreground hover:text-destructive" onClick={() => removeFato(item.id)}>
-                <Trash2 className="w-3 h-3" />
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0 shrink-0 text-muted-foreground hover:text-destructive hover:bg-destructive-tint"
+                onClick={() => removeFato(item.id)}
+                aria-label="Remover fato"
+              >
+                <Trash2 aria-hidden="true" />
               </Button>
             </div>
           </div>
         ))}
 
         {fatos.length === 0 && (
-          <div className="text-center py-8 text-muted-foreground">
-            <AlertTriangle className="w-8 h-8 mx-auto mb-2 opacity-30" />
-            <p className="text-xs">Nenhum fato identificado. Adicione manualmente abaixo.</p>
+          <div className="flex flex-col items-center text-center py-8 gap-3">
+            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
+              <AlertTriangle className="w-6 h-6" aria-hidden="true" />
+            </span>
+            <p className="text-base font-semibold">Nenhum fato identificado</p>
+            <p className="text-sm text-muted-foreground">Adicione manualmente abaixo.</p>
           </div>
         )}
       </div>
 
       {/* Manual add */}
       {showManualForm ? (
-        <div className="bg-muted/30 rounded-lg border border-border/50 p-4 space-y-3">
+        <div className="rounded-md border border-border bg-muted/50 p-4 space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <h5 className="text-xs font-semibold flex items-center gap-1">
-              <Plus className="w-3.5 h-3.5" /> Adicionar Fato Jurídico Manual
+            <h5 className="text-base font-semibold flex items-center gap-1">
+              <Plus className="w-4 h-4" aria-hidden="true" /> Adicionar Fato Jurídico Manual
             </h5>
-            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setShowManualForm(false)}>
-              <X className="w-3 h-3" />
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setShowManualForm(false)} aria-label="Fechar formulário manual">
+              <X aria-hidden="true" />
             </Button>
           </div>
-          <div>
-            <label className="text-xs text-muted-foreground">Descrição do fato *</label>
+          <div className="space-y-2">
+            <Label htmlFor="peticao-manual-desc">Descrição do fato *</Label>
             <Textarea
+              id="peticao-manual-desc"
               value={manualDesc}
               onChange={e => setManualDesc(e.target.value)}
               placeholder="Descreva o fato jurídico, irregularidade ou argumento..."
-              className="mt-1 min-h-[80px] text-xs"
+              className="min-h-[80px]"
             />
           </div>
-          <div>
-            <label className="text-xs text-muted-foreground">Fundamentação jurídica</label>
+          <div className="space-y-2">
+            <Label htmlFor="peticao-manual-fund">Fundamentação jurídica</Label>
             <Textarea
+              id="peticao-manual-fund"
               value={manualFund}
               onChange={e => setManualFund(e.target.value)}
               placeholder="Cite artigos da Lei 14.133/2021, jurisprudência TCU..."
-              className="mt-1 min-h-[60px] text-xs"
+              className="min-h-[60px]"
             />
           </div>
-          <div>
-            <label className="text-xs text-muted-foreground">Gravidade</label>
-            <select
-              value={manualGrav}
-              onChange={e => setManualGrav(e.target.value as 'alta' | 'media' | 'baixa')}
-              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs"
-            >
-              <option value="alta">🔴 Alta — Ilegalidade clara</option>
-              <option value="media">🟡 Média — Vício relevante</option>
-              <option value="baixa">🔵 Baixa — Irregularidade menor</option>
-            </select>
+          <div className="space-y-2">
+            <Label htmlFor="peticao-manual-grav">Gravidade</Label>
+            <Select value={manualGrav} onValueChange={v => setManualGrav(v as 'alta' | 'media' | 'baixa')}>
+              <SelectTrigger id="peticao-manual-grav">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="alta">Alta — Ilegalidade clara</SelectItem>
+                <SelectItem value="media">Média — Vício relevante</SelectItem>
+                <SelectItem value="baixa">Baixa — Irregularidade menor</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <Button size="sm" onClick={addManual} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-            <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar
+          <Button onClick={addManual}>
+            <Plus aria-hidden="true" /> Adicionar
           </Button>
         </div>
       ) : (
-        <Button variant="outline" size="sm" onClick={() => setShowManualForm(true)} className="w-full border-dashed">
-          <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar fato jurídico manual
+        <Button variant="outline" onClick={() => setShowManualForm(true)} className="w-full border-dashed">
+          <Plus aria-hidden="true" /> Adicionar fato jurídico manual
         </Button>
       )}
 
@@ -785,9 +812,9 @@ ${truncated}`
       <Button
         onClick={handleFinish}
         disabled={selectedCount === 0}
-        className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
+        className="w-full"
       >
-        <ChevronRight className="w-4 h-4 mr-1" />
+        <ChevronRight aria-hidden="true" />
         Prosseguir com {selectedCount} fato(s) para geração do documento
       </Button>
     </div>

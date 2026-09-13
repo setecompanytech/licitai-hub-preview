@@ -15,7 +15,8 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Printer, Sparkles, Loader2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Printer, Sparkles } from "lucide-react";
 import { useEmpresaId } from "@/hooks/useFinanceiro";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useQuery } from "@tanstack/react-query";
@@ -44,6 +45,10 @@ type ContaSaldo = {
   saldo_atual: number;
   limite: number;
 };
+
+const TH = "px-3 py-2 text-sm font-semibold text-foreground";
+const TD = "px-3 py-2";
+const SECAO = "text-lg font-semibold mb-3";
 
 export default function FinResumoExecutivo() {
   const empresaId = useEmpresaId();
@@ -127,43 +132,49 @@ export default function FinResumoExecutivo() {
   });
 
   if (isLoading || !data) {
-    return <div className="h-64 grid place-items-center"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
+    return (
+      <div className="space-y-4 max-w-5xl mx-auto" role="status" aria-label="Carregando resumo executivo">
+        <Skeleton className="h-11 w-56 ml-auto" />
+        <Skeleton className="h-[32rem]" />
+      </div>
+    );
   }
 
   return (
     <div className="space-y-4">
       <div className="flex justify-end print:hidden">
-        <Button onClick={() => window.print()} variant="outline" size="sm">
-          <Printer className="w-4 h-4 mr-1.5" /> Imprimir / Salvar PDF
+        <Button onClick={() => window.print()} variant="outline">
+          <Printer className="w-4 h-4" aria-hidden="true" /> Imprimir / Salvar PDF
         </Button>
       </div>
 
-      <div className="bg-background border rounded-lg p-8 print:border-0 print:p-0 print:shadow-none space-y-6 max-w-5xl mx-auto">
-        {/* Cabeçalho */}
-        <header className="border-b pb-4">
-          <div className="flex items-center justify-between gap-4">
+      <div className="rounded-lg border border-border bg-card p-6 md:p-8 shadow-sm print:border-0 print:p-0 print:shadow-none space-y-8 max-w-5xl mx-auto">
+        {/* Cabeçalho do documento — a página já tem o h1 do módulo, este é o
+            título do documento impresso. */}
+        <header className="border-b border-border pb-4">
+          <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold">Resumo Executivo de Finanças</h1>
-              <p className="text-sm font-medium mt-1">{empresaAtiva?.razao_social}</p>
+              <h2 className="text-2xl font-bold">Resumo Executivo de Finanças</h2>
+              <p className="text-base font-medium mt-1">{empresaAtiva?.razao_social}</p>
               {empresaAtiva?.cnpj && (
-                <p className="text-xs text-muted-foreground">CNPJ: {formatDocumento(empresaAtiva.cnpj)}</p>
+                <p className="text-sm text-muted-foreground">CNPJ: {formatDocumento(empresaAtiva.cnpj)}</p>
               )}
             </div>
-            <div className="text-right text-xs text-muted-foreground">
+            <div className="text-right text-sm text-muted-foreground">
               <p>Posição em</p>
-              <p className="font-medium">{format(new Date(), "dd/MM/yyyy", { locale: ptBR })}</p>
-              <p className="text-xs">{format(new Date(), "HH:mm:ss")}</p>
+              <p className="font-medium text-foreground tabular-nums">{format(new Date(), "dd/MM/yyyy", { locale: ptBR })}</p>
+              <p className="text-xs tabular-nums">{format(new Date(), "HH:mm:ss")}</p>
             </div>
           </div>
-          <p className="text-xs text-muted-foreground mt-3">
+          <p className="text-sm text-muted-foreground mt-3">
             Veja abaixo o resumo das contas a pagar, contas a receber e contas correntes da sua empresa.
           </p>
         </header>
 
         {/* 1. Posição financeira */}
         <section>
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">Posição financeira atual</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <h3 className={SECAO}>Posição financeira atual</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <KpiBox label="Saldo em contas" value={data.saldoTotal} />
             <KpiBox label="A receber" value={data.totalCR} tone="success" />
             <KpiBox label="A pagar" value={data.totalCP} tone="danger" />
@@ -173,96 +184,100 @@ export default function FinResumoExecutivo() {
 
         {/* 2. Resultado do mês */}
         <section>
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">Resultado do mês corrente</h2>
-          <table className="w-full text-sm">
-            <tbody>
-              <tr className="border-b"><td className="py-2">(+) Receitas realizadas</td><td className="text-right tabular-nums text-success">{formatBRL(data.receitaMes)}</td></tr>
-              <tr className="border-b"><td className="py-2">(−) Despesas realizadas</td><td className="text-right tabular-nums text-destructive">({formatBRL(data.despesaMes)})</td></tr>
-              <tr className="border-b-2 border-foreground font-semibold"><td className="py-2">(=) Resultado líquido do mês</td><td className={`text-right tabular-nums ${data.resultadoMes >= 0 ? "text-success" : "text-destructive"}`}>{formatBRL(data.resultadoMes)}</td></tr>
-            </tbody>
-          </table>
+          <h3 className={SECAO}>Resultado do mês corrente</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <tbody>
+                <tr className="border-b border-border"><td className="py-2">(+) Receitas realizadas</td><td className="py-2 text-right tabular-nums text-success">{formatBRL(data.receitaMes)}</td></tr>
+                <tr className="border-b border-border"><td className="py-2">(−) Despesas realizadas</td><td className="py-2 text-right tabular-nums text-destructive">({formatBRL(data.despesaMes)})</td></tr>
+                <tr className="border-b-2 border-foreground font-semibold"><td className="py-2">(=) Resultado líquido do mês</td><td className={`py-2 text-right tabular-nums ${data.resultadoMes >= 0 ? "text-success" : "text-destructive"}`}>{formatBRL(data.resultadoMes)}</td></tr>
+              </tbody>
+            </table>
+          </div>
         </section>
 
         {/* 3. Detalhe Contas a Pagar */}
         <section>
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-2">Resumo das Contas a Pagar</h2>
-          <p className="text-xs text-muted-foreground mb-2">Todas as contas a pagar atrasadas ou a vencer na data atual</p>
+          <h3 className="text-lg font-semibold mb-1">Resumo das Contas a Pagar</h3>
+          <p className="text-sm text-muted-foreground mb-3">Todas as contas a pagar atrasadas ou a vencer na data atual</p>
           <TabelaLancamentos lancs={data.detalheCP} tipo="pagar" total={data.totalCP} />
         </section>
 
         {/* 4. Detalhe Contas a Receber */}
         <section>
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-2">Resumo das Contas a Receber</h2>
-          <p className="text-xs text-muted-foreground mb-2">Todas as contas a receber atrasadas ou a vencer na data atual</p>
+          <h3 className="text-lg font-semibold mb-1">Resumo das Contas a Receber</h3>
+          <p className="text-sm text-muted-foreground mb-3">Todas as contas a receber atrasadas ou a vencer na data atual</p>
           <TabelaLancamentos lancs={data.detalheCR} tipo="receber" total={data.totalCR} />
         </section>
 
         {/* 5. Contas Correntes */}
         <section>
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-2">Resumo das Contas Correntes</h2>
-          <p className="text-xs text-muted-foreground mb-2">Saldo atual das contas correntes (consideradas no Resumo Financeiro)</p>
-          <table className="w-full text-xs border">
-            <thead className="bg-muted/40">
-              <tr>
-                <th className="px-2 py-1.5 text-left">Tipo de Conta</th>
-                <th className="px-2 py-1.5 text-left">Conta Corrente</th>
-                <th className="px-2 py-1.5 text-right">Valor do Limite</th>
-                <th className="px-2 py-1.5 text-right">Saldo Atual</th>
-                <th className="px-2 py-1.5 text-right">Saldo Disponível</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.contas.length === 0 ? (
-                <tr><td colSpan={5} className="text-center py-4 text-muted-foreground">Nenhuma conta corrente ativa.</td></tr>
-              ) : data.contas.map((c) => {
-                const negativo = Number(c.saldo_atual) < 0;
-                return (
-                  <tr key={c.id} className="border-t">
-                    <td className="px-2 py-1.5">{c.tipo ?? "Conta Corrente"}</td>
-                    <td className="px-2 py-1.5">
-                      <div className="font-medium">{c.nome}</div>
-                      {(c.banco || c.agencia || c.conta) && (
-                        <div className="text-xs text-muted-foreground">
-                          {[c.banco, c.agencia ? `Ag: ${c.agencia}` : null, c.conta ? `Conta: ${c.conta}` : null].filter(Boolean).join(" · ")}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-2 py-1.5 text-right tabular-nums">{formatBRL(Number(c.limite ?? 0))}</td>
-                    <td className={`px-2 py-1.5 text-right tabular-nums ${negativo ? "text-destructive" : "text-info"}`}>
-                      {formatBRL(Number(c.saldo_atual ?? 0))}
-                    </td>
-                    <td className={`px-2 py-1.5 text-right tabular-nums ${negativo ? "text-destructive" : "text-info"}`}>
-                      {formatBRL(Number(c.saldo_atual ?? 0) + Number(c.limite ?? 0))}
-                    </td>
-                  </tr>
-                );
-              })}
-              <tr className="border-t-2 border-foreground font-semibold bg-muted/30">
-                <td colSpan={2} className="px-2 py-1.5">Total ({data.contas.length})</td>
-                <td className="px-2 py-1.5 text-right tabular-nums">{formatBRL(data.limiteTotal)}</td>
-                <td className="px-2 py-1.5 text-right tabular-nums">{formatBRL(data.saldoTotal)}</td>
-                <td className="px-2 py-1.5 text-right tabular-nums">{formatBRL(data.saldoTotal + data.limiteTotal)}</td>
-              </tr>
-            </tbody>
-          </table>
+          <h3 className="text-lg font-semibold mb-1">Resumo das Contas Correntes</h3>
+          <p className="text-sm text-muted-foreground mb-3">Saldo atual das contas correntes (consideradas no Resumo Financeiro)</p>
+          <div className="overflow-x-auto rounded-lg border border-border">
+            <table className="w-full text-sm">
+              <thead className="bg-muted">
+                <tr>
+                  <th className={`${TH} text-left`}>Tipo de Conta</th>
+                  <th className={`${TH} text-left`}>Conta Corrente</th>
+                  <th className={`${TH} text-right`}>Valor do Limite</th>
+                  <th className={`${TH} text-right`}>Saldo Atual</th>
+                  <th className={`${TH} text-right`}>Saldo Disponível</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.contas.length === 0 ? (
+                  <tr><td colSpan={5} className="text-center py-4 text-muted-foreground">Nenhuma conta corrente ativa.</td></tr>
+                ) : data.contas.map((c) => {
+                  const negativo = Number(c.saldo_atual) < 0;
+                  return (
+                    <tr key={c.id} className="border-t border-border">
+                      <td className={TD}>{c.tipo ?? "Conta Corrente"}</td>
+                      <td className={TD}>
+                        <div className="font-medium">{c.nome}</div>
+                        {(c.banco || c.agencia || c.conta) && (
+                          <div className="text-xs text-muted-foreground">
+                            {[c.banco, c.agencia ? `Ag: ${c.agencia}` : null, c.conta ? `Conta: ${c.conta}` : null].filter(Boolean).join(" · ")}
+                          </div>
+                        )}
+                      </td>
+                      <td className={`${TD} text-right tabular-nums`}>{formatBRL(Number(c.limite ?? 0))}</td>
+                      <td className={`${TD} text-right tabular-nums ${negativo ? "text-destructive" : "text-info"}`}>
+                        {formatBRL(Number(c.saldo_atual ?? 0))}
+                      </td>
+                      <td className={`${TD} text-right tabular-nums ${negativo ? "text-destructive" : "text-info"}`}>
+                        {formatBRL(Number(c.saldo_atual ?? 0) + Number(c.limite ?? 0))}
+                      </td>
+                    </tr>
+                  );
+                })}
+                <tr className="border-t-2 border-foreground font-semibold bg-muted">
+                  <td colSpan={2} className={TD}>Total ({data.contas.length})</td>
+                  <td className={`${TD} text-right tabular-nums`}>{formatBRL(data.limiteTotal)}</td>
+                  <td className={`${TD} text-right tabular-nums`}>{formatBRL(data.saldoTotal)}</td>
+                  <td className={`${TD} text-right tabular-nums`}>{formatBRL(data.saldoTotal + data.limiteTotal)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </section>
 
         {/* 6. Indicadores */}
         <section>
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">Indicadores de saúde</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <h3 className={SECAO}>Indicadores de saúde</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card>
-              <CardContent className="p-3">
-                <p className="text-xs text-muted-foreground">Inadimplência (em atraso)</p>
+              <CardContent className="p-4">
+                <p className="text-sm text-muted-foreground">Inadimplência (em atraso)</p>
                 <p className="text-lg font-semibold tabular-nums">{formatBRL(data.inadimplencia)}</p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground tabular-nums">
                   {data.totalCR > 0 ? ((data.inadimplencia / data.totalCR) * 100).toFixed(1) : 0}% do total a receber
                 </p>
               </CardContent>
             </Card>
             <Card>
-              <CardContent className="p-3">
-                <p className="text-xs text-muted-foreground">Margem do mês</p>
+              <CardContent className="p-4">
+                <p className="text-sm text-muted-foreground">Margem do mês</p>
                 <p className="text-lg font-semibold tabular-nums">
                   {data.receitaMes > 0 ? ((data.resultadoMes / data.receitaMes) * 100).toFixed(1) : 0}%
                 </p>
@@ -272,8 +287,8 @@ export default function FinResumoExecutivo() {
           </div>
         </section>
 
-        <footer className="border-t pt-4 text-xs text-muted-foreground flex items-center gap-1.5">
-          <Sparkles className="w-3 h-3" />
+        <footer className="border-t border-border pt-4 text-xs text-muted-foreground flex items-center gap-2">
+          <Sparkles className="w-3 h-3" aria-hidden="true" />
           Documento gerado automaticamente pelo PRAEFECTUS · Confidencial · Uso restrito à diretoria
         </footer>
       </div>
@@ -286,9 +301,9 @@ function KpiBox({ label, value, tone }: { label: string; value: number; tone?: "
     : tone === "danger" ? "text-destructive"
     : "text-foreground";
   return (
-    <div className="rounded-md border p-3">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className={`text-xl font-bold tabular-nums ${cor}`}>{formatBRL(value)}</p>
+    <div className="rounded-lg border border-border bg-card p-4">
+      <p className="text-sm text-muted-foreground">{label}</p>
+      <p className={`mt-1 text-2xl font-bold tabular-nums ${cor}`}>{formatBRL(value)}</p>
     </div>
   );
 }
@@ -299,52 +314,54 @@ function TabelaLancamentos({ lancs, tipo, total }: { lancs: LancDetalhe[]; tipo:
   const corValor = tipo === "pagar" ? "text-destructive" : "text-success";
 
   if (lancs.length === 0) {
-    return <p className="text-xs text-muted-foreground italic py-3">Nenhum lançamento em aberto.</p>;
+    return <p className="text-sm text-muted-foreground py-3">Nenhum lançamento em aberto.</p>;
   }
 
   return (
-    <table className="w-full text-xs border">
-      <thead className="bg-muted/40">
-        <tr>
-          <th className="px-2 py-1.5 text-left w-24">Situação</th>
-          <th className="px-2 py-1.5 text-left">{labelPessoa}</th>
-          <th className="px-2 py-1.5 text-left w-32">{labelData}</th>
-          <th className="px-2 py-1.5 text-right w-32">Valor</th>
-        </tr>
-      </thead>
-      <tbody>
-        {lancs.slice(0, 30).map((l) => (
-          <tr key={l.id} className="border-t">
-            <td className="px-2 py-1.5">
-              {l.status === "em_atraso" ? (
-                <Badge variant="destructive" className="text-xs px-1.5 py-0 h-4">Atrasado</Badge>
-              ) : (
-                <Badge variant="outline" className="text-xs px-1.5 py-0 h-4">A vencer</Badge>
-              )}
-              {l.diasAtraso > 0 && <span className="ml-1 text-xs text-muted-foreground">{l.diasAtraso}d</span>}
-            </td>
-            <td className="px-2 py-1.5">
-              <div className="font-medium truncate max-w-md">{l.pessoa}</div>
-              {l.descricao && <div className="text-xs text-muted-foreground truncate max-w-md">{l.descricao}</div>}
-            </td>
-            <td className="px-2 py-1.5 tabular-nums">
-              {l.data_vencimento ? format(new Date(l.data_vencimento + "T00:00:00"), "dd/MM/yyyy") : "—"}
-            </td>
-            <td className={`px-2 py-1.5 text-right tabular-nums font-medium ${corValor}`}>{formatBRL(l.valor)}</td>
+    <div className="overflow-x-auto rounded-lg border border-border">
+      <table className="w-full text-sm">
+        <thead className="bg-muted">
+          <tr>
+            <th className={`${TH} text-left w-32`}>Situação</th>
+            <th className={`${TH} text-left`}>{labelPessoa}</th>
+            <th className={`${TH} text-left w-40`}>{labelData}</th>
+            <th className={`${TH} text-right w-36`}>Valor</th>
           </tr>
-        ))}
-        {lancs.length > 30 && (
-          <tr className="border-t bg-muted/20">
-            <td colSpan={4} className="px-2 py-1.5 text-center text-xs text-muted-foreground italic">
-              +{lancs.length - 30} lançamento(s) adicional(is) — exibindo os 30 com vencimento mais próximo
-            </td>
+        </thead>
+        <tbody>
+          {lancs.slice(0, 30).map((l) => (
+            <tr key={l.id} className="border-t border-border">
+              <td className={`${TD} whitespace-nowrap`}>
+                {l.status === "em_atraso" ? (
+                  <Badge variant="danger">Atrasado</Badge>
+                ) : (
+                  <Badge variant="info">A vencer</Badge>
+                )}
+                {l.diasAtraso > 0 && <span className="ml-1 text-xs text-muted-foreground tabular-nums">{l.diasAtraso}d</span>}
+              </td>
+              <td className={TD}>
+                <div className="font-medium truncate max-w-md">{l.pessoa}</div>
+                {l.descricao && <div className="text-xs text-muted-foreground truncate max-w-md">{l.descricao}</div>}
+              </td>
+              <td className={`${TD} tabular-nums whitespace-nowrap`}>
+                {l.data_vencimento ? format(new Date(l.data_vencimento + "T00:00:00"), "dd/MM/yyyy") : "—"}
+              </td>
+              <td className={`${TD} text-right tabular-nums font-medium whitespace-nowrap ${corValor}`}>{formatBRL(l.valor)}</td>
+            </tr>
+          ))}
+          {lancs.length > 30 && (
+            <tr className="border-t border-border bg-muted/50">
+              <td colSpan={4} className={`${TD} text-center text-xs text-muted-foreground`}>
+                +{lancs.length - 30} lançamento(s) adicional(is) — exibindo os 30 com vencimento mais próximo
+              </td>
+            </tr>
+          )}
+          <tr className="border-t-2 border-foreground font-semibold bg-muted">
+            <td colSpan={3} className={TD}>Total ({lancs.length})</td>
+            <td className={`${TD} text-right tabular-nums ${corValor}`}>{formatBRL(total)}</td>
           </tr>
-        )}
-        <tr className="border-t-2 border-foreground font-semibold bg-muted/30">
-          <td colSpan={3} className="px-2 py-1.5">Total ({lancs.length})</td>
-          <td className={`px-2 py-1.5 text-right tabular-nums ${corValor}`}>{formatBRL(total)}</td>
-        </tr>
-      </tbody>
-    </table>
+        </tbody>
+      </table>
+    </div>
   );
 }

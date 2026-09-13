@@ -28,39 +28,41 @@ export default function AcessoManualPortal() {
   const [aberto, setAberto] = useState(false);
 
   return (
-    <div className="border border-border/50 rounded-lg overflow-hidden">
+    <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
       <button
         type="button"
         onClick={() => setAberto(!aberto)}
-        className="w-full flex items-center justify-between bg-muted/30 px-4 py-3 text-left hover:bg-muted/40 transition-colors"
+        aria-expanded={aberto}
+        className="w-full flex items-center justify-between gap-3 px-6 py-4 text-left hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
       >
-        <div className="flex items-center gap-2">
-          <Route className="w-4 h-4 text-muted-foreground" />
-          <h4 className="text-sm font-semibold">Como entrar no portal manualmente</h4>
-          <span className="text-xs text-muted-foreground hidden sm:inline">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
+          <Route className="w-5 h-5 text-muted-foreground shrink-0" aria-hidden="true" />
+          <h3 className="text-lg font-semibold">Como entrar no portal manualmente</h3>
+          <span className="text-sm text-muted-foreground hidden sm:inline">
             o caminho certo, e o que não fazer
           </span>
         </div>
         <ChevronDown
-          className={`w-4 h-4 text-muted-foreground transition-transform ${aberto ? 'rotate-180' : ''}`}
+          aria-hidden="true"
+          className={`w-5 h-5 text-muted-foreground shrink-0 transition-transform ${aberto ? 'rotate-180' : ''}`}
         />
       </button>
 
       {aberto && (
-        <div className="p-5 space-y-4">
+        <div className="border-t border-border p-6 space-y-4">
           <div>
-            <p className="text-sm font-medium mb-2">Compras.gov.br — o caminho que funciona</p>
-            <ol className="text-sm text-muted-foreground space-y-1.5 list-decimal list-inside">
+            <p className="text-base font-medium mb-2">Compras.gov.br — o caminho que funciona</p>
+            <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
               <li>
                 Abra{' '}
                 <a
                   href="https://www.comprasnet.gov.br/seguro/loginPortalUASG.asp"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-accent hover:underline inline-flex items-center gap-1 font-mono text-xs"
+                  className="text-primary hover:underline inline-flex items-center gap-1 font-mono text-xs"
                 >
                   comprasnet.gov.br/seguro/loginPortalUASG.asp
-                  <ExternalLink className="w-3 h-3" />
+                  <ExternalLink className="w-3 h-3" aria-hidden="true" />
                 </a>
               </li>
               <li>Escolha o perfil <strong>Fornecedor Brasileiro</strong></li>
@@ -71,18 +73,18 @@ export default function AcessoManualPortal() {
           </div>
 
           {/* O erro que a intuição comete: ir pelo endereço que parece o certo. */}
-          <div className="bg-muted/40 border border-border/50 rounded-lg p-3">
-            <p className="text-xs text-muted-foreground">
+          <div className="bg-muted border border-border rounded-lg p-4">
+            <p className="text-sm text-muted-foreground">
               <strong className="text-foreground">Não vá por <code>compras.gov.br</code>.</strong>{' '}
               Aquele endereço leva ao site institucional, que é conteúdo — não ao sistema onde se
               disputa. Verificado em 09/09/2026: três portas foram testadas até achar esta.
             </p>
           </div>
 
-          <div className="bg-warning/10 border border-warning/20 rounded-lg p-3">
+          <div className="bg-warning-tint border border-warning-line rounded-lg p-4">
             <div className="flex items-start gap-2">
-              <ShieldAlert className="w-4 h-4 text-warning shrink-0 mt-0.5" />
-              <div className="text-xs text-muted-foreground space-y-1.5">
+              <ShieldAlert className="w-4 h-4 text-warning-ink shrink-0 mt-0.5" aria-hidden="true" />
+              <div className="text-sm text-muted-foreground space-y-2">
                 <p className="font-medium text-foreground">
                   Não instale o certificado no seu navegador
                 </p>
@@ -105,17 +107,17 @@ export default function AcessoManualPortal() {
           </div>
 
           <div>
-            <p className="text-sm font-medium mb-1.5">Portal de Compras Públicas</p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-base font-medium mb-2">Portal de Compras Públicas</p>
+            <p className="text-sm text-muted-foreground">
               Entra por{' '}
               <a
                 href="https://operacao.portaldecompraspublicas.com.br/18/loginext/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-accent hover:underline inline-flex items-center gap-1 font-mono"
+                className="text-primary hover:underline inline-flex items-center gap-1 font-mono text-xs"
               >
                 operacao.portaldecompraspublicas.com.br/18/loginext/
-                <ExternalLink className="w-3 h-3" />
+                <ExternalLink className="w-3 h-3" aria-hidden="true" />
               </a>{' '}
               — usuário e senha, sem certificado. Os processos ficam em{' '}
               <strong>Processo → Seus Processos</strong>.

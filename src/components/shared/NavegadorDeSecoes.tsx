@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ArrowUp, ChevronDown } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 /**
@@ -91,8 +92,14 @@ export default function NavegadorDeSecoes() {
 
   return (
     <div className="nao-imprime fixed bottom-5 left-1/2 -translate-x-1/2 z-40 hidden sm:block">
-      <button
+      {/* Identidade 12/09: é o Button outline de ui (44px, foco visível, fundo
+          claro) em forma de pílula — não uma pílula navy nem um <button> cru
+          com cor própria. O botão flutua sobre a página, e uma mancha escura
+          seguindo a rolagem pesava mais que o próprio conteúdo; borda e sombra
+          média bastam para descolar do fundo. */}
+      <Button
         type="button"
+        variant="outline"
         onClick={() =>
           fim
             ? irPara(0)
@@ -100,14 +107,9 @@ export default function NavegadorDeSecoes() {
         }
         aria-label={fim ? 'Voltar ao topo da página' : `Ir para a seção ${proxima?.nome}`}
         className={cn(
-          'group flex items-center gap-2 rounded-full py-2 pl-4 pr-3',
-          // 95 e não 92: a escala de opacidade do Tailwind vai de 5 em 5, e um
-          // valor fora dela não gera classe — o botão sairia transparente.
-          'bg-navy/95 text-white backdrop-blur-sm ring-1 ring-white/15',
-          'shadow-lg transition-[transform,box-shadow,background-color] duration-200',
-          'hover:bg-navy hover:-translate-y-0.5 hover:shadow-xl',
-          'active:translate-y-0 active:duration-75',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60',
+          'group rounded-full pl-4 pr-3 shadow-md',
+          'transition-[transform,box-shadow,background-color,border-color] duration-200',
+          'hover:-translate-y-0.5 active:translate-y-0 active:duration-75',
           'motion-reduce:transform-none motion-reduce:transition-none',
         )}
       >
@@ -115,28 +117,28 @@ export default function NavegadorDeSecoes() {
           {fim ? 'Voltar ao topo' : proxima?.nome}
         </span>
         {fim ? (
-          <ArrowUp className="w-4 h-4 shrink-0" aria-hidden="true" />
+          <ArrowUp className="shrink-0 text-primary" aria-hidden="true" />
         ) : (
           <ChevronDown
-            className="w-4 h-4 shrink-0 transition-transform duration-200 group-hover:translate-y-0.5 motion-reduce:transform-none"
+            className="shrink-0 text-primary transition-transform duration-200 group-hover:translate-y-0.5 motion-reduce:transform-none"
             aria-hidden="true"
           />
         )}
 
         {/* Progresso: um traço por seção. Diz quanto falta sem ocupar espaço —
             e é a única parte que continua legível de canto de olho. */}
-        <span aria-hidden="true" className="flex items-center gap-1 ml-1 pl-2 border-l border-white/20">
+        <span aria-hidden="true" className="flex items-center gap-1 ml-1 pl-2 border-l border-border">
           {secoes.map((s, i) => (
             <span
               key={s.nome}
               className={cn(
                 'h-1 rounded-full transition-all duration-300',
-                i === indice ? 'w-3 bg-white' : 'w-1 bg-white/35',
+                i === indice ? 'w-3 bg-primary' : 'w-1 bg-border',
               )}
             />
           ))}
         </span>
-      </button>
+      </Button>
     </div>
   );
 }

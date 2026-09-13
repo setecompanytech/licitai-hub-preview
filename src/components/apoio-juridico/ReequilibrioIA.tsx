@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -21,7 +23,7 @@ import { ChecklistFatoGerador } from './ChecklistFatoGerador';
 import {
   TrendingUp, Search, Sparkles, RefreshCw, Scale, Loader2, ArrowRight,
   DollarSign, Users, Building2, FileText, AlertTriangle, CloudRain, Flame,
-  FileDown, Plus, Trash2, Receipt, Quote, Paperclip, BookOpen, FolderOpen, Hash,
+  FileDown, Plus, Trash2, Receipt, Quote, Paperclip, BookOpen, FolderOpen, Hash, X,
 } from 'lucide-react';
 
 /* ── Tipo de instrumento contratual ── */
@@ -492,24 +494,27 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
           indice.categoria === 'salario' ? Users :
           indice.categoria === 'juros' ? DollarSign : TrendingUp;
         return (
-          <div
+          <Button
+            type="button"
             key={indice.id}
-            className={`bg-card rounded-xl border p-4 shadow-sm transition-all cursor-pointer ${
-              isSelected ? 'border-accent ring-1 ring-accent/30' : 'border-border/50 hover:border-accent/30'
+            variant="outline"
+            aria-pressed={isSelected}
+            className={`h-auto w-full justify-start whitespace-normal rounded-lg p-4 text-left font-normal shadow-sm [&_svg]:size-5 ${
+              isSelected ? 'border-primary bg-primary-tint' : 'border-border bg-card'
             }`}
             onClick={() => toggleIndice(indice.id)}
           >
-            <div className="flex items-start gap-3">
-              <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-                <CatIcon className="w-4 h-4 text-muted-foreground" />
+            <div className="flex w-full items-start gap-3">
+              <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center flex-shrink-0">
+                <CatIcon className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
                   <p className="text-sm font-semibold">{indice.sigla}</p>
-                  <Badge variant="outline" className="text-xs">{indice.fonte}</Badge>
+                  <Badge variant="info">{indice.fonte}</Badge>
                 </div>
                 <p className="text-xs text-muted-foreground">{indice.nome}</p>
-                <div className="flex items-center gap-3 mt-2">
+                <div className="flex items-center gap-3 mt-2 flex-wrap tabular-nums">
                   <span className="text-xs font-medium">Valor: {indice.valor}</span>
                   <span className={`text-xs font-medium ${(indice.variacao_mensal || 0) >= 0 ? 'text-destructive' : 'text-success'}`}>
                     Mensal: {fmtPerc(indice.variacao_mensal)}
@@ -521,12 +526,16 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
                 <p className="text-xs text-muted-foreground mt-1">Período: {indice.periodo}</p>
               </div>
             </div>
-          </div>
+          </Button>
         );
       })}
       {filteredIndices.length === 0 && (
-        <div className="col-span-2 text-center py-6 text-sm text-muted-foreground">
-          Nenhum índice encontrado. <Button variant="link" size="sm" onClick={() => navigate('/indices-repactuacao')}>Atualizar no Painel de Índices</Button>
+        <div className="md:col-span-2 flex flex-col items-center text-center py-8 gap-3">
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
+            <TrendingUp className="w-6 h-6" aria-hidden="true" />
+          </span>
+          <p className="text-base font-semibold">Nenhum índice encontrado</p>
+          <Button variant="outline" onClick={() => navigate('/indices-repactuacao')}>Atualizar no Painel de Índices</Button>
         </div>
       )}
     </div>
@@ -538,42 +547,49 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
         const isSelected = selectedCCTs.includes(cct.id);
         const vencida = cct.vigencia_fim && new Date(cct.vigencia_fim) < new Date();
         return (
-          <div
+          <Button
+            type="button"
             key={cct.id}
-            className={`bg-card rounded-xl border p-4 shadow-sm transition-all cursor-pointer ${
-              isSelected ? 'border-accent ring-1 ring-accent/30' : 'border-border/50 hover:border-accent/30'
+            variant="outline"
+            aria-pressed={isSelected}
+            className={`h-auto w-full justify-start whitespace-normal rounded-lg p-4 text-left font-normal shadow-sm [&_svg]:size-5 ${
+              isSelected ? 'border-primary bg-primary-tint' : 'border-border bg-card'
             }`}
             onClick={() => toggleCCT(cct.id)}
           >
-            <div className="flex items-start gap-3">
-              <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-                <Users className="w-4 h-4 text-muted-foreground" />
+            <div className="flex w-full items-start gap-3">
+              <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center flex-shrink-0">
+                <Users className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
                   <p className="text-sm font-semibold truncate">{cct.categoria_profissional}</p>
-                  {vencida && <Badge variant="outline" className="text-xs text-destructive border-destructive/30">Vencida</Badge>}
+                  {vencida && <Badge variant="danger">Vencida</Badge>}
                 </div>
                 <p className="text-xs text-muted-foreground truncate">{cct.sindicato_laboral || 'Sindicato não informado'}</p>
-                <div className="flex items-center gap-3 mt-2 flex-wrap">
+                <div className="flex items-center gap-3 mt-2 flex-wrap tabular-nums">
                   {cct.piso_salarial && <span className="text-xs font-medium">Piso: {fmtCur(cct.piso_salarial)}</span>}
                   {cct.reajuste_percentual && (
                     <span className="text-xs font-medium text-foreground">Reajuste: +{cct.reajuste_percentual}%</span>
                   )}
-                  {cct.abrangencia_uf && <Badge variant="outline" className="text-xs">{cct.abrangencia_uf}</Badge>}
-                  {cct.indice_reajuste && <Badge variant="outline" className="text-xs">{cct.indice_reajuste}</Badge>}
+                  {cct.abrangencia_uf && <Badge variant="info">{cct.abrangencia_uf}</Badge>}
+                  {cct.indice_reajuste && <Badge variant="info">{cct.indice_reajuste}</Badge>}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   Vigência: {cct.vigencia_inicio || '?'} a {cct.vigencia_fim || '?'}
                 </p>
               </div>
             </div>
-          </div>
+          </Button>
         );
       })}
       {filteredCCTs.length === 0 && (
-        <div className="col-span-2 text-center py-6 text-sm text-muted-foreground">
-          Nenhuma CCT cadastrada. <Button variant="link" size="sm" onClick={() => navigate('/indices-repactuacao')}>Cadastrar no Painel de Índices</Button>
+        <div className="md:col-span-2 flex flex-col items-center text-center py-8 gap-3">
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
+            <Users className="w-6 h-6" aria-hidden="true" />
+          </span>
+          <p className="text-base font-semibold">Nenhuma CCT cadastrada</p>
+          <Button variant="outline" onClick={() => navigate('/indices-repactuacao')}>Cadastrar no Painel de Índices</Button>
         </div>
       )}
     </div>
@@ -582,31 +598,31 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-2">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-2">
-          <Scale className="w-5 h-5 text-muted-foreground" />
-          <h3 className="text-sm font-semibold">Reajuste, Repactuação e Revisão com IA</h3>
+          <Scale className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+          <h3 className="text-lg font-semibold">Reajuste, Repactuação e Revisão com IA</h3>
         </div>
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex flex-wrap gap-2">
           <Button
-            size="sm"
             variant={showLista ? 'default' : 'outline'}
+            aria-pressed={showLista}
             onClick={() => setShowLista(s => !s)}
           >
-            <FolderOpen className="w-3 h-3 mr-1" /> Meus Pedidos
+            <FolderOpen aria-hidden="true" /> Meus Pedidos
           </Button>
-          <Button size="sm" variant="outline" onClick={() => {
+          <Button variant="outline" onClick={() => {
             setPedidoAtivo(null); setPedidoGerado(''); setShowGenerator(false);
             toast.info('Novo pedido em branco — preencha os dados e gere');
           }}>
-            <Plus className="w-3 h-3 mr-1" /> Novo Pedido
+            <Plus aria-hidden="true" /> Novo Pedido
           </Button>
-          <Button size="sm" variant="outline" onClick={() => navigate('/indices-repactuacao')}>
-            <TrendingUp className="w-3 h-3 mr-1" /> Painel de Índices
-            <ArrowRight className="w-3 h-3 ml-1" />
+          <Button variant="outline" onClick={() => navigate('/indices-repactuacao')}>
+            <TrendingUp aria-hidden="true" /> Painel de Índices
+            <ArrowRight aria-hidden="true" />
           </Button>
-          <Button size="sm" variant="outline" onClick={handleRefresh} disabled={loading}>
-            <RefreshCw className={`w-3 h-3 mr-1 ${loading ? 'animate-spin' : ''}`} />
+          <Button variant="outline" onClick={handleRefresh} disabled={loading}>
+            <RefreshCw className={loading ? 'animate-spin' : ''} aria-hidden="true" />
             Atualizar
           </Button>
         </div>
@@ -614,16 +630,16 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
 
       {/* Indicador de pedido ativo */}
       {pedidoAtivo && (
-        <div className="bg-muted border border-border rounded-lg p-3 flex items-center gap-3 flex-wrap">
-          <Hash className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-          <span className="text-xs font-semibold whitespace-nowrap">{pedidoAtivo.numero_formatado}</span>
-          <Badge variant="outline" className="text-xs whitespace-nowrap">
+        <div className="rounded-md border border-border bg-muted p-3 flex items-center gap-3 flex-wrap">
+          <Hash className="w-4 h-4 text-muted-foreground flex-shrink-0" aria-hidden="true" />
+          <span className="text-sm font-semibold whitespace-nowrap tabular-nums">{pedidoAtivo.numero_formatado}</span>
+          <Badge variant="info" className="whitespace-nowrap tabular-nums">
             v{pedidoAtivo.versoes_count} · {pedidoAtivo.status}
           </Badge>
-          <span className="text-xs text-muted-foreground truncate flex-1 min-w-[120px]">
+          <span className="text-sm text-muted-foreground truncate flex-1 min-w-[120px]">
             Cada nova geração cria automaticamente uma nova versão deste pedido.
           </span>
-          <Button size="sm" variant="ghost" className="h-7" onClick={() => setPedidoAtivo(null)}>
+          <Button size="sm" variant="ghost" onClick={() => setPedidoAtivo(null)}>
             Desvincular
           </Button>
         </div>
@@ -631,10 +647,10 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
 
       {/* Lista de pedidos existentes */}
       {showLista && (
-        <div className="bg-card border border-border/50 rounded-xl p-4 space-y-3">
+        <div className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-4">
           <div className="flex items-center gap-2">
-            <FolderOpen className="w-4 h-4 text-muted-foreground" />
-            <h4 className="text-sm font-semibold">Pedidos Jurídicos da Empresa</h4>
+            <FolderOpen className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+            <h4 className="text-lg font-semibold">Pedidos Jurídicos da Empresa</h4>
           </div>
           <PedidosJuridicosList
             onSelecionar={(p) => {
@@ -656,34 +672,36 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
 
       {/* Tabs for 3 mechanisms */}
       <Tabs value={mecanismo} onValueChange={(v) => { setMecanismo(v as Mecanismo); setShowGenerator(false); setPedidoGerado(''); }}>
-        <TabsList className="w-full grid grid-cols-3">
-          <TabsTrigger value="reajuste" className="text-xs gap-1">
-            <TrendingUp className="w-3 h-3" /> Reajuste
+        <TabsList className="w-full grid grid-cols-3 h-auto">
+          <TabsTrigger value="reajuste" className="gap-1">
+            <TrendingUp className="w-4 h-4" aria-hidden="true" /> Reajuste
           </TabsTrigger>
-          <TabsTrigger value="repactuacao" className="text-xs gap-1">
-            <Users className="w-3 h-3" /> Repactuação
+          <TabsTrigger value="repactuacao" className="gap-1">
+            <Users className="w-4 h-4" aria-hidden="true" /> Repactuação
           </TabsTrigger>
-          <TabsTrigger value="revisao" className="text-xs gap-1">
-            <Scale className="w-3 h-3" /> Revisão
+          <TabsTrigger value="revisao" className="gap-1">
+            <Scale className="w-4 h-4" aria-hidden="true" /> Revisão
           </TabsTrigger>
         </TabsList>
 
         {/* Mechanism info banner */}
-        <div className={`bg-muted border border-border rounded-lg p-3 mt-3 space-y-1`}>
+        <div className="rounded-md border border-border bg-muted p-4 mt-4 space-y-1">
           <div className="flex items-center gap-2">
-            <MecIcon className={`w-4 h-4 ${info.cor}`} />
-            <span className="text-xs font-semibold text-foreground">{info.titulo}</span>
+            <MecIcon className={`w-4 h-4 ${info.cor}`} aria-hidden="true" />
+            <span className="text-sm font-semibold text-foreground">{info.titulo}</span>
           </div>
-          <p className="text-xs text-muted-foreground">{info.descricao}</p>
-          <p className="text-xs text-muted-foreground"><strong>Fundamento:</strong> {info.fundamento}</p>
-          <p className="text-xs text-muted-foreground"><strong>Periodicidade:</strong> {info.periodicidade}</p>
+          <p className="text-sm text-muted-foreground">{info.descricao}</p>
+          <p className="text-sm text-muted-foreground"><strong>Fundamento:</strong> {info.fundamento}</p>
+          <p className="text-sm text-muted-foreground"><strong>Periodicidade:</strong> {info.periodicidade}</p>
         </div>
 
         {/* Search */}
-        <div className="flex items-center gap-2 mt-3">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <div className="flex flex-wrap items-center gap-2 mt-4">
+          <div className="relative flex-1 min-w-[200px] max-w-md">
+            <Label htmlFor="reeq-busca" className="sr-only">Buscar</Label>
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
             <Input
+              id="reeq-busca"
               placeholder={
                 mecanismo === 'reajuste'
                   ? 'Buscar índice econômico (IPCA, IGP-M, INPC...)'
@@ -696,8 +714,8 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
               className="pl-9"
             />
           </div>
-          <Button size="sm" variant="default" onClick={() => {}}>
-            <Search className="w-3 h-3 mr-1" />
+          <Button variant="default" onClick={() => {}}>
+            <Search aria-hidden="true" />
             {mecanismo === 'reajuste'
               ? 'Buscar Índice'
               : mecanismo === 'repactuacao'
@@ -705,11 +723,11 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
               : 'Buscar Comprovação'}
           </Button>
           {searchTerm && (
-            <Button size="sm" variant="ghost" onClick={() => setSearchTerm('')}>
+            <Button variant="ghost" onClick={() => setSearchTerm('')}>
               Limpar
             </Button>
           )}
-          <Badge variant="outline" className="text-xs whitespace-nowrap">
+          <Badge variant="info" className="whitespace-nowrap tabular-nums">
             {mecanismo === 'repactuacao'
               ? `${filteredIndices.length} índices · ${filteredCCTs.length} CCTs`
               : mecanismo === 'revisao'
@@ -719,18 +737,18 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
         </div>
 
         {loadingData ? (
-          <div className="space-y-3 mt-3">
-            {[1, 2, 3].map(i => <div key={i} className="h-20 bg-muted/30 rounded-xl animate-pulse" />)}
+          <div className="space-y-3 mt-4" role="status" aria-label="Carregando índices e convenções">
+            {[1, 2, 3].map(i => <Skeleton key={i} className="h-20 w-full rounded-lg" />)}
           </div>
         ) : (
           <>
             {/* REAJUSTE TAB */}
-            <TabsContent value="reajuste" className="space-y-4 mt-0">
+            <TabsContent value="reajuste" className="space-y-4 mt-4">
               <div>
-                <h4 className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1">
-                  <TrendingUp className="w-3 h-3" /> Selecione o índice contratual ({filteredIndices.length})
+                <h4 className="text-base font-semibold mb-1 flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-muted-foreground" aria-hidden="true" /> Selecione o índice contratual ({filteredIndices.length})
                 </h4>
-                <p className="text-xs text-muted-foreground mb-3">
+                <p className="text-sm text-muted-foreground mb-3">
                   Selecione o índice previsto no contrato para cálculo automático do reajuste anual por apostilamento.
                 </p>
                 {renderIndicesGrid()}
@@ -738,21 +756,21 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
             </TabsContent>
 
             {/* REPACTUAÇÃO TAB */}
-            <TabsContent value="repactuacao" className="space-y-4 mt-0">
+            <TabsContent value="repactuacao" className="space-y-4 mt-4">
               <div>
-                <h4 className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1">
-                  <Users className="w-3 h-3" /> CCTs / Dissídios Coletivos ({filteredCCTs.length})
+                <h4 className="text-base font-semibold mb-1 flex items-center gap-2">
+                  <Users className="w-4 h-4 text-muted-foreground" aria-hidden="true" /> CCTs / Dissídios Coletivos ({filteredCCTs.length})
                 </h4>
-                <p className="text-xs text-muted-foreground mb-3">
+                <p className="text-sm text-muted-foreground mb-3">
                   Selecione as convenções coletivas para demonstrar a variação dos custos de mão de obra (planilha antes/depois).
                 </p>
                 {renderCCTsGrid()}
               </div>
               <div>
-                <h4 className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1">
-                  <TrendingUp className="w-3 h-3" /> Índices complementares (opcional)
+                <h4 className="text-base font-semibold mb-1 flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-muted-foreground" aria-hidden="true" /> Índices complementares (opcional)
                 </h4>
-                <p className="text-xs text-muted-foreground mb-3">
+                <p className="text-sm text-muted-foreground mb-3">
                   Índices de insumos podem complementar a repactuação (ex: SINAPI para materiais).
                 </p>
                 {renderIndicesGrid()}
@@ -760,48 +778,51 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
             </TabsContent>
 
             {/* REVISÃO TAB */}
-            <TabsContent value="revisao" className="space-y-4 mt-0">
-              <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-4 space-y-3">
+            <TabsContent value="revisao" className="space-y-4 mt-4">
+              <div className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-4">
                 <div className="flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 text-destructive" />
-                  <span className="text-xs font-semibold">Fato Gerador da Revisão</span>
+                  <AlertTriangle className="w-5 h-5 text-warning" aria-hidden="true" />
+                  <h4 className="text-lg font-semibold">Fato Gerador da Revisão</h4>
                 </div>
-                <div>
-                  <label className="text-xs text-muted-foreground">Tipo do fato</label>
-                  <select
+                <div className="space-y-2">
+                  <Label htmlFor="reeq-tipo-fato">Tipo do fato</Label>
+                  <Select
                     value={tipoFato}
-                    onChange={e => {
-                      setTipoFato(e.target.value as typeof tipoFato);
+                    onValueChange={v => {
+                      setTipoFato(v as typeof tipoFato);
                       setEnquadramentoValidado(false);
                       setShowChecklist(false);
                     }}
-                    className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   >
-                    <option value="caso_fortuito">☁️ Caso Fortuito (evento imprevisível — origem humana/interna: greves, atos de terceiros)</option>
-                    <option value="forca_maior">🔥 Força Maior (evento irresistível — origem natural/externa: enchentes, pandemias)</option>
-                    <option value="fato_principe">🏛️ Fato do Príncipe (ato geral do Poder Público que onera indiretamente o contrato)</option>
-                    <option value="fato_superveniente">📋 Álea Econômica Extraordinária (Teoria da Imprevisão — art. 124, II, "d")</option>
-                  </select>
+                    <SelectTrigger id="reeq-tipo-fato" className="h-auto min-h-11 whitespace-normal text-left [&>span]:line-clamp-2">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="caso_fortuito">Caso Fortuito (evento imprevisível — origem humana/interna: greves, atos de terceiros)</SelectItem>
+                      <SelectItem value="forca_maior">Força Maior (evento irresistível — origem natural/externa: enchentes, pandemias)</SelectItem>
+                      <SelectItem value="fato_principe">Fato do Príncipe (ato geral do Poder Público que onera indiretamente o contrato)</SelectItem>
+                      <SelectItem value="fato_superveniente">Álea Econômica Extraordinária (Teoria da Imprevisão — art. 124, II, "d")</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {/* Validação jurídica do enquadramento */}
-                <div className="flex items-center justify-between gap-2 rounded-md border border-border/60 bg-background/40 px-3 py-2">
-                  <div className="flex items-center gap-2 text-xs">
+                <div className="flex items-center justify-between gap-3 flex-wrap rounded-md border border-border bg-muted/50 px-3 py-2">
+                  <div className="flex items-center gap-2 text-sm" role="status">
                     {enquadramentoValidado ? (
                       <>
-                        <Scale className="w-3.5 h-3.5 text-success shrink-0" />
+                        <Scale className="w-4 h-4 text-success shrink-0" aria-hidden="true" />
                         <span className="text-success font-medium">Enquadramento jurídico validado</span>
                       </>
                     ) : (
                       <>
-                        <AlertTriangle className="w-3.5 h-3.5 text-warning shrink-0" />
+                        <AlertTriangle className="w-4 h-4 text-warning shrink-0" aria-hidden="true" />
                         <span className="text-muted-foreground">Valide o enquadramento antes de aceitar a classificação</span>
                       </>
                     )}
                   </div>
                   <Button
                     type="button"
-                    size="sm"
                     variant={enquadramentoValidado ? 'ghost' : 'outline'}
                     onClick={() => setShowChecklist(s => !s)}
                     className="shrink-0"
@@ -822,21 +843,22 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
                   />
                 )}
 
-                <div>
-                  <label className="text-xs text-muted-foreground">Descrição detalhada do fato gerador</label>
+                <div className="space-y-2">
+                  <Label htmlFor="reeq-fato-gerador">Descrição detalhada do fato gerador</Label>
                   <Textarea
+                    id="reeq-fato-gerador"
                     placeholder="Descreva detalhadamente o fato que causou a onerosidade excessiva, quando ocorreu, e como impactou os custos do contrato..."
-                    className="mt-1 min-h-[100px]"
+                    className="min-h-[100px]"
                     value={fatoGerador}
                     onChange={e => setFatoGerador(e.target.value)}
                   />
                 </div>
               </div>
               <div>
-                <h4 className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1">
-                  <TrendingUp className="w-3 h-3" /> Índices para comprovação do impacto ({filteredIndices.length})
+                <h4 className="text-base font-semibold mb-1 flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-muted-foreground" aria-hidden="true" /> Índices para comprovação do impacto ({filteredIndices.length})
                 </h4>
-                <p className="text-xs text-muted-foreground mb-3">
+                <p className="text-sm text-muted-foreground mb-3">
                   Selecione índices que comprovem numericamente o impacto econômico do fato gerador.
                 </p>
                 {renderIndicesGrid()}
@@ -852,10 +874,10 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
        (mecanismo === 'revisao' && fatoGerador) ? (
         <div className="sticky bottom-4 z-10">
           <Button
-            className="w-full bg-accent hover:bg-accent/90 text-accent-foreground shadow-lg"
+            className="w-full shadow-md"
             onClick={() => setShowGenerator(true)}
           >
-            <Sparkles className="w-4 h-4 mr-1" />
+            <Sparkles aria-hidden="true" />
             Gerar Pedido de {info.titulo.split('(')[0].trim()} ({totalSelected > 0 ? `${totalSelected} dados` : 'Revisão'})
           </Button>
         </div>
@@ -863,53 +885,55 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
 
       {/* Generator panel */}
       {showGenerator && (
-        <div className="bg-card rounded-xl border border-border p-5 shadow-lg space-y-4">
+        <section className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <MecIcon className={`w-5 h-5 ${info.cor}`} />
-              <h3 className="text-sm font-semibold">Gerador: {info.titulo}</h3>
+              <MecIcon className={`w-5 h-5 ${info.cor}`} aria-hidden="true" />
+              <h3 className="text-lg font-semibold">Gerador: {info.titulo}</h3>
             </div>
-            <Button size="sm" variant="ghost" onClick={() => setShowGenerator(false)}>✕</Button>
+            <Button size="sm" variant="ghost" className="h-9 w-9 p-0" onClick={() => setShowGenerator(false)} aria-label="Fechar gerador">
+              <X aria-hidden="true" />
+            </Button>
           </div>
 
           {/* Selected data summary */}
-          <div className="bg-muted/30 rounded-lg p-3 space-y-2">
-            <p className="text-xs text-muted-foreground">
+          <div className="rounded-md border border-border bg-muted/50 p-4 space-y-2">
+            <p className="text-sm text-muted-foreground">
               <strong>Fundamentação selecionada:</strong>
             </p>
             <div className="flex flex-wrap gap-1">
               {selectedIndices.map(id => {
                 const i = indices.find(x => x.id === id);
                 return i ? (
-                  <Badge key={id} className="text-xs bg-muted text-foreground border-border">
-                    📊 {i.sigla} ({fmtPerc(i.acumulado_12m)} 12m)
+                  <Badge key={id} variant="info" className="tabular-nums">
+                    {i.sigla} ({fmtPerc(i.acumulado_12m)} 12m)
                   </Badge>
                 ) : null;
               })}
               {selectedCCTs.map(id => {
                 const c = ccts.find(x => x.id === id);
                 return c ? (
-                  <Badge key={id} className="text-xs bg-muted text-foreground border-border">
-                    👷 {c.categoria_profissional} ({c.reajuste_percentual ? `+${c.reajuste_percentual}%` : 'N/I'})
+                  <Badge key={id} variant="info" className="tabular-nums">
+                    CCT {c.categoria_profissional} ({c.reajuste_percentual ? `+${c.reajuste_percentual}%` : 'N/I'})
                   </Badge>
                 ) : null;
               })}
               {mecanismo === 'revisao' && fatoGerador && (
-                <Badge className="text-xs bg-destructive/10 text-destructive border-destructive/30">
-                  ⚠️ {tipoFato.replace('_', ' ')}
+                <Badge variant="warning">
+                  Fato gerador: {tipoFato.replace('_', ' ')}
                 </Badge>
               )}
             </div>
           </div>
 
           {/* Tipo de instrumento contratual */}
-          <div className="bg-muted/30 rounded-lg p-3 space-y-3">
+          <div className="rounded-md border border-border bg-muted/50 p-4 space-y-3">
             <div className="flex items-center gap-2">
-              <FileText className="w-4 h-4 text-muted-foreground" />
-              <span className="text-xs font-semibold">Instrumento atacado</span>
+              <FileText className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+              <Label htmlFor="reeq-instrumento" className="text-sm font-semibold">Instrumento atacado</Label>
             </div>
             <Select value={instrumento} onValueChange={(v) => setInstrumento(v as Instrumento)}>
-              <SelectTrigger className="bg-background">
+              <SelectTrigger id="reeq-instrumento" className="bg-background">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -918,116 +942,117 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">{INSTRUMENTOS[instrumento].desc}</p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm text-muted-foreground">{INSTRUMENTOS[instrumento].desc}</p>
+            <p className="text-sm text-muted-foreground">
               <strong>Fundamento:</strong> {INSTRUMENTOS[instrumento].fundamento}
             </p>
           </div>
 
           {/* Identificação do processo (campos dinâmicos por instrumento) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs text-muted-foreground">Órgão Contratante</label>
-              <Input placeholder="Ex.: SEDUC/PA — Núcleo de Contratações" className="mt-1" value={orgao} onChange={e => setOrgao(e.target.value)} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="reeq-orgao">Órgão Contratante</Label>
+              <Input id="reeq-orgao" placeholder="Ex.: SEDUC/PA — Núcleo de Contratações" value={orgao} onChange={e => setOrgao(e.target.value)} />
             </div>
-            <div>
-              <label className="text-xs text-muted-foreground">Processo Administrativo nº</label>
-              <Input placeholder="Ex.: E-2025/2821674" className="mt-1" value={processoAdm} onChange={e => setProcessoAdm(e.target.value)} />
+            <div className="space-y-2">
+              <Label htmlFor="reeq-processo">Processo Administrativo nº</Label>
+              <Input id="reeq-processo" placeholder="Ex.: E-2025/2821674" value={processoAdm} onChange={e => setProcessoAdm(e.target.value)} />
             </div>
             {(instrumento === 'edital' || instrumento === 'ata_srp' || instrumento === 'contrato' || instrumento === 'aditivo') && (
-              <div>
-                <label className="text-xs text-muted-foreground">
+              <div className="space-y-2">
+                <Label htmlFor="reeq-pregao">
                   {instrumento === 'edital' ? 'Edital/Pregão nº' : 'Pregão de origem nº'}
-                </label>
-                <Input placeholder="Ex.: 90003/2024/SEDUC" className="mt-1" value={pregaoNum} onChange={e => setPregaoNum(e.target.value)} />
+                </Label>
+                <Input id="reeq-pregao" placeholder="Ex.: 90003/2024/SEDUC" value={pregaoNum} onChange={e => setPregaoNum(e.target.value)} />
               </div>
             )}
             {instrumento === 'ata_srp' && (
-              <div>
-                <label className="text-xs text-muted-foreground">ATA SRP nº</label>
-                <Input placeholder="Ex.: ATA 045/2025" className="mt-1" value={ataNum} onChange={e => setAtaNum(e.target.value)} />
+              <div className="space-y-2">
+                <Label htmlFor="reeq-ata">ATA SRP nº</Label>
+                <Input id="reeq-ata" placeholder="Ex.: ATA 045/2025" value={ataNum} onChange={e => setAtaNum(e.target.value)} />
               </div>
             )}
             {(instrumento === 'contrato' || instrumento === 'aditivo') && (
-              <div>
-                <label className="text-xs text-muted-foreground">Contrato Administrativo nº</label>
-                <Input placeholder="Ex.: 068/2025" className="mt-1" value={contrato} onChange={e => setContrato(e.target.value)} />
+              <div className="space-y-2">
+                <Label htmlFor="reeq-contrato">Contrato Administrativo nº</Label>
+                <Input id="reeq-contrato" placeholder="Ex.: 068/2025" value={contrato} onChange={e => setContrato(e.target.value)} />
               </div>
             )}
             {instrumento === 'aditivo' && (
-              <div>
-                <label className="text-xs text-muted-foreground">Termo Aditivo nº</label>
-                <Input placeholder="Ex.: 1º TA / 2026" className="mt-1" value={aditivoNum} onChange={e => setAditivoNum(e.target.value)} />
+              <div className="space-y-2">
+                <Label htmlFor="reeq-aditivo">Termo Aditivo nº</Label>
+                <Input id="reeq-aditivo" placeholder="Ex.: 1º TA / 2026" value={aditivoNum} onChange={e => setAditivoNum(e.target.value)} />
               </div>
             )}
           </div>
 
           {/* Itens afetados — narrativa */}
-          <div>
-            <label className="text-xs text-muted-foreground">
+          <div className="space-y-2">
+            <Label htmlFor="reeq-itens-afetados">
               {mecanismo === 'repactuacao' ? 'Itens de MO afetados (narrativa)' : 'Itens afetados (narrativa)'}
-            </label>
+            </Label>
             <Textarea
+              id="reeq-itens-afetados"
               placeholder={
                 mecanismo === 'reajuste' ? 'Ex.: Valor mensal do contrato R$ 50.000,00. Índice contratual: IPCA...' :
                 mecanismo === 'repactuacao' ? 'Ex.: Servente: de R$ 1.780 para R$ 1.920 (CCT 2026)...' :
                 'Ex.: Insumo X impactado por choque de oferta entre [data] e [data]...'
               }
-              className="mt-1 min-h-[70px]"
+              className="min-h-[70px]"
               value={itensAfetados}
               onChange={e => setItensAfetados(e.target.value)}
             />
           </div>
 
           {/* Tabela comparativa de preços — NF/cotação antes vs atual */}
-          <div className="bg-muted/30 rounded-lg p-3 space-y-3">
+          <div className="rounded-md border border-border bg-muted/50 p-4 space-y-3">
             <div className="flex items-center justify-between gap-2 flex-wrap">
-              <div className="flex items-center gap-2">
-                <Receipt className="w-4 h-4 text-muted-foreground" />
-                <span className="text-xs font-semibold">Demonstração comparativa de preços</span>
-                <Badge variant="outline" className="text-xs">{itensCompValidos.length} válidos</Badge>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Receipt className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+                <span className="text-sm font-semibold">Demonstração comparativa de preços</span>
+                <Badge variant="info" className="tabular-nums">{itensCompValidos.length} válidos</Badge>
               </div>
               <Button size="sm" variant="outline" onClick={addItemComp}>
-                <Plus className="w-3 h-3 mr-1" /> Adicionar item
+                <Plus aria-hidden="true" /> Adicionar item
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               Informe NFs de entrada e/ou cotações para comprovar a variação de preço entre a época do certame e o momento atual. Esta tabela será reproduzida no pedido como prova documental do desequilíbrio.
             </p>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-xs border-collapse">
+              <table className="w-full text-sm border-collapse">
                 <thead>
-                  <tr className="border-b border-border/40 text-muted-foreground">
-                    <th className="text-left p-2 font-medium whitespace-nowrap">Descrição</th>
-                    <th className="text-left p-2 font-medium whitespace-nowrap">Un.</th>
-                    <th className="text-right p-2 font-medium whitespace-nowrap">Qtd.</th>
-                    <th className="text-right p-2 font-medium whitespace-nowrap">Preço à época</th>
-                    <th className="text-right p-2 font-medium whitespace-nowrap">Preço atual</th>
-                    <th className="text-right p-2 font-medium whitespace-nowrap">Var. %</th>
-                    <th className="text-left p-2 font-medium whitespace-nowrap">NF/Cotação à época</th>
-                    <th className="text-left p-2 font-medium whitespace-nowrap">NF/Cotação atual</th>
-                    <th className="p-2"></th>
+                  <tr className="border-b border-border text-muted-foreground">
+                    <th scope="col" className="text-left p-2 text-sm font-semibold whitespace-nowrap">Descrição</th>
+                    <th scope="col" className="text-left p-2 text-sm font-semibold whitespace-nowrap">Un.</th>
+                    <th scope="col" className="text-right p-2 text-sm font-semibold whitespace-nowrap">Qtd.</th>
+                    <th scope="col" className="text-right p-2 text-sm font-semibold whitespace-nowrap">Preço à época</th>
+                    <th scope="col" className="text-right p-2 text-sm font-semibold whitespace-nowrap">Preço atual</th>
+                    <th scope="col" className="text-right p-2 text-sm font-semibold whitespace-nowrap">Var. %</th>
+                    <th scope="col" className="text-left p-2 text-sm font-semibold whitespace-nowrap">NF/Cotação à época</th>
+                    <th scope="col" className="text-left p-2 text-sm font-semibold whitespace-nowrap">NF/Cotação atual</th>
+                    <th scope="col" className="p-2"><span className="sr-only">Ações</span></th>
                   </tr>
                 </thead>
                 <tbody>
                   {itensComp.map(it => {
                     const v = calcVariacao(it.precoAntes, it.precoAtual);
                     return (
-                      <tr key={it.id} className="border-b border-border/20">
-                        <td className="p-1"><Input className="h-7 text-xs" value={it.descricao} onChange={e => updItemComp(it.id, { descricao: e.target.value })} placeholder="Ex.: Cimento CP-II" /></td>
-                        <td className="p-1"><Input className="h-7 text-xs w-16" value={it.unidade} onChange={e => updItemComp(it.id, { unidade: e.target.value })} /></td>
-                        <td className="p-1"><Input className="h-7 text-xs w-20 text-right" type="number" value={it.quantidade || ''} onChange={e => updItemComp(it.id, { quantidade: parseFloat(e.target.value) || 0 })} /></td>
-                        <td className="p-1"><Input className="h-7 text-xs w-24 text-right" type="number" step="0.01" value={it.precoAntes || ''} onChange={e => updItemComp(it.id, { precoAntes: parseFloat(e.target.value) || 0 })} /></td>
-                        <td className="p-1"><Input className="h-7 text-xs w-24 text-right" type="number" step="0.01" value={it.precoAtual || ''} onChange={e => updItemComp(it.id, { precoAtual: parseFloat(e.target.value) || 0 })} /></td>
-                        <td className={`p-1 text-right font-semibold whitespace-nowrap ${v >= 0 ? 'text-destructive' : 'text-success'}`}>
+                      <tr key={it.id} className="border-b border-border">
+                        <td className="p-1"><Input aria-label="Descrição do item" className="min-w-[160px]" value={it.descricao} onChange={e => updItemComp(it.id, { descricao: e.target.value })} placeholder="Ex.: Cimento CP-II" /></td>
+                        <td className="p-1"><Input aria-label="Unidade" className="w-20" value={it.unidade} onChange={e => updItemComp(it.id, { unidade: e.target.value })} /></td>
+                        <td className="p-1"><Input aria-label="Quantidade" className="w-24 text-right tabular-nums" type="number" value={it.quantidade || ''} onChange={e => updItemComp(it.id, { quantidade: parseFloat(e.target.value) || 0 })} /></td>
+                        <td className="p-1"><Input aria-label="Preço à época" className="w-28 text-right tabular-nums" type="number" step="0.01" value={it.precoAntes || ''} onChange={e => updItemComp(it.id, { precoAntes: parseFloat(e.target.value) || 0 })} /></td>
+                        <td className="p-1"><Input aria-label="Preço atual" className="w-28 text-right tabular-nums" type="number" step="0.01" value={it.precoAtual || ''} onChange={e => updItemComp(it.id, { precoAtual: parseFloat(e.target.value) || 0 })} /></td>
+                        <td className={`p-1 text-right font-semibold whitespace-nowrap tabular-nums ${v >= 0 ? 'text-destructive' : 'text-success'}`}>
                           {it.precoAntes > 0 ? `${v >= 0 ? '+' : ''}${v.toFixed(1)}%` : '—'}
                         </td>
-                        <td className="p-1"><Input className="h-7 text-xs" value={it.fonteAntes} onChange={e => updItemComp(it.id, { fonteAntes: e.target.value })} placeholder="NF nº / Fornecedor / data" /></td>
-                        <td className="p-1"><Input className="h-7 text-xs" value={it.fonteAtual} onChange={e => updItemComp(it.id, { fonteAtual: e.target.value })} placeholder="NF nº / Fornecedor / data" /></td>
+                        <td className="p-1"><Input aria-label="NF ou cotação à época" className="min-w-[160px]" value={it.fonteAntes} onChange={e => updItemComp(it.id, { fonteAntes: e.target.value })} placeholder="NF nº / Fornecedor / data" /></td>
+                        <td className="p-1"><Input aria-label="NF ou cotação atual" className="min-w-[160px]" value={it.fonteAtual} onChange={e => updItemComp(it.id, { fonteAtual: e.target.value })} placeholder="NF nº / Fornecedor / data" /></td>
                         <td className="p-1">
-                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => rmItemComp(it.id)} disabled={itensComp.length === 1}>
-                            <Trash2 className="w-3 h-3 text-destructive" />
+                          <Button size="sm" variant="ghost" className="h-9 w-9 p-0 text-destructive hover:text-destructive hover:bg-destructive-tint" onClick={() => rmItemComp(it.id)} disabled={itensComp.length === 1} aria-label="Remover item">
+                            <Trash2 aria-hidden="true" />
                           </Button>
                         </td>
                       </tr>
@@ -1039,53 +1064,54 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
           </div>
 
           {/* Anexos probatórios (descrição) */}
-          <div>
-            <label className="text-xs text-muted-foreground flex items-center gap-1">
-              <Paperclip className="w-3 h-3" /> Relação de anexos probatórios
-            </label>
+          <div className="space-y-2">
+            <Label htmlFor="reeq-anexos" className="flex items-center gap-1">
+              <Paperclip className="w-4 h-4 text-muted-foreground" aria-hidden="true" /> Relação de anexos probatórios
+            </Label>
             <Textarea
+              id="reeq-anexos"
               placeholder="Ex.: NFs de entrada à época do certame (págs. 99-106); Cotações mercadológicas — duas propostas (págs. 107-111); NFs atuais (págs. 112-118); 5ª alteração contratual; Carteira de Identidade da representante legal."
-              className="mt-1 min-h-[70px]"
+              className="min-h-[70px]"
               value={anexos}
               onChange={e => setAnexos(e.target.value)}
             />
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-xs text-muted-foreground">
               Os arquivos físicos podem ser anexados na aba "Anexos" da Pasta do Processo (workspace).
             </p>
           </div>
 
-          <div>
-            <label className="text-xs text-muted-foreground">Observações adicionais</label>
-            <Textarea placeholder="Informações complementares..." className="mt-1 min-h-[60px]" value={observacoes} onChange={e => setObservacoes(e.target.value)} />
+          <div className="space-y-2">
+            <Label htmlFor="reeq-observacoes">Observações adicionais</Label>
+            <Textarea id="reeq-observacoes" placeholder="Informações complementares..." className="min-h-[60px]" value={observacoes} onChange={e => setObservacoes(e.target.value)} />
           </div>
 
-          <div className="bg-muted/30 border border-border/50 rounded-lg p-3">
-            <p className="text-xs text-muted-foreground">
+          <div className="rounded-md border border-border bg-muted/50 p-4">
+            <p className="text-sm text-muted-foreground">
               <strong className="text-foreground">Fundamentação automática:</strong> {info.fundamento}
             </p>
           </div>
 
           <Button
-            className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
+            className="w-full"
             onClick={handleGerarPedido}
             disabled={generatingPedido}
           >
-            {generatingPedido ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Sparkles className="w-4 h-4 mr-1" />}
+            {generatingPedido ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Sparkles aria-hidden="true" />}
             {generatingPedido ? 'Gerando...' : `Gerar Pedido de ${info.titulo.split('(')[0].trim()}`}
           </Button>
 
           {pedidoGerado && (
-            <div className="bg-card rounded-xl border border-border/50 p-5 space-y-3">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <h4 className="text-sm font-semibold">Pedido Gerado pela IA</h4>
-                <div className="flex gap-2 flex-wrap">
-                  <Button size="sm" variant="outline" onClick={copyToClipboard}>Copiar</Button>
-                  <Button size="sm" variant="outline" onClick={exportarWord} disabled={!!exporting}>
-                    {exporting === 'word' ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <FileDown className="w-3 h-3 mr-1" />}
+            <div className="rounded-lg border border-border bg-card p-6 space-y-4">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <h4 className="text-lg font-semibold">Pedido Gerado pela IA</h4>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" onClick={copyToClipboard}>Copiar</Button>
+                  <Button variant="outline" onClick={exportarWord} disabled={!!exporting}>
+                    {exporting === 'word' ? <Loader2 className="animate-spin" aria-hidden="true" /> : <FileDown aria-hidden="true" />}
                     Word (.doc)
                   </Button>
-                  <Button size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={exportarPDF} disabled={!!exporting}>
-                    {exporting === 'pdf' ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <FileDown className="w-3 h-3 mr-1" />}
+                  <Button onClick={exportarPDF} disabled={!!exporting}>
+                    {exporting === 'pdf' ? <Loader2 className="animate-spin" aria-hidden="true" /> : <FileDown aria-hidden="true" />}
                     PDF (ABNT)
                   </Button>
                 </div>
@@ -1095,7 +1121,7 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
               </div>
             </div>
           )}
-        </div>
+        </section>
       )}
     </div>
   );

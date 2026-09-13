@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import AppLayout from '@/components/layout/AppLayout';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -117,55 +119,59 @@ export default function DiariosOficiais() {
 
   return (
     <AppLayout>
-      <div className="space-y-4 p-4 max-w-7xl mx-auto">
-        <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2">
-              <FileText className="w-6 h-6 text-muted-foreground" />
-              Diários Oficiais
-            </h1>
-            <p className="text-xs text-muted-foreground mt-1">
-              Avisos de licitação, contratos e homologações publicados no DOU e DOEs estaduais.
-            </p>
-          </div>
-          <Button onClick={sincronizar} disabled={syncing} variant="outline" size="sm">
-            {syncing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
-            Sincronizar agora
-          </Button>
-        </header>
+      <div className="space-y-6">
+        {/* Tela de leitura fora do menu: título e descrição vêm à mão, e a
+            trilha aponta para o grupo de Monitoramento a que ela pertence. */}
+        <CabecalhoPagina
+          titulo="Diários oficiais"
+          descricao="Avisos de licitação, contratos e homologações publicados no DOU e nos diários estaduais"
+          icone={<FileText />}
+          trilha={[
+            { rotulo: 'Painel', para: '/dashboard' },
+            { rotulo: 'Monitoramento' },
+            { rotulo: 'Diários oficiais' },
+          ]}
+          acoes={
+            <Button onClick={sincronizar} disabled={syncing}>
+              {syncing
+                ? <Loader2 className="animate-spin" aria-hidden="true" />
+                : <RefreshCw aria-hidden="true" />}
+              Sincronizar agora
+            </Button>
+          }
+        />
 
         {status && (
-          <Card className="bg-muted/30">
-            <CardContent className="p-3 flex flex-wrap gap-x-6 gap-y-1 text-xs">
-              <div><span className="text-muted-foreground">Total no cache:</span> <strong>{status.total_diarios || 0}</strong></div>
-              <div><span className="text-muted-foreground">Mais recente:</span> <strong>{status.mais_recente || '—'}</strong></div>
-              {status.por_fonte && Object.entries(status.por_fonte).map(([f, n]) => (
-                <div key={f}><span className="text-muted-foreground">{f}:</span> <strong>{String(n)}</strong></div>
-              ))}
-            </CardContent>
-          </Card>
+          <div className="flex flex-wrap gap-x-8 gap-y-2 rounded-lg border border-border bg-card p-6 text-sm shadow-sm">
+            <div><span className="text-muted-foreground">Total no cache:</span>{' '}<strong className="tabular-nums">{status.total_diarios || 0}</strong></div>
+            <div><span className="text-muted-foreground">Mais recente:</span>{' '}<strong>{status.mais_recente || '—'}</strong></div>
+            {status.por_fonte && Object.entries(status.por_fonte).map(([f, n]) => (
+              <div key={f}><span className="text-muted-foreground">{f}:</span>{' '}<strong className="tabular-nums">{String(n)}</strong></div>
+            ))}
+          </div>
         )}
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Filtros de Busca</CardTitle>
+            <CardTitle className="text-lg font-semibold">Filtros de busca</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
               <div className="lg:col-span-2">
-                <Label className="text-xs">Termo de busca</Label>
+                <Label htmlFor="diarios-termo" className="text-sm">Termo de busca</Label>
                 <Input
+                  id="diarios-termo"
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && buscar(1)}
                   placeholder="ex.: pregão, medicamentos, obras..."
-                  className="h-9"
+                  className="mt-1"
                 />
               </div>
               <div>
-                <Label className="text-xs">Fonte</Label>
+                <Label htmlFor="diarios-fonte" className="text-sm">Fonte</Label>
                 <Select value={fonte} onValueChange={setFonte}>
-                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="diarios-fonte" className="mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todas</SelectItem>
                     {FONTES.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}
@@ -173,9 +179,9 @@ export default function DiariosOficiais() {
                 </Select>
               </div>
               <div>
-                <Label className="text-xs">Tipo</Label>
+                <Label htmlFor="diarios-tipo" className="text-sm">Tipo</Label>
                 <Select value={tipo} onValueChange={setTipo}>
-                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="diarios-tipo" className="mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos</SelectItem>
                     {TIPOS.map(t => <SelectItem key={t.v} value={t.v}>{t.l}</SelectItem>)}
@@ -184,45 +190,58 @@ export default function DiariosOficiais() {
               </div>
             </div>
             <Button onClick={() => buscar(1)} disabled={loading} className="w-full sm:w-auto">
-              {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Search className="w-4 h-4 mr-2" />}
+              {loading ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Search aria-hidden="true" />}
               Buscar
             </Button>
           </CardContent>
         </Card>
 
-        <div className="space-y-2">
+        <div className="space-y-3">
           {loading && (
-            <div className="flex items-center justify-center py-8 text-muted-foreground">
-              <Loader2 className="w-5 h-5 mr-2 animate-spin" /> Carregando...
+            <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground" role="status">
+              <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" /> Carregando…
             </div>
           )}
           {!loading && resultados.length === 0 && (
-            <Card><CardContent className="p-8 text-center text-muted-foreground text-sm">
-              Nenhuma publicação encontrada. Ajuste os filtros ou clique em "Sincronizar agora".
-            </CardContent></Card>
+            <div className="rounded-lg border border-border bg-card shadow-sm">
+              <EstadoVazio
+                icone={<FileText />}
+                titulo="Nenhuma publicação encontrada"
+                descricao="Ajuste os filtros de busca ou sincronize os diários para trazer as publicações mais recentes."
+                acao={
+                  <Button variant="outline" onClick={sincronizar} disabled={syncing}>
+                    <RefreshCw aria-hidden="true" /> Sincronizar agora
+                  </Button>
+                }
+              />
+            </div>
           )}
           {!loading && resultados.map((d) => (
-            <Card key={d.id} className="hover:border-primary/50 transition-colors">
-              <CardContent className="p-3 space-y-2">
-                <div className="flex flex-wrap items-center gap-2 text-xs">
-                  <Badge variant="secondary">{d.fonte}</Badge>
-                  {d.tipo_publicacao && <Badge variant="outline">{d.tipo_publicacao.replace(/_/g, ' ')}</Badge>}
-                  {d.uf && <Badge variant="outline" className="gap-1"><MapPin className="w-3 h-3" />{d.uf}</Badge>}
-                  <span className="text-muted-foreground flex items-center gap-1">
-                    <CalendarIcon className="w-3 h-3" />
+            <Card key={d.id} className="transition-colors hover:border-primary/50">
+              <CardContent className="space-y-2 p-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="info">{d.fonte}</Badge>
+                  {d.tipo_publicacao && <Badge variant="muted">{d.tipo_publicacao.replace(/_/g, ' ')}</Badge>}
+                  {d.uf && (
+                    <Badge variant="muted" className="gap-1">
+                      <MapPin className="w-3 h-3" aria-hidden="true" />{d.uf}
+                    </Badge>
+                  )}
+                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <CalendarIcon className="w-3 h-3" aria-hidden="true" />
                     {format(parseISO(d.data_publicacao), 'dd/MM/yyyy', { locale: ptBR })}
                   </span>
                 </div>
-                <div className="text-sm font-medium text-foreground line-clamp-2">{d.objeto || 'Sem descrição'}</div>
+                <p className="line-clamp-2 text-base font-medium text-foreground">{d.objeto || 'Sem descrição'}</p>
                 {d.orgao && (
-                  <div className="text-xs text-muted-foreground flex items-center gap-1">
-                    <Building2 className="w-3 h-3" />{d.orgao}
-                  </div>
+                  <p className="flex items-center gap-1 text-sm text-muted-foreground">
+                    <Building2 className="w-3 h-3" aria-hidden="true" />{d.orgao}
+                  </p>
                 )}
                 {d.link_html && (
                   <a href={d.link_html} target="_blank" rel="noopener noreferrer"
-                     className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
-                    <ExternalLink className="w-3 h-3" /> Abrir publicação original
+                     className="inline-flex items-center gap-1 text-sm text-primary hover:underline">
+                    <ExternalLink className="w-3 h-3" aria-hidden="true" /> Abrir publicação original
                   </a>
                 )}
               </CardContent>
@@ -231,18 +250,20 @@ export default function DiariosOficiais() {
         </div>
 
         {total > PAGE_SIZE && (
-          <div className="flex items-center justify-between gap-2 pt-2">
-            <span className="text-xs text-muted-foreground">
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
+            <span className="text-sm text-muted-foreground">
               Página {pagina} de {totalPaginas} • {total} resultados
             </span>
-            <div className="flex gap-1">
+            <div className="flex flex-wrap gap-2">
               <Button size="sm" variant="outline" disabled={pagina <= 1 || loading}
+                aria-label="Página anterior"
                 onClick={() => buscar(pagina - 1)}>
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft aria-hidden="true" />
               </Button>
               <Button size="sm" variant="outline" disabled={pagina >= totalPaginas || loading}
+                aria-label="Próxima página"
                 onClick={() => buscar(pagina + 1)}>
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight aria-hidden="true" />
               </Button>
             </div>
           </div>

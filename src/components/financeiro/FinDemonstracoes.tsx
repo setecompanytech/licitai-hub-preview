@@ -6,7 +6,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, FileBarChart2, Scale, Activity, TrendingUp, Download, BookOpen } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { FileBarChart2, Scale, Activity, TrendingUp, Download, BookOpen } from "lucide-react";
 import { useEmpresaId } from "@/hooks/useFinanceiro";
 import { supabase } from "@/integrations/supabase/client";
 import { format, startOfYear, endOfMonth, parseISO } from "date-fns";
@@ -287,71 +288,77 @@ export default function FinDemonstracoes() {
   }
 
   if (isLoading) {
-    return <div className="text-center py-12"><Loader2 className="w-6 h-6 mx-auto animate-spin" /></div>;
+    return (
+      <div className="space-y-4" role="status" aria-label="Carregando demonstrações">
+        <Skeleton className="h-24" />
+        <Skeleton className="h-10 w-96 max-w-full" />
+        <Skeleton className="h-72" />
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <Card>
-        <CardContent className="p-4 flex flex-wrap items-end gap-3">
+        <CardContent className="p-6 flex flex-wrap items-end gap-3">
           <div>
-            <Label className="text-xs">De</Label>
-            <Input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} className="w-[160px]" />
+            <Label htmlFor="demo-de" className="block mb-2">De</Label>
+            <Input id="demo-de" type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} className="w-44" />
           </div>
           <div>
-            <Label className="text-xs">Até</Label>
-            <Input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} className="w-[160px]" />
+            <Label htmlFor="demo-ate" className="block mb-2">Até</Label>
+            <Input id="demo-ate" type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} className="w-44" />
           </div>
           <div className="flex-1" />
-          <Button variant="outline" size="sm" onClick={() => exportarPDF("completo")}>
-            <Download className="w-4 h-4 mr-1.5" /> Exportar PDF Completo
+          <Button variant="outline" onClick={() => exportarPDF("completo")}>
+            <Download className="w-4 h-4" aria-hidden="true" /> Exportar PDF Completo
           </Button>
         </CardContent>
       </Card>
 
       <Tabs defaultValue="bp" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="bp"><Scale className="w-3.5 h-3.5 mr-1.5" />Balanço Patrimonial</TabsTrigger>
-          <TabsTrigger value="dfc"><Activity className="w-3.5 h-3.5 mr-1.5" />DFC Indireta</TabsTrigger>
-          <TabsTrigger value="dmpl"><TrendingUp className="w-3.5 h-3.5 mr-1.5" />DMPL</TabsTrigger>
+          <TabsTrigger value="bp"><Scale className="w-4 h-4 mr-2" aria-hidden="true" />Balanço Patrimonial</TabsTrigger>
+          <TabsTrigger value="dfc"><Activity className="w-4 h-4 mr-2" aria-hidden="true" />DFC Indireta</TabsTrigger>
+          <TabsTrigger value="dmpl"><TrendingUp className="w-4 h-4 mr-2" aria-hidden="true" />DMPL</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="bp" className="space-y-3 mt-0">
+        <TabsContent value="bp" className="space-y-4 mt-0">
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center justify-between text-base">
-                <span className="flex items-center gap-2"><Scale className="w-5 h-5 text-muted-foreground" />Balanço Patrimonial</span>
-                <div className="flex gap-2">
-                  <Badge variant="outline" className={calc.bp.balanceado ? "bg-success/10 text-success border-success/30" : "bg-destructive/10 text-destructive border-destructive/30"}>
-                    {calc.bp.balanceado ? "✓ Balanceado" : "⚠ Desbalanceado"}
-                  </Badge>
-                  <Button size="sm" variant="ghost" onClick={() => salvarSnapshot("balanco_patrimonial")}>
-                    <BookOpen className="w-3.5 h-3.5 mr-1.5" /> Salvar
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => exportarPDF("balanco")}>
-                    <Download className="w-3.5 h-3.5 mr-1.5" /> PDF
-                  </Button>
-                </div>
+            <CardHeader className="pb-2 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Scale className="w-5 h-5 text-muted-foreground" aria-hidden="true" />Balanço Patrimonial
               </CardTitle>
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant={calc.bp.balanceado ? "success" : "danger"}>
+                  {calc.bp.balanceado ? "Balanceado" : "Desbalanceado"}
+                </Badge>
+                <Button variant="ghost" onClick={() => salvarSnapshot("balanco_patrimonial")}>
+                  <BookOpen className="w-4 h-4" aria-hidden="true" /> Salvar
+                </Button>
+                <Button variant="outline" onClick={() => exportarPDF("balanco")}>
+                  <Download className="w-4 h-4" aria-hidden="true" /> PDF
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="border rounded-md p-4">
-                  <h4 className="font-semibold mb-3 text-sm uppercase tracking-wide text-muted-foreground">Ativo</h4>
+                <div className="rounded-lg border border-border p-4">
+                  <h4 className="text-sm font-semibold text-muted-foreground mb-3">Ativo</h4>
                   <Linha label="Ativo Circulante" valor={calc.bp.ativoCirculante} />
                   <Linha label="  Caixa e Equivalentes" valor={calc.bp.ativoCirculante} indent />
                   <Linha label="Ativo Não Circulante" valor={calc.bp.ativoNaoCirculante} />
-                  <div className="border-t pt-2 mt-2">
+                  <div className="border-t border-border pt-2 mt-2">
                     <Linha label="TOTAL DO ATIVO" valor={calc.bp.totalAtivo} bold />
                   </div>
                 </div>
-                <div className="border rounded-md p-4">
-                  <h4 className="font-semibold mb-3 text-sm uppercase tracking-wide text-muted-foreground">Passivo + Patrimônio Líquido</h4>
+                <div className="rounded-lg border border-border p-4">
+                  <h4 className="text-sm font-semibold text-muted-foreground mb-3">Passivo + Patrimônio Líquido</h4>
                   <Linha label="Passivo Circulante" valor={calc.bp.passivoCirculante} />
                   <Linha label="Passivo Não Circulante" valor={calc.bp.passivoNaoCirculante} />
                   <Linha label="Patrimônio Líquido" valor={calc.bp.patrimonioLiquido} />
                   <Linha label="  Resultado do Exercício" valor={calc.dre.resultadoLiquido} indent />
-                  <div className="border-t pt-2 mt-2">
+                  <div className="border-t border-border pt-2 mt-2">
                     <Linha label="TOTAL DO PASSIVO + PL" valor={calc.bp.totalPassivo} bold />
                   </div>
                 </div>
@@ -364,27 +371,27 @@ export default function FinDemonstracoes() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="dfc" className="space-y-3 mt-0">
+        <TabsContent value="dfc" className="space-y-4 mt-0">
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center justify-between text-base">
-                <span className="flex items-center gap-2"><Activity className="w-5 h-5 text-success" />DFC – Método Indireto</span>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="ghost" onClick={() => salvarSnapshot("dfc_indireta")}>
-                    <BookOpen className="w-3.5 h-3.5 mr-1.5" /> Salvar
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => exportarPDF("dfc")}>
-                    <Download className="w-3.5 h-3.5 mr-1.5" /> PDF
-                  </Button>
-                </div>
+            <CardHeader className="pb-2 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="w-5 h-5 text-success" aria-hidden="true" />DFC – Método Indireto
               </CardTitle>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button variant="ghost" onClick={() => salvarSnapshot("dfc_indireta")}>
+                  <BookOpen className="w-4 h-4" aria-hidden="true" /> Salvar
+                </Button>
+                <Button variant="outline" onClick={() => exportarPDF("dfc")}>
+                  <Download className="w-4 h-4" aria-hidden="true" /> PDF
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-1">
                 <Linha label="Fluxo das Atividades Operacionais (FCO)" valor={calc.dfc.fco} bold />
                 <Linha label="Fluxo das Atividades de Investimento (FCI)" valor={calc.dfc.fci} bold />
                 <Linha label="Fluxo das Atividades de Financiamento (FCF)" valor={calc.dfc.fcf} bold />
-                <div className="border-t pt-2 mt-2">
+                <div className="border-t border-border pt-2 mt-2">
                   <Linha label="Variação Líquida de Caixa" valor={calc.dfc.variacaoCaixa} bold />
                   <Linha label="Saldo Final de Caixa" valor={calc.dfc.saldoFinalCaixa} bold />
                 </div>
@@ -396,20 +403,20 @@ export default function FinDemonstracoes() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="dmpl" className="space-y-3 mt-0">
+        <TabsContent value="dmpl" className="space-y-4 mt-0">
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center justify-between text-base">
-                <span className="flex items-center gap-2"><TrendingUp className="w-5 h-5 text-warning" />DMPL – Mutações do PL</span>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="ghost" onClick={() => salvarSnapshot("dmpl")}>
-                    <BookOpen className="w-3.5 h-3.5 mr-1.5" /> Salvar
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => exportarPDF("dmpl")}>
-                    <Download className="w-3.5 h-3.5 mr-1.5" /> PDF
-                  </Button>
-                </div>
+            <CardHeader className="pb-2 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-warning" aria-hidden="true" />DMPL – Mutações do PL
               </CardTitle>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button variant="ghost" onClick={() => salvarSnapshot("dmpl")}>
+                  <BookOpen className="w-4 h-4" aria-hidden="true" /> Salvar
+                </Button>
+                <Button variant="outline" onClick={() => exportarPDF("dmpl")}>
+                  <Download className="w-4 h-4" aria-hidden="true" /> PDF
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-1">
@@ -417,7 +424,7 @@ export default function FinDemonstracoes() {
                 <Linha label="(+) Aumento de Capital" valor={calc.dmpl.aumentoCapital} />
                 <Linha label="(+) Lucro do Exercício" valor={calc.dmpl.lucroExercicio} />
                 <Linha label="(–) Dividendos Distribuídos" valor={-calc.dmpl.dividendos} />
-                <div className="border-t pt-2 mt-2">
+                <div className="border-t border-border pt-2 mt-2">
                   <Linha label="Saldo Final" valor={calc.dmpl.saldoFinal} bold />
                 </div>
               </div>
@@ -434,9 +441,9 @@ export default function FinDemonstracoes() {
 
 function Linha({ label, valor, bold, indent }: { label: string; valor: number; bold?: boolean; indent?: boolean }) {
   return (
-    <div className={`flex items-center justify-between py-1.5 ${indent ? "pl-4" : ""}`}>
+    <div className={`flex items-center justify-between gap-2 py-1.5 ${indent ? "pl-4" : ""}`}>
       <span className={`text-sm ${bold ? "font-semibold" : ""}`}>{label}</span>
-      <span className={`tabular-nums text-sm ${bold ? "font-semibold" : ""} ${valor < 0 ? "text-destructive" : ""}`}>
+      <span className={`text-right tabular-nums text-sm whitespace-nowrap ${bold ? "font-semibold" : ""} ${valor < 0 ? "text-destructive" : ""}`}>
         {fmt(valor)}
       </span>
     </div>
