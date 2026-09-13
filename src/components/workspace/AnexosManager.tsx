@@ -3,6 +3,7 @@ import { useProcessoWorkspace, type CategoriaAnexo, type ProcessoAnexo } from '@
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -272,31 +273,28 @@ export default function AnexosManager({ licitacaoId, editalViewer, pncpEditalCou
           </div>
         )}
         {!loading && filtrados.length === 0 && (
-          <div className="p-12 text-center">
-            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
-              <Folder className="w-6 h-6" aria-hidden="true" />
-            </div>
-            <p className="text-lg font-semibold">Nenhum arquivo nesta pasta.</p>
-            <p className="mt-1 text-sm text-muted-foreground">Envie o primeiro acima.</p>
-            {/* Pastas alimentadas por um módulo do processo apontam para ele —
-                a pasta e a aba que a produz são o mesmo trabalho. */}
-            {ORIGEM_DA_PASTA[filtroCat] ? (
-              <div className="mt-4 text-sm text-muted-foreground">
-                <p>{ORIGEM_DA_PASTA[filtroCat].texto}</p>
-                <Button variant="outline" className="mt-3" onClick={() => setSearchParams((prev) => {
+          /* Pastas alimentadas por um módulo do processo apontam para ele —
+             a pasta e a aba que a produz são o mesmo trabalho. */
+          <EstadoVazio
+            icone={<Folder />}
+            titulo="Nenhum arquivo nesta pasta"
+            descricao={ORIGEM_DA_PASTA[filtroCat]?.texto ?? 'Envie o primeiro arquivo pela barra acima.'}
+            acao={
+              ORIGEM_DA_PASTA[filtroCat] ? (
+                <Button variant="outline" onClick={() => setSearchParams((prev) => {
                   const next = new URLSearchParams(prev);
                   next.set('aba', ORIGEM_DA_PASTA[filtroCat].aba);
                   return next;
                 }, { replace: true })}>
                   {ORIGEM_DA_PASTA[filtroCat].botao} <ArrowRight className="w-4 h-4" aria-hidden="true" />
                 </Button>
-              </div>
-            ) : (
-              <Button variant="outline" className="mt-4" onClick={() => fileRef.current?.click()} disabled={uploading}>
-                <Upload className="w-4 h-4" aria-hidden="true" /> {uploading ? 'Enviando...' : 'Enviar Arquivo(s)'}
-              </Button>
-            )}
-          </div>
+              ) : (
+                <Button variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading}>
+                  <Upload className="w-4 h-4" aria-hidden="true" /> {uploading ? 'Enviando...' : 'Enviar Arquivo(s)'}
+                </Button>
+              )
+            }
+          />
         )}
         {filtroCat !== 'habilitacao' && filtrados.map((a: ProcessoAnexo) => renderAnexo(a))}
 
@@ -364,23 +362,24 @@ export default function AnexosManager({ licitacaoId, editalViewer, pncpEditalCou
               );
             }
             return (
-              <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
-                  <FileText className="w-6 h-6" aria-hidden="true" />
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  O navegador não exibe este formato em tela. Abra em uma nova aba ou baixe o arquivo.
-                </p>
-                <div className="flex flex-wrap items-center justify-center gap-2">
-                  <Button variant="outline" asChild>
-                    <a href={visualizando.url} target="_blank" rel="noreferrer">
-                      <ExternalLink className="w-4 h-4" aria-hidden="true" /> Abrir em nova aba
-                    </a>
-                  </Button>
-                  <Button variant="outline" onClick={() => downloadAnexo(visualizando.anexo)}>
-                    <Download className="w-4 h-4" aria-hidden="true" /> Baixar
-                  </Button>
-                </div>
+              <div className="flex flex-1 items-center justify-center">
+                <EstadoVazio
+                  icone={<FileText />}
+                  titulo="O navegador não exibe este formato"
+                  descricao="Abra em uma nova aba ou baixe o arquivo para ler no aplicativo correspondente."
+                  acao={
+                    <>
+                      <Button variant="outline" asChild>
+                        <a href={visualizando.url} target="_blank" rel="noreferrer">
+                          <ExternalLink className="w-4 h-4" aria-hidden="true" /> Abrir em nova aba
+                        </a>
+                      </Button>
+                      <Button variant="outline" onClick={() => downloadAnexo(visualizando.anexo)}>
+                        <Download className="w-4 h-4" aria-hidden="true" /> Baixar
+                      </Button>
+                    </>
+                  }
+                />
               </div>
             );
           })()}

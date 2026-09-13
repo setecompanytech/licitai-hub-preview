@@ -14,6 +14,7 @@ import {
   CartesianGrid,
   Legend,
 } from "recharts";
+import EstadoVazio from "@/components/shared/EstadoVazio";
 import FinResumoCards from "./FinResumoCards";
 
 const monthLabel = (mes: string) => {
@@ -68,14 +69,12 @@ export default function FinDashboard() {
                 ))}
               </div>
             ) : data.topDespesas.length === 0 ? (
-              <div className="flex flex-col items-center py-8 text-center">
-                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
-                  <Tags className="w-6 h-6" aria-hidden="true" />
-                </span>
-                <p className="mt-3 text-sm text-muted-foreground">
-                  Sem despesas registradas no período.
-                </p>
-              </div>
+              <EstadoVazio
+                tamanho="compacto"
+                icone={<Tags />}
+                titulo="Sem despesas no período"
+                descricao="Assim que houver despesas classificadas por categoria, as cinco maiores aparecem aqui."
+              />
             ) : (
               <ul className="space-y-3">
                 {data.topDespesas.map((d) => {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -16,12 +16,13 @@ import { usePessoas } from '@/hooks/useFinanceiro';
 import PessoaFormDialog from '@/components/financeiro/PessoaFormDialog';
 import NcmDialog from '@/components/shared/NcmDialog';
 import CestDialog from '@/components/shared/CestDialog';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { NCM_CODES } from '@/data/ncm-codes';
 import { toast } from 'sonner';
 import {
   Plus, Trash2, Loader2, Pencil, Copy, UserMinus, Paperclip, History,
   ClipboardList, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
-  Upload, Package, Search, Filter, ChevronsUpDown, Link, X, Globe,
+  Upload, Package, Search, ChevronsUpDown, Link, X, Globe, Info,
 } from 'lucide-react';
 import { UNIDADES, unidadesMaisUsadas } from '@/lib/unidades';
 
@@ -102,19 +103,29 @@ function formatMoeda(v: string): string {
 }
 
 // ── Sub-components ─────────────────────────────────────────────────────────
-// Ordenação e filtro por coluna ainda não existem: os ícones são só a
-// promessa visual do grid (como no protótipo), por isso ficam decorativos e
-// fora da ordem de foco em vez de botões que não fazem nada.
+// Sem setas de ordenação nem funil de filtro: ordenar e filtrar por coluna
+// ainda não existem neste grid, e ícone que promete clique sem ter destino é
+// o mesmo defeito do falso link "@ Consulta de Crédito" do PedidosOmie. Os
+// ícones voltam quando o cabeçalho virar <button> com aria-sort de verdade.
 function ColHeader({ label, className = '' }: { label: string; className?: string }) {
   return (
     <th className={`py-3 px-2 text-left text-sm font-semibold text-foreground whitespace-nowrap ${className}`}>
-      <div className="flex items-center gap-1">
-        <span>{label}</span>
-        <span aria-hidden="true" className="inline-flex items-center gap-1 text-muted-foreground">
-          <ChevronsUpDown className="w-3 h-3" /><Filter className="w-3 h-3" />
-        </span>
-      </div>
+      {label}
     </th>
+  );
+}
+
+/**
+ * Ícone de informação que realmente informa: `title` dá a dica no hover do
+ * mouse e o `sr-only` entrega o mesmo texto ao leitor de tela. Sem o `title`
+ * o ⓘ virava enfeite para a maioria dos usuários.
+ */
+function Ajuda({ texto }: { texto: string }) {
+  return (
+    <span title={texto} className="inline-flex cursor-help items-center">
+      <Info className="w-3 h-3 text-muted-foreground" aria-hidden="true" />
+      <span className="sr-only">{texto}</span>
+    </span>
   );
 }
 
@@ -212,7 +223,16 @@ function UnidadeCombobox({ value, onChange }: { value: string; onChange: (v: str
  * carregam `produtos` em estados separados, e a de Estoque só se atualizava se
  * a pessoa recarregasse a página.
  */
-export default function ProdutosOmie({ aoMudar }: { aoMudar?: () => void } = {}) {
+/**
+ * O que a página de Compras pode disparar de fora. A identidade 12/09 quer a
+ * ação principal no CabecalhoPagina, e não numa segunda barra dentro da aba —
+ * então quem abre o cadastro é o botão do cabeçalho, por este punho.
+ */
+export interface ProdutosOmieRef {
+  novoProduto: () => void;
+}
+
+const ProdutosOmie = forwardRef<ProdutosOmieRef, { aoMudar?: () => void }>(function ProdutosOmie({ aoMudar }, ref) {
   const { empresaAtiva } = useEmpresa();
   const { data: todasPessoas = [] } = usePessoas();
   const fornecedoresDisp = todasPessoas.filter(p => p.tipo === 'fornecedor' || p.tipo === 'ambos');
@@ -238,6 +258,10 @@ export default function ProdutosOmie({ aoMudar }: { aoMudar?: () => void } = {})
   const [fornBusca, setFornBusca] = useState('');
   const [ncmOpen, setNcmOpen] = useState(false);
   const [cestOpen, setCestOpen] = useState(false);
+
+  // Sem lista de dependências de propósito: `openNovo` é declaração de função
+  // (recriada a cada render) e o punho só é lido no clique.
+  useImperativeHandle(ref, () => ({ novoProduto: () => { void openNovo(); } }));
 
   useEffect(() => {
     if (!empresaAtiva) { setLoading(false); return; }
@@ -540,7 +564,8 @@ export default function ProdutosOmie({ aoMudar }: { aoMudar?: () => void } = {})
           <Button variant="ghost" size="sm" onClick={closeForm}>Fechar <X className="w-4 h-4" /></Button>
         </div>
 
-        <div className="p-4 space-y-4 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
+        {/* Altura pelo Tailwind (purgável), não por `style` inline. */}
+        <div className="p-4 space-y-4 overflow-y-auto max-h-[calc(100vh-12.5rem)]">
           {/* Top: image + fields + definição */}
           <div className="flex flex-col lg:flex-row gap-4">
             {/* Image */}
@@ -614,18 +639,21 @@ export default function ProdutosOmie({ aoMudar }: { aoMudar?: () => void } = {})
             </div>
 
             {/* Definição do Produto */}
+            {/* `title` no elemento visível, não só no sr-only: para quem usa
+                mouse o "Em breve" é a única explicação de por que os dois
+                últimos interruptores estão mortos. */}
             <div className="shrink-0 lg:w-48 rounded-lg border border-border p-4 space-y-3">
               <p className="text-sm font-semibold">Definição do Produto</p>
               <div className="flex items-center justify-between">
-                <Label className="text-sm flex items-center gap-1">Simples <span className="text-muted-foreground cursor-help" title="Produto simples, sem variações">ⓘ</span></Label>
+                <Label className="text-sm flex items-center gap-1">Simples <Ajuda texto="Produto simples, sem variações" /></Label>
                 <Switch checked={form.tipo_simples} onCheckedChange={v => setForm(f => ({ ...f, tipo_simples: v }))} />
               </div>
               <div className="flex items-center justify-between opacity-50">
-                <Label className="text-sm flex items-center gap-1 cursor-not-allowed">Kit <span className="text-muted-foreground cursor-help" title="Em breve">ⓘ</span></Label>
+                <Label className="text-sm flex items-center gap-1 cursor-not-allowed">Kit <Ajuda texto="Em breve" /></Label>
                 <Switch checked={false} disabled />
               </div>
               <div className="flex items-center justify-between opacity-50">
-                <Label className="text-sm flex items-center gap-1 cursor-not-allowed">Com Variações <span className="text-muted-foreground cursor-help" title="Em breve">ⓘ</span></Label>
+                <Label className="text-sm flex items-center gap-1 cursor-not-allowed">Com Variações <Ajuda texto="Em breve" /></Label>
                 <Switch checked={false} disabled />
               </div>
             </div>
@@ -633,7 +661,7 @@ export default function ProdutosOmie({ aoMudar }: { aoMudar?: () => void } = {})
 
           {/* Tabs — sem "Custo do Estoque" */}
           <Tabs defaultValue="estoque" className="w-full">
-            <TabsList className="flex flex-wrap h-auto justify-start gap-1 p-1">
+            <TabsList>
               {[
                 { value: 'estoque', label: 'Estoque' },
                 { value: 'fornecedores', label: 'Fornecedores' },
@@ -653,7 +681,7 @@ export default function ProdutosOmie({ aoMudar }: { aoMudar?: () => void } = {})
               </div>
               <div className="flex items-center gap-2">
                 <Switch id="ctrl-lote" />
-                <Label htmlFor="ctrl-lote" className="text-sm flex items-center gap-1">Este produto possui controle de lote <span className="text-muted-foreground cursor-help">ⓘ</span></Label>
+                <Label htmlFor="ctrl-lote" className="text-sm flex items-center gap-1">Este produto possui controle de lote <Info className="w-3 h-3 text-muted-foreground" aria-hidden="true" /></Label>
               </div>
               <div className="overflow-x-auto rounded-md border border-border">
                 <table className="w-full text-sm">
@@ -661,7 +689,7 @@ export default function ProdutosOmie({ aoMudar }: { aoMudar?: () => void } = {})
                     <tr>
                       {['Local de Estoque','Estoque Disponível','CMC Unitário','CMC Total','Estoque Mínimo','Previsão de Entrada','Previsão de Saída'].map(col => (
                         <th key={col} className="py-3 px-3 text-left text-sm font-semibold whitespace-nowrap">
-                          <div className="flex items-center gap-1">{col}<span aria-hidden="true" className="inline-flex items-center gap-1 text-muted-foreground"><ChevronsUpDown className="w-3 h-3" /><Filter className="w-3 h-3" /></span></div>
+                          {col}
                         </th>
                       ))}
                     </tr>
@@ -690,14 +718,17 @@ export default function ProdutosOmie({ aoMudar }: { aoMudar?: () => void } = {})
                 </Button>
               </div>
               {form.fornecedoresVinculados.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-10 text-center">
-                  <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary"><Package className="w-6 h-6" aria-hidden="true" /></span>
-                  <p className="mt-3 text-lg font-semibold">Nenhum fornecedor vinculado</p>
-                  <p className="mt-1 text-sm text-muted-foreground">Vincule quem fornece este produto para agilizar os pedidos de compra.</p>
-                  <Button className="mt-4" variant="outline" onClick={() => { setFornBusca(''); setVincularOpen(true); }}>
-                    <Plus className="w-4 h-4" /> Adicionar fornecedor
-                  </Button>
-                </div>
+                <EstadoVazio
+                  tamanho="compacto"
+                  icone={<Package />}
+                  titulo="Nenhum fornecedor vinculado"
+                  descricao="Vincule quem fornece este produto para agilizar os pedidos de compra."
+                  acao={
+                    <Button variant="outline" onClick={() => { setFornBusca(''); setVincularOpen(true); }}>
+                      <Plus className="w-4 h-4" /> Adicionar fornecedor
+                    </Button>
+                  }
+                />
               ) : (
                 <div className="space-y-2">
                   {form.fornecedoresVinculados.map(f => (
@@ -717,11 +748,11 @@ export default function ProdutosOmie({ aoMudar }: { aoMudar?: () => void } = {})
 
             {/* Histórico */}
             <TabsContent value="historico" className="rounded-lg border border-border p-4 mt-2">
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary"><History className="w-6 h-6" aria-hidden="true" /></span>
-                <p className="mt-3 text-lg font-semibold">Nenhum histórico de compras</p>
-                <p className="mt-1 text-sm text-muted-foreground">As compras deste produto aparecerão aqui.</p>
-              </div>
+              <EstadoVazio
+                icone={<History />}
+                titulo="Nenhum histórico de compras"
+                descricao="As compras deste produto aparecerão aqui."
+              />
             </TabsContent>
 
             {/* Informações Adicionais */}
@@ -748,11 +779,11 @@ export default function ProdutosOmie({ aoMudar }: { aoMudar?: () => void } = {})
 
             {/* Características */}
             <TabsContent value="caracteristicas" className="rounded-lg border border-border p-4 mt-2">
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary"><ClipboardList className="w-6 h-6" aria-hidden="true" /></span>
-                <p className="mt-3 text-lg font-semibold">Nenhuma característica cadastrada</p>
-                <p className="mt-1 text-sm text-muted-foreground">Atributos como cor, tamanho e voltagem ficam aqui.</p>
-              </div>
+              <EstadoVazio
+                icone={<ClipboardList />}
+                titulo="Nenhuma característica cadastrada"
+                descricao="Atributos como cor, tamanho e voltagem ficam aqui."
+              />
             </TabsContent>
 
             {/* Recomendações Fiscais */}
@@ -852,9 +883,11 @@ export default function ProdutosOmie({ aoMudar }: { aoMudar?: () => void } = {})
             </div>
             <div className="flex-1 overflow-y-auto space-y-1 min-h-0">
               {fornFiltrados.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-6">
-                  {fornecedoresDisp.length === 0 ? 'Nenhum fornecedor cadastrado.' : 'Nenhum resultado encontrado.'}
-                </p>
+                <EstadoVazio
+                  tamanho="compacto"
+                  titulo={fornecedoresDisp.length === 0 ? 'Nenhum fornecedor cadastrado' : 'Nenhum resultado encontrado'}
+                  descricao={fornecedoresDisp.length === 0 ? 'Cadastre um fornecedor para vinculá-lo a este produto.' : 'Ajuste a busca para encontrar o fornecedor.'}
+                />
               ) : (
                 fornFiltrados.map(f => (
                   <button type="button" key={f.id} onClick={() => vincularFornecedor(f)} className="w-full text-left p-3 rounded-lg border border-border hover:bg-primary-tint transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
@@ -902,11 +935,10 @@ export default function ProdutosOmie({ aoMudar }: { aoMudar?: () => void } = {})
 
   // ══ LIST VIEW ══════════════════════════════════════════════════
   return (
-    <div className="rounded-lg border border-border bg-card overflow-hidden flex flex-col" style={{ minHeight: '500px' }}>
+    <div className="rounded-lg border border-border bg-card overflow-hidden flex flex-col min-h-[500px]">
+      {/* "Incluir" não se repete aqui: a ação principal da aba mora no
+          CabecalhoPagina da página (ver ProdutosOmieRef). */}
       <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-border bg-muted">
-        <Button size="sm" onClick={openNovo}>
-          <Plus className="w-4 h-4" /> Incluir
-        </Button>
         <Button size="sm" variant="outline">
           <Upload className="w-4 h-4" /> Importar Planilha
         </Button>
@@ -934,12 +966,12 @@ export default function ProdutosOmie({ aoMudar }: { aoMudar?: () => void } = {})
               <Skeleton className="h-10" />
             </div>
           ) : filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary"><Package className="w-6 h-6" aria-hidden="true" /></span>
-              <p className="mt-3 text-lg font-semibold">Nenhum produto encontrado</p>
-              <p className="mt-1 text-sm text-muted-foreground">Cadastre o primeiro produto do catálogo ou ajuste a busca.</p>
-              <Button className="mt-4" onClick={openNovo}><Plus className="w-4 h-4" /> Incluir primeiro produto</Button>
-            </div>
+            <EstadoVazio
+              icone={<Package />}
+              titulo="Nenhum produto encontrado"
+              descricao="Cadastre o primeiro produto do catálogo ou ajuste a busca."
+              acao={<Button onClick={openNovo}><Plus className="w-4 h-4" /> Incluir primeiro produto</Button>}
+            />
           ) : (
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-card z-10 border-b border-border">
@@ -1032,4 +1064,6 @@ export default function ProdutosOmie({ aoMudar }: { aoMudar?: () => void } = {})
       </div>
     </div>
   );
-}
+});
+
+export default ProdutosOmie;

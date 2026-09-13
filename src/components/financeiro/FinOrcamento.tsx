@@ -4,11 +4,13 @@ import { useEmpresa } from "@/contexts/EmpresaContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Save, Copy, TrendingUp, BookOpen, Building2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import EstadoVazio from "@/components/shared/EstadoVazio";
 import { cn } from "@/lib/utils";
 
 interface Conta {
@@ -179,14 +181,12 @@ export default function FinOrcamento() {
   if (!empresaAtiva) {
     return (
       <Card>
-        <CardContent className="flex flex-col items-center py-12 text-center">
-          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
-            <Building2 className="w-6 h-6" aria-hidden="true" />
-          </span>
-          <p className="mt-3 text-lg font-semibold">Nenhuma empresa ativa</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Selecione uma empresa ativa para gerenciar o orçamento.
-          </p>
+        <CardContent className="p-0">
+          <EstadoVazio
+            icone={<Building2 />}
+            titulo="Nenhuma empresa ativa"
+            descricao="Selecione uma empresa ativa no menu superior para gerenciar o orçamento."
+          />
         </CardContent>
       </Card>
     );
@@ -207,25 +207,32 @@ export default function FinOrcamento() {
               Plano orçamentário mensal por conta contábil. Compare orçado x realizado.
             </CardDescription>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <label htmlFor="orc-ano" className="sr-only">Ano</label>
-            <Select value={String(ano)} onValueChange={(v) => setAno(Number(v))}>
-              <SelectTrigger id="orc-ano" className="w-32" aria-label="Ano"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {[ano - 1, ano, ano + 1].map((y) => (
-                  <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={filtroNatureza} onValueChange={setFiltroNatureza}>
-              <SelectTrigger className="w-44" aria-label="Natureza"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="receita">Receitas</SelectItem>
-                <SelectItem value="despesa">Despesas</SelectItem>
-                <SelectItem value="ativo">Ativos</SelectItem>
-                <SelectItem value="passivo">Passivos</SelectItem>
-              </SelectContent>
-            </Select>
+          {/* Rótulo visível, e não só `aria-label`: quem enxerga também precisa
+              saber o que o seletor escolhe antes de mudá-lo. */}
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="space-y-2">
+              <Label htmlFor="orc-ano">Ano</Label>
+              <Select value={String(ano)} onValueChange={(v) => setAno(Number(v))}>
+                <SelectTrigger id="orc-ano" className="w-32"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {[ano - 1, ano, ano + 1].map((y) => (
+                    <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="orc-natureza">Natureza</Label>
+              <Select value={filtroNatureza} onValueChange={setFiltroNatureza}>
+                <SelectTrigger id="orc-natureza" className="w-44"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="receita">Receitas</SelectItem>
+                  <SelectItem value="despesa">Despesas</SelectItem>
+                  <SelectItem value="ativo">Ativos</SelectItem>
+                  <SelectItem value="passivo">Passivos</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <Button onClick={salvar} disabled={saving || loading}>
               {saving ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Save className="w-4 h-4" aria-hidden="true" />}
               Salvar
@@ -239,15 +246,11 @@ export default function FinOrcamento() {
               <Skeleton className="h-64" />
             </div>
           ) : contasFiltradas.length === 0 ? (
-            <div className="flex flex-col items-center py-12 text-center">
-              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
-                <BookOpen className="w-6 h-6" aria-hidden="true" />
-              </span>
-              <p className="mt-3 text-lg font-semibold">Nenhuma conta analítica</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Nenhuma conta analítica de {filtroNatureza} encontrada. Cadastre o Plano de Contas primeiro.
-              </p>
-            </div>
+            <EstadoVazio
+              icone={<BookOpen />}
+              titulo="Nenhuma conta analítica"
+              descricao={`Nenhuma conta analítica de ${filtroNatureza} encontrada. Cadastre o Plano de Contas primeiro.`}
+            />
           ) : (
             <Tabs defaultValue="orcado">
               <TabsList>

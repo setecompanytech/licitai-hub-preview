@@ -6,11 +6,13 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
-import { AlertCircle, Loader2, Pencil, Plus, Search, Sparkles } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Loader2, Pencil, Plus, Search, Sparkles } from 'lucide-react';
 
 export type CondicaoPagamento = {
   id: string;
@@ -230,9 +232,11 @@ export default function CondicoesPagamento({
                   <Skeleton className="h-10" />
                 </div>
               ) : filtradas.length === 0 ? (
-                <p className="p-8 text-center text-sm text-muted-foreground">
-                  Nenhuma condição cadastrada — use "Criar condições padrão" ou "Cadastrar".
-                </p>
+                <EstadoVazio
+                  tamanho="compacto"
+                  titulo="Nenhuma condição cadastrada"
+                  descricao="Use “Criar condições padrão” para semear as mais comuns, ou “Cadastrar” para montar a sua."
+                />
               ) : (
                 <Table>
                   <TableHeader>
@@ -257,7 +261,7 @@ export default function CondicoesPagamento({
                           <TableCell className="text-sm text-muted-foreground">
                             {l.parcelas.map(p => `${p.dias}d`).join(' / ')}
                           </TableCell>
-                          <TableCell className={`text-sm text-right tabular-nums ${ok ? '' : 'text-destructive font-semibold'}`}>
+                          <TableCell className={`text-sm text-right tabular-nums ${ok ? '' : 'text-destructive-ink font-semibold'}`}>
                             {total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </TableCell>
                           <TableCell><Pencil className="w-4 h-4 text-muted-foreground" aria-hidden="true" /></TableCell>
@@ -269,9 +273,10 @@ export default function CondicoesPagamento({
               )}
             </div>
             {filtradas.some(l => Math.abs(l.parcelas.reduce((s, p) => s + (Number(p.percentual) || 0), 0) - 100) > 0.01) && (
-              <p className="text-sm text-destructive flex items-center gap-1">
-                <AlertCircle className="w-4 h-4" aria-hidden="true" /> Condição de Pagamento incompleta — não atingiu 100%.
-              </p>
+              <Alert variant="destructive">
+                <AlertCircle className="w-4 h-4" aria-hidden="true" />
+                <AlertDescription>Condição de Pagamento incompleta — não atingiu 100%.</AlertDescription>
+              </Alert>
             )}
           </div>
         ) : (
@@ -359,14 +364,16 @@ export default function CondicoesPagamento({
                   </div>
                 </div>
               ))}
-              <p className={`text-sm tabular-nums ${fecha100 ? 'text-muted-foreground' : 'text-destructive font-semibold'}`}>
+              <p className={`text-sm tabular-nums ${fecha100 ? 'text-muted-foreground' : 'text-destructive-ink font-semibold'}`}>
                 Total do percentual: {totalPercentual.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}%
                 {!fecha100 && ' — Condição de Pagamento incompleta, não atingiu 100%'}
               </p>
             </div>
 
             <div className="flex flex-wrap justify-between gap-2">
-              <Button variant="outline" onClick={() => { setEditando(false); setForm(formVazio()); }}>← Voltar à lista</Button>
+              <Button variant="outline" onClick={() => { setEditando(false); setForm(formVazio()); }}>
+                <ArrowLeft className="w-4 h-4" /> Voltar à lista
+              </Button>
               <Button onClick={salvar} disabled={salvando || !fecha100}>
                 {salvando && <Loader2 className="w-4 h-4 animate-spin" />} Salvar
               </Button>

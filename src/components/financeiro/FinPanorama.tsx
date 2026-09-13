@@ -15,7 +15,9 @@ export default function FinPanorama() {
   return (
     <div className="space-y-8">
       <Tabs defaultValue="visao" className="space-y-4">
-        <TabsList className="flex flex-wrap h-auto">
+        {/* TabsList já embrulha e cresce sozinha — repetir `flex-wrap h-auto`
+            aqui só duplicava o que o componente de ui garante. */}
+        <TabsList>
           <TabsTrigger value="visao">
             <Eye className="w-4 h-4 mr-2" aria-hidden="true" />
             Visão Geral

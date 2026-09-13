@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { ScanLine, Upload, CheckCircle2, AlertCircle } from "lucide-react";
+import { ScanLine, Upload, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -55,19 +55,21 @@ export default function FinOCRDocumentos() {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><ScanLine className="w-5 h-5" /> OCR Inteligente — Documentos Financeiros</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <ScanLine className="w-5 h-5 text-primary" aria-hidden="true" /> Enviar documento
+          </CardTitle>
           <CardDescription>
             Envie uma imagem de NF-e, boleto ou recibo. O sistema usa múltiplas IAs (Gemini Vision, Claude, GPT-5) com fallback automático.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-end gap-3">
-            <div className="flex-1">
-              <Label>Documento (imagem JPG/PNG)</Label>
-              <Input type="file" accept="image/*" onChange={handleUpload} />
+        <CardContent className="space-y-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <div className="flex-1 space-y-2">
+              <Label htmlFor="ocr-arquivo">Documento (imagem JPG/PNG)</Label>
+              <Input id="ocr-arquivo" type="file" accept="image/*" onChange={handleUpload} />
             </div>
             <Button onClick={processar} disabled={!arquivo || loading}>
-              {loading ? "Processando..." : <><Upload className="w-4 h-4 mr-1" />Extrair</>}
+              {loading ? "Processando..." : <><Upload className="w-4 h-4" aria-hidden="true" />Extrair</>}
             </Button>
           </div>
         </CardContent>
@@ -76,18 +78,18 @@ export default function FinOCRDocumentos() {
       {resultado && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-success" />
+            <CardTitle className="flex flex-wrap items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-success" aria-hidden="true" />
               Dados extraídos
-              {motor && <Badge variant="outline">{motor}</Badge>}
+              {motor && <Badge variant="info">{motor}</Badge>}
               {resultado.confianca != null && (
-                <Badge variant={resultado.confianca > 0.8 ? "default" : "secondary"}>
+                <Badge variant={resultado.confianca > 0.8 ? "success" : "warning"}>
                   Confiança: {Math.round(resultado.confianca * 100)}%
                 </Badge>
               )}
             </CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-3 text-sm">
+          <CardContent className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
             <Field label="Tipo" value={resultado.tipo_documento} />
             <Field label="Número" value={resultado.numero_documento} />
             <Field label="Emitente" value={resultado.emitente_nome} />
@@ -98,10 +100,10 @@ export default function FinOCRDocumentos() {
             <Field label="Data vencimento" value={resultado.data_vencimento} />
             <Field label="Valor total" value={fmt(resultado.valor_total)} highlight />
             <Field label="Chave NF-e" value={resultado.chave_nfe} mono />
-            <div className="col-span-2">
+            <div className="md:col-span-2">
               <Field label="Código de barras" value={resultado.codigo_barras} mono />
             </div>
-            <div className="col-span-2">
+            <div className="md:col-span-2">
               <Field label="Descrição" value={resultado.descricao} />
             </div>
           </CardContent>
@@ -115,13 +117,17 @@ function Field({ label, value, highlight, mono }: { label: string; value: any; h
   if (value == null || value === "") return (
     <div>
       <div className="text-xs text-muted-foreground">{label}</div>
-      <div className="text-muted-foreground italic">não detectado</div>
+      <div className="text-sm italic text-muted-foreground">não detectado</div>
     </div>
   );
   return (
     <div>
       <div className="text-xs text-muted-foreground">{label}</div>
-      <div className={`${mono ? "font-mono text-xs" : ""} ${highlight ? "font-semibold text-base" : ""}`}>{String(value)}</div>
+      <div
+        className={`break-words text-sm text-foreground ${mono ? "font-mono text-xs" : ""} ${highlight ? "text-base font-semibold tabular-nums" : ""}`}
+      >
+        {String(value)}
+      </div>
     </div>
   );
 }

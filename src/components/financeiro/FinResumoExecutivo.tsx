@@ -16,7 +16,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Printer, Sparkles } from "lucide-react";
+import { CheckCircle2, Printer, Sparkles } from "lucide-react";
+import EstadoVazio from "@/components/shared/EstadoVazio";
 import { useEmpresaId } from "@/hooks/useFinanceiro";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useQuery } from "@tanstack/react-query";
@@ -154,7 +155,7 @@ export default function FinResumoExecutivo() {
         <header className="border-b border-border pb-4">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <h2 className="text-2xl font-bold">Resumo Executivo de Finanças</h2>
+              <h2 className="text-lg font-semibold">Resumo Executivo de Finanças</h2>
               <p className="text-base font-medium mt-1">{empresaAtiva?.razao_social}</p>
               {empresaAtiva?.cnpj && (
                 <p className="text-sm text-muted-foreground">CNPJ: {formatDocumento(empresaAtiva.cnpj)}</p>
@@ -303,7 +304,7 @@ function KpiBox({ label, value, tone }: { label: string; value: number; tone?: "
   return (
     <div className="rounded-lg border border-border bg-card p-4">
       <p className="text-sm text-muted-foreground">{label}</p>
-      <p className={`mt-1 text-2xl font-bold tabular-nums ${cor}`}>{formatBRL(value)}</p>
+      <p className={`mt-1 text-[2rem] leading-10 font-bold tabular-nums truncate ${cor}`}>{formatBRL(value)}</p>
     </div>
   );
 }
@@ -314,7 +315,14 @@ function TabelaLancamentos({ lancs, tipo, total }: { lancs: LancDetalhe[]; tipo:
   const corValor = tipo === "pagar" ? "text-destructive" : "text-success";
 
   if (lancs.length === 0) {
-    return <p className="text-sm text-muted-foreground py-3">Nenhum lançamento em aberto.</p>;
+    return (
+      <EstadoVazio
+        tamanho="compacto"
+        icone={<CheckCircle2 />}
+        titulo="Nenhum lançamento em aberto"
+        descricao={tipo === "pagar" ? "Nada a pagar atrasado ou a vencer." : "Nada a receber atrasado ou a vencer."}
+      />
+    );
   }
 
   return (

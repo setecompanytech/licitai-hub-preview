@@ -32,7 +32,6 @@ interface RelatorioDef {
   titulo: string;
   descricao: string;
   icone: React.ElementType;
-  cor: string;
 }
 
 const RELATORIOS: RelatorioDef[] = [
@@ -41,42 +40,36 @@ const RELATORIOS: RelatorioDef[] = [
     titulo: "Fluxo Realizado",
     descricao: "Entradas e saídas efetivamente liquidadas no período, com saldo acumulado.",
     icone: TrendingUp,
-    cor: "text-muted-foreground",
   },
   {
     key: "contas_pagar",
     titulo: "Contas a Pagar",
     descricao: "Títulos pendentes ou vencidos, agrupados por fornecedor e vencimento.",
     icone: Receipt,
-    cor: "text-muted-foreground",
   },
   {
     key: "contas_receber",
     titulo: "Contas a Receber",
     descricao: "Títulos em aberto a vencer ou vencidos, agrupados por cliente.",
     icone: Wallet,
-    cor: "text-muted-foreground",
   },
   {
     key: "dre_simplificada",
     titulo: "DRE Simplificada",
     descricao: "Demonstrativo do resultado por categoria (receitas, custos, despesas).",
     icone: FileBarChart,
-    cor: "text-muted-foreground",
   },
   {
     key: "razao_categoria",
     titulo: "Razão por Categoria",
     descricao: "Detalhamento dos lançamentos por categoria contábil.",
     icone: BookOpen,
-    cor: "text-muted-foreground",
   },
   {
     key: "posicao_pessoas",
     titulo: "Posição de Clientes/Fornecedores",
     descricao: "Saldos consolidados por pessoa (a pagar e a receber).",
     icone: Users,
-    cor: "text-muted-foreground",
   },
 ];
 

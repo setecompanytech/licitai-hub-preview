@@ -3,7 +3,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { Loader2, Save, Calculator, ArrowRight, Search, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { cotarItens, getEstadoCotacao, subscribeCotacao } from '@/lib/precificacao/cotarItens';
@@ -165,29 +167,32 @@ export default function ItensEditalPrecificacao({
 
   if (loading) {
     return (
-      <Card className="p-6 flex items-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="w-4 h-4 animate-spin" /> Carregando itens do edital…
+      <Card className="flex items-center gap-2 p-6 text-sm text-muted-foreground" role="status" aria-busy="true">
+        <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Carregando itens do edital…
       </Card>
     );
   }
 
   if (!itens.length) {
     return (
-      <Card className="p-6 text-sm text-muted-foreground">
-        <span className="font-semibold text-foreground">Itens do edital:</span>{' '}
-        nenhum item extraído ainda. Use a <em>Preparação automática</em> na Visão Geral
-        (ou o wizard da Proposta) para extrair o termo de referência.
+      <Card className="p-6">
+        <EstadoVazio
+          tamanho="compacto"
+          icone={<Calculator />}
+          titulo="Nenhum item extraído do edital ainda"
+          descricao="Use a Preparação automática na Visão Geral (ou o wizard da Proposta) para extrair o termo de referência."
+        />
       </Card>
     );
   }
 
   return (
     <div className="space-y-4">
-    <Card className="p-4 space-y-3">
-      <div className="flex items-center gap-2 flex-wrap">
-        <Calculator className="w-4 h-4 text-accent" />
-        <span className="font-semibold text-sm">Itens do edital — precificação rápida</span>
-        <span className="text-xs text-muted-foreground">
+    <Card className="space-y-4 p-6">
+      <div className="flex flex-wrap items-center gap-2">
+        <Calculator className="w-5 h-5 text-primary" aria-hidden="true" />
+        <h2 className="text-lg font-semibold">Itens do edital — precificação rápida</h2>
+        <span className="text-sm text-muted-foreground">
           {itens.length} item(ns) · edite o preço unitário e salve no catálogo
         </span>
         <Button
@@ -198,30 +203,30 @@ export default function ItensEditalPrecificacao({
           disabled={cotacao.rodando}
         >
           {cotacao.rodando
-            ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-            : <Search className="w-3.5 h-3.5 mr-1.5" />}
+            ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+            : <Search className="w-4 h-4" aria-hidden="true" />}
           Cotar todos na internet
         </Button>
       </div>
 
       {cotacao.rodando && (
-        <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-          <Loader2 className="w-3 h-3 animate-spin" />
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
           Pesquisando preço {cotacao.feitos + 1}/{cotacao.total}: {cotacao.atual}… (continua mesmo se você trocar de aba)
         </p>
       )}
 
-      <div className="overflow-x-auto rounded border border-border/60">
-        <table className="w-full text-xs">
+      <div className="overflow-x-auto rounded-md border border-border">
+        <table className="w-full text-sm">
           <thead>
-            <tr className="bg-muted/40 border-b border-border text-muted-foreground">
-              <th className="text-left px-3 py-2 font-semibold w-10">Nº</th>
-              <th className="text-left px-3 py-2 font-semibold">Descrição</th>
-              <th className="text-right px-3 py-2 font-semibold w-20">Qtd.</th>
-              <th className="text-right px-3 py-2 font-semibold w-28">Ref. edital</th>
-              <th className="text-right px-3 py-2 font-semibold w-40">Cotação internet</th>
-              <th className="text-right px-3 py-2 font-semibold w-32">Preço unit. (R$)</th>
-              <th className="text-right px-3 py-2 font-semibold w-32">Total</th>
+            <tr className="border-b border-border bg-muted">
+              <th className="w-10 px-3 py-2 text-left text-sm font-semibold">Nº</th>
+              <th className="px-3 py-2 text-left text-sm font-semibold">Descrição</th>
+              <th className="w-20 px-3 py-2 text-right text-sm font-semibold">Qtd.</th>
+              <th className="w-28 px-3 py-2 text-right text-sm font-semibold">Ref. edital</th>
+              <th className="w-40 px-3 py-2 text-right text-sm font-semibold">Cotação internet</th>
+              <th className="w-32 px-3 py-2 text-right text-sm font-semibold">Preço unit. (R$)</th>
+              <th className="w-32 px-3 py-2 text-right text-sm font-semibold">Total</th>
             </tr>
           </thead>
           <tbody>
@@ -230,88 +235,94 @@ export default function ItensEditalPrecificacao({
               const cot = cotacao.cotacoes[it.id];
               return (
                 <Fragment key={it.id}>
-                <tr className="border-b border-border/40 hover:bg-muted/20">
-                  <td className="px-3 py-1.5 text-muted-foreground tabular-nums">{it.numero}</td>
-                  <td className="px-3 py-1.5">
+                <tr className="border-b border-border hover:bg-muted/50">
+                  <td className="px-3 py-2 text-muted-foreground tabular-nums">{it.numero}</td>
+                  <td className="px-3 py-2">
                     {it.descricao}
-                    <span className="ml-1.5 text-muted-foreground border border-border/60 px-1 rounded">{it.unidade}</span>
+                    <Badge variant="muted" className="ml-2">{it.unidade}</Badge>
                     {it.marca && (
-                      <span className="ml-1.5 text-muted-foreground">
+                      <span className="ml-2 text-muted-foreground">
                         Marca: <span className="font-medium text-foreground">{it.marca}</span>
                       </span>
                     )}
                   </td>
-                  <td className="px-3 py-1.5 text-right tabular-nums">{it.quantidade?.toLocaleString('pt-BR')}</td>
-                  <td className="px-3 py-1.5 text-right text-muted-foreground tabular-nums">
+                  <td className="px-3 py-2 text-right tabular-nums">{it.quantidade?.toLocaleString('pt-BR')}</td>
+                  <td className="px-3 py-2 text-right text-muted-foreground tabular-nums">
                     {it.valor_unitario > 0 ? brl(it.valor_unitario) : '—'}
                   </td>
-                  <td className="px-2 py-1 text-right">
-                    {cot?.status === 'cotando' && <Loader2 className="w-3.5 h-3.5 animate-spin inline text-muted-foreground" />}
-                    {cot?.status === 'erro' && <span className="text-xs text-muted-foreground">sem resultado</span>}
+                  <td className="px-3 py-2 text-right">
+                    {cot?.status === 'cotando' && <Loader2 className="inline w-4 h-4 animate-spin text-muted-foreground" aria-hidden="true" />}
+                    {cot?.status === 'erro' && <span className="text-sm text-muted-foreground">sem resultado</span>}
                     {cot?.status === 'cotado' && (
-                      <button
+                      <Button
                         type="button"
-                        className="text-xs text-accent underline-offset-2 hover:underline tabular-nums"
+                        variant="link"
+                        size="sm"
+                        className="h-auto p-0 text-sm tabular-nums"
                         title="Ver fontes e aplicar preço"
                         onClick={() => setFontesAbertas(fontesAbertas === it.id ? null : it.id)}
                       >
                         {cot.pncpMediana
                           ? <>PNCP {brl(cot.pncpMediana)} · {brl(cot.menorPreco)}–{brl(cot.precoMedio)}</>
                           : <>{brl(cot.menorPreco)} – {brl(cot.precoMedio)}</>}
-                      </button>
+                      </Button>
                     )}
                     {!cot && (
-                      <button
+                      <Button
                         type="button"
-                        className="text-xs text-muted-foreground hover:text-foreground"
+                        variant="ghost"
+                        size="sm"
                         onClick={() => cotarItens(licitacaoId, [it], opcoesCotacao)}
                         disabled={cotacao.rodando}
                       >
-                        <Search className="w-3 h-3 inline mr-1" />cotar
-                      </button>
+                        <Search className="w-4 h-4" aria-hidden="true" /> cotar
+                      </Button>
                     )}
                   </td>
-                  <td className="px-2 py-1">
+                  <td className="px-3 py-2">
                     <Input
                       value={precos[it.id] ?? ''}
                       onChange={(e) => setPrecos((p) => ({ ...p, [it.id]: e.target.value }))}
                       placeholder="0,00"
-                      className="h-7 text-right text-xs tabular-nums"
+                      aria-label={`Preço unitário do item ${it.numero}`}
+                      className="text-right tabular-nums"
                     />
                   </td>
-                  <td className="px-3 py-1.5 text-right font-medium tabular-nums">
+                  <td className="px-3 py-2 text-right font-medium tabular-nums">
                     {unit > 0 ? brl(unit * (it.quantidade || 1)) : '—'}
                   </td>
                 </tr>
                 {cot?.status === 'cotado' && fontesAbertas === it.id && (
-                  <tr className="border-b border-border/40 bg-muted/10">
+                  <tr className="border-b border-border bg-muted/50">
                     <td />
-                    <td colSpan={6} className="px-3 py-2">
-                      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                        <span className="text-xs font-semibold">Fontes da cotação</span>
+                    <td colSpan={6} className="px-3 py-3">
+                      <div className="mb-2 flex flex-wrap items-center gap-2">
+                        <span className="text-sm font-semibold">Fontes da cotação</span>
                         {cot.marcaSugerida && (
-                          <span className="text-xs text-muted-foreground">
+                          <span className="text-sm text-muted-foreground">
                             Sugestão de marca: <span className="font-medium text-foreground">{cot.marcaSugerida}</span>
                             {it.marca !== cot.marcaSugerida && (
-                              <button
+                              <Button
                                 type="button"
-                                className="ml-1.5 text-accent underline-offset-2 hover:underline"
+                                variant="link"
+                                size="sm"
+                                className="ml-2 h-auto p-0 text-sm"
                                 onClick={() => aplicarMarca(it.id, cot.marcaSugerida!)}
                               >
                                 aplicar
-                              </button>
+                              </Button>
                             )}
                           </span>
                         )}
                         {cot.pncpMediana != null && (
-                          <Button size="sm" variant="outline" className="h-6 text-xs" onClick={() => aplicarPreco(it.id, cot.pncpMediana!)}>
+                          <Button size="sm" variant="outline" onClick={() => aplicarPreco(it.id, cot.pncpMediana!)}>
                             Usar mediana PNCP ({brl(cot.pncpMediana)})
                           </Button>
                         )}
-                        <Button size="sm" variant="outline" className="h-6 text-xs" onClick={() => aplicarPreco(it.id, cot.menorPreco)}>
+                        <Button size="sm" variant="outline" onClick={() => aplicarPreco(it.id, cot.menorPreco)}>
                           Usar menor ({brl(cot.menorPreco)})
                         </Button>
-                        <Button size="sm" variant="outline" className="h-6 text-xs" onClick={() => aplicarPreco(it.id, cot.precoMedio)}>
+                        <Button size="sm" variant="outline" onClick={() => aplicarPreco(it.id, cot.precoMedio)}>
                           Usar médio ({brl(cot.precoMedio)})
                         </Button>
                       </div>
@@ -319,56 +330,57 @@ export default function ItensEditalPrecificacao({
                           um recorte curto da descrição, não as especificações —
                           sem dizer isso, cotação de cadeira genérica parecia
                           prova de sobrepreço da especificada. */}
-                      <div className="flex items-center gap-2 mb-1.5 text-xs text-muted-foreground flex-wrap">
+                      <div className="mb-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                         <span>Termo pesquisado:</span>
                         {editandoTermo === it.id ? (
                           <>
                             <Input
                               value={termoDraft}
                               onChange={(e) => setTermoDraft(e.target.value)}
-                              className="h-6 text-xs w-80"
+                              className="w-80"
                               maxLength={120}
+                              aria-label="Termo pesquisado na cotação"
                             />
-                            <Button size="sm" variant="outline" className="h-6 text-xs"
+                            <Button size="sm" variant="outline"
                               onClick={() => {
                                 setEditandoTermo(null);
                                 cotarItens(licitacaoId, [it], { ...opcoesCotacao, termos: { [it.id]: termoDraft }, forcar: [it.id] });
                               }}>
                               Recotar
                             </Button>
-                            <button type="button" className="underline-offset-2 hover:underline"
-                              onClick={() => setEditandoTermo(null)}>cancelar</button>
+                            <Button type="button" variant="ghost" size="sm"
+                              onClick={() => setEditandoTermo(null)}>cancelar</Button>
                           </>
                         ) : (
                           <>
                             <span className="text-foreground">«{cot.termoUsado || '—'}»</span>
-                            <button type="button" className="text-accent underline-offset-2 hover:underline"
+                            <Button type="button" variant="link" size="sm" className="h-auto p-0 text-sm"
                               onClick={() => { setEditandoTermo(it.id); setTermoDraft(cot.termoUsado || it.descricao.slice(0, 80)); }}>
                               editar e recotar
-                            </button>
+                            </Button>
                           </>
                         )}
-                        <span className="text-muted-foreground/70">
+                        <span className="text-xs">
                           As especificações completas não entram na busca — confira a equivalência técnica nos links antes de usar um preço.
                         </span>
                       </div>
                       {cot.pncpVazio && !cot.fornecedores.some((f) => f.origem === 'pncp') && (
-                        <p className="text-xs text-muted-foreground mb-1.5">
+                        <p className="mb-2 text-sm text-muted-foreground">
                           Painel Gov.br (PNCP): nenhuma ATA ou contrato encontrado para este termo nos últimos 3 anos.
                         </p>
                       )}
                       {cot.fornecedores.some((f) => f.origem === 'pncp') && (
-                        <div className="mb-1.5">
-                          <p className="text-xs font-medium text-muted-foreground mb-0.5">
+                        <div className="mb-2">
+                          <p className="mb-1 text-sm font-medium text-muted-foreground">
                             {cot.pncpApenasEstimados
                               ? 'Referências no PNCP — apenas ESTIMATIVAS de outros editais (nenhum preço homologado para este termo)'
                               : `Homologados no PNCP (ATAs/contratos${cot.pncpRegistros ? ` · ${cot.pncpRegistros} registros` : ''})`}
                           </p>
-                          <div className="space-y-0.5">
+                          <div className="space-y-1">
                             {cot.fornecedores.filter((f) => f.origem === 'pncp').map((f, fi) => (
-                              <div key={fi} className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <span className="font-medium text-foreground tabular-nums shrink-0">{brl(f.preco)}</span>
-                                {f.situacao && <span className="shrink-0 border border-border/60 rounded px-1">{f.situacao}</span>}
+                              <div key={fi} className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <span className="shrink-0 font-medium text-foreground tabular-nums">{brl(f.preco)}</span>
+                                {f.situacao && <Badge variant="muted" className="shrink-0">{f.situacao}</Badge>}
                                 <span className="truncate">{f.orgao || f.titulo}</span>
                                 {f.fornecedor && <span className="truncate">· venceu: {f.fornecedor}</span>}
                                 {f.situacao === 'Homologado' && (
@@ -376,8 +388,8 @@ export default function ItensEditalPrecificacao({
                                 )}
                                 {f.data && <span className="shrink-0">{f.data.split('-').reverse().join('/')}</span>}
                                 {f.url && (
-                                  <a href={f.url} target="_blank" rel="noreferrer" className="shrink-0 text-accent hover:underline">
-                                    <ExternalLink className="w-3 h-3 inline" />
+                                  <a href={f.url} target="_blank" rel="noreferrer" aria-label="Abrir a fonte no PNCP" className="shrink-0 text-primary hover:underline">
+                                    <ExternalLink className="inline w-4 h-4" aria-hidden="true" />
                                   </a>
                                 )}
                               </div>
@@ -387,16 +399,16 @@ export default function ItensEditalPrecificacao({
                       )}
                       {cot.fornecedores.some((f) => f.origem === 'internet') && (
                         <div>
-                          <p className="text-xs font-medium text-muted-foreground mb-0.5">Mercado (internet)</p>
-                          <div className="space-y-0.5">
+                          <p className="mb-1 text-sm font-medium text-muted-foreground">Mercado (internet)</p>
+                          <div className="space-y-1">
                             {cot.fornecedores.filter((f) => f.origem === 'internet').map((f, fi) => (
-                              <div key={fi} className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <span className="font-medium text-foreground tabular-nums shrink-0">{brl(f.preco)}</span>
+                              <div key={fi} className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <span className="shrink-0 font-medium text-foreground tabular-nums">{brl(f.preco)}</span>
                                 <span className="shrink-0">{f.loja}</span>
                                 <span className="truncate">{f.titulo}</span>
                                 {f.url && (
-                                  <a href={f.url} target="_blank" rel="noreferrer" className="shrink-0 text-accent hover:underline">
-                                    <ExternalLink className="w-3 h-3 inline" />
+                                  <a href={f.url} target="_blank" rel="noreferrer" aria-label="Abrir a oferta na loja" className="shrink-0 text-primary hover:underline">
+                                    <ExternalLink className="inline w-4 h-4" aria-hidden="true" />
                                   </a>
                                 )}
                               </div>
@@ -414,17 +426,19 @@ export default function ItensEditalPrecificacao({
         </table>
       </div>
 
-      <div className="flex items-center gap-2 flex-wrap">
-        <Button size="sm" onClick={salvar} disabled={salvando}>
-          {salvando ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1.5" />}
+      <div className="flex flex-wrap items-center gap-2">
+        <Button onClick={salvar} disabled={salvando}>
+          {salvando
+            ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+            : <Save className="w-4 h-4" aria-hidden="true" />}
           Salvar precificação
         </Button>
         {onIrParaProposta && (
-          <Button size="sm" variant="outline" onClick={onIrParaProposta}>
-            Levar para a Proposta <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+          <Button variant="outline" onClick={onIrParaProposta}>
+            Levar para a Proposta <ArrowRight className="w-4 h-4" aria-hidden="true" />
           </Button>
         )}
-        <span className="ml-auto text-sm">
+        <span className="ml-auto text-base">
           <span className="text-muted-foreground">Total proposto:</span>{' '}
           <span className="font-semibold tabular-nums">{brl(totalProposto)}</span>
         </span>

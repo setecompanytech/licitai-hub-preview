@@ -71,26 +71,28 @@ export default function FinIntegracoes() {
             Conecte contas bancárias e cartões via Open Finance para sincronização automática de transações.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <Alert>
-            <AlertCircle className="w-4 h-4" />
+        <CardContent className="space-y-4">
+          <Alert variant="warning">
+            <AlertCircle className="w-4 h-4" aria-hidden="true" />
             <AlertTitle>Configuração necessária</AlertTitle>
             <AlertDescription>
               Para habilitar a sincronização bancária via Pluggy, acesse{" "}
               <a href="https://dashboard.pluggy.ai" target="_blank" rel="noopener noreferrer" className="underline">dashboard.pluggy.ai</a>{" "}
-              e crie um aplicativo. Depois adicione os secrets <code className="bg-muted px-1 rounded">PLUGGY_CLIENT_ID</code> e{" "}
-              <code className="bg-muted px-1 rounded">PLUGGY_CLIENT_SECRET</code> nas configurações de Lovable Cloud.
+              e crie um aplicativo. Depois adicione os secrets <code className="rounded bg-muted px-1 text-foreground">PLUGGY_CLIENT_ID</code> e{" "}
+              <code className="rounded bg-muted px-1 text-foreground">PLUGGY_CLIENT_SECRET</code> nas configurações de Lovable Cloud.
             </AlertDescription>
           </Alert>
-          <Button onClick={testarPluggy} disabled={pluggyLoading}>
-            {pluggyLoading ? "Testando..." : "Testar conexão Pluggy"}
-          </Button>
-          {pluggyStatus === "configured" && (
-            <Badge className="ml-2"><CheckCircle2 className="w-3 h-3 mr-1" />Configurado</Badge>
-          )}
-          {pluggyStatus === "missing" && (
-            <Badge variant="destructive" className="ml-2"><AlertCircle className="w-3 h-3 mr-1" />Secrets ausentes</Badge>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button onClick={testarPluggy} disabled={pluggyLoading}>
+              {pluggyLoading ? "Testando..." : "Testar conexão Pluggy"}
+            </Button>
+            {pluggyStatus === "configured" && (
+              <Badge variant="success"><CheckCircle2 className="w-3 h-3 mr-1" aria-hidden="true" />Configurado</Badge>
+            )}
+            {pluggyStatus === "missing" && (
+              <Badge variant="danger"><AlertCircle className="w-3 h-3 mr-1" aria-hidden="true" />Secrets ausentes</Badge>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -102,30 +104,45 @@ export default function FinIntegracoes() {
             Consulte status de NF-e diretamente na SEFAZ via NFe.io ou FocusNFe.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <Alert>
-            <AlertCircle className="w-4 h-4" />
+        <CardContent className="space-y-4">
+          <Alert variant="warning">
+            <AlertCircle className="w-4 h-4" aria-hidden="true" />
             <AlertTitle>Configuração necessária</AlertTitle>
             <AlertDescription>
-              Adicione o secret <code className="bg-muted px-1 rounded">SEFAZ_API_TOKEN</code> (NFe.io ou FocusNFe) e opcionalmente{" "}
-              <code className="bg-muted px-1 rounded">SEFAZ_PROVIDER</code> (<code>nfeio</code> ou <code>focusnfe</code>) nas configurações de Lovable Cloud.
+              Adicione o secret <code className="rounded bg-muted px-1 text-foreground">SEFAZ_API_TOKEN</code> (NFe.io ou FocusNFe) e opcionalmente{" "}
+              <code className="rounded bg-muted px-1 text-foreground">SEFAZ_PROVIDER</code> (<code>nfeio</code> ou <code>focusnfe</code>) nas configurações de Lovable Cloud.
             </AlertDescription>
           </Alert>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>Chave NF-e (44 dígitos)</Label>
-              <Input value={chaveNfe} onChange={e => setChaveNfe(e.target.value.replace(/\D/g, "").slice(0, 44))} placeholder="35200107..." />
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="sefaz-chave-nfe">Chave NF-e (44 dígitos)</Label>
+              <Input
+                id="sefaz-chave-nfe"
+                inputMode="numeric"
+                value={chaveNfe}
+                onChange={e => setChaveNfe(e.target.value.replace(/\D/g, "").slice(0, 44))}
+                placeholder="35200107..."
+                aria-describedby="sefaz-chave-nfe-ajuda"
+              />
+              <p id="sefaz-chave-nfe-ajuda" className="text-xs text-muted-foreground">
+                {chaveNfe.length}/44 dígitos
+              </p>
             </div>
-            <div>
-              <Label>CNPJ Emitente (obrigatório se NFe.io)</Label>
-              <Input value={cnpjEmitente} onChange={e => setCnpjEmitente(e.target.value)} placeholder="00.000.000/0001-00" />
+            <div className="space-y-2">
+              <Label htmlFor="sefaz-cnpj-emitente">CNPJ emitente (obrigatório se NFe.io)</Label>
+              <Input
+                id="sefaz-cnpj-emitente"
+                value={cnpjEmitente}
+                onChange={e => setCnpjEmitente(e.target.value)}
+                placeholder="00.000.000/0001-00"
+              />
             </div>
           </div>
           <Button onClick={consultarNfe} disabled={nfeLoading}>
             {nfeLoading ? "Consultando..." : "Consultar SEFAZ"}
           </Button>
           {nfeResult && (
-            <pre className="mt-3 p-3 bg-muted rounded text-xs overflow-auto max-h-96">
+            <pre className="max-h-96 overflow-auto rounded-md border border-border bg-muted p-3 text-xs text-foreground">
               {JSON.stringify(nfeResult, null, 2)}
             </pre>
           )}

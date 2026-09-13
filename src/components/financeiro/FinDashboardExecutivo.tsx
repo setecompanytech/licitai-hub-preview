@@ -30,6 +30,7 @@ import {
 } from "recharts";
 import { useDashboardExecutivo } from "@/hooks/useDashboardExecutivo";
 import { formatBRL, formatBRLCompact } from "@/lib/financeiro/formatters";
+import EstadoVazio from "@/components/shared/EstadoVazio";
 import { cn } from "@/lib/utils";
 
 const monthLabel = (mes: string) => {
@@ -289,7 +290,12 @@ export default function FinDashboardExecutivo() {
           </CardHeader>
           <CardContent>
             {data.topClientes.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-8 text-center">Sem receitas no período.</p>
+              <EstadoVazio
+                tamanho="compacto"
+                icone={<Users />}
+                titulo="Sem receitas no período"
+                descricao="Os cinco maiores clientes dos últimos 12 meses aparecem aqui."
+              />
             ) : (
               <ul className="space-y-3">
                 {data.topClientes.map((c) => (
@@ -317,7 +323,12 @@ export default function FinDashboardExecutivo() {
           </CardHeader>
           <CardContent>
             {data.topFornecedores.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-8 text-center">Sem despesas no período.</p>
+              <EstadoVazio
+                tamanho="compacto"
+                icone={<Building2 />}
+                titulo="Sem despesas no período"
+                descricao="Os cinco maiores fornecedores dos últimos 12 meses aparecem aqui."
+              />
             ) : (
               <ul className="space-y-3">
                 {data.topFornecedores.map((f) => (

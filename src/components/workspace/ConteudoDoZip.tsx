@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { FileText, Download, Loader2, FolderOpen, AlertTriangle } from 'lucide-react';
 
 /**
@@ -136,23 +137,23 @@ export default function ConteudoDoZip({ url, nomeZip }: { url: string; nomeZip?:
         {aberto && ehPdf(aberto.nome) ? (
           <iframe src={aberto.url} title={aberto.nome} className="h-[600px] w-full border-0 bg-background" />
         ) : aberto ? (
-          <div className="space-y-3 p-6 text-center">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
-              <FileText className="w-6 h-6" aria-hidden="true" />
-            </div>
-            <p className="text-sm text-muted-foreground">
-              <strong>{aberto.nome}</strong> não é PDF — o navegador não o exibe aqui.
-            </p>
-            <Button asChild variant="outline">
-              <a href={aberto.url} download={aberto.nome}>
-                <Download className="w-4 h-4" aria-hidden="true" /> Baixar arquivo
-              </a>
-            </Button>
-          </div>
+          <EstadoVazio
+            tamanho="compacto"
+            icone={<FileText />}
+            titulo="O navegador não exibe este formato"
+            descricao={<><strong>{aberto.nome}</strong> não é PDF — baixe para ler no aplicativo correspondente.</>}
+            acao={
+              <Button asChild variant="outline">
+                <a href={aberto.url} download={aberto.nome}>
+                  <Download className="w-4 h-4" aria-hidden="true" /> Baixar arquivo
+                </a>
+              </Button>
+            }
+          />
         ) : (
-          <div className="p-10 text-center text-sm text-muted-foreground">
+          <p className="p-10 text-center text-sm text-muted-foreground">
             Escolha um arquivo do pacote para ler aqui.
-          </div>
+          </p>
         )}
       </div>
     </div>

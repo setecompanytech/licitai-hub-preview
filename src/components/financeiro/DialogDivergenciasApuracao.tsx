@@ -21,8 +21,9 @@ export function DialogDivergenciasApuracao({ open, onOpenChange, divergencias, v
   const altas = divergencias?.filter(d => d.severidade === "alta").length ?? 0;
   const medias = divergencias?.filter(d => d.severidade === "media").length ?? 0;
 
+  // Severidade em tinta semântica: a cor reforça, o texto continua sendo a pista.
   function badgeVariant(sev: DivergenciaApuracao["severidade"]) {
-    return sev === "alta" ? "destructive" : sev === "media" ? "secondary" : "outline";
+    return sev === "alta" ? "danger" : sev === "media" ? "warning" : "muted";
   }
 
   return (
@@ -52,7 +53,7 @@ export function DialogDivergenciasApuracao({ open, onOpenChange, divergencias, v
                   <TableHead className="text-right">Apuração</TableHead>
                   <TableHead className="text-right">Plano contas</TableHead>
                   <TableHead className="text-right">Diferença</TableHead>
-                  <TableHead>Sev.</TableHead>
+                  <TableHead>Severidade</TableHead>
                   <TableHead>Observação</TableHead>
                 </TableRow>
               </TableHeader>
@@ -61,9 +62,9 @@ export function DialogDivergenciasApuracao({ open, onOpenChange, divergencias, v
                   <TableRow key={i}>
                     <TableCell className="whitespace-nowrap">{d.competencia.slice(0, 7)}</TableCell>
                     <TableCell>{d.campo}</TableCell>
-                    <TableCell className="text-right">{d.campo.includes("classificação") ? "—" : fmt(d.valor_apurado)}</TableCell>
-                    <TableCell className="text-right">{d.campo.includes("classificação") ? `${d.valor_plano} item(ns)` : fmt(d.valor_plano)}</TableCell>
-                    <TableCell className={`text-right font-medium ${d.diferenca > 0 ? "text-destructive" : "text-warning"}`}>
+                    <TableCell className="text-right tabular-nums">{d.campo.includes("classificação") ? "—" : fmt(d.valor_apurado)}</TableCell>
+                    <TableCell className="text-right tabular-nums">{d.campo.includes("classificação") ? `${d.valor_plano} item(ns)` : fmt(d.valor_plano)}</TableCell>
+                    <TableCell className={`text-right tabular-nums font-semibold ${d.diferenca > 0 ? "text-destructive" : "text-warning"}`}>
                       {d.campo.includes("classificação") ? "—" : `${d.diferenca > 0 ? "+" : ""}${fmt(d.diferenca)}`}
                       {d.diferenca_perc > 0 && <div className="text-xs text-muted-foreground">{d.diferenca_perc.toFixed(2)}%</div>}
                     </TableCell>

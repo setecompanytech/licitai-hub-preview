@@ -94,7 +94,7 @@ export default function FinConferencia() {
               <div key={`${a.categoria}-${a.referencia ?? i}`} className={cn('rounded-lg border p-2.5 flex gap-2.5', e.fundo)}>
                 <Icone className={cn('w-3.5 h-3.5 shrink-0 mt-0.5', e.cor)} />
                 <div className="min-w-0 flex-1">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     {a.categoria}
                   </p>
                   <p className="text-xs text-foreground mt-0.5 leading-relaxed">{a.descricao}</p>
@@ -107,7 +107,7 @@ export default function FinConferencia() {
               </div>
             );
           })}
-          <p className="text-[11px] text-muted-foreground pt-1">
+          <p className="text-xs text-muted-foreground pt-1">
             A conferência refaz as derivações e aponta o que não fecha — ela não corrige nada.
             Corrigir lançamento é decisão de quem conhece o fato.
           </p>

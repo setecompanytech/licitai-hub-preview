@@ -5,6 +5,7 @@ import { useActivityLog } from '@/hooks/useActivityLog';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { Loader2, Sparkles, ShieldCheck, AlertTriangle, XCircle, CheckCircle2, RefreshCw, FolderDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { TIPOS_HABILITACAO, ARTIGO_POR_GRUPO } from '@/lib/habilitacao/tipos';
@@ -36,10 +37,12 @@ type Linha = {
   conferido: boolean;
 };
 
+/** Estado da exigência: selo do Badge (tinta da identidade 12/09) + ícone.
+ *  A cor é reforço — o rótulo sempre aparece escrito. */
 const ESTADOS = {
-  ok:                 { label: 'OK',                    cls: 'bg-success/10 text-success border-success/20',          icon: CheckCircle2 },
-  vence_antes_sessao: { label: 'Vence antes da sessão', cls: 'bg-warning/10 text-warning border-warning/20',          icon: AlertTriangle },
-  faltante:           { label: 'Faltante',              cls: 'bg-destructive/10 text-destructive border-destructive/20', icon: XCircle },
+  ok:                 { label: 'OK',                    variant: 'success' as const, icon: CheckCircle2, tinta: 'text-success-ink' },
+  vence_antes_sessao: { label: 'Vence antes da sessão', variant: 'warning' as const, icon: AlertTriangle, tinta: 'text-warning-ink' },
+  faltante:           { label: 'Faltante',              variant: 'danger'  as const, icon: XCircle, tinta: 'text-destructive-ink' },
 } as const;
 
 const GRUPOS: Record<string, string> = {
@@ -153,112 +156,122 @@ export default function HabilitacaoChecklist({ licitacaoId }: { licitacaoId: str
 
   if (loading) {
     return (
-      <Card className="p-6 flex items-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="w-4 h-4 animate-spin" /> Carregando checklist de habilitação…
+      <Card className="flex items-center gap-2 p-6 text-sm text-muted-foreground" role="status" aria-busy="true">
+        <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Carregando checklist de habilitação…
       </Card>
     );
   }
 
   return (
-    <Card className="p-4 space-y-3">
-      <div className="flex items-center gap-2 flex-wrap">
-        <ShieldCheck className="w-4 h-4 text-accent" />
-        <span className="font-semibold text-sm">Checklist de habilitação</span>
+    <Card className="space-y-4 p-6">
+      <div className="flex flex-wrap items-center gap-2">
+        <ShieldCheck className="w-5 h-5 text-primary" aria-hidden="true" />
+        <h2 className="text-lg font-semibold">Checklist de habilitação</h2>
         {linhas.length > 0 && (
           <>
-            <Badge variant="outline" className={ESTADOS.ok.cls}>{resumo.ok} ok</Badge>
+            <Badge variant="success">{resumo.ok} ok</Badge>
             {resumo.vencendo > 0 && (
-              <Badge variant="outline" className={ESTADOS.vence_antes_sessao.cls}>{resumo.vencendo} vencendo</Badge>
+              <Badge variant="warning">{resumo.vencendo} vencendo</Badge>
             )}
             {resumo.faltante > 0 && (
-              <Badge variant="outline" className={ESTADOS.faltante.cls}>{resumo.faltante} faltante(s)</Badge>
+              <Badge variant="danger">{resumo.faltante} faltante(s)</Badge>
             )}
-            {tudoConferido && (
-              <Badge variant="outline" className="gap-1"><CheckCircle2 className="w-3 h-3 text-success" /> Conferido</Badge>
-            )}
+            {tudoConferido && <Badge variant="info">Conferido</Badge>}
           </>
         )}
-        <div className="flex items-center gap-2 ml-auto">
+        <div className="ml-auto flex flex-wrap items-center gap-2">
           {temParaMontar && (
             <Button size="sm" variant="outline" onClick={() => montarPastaHabilitacao(licitacaoId)} disabled={montagem.rodando}>
-              {montagem.rodando ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <FolderDown className="w-3.5 h-3.5 mr-1.5" />}
+              {montagem.rodando
+                ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                : <FolderDown className="w-4 h-4" aria-hidden="true" />}
               Montar pasta de habilitação
             </Button>
           )}
           {linhas.length > 0 && (
             <Button size="sm" variant="outline" onClick={recasar} disabled={recasando || gerando}>
-              {recasando ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5 mr-1.5" />}
+              {recasando
+                ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                : <RefreshCw className="w-4 h-4" aria-hidden="true" />}
               Recasar com o cofre
             </Button>
           )}
           {linhas.length > 0 && !tudoConferido && (
             <Button size="sm" variant="outline" onClick={aceitar} disabled={aceitando}>
-              {aceitando ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5 mr-1.5" />}
+              {aceitando
+                ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                : <ShieldCheck className="w-4 h-4" aria-hidden="true" />}
               Conferi — aceitar checklist
             </Button>
           )}
           <Button size="sm" onClick={gerar} disabled={gerando}>
             {gerando
-              ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-              : linhas.length ? <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> : <Sparkles className="w-3.5 h-3.5 mr-1.5" />}
+              ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+              : linhas.length
+                ? <RefreshCw className="w-4 h-4" aria-hidden="true" />
+                : <Sparkles className="w-4 h-4" aria-hidden="true" />}
             {linhas.length ? 'Regerar com a Aurélia' : 'Gerar com a Aurélia'}
           </Button>
         </div>
       </div>
 
       {gerando && progresso && (
-        <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-          <Loader2 className="w-3 h-3 animate-spin" /> {progresso}
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> {progresso}
         </p>
       )}
 
       {montagem.rodando && montagem.fase && (
-        <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-          <Loader2 className="w-3 h-3 animate-spin" /> {montagem.fase} (continua mesmo se você trocar de aba)
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> {montagem.fase} (continua mesmo se você trocar de aba)
         </p>
       )}
 
       {!linhas.length && !gerando && (
-        <p className="text-sm text-muted-foreground">
-          A Aurélia lê o edital, extrai as exigências de habilitação e casa cada uma com os
-          documentos do cofre da empresa (Jurídico → Documentos), comparando a validade com a
-          data da sessão. O resultado fica salvo aqui, com aceite registrado na auditoria.
-        </p>
+        <EstadoVazio
+          tamanho="compacto"
+          icone={<ShieldCheck />}
+          titulo="Checklist ainda não gerado"
+          descricao="A Aurélia lê o edital, extrai as exigências de habilitação e casa cada uma com os documentos do cofre da empresa (Jurídico → Documentos), comparando a validade com a data da sessão. O resultado fica salvo aqui, com aceite registrado na auditoria."
+          acao={
+            <Button onClick={gerar} disabled={gerando}>
+              <Sparkles className="w-4 h-4" aria-hidden="true" /> Gerar com a Aurélia
+            </Button>
+          }
+        />
       )}
 
       {grupos.map((g) => (
-        <div key={g} className="space-y-1.5">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide pt-1 flex items-center gap-2">
+        <div key={g} className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2 pt-2 text-sm font-semibold text-muted-foreground">
             {GRUPOS[g] || g}
             {ARTIGO_POR_GRUPO[g] && (
-              <Badge variant="outline" className="text-xs font-normal normal-case tracking-normal">
-                {ARTIGO_POR_GRUPO[g]} · Lei 14.133/21
-              </Badge>
+              <Badge variant="muted">{ARTIGO_POR_GRUPO[g]} · Lei 14.133/21</Badge>
             )}
-          </p>
+          </div>
           {linhas.filter((l) => (l.grupo || 'outro') === g).map((l) => {
             const est = ESTADOS[l.status];
             const Icone = est.icon;
             return (
-              <div key={l.id} className={`flex items-start gap-2.5 rounded-md border px-3 py-2 ${l.conferido ? 'border-border/60' : 'border-dashed border-border'}`}>
-                <Icone className={`w-4 h-4 mt-0.5 shrink-0 ${l.status === 'ok' ? 'text-success' : l.status === 'faltante' ? 'text-destructive' : 'text-warning'}`} />
+              <div key={l.id} className={`flex items-start gap-3 rounded-md border px-3 py-2 ${l.conferido ? 'border-border' : 'border-dashed border-border'}`}>
+                <Icone className={`w-4 h-4 mt-1 shrink-0 ${est.tinta}`} aria-hidden="true" />
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {l.referencia && <span className="text-sm font-semibold text-accent shrink-0">{l.referencia}</span>}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {l.referencia && <span className="shrink-0 text-sm font-semibold text-primary">{l.referencia}</span>}
                     <span className="text-sm font-medium">{l.exigencia}</span>
-                    {!l.obrigatorio && <Badge variant="outline" className="text-xs">facultativo</Badge>}
-                    {!l.conferido && <span className="text-xs text-muted-foreground italic">sugerido pela IA</span>}
+                    {!l.obrigatorio && <Badge variant="muted">facultativo</Badge>}
+                    {!l.conferido && <span className="text-xs text-muted-foreground">sugerido pela IA</span>}
                   </div>
                   {/* Texto do órgão, literal. A linha acima é a leitura da IA;
                       esta é a fonte — quem confere não precisa abrir o PDF para
                       saber quem pode emitir o atestado ou o que conta como
                       objeto similar. */}
                   {l.trecho_edital && (
-                    <blockquote className="mt-1.5 border-l-2 border-accent/40 pl-2.5 text-xs leading-relaxed text-foreground/80 italic">
+                    <blockquote className="mt-2 border-l-2 border-border pl-3 text-sm leading-relaxed text-muted-foreground">
                       “{l.trecho_edital}”
                     </blockquote>
                   )}
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     {rotuloTipo(l.tipo) && <span>{rotuloTipo(l.tipo)} · </span>}
                     {l.status === 'faltante' && <span>nenhum documento do tipo no cofre da empresa</span>}
                     {l.status !== 'faltante' && l.documento_nome && (
@@ -271,7 +284,7 @@ export default function HabilitacaoChecklist({ licitacaoId }: { licitacaoId: str
                     {l.observacao && <> · {l.observacao}</>}
                   </p>
                 </div>
-                <Badge variant="outline" className={`shrink-0 text-xs ${est.cls}`}>{est.label}</Badge>
+                <Badge variant={est.variant} className="shrink-0">{est.label}</Badge>
               </div>
             );
           })}

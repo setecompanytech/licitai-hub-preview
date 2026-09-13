@@ -12,6 +12,7 @@ import {
 import { ResponsiveContainer, ComposedChart, Line, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend, ReferenceLine } from "recharts";
 import { useResumoVisorFinanceiro } from "@/hooks/useFinanceiro";
 import { formatBRL } from "@/lib/financeiro/formatters";
+import EstadoVazio from "@/components/shared/EstadoVazio";
 import { useQueryClient } from "@tanstack/react-query";
 
 function navegarFinanceiro(view: string) {
@@ -307,12 +308,12 @@ function TopAtrasosCard({ titulo, itens, tipo }: { titulo: string; itens: Array<
       </CardHeader>
       <CardContent className="p-0">
         {itens.length === 0 ? (
-          <div className="flex flex-col items-center px-6 py-8 text-center">
-            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-success-tint text-success-ink">
-              <CheckCircle2 className="w-6 h-6" aria-hidden="true" />
-            </span>
-            <p className="mt-3 text-sm text-muted-foreground">Nenhuma conta em atraso</p>
-          </div>
+          <EstadoVazio
+            tamanho="compacto"
+            icone={<CheckCircle2 />}
+            titulo="Nenhuma conta em atraso"
+            descricao={tipo === "pagar" ? "Tudo em dia com os fornecedores." : "Tudo em dia com os clientes."}
+          />
         ) : (
           <ul className="divide-y divide-border">
             {itens.map((it) => {
@@ -370,13 +371,17 @@ function SaldosPorConta({ contas, saldoTotal }: { contas: Array<{ id: string; no
       </CardHeader>
       <CardContent className="p-0">
         {ativas.length === 0 ? (
-          <div className="flex flex-col items-center px-6 py-8 text-center">
-            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
-              <Wallet className="w-6 h-6" aria-hidden="true" />
-            </span>
-            <p className="mt-3 text-lg font-semibold">Nenhuma conta cadastrada</p>
-            <Button variant="link" className="mt-1" onClick={() => navegarFinanceiro("contas")}>Cadastrar agora</Button>
-          </div>
+          <EstadoVazio
+            tamanho="compacto"
+            icone={<Wallet />}
+            titulo="Nenhuma conta cadastrada"
+            descricao="Sem conta corrente cadastrada não há saldo para consolidar."
+            acao={
+              <Button variant="outline" onClick={() => navegarFinanceiro("contas")}>
+                Cadastrar conta
+              </Button>
+            }
+          />
         ) : (
           <ul className="divide-y divide-border">
             {ativas.map((c) => {

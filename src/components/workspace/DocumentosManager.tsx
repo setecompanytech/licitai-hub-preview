@@ -3,6 +3,7 @@ import { useProcessoWorkspace, type ProcessoDocumento } from '@/hooks/useProcess
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -226,15 +227,17 @@ export default function DocumentosManager({ licitacaoId, numeroProcesso, orgao, 
       </div>
 
       {documentos.length === 0 ? (
-        <Card className="p-12 text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
-            <FileText className="w-6 h-6" aria-hidden="true" />
-          </div>
-          <p className="text-lg font-semibold">Nenhum documento criado ainda.</p>
-          <p className="mt-1 text-sm text-muted-foreground">Crie do zero ou comece com um modelo pronto.</p>
-          <Button variant="outline" className="mt-4" onClick={() => setModelosOpen(true)}>
-            <Sparkles className="w-4 h-4" aria-hidden="true" /> Começar com um modelo pronto
-          </Button>
+        <Card className="p-6">
+          <EstadoVazio
+            icone={<FileText />}
+            titulo="Nenhum documento criado ainda"
+            descricao="Crie do zero ou comece com um modelo pronto."
+            acao={
+              <Button variant="outline" onClick={() => setModelosOpen(true)}>
+                <Sparkles className="w-4 h-4" aria-hidden="true" /> Começar com um modelo pronto
+              </Button>
+            }
+          />
         </Card>
       ) : (
         <Card className="divide-y divide-border">

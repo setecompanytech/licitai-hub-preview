@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { History, ArrowRight } from 'lucide-react';
 
 type Evento = {
@@ -93,14 +94,12 @@ export default function HistoricoProcesso({ licitacaoId }: { licitacaoId: string
 
   if (!eventos.length) {
     return (
-      <Card className="p-6 text-center">
-        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
-          <History className="w-6 h-6" aria-hidden="true" />
-        </div>
-        <p className="text-lg font-semibold">Nenhuma movimentação registrada ainda.</p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          As próximas alterações deste processo aparecem aqui.
-        </p>
+      <Card className="p-6">
+        <EstadoVazio
+          icone={<History />}
+          titulo="Nenhuma movimentação registrada ainda"
+          descricao="As próximas alterações deste processo aparecem aqui."
+        />
       </Card>
     );
   }

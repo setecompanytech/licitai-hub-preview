@@ -38,6 +38,7 @@ import {
 import { format, parseISO, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { formatBRL, formatDate } from "@/lib/financeiro/formatters";
+import EstadoVazio from "@/components/shared/EstadoVazio";
 import { toast } from "sonner";
 
 interface MovimentoRel {
@@ -365,15 +366,12 @@ export default function FinRelatorioConciliacao() {
               ))}
             </div>
           ) : movimentos.length === 0 ? (
-            <div className="flex flex-col items-center py-8 text-center">
-              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
-                <Inbox className="w-6 h-6" aria-hidden="true" />
-              </span>
-              <p className="mt-3 text-lg font-semibold">Nenhum movimento</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Nenhum movimento no período selecionado.
-              </p>
-            </div>
+            <EstadoVazio
+              tamanho="compacto"
+              icone={<Inbox />}
+              titulo="Nenhum movimento"
+              descricao="Nenhum movimento de extrato no período e na conta selecionados."
+            />
           ) : (
             <div className="overflow-x-auto max-h-[480px] overflow-y-auto">
               <Table>

@@ -14,6 +14,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useResumoVisorFinanceiro } from "@/hooks/useFinanceiro";
 import { formatBRL } from "@/lib/financeiro/formatters";
+import EstadoVazio from "@/components/shared/EstadoVazio";
 import FinConferencia from "./FinConferencia";
 
 export type HubItem = {
@@ -483,15 +484,17 @@ export default function FinHomeHub({ onNavigate }: FinHomeHubProps) {
 
           {filtered.length === 0 && (
             <Card>
-              <CardContent className="flex flex-col items-center py-12 text-center">
-                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
-                  <Search className="w-6 h-6" aria-hidden="true" />
-                </span>
-                <p className="mt-3 text-lg font-semibold">Nenhuma funcionalidade encontrada</p>
-                <p className="mt-1 text-sm text-muted-foreground">Nenhuma funcionalidade encontrada para "{search}".</p>
-                <Button variant="outline" className="mt-4" onClick={() => { setSearch(""); setActiveGroup("all"); }}>
-                  Limpar filtros
-                </Button>
+              <CardContent className="p-0">
+                <EstadoVazio
+                  icone={<Search />}
+                  titulo="Nenhuma funcionalidade encontrada"
+                  descricao={search ? `Nada corresponde a "${search}" nesta categoria.` : "Nada nesta categoria."}
+                  acao={
+                    <Button variant="outline" onClick={() => { setSearch(""); setActiveGroup("all"); }}>
+                      Limpar filtros
+                    </Button>
+                  }
+                />
               </CardContent>
             </Card>
           )}

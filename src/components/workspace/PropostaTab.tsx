@@ -14,7 +14,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Loader2, FileText, ExternalLink, Download, Gavel } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Loader2, FileText, ExternalLink, Download, Gavel, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import PlanilhaPrecos from '@/components/proposta/PlanilhaPrecos';
 import ImportarDoCatalogo from '@/components/proposta/ImportarDoCatalogo';
@@ -182,36 +183,38 @@ export default function PropostaTab({ licitacaoId, numeroLicitacao }: { licitaca
 
   if (!pronto) {
     return (
-      <Card className="p-6 flex items-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="w-4 h-4 animate-spin" /> Carregando a proposta deste processo…
+      <Card className="flex items-center gap-2 p-6 text-sm text-muted-foreground" role="status" aria-busy="true">
+        <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Carregando a proposta deste processo…
       </Card>
     );
   }
 
   return (
     <div className="space-y-4">
-      <Card className="px-4 py-3">
-        <div className="flex items-center gap-3 flex-wrap">
-          <FileText className="w-4 h-4 text-accent" />
-          <span className="font-semibold text-sm">Proposta comercial deste processo</span>
-          <span className="text-xs text-muted-foreground">
+      <Card className="p-6">
+        <div className="flex flex-wrap items-center gap-3">
+          <FileText className="w-5 h-5 text-primary" aria-hidden="true" />
+          <h2 className="text-lg font-semibold">Proposta comercial deste processo</h2>
+          <span className="text-sm text-muted-foreground">
             {saving ? 'Salvando…' : lastSaved ? `Salvo ${lastSaved.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : 'Rascunho novo'}
             {' · '}mesmo rascunho do wizard — editar aqui reflete lá
           </span>
-          <div className="flex items-center gap-2 ml-auto">
+          <div className="ml-auto flex flex-wrap items-center gap-2">
             <Button size="sm" variant="outline" onClick={importarDoEdital} disabled={importando}>
-              {importando ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Download className="w-3.5 h-3.5 mr-1.5" />}
+              {importando
+                ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                : <Download className="w-4 h-4" aria-hidden="true" />}
               Importar itens do edital
             </Button>
             {disputa && (
               <Button size="sm" variant="outline" onClick={prepararReadequacao}>
-                <Gavel className="w-3.5 h-3.5 mr-1.5" />
+                <Gavel className="w-4 h-4" aria-hidden="true" />
                 Readequar com os preços da disputa
               </Button>
             )}
             <Button asChild size="sm" variant="ghost">
               <Link to={`/proposta-tecnica?lid=${licitacaoId}`}>
-                Wizard completo / PDF <ExternalLink className="w-3 h-3 ml-1" />
+                Wizard completo / PDF <ExternalLink className="w-4 h-4" aria-hidden="true" />
               </Link>
             </Button>
           </div>
@@ -279,11 +282,14 @@ export default function PropostaTab({ licitacaoId, numeroLicitacao }: { licitaca
                 </p>
               )}
               {!propostaNaPasta && (
-                <p className="text-warning">
-                  A proposta inicial ainda não foi gerada em PDF, então os valores originais
-                  existem só neste rascunho e serão substituídos. Se precisar deles depois,
-                  gere o PDF pelo wizard antes de aplicar.
-                </p>
+                <Alert variant="warning">
+                  <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+                  <AlertDescription>
+                    A proposta inicial ainda não foi gerada em PDF, então os valores originais
+                    existem só neste rascunho e serão substituídos. Se precisar deles depois,
+                    gere o PDF pelo wizard antes de aplicar.
+                  </AlertDescription>
+                </Alert>
               )}
             </div>
           )}

@@ -1,9 +1,12 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { FileSpreadsheet, Download, Upload, Loader2, History } from "lucide-react";
+import EstadoVazio from "@/components/shared/EstadoVazio";
+import { Download, Loader2, History } from "lucide-react";
 import { useEmpresaId } from "@/hooks/useFinanceiro";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -60,78 +63,87 @@ export default function FinCNAB() {
     }, 1000);
   }
 
+  // Título e descrição da tela vêm do cabeçalho da página (/financeiro/cnab).
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <FileSpreadsheet className="w-5 h-5 text-muted-foreground" /> Remessa & Retorno CNAB 240
-        </CardTitle>
-        <p className="text-xs text-muted-foreground">
-          Geração de arquivos CNAB 240 para cobrança bancária e pagamento em massa, e processamento de retornos com baixa automática.
-        </p>
-      </CardHeader>
-      <CardContent>
-        <Tabs defaultValue="cobranca">
-          <TabsList>
-            <TabsTrigger value="cobranca">Cobrança</TabsTrigger>
-            <TabsTrigger value="pagamento">Pagamento</TabsTrigger>
-            <TabsTrigger value="retorno">Retorno</TabsTrigger>
-            <TabsTrigger value="historico">Histórico</TabsTrigger>
-          </TabsList>
+    <Tabs defaultValue="cobranca" className="space-y-4">
+      <TabsList>
+        <TabsTrigger value="cobranca">Cobrança</TabsTrigger>
+        <TabsTrigger value="pagamento">Pagamento</TabsTrigger>
+        <TabsTrigger value="retorno">Retorno</TabsTrigger>
+        <TabsTrigger value="historico">Histórico</TabsTrigger>
+      </TabsList>
 
-          <TabsContent value="cobranca" className="space-y-3 mt-4">
-            <div className="rounded-md border p-4 bg-muted/20">
-              <p className="text-sm font-medium">Remessa de cobrança bancária</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Gera arquivo CNAB 240 com os títulos a receber pendentes para envio ao banco emissor de boletos.
-              </p>
-              <div className="mt-3 flex items-center gap-2">
-                <Badge variant="secondary">{pendentesReceber} título(s) a receber pendente(s)</Badge>
-              </div>
-              <Button className="mt-3" onClick={() => gerarRemessaSimulada("cobranca")} disabled={gerando || pendentesReceber === 0}>
-                {gerando ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+      <TabsContent value="cobranca" className="mt-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Remessa de cobrança bancária</CardTitle>
+            <CardDescription>
+              Gera arquivo CNAB 240 com os títulos a receber pendentes para envio ao banco emissor de boletos.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Badge variant="info">{pendentesReceber} título(s) a receber pendente(s)</Badge>
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={() => gerarRemessaSimulada("cobranca")} disabled={gerando || pendentesReceber === 0}>
+                {gerando ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Download className="w-4 h-4" aria-hidden="true" />}
                 Gerar remessa
               </Button>
             </div>
-          </TabsContent>
+          </CardContent>
+        </Card>
+      </TabsContent>
 
-          <TabsContent value="pagamento" className="space-y-3 mt-4">
-            <div className="rounded-md border p-4 bg-muted/20">
-              <p className="text-sm font-medium">Remessa de pagamento em massa</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Gera arquivo CNAB 240 com fornecedores selecionados para débito automático em conta corrente.
-              </p>
-              <div className="mt-3 flex items-center gap-2">
-                <Badge variant="secondary">{pendentesPagar} título(s) a pagar pendente(s)</Badge>
-              </div>
-              <Button className="mt-3" onClick={() => gerarRemessaSimulada("pagamento")} disabled={gerando || pendentesPagar === 0}>
-                {gerando ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+      <TabsContent value="pagamento" className="mt-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Remessa de pagamento em massa</CardTitle>
+            <CardDescription>
+              Gera arquivo CNAB 240 com fornecedores selecionados para débito automático em conta corrente.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Badge variant="info">{pendentesPagar} título(s) a pagar pendente(s)</Badge>
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={() => gerarRemessaSimulada("pagamento")} disabled={gerando || pendentesPagar === 0}>
+                {gerando ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Download className="w-4 h-4" aria-hidden="true" />}
                 Gerar remessa
               </Button>
             </div>
-          </TabsContent>
+          </CardContent>
+        </Card>
+      </TabsContent>
 
-          <TabsContent value="retorno" className="space-y-3 mt-4">
-            <div className="rounded-md border p-4 bg-muted/20">
-              <p className="text-sm font-medium">Processar arquivo de retorno</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Faça upload do arquivo .ret enviado pelo banco. O sistema fará a baixa automática dos títulos confirmados.
-              </p>
-              <input type="file" accept=".ret,.txt" className="mt-3 block w-full text-sm
-                file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0
-                file:text-sm file:font-medium file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
-                onChange={() => toast.info("Processador de retorno: implementação completa requer especificação do layout do banco.")} />
-            </div>
-          </TabsContent>
+      <TabsContent value="retorno" className="mt-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Processar arquivo de retorno</CardTitle>
+            <CardDescription>
+              Faça upload do arquivo .ret enviado pelo banco. O sistema fará a baixa automática dos títulos confirmados.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <Label htmlFor="cnab-retorno">Arquivo de retorno (.ret ou .txt)</Label>
+            <Input
+              id="cnab-retorno"
+              type="file"
+              accept=".ret,.txt"
+              onChange={() => toast.info("Processador de retorno: implementação completa requer especificação do layout do banco.")}
+            />
+          </CardContent>
+        </Card>
+      </TabsContent>
 
-          <TabsContent value="historico" className="space-y-3 mt-4">
-            <div className="rounded-md border p-6 text-center text-sm text-muted-foreground">
-              <History className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-              Nenhuma transmissão registrada ainda. As remessas geradas e os retornos processados aparecerão aqui.
-            </div>
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-    </Card>
+      <TabsContent value="historico" className="mt-4">
+        <Card>
+          <CardContent className="p-0">
+            <EstadoVazio
+              icone={<History aria-hidden="true" />}
+              titulo="Nenhuma transmissão registrada"
+              descricao="As remessas geradas e os retornos processados aparecerão aqui."
+            />
+          </CardContent>
+        </Card>
+      </TabsContent>
+    </Tabs>
   );
 }

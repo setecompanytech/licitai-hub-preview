@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Sparkles, RefreshCw } from "lucide-react";
+import { Plus, Pencil, Trash2, Sparkles, RefreshCw, Tags } from "lucide-react";
+import EstadoVazio from "@/components/shared/EstadoVazio";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -40,16 +41,21 @@ export default function FinCategorias() {
   const [codigo, setCodigo] = useState("");
   const [nome, setNome] = useState("");
   const [natureza, setNatureza] = useState<Natureza>("despesa");
+  // Só depois da primeira tentativa de salvar o erro aparece junto ao campo —
+  // avisar antes de o usuário digitar é ruído, não ajuda.
+  const [tentouSalvar, setTentouSalvar] = useState(false);
 
   const openDialog = (c: Categoria | null) => {
     setEditing(c);
     setCodigo(c?.codigo ?? "");
     setNome(c?.nome ?? "");
     setNatureza((c?.natureza as Natureza) ?? "despesa");
+    setTentouSalvar(false);
     setOpen(true);
   };
 
   const handleSave = async () => {
+    setTentouSalvar(true);
     if (!codigo.trim() || !nome.trim()) return;
     await upsert.mutateAsync({
       id: editing?.id,
@@ -61,59 +67,74 @@ export default function FinCategorias() {
   };
 
   return (
-    <div className="space-y-3">
-      <div className="flex justify-end gap-2 flex-wrap">
+    <div className="space-y-4">
+      <div className="flex flex-wrap justify-end gap-2">
         <Button
           variant="outline"
           onClick={() => sync.mutate()}
           disabled={sync.isPending}
           title="Importa todas as contas do Plano de Contas Padrão (Configurável) para a lista de Categorias"
         >
-          <RefreshCw className={`w-4 h-4 mr-1 ${sync.isPending ? "animate-spin" : ""}`} />
+          <RefreshCw className={`w-4 h-4 ${sync.isPending ? "animate-spin" : ""}`} aria-hidden="true" />
           {sync.isPending ? "Sincronizando..." : "Sincronizar com Plano de Contas"}
         </Button>
         {cats.length === 0 && (
           <Button variant="outline" onClick={() => seed.mutate()} disabled={seed.isPending}>
-            <Sparkles className="w-4 h-4 mr-1" />
+            <Sparkles className="w-4 h-4" aria-hidden="true" />
             {seed.isPending ? "Importando..." : "Importar plano de contas padrão"}
           </Button>
         )}
-        <Button onClick={() => openDialog(null)}><Plus className="w-4 h-4 mr-1" /> Nova categoria</Button>
+        <Button onClick={() => openDialog(null)}><Plus className="w-4 h-4" aria-hidden="true" /> Nova categoria</Button>
       </div>
 
       <Card>
-        <CardContent className="p-0 overflow-x-auto">
+        <CardContent className="overflow-x-auto p-0">
           <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
+            <thead className="bg-muted text-sm font-semibold text-foreground">
               <tr>
-                <th className="text-left px-3 py-2 w-32">Código</th>
-                <th className="text-left px-3 py-2">Nome</th>
-                <th className="text-left px-3 py-2">Natureza</th>
-                <th className="text-left px-3 py-2">Grupo DRE</th>
-                <th className="px-3 py-2 w-24" />
+                <th className="w-32 px-4 py-3 text-left">Código</th>
+                <th className="px-4 py-3 text-left">Nome</th>
+                <th className="px-4 py-3 text-left">Natureza</th>
+                <th className="px-4 py-3 text-left">Grupo DRE</th>
+                <th className="w-24 px-4 py-3 text-right">Ações</th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
-                <tr><td colSpan={5} className="p-2"><Skeleton className="h-8 w-full" /></td></tr>
+                <tr><td colSpan={5} className="p-3"><Skeleton className="h-8 w-full" /></td></tr>
               ) : cats.length === 0 ? (
-                <tr><td colSpan={5} className="text-center py-12 text-muted-foreground">
-                  Nenhuma categoria. Use "Importar plano de contas padrão" para começar.
-                </td></tr>
+                <tr>
+                  <td colSpan={5}>
+                    <EstadoVazio
+                      icone={<Tags aria-hidden="true" />}
+                      titulo="Nenhuma categoria cadastrada"
+                      descricao='Use "Importar plano de contas padrão" para começar, ou crie a primeira categoria.'
+                      acao={
+                        <Button onClick={() => openDialog(null)}>
+                          <Plus className="w-4 h-4" aria-hidden="true" /> Nova categoria
+                        </Button>
+                      }
+                    />
+                  </td>
+                </tr>
               ) : (
                 cats.map((c) => (
-                  <tr key={c.id} className="border-t hover:bg-muted/30">
-                    <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{c.codigo}</td>
-                    <td className="px-3 py-2 font-medium">{c.nome}</td>
-                    <td className="px-3 py-2">
-                      <Badge variant={c.natureza === "receita" ? "default" : c.natureza === "despesa" ? "destructive" : "secondary"}>
+                  <tr key={c.id} className="border-t border-border hover:bg-muted/40">
+                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{c.codigo}</td>
+                    <td className="px-4 py-3 font-medium text-foreground">{c.nome}</td>
+                    <td className="px-4 py-3">
+                      <Badge variant={c.natureza === "receita" ? "success" : c.natureza === "despesa" ? "danger" : "info"}>
                         {NATUREZAS.find((n) => n.value === c.natureza)?.label}
                       </Badge>
                     </td>
-                    <td className="px-3 py-2 text-muted-foreground text-xs">{c.grupo_dre ?? "—"}</td>
-                    <td className="px-3 py-2 text-right whitespace-nowrap">
-                      <Button size="icon" variant="ghost" onClick={() => openDialog(c)}><Pencil className="w-4 h-4" /></Button>
-                      <Button size="icon" variant="ghost" onClick={() => setConfirmDel(c.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                    <td className="px-4 py-3 text-xs text-muted-foreground">{c.grupo_dre ?? "—"}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right">
+                      <Button size="icon" variant="ghost" aria-label={`Editar categoria ${c.nome}`} onClick={() => openDialog(c)}>
+                        <Pencil className="w-4 h-4" aria-hidden="true" />
+                      </Button>
+                      <Button size="icon" variant="ghost" aria-label={`Excluir categoria ${c.nome}`} onClick={() => setConfirmDel(c.id)}>
+                        <Trash2 className="w-4 h-4 text-destructive" aria-hidden="true" />
+                      </Button>
                     </td>
                   </tr>
                 ))
@@ -126,26 +147,45 @@ export default function FinCategorias() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>{editing?.id ? "Editar categoria" : "Nova categoria"}</DialogTitle></DialogHeader>
-          <div className="grid grid-cols-3 gap-3">
-            <div className="space-y-1.5">
-              <Label>Código *</Label>
-              <Input value={codigo} onChange={(e) => setCodigo(e.target.value)} placeholder="3.1.01" />
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="space-y-2">
+              <Label htmlFor="cat-codigo">Código *</Label>
+              <Input
+                id="cat-codigo"
+                value={codigo}
+                onChange={(e) => setCodigo(e.target.value)}
+                placeholder="3.1.01"
+                aria-invalid={tentouSalvar && !codigo.trim()}
+                aria-describedby={tentouSalvar && !codigo.trim() ? "cat-codigo-erro" : undefined}
+              />
+              {tentouSalvar && !codigo.trim() && (
+                <p id="cat-codigo-erro" className="text-xs text-destructive">Informe o código da categoria</p>
+              )}
             </div>
-            <div className="col-span-2 space-y-1.5">
-              <Label>Nome *</Label>
-              <Input value={nome} onChange={(e) => setNome(e.target.value)} />
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="cat-nome">Nome *</Label>
+              <Input
+                id="cat-nome"
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
+                aria-invalid={tentouSalvar && !nome.trim()}
+                aria-describedby={tentouSalvar && !nome.trim() ? "cat-nome-erro" : undefined}
+              />
+              {tentouSalvar && !nome.trim() && (
+                <p id="cat-nome-erro" className="text-xs text-destructive">Informe o nome da categoria</p>
+              )}
             </div>
-            <div className="col-span-3 space-y-1.5">
-              <Label>Natureza</Label>
+            <div className="space-y-2 md:col-span-3">
+              <Label htmlFor="cat-natureza">Natureza</Label>
               <Select value={natureza} onValueChange={(v) => setNatureza(v as Natureza)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger id="cat-natureza"><SelectValue /></SelectTrigger>
                 <SelectContent>{NATUREZAS.map((n) => <SelectItem key={n.value} value={n.value}>{n.label}</SelectItem>)}</SelectContent>
               </Select>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-            <Button onClick={handleSave} disabled={upsert.isPending || !codigo.trim() || !nome.trim()}>Salvar</Button>
+            <Button onClick={handleSave} disabled={upsert.isPending}>Salvar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import ProdutosOmie from '@/components/gestao-compras/ProdutosOmie';
-import PedidosOmie from '@/components/gestao-compras/PedidosOmie';
+import PedidosOmie, { type PedidosOmieRef } from '@/components/gestao-compras/PedidosOmie';
 import CertificadoDigital from '@/components/gestao-compras/CertificadoDigital';
 import PessoaFormDialog from '@/components/financeiro/PessoaFormDialog';
 import { usePessoas, useDeletePessoa, type Pessoa } from '@/hooks/useFinanceiro';
@@ -22,7 +22,9 @@ import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
 import { parseNFeXML, type NFeData, type NFeItemData } from '@/lib/parseNFe';
 import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import LinhaKpis from '@/components/shared/LinhaKpis';
+import { trilhaDaRota } from '@/lib/navegacao/paginas';
 import { Skeleton } from '@/components/ui/skeleton';
 import { analisarParaMargem, precificarEntrada, situacaoDoPrecoContratado, type AnaliseMargemEmpresa } from '@/lib/financeiro/margem-sugerida';
 import {
@@ -126,6 +128,9 @@ const blankItem = (): FormItem => ({ descricao: '', unidade: 'UN', quantidade: '
 
 // ═══════════════════════════════════════════════════════════════
 export default function GestaoCompras() {
+  // A aba Pedidos tem a sua ação principal no CabecalhoPagina; quem abre o
+  // formulário é o próprio PedidosOmie, por esta referência.
+  const pedidosRef = useRef<PedidosOmieRef>(null);
   const { user } = useAuth();
   const { empresaAtiva } = useEmpresa();
 
@@ -819,6 +824,9 @@ export default function GestaoCompras() {
         <CabecalhoPagina
           titulo={p.descricao}
           icone={<Package />}
+          // Detalhe não é item de menu: o título é o do produto e a trilha
+          // ganha mais um degrau depois do que o registro dá para a rota.
+          trilha={[...trilhaDaRota('/gestao-compras'), { rotulo: p.descricao }]}
           descricao={
             <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
               {p.categoria && <span>{p.categoria}</span>}
@@ -853,14 +861,15 @@ export default function GestaoCompras() {
 
         <Card className="p-6">
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <RotateCcw className="w-5 h-5 text-muted-foreground" /> Histórico de Movimentações
+            <RotateCcw className="w-5 h-5 text-muted-foreground" aria-hidden="true" /> Histórico de movimentações
           </h2>
           {movimentos.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary"><RotateCcw className="w-6 h-6" aria-hidden="true" /></span>
-              <p className="mt-3 text-lg font-semibold">Nenhuma movimentação</p>
-              <p className="mt-1 text-sm text-muted-foreground">Entradas, saídas e ajustes deste produto aparecem aqui.</p>
-            </div>
+            <EstadoVazio
+              tamanho="compacto"
+              icone={<RotateCcw />}
+              titulo="Nenhuma movimentação"
+              descricao="Entradas, saídas e ajustes deste produto aparecem aqui."
+            />
           ) : (
             <div className="divide-y divide-border">
               {movimentos.map(m => {
@@ -921,15 +930,16 @@ export default function GestaoCompras() {
           <ArrowLeft className="w-4 h-4" /> Todos os pedidos
         </Button>
         <CabecalhoPagina
-          titulo={p.observacoes || 'Pedido de Compra'}
+          titulo={p.observacoes || 'Pedido de compra'}
           icone={<ShoppingCart />}
+          trilha={[...trilhaDaRota('/gestao-compras'), { rotulo: p.observacoes || 'Pedido de compra' }]}
           descricao={
             <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
               {forn && <span className="flex items-center gap-1"><Truck className="w-4 h-4" aria-hidden="true" />{forn.razao_social}</span>}
               {cont && <span className="flex items-center gap-1"><Building2 className="w-4 h-4" aria-hidden="true" />Contrato {cont.numero_contrato}</span>}
               {p.data_pedido && <span className="flex items-center gap-1"><Calendar className="w-4 h-4" aria-hidden="true" />Pedido: {fmtDate(p.data_pedido)}</span>}
               {p.data_entrega_prevista && <span className="flex items-center gap-1"><Truck className="w-4 h-4" aria-hidden="true" />Previsto: {fmtDate(p.data_entrega_prevista)}</span>}
-              {p.data_entrega_real && <span className="flex items-center gap-1 text-success"><CheckCircle2 className="w-4 h-4" aria-hidden="true" />Entregue: {fmtDate(p.data_entrega_real)}</span>}
+              {p.data_entrega_real && <span className="flex items-center gap-1 text-success-ink"><CheckCircle2 className="w-4 h-4" aria-hidden="true" />Entregue: {fmtDate(p.data_entrega_real)}</span>}
             </span>
           }
           acoes={
@@ -958,13 +968,14 @@ export default function GestaoCompras() {
         </CabecalhoPagina>
 
         <Card className="p-6">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2"><Package className="w-5 h-5 text-muted-foreground" /> Itens do Pedido</h2>
+          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2"><Package className="w-5 h-5 text-muted-foreground" aria-hidden="true" /> Itens do pedido</h2>
           {itensPedido.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary"><Package className="w-6 h-6" aria-hidden="true" /></span>
-              <p className="mt-3 text-lg font-semibold">Nenhum item cadastrado</p>
-              <p className="mt-1 text-sm text-muted-foreground">Este pedido foi salvo sem itens.</p>
-            </div>
+            <EstadoVazio
+              tamanho="compacto"
+              icone={<Package />}
+              titulo="Nenhum item cadastrado"
+              descricao="Este pedido foi salvo sem itens."
+            />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -1043,31 +1054,33 @@ export default function GestaoCompras() {
   // ══ LIST VIEW ════════════════════════════════════════════════
   return (
     <AppLayout>
-      {/* Cabeçalho padrão da identidade 12/09 — substitui a faixa herói navy
-          com foto. A ação principal muda com a aba ativa (mesma regra de
-          antes: Produtos e Pedidos têm barra própria dentro da aba). */}
+      {/* Cabeçalho padrão da identidade 12/09: título, descrição, ícone e
+          trilha vêm do registro `lib/navegacao/paginas.ts` pela própria rota —
+          a tela não repete o que já está padronizado. A ação principal muda com
+          a aba ativa (Produtos e Pedidos têm barra própria dentro da aba). */}
       <CabecalhoPagina
-        titulo="Gestão de Compras e Pedidos"
-        descricao="Pedidos, fornecedores, estoque e notas fiscais"
-        icone={<Warehouse />}
         acoes={!isOnboarding && (
           mainTab === 'fornecedores' ? (
-            <Button onClick={() => { setEditingPessoa(null); setPessoaOpen(true); }}><Plus className="w-4 h-4" /> Novo Fornecedor</Button>
+            <Button onClick={() => { setEditingPessoa(null); setPessoaOpen(true); }}><Plus className="w-4 h-4" /> Novo fornecedor</Button>
           ) : mainTab === 'estoque' ? (
-            <Button onClick={openNovoProduto}><Plus className="w-4 h-4" /> Novo Produto</Button>
+            <Button onClick={openNovoProduto}><Plus className="w-4 h-4" /> Novo produto</Button>
           ) : mainTab === 'nfe' ? (
             <Button onClick={() => { resetNfeDialog(); setNfeOpen(true); }}><Plus className="w-4 h-4" /> Importar NF-e</Button>
-          ) : mainTab === 'produtos' ? null : mainTab === 'pedidos' ? null : (
-            <Button onClick={() => { resetPedidoForm(); setPedidoOpen(true); }}><Plus className="w-4 h-4" /> Novo Pedido</Button>
+          ) : mainTab === 'produtos' ? null : mainTab === 'pedidos' ? (
+            <Button onClick={() => pedidosRef.current?.novoPedido()}><Plus className="w-4 h-4" /> Novo pedido</Button>
+          ) : (
+            <Button onClick={() => { resetPedidoForm(); setPedidoOpen(true); }}><Plus className="w-4 h-4" /> Novo pedido</Button>
           )
         )}
       />
 
       {!empresaAtiva ? (
-        <Card className="flex flex-col items-center justify-center p-12 text-center">
-          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary"><Building2 className="w-6 h-6" aria-hidden="true" /></span>
-          <p className="mt-3 text-lg font-semibold">Nenhuma empresa ativa</p>
-          <p className="mt-1 text-sm text-muted-foreground">Selecione uma empresa ativa para acessar o módulo de compras.</p>
+        <Card>
+          <EstadoVazio
+            icone={<Building2 />}
+            titulo="Nenhuma empresa ativa"
+            descricao="Selecione uma empresa ativa para acessar o módulo de compras."
+          />
         </Card>
       ) : loading ? (
         <div role="status" aria-busy="true" className="space-y-4">
@@ -1099,7 +1112,7 @@ export default function GestaoCompras() {
             if (v === 'estoque' || v === 'produtos') void loadAll();
           }}
         >
-          <TabsList className="mb-4 h-auto flex-wrap justify-start">
+          <TabsList className="mb-4">
             <TabsTrigger value="pedidos"><ShoppingCart className="w-4 h-4 mr-2" aria-hidden="true" /> Pedidos</TabsTrigger>
             <TabsTrigger value="produtos"><Package className="w-4 h-4 mr-2" aria-hidden="true" /> Produtos</TabsTrigger>
             <TabsTrigger value="fornecedores"><Users className="w-4 h-4 mr-2" aria-hidden="true" /> Fornecedores</TabsTrigger>
@@ -1115,7 +1128,7 @@ export default function GestaoCompras() {
 
           {/* ══ ABA PEDIDOS ══ */}
           <TabsContent value="pedidos">
-            <PedidosOmie />
+            <PedidosOmie ref={pedidosRef} />
           </TabsContent>
 
           {/* ══ ABA FORNECEDORES ══ */}
@@ -1126,11 +1139,13 @@ export default function GestaoCompras() {
               <Input id="busca-fornecedor" placeholder="Buscar fornecedor, CNPJ ou e-mail..." value={fornSearch} onChange={e => setFornSearch(e.target.value)} className="pl-9" />
             </div>
             {pessoasFornecedores.length === 0 ? (
-              <Card className="flex flex-col items-center justify-center p-12 text-center">
-                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary"><Users className="w-6 h-6" aria-hidden="true" /></span>
-                <p className="mt-3 text-lg font-semibold">Nenhum fornecedor cadastrado</p>
-                <p className="mt-1 text-sm text-muted-foreground">Cadastre os fornecedores com quem a empresa compra.</p>
-                <Button className="mt-4" onClick={() => { setEditingPessoa(null); setPessoaOpen(true); }}><Plus className="w-4 h-4" /> Novo Fornecedor</Button>
+              <Card>
+                <EstadoVazio
+                  icone={<Users />}
+                  titulo="Nenhum fornecedor cadastrado"
+                  descricao="Cadastre os fornecedores com quem a empresa compra."
+                  acao={<Button onClick={() => { setEditingPessoa(null); setPessoaOpen(true); }}><Plus className="w-4 h-4" /> Novo fornecedor</Button>}
+                />
               </Card>
             ) : (
               <div className="space-y-2">
@@ -1180,11 +1195,13 @@ export default function GestaoCompras() {
             </div>
 
             {filtProdutos.length === 0 ? (
-              <Card className="flex flex-col items-center justify-center p-12 text-center">
-                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary"><Warehouse className="w-6 h-6" aria-hidden="true" /></span>
-                <p className="mt-3 text-lg font-semibold">Nenhum produto cadastrado</p>
-                <p className="mt-1 text-sm text-muted-foreground">Cadastre os produtos e materiais que a empresa controla em estoque.</p>
-                <Button className="mt-4" onClick={openNovoProduto}><Plus className="w-4 h-4" /> Novo Produto</Button>
+              <Card>
+                <EstadoVazio
+                  icone={<Warehouse />}
+                  titulo="Nenhum produto cadastrado"
+                  descricao="Cadastre os produtos e materiais que a empresa controla em estoque."
+                  acao={<Button onClick={openNovoProduto}><Plus className="w-4 h-4" /> Novo produto</Button>}
+                />
               </Card>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1231,11 +1248,13 @@ export default function GestaoCompras() {
           {/* ══ ABA NF-e ══ */}
           <TabsContent value="nfe" className="space-y-4">
             {nfes.length === 0 ? (
-              <Card className="flex flex-col items-center justify-center p-12 text-center">
-                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary"><FileText className="w-6 h-6" aria-hidden="true" /></span>
-                <p className="mt-3 text-lg font-semibold">Nenhuma NF-e importada</p>
-                <p className="mt-1 text-sm text-muted-foreground">Importe o XML ou o DANFE das notas recebidas para lançar o estoque.</p>
-                <Button className="mt-4" onClick={() => { resetNfeDialog(); setNfeOpen(true); }}><Plus className="w-4 h-4" /> Importar NF-e</Button>
+              <Card>
+                <EstadoVazio
+                  icone={<FileText />}
+                  titulo="Nenhuma NF-e importada"
+                  descricao="Importe o XML ou o DANFE das notas recebidas para lançar o estoque."
+                  acao={<Button onClick={() => { resetNfeDialog(); setNfeOpen(true); }}><Plus className="w-4 h-4" /> Importar NF-e</Button>}
+                />
               </Card>
             ) : (
               <Card className="overflow-x-auto p-0">
@@ -1616,16 +1635,16 @@ export default function GestaoCompras() {
                                 </span>
                               </p>
                               {s.inviavel && (
-                                <p className="text-destructive">Tributos + despesas + margem alvo somam 100% ou mais — nenhum preço fecha; revise a margem alvo em Custos por Contrato.</p>
+                                <p className="text-destructive-ink">Tributos + despesas + margem alvo somam 100% ou mais — nenhum preço fecha; revise a margem alvo em Custos por Contrato.</p>
                               )}
                               {ref && sit === 'abaixo_minimo' && (
-                                <p className="text-destructive">⚠ O contrato {ref.numero} paga {fmtCurrency(ref.preco)} — ABAIXO do mínimo: entregar é prejuízo. Caminho jurídico: reequilíbrio (art. 124, II, “d”).</p>
+                                <p className="text-destructive-ink">⚠ O contrato {ref.numero} paga {fmtCurrency(ref.preco)} — ABAIXO do mínimo: entregar é prejuízo. Caminho jurídico: reequilíbrio (art. 124, II, “d”).</p>
                               )}
                               {ref && sit === 'entre_minimo_e_sugerido' && (
-                                <p className="text-warning">O contrato {ref.numero} paga {fmtCurrency(ref.preco)} — cobre custos e tributos, mas fica abaixo da margem alvo.</p>
+                                <p className="text-warning-ink">O contrato {ref.numero} paga {fmtCurrency(ref.preco)} — cobre custos e tributos, mas fica abaixo da margem alvo.</p>
                               )}
                               {ref && sit === 'acima_sugerido' && (
-                                <p className="text-success">O contrato {ref.numero} paga {fmtCurrency(ref.preco)} ✓ acima da venda sugerida.</p>
+                                <p className="text-success-ink">O contrato {ref.numero} paga {fmtCurrency(ref.preco)} ✓ acima da venda sugerida.</p>
                               )}
                             </div>
                           );

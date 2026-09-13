@@ -1,5 +1,5 @@
 // v2
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, forwardRef, useImperativeHandle } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -144,6 +144,7 @@ function SelectPadrao({ valor, onChange, opcoes, placeholder, cfop }: {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { CalendarDays } from 'lucide-react';
@@ -230,7 +231,10 @@ const KANBAN_STATUS: { key: Pedido['status']; label: string; barra: string; text
   { key: 'separar_estoque', label: 'Separar Estoque', barra: 'bg-warning', texto: 'text-warning-ink',      chip: 'bg-warning-tint text-warning-ink',          borda: 'border-l-warning' },
   { key: 'faturar',         label: 'Faturar',         barra: 'bg-primary', texto: 'text-primary',          chip: 'bg-primary-tint text-primary',              borda: 'border-l-primary' },
   { key: 'faturado',        label: 'Faturado',        barra: 'bg-success', texto: 'text-success-ink',      chip: 'bg-success-tint text-success-ink',          borda: 'border-l-success' },
-  { key: 'entrega',         label: 'Entrega',         barra: 'bg-navy',    texto: 'text-navy',             chip: 'bg-navy-tint text-navy',                    borda: 'border-l-navy' },
+  // `text-navy` sobre o tint só funciona no claro: no escuro o navy é quase
+  // preto e o rótulo sumia. A cor da etapa fica na barra e no tint; o texto
+  // usa `foreground`, que vira claro no tema escuro.
+  { key: 'entrega',         label: 'Entrega',         barra: 'bg-navy',    texto: 'text-foreground',       chip: 'bg-navy-tint text-foreground',              borda: 'border-l-navy' },
 ];
 
 const STATUS_MSG: Record<string, string> = {
@@ -430,7 +434,7 @@ function ItemDialog({ open, onOpenChange, produtos, initial, onConfirm }: {
             </div>
             <div className="max-h-36 overflow-y-auto rounded-md border border-border bg-background">
               {filtered.length === 0
-                ? <p className="px-3 py-3 text-xs text-muted-foreground text-center">Nenhum produto encontrado</p>
+                ? <EstadoVazio tamanho="compacto" titulo="Nenhum produto encontrado" descricao="Ajuste a busca ou cadastre o produto no catálogo." />
                 : filtered.map(p => (
                   <button type="button" key={p.id}
                     aria-pressed={item.produto_id === p.id}
@@ -441,7 +445,7 @@ function ItemDialog({ open, onOpenChange, produtos, initial, onConfirm }: {
                     <span>{p.descricao}</span>
                     <span className="ml-2 text-muted-foreground">({p.unidade})</span>
                     {p.preco_venda != null && p.preco_venda > 0 && (
-                      <span className="ml-2 text-success font-medium tabular-nums">R$ {fmtM(p.preco_venda)}</span>
+                      <span className="ml-2 text-success-ink font-medium tabular-nums">R$ {fmtM(p.preco_venda)}</span>
                     )}
                   </button>
                 ))
@@ -504,7 +508,17 @@ function ItemDialog({ open, onOpenChange, produtos, initial, onConfirm }: {
 }
 
 // ── Main Component ─────────────────────────────────────────────────────────
-export default function PedidosOmie() {
+/**
+ * O que a página de Compras pode disparar de fora. O registro
+ * (`lib/navegacao/paginas.ts`) declara "Novo pedido" como a ação principal de
+ * /gestao-compras — ela precisa nascer no CabecalhoPagina, não numa segunda
+ * barra dentro da aba. Por isso o disparo do diálogo sobe por este punho.
+ */
+export interface PedidosOmieRef {
+  novoPedido: () => void;
+}
+
+const PedidosOmie = forwardRef<PedidosOmieRef>(function PedidosOmie(_props, ref) {
   const { empresaAtiva } = useEmpresa();
   const { user } = useAuth();
   const { data: todasPessoas = [] } = usePessoas();
@@ -1114,6 +1128,9 @@ export default function PedidosOmie() {
   const totalCompras = useMemo(() => pedidos.filter(p => p.tipo === 'compra').reduce((s, p) => s + p.valor_total, 0), [pedidos]);
   const totalVendas  = useMemo(() => pedidos.filter(p => p.tipo === 'venda').reduce((s, p) => s + p.valor_total, 0), [pedidos]);
 
+  // Punho para o botão "Novo pedido" do CabecalhoPagina (setTipoOpen é estável).
+  useImperativeHandle(ref, () => ({ novoPedido: () => setTipoOpen(true) }), []);
+
   const kanbanCols = useMemo(() =>
     KANBAN_STATUS.map(col => ({
       ...col,
@@ -1395,10 +1412,13 @@ export default function PedidosOmie() {
               <Skeleton className="h-11 rounded-md" />
             </div>
           ) : anexosList.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-md border border-dashed border-border py-8 text-center">
-              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary"><Paperclip className="w-6 h-6" aria-hidden="true" /></span>
-              <p className="mt-3 text-lg font-semibold">Nenhum arquivo anexado</p>
-              <p className="mt-1 text-sm text-muted-foreground">Anexe a nota, o empenho ou o comprovante deste pedido.</p>
+            <div className="rounded-md border border-dashed border-border">
+              <EstadoVazio
+                tamanho="compacto"
+                icone={<Paperclip />}
+                titulo="Nenhum arquivo anexado"
+                descricao="Anexe a nota, o empenho ou o comprovante deste pedido."
+              />
             </div>
           ) : (
             <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
@@ -1539,12 +1559,8 @@ export default function PedidosOmie() {
               <LayoutGrid className="w-4 h-4" />
             </Button>
           </div>
-
-          <div className="ml-auto">
-            <Button onClick={() => setTipoOpen(true)}>
-              <Plus className="w-4 h-4" /> Novo Pedido
-            </Button>
-          </div>
+          {/* "Novo pedido" não se repete aqui: é a ação principal declarada
+              para /gestao-compras e mora no CabecalhoPagina da página. */}
         </div>
 
         {/* Filtros + Somatório */}
@@ -1621,7 +1637,16 @@ export default function PedidosOmie() {
               </thead>
               <tbody className="divide-y divide-border">
                 {filteredPedidos.length === 0 ? (
-                  <tr><td colSpan={7} className="py-12 text-center text-muted-foreground text-sm">Nenhum pedido encontrado</td></tr>
+                  <tr>
+                    <td colSpan={7} className="p-0">
+                      <EstadoVazio
+                        icone={<ShoppingCart />}
+                        titulo="Nenhum pedido encontrado"
+                        descricao="Ajuste a busca e os filtros, ou crie o primeiro pedido."
+                        acao={<Button onClick={() => setTipoOpen(true)}><Plus className="w-4 h-4" /> Novo pedido</Button>}
+                      />
+                    </td>
+                  </tr>
                 ) : filteredPedidos.map(p => {
                   const pessoaNome = getPessoaNome(p.pessoa_id);
                   const isHoje = p.previsao_faturamento === todayISO();
@@ -1649,7 +1674,7 @@ export default function PedidosOmie() {
                           {STATUS_MSG[p.status]}
                         </Badge>
                       </td>
-                      <td className={`py-2 px-3 ${isHoje ? 'text-warning font-medium' : 'text-muted-foreground'}`}>
+                      <td className={`py-2 px-3 ${isHoje ? 'text-warning-ink font-medium' : 'text-muted-foreground'}`}>
                         {p.previsao_faturamento ? fmtDateBR(p.previsao_faturamento) : '—'}
                         {isHoje && <span className="ml-1 text-xs">• hoje</span>}
                       </td>
@@ -1741,7 +1766,7 @@ export default function PedidosOmie() {
                             {pessoaNome && (
                               <p className="text-sm font-medium mt-1 leading-tight truncate">{pessoaNome}</p>
                             )}
-                            <p className={`text-xs mt-1 ${isHoje ? 'text-warning font-semibold' : 'text-muted-foreground'}`}>{statusMsg}</p>
+                            <p className={`text-xs mt-1 ${isHoje ? 'text-warning-ink font-semibold' : 'text-muted-foreground'}`}>{statusMsg}</p>
                             <p className="text-base font-bold mt-2 text-foreground tabular-nums">
                               R$ {fmtM(p.valor_total)}
                               {/* Condição como está escrita — "em 30 Diasx" era o
@@ -1934,8 +1959,11 @@ export default function PedidosOmie() {
                     onChange={id => setForm(f => ({ ...f, pessoa_id: id }))}
                   />
                   {isVenda && (
-                    <span className="text-xs text-primary whitespace-nowrap cursor-pointer hover:underline">
-                      @ Consulta de Crédito
+                    // Sem ação por trás ainda: fica como nota, não como link —
+                    // texto em cor de ação com sublinhado no hover prometia um
+                    // clique que não existe.
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">
+                      Consulta de crédito em breve
                     </span>
                   )}
                 </div>
@@ -2104,7 +2132,15 @@ export default function PedidosOmie() {
                   </thead>
                   <tbody className="divide-y divide-border">
                     {itens.length === 0 ? (
-                      <tr><td colSpan={6} className="py-8 text-center text-muted-foreground">Nenhum registro encontrado</td></tr>
+                      <tr>
+                        <td colSpan={6} className="p-0">
+                          <EstadoVazio
+                            tamanho="compacto"
+                            titulo="Nenhum item no pedido"
+                            descricao="Use “Novo Item” para incluir produtos do catálogo."
+                          />
+                        </td>
+                      </tr>
                     ) : itens.map(item => {
                       const vt = parseM(item.quantidade) * parseM(item.preco_unitario);
                       const isSel = selectedItem === item._key;
@@ -2136,12 +2172,12 @@ export default function PedidosOmie() {
 
             {/* Departamentos */}
             <TabsContent value="departamentos" className="p-4 m-0">
-              <p className="text-sm text-muted-foreground">Em breve — rateio por departamentos.</p>
+              <EstadoVazio tamanho="compacto" titulo="Rateio por departamentos" descricao="Em breve — ainda não é possível ratear este pedido." />
             </TabsContent>
 
             {/* Frete */}
             <TabsContent value="frete" className="p-4 m-0">
-              <p className="text-sm text-muted-foreground">Em breve — frete e outras despesas.</p>
+              <EstadoVazio tamanho="compacto" titulo="Frete e outras despesas" descricao="Em breve — ainda não é possível lançar frete neste pedido." />
             </TabsContent>
 
             {/* Informações Adicionais */}
@@ -2236,7 +2272,15 @@ export default function PedidosOmie() {
                         <td className="py-2 px-3 text-muted-foreground">{form.numero_parcelas}</td>
                       </tr>
                     ) : (
-                      <tr><td colSpan={4} className="py-8 text-center text-muted-foreground">Nenhum dado de parcelas</td></tr>
+                      <tr>
+                        <td colSpan={4} className="p-0">
+                          <EstadoVazio
+                            tamanho="compacto"
+                            titulo="Nenhum dado de parcelas"
+                            descricao="As parcelas aparecem depois que o pedido tem valor."
+                          />
+                        </td>
+                      </tr>
                     )}
                   </tbody>
                 </table>
@@ -2321,4 +2365,8 @@ export default function PedidosOmie() {
       </div>
     </div>
   );
-}
+});
+
+PedidosOmie.displayName = 'PedidosOmie';
+
+export default PedidosOmie;

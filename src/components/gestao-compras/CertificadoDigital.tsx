@@ -4,7 +4,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
@@ -103,9 +105,11 @@ export default function CertificadoDigital() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-1">
-            <div className="rounded-md border border-border bg-muted p-4 text-sm text-foreground">
-              O arquivo <strong>.pfx</strong> ou <strong>.p12</strong> contém seu certificado digital A1. Ele será armazenado de forma segura e usado para assinar as NFS-e enviadas à Prefeitura.
-            </div>
+            <Alert variant="info">
+              <AlertDescription>
+                O arquivo <strong>.pfx</strong> ou <strong>.p12</strong> contém seu certificado digital A1. Ele será armazenado de forma segura e usado para assinar as NFS-e enviadas à Prefeitura.
+              </AlertDescription>
+            </Alert>
 
             <div>
               <Label>Arquivo do certificado (.pfx / .p12)</Label>
@@ -170,15 +174,13 @@ export default function CertificadoDigital() {
       </div>
 
       {/* A3 info */}
-      <div className="rounded-lg border border-border bg-muted p-4 flex items-start gap-3">
-        <HardDrive className="w-5 h-5 text-muted-foreground shrink-0 mt-1" aria-hidden="true" />
-        <div>
-          <p className="text-sm font-medium">Certificado A3 (token/cartão)</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            Certificados A3 ficam em tokens físicos e não podem ser carregados aqui. Para usá-lo, o sistema irá detectar automaticamente quando o token estiver conectado ao computador no momento da emissão.
-          </p>
-        </div>
-      </div>
+      <Alert variant="info">
+        <HardDrive className="w-5 h-5" aria-hidden="true" />
+        <AlertTitle>Certificado A3 (token/cartão)</AlertTitle>
+        <AlertDescription className="text-muted-foreground">
+          Certificados A3 ficam em tokens físicos e não podem ser carregados aqui. Para usá-lo, o sistema irá detectar automaticamente quando o token estiver conectado ao computador no momento da emissão.
+        </AlertDescription>
+      </Alert>
 
       {/* Cert list */}
       {loading ? (
@@ -188,16 +190,18 @@ export default function CertificadoDigital() {
           <Skeleton className="h-20 rounded-lg" />
         </div>
       ) : certs.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-lg border border-border bg-card p-8 text-center">
-          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary"><ShieldCheck className="w-6 h-6" aria-hidden="true" /></span>
-          <p className="mt-3 text-lg font-semibold">Nenhum certificado cadastrado</p>
-          <p className="mt-1 text-sm text-muted-foreground">Adicione um certificado A1 para emitir NFS-e automaticamente.</p>
-          <Button className="mt-4" variant="outline" onClick={() => setUploadOpen(true)}><Upload className="w-4 h-4" /> Adicionar A1</Button>
+        <div className="rounded-lg border border-border bg-card shadow-sm">
+          <EstadoVazio
+            icone={<ShieldCheck />}
+            titulo="Nenhum certificado cadastrado"
+            descricao="Adicione um certificado A1 para emitir NFS-e automaticamente."
+            acao={<Button variant="outline" onClick={() => setUploadOpen(true)}><Upload className="w-4 h-4" /> Adicionar A1</Button>}
+          />
         </div>
       ) : (
         <div className="space-y-2">
           {certs.map(cert => (
-            <div key={cert.id} className="rounded-lg border border-border bg-card p-4 flex items-center justify-between gap-3">
+            <div key={cert.id} className="rounded-lg border border-border bg-card p-4 shadow-sm flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
                 <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${vencido ? 'bg-destructive-tint text-destructive-ink' : 'bg-success-tint text-success-ink'}`}>
                   {vencido
@@ -224,11 +228,13 @@ export default function CertificadoDigital() {
       )}
 
       {/* Belém integration info */}
-      <div className="rounded-md border border-warning-line bg-warning-tint p-4 text-sm text-warning-ink space-y-1">
-        <p className="font-medium">Integração com Prefeitura de Belém (ISSNET/ABRASFv2)</p>
-        <p className="break-all">Endpoint: <code className="font-mono text-xs">https://www.issdigital.com.br/WsNFe2/LoteRps.jws</code></p>
-        <p>O certificado é usado para assinar o XML RPS antes do envio ao webservice municipal.</p>
-      </div>
+      <Alert variant="info">
+        <AlertTitle>Integração com Prefeitura de Belém (ISSNET/ABRASFv2)</AlertTitle>
+        <AlertDescription className="space-y-1 text-muted-foreground">
+          <p className="break-all">Endpoint: <code className="font-mono text-xs">https://www.issdigital.com.br/WsNFe2/LoteRps.jws</code></p>
+          <p>O certificado é usado para assinar o XML RPS antes do envio ao webservice municipal.</p>
+        </AlertDescription>
+      </Alert>
     </div>
   );
 }

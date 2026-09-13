@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import AppLayout from "@/components/layout/AppLayout";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import CabecalhoPagina from "@/components/shared/CabecalhoPagina";
-import { Building2, Landmark } from "lucide-react";
-import FinHomeHub, { HUB_ITEMS } from "@/components/financeiro/FinHomeHub";
+import EstadoVazio from "@/components/shared/EstadoVazio";
+import { Building2, FileSpreadsheet, FileUp, Landmark, Plus } from "lucide-react";
+import FinHomeHub, { HUB_ITEMS, type HubItem } from "@/components/financeiro/FinHomeHub";
 import FinHeroPainel from "@/components/financeiro/FinHeroPainel";
 import FinResumoVisor, { getResumoAutoOpen } from "@/components/financeiro/FinResumoVisor";
 import FinPanorama from "@/components/financeiro/FinPanorama";
@@ -114,6 +116,36 @@ const COMING_SOON: Record<string, { title: string; description: string }> = {
   comissoes: { title: "Bonificações de Vendas", description: "Acesse pela Gestão de Contratos → quitação de NF gera bonificação automaticamente." },
 };
 
+/**
+ * O cabeçalho das subtelas sai do HUB_ITEMS — mas cinco ids do VIEW_MAP não
+ * têm cartão no hub, e nesses o cabeçalho saía sem título próprio: "Financeiro"
+ * como h1, sem descrição e com a trilha parando no segundo degrau.
+ *
+ * Três são alias de rota (abrem a MESMA tela de outro cartão) e herdam o
+ * cabeçalho de quem abrem; duas são variantes que o hub resolve por um cartão
+ * só e por isso declaram o seu aqui.
+ */
+const VIEW_ALIAS: Record<string, string> = {
+  resumo: "panorama",
+  dashboard: "panorama",
+  importar_omie: "importar_planilha",
+};
+
+type CabecalhoSubtela = Pick<HubItem, "label" | "description" | "icon">;
+
+const SUBTELAS_SEM_CARTAO: Record<string, CabecalhoSubtela> = {
+  importar_planilha_csv: {
+    label: "Importar Planilha CSV",
+    description: "Importação em massa de lançamentos a partir de um arquivo CSV.",
+    icon: FileSpreadsheet,
+  },
+  exportar_omie: {
+    label: "Exportar para OMIE",
+    description: "Gera o arquivo de lançamentos no formato aceito pela OMIE.",
+    icon: FileUp,
+  },
+};
+
 export default function Financeiro() {
   const { empresaAtiva, loading } = useEmpresa();
   const [searchParams] = useSearchParams();
@@ -158,7 +190,11 @@ export default function Financeiro() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const activeItem = activeView ? HUB_ITEMS.find((i) => i.id === activeView) : null;
+  const activeItem: CabecalhoSubtela | null = activeView
+    ? HUB_ITEMS.find((i) => i.id === (VIEW_ALIAS[activeView] ?? activeView))
+      ?? SUBTELAS_SEM_CARTAO[activeView]
+      ?? null
+    : null;
   const IconeModulo = activeItem?.icon ?? Landmark;
 
   const renderActive = () => {
@@ -169,12 +205,12 @@ export default function Financeiro() {
     if (cs) {
       return (
         <Card>
-          <CardContent className="flex flex-col items-center py-16 text-center">
-            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
-              <IconeModulo className="w-6 h-6" aria-hidden="true" />
-            </span>
-            <p className="mt-3 text-lg font-semibold">{cs.title}</p>
-            <p className="mt-1 max-w-md text-sm text-muted-foreground">{cs.description}</p>
+          <CardContent className="p-0">
+            <EstadoVazio
+              icone={<IconeModulo />}
+              titulo={cs.title}
+              descricao={cs.description}
+            />
           </CardContent>
         </Card>
       );
@@ -191,32 +227,42 @@ export default function Financeiro() {
             serve inclusive a quem entrou direto pelo link da subtela e não
             tem percurso para desfazer. A trilha carrega a busca (`?lid=`)
             para o processo ativo continuar vinculado. */}
-        <CabecalhoPagina
-          titulo={activeItem ? activeItem.label : "Financeiro"}
-          descricao={
-            activeItem
-              ? activeItem.description
-              : "Hub central de operações financeiras — escolha um módulo abaixo."
-          }
-          icone={<IconeModulo />}
-          trilha={
-            activeItem
-              ? [{ rotulo: "Financeiro", para: `/financeiro${busca}` }, { rotulo: activeItem.label }]
-              : undefined
-          }
-        />
+        {activeView ? (
+          // Subtela: não é item de menu, então título, descrição e trilha vêm à
+          // mão — do HUB_ITEMS, que é o catálogo das 49 subviews.
+          <CabecalhoPagina
+            titulo={activeItem?.label ?? "Financeiro"}
+            descricao={activeItem?.description}
+            icone={<IconeModulo />}
+            trilha={[
+              { rotulo: "Painel", para: "/dashboard" },
+              { rotulo: "Financeiro", para: `/financeiro${busca}` },
+              ...(activeItem ? [{ rotulo: activeItem.label }] : []),
+            ]}
+          />
+        ) : (
+          // Hub: É item de menu. Título, descrição, ícone e trilha saem do
+          // registro `lib/navegacao/paginas.ts` pela rota atual.
+          <CabecalhoPagina
+            rota="/financeiro"
+            acoes={
+              <Button onClick={() => navigateToView("lancamentos")}>
+                <Plus className="w-4 h-4" aria-hidden="true" />
+                Novo lançamento
+              </Button>
+            }
+          />
+        )}
 
         <div className="space-y-6">
           {!loading && !empresaAtiva ? (
             <Card>
-              <CardContent className="flex flex-col items-center py-12 text-center">
-                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
-                  <Building2 className="w-6 h-6" aria-hidden="true" />
-                </span>
-                <p className="mt-3 text-lg font-semibold">Nenhuma empresa ativa</p>
-                <p className="mt-1 max-w-md text-sm text-muted-foreground">
-                  Selecione uma empresa ativa no menu superior para acessar o módulo financeiro.
-                </p>
+              <CardContent className="p-0">
+                <EstadoVazio
+                  icone={<Building2 />}
+                  titulo="Nenhuma empresa ativa"
+                  descricao="Selecione uma empresa ativa no menu superior para acessar o módulo financeiro."
+                />
               </CardContent>
             </Card>
           ) : activeView ? (

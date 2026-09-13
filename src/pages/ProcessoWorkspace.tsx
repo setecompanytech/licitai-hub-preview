@@ -1,6 +1,7 @@
 import SkeletonPagina from '@/components/shared/SkeletonPagina';
 import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
-import { useEffect, useRef, useState } from 'react';
+import EstadoVazio from '@/components/shared/EstadoVazio';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import BotaoVoltar from '@/components/layout/BotaoVoltar';
 import DesfechoDaDisputa from '@/components/workspace/DesfechoDaDisputa';
 import ContratoDoProcesso from '@/components/workspace/ContratoDoProcesso';
@@ -30,6 +31,8 @@ import { useProcessoWorkspace } from '@/hooks/useProcessoWorkspace';
 import { exportarPastaZip } from '@/components/workspace/exportarPasta';
 import AureliaPrecificacaoChat from '@/components/precificacao/AureliaPrecificacaoChat';
 import { normalizarStatus } from '@/lib/licitacao/status';
+import { identidadeDoProcesso, objetoLegivel } from '@/lib/licitacao/identidade-do-processo';
+import { trilhaDaRota } from '@/lib/navegacao/paginas';
 
 interface Licitacao {
   id: string; numero: string | null; orgao: string | null; objeto: string | null;
@@ -65,6 +68,27 @@ type RascunhoPlanilha = {
 };
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+
+/** Trilha da pasta: /processo/:id não é item de menu, então o caminho até ela
+ *  é montado aqui — mas os degraus vêm do registro da tela que a contém
+ *  (/kanban), e não escritos à mão: renomear o módulo em `paginas.ts` renomeia
+ *  a trilha da pasta junto. O último degrau é a identidade do processo, e por
+ *  isso "Gestão de licitações" ganha o link que o registro não dá a ele. */
+const TRILHA_BASE = trilhaDaRota('/kanban').map((item, i, todos) =>
+  i === todos.length - 1 ? { ...item, para: '/kanban' } : item,
+);
+
+/** Campo da ficha do processo: rótulo em cima, valor embaixo. Substitui as
+ *  linhas separadas por "|" — que não embrulhavam em tela estreita e pintavam
+ *  o separador com a cor da borda. */
+function Campo({ rotulo, children }: { rotulo: string; children: ReactNode }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-sm text-muted-foreground">{rotulo}</dt>
+      <dd className="mt-1 text-base text-foreground">{children}</dd>
+    </div>
+  );
+}
 
 /** Cor do selo de status no cabeçalho — só apresentação; o texto continua o
  *  status bruto do processo. */
@@ -350,18 +374,28 @@ export default function ProcessoWorkspace() {
   if (loading) return <SkeletonPagina />;
   if (!lic) return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-lg px-4 py-16 text-center">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
-          <FolderOpen className="w-6 h-6" aria-hidden="true" />
+      <div className="mx-auto max-w-[1440px] px-4 py-6 md:px-6">
+        <div className="mb-2">
+          <BotaoVoltar somenteIcone padrao="/kanban" />
         </div>
-        <h1 className="text-lg font-semibold">Processo não encontrado.</h1>
-        <p className="mt-1 text-sm text-muted-foreground">O processo pode ter sido excluído ou o endereço está incompleto.</p>
-        <Button className="mt-4" onClick={() => navigate('/kanban')}>Voltar ao Kanban</Button>
+        <CabecalhoPagina
+          icone={<FolderOpen />}
+          titulo="Processo não encontrado"
+          descricao="O processo pode ter sido excluído ou o endereço está incompleto"
+          trilha={TRILHA_BASE}
+        />
+        <EstadoVazio
+          icone={<FolderOpen />}
+          titulo="Nada para abrir neste endereço"
+          descricao="Volte à gestão de licitações e escolha o processo na coluna em que ele está."
+          acao={<Button onClick={() => navigate('/kanban')}>Voltar à Gestão de licitações</Button>}
+        />
       </div>
     </div>
   );
 
-  const temMeta = !!(lic.modalidade || lic.uf || lic.data_encerramento || lic.valor_estimado != null);
+  const identidade = identidadeDoProcesso({ numero: lic.numero, modalidade: lic.modalidade });
+  const temMeta = !!(lic.orgao || lic.modalidade || lic.uf || lic.data_encerramento || lic.valor_estimado != null);
 
   return (
     <div className="min-h-screen bg-background">
@@ -374,11 +408,13 @@ export default function ProcessoWorkspace() {
           <BotaoVoltar somenteIcone padrao="/kanban" />
         </div>
 
-        {/* Cabeçalho da pasta */}
+        {/* Cabeçalho da pasta — /processo/:id não é item de menu, então título,
+            descrição e trilha vêm à mão; a identidade é a mesma do Kanban. */}
         <CabecalhoPagina
           icone={<FolderOpen />}
-          titulo={`${lic.numero || 'Processo'}${lic.orgao ? ` — ${lic.orgao}` : ''}`}
-          descricao={lic.objeto ? <span className="line-clamp-3">{lic.objeto}</span> : undefined}
+          titulo={identidade}
+          descricao={lic.objeto ? <span className="line-clamp-3">{objetoLegivel(lic.objeto)}</span> : undefined}
+          trilha={[...TRILHA_BASE, { rotulo: identidade }]}
           acoes={
             <>
               {lic.status && <Badge variant={varianteStatus(lic.status)}>{lic.status}</Badge>}
@@ -421,7 +457,7 @@ export default function ProcessoWorkspace() {
             ícone de Precificação da linha levar o processo junto, em vez de
             despejar o usuário numa tela em branco. */}
         <Tabs value={aba} className="w-full" onValueChange={v => { setAba(v); if (v === 'precificacao') loadPrecificacao(); }}>
-          <TabsList className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 mb-6 h-auto">
+          <TabsList className="mb-6 grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-7">
             <TabsTrigger value="visao">Visão Geral</TabsTrigger>
             <TabsTrigger value="documentos">Documentos</TabsTrigger>
             <TabsTrigger value="anexos">Anexos</TabsTrigger>
@@ -448,116 +484,91 @@ export default function ProcessoWorkspace() {
             />
             {/* O contrato que nasceu daqui — só aparece quando existe elo. */}
             <ContratoDoProcesso licitacaoId={lic.id} />
-            <Card className="p-6 space-y-3 text-base">
-              <div className="flex flex-wrap gap-x-6 gap-y-2 pb-3 border-b border-border">
-                <span><span className="font-semibold">Local:</span> <span>{lic.municipio && lic.uf ? `${lic.municipio}/${lic.uf}` : lic.municipio || lic.uf || '—'}</span></span>
-                <span className="text-border select-none" aria-hidden="true">|</span>
-                <span><span className="font-semibold">Órgão:</span> <span>{lic.orgao || '—'}</span></span>
-                <span className="text-border select-none" aria-hidden="true">|</span>
-                <span><span className="font-semibold">Status:</span> <span>{lic.status || '—'}</span></span>
-              </div>
-              <div className="flex flex-wrap gap-x-6 gap-y-2 pb-3 border-b border-border">
-                <span><span className="font-semibold">Modalidade:</span> <span>{lic.modalidade || '—'}</span></span>
-                <span className="text-border select-none" aria-hidden="true">|</span>
-                <span><span className="font-semibold">Valor estimado:</span> <span className="tabular-nums">{lic.valor_estimado != null ? fmt(lic.valor_estimado) : '—'}</span></span>
-                {lic.data_abertura && (
-                  <>
-                    <span className="text-border select-none" aria-hidden="true">|</span>
-                    <span><span className="font-semibold">Abertura:</span> <span>{dataHora(lic.data_abertura)}</span></span>
-                  </>
+            <Card className="p-6 space-y-6">
+              <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
+                <Campo rotulo="Local">
+                  {lic.municipio && lic.uf ? `${lic.municipio}/${lic.uf}` : lic.municipio || lic.uf || '—'}
+                </Campo>
+                <Campo rotulo="Órgão">{lic.orgao || '—'}</Campo>
+                <Campo rotulo="Status">{lic.status || '—'}</Campo>
+                <Campo rotulo="Modalidade">{lic.modalidade || '—'}</Campo>
+                <Campo rotulo="Valor estimado">
+                  <span className="tabular-nums">{lic.valor_estimado != null ? fmt(lic.valor_estimado) : '—'}</span>
+                </Campo>
+                {lic.data_abertura && <Campo rotulo="Abertura">{dataHora(lic.data_abertura)}</Campo>}
+                {lic.data_encerramento && <Campo rotulo="Encerramento">{dataHora(lic.data_encerramento)}</Campo>}
+                {lic.portal && (
+                  <Campo rotulo="Portal">
+                    {lic.url_edital ? (
+                      <a href={lic.url_edital} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
+                        {lic.portal} <ExternalLink className="w-4 h-4" aria-hidden="true" />
+                      </a>
+                    ) : (
+                      lic.portal
+                    )}
+                  </Campo>
                 )}
-              </div>
-              {(lic.data_encerramento || lic.portal) && (
-                <div className="flex flex-wrap gap-x-6 gap-y-2 pb-3 border-b border-border">
-                  {lic.data_encerramento && (
-                    <span><span className="font-semibold">Encerramento:</span> <span>{dataHora(lic.data_encerramento)}</span></span>
-                  )}
-                  {lic.portal && (
-                    <>
-                      {lic.data_encerramento && <span className="text-border select-none" aria-hidden="true">|</span>}
-                      <span>
-                        <span className="font-semibold">Portal:</span>{' '}
-                        {lic.url_edital ? (
-                          <a href={lic.url_edital} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
-                            {lic.portal} <ExternalLink className="w-4 h-4" aria-hidden="true" />
-                          </a>
-                        ) : (
-                          <span>{lic.portal}</span>
-                        )}
-                      </span>
-                    </>
-                  )}
-                </div>
-              )}
-              {lic.resultado && (
-                <div className="flex flex-wrap gap-x-6 gap-y-2 pb-3 border-b border-border">
-                  <span className="inline-flex items-center gap-2">
-                    {lic.vencedor && <span className="w-2 h-2 rounded-full bg-success shrink-0" title="Empresa vencedora" aria-hidden="true" />}
-                    <span className="font-semibold">Resultado:</span>
-                    <span className={lic.vencedor ? 'font-semibold text-success' : ''}>{lic.resultado}</span>
-                  </span>
-                  {lic.valor_adjudicado != null && (
-                    <>
-                      <span className="text-border select-none" aria-hidden="true">|</span>
-                      <span><span className="font-semibold">Valor adjudicado:</span> <span className="tabular-nums">{fmt(lic.valor_adjudicado)}</span></span>
-                    </>
-                  )}
-                  {lic.data_homologacao && (
-                    <>
-                      <span className="text-border select-none" aria-hidden="true">|</span>
-                      <span><span className="font-semibold">Homologação:</span> <span>{new Date(lic.data_homologacao).toLocaleDateString('pt-BR')}</span></span>
-                    </>
-                  )}
-                </div>
-              )}
+                {lic.resultado && (
+                  <Campo rotulo="Resultado">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={lic.vencedor ? 'font-semibold text-success-ink' : undefined}>{lic.resultado}</span>
+                      {/* O ponto verde dizia "vencemos" só pela cor, com o texto
+                          escondido no title. Selo com texto: a cor é reforço. */}
+                      {lic.vencedor && <Badge variant="success">Empresa vencedora</Badge>}
+                    </div>
+                  </Campo>
+                )}
+                {lic.valor_adjudicado != null && (
+                  <Campo rotulo="Valor adjudicado">
+                    <span className="tabular-nums">{fmt(lic.valor_adjudicado)}</span>
+                  </Campo>
+                )}
+                {lic.data_homologacao && (
+                  <Campo rotulo="Homologação">{new Date(lic.data_homologacao).toLocaleDateString('pt-BR')}</Campo>
+                )}
+              </dl>
+
               {temEspelho && (
-                <div className="flex flex-wrap gap-x-6 gap-y-2 pb-3 border-b border-border">
-                  {espelho.unidadeCompradora && (
-                    <span><span className="font-semibold">Unidade compradora:</span> <span>{espelho.unidadeCompradora}</span></span>
-                  )}
-                  {espelho.amparoLegal && (
-                    <span><span className="font-semibold">Amparo legal:</span> <span>{espelho.amparoLegal}</span></span>
-                  )}
-                  {espelho.tipo && (
-                    <span><span className="font-semibold">Tipo:</span> <span>{espelho.tipo}</span></span>
-                  )}
-                  {espelho.modoDisputa && (
-                    <span><span className="font-semibold">Modo de disputa:</span> <span>{espelho.modoDisputa}</span></span>
-                  )}
-                  {espelho.srp != null && (
-                    <span><span className="font-semibold">Registro de preço:</span> <span>{espelho.srp ? 'Sim' : 'Não'}</span></span>
-                  )}
-                  <span><span className="font-semibold">Fonte orçamentária:</span> <span>{espelho.fonteOrcamentaria || 'Não informada'}</span></span>
+                <div className="border-t border-border pt-6">
+                  <h2 className="mb-4 text-lg font-semibold">Espelho do PNCP</h2>
+                  <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {espelho.unidadeCompradora && (
+                      <Campo rotulo="Unidade compradora">{espelho.unidadeCompradora}</Campo>
+                    )}
+                    {espelho.amparoLegal && <Campo rotulo="Amparo legal">{espelho.amparoLegal}</Campo>}
+                    {espelho.tipo && <Campo rotulo="Tipo">{espelho.tipo}</Campo>}
+                    {espelho.modoDisputa && <Campo rotulo="Modo de disputa">{espelho.modoDisputa}</Campo>}
+                    {espelho.srp != null && (
+                      <Campo rotulo="Registro de preço">{espelho.srp ? 'Sim' : 'Não'}</Campo>
+                    )}
+                    <Campo rotulo="Fonte orçamentária">{espelho.fonteOrcamentaria || 'Não informada'}</Campo>
+                    {espelho.divulgacaoPncp && (
+                      <Campo rotulo="Divulgação no PNCP">{dataSo(espelho.divulgacaoPncp)}</Campo>
+                    )}
+                    {espelho.situacao && <Campo rotulo="Situação">{espelho.situacao}</Campo>}
+                    {espelho.inicioPropostas && (
+                      <Campo rotulo="Início das propostas">{dataHora(espelho.inicioPropostas)}</Campo>
+                    )}
+                    {espelho.fimPropostas && (
+                      <Campo rotulo="Fim das propostas">{dataHora(espelho.fimPropostas)}</Campo>
+                    )}
+                    {espelho.idPncp && (
+                      <Campo rotulo="Id contratação PNCP">
+                        <span className="tabular-nums">{espelho.idPncp}</span>
+                      </Campo>
+                    )}
+                    {espelho.fonte && <Campo rotulo="Fonte">{espelho.fonte}</Campo>}
+                  </dl>
                 </div>
               )}
-              {temEspelho && (
-                <div className="flex flex-wrap gap-x-6 gap-y-2 pb-3 border-b border-border">
-                  {espelho.divulgacaoPncp && (
-                    <span><span className="font-semibold">Divulgação no PNCP:</span> <span>{dataSo(espelho.divulgacaoPncp)}</span></span>
-                  )}
-                  {espelho.situacao && (
-                    <span><span className="font-semibold">Situação:</span> <span>{espelho.situacao}</span></span>
-                  )}
-                  {espelho.inicioPropostas && (
-                    <span><span className="font-semibold">Início das propostas:</span> <span>{dataHora(espelho.inicioPropostas)}</span></span>
-                  )}
-                  {espelho.fimPropostas && (
-                    <span><span className="font-semibold">Fim das propostas:</span> <span>{dataHora(espelho.fimPropostas)}</span></span>
-                  )}
-                  {espelho.idPncp && (
-                    <span><span className="font-semibold">Id contratação PNCP:</span> <span className="tabular-nums">{espelho.idPncp}</span></span>
-                  )}
-                  {espelho.fonte && (
-                    <span><span className="font-semibold">Fonte:</span> <span>{espelho.fonte}</span></span>
-                  )}
-                </div>
-              )}
-              <div>
-                <span className="font-semibold">Objeto:</span>
-                <p className="mt-1 leading-relaxed">{lic.objeto || '—'}</p>
+
+              <div className="border-t border-border pt-6">
+                <h2 className="text-lg font-semibold">Objeto</h2>
+                <p className="mt-2 text-base leading-relaxed text-foreground">{lic.objeto || '—'}</p>
               </div>
+
               {lic.observacoes && (
-                <p className="pt-3 border-t border-border text-base text-muted-foreground italic">{lic.observacoes}</p>
+                <p className="border-t border-border pt-6 text-base text-muted-foreground">{lic.observacoes}</p>
               )}
             </Card>
 
@@ -652,14 +663,14 @@ export default function ProcessoWorkspace() {
                                     <td className="px-3 py-2 text-foreground">
                                       {item.descricao || item.descricaoItem || '—'}
                                       {(item.unidade_medida || item.unidadeMedida) && (
-                                        <span className="ml-2 rounded border border-border px-1 text-xs text-muted-foreground">
+                                        <Badge variant="muted" className="ml-2">
                                           {item.unidade_medida || item.unidadeMedida}
-                                        </span>
+                                        </Badge>
                                       )}
                                     </td>
                                     <td className="px-3 py-2 text-right whitespace-nowrap tabular-nums">{qtd?.toLocaleString('pt-BR') ?? '—'}</td>
                                     <td className="px-3 py-2 text-right text-muted-foreground whitespace-nowrap tabular-nums">{vUnit != null ? fmt(vUnit) : '—'}</td>
-                                    <td className="px-3 py-2 text-right font-medium text-success whitespace-nowrap tabular-nums">{vTotal != null ? fmt(vTotal) : '—'}</td>
+                                    <td className="px-3 py-2 text-right font-medium text-success-ink whitespace-nowrap tabular-nums">{vTotal != null ? fmt(vTotal) : '—'}</td>
                                   </tr>
                                 );
                               })}
@@ -745,7 +756,7 @@ export default function ProcessoWorkspace() {
           {/* Precificação */}
           <TabsContent value="precificacao">
             <Tabs defaultValue="prec-historico" className="space-y-4">
-              <TabsList className="h-auto">
+              <TabsList>
                 <TabsTrigger value="prec-historico" className="gap-2">
                   <Calculator className="w-4 h-4" aria-hidden="true" /> Precificação
                 </TabsTrigger>
@@ -845,17 +856,19 @@ export default function ProcessoWorkspace() {
                         </Card>
                       );
                     })() : (
-                      <Card className="p-6 text-center">
-                        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
-                          <TrendingUp className="w-6 h-6" aria-hidden="true" />
-                        </div>
-                        <p className="text-lg font-semibold">Nenhuma planilha de custos salva ainda.</p>
-                        <p className="mt-1 text-sm text-muted-foreground">Acesse a Precificação e preencha os valores para que apareçam aqui.</p>
-                        <Button asChild variant="outline" className="mt-4">
-                          <Link to={`/precificacao?lid=${lic.id}`}>
-                            <Calculator className="w-4 h-4" aria-hidden="true" /> Abrir Precificação
-                          </Link>
-                        </Button>
+                      <Card className="p-6">
+                        <EstadoVazio
+                          icone={<TrendingUp />}
+                          titulo="Nenhuma planilha de custos salva ainda"
+                          descricao="Acesse a Precificação e preencha os valores para que apareçam aqui."
+                          acao={
+                            <Button asChild variant="outline">
+                              <Link to={`/precificacao?lid=${lic.id}`}>
+                                <Calculator className="w-4 h-4" aria-hidden="true" /> Abrir Precificação
+                              </Link>
+                            </Button>
+                          }
+                        />
                       </Card>
                     )}
 

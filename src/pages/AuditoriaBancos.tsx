@@ -1,14 +1,12 @@
-import BotaoVoltar from '@/components/layout/BotaoVoltar';
 import { useMemo } from "react";
-import { Link } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, AlertTriangle, Landmark } from "lucide-react";
+import { CheckCircle2, AlertTriangle, Landmark } from "lucide-react";
+import AppLayout from "@/components/layout/AppLayout";
 import {
   BANCOS_BRASIL,
   BancoLogo,
   getBrandStyle,
 } from "@/components/financeiro/BancoSelectorLogos";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import CabecalhoPagina from "@/components/shared/CabecalhoPagina";
 
 /**
@@ -76,21 +74,21 @@ export default function AuditoriaBancos() {
   const semCor = linhas.filter((l) => !l.temCor).length;
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-6">
+    <AppLayout>
+      {/* Não é item de menu: título, descrição e trilha vêm à mão, na mesma
+          trilha das subtelas do Financeiro — Painel › Financeiro › tela.
+          O caminho de volta é a trilha, como no hub; o Voltar do layout logo
+          acima já responde pelo percurso. */}
       <div className="max-w-6xl mx-auto">
-        <BotaoVoltar />
         <CabecalhoPagina
-          titulo="Auditoria de Bancos"
-          descricao="Revisão de logos, códigos COMPE e identidade visual de todos os bancos cadastrados."
+          titulo="Auditoria de bancos"
+          descricao="Logos, códigos COMPE e cor institucional de cada banco cadastrado"
           icone={<Landmark />}
-          trilha={[{ rotulo: "Financeiro", para: "/financeiro" }, { rotulo: "Auditoria de Bancos" }]}
-          acoes={
-            <Button asChild variant="outline">
-              <Link to="/financeiro">
-                <ArrowLeft className="w-4 h-4" aria-hidden="true" /> Voltar ao Financeiro
-              </Link>
-            </Button>
-          }
+          trilha={[
+            { rotulo: "Painel", para: "/dashboard" },
+            { rotulo: "Financeiro", para: "/financeiro" },
+            { rotulo: "Auditoria de bancos" },
+          ]}
         />
 
         <div className="space-y-6">
@@ -107,10 +105,10 @@ export default function AuditoriaBancos() {
             <table className="w-full text-sm">
               <thead className="bg-muted text-sm font-semibold text-foreground">
                 <tr>
-                  <th className="text-left px-4 py-3 w-16">Logo</th>
+                  <th className="text-left px-4 py-3 w-16">Marca</th>
                   <th className="text-left px-4 py-3 w-20">COMPE</th>
                   <th className="text-left px-4 py-3">Nome oficial</th>
-                  <th className="text-left px-4 py-3 w-32">Logo</th>
+                  <th className="text-left px-4 py-3 w-32">Arquivo do logo</th>
                   <th className="text-left px-4 py-3 w-24">Nome</th>
                   <th className="text-left px-4 py-3 w-24">Cor</th>
                   <th className="text-left px-4 py-3">Pendência</th>
@@ -170,7 +168,7 @@ export default function AuditoriaBancos() {
           </p>
         </div>
       </div>
-    </div>
+    </AppLayout>
   );
 }
 

@@ -49,7 +49,7 @@ export default function EditalOriginalCard({ licitacaoId, urlEdital, onVerItens,
   const unavailable = !prepared && !running && !temItens;
 
   return (
-    <Card className="p-4">
+    <Card className="p-6">
       <div className="flex flex-wrap items-center gap-3">
         <h2 className="text-lg font-semibold">Preparação automática</h2>
 

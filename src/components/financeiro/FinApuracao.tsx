@@ -13,6 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import EstadoVazio from "@/components/shared/EstadoVazio";
 import { useApuracaoTributaria } from "@/hooks/useApuracaoTributaria";
 import { useValidacaoApuracao, type DivergenciaApuracao } from "@/hooks/useValidacaoApuracao";
 import { DialogDivergenciasApuracao } from "./DialogDivergenciasApuracao";
@@ -155,19 +157,23 @@ export default function FinApuracao() {
   if (!regimeDaEmpresa(empresaAtiva?.regime_tributario)) {
     return (
       <Card>
-        <CardContent className="py-12 text-center space-y-3">
-          <AlertTriangle className="w-8 h-8 mx-auto text-warning" />
-          <div>
-            <p className="text-sm font-medium">Regime tributário não definido</p>
-            <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
-              {empresaAtiva?.razao_social ? <><strong>{empresaAtiva.razao_social}</strong> ainda não tem</> : 'Esta empresa ainda não tem'}{' '}
-              regime no cadastro. Sem ele não há por qual tabela apurar — e adotar um padrão
-              aqui seria decidir no lugar de quem pode decidir.
-            </p>
-          </div>
-          <Button size="sm" onClick={() => navigate('/configuracoes?aba=tributario')}>
-            Definir em Configurações
-          </Button>
+        <CardContent className="p-6">
+          <EstadoVazio
+            icone={<AlertTriangle />}
+            titulo="Regime tributário não definido"
+            descricao={
+              <>
+                {empresaAtiva?.razao_social ? <><strong>{empresaAtiva.razao_social}</strong> ainda não tem</> : 'Esta empresa ainda não tem'}{' '}
+                regime no cadastro. Sem ele não há por qual tabela apurar — e adotar um padrão
+                aqui seria decidir no lugar de quem pode decidir.
+              </>
+            }
+            acao={
+              <Button onClick={() => navigate('/configuracoes?aba=tributario')}>
+                Definir em Configurações
+              </Button>
+            }
+          />
         </CardContent>
       </Card>
     );
