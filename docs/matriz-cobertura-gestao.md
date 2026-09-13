@@ -2,9 +2,31 @@
 
 Levantada em 13/09/2026 por inspeção do código, antes de qualquer alteração,
 como o comando exige. Cada linha foi verificada no arquivo, não inferida.
+Atualizada ao fim da adequação (commit `42e9859d`).
 
-Legenda de situação: **✅ adequada** · **🔄 em adequação** · **⚠️ divergência
-registrada** (o sistema faz diferente da referência, e a regra existente vence).
+## Situação por função
+
+| Função | Composição da referência | Verificação |
+| --- | --- | --- |
+| Estratégicas | ✅ indicadores → filtros → tabela → painel | render + captura |
+| Compromissos | ✅ idem, 8 abas preservadas | render + captura |
+| Calendário | ✅ 65/35, agenda antes no celular | render + captura |
+| Workflow IA | ✅ três colunas | render (rota exige plano) |
+| Kanban | ✅ colunas 260px, etapa única no celular | render + captura |
+| Dossiê | ✅ 7 abas, cabeçalho compacto | render |
+| Robô de Lances | ✅ três colunas, seis eixos separados | render (rota exige plano) |
+| Histórico | ✅ três eixos separados, painel | render + captura |
+| Metas | ✅ Painel/Equipe/Relatórios, critérios visíveis | render + captura |
+| Contratos e ATAs | ✅ tabela hierárquica, 4 abas internas | render (rota exige plano) |
+| Compras e estoque | ✅ 6 abas, Lista ⇄ Quadro | render (rota exige plano) |
+
+Quatro rotas não puderam ser capturadas no navegador: a conta de teste não tem
+plano, e o `PlanGuard` as barra — corretamente. A verificação delas é por teste
+de render, que é o que a sessão vinha usando para telas inalcançáveis na
+captura automatizada.
+
+Legenda de situação: **✅ adequada** · **⚠️ divergência registrada** (o sistema
+faz diferente da referência, e a regra existente vence).
 
 ---
 
@@ -136,7 +158,23 @@ correspondente ou registrado como pendência.
 
 ---
 
-## 6. O que NÃO foi feito, e por quê
+## 6. Pendências que ficaram com o dono do produto
+
+Nenhuma delas é trabalho de apresentação: todas mexem em dado gravado, em
+regra de negócio ou em backend, e mudá-las por conta própria seria alterar o
+produto sem que ninguém tivesse decidido.
+
+| Pendência | Onde | Por que ficou |
+| --- | --- | --- |
+| `dupla_autenticacao_verificada` é gravada como `true` no aceite de nível 3, mas o código de 6 dígitos é sorteado no navegador e mostrado a quem vai digitá-lo | `AceiteTermosDialog` | É registro falso no banco. Consertar de verdade é gerar e conferir no servidor, com segundo canal. Os textos da tela e da política já deixaram de chamar aquilo de dois fatores |
+| "Perdidas" conta `resultado='Perdida'`, mas o fluxo oficial grava `'Perdedor'` | Histórico | Somar as duas grafias muda a agregação, e a definição vive em outras telas. A tela passou a declarar quantos registros ficam de fora |
+| Dois sistemas de pedido de compra convivem (`pedidos` × `pedidos_compra`) | Compras | `nfe_entradas.pedido_id` e `estoque_movimentos.pedido_id` têm FK para o legado; migrar exige mexer nas duas e pode haver dado de cliente |
+| Extração de itens do certificado `.pfx` | Certificado | Exige abrir o PKCS#12, que é cifrado com a senha — e a senha não é (nem deve ser) armazenada. Hoje os campos são digitados, rotulados como tal |
+| `types.ts` do Supabase defasado (16/08; migrations até 09/09) | Todo o módulo | Daí os `as any` nos casts. Regenerá-lo é trabalho próprio |
+| Rodapés com a marca do sistema em exportações que costumam ser anexadas à proposta | `mdo-export.ts`, calculadora de engenharia | Mesma família do carimbo de cópia já corrigido, mas em artefato gerado — decisão de produto |
+| O timbrado da proposta não passa por `lib/timbrado/timbrado.ts` | Proposta | Rodapé e ajustes de posição da empresa não chegam ao PDF; SVG aparece na prévia e some no arquivo |
+
+## 7. O que NÃO foi feito, e por quê
 
 - Nenhuma regra de negócio, cálculo, status, permissão, RLS ou trigger foi alterada.
 - Nenhuma operação real de envio, faturamento, estoque, proposta ou lance foi executada para validar visual.
