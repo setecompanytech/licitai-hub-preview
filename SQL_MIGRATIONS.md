@@ -13198,3 +13198,54 @@ cor copia o hex. Dado de REFERÊNCIA GLOBAL — exceção consciente à regra
 do empresa_id (é a marca do próprio Praefectus, igual para todos): RLS com
 leitura para authenticated e NENHUMA policy de escrita (só service role).
 Seed idempotente por ON CONFLICT (slug) DO UPDATE.
+
+
+---
+
+## 2026-09-13 — Itens da NF-e de entrada, finalidade e crédito de ICMS
+
+Arquivo: `supabase/migrations/20260913000001_nfe_entrada_itens.sql`
+
+**O que resolve.** Os itens de uma nota de entrada viviam em três lugares
+derivados e nenhum consultável: `nfe_entradas.itens` (jsonb sem FK),
+`nfe_entradas.xml` (reparseado a cada leitura) e `estoque_movimentos` (guarda
+quantidade e preço, perde o resto). Não havia onde gravar a finalidade da
+compra, os dados fiscais da operação, nem o vínculo com o processo atendido.
+
+**`nfe_entrada_itens`** — uma linha por item da nota, com:
+
+- ficha da mercadoria (`produto_id`, `c_prod`, `c_ean`, `ncm`, `cest`,
+  `origem_mercadoria`);
+- dados da OPERAÇÃO (`cfop`, `cst_icms`, `csosn`, `cst_pis`, `cst_cofins`) —
+  que desde 13/09 não contaminam mais a ficha do produto, mas precisam existir
+  para escrituração;
+- quantidades, valores e impostos destacados (alíquotas em percentual 0–100,
+  como manda o CLAUDE.md para alíquota transcrita de documento);
+- **`finalidade`** com CHECK em `revenda | uso_consumo | imobilizado |
+  materia_prima | nao_informada` — o parâmetro do direito a crédito de ICMS,
+  fixado pelo dono do produto. É do ITEM, não do produto: a mesma mercadoria
+  entra para consumo numa nota e para revenda noutra;
+- `finalidade_origem` (`cfop` | `cadastro` | `manual`), que separa o que alguém
+  confirmou do que o sistema sugeriu;
+- `credito_icms_situacao` e `credito_icms_fundamento`, congelados no
+  lançamento — a regra do uso e consumo já foi adiada cinco vezes, e
+  recalcular o passado com a lei de hoje reescreveria exercício fechado;
+- vínculo opcional com `contrato_id`, `contrato_item_id` e `licitacao_id`.
+
+`UNIQUE (nfe_entrada_id, n_item)` — reimportar a nota não duplica item.
+RLS pelo padrão do repo: `is_empresa_member` para ler/gravar/atualizar,
+`is_empresa_admin` para apagar.
+
+**Correção de rota.** `estoque_movimentos.nfe_id` tinha FK para
+`nfe_recebidas` (a tabela legada), enquanto o código grava ids de
+`nfe_entradas` desde que o acervo mudou de casa. Ou a constraint foi removida
+à mão em produção, ou todo lançamento de estoque vindo de NF-e vinha violando
+a chave em silêncio. A FK passou a apontar para `nfe_entradas`, com
+`ON DELETE SET NULL` — apagar a nota não pode apagar histórico de estoque, já
+que o saldo é recalculado somando os movimentos.
+
+Acrescentada `estoque_movimentos.nfe_entrada_item_id`, fechando a
+rastreabilidade nota → item → produto → saldo.
+
+Regra de domínio em `docs/nfe-entrada-e-produtos.md`; classificação do crédito
+em `src/lib/fiscal/credito-icms.ts`.
