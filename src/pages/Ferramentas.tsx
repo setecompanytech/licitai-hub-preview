@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import { Button } from '@/components/ui/button';
 import {
   Download, Bell, Target, Archive, Bot, Search, Scale, BookOpen,
@@ -96,30 +97,31 @@ function ToolCard({ item, navigate }: { item: ToolItem; navigate: (p: string) =>
   const Icon = item.icon;
   return (
     <motion.button
+      type="button"
       variants={cardVariant}
       onClick={() => navigate(item.path)}
       className={cn(
-        'group relative flex flex-col items-center gap-3 p-5 rounded-xl border border-border/60 bg-card',
-        'hover:border-accent/40 hover:shadow-lg hover:-translate-y-1 transition-all duration-250 cursor-pointer',
-        'min-w-[120px] flex-1'
+        'group relative flex flex-col items-center gap-3 rounded-lg border border-border bg-card p-4 text-center shadow-sm',
+        'transition-colors hover:border-primary/40 hover:shadow-md',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
       )}
     >
       {item.badge && (
         <span
           className={cn(
-            'absolute -top-2 right-2 text-xs font-bold px-2.5 py-0.5 rounded-full leading-none',
+            'absolute -top-2 right-2 rounded-full border px-2 py-0.5 text-xs font-semibold leading-none',
             item.badge === 'novo'
-              ? 'bg-secondary text-secondary-foreground ring-1 ring-border'
-              : 'bg-foreground text-background'
+              ? 'border-success-line bg-success-tint text-success-ink'
+              : 'border-border bg-muted text-muted-foreground',
           )}
         >
           {item.badge === 'novo' ? 'Novo' : 'Premium'}
         </span>
       )}
-      <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center group-hover:bg-secondary transition-colors duration-200">
-        <Icon className="w-6 h-6 text-muted-foreground" />
-      </div>
-      <span className="text-sm font-medium text-foreground text-center leading-tight">{item.label}</span>
+      <span className="flex h-12 w-12 items-center justify-center rounded-lg bg-muted text-muted-foreground transition-colors group-hover:bg-primary-tint group-hover:text-primary">
+        <Icon className="h-6 w-6" aria-hidden="true" />
+      </span>
+      <span className="text-sm font-medium text-foreground">{item.label}</span>
     </motion.button>
   );
 }
@@ -142,51 +144,43 @@ export default function Ferramentas() {
 
   return (
     <AppLayout>
-      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-3 mb-1">
-            <Zap className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground flex-shrink-0" />
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Nossas Ferramentas</h1>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Acesse todas as funcionalidades da plataforma Praefectus em um só lugar.
-          </p>
-        </div>
-        <Button
-          onClick={handleOrganograma}
-          disabled={gerando}
-          variant="outline"
-          className="gap-2"
-        >
-          {gerando ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
-          {gerando ? 'Gerando...' : 'Organograma PDF'}
-        </Button>
-      </div>
+      {/* `/ferramentas` não é item de menu — não está em `paginas.ts` —, então o
+          título e a descrição vêm à mão, e a trilha também. */}
+      <CabecalhoPagina
+        titulo="Nossas ferramentas"
+        descricao="Todas as funcionalidades da plataforma reunidas num só lugar"
+        icone={<Zap />}
+        trilha={[{ rotulo: 'Painel', para: '/dashboard' }, { rotulo: 'Nossas ferramentas' }]}
+        acoes={
+          <Button onClick={handleOrganograma} disabled={gerando} variant="outline">
+            {gerando ? <Loader2 className="animate-spin" aria-hidden="true" /> : <FileDown aria-hidden="true" />}
+            {gerando ? 'Gerando...' : 'Organograma PDF'}
+          </Button>
+        }
+      />
 
       <motion.div
         variants={container}
         initial="hidden"
         animate="show"
-        className="grid grid-cols-1 lg:grid-cols-2 gap-5"
+        className="grid grid-cols-1 gap-4 md:grid-cols-2"
       >
         {toolGroups.map((group) => (
-          <motion.div
+          <motion.section
             key={group.title}
             variants={cardVariant}
             className={cn(
-              'rounded-2xl border p-5',
-              group.highlight
-                ? 'border-border bg-muted/40'
-                : 'border-border/60 bg-card/50'
+              'rounded-lg border p-6 shadow-sm',
+              group.highlight ? 'border-primary/30 bg-primary-tint' : 'border-border bg-card',
             )}
           >
-            <h2 className="text-base font-bold text-foreground mb-4">{group.title}</h2>
-            <div className="flex flex-wrap gap-3">
+            <h2 className="mb-4 text-lg font-semibold text-foreground">{group.title}</h2>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {group.items.map((item) => (
                 <ToolCard key={item.path + item.label} item={item} navigate={navigate} />
               ))}
             </div>
-          </motion.div>
+          </motion.section>
         ))}
       </motion.div>
     </AppLayout>

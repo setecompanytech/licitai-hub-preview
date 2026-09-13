@@ -132,7 +132,7 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
           esquerda, navegação centrada, ações à direita. */}
       <header className="nao-imprime sticky top-0 z-40 h-16 md:h-[72px] bg-sidebar text-sidebar-foreground border-b border-sidebar-border flex items-center gap-2 px-4 md:px-6">
         <Link to="/dashboard" aria-label="Praefectus — página inicial" className="flex shrink-0 items-center">
-          <BrandLogo variant="dark" className="w-[132px] lg:w-[150px]" />
+          <BrandLogo variant="dark" className="w-[164px] lg:w-[200px]" />
         </Link>
 
         {/* min-w-0 para a fila de grupos poder encolher antes de empurrar as

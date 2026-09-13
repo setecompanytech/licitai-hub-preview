@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type KeyboardEvent } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import EstadoVazio from '@/components/shared/EstadoVazio';
@@ -119,6 +119,18 @@ export default function Blog() {
 
   const destaques = artigos.filter(a => a.destaque).slice(0, 2);
 
+  /* O cartão inteiro é a área de clique — então ele também precisa responder ao
+     teclado, senão quem navega por Tab não consegue abrir artigo nenhum. */
+  const abrirPorTeclado = (artigo: Artigo) => (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      setArtigoAberto(artigo);
+    }
+  };
+
+  const CARTAO_CLICAVEL =
+    'group cursor-pointer p-6 transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
+
   const botaoGerar = (
     <Button onClick={gerarArtigos} disabled={gerando}>
       <RefreshCw className={gerando ? 'animate-spin' : undefined} aria-hidden="true" />
@@ -225,8 +237,11 @@ export default function Blog() {
             {destaques.map(artigo => (
               <Card
                 key={artigo.id}
+                role="button"
+                tabIndex={0}
                 onClick={() => setArtigoAberto(artigo)}
-                className="group cursor-pointer p-6 transition-shadow hover:shadow-md"
+                onKeyDown={abrirPorTeclado(artigo)}
+                className={CARTAO_CLICAVEL}
               >
                 <div className="mb-3 flex flex-wrap gap-2">
                   <Badge variant="muted">
@@ -301,8 +316,11 @@ export default function Blog() {
             {artigosFiltrados.map(artigo => (
               <Card
                 key={artigo.id}
+                role="button"
+                tabIndex={0}
                 onClick={() => setArtigoAberto(artigo)}
-                className="group cursor-pointer p-6 transition-shadow hover:shadow-md"
+                onKeyDown={abrirPorTeclado(artigo)}
+                className={CARTAO_CLICAVEL}
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0 flex-1">

@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import {
   Bell, Clock, FileWarning, TrendingDown, AlertTriangle,
   CheckCircle2, X, Loader2
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -22,15 +24,17 @@ export type Notification = {
   actionPath?: string;
 };
 
+/** Cor do ícone por tipo — só tokens (`accent` saiu: era o mesmo verde de
+ *  `primary`, com dois nomes para a mesma tinta). */
 const typeConfig: Record<string, { icon: typeof Bell; color: string; label: string }> = {
-  prazo: { icon: Clock, color: 'text-warning', label: 'Prazo' },
+  prazo: { icon: Clock, color: 'text-warning-ink', label: 'Prazo' },
   documento: { icon: FileWarning, color: 'text-destructive', label: 'Documento' },
-  lance: { icon: TrendingDown, color: 'text-accent', label: 'Lance' },
+  lance: { icon: TrendingDown, color: 'text-primary', label: 'Lance' },
   edital: { icon: CheckCircle2, color: 'text-success', label: 'Edital' },
   sistema: { icon: Bell, color: 'text-muted-foreground', label: 'Sistema' },
   info: { icon: Bell, color: 'text-info', label: 'Info' },
   sucesso: { icon: CheckCircle2, color: 'text-success', label: 'Sucesso' },
-  alerta: { icon: AlertTriangle, color: 'text-warning', label: 'Alerta' },
+  alerta: { icon: AlertTriangle, color: 'text-warning-ink', label: 'Alerta' },
 };
 
 const severityFromTipo = (tipo: string): 'info' | 'warning' | 'critical' => {
@@ -109,39 +113,43 @@ export default function NotificationCenter({
   if (!open) return null;
 
   return (
-    <div className="fixed top-[80px] right-2 sm:right-4 z-50 w-[calc(100vw-1rem)] sm:w-[420px] bg-card border border-border rounded-xl shadow-2xl animate-in slide-in-from-top-2 fade-in duration-200">
+    // A posição da gaveta (top/right/z) é a que já foi ajustada contra a faixa
+    // superior — só a pele mudou: cartão `bg-card`, canto `rounded-lg` e
+    // sombra no teto da identidade (`shadow-md`).
+    <div className="fixed top-[80px] right-2 sm:right-4 z-50 w-[calc(100vw-1rem)] sm:w-[420px] bg-card border border-border rounded-lg shadow-md animate-in slide-in-from-top-2 fade-in duration-200">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+      <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-border">
         <div className="flex items-center gap-2">
-          <Bell className="w-4 h-4 text-accent" />
-          <h3 className="text-sm font-semibold">Notificações</h3>
+          <Bell className="w-4 h-4 text-primary" aria-hidden="true" />
+          <h2 className="text-sm font-semibold">Notificações</h2>
           {unreadCount > 0 && (
-            <Badge className="bg-destructive text-destructive-foreground text-xs px-1.5 py-0">
-              {unreadCount}
-            </Badge>
+            <Badge variant="danger">{unreadCount} não lidas</Badge>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          <Button size="sm" variant="ghost" className="text-xs h-7" onClick={markAllRead}>
+        <div className="flex flex-shrink-0 items-center gap-1">
+          <Button size="sm" variant="ghost" onClick={markAllRead}>
             Marcar todas como lidas
           </Button>
-          <button onClick={onClose} className="p-1 hover:bg-muted rounded">
-            <X className="w-4 h-4" />
-          </button>
+          <Button size="icon" variant="ghost" onClick={onClose} aria-label="Fechar notificações" className="h-9 w-9">
+            <X className="w-4 h-4" aria-hidden="true" />
+          </Button>
         </div>
       </div>
 
       {/* Filter chips */}
-      <div className="flex gap-1 px-4 py-2 border-b border-border overflow-x-auto">
+      <div className="flex gap-2 px-4 py-2 border-b border-border overflow-x-auto">
         {(['all', 'info', 'sucesso', 'alerta', 'sistema'] as const).map((f) => (
           <button
             key={f}
+            type="button"
             onClick={() => setFilter(f)}
-            className={`text-xs px-2.5 py-1 rounded-full whitespace-nowrap transition-colors ${
+            aria-pressed={filter === f}
+            className={cn(
+              'rounded-full px-3 py-1 text-xs font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
               filter === f
-                ? 'bg-accent text-accent-foreground'
-                : 'bg-muted/50 text-muted-foreground hover:bg-muted'
-            }`}
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-muted text-muted-foreground hover:bg-primary-tint hover:text-primary',
+            )}
           >
             {f === 'all' ? `Todas (${notifications.length})` : `${(typeConfig[f]?.label || f)} (${notifications.filter((n) => n.type === f).length})`}
           </button>
@@ -151,52 +159,58 @@ export default function NotificationCenter({
       {/* Notification list */}
       <ScrollArea className="max-h-[420px]">
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          <div role="status" className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
+            <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
+            Carregando notificações
           </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-12">
-            <Bell className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground">Nenhuma notificação</p>
-          </div>
+          <EstadoVazio
+            tamanho="compacto"
+            icone={<Bell />}
+            titulo="Nenhuma notificação"
+            descricao={filter === 'all' ? 'Você está em dia.' : 'Nada neste recorte — veja "Todas".'}
+          />
         ) : (
-          <div className="divide-y divide-border/50">
+          <div className="divide-y divide-border">
             {filtered.map((notif) => {
               const cfg = typeConfig[notif.type] || typeConfig.info;
               const Icon = cfg.icon;
               return (
-                <div
+                <button
                   key={notif.id}
-                  className={`px-4 py-3 border-l-[3px] ${severityBorder[notif.severity]} ${
-                    !notif.read ? 'bg-accent/5' : ''
-                  } hover:bg-muted/30 transition-colors cursor-pointer`}
+                  type="button"
+                  className={cn(
+                    'block w-full border-l-4 px-4 py-3 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+                    severityBorder[notif.severity],
+                    !notif.read && 'bg-primary-tint',
+                  )}
                   onClick={() => {
                     markRead(notif.id);
                     if (notif.actionPath) onNavigate(notif.actionPath);
                   }}
                 >
-                  <div className="flex items-start gap-3">
-                    <div className={`mt-0.5 ${cfg.color}`}>
+                  <span className="flex items-start gap-3">
+                    <span aria-hidden="true" className={cn('mt-0.5 flex-shrink-0', cfg.color)}>
                       <Icon className="w-4 h-4" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className={`text-sm font-medium ${!notif.read ? '' : 'text-muted-foreground'}`}>
+                    </span>
+                    <span className="flex-1 min-w-0 block">
+                      <span className="flex flex-wrap items-center gap-2">
+                        <span className={cn('text-sm font-medium', notif.read && 'text-muted-foreground')}>
                           {notif.title}
-                        </p>
+                        </span>
                         {!notif.read && (
-                          <span className="w-2 h-2 rounded-full bg-accent flex-shrink-0" />
+                          <Badge variant="info">Nova</Badge>
                         )}
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{notif.message}</p>
-                      <span className="text-xs text-muted-foreground mt-1 block">
+                      </span>
+                      <span className="mt-0.5 block text-xs text-muted-foreground line-clamp-2">{notif.message}</span>
+                      <span className="mt-1 block text-xs text-muted-foreground">
                         {new Date(notif.timestamp).toLocaleString('pt-BR', {
                           day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
                         })}
                       </span>
-                    </div>
-                  </div>
-                </div>
+                    </span>
+                  </span>
+                </button>
               );
             })}
           </div>
@@ -205,7 +219,7 @@ export default function NotificationCenter({
 
       {/* Footer */}
       <div className="px-4 py-2 border-t border-border text-center">
-        <Button size="sm" variant="ghost" className="text-xs text-muted-foreground">
+        <Button size="sm" variant="ghost" className="text-muted-foreground">
           Ver todas as notificações
         </Button>
       </div>

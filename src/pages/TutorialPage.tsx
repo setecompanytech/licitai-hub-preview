@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import { useNavigate } from 'react-router-dom';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import {
   Search, FileText, ArrowRight, GripVertical, Bot, Trophy,
-  Check, CheckCircle2, Building2, Settings, Zap, BarChart3, BookOpen,
+  Check, CheckCircle2, Building2, Settings, Zap, BarChart3,
   Star, RotateCcw, PlayCircle, Circle,
 } from 'lucide-react';
 
@@ -16,7 +18,11 @@ import {
    pessoa não aprende que "amarelo é o passo 2". O que importa aqui é o ESTADO,
    e ele tem três valores. Então a cor passou a significar exatamente isso:
 
-     concluído → verde        atual → navy        pendente → neutro
+     concluído → verde (success)   atual → foreground   pendente → neutro
+
+   O estado "atual" usava `navy` cru. `--navy` e `--foreground` são a MESMA cor
+   no tema claro, mas no escuro o navy vira quase preto — texto invisível sobre
+   o cartão. `text-foreground` reproduz a intenção nos dois temas.
 
    Mesma regra que a auditoria aplicou aos KPIs do painel: semântica só onde a
    cor comunica estado real. */
@@ -218,48 +224,41 @@ export default function TutorialPage() {
 
   return (
     <AppLayout>
-      <div className="max-w-5xl mx-auto pb-12">
-        {/* Cabeçalho */}
-        <header className="mb-5">
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2.5">
-            <BookOpen className="w-6 h-6 text-muted-foreground" aria-hidden="true" />
-            Do Monitoramento à Gestão
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            O caminho completo de uma licitação no Praefectus — da busca do edital ao resultado.
-          </p>
-        </header>
+      <div className="mx-auto max-w-5xl pb-12">
+        {/* `/tutorial` é item de menu: título, descrição, ícone e trilha vêm do
+            registro `lib/navegacao/paginas.ts`. */}
+        <CabecalhoPagina />
 
         {/* Barra de progresso — acompanha a rolagem, como no protótipo, para
             que o "onde eu parei" não exija voltar ao topo. */}
-        <div className="sticky top-2 z-30 mb-6 flex flex-wrap items-center gap-4 rounded-xl border border-border bg-card px-5 py-3.5 shadow-sm">
-          <div className="relative w-[54px] h-[54px] shrink-0">
-            <svg width="54" height="54" viewBox="0 0 54 54" className="-rotate-90 block" aria-hidden="true">
-              <circle cx="27" cy="27" r="26" fill="none" strokeWidth="4" className="stroke-muted" />
+        <div className="sticky top-2 z-30 mb-6 flex flex-wrap items-center gap-4 rounded-lg border border-border bg-card px-6 py-4 shadow-sm">
+          <div className="relative h-14 w-14 shrink-0">
+            <svg width="56" height="56" viewBox="0 0 56 56" className="block -rotate-90" aria-hidden="true">
+              <circle cx="28" cy="28" r="26" fill="none" strokeWidth="4" className="stroke-muted" />
               <circle
-                cx="27" cy="27" r="26" fill="none" strokeWidth="4" strokeLinecap="round"
+                cx="28" cy="28" r="26" fill="none" strokeWidth="4" strokeLinecap="round"
                 className={cn(
                   'transition-[stroke-dashoffset] duration-700 ease-out motion-reduce:transition-none',
-                  completo ? 'stroke-success' : 'stroke-navy',
+                  completo ? 'stroke-success' : 'stroke-foreground',
                 )}
                 strokeDasharray={CIRC}
                 strokeDashoffset={CIRC - (CIRC * pct) / 100}
               />
             </svg>
-            <span className="absolute inset-0 flex items-center justify-center text-xs font-bold tabular-nums">
+            <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold tabular-nums text-foreground">
               {pct}%
             </span>
           </div>
 
           <div className="min-w-0">
-            <p className="text-sm font-bold">
+            <p className="text-base font-semibold text-foreground">
               {completo
                 ? 'Trilha concluída'
                 : feitos === 0
                   ? 'Comece pelo primeiro passo'
                   : `Você parou no passo ${atual}`}
             </p>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <p className="mt-1 text-xs text-muted-foreground">
               {TOTAL} etapas ·{' '}
               {feitos === 0 ? 'nenhuma concluída' : `${feitos} concluída${feitos > 1 ? 's' : ''}`}
             </p>
@@ -267,14 +266,14 @@ export default function TutorialPage() {
 
           <div className="ml-auto flex flex-wrap items-center gap-2">
             {feitos > 0 && (
-              <Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={() => gravar(new Set())}>
-                <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
+              <Button variant="ghost" size="sm" onClick={() => gravar(new Set())}>
+                <RotateCcw aria-hidden="true" />
                 Zerar
               </Button>
             )}
             {atual != null && (
-              <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={irParaAtual}>
-                <PlayCircle className="w-3.5 h-3.5" aria-hidden="true" />
+              <Button variant="outline" size="sm" onClick={irParaAtual}>
+                <PlayCircle aria-hidden="true" />
                 {feitos === 0 ? 'Começar' : 'Continuar de onde parei'}
               </Button>
             )}
@@ -287,7 +286,7 @@ export default function TutorialPage() {
             aquele passo é concluído. Assim a linha acompanha os nós sem
             depender de medir altura de card — que muda com o texto, com a
             largura da tela e com a fonte do sistema. */}
-        <ol className="list-none m-0 p-0">
+        <ol className="m-0 list-none p-0">
           {steps.map((step, idx) => {
             const Icon = step.icon;
             const feito = concluidos.has(step.number);
@@ -298,14 +297,14 @@ export default function TutorialPage() {
               <li
                 key={step.number}
                 ref={(el) => { refsPassos.current[step.number] = el; }}
-                className={cn('relative flex gap-5', !isLast && 'pb-5')}
+                className={cn('relative flex gap-4', !isLast && 'pb-4')}
               >
                 {/* Segmento até o próximo nó */}
                 {!isLast && (
                   <span
                     aria-hidden="true"
                     className={cn(
-                      'absolute left-[27px] top-14 bottom-0 w-0.5 rounded-full transition-colors duration-500 motion-reduce:transition-none hidden md:block',
+                      'absolute left-7 top-14 bottom-0 hidden w-0.5 rounded-full transition-colors duration-500 motion-reduce:transition-none md:block',
                       feito ? 'bg-success' : 'bg-border',
                     )}
                   />
@@ -314,66 +313,55 @@ export default function TutorialPage() {
                 {/* Nó */}
                 <div
                   className={cn(
-                    'relative z-10 hidden md:flex w-14 h-14 shrink-0 items-center justify-center rounded-2xl border-2 transition-all duration-300 motion-reduce:transition-none',
+                    'relative z-10 hidden h-14 w-14 shrink-0 items-center justify-center rounded-lg border-2 transition-colors motion-reduce:transition-none md:flex',
                     feito && 'border-success bg-success text-success-foreground',
-                    ehAtual && !feito && 'border-navy text-navy bg-card ring-4 ring-navy-tint scale-105',
+                    ehAtual && !feito && 'border-foreground bg-card text-foreground ring-4 ring-muted',
                     !feito && !ehAtual && 'border-border bg-card text-muted-foreground',
                   )}
                 >
                   {feito
-                    ? <Check className="w-6 h-6" aria-hidden="true" />
-                    : <Icon className="w-6 h-6" aria-hidden="true" />}
+                    ? <Check className="h-6 w-6" aria-hidden="true" />
+                    : <Icon className="h-6 w-6" aria-hidden="true" />}
                 </div>
 
                 {/* Cartão */}
                 <div
                   className={cn(
-                    'flex-1 min-w-0 rounded-xl border p-5 transition-shadow',
-                    feito
-                      ? 'border-border/60 bg-muted/40'
-                      : ehAtual
-                        ? 'border-navy/30 bg-card shadow-md'
-                        : 'border-border/60 bg-card shadow-sm',
+                    'min-w-0 flex-1 rounded-lg border border-border p-6',
+                    feito ? 'bg-muted' : ehAtual ? 'bg-card shadow-md' : 'bg-card shadow-sm',
                   )}
                 >
-                  <div className="flex items-center gap-2.5 flex-wrap mb-2">
-                    <span
-                      className={cn(
-                        'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-bold',
-                        feito
-                          ? 'border-success-line bg-success-tint text-success-ink'
-                          : 'border-border text-muted-foreground',
-                      )}
-                    >
-                      {feito && <Check className="w-3 h-3" aria-hidden="true" />}
+                  <div className="mb-2 flex flex-wrap items-center gap-3">
+                    <Badge variant={feito ? 'success' : 'muted'}>
+                      {feito && <Check className="mr-1 h-3 w-3" aria-hidden="true" />}
                       Passo {step.number}
-                    </span>
-                    <span className="text-[10.5px] font-bold uppercase tracking-wider text-muted-foreground">
+                    </Badge>
+                    <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       {step.subtitle}
                     </span>
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="ml-auto text-xs gap-1.5 h-8"
+                      className="ml-auto"
                       onClick={() => navigate(step.route)}
                     >
                       {step.buttonLabel}
-                      <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
+                      <ArrowRight aria-hidden="true" />
                     </Button>
                   </div>
 
-                  <h2 className={cn('text-base font-semibold mb-2', feito && 'text-muted-foreground')}>
+                  <h2 className={cn('mb-2 text-lg font-semibold', feito ? 'text-muted-foreground' : 'text-foreground')}>
                     {step.title}
                   </h2>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
+                  <p className="text-base text-muted-foreground">
                     {step.description}
                   </p>
 
-                  <div className="grid gap-2 mt-3.5">
+                  <div className="mt-4 grid gap-2">
                     {step.tips.map((tip) => (
-                      <p key={tip} className="flex items-start gap-2 text-xs text-muted-foreground leading-relaxed">
+                      <p key={tip} className="flex items-start gap-2 text-sm text-muted-foreground">
                         <CheckCircle2
-                          className={cn('w-3.5 h-3.5 shrink-0 mt-0.5', feito ? 'text-success' : 'text-muted-foreground/60')}
+                          className={cn('mt-0.5 h-4 w-4 shrink-0', feito ? 'text-success' : 'text-muted-foreground')}
                           aria-hidden="true"
                         />
                         {tip}
@@ -381,35 +369,35 @@ export default function TutorialPage() {
                     ))}
                   </div>
 
-                  <div className="flex items-center gap-3 flex-wrap mt-4 pt-3 border-t border-border/50">
+                  <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-border pt-3">
                     {!isLast ? (
-                      <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <ArrowRight className="w-3 h-3" aria-hidden="true" />
+                      <span className="inline-flex items-center gap-2 text-xs text-muted-foreground">
+                        <ArrowRight className="h-3 w-3" aria-hidden="true" />
                         Próximo: {steps[idx + 1].title}
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-success">
-                        <Trophy className="w-3.5 h-3.5" aria-hidden="true" />
+                      <span className="inline-flex items-center gap-2 text-xs font-medium text-success">
+                        <Trophy className="h-3.5 w-3.5" aria-hidden="true" />
                         Fim da trilha
                       </span>
                     )}
 
-                    <button
+                    <Button
                       type="button"
+                      variant="outline"
+                      size="sm"
                       onClick={() => alternar(step.number)}
                       aria-pressed={feito}
                       className={cn(
-                        'ml-auto inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors',
-                        feito
-                          ? 'border-success-line bg-success-tint text-success-ink'
-                          : 'border-border text-muted-foreground hover:border-success hover:text-success-ink',
+                        'ml-auto',
+                        feito && 'border-success-line bg-success-tint text-success-ink hover:bg-success-tint',
                       )}
                     >
                       {feito
-                        ? <Check className="w-3.5 h-3.5" aria-hidden="true" />
-                        : <Circle className="w-3.5 h-3.5" aria-hidden="true" />}
+                        ? <Check aria-hidden="true" />
+                        : <Circle aria-hidden="true" />}
                       {feito ? 'Concluído' : 'Marcar como concluído'}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </li>
@@ -420,33 +408,33 @@ export default function TutorialPage() {
         {/* Fim da trilha */}
         <div
           className={cn(
-            'mt-3 rounded-xl border p-8 text-center transition-colors',
+            'mt-4 rounded-lg border p-8 text-center transition-colors',
             completo ? 'border-success-line bg-success-tint' : 'border-border bg-card shadow-sm',
           )}
         >
           <div
             className={cn(
-              'w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 transition-colors',
+              'mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-lg transition-colors',
               completo ? 'bg-success text-success-foreground' : 'bg-muted text-muted-foreground',
             )}
           >
-            <Trophy className="w-7 h-7" aria-hidden="true" />
+            <Trophy className="h-7 w-7" aria-hidden="true" />
           </div>
-          <h2 className="text-lg font-bold mb-2">
+          <h2 className={cn('mb-2 text-lg font-semibold', completo ? 'text-success-ink' : 'text-foreground')}>
             {completo ? 'Você percorreu a trilha inteira' : 'Pronto para começar?'}
           </h2>
-          <p className={cn('text-sm leading-relaxed max-w-md mx-auto mb-5', completo ? 'text-success-ink' : 'text-muted-foreground')}>
+          <p className={cn('mx-auto mb-4 max-w-md text-base', completo ? 'text-success-ink' : 'text-muted-foreground')}>
             {completo
               ? 'Da busca do edital ao resultado, você já conhece cada etapa. Agora é operar — e o sistema guarda o histórico de tudo que passar por ele.'
               : 'O primeiro passo é buscar editais no Monitoramento e iniciar um processo.'}
           </p>
-          <div className="flex items-center justify-center gap-3 flex-wrap">
-            <Button onClick={() => navigate('/monitoramento-editais')} className="gap-2">
-              <Search className="w-4 h-4" aria-hidden="true" />
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <Button onClick={() => navigate('/monitoramento-editais')}>
+              <Search aria-hidden="true" />
               Ir para Monitoramento
             </Button>
-            <Button variant="outline" onClick={() => navigate('/kanban')} className="gap-2">
-              <GripVertical className="w-4 h-4" aria-hidden="true" />
+            <Button variant="outline" onClick={() => navigate('/kanban')}>
+              <GripVertical aria-hidden="true" />
               Abrir Kanban
             </Button>
           </div>

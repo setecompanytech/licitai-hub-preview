@@ -76,7 +76,7 @@ export default function SkeletonPagina({
         aria-hidden="true"
         className="sticky top-0 z-40 h-16 md:h-[72px] bg-sidebar border-b border-sidebar-border flex items-center gap-2 px-4 md:px-6"
       >
-        <BrandLogo variant="dark" className="w-[150px] lg:w-[176px]" />
+        <BrandLogo variant="dark" className="w-[164px] lg:w-[200px]" />
         <div className="hidden md:flex flex-1 items-center justify-center gap-1">
           {Array.from({ length: 6 }, (_, i) => (
             <div key={i} className="h-8 rounded-md bg-sidebar-accent/60" style={{ width: `${74 + ((i * 17) % 38)}px` }} />
