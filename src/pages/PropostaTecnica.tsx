@@ -2,6 +2,8 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import AppLayout from '@/components/layout/AppLayout';
 import ProcessoContextoBanner from '@/components/shared/ProcessoContextoBanner';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -13,8 +15,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import {
   FileText, Sparkles, Loader2, Copy, CheckCircle, Settings2,
   ChevronRight, ChevronLeft, Building2, User, Receipt, Scale,
-  ShieldCheck, Stamp, Send, Calendar, MapPin, Clock, CreditCard,
-  FileSignature, Upload as UploadIcon, Eye, AlertCircle, Banknote,
+  Send, Calendar, MapPin, Clock, CreditCard,
+  Eye, AlertCircle, Banknote, X,
   PanelRightOpen, PanelRightClose
 , FolderOpen, ArrowRight } from 'lucide-react';
 import { streamAIChat } from '@/lib/ai-stream';
@@ -794,20 +796,64 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
     .map(d => d.label)
     .concat(declaracoesCustom.filter(d => d.trim()));
 
+  // Ações do topo — as mesmas em tela cheia e embutida: o botão de prévia e a
+  // ação principal do registro ("Nova proposta", que limpa o formulário).
+  const acoesTopo = (
+    <>
+      {!isMobile && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowPreview(!showPreview)}
+        >
+          {showPreview ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
+          {showPreview ? 'Ocultar prévia' : 'Mostrar prévia'}
+        </Button>
+      )}
+      <Button size="sm" onClick={limparFormulario}>
+        <Sparkles className="w-4 h-4" />
+        Nova proposta
+      </Button>
+    </>
+  );
+
+  const chipRascunho = lastSaved ? (
+    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
+      <Clock className="w-3 h-3" aria-hidden="true" />
+      {saving ? 'Salvando…' : `Salvo ${lastSaved.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`}
+    </span>
+  ) : null;
+
   const conteudo = (
       <div className="space-y-4">
+        {/* Tela de menu: título, descrição e trilha vêm do registro. Embutida na
+            aba Proposta do prontuário, o cabeçalho do prontuário já cumpre esse
+            papel — aqui sobra só a barra de ações. */}
+        {!embedded ? (
+          <CabecalhoPagina acoes={acoesTopo}>
+            {chipRascunho}
+          </CabecalhoPagina>
+        ) : (
+          (chipRascunho || acoesTopo) && (
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              {chipRascunho}
+              <div className="flex flex-wrap items-center gap-2">{acoesTopo}</div>
+            </div>
+          )
+        )}
+
         {/* No modo avulso, declara sobre qual processo o wizard age; embutido,
             o cabeçalho do prontuário já cumpre esse papel. */}
         {!embedded && <ProcessoContextoBanner />}
 
         {/* Ligação com a pasta Proposta dos Anexos */}
         {processoId && (
-          <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-muted/30 px-4 py-2.5 text-sm flex-wrap">
-            <FolderOpen className="w-4 h-4 text-muted-foreground shrink-0" />
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted px-4 py-3 text-sm">
+            <FolderOpen className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
             {naPasta ? (
               <>
                 <span className="text-muted-foreground">Arquivada na pasta Proposta:</span>
-                <span className="font-medium">{naPasta.nome}</span>
+                <span className="font-medium text-foreground">{naPasta.nome}</span>
                 <span className="text-xs text-muted-foreground">
                   · {new Date(naPasta.em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
                 </span>
@@ -818,45 +864,16 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
                 <span className="font-medium text-foreground"> Salvar na pasta Proposta</span>.
               </span>
             )}
-            <Button size="sm" variant="ghost" className="h-7 ml-auto" asChild>
+            <Button size="sm" variant="ghost" className="ml-auto" asChild>
               <Link to={`/processo/${processoId}?aba=anexos`}>
-                Ver pasta Proposta <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+                Ver pasta Proposta <ArrowRight className="w-4 h-4" />
               </Link>
             </Button>
           </div>
         )}
-        {/* Header */}
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-              <FileText className="w-6 h-6 text-muted-foreground" />
-              Proposta Comercial
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
-              Montagem assistida por IA · Modelo conforme Lei 14.133/2021 e ABNT NBR 14724
-              {lastSaved && (
-                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-                  <Clock className="w-3 h-3" />
-                  {saving ? 'Salvando...' : `Salvo ${lastSaved.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`}
-                </span>
-              )}
-            </p>
-          </div>
-          {!isMobile && (
-            <Button
-              variant={showPreview ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setShowPreview(!showPreview)}
-              className="gap-2"
-            >
-              {showPreview ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
-              {showPreview ? 'Ocultar Preview' : 'Mostrar Preview'}
-            </Button>
-          )}
-        </div>
 
         {/* Split-screen layout */}
-        <div className={`flex gap-4 ${showPreview && !isMobile ? '' : ''}`}>
+        <div className="flex gap-4">
           {/* Left: Form */}
           <div className={`${showPreview && !isMobile ? 'w-1/2 min-w-0' : 'w-full max-w-6xl mx-auto'} space-y-4`}>
 
@@ -868,7 +885,7 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
             descrições e o clique para pular continuam idênticos. */}
         <nav
           aria-label="Etapas da proposta"
-          className="bg-card rounded-xl border border-border/50 shadow-sm px-3 py-4 overflow-x-auto"
+          className="overflow-x-auto rounded-lg border border-border bg-card px-3 py-4 shadow-sm"
         >
           <ol className="flex items-start min-w-max list-none m-0 p-0">
             {STEPS.map((step, idx) => {
@@ -879,12 +896,14 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
               return (
                 <li key={step.id} className="flex items-start">
                   <button
+                    type="button"
                     onClick={() => setCurrentStep(step.id)}
                     aria-current={isActive ? 'step' : undefined}
-                    className="flex w-[104px] shrink-0 flex-col items-center gap-2 text-center group"
+                    aria-label={`Etapa ${step.id}: ${step.label}${isDone ? ' — concluída' : ''}`}
+                    className="group flex w-[104px] shrink-0 flex-col items-center gap-2 rounded-md text-center"
                   >
                     <span
-                      className={`w-[38px] h-[38px] rounded-full border-2 flex items-center justify-center transition-colors ${
+                      className={`flex h-10 w-10 items-center justify-center rounded-full border-2 transition-colors ${
                         isActive
                           ? 'bg-primary border-primary text-primary-foreground'
                           : isDone
@@ -896,7 +915,7 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
                         ? <CheckCircle className="w-4 h-4" aria-hidden="true" />
                         : <Icon className="w-4 h-4" aria-hidden="true" />}
                     </span>
-                    <span className="px-0.5 leading-tight">
+                    <span className="px-0.5">
                       <span
                         className={`block text-xs font-semibold ${
                           isActive ? 'text-primary' : isDone ? 'text-foreground' : 'text-muted-foreground'
@@ -904,7 +923,7 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
                       >
                         {step.label}
                       </span>
-                      <span className="hidden md:block text-xs text-muted-foreground/80 leading-tight mt-0.5">
+                      <span className="mt-0.5 hidden text-xs text-muted-foreground md:block">
                         {step.desc}
                       </span>
                     </span>
@@ -913,8 +932,8 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
                   {idx < STEPS.length - 1 && (
                     <span
                       aria-hidden="true"
-                      className={`h-0.5 w-6 rounded-full mt-[18px] -mx-3 transition-colors ${
-                        isDone && proximoFeito ? 'bg-success' : isDone ? 'bg-success/50' : 'bg-border'
+                      className={`-mx-3 mt-5 h-0.5 w-6 rounded-full transition-colors ${
+                        isDone && proximoFeito ? 'bg-success' : isDone ? 'bg-success-line' : 'bg-border'
                       }`}
                     />
                   )}
@@ -925,25 +944,25 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
         </nav>
 
         {/* Step Content */}
-        <div className="bg-card rounded-xl border border-border/50 shadow-sm p-6">
+        <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
           {/* Step 1: Edital Upload */}
           {currentStep === 1 && (
             <div className="space-y-5">
-              <div className="flex items-center gap-2 mb-1">
-                <FileText className="w-5 h-5 text-muted-foreground" />
-                <h2 className="font-semibold text-lg">Upload do Edital</h2>
+              <div className="mb-1 flex items-center gap-2">
+                <FileText className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+                <h2 className="text-lg font-semibold text-foreground">Upload do edital</h2>
               </div>
               <p className="text-sm text-muted-foreground">
                 Envie o edital (PDF, DOC, DOCX ou TXT) para que a IA extraia automaticamente: órgão gerenciador, número do processo,
                 objeto, planilha de itens com quantidades e preços, prazos de validade, pagamento, entrega e local de entrega.
               </p>
               {processoId && (
-                <div className="rounded-lg border border-dashed border-border bg-muted/50 p-3 flex items-center justify-between gap-2 flex-wrap">
-                  <div className="text-xs">
-                    <p className="font-medium">Sem download/upload manual</p>
-                    <p className="text-muted-foreground">Lemos o edital direto da fonte (PNCP/portal) e importamos os itens automaticamente.</p>
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dashed border-border bg-muted p-4">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Sem download/upload manual</p>
+                    <p className="text-sm text-muted-foreground">Lemos o edital direto da fonte (PNCP/portal) e importamos os itens automaticamente.</p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <LimparItensExtraidosButton
                       licitacaoId={processoId}
                       fontes={['licitacao_itens', 'composicoes_custo']}
@@ -959,7 +978,7 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
               {/* Quick summary of extracted data */}
               {(editalRawText || numeroLicitacao) && (
                 <div className="space-y-3 pt-2">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
                     {[
                       { label: 'Órgão', value: orgao, icon: Building2 },
                       { label: 'Licitação', value: numeroLicitacao, icon: FileText },
@@ -968,12 +987,12 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
                     ].map((s, i) => {
                       const Icon = s.icon;
                       return (
-                        <div key={i} className="bg-muted/50 rounded-lg p-3 border border-border/50">
-                          <div className="flex items-center gap-1.5 mb-1">
-                            <Icon className="w-3.5 h-3.5 text-muted-foreground" />
-                            <span className="text-xs text-muted-foreground font-medium">{s.label}</span>
+                        <div key={i} className="rounded-lg border border-border bg-muted p-4">
+                          <div className="mb-1 flex items-center gap-1.5">
+                            <Icon className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+                            <span className="text-xs font-medium text-muted-foreground">{s.label}</span>
                           </div>
-                          <p className="text-xs font-semibold text-foreground truncate">{s.value || '—'}</p>
+                          <p className="truncate text-sm font-semibold text-foreground">{s.value || '—'}</p>
                         </div>
                       );
                     })}
@@ -981,10 +1000,10 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
                   <Button
                     variant="outline"
                     size="sm"
-                    className="text-xs gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10"
+                    className="border-destructive-line text-destructive hover:bg-destructive-tint hover:text-destructive"
                     onClick={limparFormulario}
                   >
-                    <AlertCircle className="w-3.5 h-3.5" />
+                    <AlertCircle className="w-4 h-4" />
                     Limpar e iniciar nova proposta
                   </Button>
                 </div>
@@ -995,17 +1014,17 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
           {/* Step 2: Empresa */}
           {currentStep === 2 && (
             <div className="space-y-5">
-              <div className="flex items-center gap-2 mb-1">
-                <Building2 className="w-5 h-5 text-muted-foreground" />
-                <h2 className="font-semibold text-lg">Dados da Empresa Licitante</h2>
+              <div className="mb-1 flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+                <h2 className="text-lg font-semibold text-foreground">Dados da empresa licitante</h2>
               </div>
 
               {empresaAtiva ? (
                 <div className="space-y-3">
-                  <div className="bg-muted/50 rounded-lg p-4 text-sm border border-border/50">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1">
-                        <p className="font-semibold text-foreground mb-1">{empresaAtiva.razao_social}</p>
+                  <div className="rounded-lg border border-border bg-muted p-4 text-sm">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="mb-1 font-semibold text-foreground">{empresaAtiva.razao_social}</p>
                         {empresaAtiva.nome_fantasia && (
                           <p className="text-xs text-muted-foreground">Nome Fantasia: {empresaAtiva.nome_fantasia}</p>
                         )}
@@ -1045,7 +1064,7 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
                       <Button
                         variant="outline"
                         size="sm"
-                        className="shrink-0 text-xs gap-1.5"
+                        className="shrink-0"
                         onClick={() => {
                           if (empresaAtiva.telefone) setTelefone(empresaAtiva.telefone);
                           if (empresaAtiva.email) setEmail(empresaAtiva.email);
@@ -1062,17 +1081,19 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
                           toast.success('Dados da empresa e representante preenchidos via Configurações!');
                         }}
                       >
-                        <Building2 className="w-3.5 h-3.5" />
+                        <Building2 className="w-4 h-4" />
                         Preencher via Configurações
                       </Button>
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-                  <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
-                  <p className="text-xs text-destructive">Nenhuma empresa ativa selecionada. Selecione uma empresa no menu superior.</p>
-                </div>
+                <Alert variant="destructive">
+                  <AlertCircle className="w-4 h-4" aria-hidden="true" />
+                  <AlertDescription>
+                    Nenhuma empresa ativa selecionada. Selecione uma empresa no menu superior.
+                  </AlertDescription>
+                </Alert>
               )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1094,10 +1115,10 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
                 </div>
               </div>
 
-              <div className="border-t border-border/50 pt-4">
-                <p className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
-                  <Banknote className="w-4 h-4 text-muted-foreground" /> Dados Bancários
-                </p>
+              <div className="border-t border-border pt-6">
+                <h3 className="mb-3 flex items-center gap-2 text-lg font-semibold text-foreground">
+                  <Banknote className="w-4 h-4 text-muted-foreground" aria-hidden="true" /> Dados bancários
+                </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label>Banco</Label>
@@ -1133,19 +1154,19 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
           {/* Step 3: Representante Legal */}
           {currentStep === 3 && (
             <div className="space-y-5">
-              <div className="flex items-center gap-2 mb-1">
-                <User className="w-5 h-5 text-muted-foreground" />
-                <h2 className="font-semibold text-lg">Representante Legal</h2>
+              <div className="mb-1 flex items-center gap-2">
+                <User className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+                <h2 className="text-lg font-semibold text-foreground">Representante legal</h2>
               </div>
 
               {/* Mesma analogia da aba Empresa: a fonte é o cadastro em
                   Configurações — sem upload. */}
               {empresaAtiva && (empresaAtiva as any).rep_nome ? (
-                <div className="border border-border/50 rounded-lg p-4 bg-muted/20">
-                  <div className="flex items-start justify-between gap-3 flex-wrap">
-                    <div className="text-sm min-w-0">
-                      <p className="font-semibold">{(empresaAtiva as any).rep_nome}</p>
-                      <p className="text-xs text-muted-foreground mt-1">
+                <div className="rounded-lg border border-border bg-muted p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0 text-sm">
+                      <p className="font-semibold text-foreground">{(empresaAtiva as any).rep_nome}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
                         {[(empresaAtiva as any).rep_cargo,
                           (empresaAtiva as any).rep_cpf && `CPF: ${(empresaAtiva as any).rep_cpf}`,
                           (empresaAtiva as any).rep_rg && `RG: ${(empresaAtiva as any).rep_rg}${(empresaAtiva as any).rep_orgao_expedidor ? ` ${(empresaAtiva as any).rep_orgao_expedidor}` : ''}`,
@@ -1155,7 +1176,7 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
                     <Button
                       variant="outline"
                       size="sm"
-                      className="shrink-0 text-xs gap-1.5"
+                      className="shrink-0"
                       onClick={() => {
                         const ea = empresaAtiva as any;
                         setRepNome(ea.rep_nome || '');
@@ -1177,28 +1198,30 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
                         toast.success('Dados do representante preenchidos via Configurações!');
                       }}
                     >
-                      <User className="w-3.5 h-3.5" />
+                      <User className="w-4 h-4" />
                       Preencher via Configurações
                     </Button>
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center gap-2 p-3 bg-warning/5 border border-warning/40 rounded-lg">
-                  <AlertCircle className="w-4 h-4 text-warning shrink-0" />
-                  <p className="text-xs text-muted-foreground">
+                <Alert variant="warning">
+                  <AlertCircle className="w-4 h-4" aria-hidden="true" />
+                  <AlertDescription>
                     Nenhum representante cadastrado nas Configurações da empresa. Cadastre em
-                    {' '}<span className="font-medium text-foreground">Configurações Gerais → Empresa</span>{' '}
+                    {' '}<span className="font-semibold">Configurações Gerais → Empresa</span>{' '}
                     para preencher automaticamente — ou preencha os campos abaixo manualmente.
-                  </p>
-                </div>
+                  </AlertDescription>
+                </Alert>
               )}
               {repNome && (
-                <div className="flex items-center gap-2 p-2.5 bg-muted/50 border border-border rounded-lg text-xs text-muted-foreground">
-                  <CheckCircle className="w-3.5 h-3.5 shrink-0" />
-                  Dados preenchidos automaticamente do cadastro da empresa. Revise e ajuste se necessário.
-                </div>
+                <Alert variant="info">
+                  <CheckCircle className="w-4 h-4" aria-hidden="true" />
+                  <AlertDescription>
+                    Dados preenchidos automaticamente do cadastro da empresa. Revise e ajuste se necessário.
+                  </AlertDescription>
+                </Alert>
               )}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+              <div className="grid grid-cols-1 gap-4 pt-1 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Nome Completo *</Label>
                   <Input value={repNome} onChange={e => setRepNome(e.target.value)} />
@@ -1251,19 +1274,22 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
           {/* Step 4: Dados da Licitação */}
           {currentStep === 4 && (
             <div className="space-y-5">
-              <div className="flex items-center gap-2 mb-1">
-                <Receipt className="w-5 h-5 text-muted-foreground" />
-                <h2 className="font-semibold text-lg">Dados da Licitação</h2>
+              <div className="mb-1 flex items-center gap-2">
+                <Receipt className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+                <h2 className="text-lg font-semibold text-foreground">Dados da licitação</h2>
               </div>
 
               {editalRawText && (
-                <div className="flex items-center gap-2 p-2.5 bg-muted/50 border border-border rounded-lg text-xs text-muted-foreground">
-                  <Sparkles className="w-3.5 h-3.5 shrink-0" />
-                  Campos pré-preenchidos pela extração do edital. Revise e ajuste conforme necessário.
-                </div>
+                <Alert variant="info">
+                  <Sparkles className="w-4 h-4" aria-hidden="true" />
+                  <AlertDescription>
+                    Campos pré-preenchidos pela extração do edital. Revise e ajuste conforme necessário.
+                  </AlertDescription>
+                </Alert>
               )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Identificação do certame */}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Número da Licitação *</Label>
                   <Input placeholder="Ex: PE 001/2026" value={numeroLicitacao} onChange={e => setNumeroLicitacao(e.target.value)} />
@@ -1295,7 +1321,7 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
                       <Input
                         value={`R$ ${fmtBRL(valorGlobal)}`}
                         readOnly
-                        className="bg-muted/50 font-medium tabular-nums"
+                        className="bg-muted font-semibold tabular-nums"
                       />
                       <p className="text-xs text-muted-foreground">
                         Soma dos {itens.filter(i => parseBRL(i.valorTotal) > 0).length} item(ns) da planilha de preços.
@@ -1323,21 +1349,24 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
                 <Textarea placeholder="Descrição detalhada do produto ou serviço conforme Termo de Referência..." value={objeto} onChange={e => setObjeto(e.target.value)} rows={4} />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Prazos, entrega e garantia — tudo que a proposta promete cumprir */}
+              <div className="border-t border-border pt-6">
+                <h3 className="mb-3 text-lg font-semibold text-foreground">Prazos e condições</h3>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5 text-muted-foreground" /> Validade da Proposta Comercial</Label>
+                  <Label className="flex items-center gap-1"><Calendar className="w-4 h-4 text-muted-foreground" aria-hidden="true" /> Validade da Proposta Comercial</Label>
                   <Input value={prazoValidade} onChange={e => setPrazoValidade(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label className="flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-muted-foreground" /> Prazo de Pagamento</Label>
+                  <Label className="flex items-center gap-1"><Clock className="w-4 h-4 text-muted-foreground" aria-hidden="true" /> Prazo de Pagamento</Label>
                   <Input placeholder="Até 30 dias após recebimento definitivo" value={prazoPagamento} onChange={e => setPrazoPagamento(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label className="flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-muted-foreground" /> Prazo de Entrega</Label>
+                  <Label className="flex items-center gap-1"><Clock className="w-4 h-4 text-muted-foreground" aria-hidden="true" /> Prazo de Entrega</Label>
                   <Input placeholder="Até X dias úteis/corridos após emissão da OF" value={prazoEntrega} onChange={e => setPrazoEntrega(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-muted-foreground" /> Local de Entrega</Label>
+                  <Label className="flex items-center gap-1"><MapPin className="w-4 h-4 text-muted-foreground" aria-hidden="true" /> Local de Entrega</Label>
                   <Input value={localEntrega} onChange={e => setLocalEntrega(e.target.value)} />
                 </div>
                 <div className="space-y-2">
@@ -1352,6 +1381,7 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
                   <Label>Condições Especiais de Entrega</Label>
                   <Input placeholder="Ex: Entrega parcelada conforme cronograma..." value={condicoesEntrega} onChange={e => setCondicoesEntrega(e.target.value)} />
                 </div>
+                </div>
               </div>
             </div>
           )}
@@ -1359,13 +1389,13 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
           {/* Step 5: Planilha de Preços */}
           {currentStep === 5 && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <CreditCard className="w-5 h-5 text-muted-foreground" />
-                  <h2 className="font-semibold text-lg">Planilha de Preços</h2>
+                  <CreditCard className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+                  <h2 className="text-lg font-semibold text-foreground">Planilha de preços</h2>
                 </div>
                 {totalItens > 0 && (
-                  <Badge variant="outline" className="text-xs">
+                  <Badge variant="info">
                     {totalItens} item(ns) · R$ {valorGlobal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </Badge>
                 )}
@@ -1417,9 +1447,9 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
           {/* Step 6: Declarações */}
           {currentStep === 6 && (
             <div className="space-y-4">
-              <div className="flex items-center gap-2 mb-1">
-                <Scale className="w-5 h-5 text-muted-foreground" />
-                <h2 className="font-semibold text-lg">Declarações Obrigatórias</h2>
+              <div className="mb-1 flex items-center gap-2">
+                <Scale className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+                <h2 className="text-lg font-semibold text-foreground">Declarações obrigatórias</h2>
               </div>
               <p className="text-sm text-muted-foreground">
                 Selecione as declarações que devem constar na proposta conforme exigências do edital e legislação vigente.
@@ -1428,10 +1458,10 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
                 {DECLARACOES_PADRAO.map(decl => (
                   <label
                     key={decl.key}
-                    className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+                    className={`flex cursor-pointer items-start gap-3 rounded-md border p-3 transition-colors ${
                       declaracoes[decl.key]
-                        ? 'border-accent/30 bg-accent/5'
-                        : 'border-border/50 hover:bg-muted/30'
+                        ? 'border-primary bg-primary-tint'
+                        : 'border-border hover:bg-muted'
                     }`}
                   >
                     <Checkbox
@@ -1449,22 +1479,34 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
 
               {declaracoesCustom.length > 0 && (
                 <div className="space-y-2 pt-2">
-                  <p className="text-sm font-medium">Declarações adicionais:</p>
+                  <h3 className="text-lg font-semibold text-foreground">Declarações adicionais</h3>
                   {declaracoesCustom.map((d, i) => (
                     <div key={i} className="flex items-center gap-2">
-                      <Input value={d} onChange={e => {
-                        const upd = [...declaracoesCustom];
-                        upd[i] = e.target.value;
-                        setDeclaracoesCustom(upd);
-                      }} className="text-sm" />
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeclaracoesCustom(prev => prev.filter((_, idx) => idx !== i))}>✕</Button>
+                      <Input
+                        aria-label={`Declaração personalizada ${i + 1}`}
+                        value={d}
+                        onChange={e => {
+                          const upd = [...declaracoesCustom];
+                          upd[i] = e.target.value;
+                          setDeclaracoesCustom(upd);
+                        }}
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive"
+                        aria-label={`Remover declaração personalizada ${i + 1}`}
+                        onClick={() => setDeclaracoesCustom(prev => prev.filter((_, idx) => idx !== i))}
+                      >
+                        <X className="w-4 h-4" aria-hidden="true" />
+                      </Button>
                     </div>
                   ))}
                 </div>
               )}
 
               <Button variant="outline" size="sm" onClick={() => setDeclaracoesCustom(prev => [...prev, ''])}>
-                + Adicionar declaração personalizada
+                Adicionar declaração personalizada
               </Button>
             </div>
           )}
@@ -1472,12 +1514,12 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
           {/* Step 7: Formatação */}
            {currentStep === 7 && (
             <div className="space-y-6">
-              <div className="flex items-center gap-2 mb-1">
-                <Settings2 className="w-5 h-5 text-muted-foreground" />
-                <h2 className="font-semibold text-lg">Formatação</h2>
+              <div className="mb-1 flex items-center gap-2">
+                <Settings2 className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+                <h2 className="text-lg font-semibold text-foreground">Formatação</h2>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <div className="space-y-2">
                   <Label>Fonte</Label>
                   <Select value={fontFamily} onValueChange={setFontFamily}>
@@ -1492,8 +1534,8 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Tamanho: {fontSize}pt</Label>
-                  <Slider value={[fontSize]} onValueChange={([v]) => setFontSize(v)} min={10} max={14} step={1} className="mt-3" />
+                  <p className="text-sm font-medium text-foreground">Tamanho: {fontSize}pt</p>
+                  <Slider aria-label="Tamanho da fonte, em pontos" value={[fontSize]} onValueChange={([v]) => setFontSize(v)} min={10} max={14} step={1} className="mt-3" />
                 </div>
                 <div className="space-y-2">
                   <Label>Espaçamento</Label>
@@ -1521,52 +1563,54 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
               </div>
 
               {/* Orientação da Página */}
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Orientação da Página</Label>
-                <div className="grid grid-cols-2 gap-3 max-w-xs">
+              <fieldset className="space-y-2">
+                <legend className="mb-2 text-sm font-medium text-foreground">Orientação da página</legend>
+                <div className="grid max-w-xs grid-cols-2 gap-3">
                   <button
                     type="button"
                     onClick={() => setPageOrientation('portrait')}
-                    className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all ${
+                    aria-pressed={pageOrientation === 'portrait'}
+                    className={`flex flex-col items-center gap-2 rounded-md border-2 p-3 transition-colors ${
                       pageOrientation === 'portrait'
-                        ? 'border-accent bg-accent/5 shadow-sm'
-                        : 'border-border hover:border-accent/30 hover:bg-muted/30'
+                        ? 'border-primary bg-primary-tint shadow-sm'
+                        : 'border-border hover:bg-muted'
                     }`}
                   >
-                    <div className={`w-8 h-11 rounded-sm border-2 ${pageOrientation === 'portrait' ? 'border-accent bg-accent/10' : 'border-muted-foreground/30 bg-muted/20'}`}>
-                      <div className="m-1 space-y-0.5">
-                        <div className={`h-0.5 rounded-full ${pageOrientation === 'portrait' ? 'bg-accent/40' : 'bg-muted-foreground/20'}`} />
-                        <div className={`h-0.5 w-3/4 rounded-full ${pageOrientation === 'portrait' ? 'bg-accent/40' : 'bg-muted-foreground/20'}`} />
-                      </div>
-                    </div>
-                    <span className="text-xs font-medium">Retrato</span>
+                    <span aria-hidden="true" className={`h-11 w-8 rounded-sm border-2 ${pageOrientation === 'portrait' ? 'border-primary bg-primary-tint' : 'border-border bg-muted'}`}>
+                      <span className="m-1 block space-y-0.5">
+                        <span className={`block h-0.5 rounded-full ${pageOrientation === 'portrait' ? 'bg-primary' : 'bg-border'}`} />
+                        <span className={`block h-0.5 w-3/4 rounded-full ${pageOrientation === 'portrait' ? 'bg-primary' : 'bg-border'}`} />
+                      </span>
+                    </span>
+                    <span className="text-sm font-medium text-foreground">Retrato</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setPageOrientation('landscape')}
-                    className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all ${
+                    aria-pressed={pageOrientation === 'landscape'}
+                    className={`flex flex-col items-center gap-2 rounded-md border-2 p-3 transition-colors ${
                       pageOrientation === 'landscape'
-                        ? 'border-accent bg-accent/5 shadow-sm'
-                        : 'border-border hover:border-accent/30 hover:bg-muted/30'
+                        ? 'border-primary bg-primary-tint shadow-sm'
+                        : 'border-border hover:bg-muted'
                     }`}
                   >
-                    <div className={`w-11 h-8 rounded-sm border-2 ${pageOrientation === 'landscape' ? 'border-accent bg-accent/10' : 'border-muted-foreground/30 bg-muted/20'}`}>
-                      <div className="m-1 space-y-0.5">
-                        <div className={`h-0.5 rounded-full ${pageOrientation === 'landscape' ? 'bg-accent/40' : 'bg-muted-foreground/20'}`} />
-                        <div className={`h-0.5 w-3/4 rounded-full ${pageOrientation === 'landscape' ? 'bg-accent/40' : 'bg-muted-foreground/20'}`} />
-                      </div>
-                    </div>
-                    <span className="text-xs font-medium">Paisagem</span>
+                    <span aria-hidden="true" className={`h-8 w-11 rounded-sm border-2 ${pageOrientation === 'landscape' ? 'border-primary bg-primary-tint' : 'border-border bg-muted'}`}>
+                      <span className="m-1 block space-y-0.5">
+                        <span className={`block h-0.5 rounded-full ${pageOrientation === 'landscape' ? 'bg-primary' : 'bg-border'}`} />
+                        <span className={`block h-0.5 w-3/4 rounded-full ${pageOrientation === 'landscape' ? 'bg-primary' : 'bg-border'}`} />
+                      </span>
+                    </span>
+                    <span className="text-sm font-medium text-foreground">Paisagem</span>
                   </button>
                 </div>
-              </div>
+              </fieldset>
 
               {/* Envio da Proposta */}
-              <div className="border-t border-border/50 pt-4 space-y-2">
-                <p className="text-sm font-medium text-foreground flex items-center gap-2">
-                  <Send className="w-4 h-4 text-muted-foreground" /> Envio da Proposta
-                </p>
-                <p className="text-sm text-muted-foreground">Prepare e envie sua proposta para portais de compras públicas</p>
+              <div className="space-y-2 border-t border-border pt-6">
+                <h3 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+                  <Send className="w-4 h-4 text-muted-foreground" aria-hidden="true" /> Envio da proposta
+                </h3>
+                <p className="text-base text-muted-foreground">Prepare e envie sua proposta para portais de compras públicas</p>
                 <EnvioProposta />
               </div>
             </div>
@@ -1575,25 +1619,25 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
           {/* Step 8: Gerar */}
           {currentStep === 8 && (
             <div className="space-y-5">
-              <div className="flex items-center gap-2 mb-1">
-                <Sparkles className="w-5 h-5 text-muted-foreground" />
-                <h2 className="font-semibold text-lg">Gerar Proposta Final</h2>
+              <div className="mb-1 flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+                <h2 className="text-lg font-semibold text-foreground">Gerar proposta final</h2>
               </div>
 
               {/* Summary cards */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
                 {[
-                  { label: 'Órgão', value: orgao || '—', icon: Building2, color: 'text-muted-foreground' },
-                  { label: 'Licitação', value: numeroLicitacao || '—', icon: FileText, color: 'text-muted-foreground' },
-                  { label: 'Itens', value: `${totalItens} · R$ ${valorGlobal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, icon: CreditCard, color: 'text-muted-foreground' },
-                  { label: 'Declarações', value: `${Object.values(declaracoes).filter(Boolean).length + declaracoesCustom.length} ativa(s)`, icon: Scale, color: 'text-muted-foreground' },
+                  { label: 'Órgão', value: orgao || '—', icon: Building2 },
+                  { label: 'Licitação', value: numeroLicitacao || '—', icon: FileText },
+                  { label: 'Itens', value: `${totalItens} · R$ ${valorGlobal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, icon: CreditCard },
+                  { label: 'Declarações', value: `${Object.values(declaracoes).filter(Boolean).length + declaracoesCustom.length} ativa(s)`, icon: Scale },
                 ].map((s, i) => {
                   const Icon = s.icon;
                   return (
-                    <div key={i} className="bg-muted/30 rounded-lg p-3 text-center border border-border/30">
-                      <Icon className={`w-4 h-4 mx-auto mb-1 ${s.color}`} />
+                    <div key={i} className="rounded-lg border border-border bg-muted p-4 text-center">
+                      <Icon className="mx-auto mb-1 w-4 h-4 text-muted-foreground" aria-hidden="true" />
                       <p className="text-xs text-muted-foreground">{s.label}</p>
-                      <p className="text-xs font-semibold truncate">{s.value}</p>
+                      <p className="truncate text-sm font-semibold text-foreground">{s.value}</p>
                     </div>
                   );
                 })}
@@ -1601,62 +1645,65 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
 
               {/* Validation warnings */}
               {(!orgao || !objeto) && (
-                <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-sm">
-                  <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
-                  <p className="text-xs text-destructive">
+                <Alert variant="destructive">
+                  <AlertCircle className="w-4 h-4" aria-hidden="true" />
+                  <AlertDescription>
                     {!orgao && 'Órgão gerenciador não informado. '}
                     {!objeto && 'Objeto da licitação não informado. '}
                     Preencha na etapa 4.
-                  </p>
-                </div>
+                  </AlertDescription>
+                </Alert>
               )}
 
               <Button
                 onClick={handleGenerate}
                 disabled={isLoading || isExtracting || !orgao || !objeto}
-                className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-semibold py-3"
+                className="w-full"
                 size="lg"
               >
                 {isLoading ? (
-                  <><Loader2 className="w-5 h-5 animate-spin mr-2" /> Gerando proposta...</>
+                  <><Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" /> Gerando proposta...</>
                 ) : (
-                  <><Sparkles className="w-5 h-5 mr-2" /> Gerar Proposta Comercial com IA</>
+                  <><Sparkles className="w-5 h-5" aria-hidden="true" /> Gerar Proposta Comercial com IA</>
                 )}
               </Button>
             </div>
           )}
 
-          {/* Navigation */}
-          <div className="flex items-center justify-between pt-6 mt-6 border-t border-border/50">
+          {/* Navegação — a ação de avançar mora no rodapé de todos os passos */}
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-6">
             <Button variant="outline" onClick={prevStep} disabled={currentStep === 1} size="sm">
-              <ChevronLeft className="w-4 h-4 mr-1" /> Anterior
+              <ChevronLeft className="w-4 h-4" aria-hidden="true" /> Anterior
             </Button>
             <div className="flex items-center gap-1.5">
               {STEPS.map(step => (
                 <button
                   key={step.id}
+                  type="button"
                   onClick={() => setCurrentStep(step.id)}
-                  className={`w-2 h-2 rounded-full transition-all ${
-                    currentStep === step.id ? 'bg-accent w-4' : completed.has(step.id) ? 'bg-success/40' : 'bg-muted-foreground/20'
+                  aria-label={`Ir para a etapa ${step.id}: ${step.label}`}
+                  aria-current={currentStep === step.id ? 'step' : undefined}
+                  className={`h-2 rounded-full transition-all ${
+                    currentStep === step.id ? 'w-4 bg-primary' : completed.has(step.id) ? 'w-2 bg-success' : 'w-2 bg-border'
                   }`}
                 />
               ))}
             </div>
             <Button onClick={nextStep} disabled={currentStep === STEPS.length} size="sm">
-              Próximo <ChevronRight className="w-4 h-4 ml-1" />
+              Próximo <ChevronRight className="w-4 h-4" aria-hidden="true" />
             </Button>
           </div>
         </div>
 
         {/* Result */}
         {proposal && (
-          <div ref={resultRef} className="bg-card rounded-xl border border-border/50 shadow-sm p-6 space-y-4">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <h2 className="font-semibold text-lg flex items-center gap-2">
-                <CheckCircle className="w-5 h-5 text-success" />
-                Proposta Comercial Gerada
+          <div ref={resultRef} className="space-y-4 rounded-lg border border-border bg-card p-6 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+                <CheckCircle className="w-5 h-5 text-success" aria-hidden="true" />
+                Proposta comercial gerada
               </h2>
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex flex-wrap items-center gap-2">
                 <PropostaDownload
                   licitacaoId={processoId}
                   onArquivado={() => setNonceArquivo((n) => n + 1)}
@@ -1700,15 +1747,16 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
                   pageOrientation={pageOrientation}
                 />
                 <Button variant="outline" size="sm" onClick={handleCopy}>
-                  {copied ? <CheckCircle className="w-4 h-4 mr-1" /> : <Copy className="w-4 h-4 mr-1" />}
+                  {copied ? <CheckCircle className="w-4 h-4" aria-hidden="true" /> : <Copy className="w-4 h-4" aria-hidden="true" />}
                   {copied ? 'Copiado' : 'Copiar'}
                 </Button>
               </div>
             </div>
 
 
+            {/* Fac-símile do papel: a fonte é a escolhida para o documento, não a da interface. */}
             <div
-              className="bg-white dark:bg-card rounded-lg p-8 shadow-inner border border-border/30 relative overflow-hidden"
+              className="relative overflow-hidden rounded-lg border border-border bg-card p-8 shadow-sm"
               style={{ fontFamily: `'${fontFamily}', Times, serif` }}
             >
               {/* Marca d'água */}
@@ -1744,11 +1792,11 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
           {showPreview && !isMobile && (
             <div className="w-1/2 min-w-0">
               <div className="sticky top-20">
-                <div className="flex items-center gap-2 mb-2">
-                  <Eye className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Preview em Tempo Real</span>
+                <div className="mb-2 flex items-center gap-2">
+                  <Eye className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+                  <span className="text-sm font-semibold text-muted-foreground">Prévia em tempo real</span>
                 </div>
-                <div className="max-h-[calc(100vh-120px)] overflow-y-auto rounded-xl border border-border/50 shadow-sm scrollbar-thin">
+                <div className="max-h-[calc(100vh-120px)] overflow-y-auto rounded-lg border border-border shadow-sm scrollbar-thin">
                   <PropostaLivePreview
                     empresa={empresaAtiva}
                     telefone={telefone}

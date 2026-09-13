@@ -3,6 +3,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Building2, Download, Upload, Search, Loader2,
@@ -29,7 +30,12 @@ type EmpenhoData = {
   fonte_recurso?: string;
 };
 
-const COLORS = ['hsl(var(--accent))', 'hsl(var(--info))', 'hsl(var(--warning))', 'hsl(var(--success))', 'hsl(var(--destructive))', 'hsl(var(--chart-6))', 'hsl(var(--chart-7))', 'hsl(var(--chart-8))'];
+/** Séries de gráfico — a exceção contida à regra de cor: os tokens `--chart-*`
+ *  existem para isto, e recharts pinta por valor de cor, não por classe. */
+const COLORS = [
+  'hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))',
+  'hsl(var(--chart-5))', 'hsl(var(--chart-6))', 'hsl(var(--chart-7))', 'hsl(var(--chart-8))',
+];
 const formatCurrency = (v: number) => {
   if (v >= 1_000_000_000) return `R$ ${(v / 1_000_000_000).toFixed(1)}B`;
   if (v >= 1_000_000) return `R$ ${(v / 1_000_000).toFixed(1)}M`;
@@ -421,88 +427,93 @@ export default function TransparenciaPA({ portal }: Props) {
   return (
     <div className="space-y-4">
       {/* Portal info */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Badge variant="outline">{portalLabel}</Badge>
+      <div className="flex items-center gap-2">
+        <Badge variant="info">{portalLabel}</Badge>
       </div>
 
       {/* Header actions */}
-      <div className="flex flex-wrap items-center gap-2">
-        <Select value={anoFiltro} onValueChange={setAnoFiltro}>
-          <SelectTrigger className="w-36 h-8 text-sm">
-            <SelectValue placeholder="Ano" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todos os anos</SelectItem>
-            {anos.map(a => <SelectItem key={a} value={String(a)}>{a}</SelectItem>)}
-          </SelectContent>
-        </Select>
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="flex flex-col gap-1">
+          <label htmlFor="transparencia-ano" className="text-sm font-medium text-foreground">Ano</label>
+          <Select value={anoFiltro} onValueChange={setAnoFiltro}>
+            <SelectTrigger id="transparencia-ano" className="w-44">
+              <SelectValue placeholder="Ano" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os anos</SelectItem>
+              {anos.map(a => <SelectItem key={a} value={String(a)}>{a}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
 
-        {/* O "Extrair do Portal" de IA foi aposentado (estimava números).
-            Para o PARÁ ele renasceu de verdade: a API oficial de dados
-            abertos do Estado. Para os demais portais, os caminhos honestos
-            continuam sendo a planilha e o link. */}
-        {ehParaEstado && (
-          <Button variant="outline" size="sm" onClick={extrairDaApiOficial} disabled={extraindo}>
-            {extraindo ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Download className="w-4 h-4 mr-1" />}
-            Extração oficial
+        <div className="flex flex-wrap items-center gap-2">
+          {/* O "Extrair do Portal" de IA foi aposentado (estimava números).
+              Para o PARÁ ele renasceu de verdade: a API oficial de dados
+              abertos do Estado. Para os demais portais, os caminhos honestos
+              continuam sendo a planilha e o link. */}
+          {ehParaEstado && (
+            <Button variant="outline" size="sm" onClick={extrairDaApiOficial} disabled={extraindo}>
+              {extraindo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              Extração oficial
+            </Button>
+          )}
+
+          <label className="cursor-pointer">
+            <Button variant="outline" size="sm" asChild>
+              <span>
+                <Upload className="h-4 w-4" /> Importar planilha
+              </span>
+            </Button>
+            <input type="file" accept=".csv,.xlsx,.xls" onChange={handleFileUpload} className="sr-only" />
+          </label>
+
+          {/* Exporta o RESULTADO da busca por credor — posição a pedido (08/09):
+              entre Importar Planilha e Abrir Portal. */}
+          {achados.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Download className="h-4 w-4" /> Exportar resultado
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem onClick={exportarResultadoPDF}>PDF (com timbrado)</DropdownMenuItem>
+                <DropdownMenuItem onClick={exportarResultadoWord}>Word (.doc)</DropdownMenuItem>
+                <DropdownMenuItem onClick={exportarResultadoExcel}>Excel (.xlsx)</DropdownMenuItem>
+                <DropdownMenuItem onClick={exportarResultadoJPG}>JPG (imagem)</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
+          {/* Ordem a pedido (08/09): Exportar · Abrir Portal · Limpar. */}
+          {dados.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Download className="h-4 w-4" /> Exportar
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem onClick={exportarPDF}>PDF (com timbrado)</DropdownMenuItem>
+                <DropdownMenuItem onClick={exportarExcel}>Excel (.xlsx)</DropdownMenuItem>
+                <DropdownMenuItem onClick={exportarWord}>Word (.doc)</DropdownMenuItem>
+                <DropdownMenuItem onClick={exportarCSVArquivo}>CSV</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
+          <Button asChild variant="ghost" size="sm">
+            <a href={portal.url} target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="h-4 w-4" /> Abrir portal
+            </a>
           </Button>
-        )}
 
-        <label className="cursor-pointer">
-          <Button variant="outline" size="sm" asChild>
-            <span>
-              <Upload className="w-4 h-4 mr-1" /> Importar Planilha
-            </span>
-          </Button>
-          <input type="file" accept=".csv,.xlsx,.xls" onChange={handleFileUpload} className="hidden" />
-        </label>
-
-        {/* Exporta o RESULTADO da busca por credor — posição a pedido (08/09):
-            entre Importar Planilha e Abrir Portal. */}
-        {achados.length > 0 && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                <Download className="w-4 h-4 mr-1" /> Exportar Resultado
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start">
-              <DropdownMenuItem onClick={exportarResultadoPDF}>PDF (com timbrado)</DropdownMenuItem>
-              <DropdownMenuItem onClick={exportarResultadoWord}>Word (.doc)</DropdownMenuItem>
-              <DropdownMenuItem onClick={exportarResultadoExcel}>Excel (.xlsx)</DropdownMenuItem>
-              <DropdownMenuItem onClick={exportarResultadoJPG}>JPG (imagem)</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-
-        {/* Ordem a pedido (08/09): Exportar · Abrir Portal · Limpar. */}
-        {dados.length > 0 && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                <Download className="w-4 h-4 mr-1" /> Exportar
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start">
-              <DropdownMenuItem onClick={exportarPDF}>PDF (com timbrado)</DropdownMenuItem>
-              <DropdownMenuItem onClick={exportarExcel}>Excel (.xlsx)</DropdownMenuItem>
-              <DropdownMenuItem onClick={exportarWord}>Word (.doc)</DropdownMenuItem>
-              <DropdownMenuItem onClick={exportarCSVArquivo}>CSV</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-
-        <a href={portal.url} target="_blank" rel="noopener noreferrer">
-          <Button variant="ghost" size="sm">
-            <ExternalLink className="w-4 h-4 mr-1" /> Abrir Portal
-          </Button>
-        </a>
-
-        {(dados.length > 0 || achados.length > 0) && (
-          <Button variant="ghost" size="sm" onClick={handleLimparDados} className="text-destructive">
-            <Trash2 className="w-4 h-4 mr-1" /> Limpar
-          </Button>
-        )}
+          {(dados.length > 0 || achados.length > 0) && (
+            <Button variant="ghost" size="sm" onClick={handleLimparDados} className="text-destructive hover:text-destructive">
+              <Trash2 className="h-4 w-4" /> Limpar
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* ── Fase B: empenhos por credor, a MESMA busca do portal (só PA) ──
@@ -512,47 +523,54 @@ export default function TransparenciaPA({ portal }: Props) {
           nome, CNPJ ou número do empenho — instantânea, com os totais que a
           tela do portal exibe. */}
       {ehParaEstado && (
-        <Card className="p-4 space-y-3">
-          <h4 className="text-sm font-semibold flex items-center gap-1.5">
-            <Search className="w-4 h-4 text-muted-foreground" /> Empenhos por credor — busca do portal do Pará
-          </h4>
-          <div className="flex flex-wrap items-center gap-2">
+        <Card className="space-y-4 p-6">
+          <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+            <Search className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+            Empenhos por credor — busca do portal do Pará
+          </h2>
+          <div className="flex flex-wrap items-end gap-3">
             {/* Placeholder NEUTRO: exemplo com razão social de um assinante
                 aparecia no login de outro (08/09) — nome de empresa não é
                 texto de exemplo. */}
-            <Input placeholder="Nome do credor, CNPJ ou nº do empenho" value={credor}
-              onChange={(e) => setCredor(e.target.value)} className="w-80 h-9"
-              onKeyDown={(e) => { if (e.key === 'Enter' && credor.trim().length >= 4) buscarPorCredor(1); }} />
-            <Select value={anoCredor} onValueChange={setAnoCredor}>
-              <SelectTrigger className="w-28 h-9 text-sm"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {anos.map(a => <SelectItem key={a} value={String(a)}>{a}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Button size="sm" className="h-9" disabled={buscandoCredor || credor.trim().length < 4}
+            <div className="flex flex-col gap-1">
+              <label htmlFor="credor-busca" className="text-sm font-medium text-foreground">Credor</label>
+              <Input id="credor-busca" placeholder="Nome do credor, CNPJ ou nº do empenho" value={credor}
+                onChange={(e) => setCredor(e.target.value)} className="w-80 max-w-full"
+                onKeyDown={(e) => { if (e.key === 'Enter' && credor.trim().length >= 4) buscarPorCredor(1); }} />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label htmlFor="credor-ano" className="text-sm font-medium text-foreground">Ano</label>
+              <Select value={anoCredor} onValueChange={setAnoCredor}>
+                <SelectTrigger id="credor-ano" className="w-32"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {anos.map(a => <SelectItem key={a} value={String(a)}>{a}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button disabled={buscandoCredor || credor.trim().length < 4}
               onClick={() => buscarPorCredor(1)}>
-              {buscandoCredor ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Search className="w-4 h-4 mr-1" />}
+              {buscandoCredor ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
               Buscar
             </Button>
           </div>
 
           {totaisCredor && (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              <div className="rounded-md border border-border/50 p-2.5">
-                <p className="text-xs text-muted-foreground">Notas empenhadas</p>
-                <p className="text-lg font-bold tabular-nums">{totaisCredor.qtd_notas.toLocaleString('pt-BR')}</p>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-md border border-border p-4">
+                <p className="text-sm text-muted-foreground">Notas empenhadas</p>
+                <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">{totaisCredor.qtd_notas.toLocaleString('pt-BR')}</p>
               </div>
-              <div className="rounded-md border border-border/50 p-2.5">
-                <p className="text-xs text-muted-foreground">Valor empenhado</p>
-                <p className="text-lg font-bold tabular-nums">{brlExato(totaisCredor.valor_empenhado)}</p>
+              <div className="rounded-md border border-border p-4">
+                <p className="text-sm text-muted-foreground">Valor empenhado</p>
+                <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">{brlExato(totaisCredor.valor_empenhado)}</p>
               </div>
-              <div className="rounded-md border border-border/50 p-2.5">
-                <p className="text-xs text-muted-foreground">Valor pago</p>
-                <p className="text-lg font-bold tabular-nums text-success">{brlExato(totaisCredor.valor_pago)}</p>
+              <div className="rounded-md border border-border p-4">
+                <p className="text-sm text-muted-foreground">Valor pago</p>
+                <p className="mt-1 text-lg font-semibold tabular-nums text-success-ink">{brlExato(totaisCredor.valor_pago)}</p>
               </div>
-              <div className="rounded-md border border-border/50 p-2.5">
-                <p className="text-xs text-muted-foreground">Saldo a pagar</p>
-                <p className={`text-lg font-bold tabular-nums ${totaisCredor.saldo_a_pagar > 0 ? 'text-warning' : 'text-muted-foreground'}`}>
+              <div className="rounded-md border border-border p-4">
+                <p className="text-sm text-muted-foreground">Saldo a pagar</p>
+                <p className={`mt-1 text-lg font-semibold tabular-nums ${totaisCredor.saldo_a_pagar > 0 ? 'text-warning-ink' : 'text-muted-foreground'}`}>
                   {brlExato(totaisCredor.saldo_a_pagar)}
                 </p>
               </div>
@@ -560,46 +578,50 @@ export default function TransparenciaPA({ portal }: Props) {
           )}
 
           {buscouCredor && !buscandoCredor && achados.length === 0 && (
-            <p className="text-xs text-muted-foreground">
-              Nenhum empenho encontrado para “{credor.trim()}” em {anoCredor}.
-            </p>
+            <EstadoVazio
+              tamanho="compacto"
+              icone={<Search />}
+              titulo="Nenhum empenho encontrado"
+              descricao={`Sem resultado para “${credor.trim()}” em ${anoCredor}.`}
+            />
           )}
 
           {achados.length > 0 && (
-            <div className="divide-y divide-border/40 max-h-[320px] overflow-y-auto rounded-md border border-border/40">
+            <ul className="max-h-[320px] divide-y divide-border overflow-y-auto rounded-md border border-border">
               {/* Cada linha abre o DETALHE do empenho no portal oficial (a
                   pedido, 08/09): itens, processo, datas — para confrontar e
                   imprimir na fonte. O id_ne é a chave da rota do portal. */}
               {achados.map((n) => (
-                <a
-                  key={n.id_ne}
-                  href={`https://sistemas.pa.gov.br/portaltransparencia/empenho/notas/detalhe/${n.id_ne}`}
-                  target="_blank" rel="noopener noreferrer"
-                  title="Abrir o detalhe deste empenho no portal oficial (confrontar e imprimir)"
-                  className="flex items-center justify-between gap-3 p-2.5 text-xs hover:bg-muted/40 transition-colors cursor-pointer"
-                >
-                  <div className="min-w-0">
-                    <p className="font-medium tabular-nums flex items-center gap-1.5">
-                      {n.numero} · {n.orgao}
-                      <ExternalLink className="w-3 h-3 text-primary shrink-0" />
-                    </p>
-                    <p className="text-muted-foreground truncate">
-                      {n.credor}{n.credor_cpf_cnpj ? ` · ${n.credor_cpf_cnpj}` : ''} · {n.dt_despesa}
-                    </p>
-                  </div>
-                  <div className="text-right shrink-0 tabular-nums">
-                    <p className="font-semibold">{brlExato(n.valor_empenhado)}</p>
-                    <p className={n.valor_pago > 0 ? 'text-success' : 'text-muted-foreground'}>
-                      pago: {brlExato(n.valor_pago)}
-                    </p>
-                  </div>
-                </a>
+                <li key={n.id_ne}>
+                  <a
+                    href={`https://sistemas.pa.gov.br/portaltransparencia/empenho/notas/detalhe/${n.id_ne}`}
+                    target="_blank" rel="noopener noreferrer"
+                    title="Abrir o detalhe deste empenho no portal oficial (confrontar e imprimir)"
+                    className="flex cursor-pointer items-center justify-between gap-3 p-3 text-sm transition-colors hover:bg-muted"
+                  >
+                    <div className="min-w-0">
+                      <p className="flex items-center gap-2 font-medium tabular-nums text-foreground">
+                        {n.numero} · {n.orgao}
+                        <ExternalLink className="h-3 w-3 shrink-0 text-primary" aria-hidden="true" />
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {n.credor}{n.credor_cpf_cnpj ? ` · ${n.credor_cpf_cnpj}` : ''} · {n.dt_despesa}
+                      </p>
+                    </div>
+                    <div className="shrink-0 text-right tabular-nums">
+                      <p className="font-semibold text-foreground">{brlExato(n.valor_empenhado)}</p>
+                      <p className={`text-xs ${n.valor_pago > 0 ? 'text-success-ink' : 'text-muted-foreground'}`}>
+                        pago: {brlExato(n.valor_pago)}
+                      </p>
+                    </div>
+                  </a>
+                </li>
               ))}
-            </div>
+            </ul>
           )}
 
           {totaisCredor && achados.length > 0 && achados.length < totaisCredor.qtd_notas && !buscandoCredor && (
-            <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => buscarPorCredor(paginaCredor + 1)}>
+            <Button size="sm" variant="outline" onClick={() => buscarPorCredor(paginaCredor + 1)}>
               Carregar mais ({achados.length} de {totaisCredor.qtd_notas})
             </Button>
           )}
@@ -607,83 +629,85 @@ export default function TransparenciaPA({ portal }: Props) {
       )}
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="stat-card">
-          <div className="flex items-center gap-2 mb-1">
-            <Building2 className="w-4 h-4 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">Órgãos</span>
-          </div>
-          <p className="text-2xl font-bold">{orgaosUnicos}</p>
-          <span className="text-xs text-muted-foreground">identificados</span>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+          <p className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Building2 className="h-4 w-4" aria-hidden="true" />
+            Órgãos
+          </p>
+          <p className="mt-2 text-[2rem] font-bold leading-10 tabular-nums text-foreground">{orgaosUnicos}</p>
+          <p className="text-xs text-muted-foreground">identificados</p>
         </div>
-        <div className="stat-card">
-          <div className="flex items-center gap-2 mb-1">
-            <FileSpreadsheet className="w-4 h-4 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">Total Empenhos</span>
-          </div>
+        <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+          <p className="flex items-center gap-2 text-sm text-muted-foreground">
+            <FileSpreadsheet className="h-4 w-4" aria-hidden="true" />
+            Total de empenhos
+          </p>
           {contagemConhecida ? (
-            <p className="text-2xl font-bold">{totalEmpenhos.toLocaleString('pt-BR')}</p>
+            <p className="mt-2 text-[2rem] font-bold leading-10 tabular-nums text-foreground">{totalEmpenhos.toLocaleString('pt-BR')}</p>
           ) : (
             <>
-              <p className="text-2xl font-bold text-muted-foreground">—</p>
-              <span className="text-xs text-muted-foreground">a fonte agrega por órgão, sem contagem de notas</span>
+              <p className="mt-2 text-[2rem] font-bold leading-10 tabular-nums text-muted-foreground">—</p>
+              <p className="text-xs text-muted-foreground">a fonte agrega por órgão, sem contagem de notas</p>
             </>
           )}
         </div>
-        <div className="stat-card">
-          <div className="flex items-center gap-2 mb-1">
-            <TrendingUp className="w-4 h-4 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">Volume Total (empenhado)</span>
-          </div>
-          {/* Compacto no card, EXATO no tooltip — panorama e conferência. */}
-          <p className="text-xl font-bold tabular-nums">{brlExato(totalGeral)}</p>
+        <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+          <p className="flex items-center gap-2 text-sm text-muted-foreground">
+            <TrendingUp className="h-4 w-4" aria-hidden="true" />
+            Volume total (empenhado)
+          </p>
+          {/* Valor EXATO no card: dentro de um processo, centavos importam. */}
+          <p className="mt-2 text-lg font-semibold tabular-nums text-foreground">{brlExato(totalGeral)}</p>
         </div>
-        <div className="stat-card">
-          <div className="flex items-center gap-2 mb-1">
-            <TrendingDown className="w-4 h-4 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">{contagemConhecida ? 'Ticket Médio' : 'Média por órgão'}</span>
-          </div>
+        <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+          <p className="flex items-center gap-2 text-sm text-muted-foreground">
+            <TrendingDown className="h-4 w-4" aria-hidden="true" />
+            {contagemConhecida ? 'Ticket médio' : 'Média por órgão'}
+          </p>
           {contagemConhecida ? (
-            <p className="text-xl font-bold tabular-nums">{totalEmpenhos > 0 ? brlExato(totalGeral / totalEmpenhos) : 'R$ 0,00'}</p>
+            <p className="mt-2 text-lg font-semibold tabular-nums text-foreground">{totalEmpenhos > 0 ? brlExato(totalGeral / totalEmpenhos) : 'R$ 0,00'}</p>
           ) : (
-            <p className="text-xl font-bold tabular-nums">{orgaosUnicos > 0 ? brlExato(totalGeral / orgaosUnicos) : 'R$ 0,00'}</p>
+            <p className="mt-2 text-lg font-semibold tabular-nums text-foreground">{orgaosUnicos > 0 ? brlExato(totalGeral / orgaosUnicos) : 'R$ 0,00'}</p>
           )}
         </div>
       </div>
 
       {dados.length === 0 ? (
-        <Card className="p-8 text-center">
-          <Building2 className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
-          <h3 className="font-semibold mb-2">Nenhum dado importado</h3>
-          <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
-            Abra o portal de {portal.nome} pelo botão <strong>"Abrir Portal"</strong>, baixe a planilha
-            de empenhos/despesas e envie por <strong>"Importar Planilha"</strong> — os números aqui
-            são sempre os do próprio portal, nunca estimativas.
-          </p>
-          <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-            <span>Formatos aceitos: .xlsx, .xls, .csv</span>
-            <span>•</span>
-            <span>Colunas esperadas: Órgão, Valor, Ano, Quantidade</span>
-          </div>
+        <Card>
+          <EstadoVazio
+            icone={<Building2 />}
+            titulo="Nenhum dado importado"
+            descricao={
+              <>
+                Abra o portal de {portal.nome} pelo botão <strong>“Abrir portal”</strong>, baixe a planilha
+                de empenhos/despesas e envie por <strong>“Importar planilha”</strong> — os números aqui
+                são sempre os do próprio portal, nunca estimativas.
+                <span className="mt-2 block text-xs">
+                  Formatos aceitos: .xlsx, .xls, .csv · Colunas esperadas: Órgão, Valor, Ano, Quantidade
+                </span>
+              </>
+            }
+          />
         </Card>
       ) : (
         <>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <Card className="p-5">
-              <h3 className="text-sm font-semibold mb-4">Top 10 Órgãos por Volume (R$)</h3>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <Card className="p-6">
+              <h2 className="mb-4 text-lg font-semibold text-foreground">Top 10 órgãos por volume (R$)</h2>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={top10} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                   <XAxis type="number" tickFormatter={(v) => formatCurrency(v)} tick={{ fontSize: 10 }} />
                   <YAxis type="category" dataKey="orgao" tick={{ fontSize: 9 }} width={160} />
                   <Tooltip formatter={(v: number) => brlExato(v)} />
-                  <Bar dataKey="valor_total" fill="hsl(var(--accent))" radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="valor_total" fill="hsl(var(--chart-1))" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </Card>
 
-            <Card className="p-5">
-              <h3 className="text-sm font-semibold mb-4">Distribuição por Órgão (Top 8)</h3>
+            <Card className="p-6">
+              <h2 className="mb-4 text-lg font-semibold text-foreground">Distribuição por órgão (top 8)</h2>
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
                   <Pie
@@ -701,49 +725,50 @@ export default function TransparenciaPA({ portal }: Props) {
             </Card>
 
             {porAno.some(a => a.valor > 0) && (
-              <Card className="p-5 lg:col-span-2">
-                <h3 className="text-sm font-semibold mb-4">Evolução Anual do Volume de Empenhos</h3>
+              <Card className="p-6 lg:col-span-2">
+                <h2 className="mb-4 text-lg font-semibold text-foreground">Evolução anual do volume de empenhos</h2>
                 <ResponsiveContainer width="100%" height={250}>
                   <BarChart data={porAno.filter(a => a.valor > 0)}>
                     <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                     <XAxis dataKey="ano" tick={{ fontSize: 11 }} />
                     <YAxis tickFormatter={(v) => formatCurrency(v)} tick={{ fontSize: 10 }} />
                     <Tooltip formatter={(v: number) => brlExato(v)} />
-                    <Bar dataKey="valor" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} name="Volume (R$)" />
+                    <Bar dataKey="valor" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} name="Volume (R$)" />
                   </BarChart>
                 </ResponsiveContainer>
               </Card>
             )}
           </div>
 
-          <Card className="p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold">Ranking de Órgãos</h3>
-              <div className="relative w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input placeholder="Buscar órgão..." value={busca} onChange={e => setBusca(e.target.value)} className="pl-10 h-8 text-sm" />
+          <Card className="p-6">
+            <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+              <h2 className="text-lg font-semibold text-foreground">Ranking de órgãos</h2>
+              <div className="flex flex-col gap-1">
+                <label htmlFor="ranking-busca" className="text-sm font-medium text-foreground">Buscar órgão</label>
+                <Input id="ranking-busca" placeholder="Nome do órgão" value={busca}
+                  onChange={e => setBusca(e.target.value)} className="w-64 max-w-full" />
               </div>
             </div>
-            <div className="space-y-1.5 max-h-[400px] overflow-y-auto">
+            <ul className="max-h-[400px] space-y-2 overflow-y-auto">
               {dadosFiltrados.map((d, i) => (
-                <div key={d.id || i} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <span className="text-lg font-bold text-foreground w-8 text-center">{i + 1}º</span>
-                    <div>
-                      <p className="text-sm font-medium">{d.orgao}</p>
-                      <div className="flex gap-2">
-                        <Badge variant="outline" className="text-xs">{d.ano}</Badge>
-                        {d.categoria && <Badge variant="secondary" className="text-xs">{d.categoria}</Badge>}
+                <li key={d.id || i} className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted p-3 transition-colors hover:border-primary/40">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="w-8 shrink-0 text-center text-lg font-bold text-foreground">{i + 1}º</span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground">{d.orgao}</p>
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                        <Badge variant="muted">{d.ano}</Badge>
+                        {d.categoria && <Badge variant="info">{d.categoria}</Badge>}
                         <span className="text-xs text-muted-foreground">{d.quantidade_empenhos} empenhos</span>
                       </div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-semibold tabular-nums">{brlExato(d.valor_total)}</p>
+                  <div className="shrink-0 text-right">
+                    <p className="text-sm font-semibold tabular-nums text-foreground">{brlExato(d.valor_total)}</p>
                   </div>
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
           </Card>
         </>
       )}

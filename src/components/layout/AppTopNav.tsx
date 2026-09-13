@@ -1,63 +1,48 @@
-import { useState, useRef, useEffect } from 'react';
-import BrandLogo from '@/components/shared/BrandLogo';
+import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { useUserRole } from '@/hooks/useUserRole';
-import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
-import {
-  LayoutDashboard, Search, Kanban, Users, Bot, BarChart3, Settings,
-  ChevronDown, Zap, Crosshair, Shield, Scale, DollarSign, Calculator,
-  Download, LogOut, Building2, ShieldCheck, HeadphonesIcon, MessageSquare,
-  TrendingUp, Target, ClipboardCheck, BookOpen, Bell, Archive, CalendarDays,
-  GraduationCap, FileText, ListChecks, Menu, X, FileBarChart, Workflow,
-  Plug, Truck, Send, ShoppingCart, Gauge,
-  SlidersHorizontal,
-} from 'lucide-react';
+import { ChevronDown, LogOut, Menu, MoreHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
-import { AnimatePresence, motion } from 'framer-motion';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import BrandLogo from '@/components/shared/BrandLogo';
+import { useAuth } from '@/contexts/AuthContext';
+import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
+import { navGroups, type NavGroup } from '@/lib/navegacao/menu';
 
-import { navGroups, type NavGroup, type NavItem } from '@/lib/navegacao/menu';
+/**
+ * AppTopNav — a navegação do app, na faixa superior (13/09/2026).
+ *
+ * Era a coluna da esquerda; o dono do produto pediu a navegação no centro do
+ * topo. A faixa herdou os tokens `sidebar-*` (navy nos dois temas) porque a
+ * massa escura era a assinatura da identidade: ela mudou de lugar, não sumiu.
+ *
+ * Como os nove grupos cabem numa linha:
+ *  - a partir de 1280px (xl), todos aparecem;
+ *  - entre 768 e 1280, os cinco primeiros ficam e o resto entra em "Mais" —
+ *    a divisão é por CSS (`hidden xl:flex` nos extras e `xl:hidden` no botão),
+ *    sem medir largura em JavaScript, que erraria no primeiro quadro;
+ *  - abaixo de 768px, hambúrguer e gaveta.
+ *
+ * A lista vem de `menu.ts`, como antes: a barra e a gaveta nunca divergem.
+ */
 
-
-const adminItems: NavItem[] = [
-  { icon: ShieldCheck, label: 'Templates IA', path: '/admin/templates' },
-  { icon: DollarSign, label: 'Financeiro', path: '/admin/financeiro' },
-  { icon: Target, label: 'Fontes Fabricantes', path: '/admin/fontes-fabricantes' },
-  { icon: TrendingUp, label: 'Marketing', path: '/admin/marketing' },
-  { icon: Send, label: 'Distribuição', path: '/admin/distribuicao' },
-];
-
-// Top-level nav links shown in the horizontal bar
-const topNavLinks = [
-  // Inteligência assume a primeira posição — era a do Painel, que deixou de
-  // existir quando Dashboard e Analytics vieram para cá (ver menu.ts).
-  { label: 'Inteligência', groups: ['Inteligência'] },
-  { label: 'Monitoramento', groups: ['Monitoramento'] },
-  { label: 'Gestão', groups: ['Gestão de Processos'] },
-  { label: 'Jurídico', groups: ['Jurídico & Contábil'] },
-  { label: 'Financeiro', groups: ['Financeiro'] },
-  { label: 'Comunicação', groups: ['Comunicação'] },
-  { label: 'Ferramentas', groups: ['Ferramentas', 'Configuração'] },
-];
+/** Quantos grupos ficam soltos na barra antes de "Mais" (abaixo de 1280px). */
+const GRUPOS_SEMPRE_VISIVEIS = 5;
 
 interface AppTopNavProps {
   onNavigate?: () => void;
 }
 
 export default function AppTopNav({ onNavigate }: AppTopNavProps) {
-  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
-  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
-  const [mobileOpenGroups, setMobileOpenGroups] = useState<Record<string, boolean>>({});
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [gavetaAberta, setGavetaAberta] = useState(false);
+  const [gruposAbertos, setGruposAbertos] = useState<Record<string, boolean>>({});
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut } = useAuth();
-  const { isAdmin } = useUserRole();
   const { canAccessRoute, isAdmin: isEmpresaAdmin } = useMembroPermissoes();
 
-  // Versão filtrada dos grupos: remove itens cuja rota o membro não pode acessar.
-  const filteredNavGroups: NavGroup[] = navGroups
+  // Grupos filtrados pela permissão do membro — grupo que esvazia desaparece.
+  const grupos: NavGroup[] = navGroups
     .map((g) => ({
       ...g,
       items: g.items.filter((it) => {
@@ -67,206 +52,185 @@ export default function AppTopNav({ onNavigate }: AppTopNavProps) {
     }))
     .filter((g) => g.items.length > 0);
 
-  const filteredTopNavLinks = topNavLinks
-    .map((link) => ({
-      ...link,
-      groups: link.groups.filter((title) => filteredNavGroups.some((g) => g.title === title)),
-    }))
-    .filter((link) => link.groups.length > 0);
+  const visiveis = grupos.slice(0, GRUPOS_SEMPRE_VISIVEIS);
+  const extras = grupos.slice(GRUPOS_SEMPRE_VISIVEIS);
 
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setOpenDropdown(null);
-      }
-    };
-    if (openDropdown) document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [openDropdown]);
+  const ehAtivo = (path: string) => {
+    const base = path.split('?')[0];
+    return location.pathname === base || location.pathname.startsWith(base + '/');
+  };
+  const grupoAtivo = (g: NavGroup) => g.items.some((i) => ehAtivo(i.path));
 
-  const handleNav = (path: string) => {
+  const irPara = (path: string) => {
     navigate(path);
-    setOpenDropdown(null);
-    setMobileDrawerOpen(false);
+    setGavetaAberta(false);
     onNavigate?.();
   };
 
-  const getGroupsForLink = (link: typeof topNavLinks[0]) => {
-    return filteredNavGroups.filter(g => link.groups.includes(g.title));
-  };
-
-  const isLinkActive = (link: typeof topNavLinks[0]) => {
-    const groups = getGroupsForLink(link);
-    return groups.some(g => g.items.some(item => location.pathname === item.path));
+  /** Um grupo da barra: rótulo que abre o menu com as telas do grupo. */
+  const GrupoDaBarra = ({ grupo, className }: { grupo: NavGroup; className?: string }) => {
+    const Icone = grupo.icone;
+    const ativo = grupoAtivo(grupo);
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            className={cn(
+              'inline-flex h-10 items-center gap-1.5 whitespace-nowrap rounded-md px-2.5 text-sm font-medium transition-colors',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar',
+              ativo
+                ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold'
+                : 'text-sidebar-foreground/85 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground',
+              className,
+            )}
+          >
+            {Icone && <Icone className="h-4 w-4 shrink-0" aria-hidden="true" />}
+            {grupo.curto ?? grupo.title}
+            <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden="true" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-60">
+          {grupo.items.map((item) => (
+            <DropdownMenuItem
+              key={item.path}
+              onSelect={() => irPara(item.path)}
+              className={cn('gap-2.5', ehAtivo(item.path) && 'bg-primary-tint text-primary font-semibold')}
+            >
+              <item.icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <span className="truncate">{item.label}</span>
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
   };
 
   return (
     <>
-      {/* Desktop horizontal nav */}
-      <nav className="hidden lg:flex items-center gap-0.5" ref={dropdownRef}>
-        {filteredTopNavLinks.map((link) => {
-          const active = isLinkActive(link);
-          const isOpen = openDropdown === link.label;
-          const groups = getGroupsForLink(link);
+      {/* Barra — some abaixo de 768px, onde manda a gaveta. */}
+      <nav aria-label="Navegação principal" className="hidden md:flex items-center gap-0.5">
+        {visiveis.map((g) => (
+          <GrupoDaBarra key={g.title} grupo={g} />
+        ))}
+        {extras.map((g) => (
+          <GrupoDaBarra key={g.title} grupo={g} className="hidden xl:inline-flex" />
+        ))}
 
-          if (groups.length === 1 && groups[0].items.length <= 2) {
-            return (
-              <div key={link.label} className="relative">
-                <button
-                  onClick={() => handleNav(groups[0].items[0].path)}
-                  className={cn(
-                    'px-3 py-1.5 rounded-md text-[13px] font-medium transition-all',
-                    active ? 'text-accent bg-accent/10' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                  )}
-                >
-                  {link.label}
-                </button>
-              </div>
-            );
-          }
-
-          return (
-            <div key={link.label} className="relative">
+        {extras.length > 0 && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <button
-                onClick={() => setOpenDropdown(isOpen ? null : link.label)}
+                type="button"
+                aria-label="Mais seções"
                 className={cn(
-                  'flex items-center gap-1 px-3 py-1.5 rounded-md text-[13px] font-medium transition-all',
-                  active ? 'text-accent bg-accent/10' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                  'inline-flex h-10 items-center gap-1.5 whitespace-nowrap rounded-md px-2.5 text-sm font-medium transition-colors xl:hidden',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar',
+                  extras.some(grupoAtivo)
+                    ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold'
+                    : 'text-sidebar-foreground/85 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground',
                 )}
               >
-                {link.label}
-                <ChevronDown className={cn('w-3.5 h-3.5 transition-transform', isOpen && 'rotate-180')} />
+                <MoreHorizontal className="h-4 w-4 shrink-0" aria-hidden="true" />
+                Mais
               </button>
-
-              <AnimatePresence>
-                {isOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 6 }}
-                    transition={{ duration: 0.15 }}
-                    className="absolute top-full left-0 mt-1.5 bg-card border border-border rounded-xl shadow-xl z-50 overflow-hidden min-w-[220px] w-max"
-                    style={{ boxShadow: 'var(--shadow-xl)' }}
-                  >
-                    {groups.map((group) => (
-                      <div key={group.title} className="py-1.5">
-                        {groups.length > 1 && (
-                          <p className="px-4 py-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                            {group.title}
-                          </p>
-                        )}
-                        {group.items.map((item) => {
-                          const isActive = location.pathname === item.path;
-                          return (
-                            <button
-                              key={item.path}
-                              onClick={() => handleNav(item.path)}
-                              className={cn(
-                                'w-full flex items-center gap-2.5 px-4 py-2 text-[13px] transition-colors',
-                                isActive
-                                  ? 'text-accent bg-accent/5 font-semibold'
-                                  : 'text-foreground hover:bg-muted/50 hover:text-foreground'
-                              )}
-                            >
-                              <item.icon className="w-4 h-4 flex-shrink-0" />
-                              <span>{item.label}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    ))}
-
-                    {link.label === 'Ferramentas' && isAdmin && (
-                      <div className="border-t border-border py-1.5">
-                        <p className="px-4 py-1 text-xs font-bold uppercase tracking-widest text-accent/60">
-                          Admin
-                        </p>
-                        {adminItems.map((item) => (
-                          <button
-                            key={item.path}
-                            onClick={() => handleNav(item.path)}
-                            className={cn(
-                              'w-full flex items-center gap-2.5 px-4 py-2 text-[13px] transition-colors',
-                              location.pathname === item.path
-                                ? 'text-accent bg-accent/5 font-semibold'
-                                : 'text-foreground hover:bg-muted/50 hover:text-foreground'
-                            )}
-                          >
-                            <item.icon className="w-4 h-4 flex-shrink-0" />
-                            <span>{item.label}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          );
-        })}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              {extras.map((g) => (
+                <div key={g.title} className="py-1">
+                  <p className="px-2 pb-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    {g.curto ?? g.title}
+                  </p>
+                  {g.items.map((item) => (
+                    <DropdownMenuItem
+                      key={item.path}
+                      onSelect={() => irPara(item.path)}
+                      className={cn('gap-2.5', ehAtivo(item.path) && 'bg-primary-tint text-primary font-semibold')}
+                    >
+                      <item.icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                      <span className="truncate">{item.label}</span>
+                    </DropdownMenuItem>
+                  ))}
+                </div>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </nav>
 
-      {/* Mobile hamburger button */}
+      {/* Hambúrguer — só abaixo de 768px. */}
       <button
-        className="lg:hidden p-2 rounded-lg hover:bg-muted transition-colors"
-        onClick={() => setMobileDrawerOpen(true)}
+        type="button"
+        aria-label="Abrir menu"
+        aria-expanded={gavetaAberta}
+        className="md:hidden inline-flex h-10 w-10 items-center justify-center rounded-md text-sidebar-foreground/85 transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+        onClick={() => setGavetaAberta(true)}
       >
-        <Menu className="w-5 h-5 text-foreground" />
+        <Menu className="h-5 w-5" aria-hidden="true" />
       </button>
 
-      {/* Mobile drawer */}
-      <Sheet open={mobileDrawerOpen} onOpenChange={setMobileDrawerOpen}>
-        <SheetContent side="left" className="p-0 w-[280px] flex flex-col bg-sidebar text-sidebar-foreground border-sidebar-border [&>button]:text-sidebar-foreground">
-          <div className="flex items-center justify-between px-4 h-16 border-b border-sidebar-border shrink-0">
-            <Link to="/dashboard" aria-label="Praefectus — página inicial" onClick={() => setMobileDrawerOpen(false)} className="flex items-center">
+      <Sheet open={gavetaAberta} onOpenChange={setGavetaAberta}>
+        <SheetContent
+          side="left"
+          className="flex w-[280px] flex-col bg-sidebar p-0 text-sidebar-foreground border-sidebar-border [&>button]:text-sidebar-foreground"
+        >
+          <div className="flex h-16 shrink-0 items-center border-b border-sidebar-border px-4">
+            <Link
+              to="/dashboard"
+              aria-label="Praefectus — página inicial"
+              onClick={() => setGavetaAberta(false)}
+              className="flex items-center"
+            >
               <BrandLogo variant="dark" className="w-[150px]" />
             </Link>
           </div>
 
-          <nav className="flex-1 min-h-0 py-3 px-3 overflow-y-auto">
-            {filteredNavGroups.map((group) => {
-              const isOpen = mobileOpenGroups[group.title] !== false;
+          <nav aria-label="Navegação" className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
+            {grupos.map((grupo) => {
+              const aberto = gruposAbertos[grupo.title] ?? grupoAtivo(grupo);
               return (
-                <div key={group.title} className="mb-1">
+                <div key={grupo.title} className="mb-1">
                   <button
-                    onClick={() => setMobileOpenGroups(prev => ({ ...prev, [group.title]: !isOpen }))}
-                    className="w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-bold uppercase tracking-wider text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors"
+                    type="button"
+                    aria-expanded={aberto}
+                    onClick={() => setGruposAbertos((p) => ({ ...p, [grupo.title]: !aberto }))}
+                    className="flex w-full items-center justify-between rounded-md px-3 py-2 text-xs font-bold uppercase tracking-wider text-sidebar-foreground/60 transition-colors hover:text-sidebar-foreground"
                   >
-                    <span>{group.title}</span>
-                    <ChevronDown className={cn('w-3.5 h-3.5 transition-transform', !isOpen && '-rotate-90')} />
+                    <span>{grupo.title}</span>
+                    <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', !aberto && '-rotate-90')} aria-hidden="true" />
                   </button>
-                  {isOpen && (
-                    <div className="space-y-0.5 mb-2">
-                      {group.items.map((item) => {
-                        const isActive = location.pathname === item.path;
-                        return (
-                          <button
-                            key={item.path}
-                            onClick={() => handleNav(item.path)}
-                            className={cn(
-                              'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-all',
-                              isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground hover:bg-sidebar-accent/60'
-                            )}
-                          >
-                            <item.icon className="w-4 h-4 flex-shrink-0" />
-                            <span>{item.label}</span>
-                          </button>
-                        );
-                      })}
+                  {aberto && (
+                    <div className="mb-2 space-y-0.5">
+                      {grupo.items.map((item) => (
+                        <button
+                          key={item.path}
+                          type="button"
+                          onClick={() => irPara(item.path)}
+                          className={cn(
+                            'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                            ehAtivo(item.path)
+                              ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                              : 'text-sidebar-foreground hover:bg-sidebar-accent/60',
+                          )}
+                        >
+                          <item.icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                          <span className="truncate">{item.label}</span>
+                        </button>
+                      ))}
                     </div>
                   )}
                 </div>
               );
             })}
-
           </nav>
 
-          <div className="p-3 border-t border-sidebar-border">
+          <div className="border-t border-sidebar-border p-3">
             <button
-              onClick={async () => { await signOut(); navigate('/'); setMobileDrawerOpen(false); }}
-              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent/60 transition-all"
+              type="button"
+              onClick={async () => { await signOut(); navigate('/'); setGavetaAberta(false); }}
+              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
             >
-              <LogOut className="w-4 h-4 flex-shrink-0" />
+              <LogOut className="h-4 w-4 shrink-0" aria-hidden="true" />
               <span>Sair da conta</span>
             </button>
           </div>

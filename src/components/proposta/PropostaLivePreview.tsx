@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { linhaDoProcessoAdministrativo, referenciaDoCertame, vocativoDoOrgao } from '@/lib/proposta/vocativo';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Eye } from 'lucide-react';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { valorPorExtenso } from '@/lib/numero-extenso';
 import type { EditalItem } from '@/components/proposta/EditalUploader';
 
@@ -89,13 +90,15 @@ export default function PropostaLivePreview(props: LivePreviewProps) {
   const hasAnyData = orgao || objeto || empresa?.razao_social || repNome || itensValidos.length > 0;
 
   if (!hasAnyData) {
+    // Painel ainda sem nada: o "nada aqui ainda" padrão da identidade, num
+    // fundo de interface — o papel só aparece quando há o que imprimir nele.
     return (
-      <div className="flex flex-col items-center justify-center h-full py-20 text-center">
-        <Eye className="w-12 h-12 text-muted-foreground/20 mb-3" />
-        <p className="text-sm text-muted-foreground font-medium">Pré-visualização em Tempo Real</p>
-        <p className="text-xs text-muted-foreground mt-1 max-w-[200px]">
-          Preencha os campos ao lado para visualizar a proposta sendo montada
-        </p>
+      <div className="flex h-full items-center justify-center bg-card">
+        <EstadoVazio
+          icone={<Eye />}
+          titulo="Prévia em tempo real"
+          descricao="Preencha os campos ao lado para ver a proposta sendo montada"
+        />
       </div>
     );
   }
@@ -109,8 +112,17 @@ export default function PropostaLivePreview(props: LivePreviewProps) {
   ].filter(Boolean).join(', ');
 
   return (
+    // ┌── FAC-SÍMILE DO PAPEL ────────────────────────────────────────────────┐
+    // Daqui para baixo NÃO vale a paleta da interface: este bloco desenha a
+    // folha que o órgão vai receber, e ela é branca com tinta preta em qualquer
+    // tema (`colorScheme: 'light'` fixa isso). Trocar por `bg-card`/`text-fore-
+    // ground` faria a prévia escurecer no modo noturno e deixar de casar com o
+    // PDF/Word gerados em `PropostaDownload` — que usam os mesmos cinzas
+    // (`#333` no cabeçalho da tabela, `#555` nos extensos). A moldura em volta
+    // é interface e segue os tokens; o miolo é papel.
+    // └───────────────────────────────────────────────────────────────────────┘
     <div
-      className="rounded-lg shadow-inner border border-border/30 relative overflow-hidden transition-all duration-300"
+      className="relative overflow-hidden rounded-lg border border-border shadow-sm transition-all duration-300"
       style={{
         fontFamily: `'${fontFamily}', Arial, Helvetica, sans-serif`,
         fontSize: `${Math.max(fontSize - 2, 9)}pt`,

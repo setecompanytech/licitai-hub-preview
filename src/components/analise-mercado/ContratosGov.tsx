@@ -3,9 +3,11 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  Search, Loader2, Building2, FileText, ExternalLink, Download,
+  Search, Loader2, Building2, FileText, ExternalLink, Download, AlertTriangle,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -22,6 +24,9 @@ import { mascaraCNPJ, isValidCNPJ } from '@/lib/financeiro/formatters';
  * do Compras.gov.br), filtradas pelo CNPJ do FORNECEDOR — a empresa vendo as
  * próprias atas: item, quantidade homologada, quantidade JÁ EMPENHADA,
  * valores exatos e vigência, com link para a compra no PNCP.
+ *
+ * Componente interno (vive dentro de uma aba da Análise de mercado): começa
+ * direto no conteúdo, sem cabeçalho de página.
  */
 
 type ItemArp = {
@@ -119,121 +124,132 @@ export default function ContratosGov() {
 
   return (
     <div className="space-y-4">
-      <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
-        <h3 className="text-sm font-semibold flex items-center gap-2 mb-1">
-          <FileText className="w-4 h-4 text-muted-foreground" />
-          Atas de Registro de Preços — Compras.gov.br
-        </h3>
-        <p className="text-xs text-muted-foreground mb-4">
+      <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+        <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+          <FileText className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+          Atas de registro de preços — Compras.gov.br
+        </h2>
+        <p className="mt-1 text-sm text-muted-foreground">
           As atas em que o CNPJ consultado é o FORNECEDOR: itens, quantidade homologada, quanto já
           foi empenhado, valores e vigência — direto da API oficial de dados abertos.
         </p>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Input placeholder="CNPJ do fornecedor" value={cnpj} inputMode="numeric"
-            onChange={(e) => setCnpj(mascaraCNPJ(e.target.value))} className="w-56"
-            onKeyDown={(e) => { if (e.key === 'Enter') buscar(); }} />
-          <Select value={meses} onValueChange={setMeses}>
-            <SelectTrigger className="w-64 h-10 text-sm"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="12">Atas iniciadas nos últimos 12 meses</SelectItem>
-              <SelectItem value="24">Atas iniciadas nos últimos 24 meses</SelectItem>
-              <SelectItem value="36">Atas iniciadas nos últimos 36 meses</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="mt-4 flex flex-wrap items-end gap-3">
+          <div className="flex flex-col gap-1">
+            <label htmlFor="arp-cnpj" className="text-sm font-medium text-foreground">CNPJ do fornecedor</label>
+            <Input id="arp-cnpj" placeholder="00.000.000/0000-00" value={cnpj} inputMode="numeric"
+              aria-invalid={erro ? true : undefined}
+              onChange={(e) => setCnpj(mascaraCNPJ(e.target.value))} className="w-56"
+              onKeyDown={(e) => { if (e.key === 'Enter') buscar(); }} />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="arp-periodo" className="text-sm font-medium text-foreground">Início da ata</label>
+            <Select value={meses} onValueChange={setMeses}>
+              <SelectTrigger id="arp-periodo" className="w-72"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="12">Atas iniciadas nos últimos 12 meses</SelectItem>
+                <SelectItem value="24">Atas iniciadas nos últimos 24 meses</SelectItem>
+                <SelectItem value="36">Atas iniciadas nos últimos 36 meses</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <Button onClick={buscar} disabled={buscando}>
-            {buscando ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Search className="w-4 h-4 mr-1" />}
+            {buscando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
             Buscar
           </Button>
-          <a href="https://contratos.sistema.gov.br/transparencia" target="_blank" rel="noopener noreferrer">
-            <Button variant="ghost" size="sm">
-              <ExternalLink className="w-4 h-4 mr-1" /> Abrir Portal
-            </Button>
-          </a>
+          <Button asChild variant="ghost">
+            <a href="https://contratos.sistema.gov.br/transparencia" target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="h-4 w-4" /> Abrir portal
+            </a>
+          </Button>
           {itens.length > 0 && (
-            <Button variant="outline" size="sm" onClick={exportar}>
-              <Download className="w-4 h-4 mr-1" /> Exportar CSV
+            <Button variant="outline" onClick={exportar}>
+              <Download className="h-4 w-4" /> Exportar CSV
             </Button>
           )}
         </div>
 
-        {erro && <p className="text-sm text-destructive mt-3">{erro}</p>}
+        {erro && (
+          <Alert variant="destructive" className="mt-4">
+            <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+            <AlertDescription>{erro}</AlertDescription>
+          </Alert>
+        )}
       </div>
 
       {buscou && !buscando && !erro && itens.length === 0 && (
-        <Card className="p-8 text-center text-sm text-muted-foreground">
-          Nenhuma ata encontrada para este fornecedor na janela escolhida. A busca cobre atas
-          INICIADAS no período — amplie a janela para alcançar atas mais antigas.
+        <Card>
+          <EstadoVazio
+            icone={<FileText />}
+            titulo="Nenhuma ata encontrada para este fornecedor"
+            descricao="A busca cobre atas INICIADAS na janela escolhida — amplie a janela para alcançar atas mais antigas."
+          />
         </Card>
       )}
 
       {itens.length > 0 && (
         <>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <div className="stat-card">
-              <div className="flex items-center gap-2 mb-1">
-                <FileText className="w-4 h-4 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">Atas</span>
-              </div>
-              <p className="text-2xl font-bold tabular-nums">{atas.size}</p>
-              <span className="text-xs text-muted-foreground">{atasVigentes} vigente(s) hoje</span>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+              <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                <FileText className="h-4 w-4" aria-hidden="true" />
+                Atas
+              </p>
+              <p className="mt-2 text-[2rem] font-bold leading-10 tabular-nums text-foreground">{atas.size}</p>
+              <p className="text-xs text-muted-foreground">{atasVigentes} vigente(s) hoje</p>
             </div>
-            <div className="stat-card">
-              <div className="flex items-center gap-2 mb-1">
-                <Building2 className="w-4 h-4 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">Itens registrados</span>
-              </div>
-              <p className="text-2xl font-bold tabular-nums">{itens.length}</p>
+            <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+              <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Building2 className="h-4 w-4" aria-hidden="true" />
+                Itens registrados
+              </p>
+              <p className="mt-2 text-[2rem] font-bold leading-10 tabular-nums text-foreground">{itens.length}</p>
             </div>
-            <div className="stat-card lg:col-span-2">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs text-muted-foreground">Valor total registrado</span>
-              </div>
-              <p className="text-2xl font-bold tabular-nums">{brlExato(totalRegistrado)}</p>
+            <div className="rounded-lg border border-border bg-card p-6 shadow-sm lg:col-span-2">
+              <p className="text-sm text-muted-foreground">Valor total registrado</p>
+              <p className="mt-2 text-[2rem] font-bold leading-10 tabular-nums text-foreground">{brlExato(totalRegistrado)}</p>
             </div>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-4">
             {[...atas.entries()].map(([chave, grupo]) => {
               const a = grupo[0];
               const vigente = (a.dataVigenciaFinal ?? '') >= hoje;
               const link = linkPncpDaCompra(a.numeroControlePncpCompra);
               return (
-                <Card key={chave} className="p-4">
-                  <div className="flex items-start justify-between gap-3 flex-wrap mb-2">
+                <Card key={chave} className="p-6">
+                  <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold flex items-center gap-2 flex-wrap">
+                      <h3 className="flex flex-wrap items-center gap-2 text-lg font-semibold text-foreground">
                         Ata {a.numeroAtaRegistroPreco}
-                        <Badge variant="outline" className={`text-xs ${vigente ? 'border-success/40 text-success' : 'border-muted-foreground/30 text-muted-foreground'}`}>
-                          {vigente ? 'Vigente' : 'Encerrada'}
-                        </Badge>
-                        {a.nomeModalidadeCompra && <Badge variant="outline" className="text-xs">{a.nomeModalidadeCompra}</Badge>}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
+                        <Badge variant={vigente ? 'success' : 'muted'}>{vigente ? 'Vigente' : 'Encerrada'}</Badge>
+                        {a.nomeModalidadeCompra && <Badge variant="info">{a.nomeModalidadeCompra}</Badge>}
+                      </h3>
+                      <p className="mt-1 text-sm text-muted-foreground">
                         {a.nomeUnidadeGerenciadora ?? `UG ${a.codigoUnidadeGerenciadora}`} ·
                         vigência {dataBr(a.dataVigenciaInicial)} a {dataBr(a.dataVigenciaFinal)}
                       </p>
                     </div>
                     {link && (
                       <a href={link} target="_blank" rel="noreferrer"
-                        className="text-xs text-primary inline-flex items-center gap-1 hover:underline shrink-0">
-                        Ver no PNCP <ExternalLink className="w-3 h-3" />
+                        className="inline-flex shrink-0 items-center gap-1 text-sm text-primary hover:underline">
+                        Ver no PNCP <ExternalLink className="h-3 w-3" aria-hidden="true" />
                       </a>
                     )}
                   </div>
-                  <div className="divide-y divide-border/40 rounded-md border border-border/40">
+                  <div className="divide-y divide-border rounded-md border border-border">
                     {grupo.map((i) => (
-                      <div key={`${chave}-${i.numeroItem}`} className="flex items-start justify-between gap-3 p-2.5 text-xs">
+                      <div key={`${chave}-${i.numeroItem}`} className="flex items-start justify-between gap-3 p-3 text-sm">
                         <div className="min-w-0">
-                          <p className="font-medium">Item {Number(i.numeroItem)} · {(i.descricaoItem ?? '—').substring(0, 140)}</p>
-                          <p className="text-muted-foreground mt-0.5">
+                          <p className="font-medium text-foreground">Item {Number(i.numeroItem)} · {(i.descricaoItem ?? '—').substring(0, 140)}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">
                             homologado: {i.quantidadeHomologadaVencedor?.toLocaleString('pt-BR') ?? '—'} ·
                             empenhado: {i.quantidadeEmpenhada?.toLocaleString('pt-BR') ?? '0'}
                           </p>
                         </div>
-                        <div className="text-right shrink-0 tabular-nums">
-                          <p className="font-semibold">{brlExato(i.valorTotal)}</p>
-                          <p className="text-muted-foreground">unit.: {brlExato(i.valorUnitario)}</p>
+                        <div className="shrink-0 text-right tabular-nums">
+                          <p className="font-semibold text-foreground">{brlExato(i.valorTotal)}</p>
+                          <p className="text-xs text-muted-foreground">unit.: {brlExato(i.valorUnitario)}</p>
                         </div>
                       </div>
                     ))}

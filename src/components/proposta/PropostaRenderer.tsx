@@ -1,5 +1,6 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { ShieldCheck, FileSignature, Loader2, CheckCircle2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -113,8 +114,8 @@ function RenderSection({ title, content }: { title: string; content: string }) {
                 <Table>
                   <TableBody>
                     {table.rows.map((row, ri) => (
-                      <TableRow key={ri} className={ri % 2 === 0 ? 'bg-muted/30' : ''}>
-                        <TableCell className="font-semibold text-foreground w-1/3 py-2 px-3 text-sm border-r border-border/50">
+                      <TableRow key={ri} className={ri % 2 === 0 ? 'bg-muted' : undefined}>
+                        <TableCell className="font-semibold text-foreground w-1/3 py-2 px-3 text-sm border-r border-border">
                           {row[0]?.replace(/\*\*/g, '')}
                         </TableCell>
                         <TableCell className="py-2 px-3 text-sm">
@@ -133,9 +134,9 @@ function RenderSection({ title, content }: { title: string; content: string }) {
             <div key={idx} className="rounded border border-border overflow-x-auto my-4">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-foreground/90">
+                  <TableRow className="bg-foreground">
                     {table.headers.map((h, hi) => (
-                      <TableHead key={hi} className="font-bold text-background text-xs whitespace-nowrap py-2 px-2 text-center border border-border/30">
+                      <TableHead key={hi} className="whitespace-nowrap border border-border px-2 py-2 text-center text-sm font-semibold text-background">
                         {h.replace(/\*\*/g, '')}
                       </TableHead>
                     ))}
@@ -143,9 +144,9 @@ function RenderSection({ title, content }: { title: string; content: string }) {
                 </TableHeader>
                 <TableBody>
                   {table.rows.map((row, ri) => (
-                    <TableRow key={ri} className={ri % 2 === 0 ? 'bg-muted/20' : ''}>
+                    <TableRow key={ri} className={ri % 2 === 0 ? 'bg-muted' : undefined}>
                       {row.map((cell, ci) => (
-                        <TableCell key={ci} className="py-2 px-2 text-xs text-center border border-border/20 whitespace-nowrap">
+                        <TableCell key={ci} className="whitespace-nowrap border border-border px-2 py-2 text-center text-sm">
                           {cell.replace(/\*\*/g, '') || '—'}
                         </TableCell>
                       ))}
@@ -182,11 +183,11 @@ function RenderSection({ title, content }: { title: string; content: string }) {
             }
 
             if (trimmed === '---' || trimmed === '___') {
-              return <hr key={li} className="border-border/50 my-4" />;
+              return <hr key={li} className="my-4 border-border" />;
             }
 
             if (trimmed.startsWith('___')) {
-              return <div key={li} className="border-b-2 border-foreground/60 w-72 mx-auto my-6" />;
+              return <div key={li} className="mx-auto my-6 w-72 border-b-2 border-foreground" />;
             }
 
             return (
@@ -203,7 +204,7 @@ function RenderSection({ title, content }: { title: string; content: string }) {
   return (
     <div className="space-y-2">
       {title && (
-        <h3 className="font-bold text-sm text-foreground uppercase tracking-wide border-b border-border/50 pb-1 mb-2">
+        <h3 className="mb-2 border-b border-border pb-1 text-sm font-bold uppercase tracking-wide text-foreground">
           {title.replace(/\*\*/g, '')}
         </h3>
       )}
@@ -236,13 +237,13 @@ function AssinaturaCertificado({ empresaData, repData }: AssinaturaCertificadoPr
   };
 
   return (
-    <div className="border-t border-border/50 pt-4 mt-4 space-y-3">
+    <div className="mt-4 space-y-3 border-t border-border pt-4">
       <div className="flex items-center gap-2 mb-2">
         <FileSignature className="w-4 h-4 text-muted-foreground" />
         <p className="font-bold text-sm text-foreground uppercase tracking-wide">Assinatura Digital</p>
       </div>
 
-      <div className="bg-muted/30 rounded border border-border/50 p-3 space-y-2">
+      <div className="space-y-2 rounded-md border border-border bg-muted p-3">
         <div className="flex items-center gap-2">
           <ShieldCheck className="w-4 h-4 text-muted-foreground" />
           <div>
@@ -254,28 +255,28 @@ function AssinaturaCertificado({ empresaData, repData }: AssinaturaCertificadoPr
         </div>
 
         {hasCertificado ? (
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="inline-flex items-center rounded-full border border-border px-2.5 py-0.5 text-xs font-semibold">
-              <ShieldCheck className="w-3 h-3 mr-1" />
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="info">
+              <ShieldCheck className="w-3 h-3 mr-1" aria-hidden="true" />
               {empresaData?.certificado_tipo === 'e-cnpj' ? 'e-CNPJ' : 'e-CPF'} — {empresaData?.certificado_nome}
-            </span>
+            </Badge>
             {assinado ? (
-              <span className="inline-flex items-center rounded-full bg-success/20 text-success border border-success/30 px-2.5 py-0.5 text-xs font-semibold">
-                <CheckCircle2 className="w-3 h-3 mr-1" />
+              <Badge variant="success">
+                <CheckCircle2 className="w-3 h-3 mr-1" aria-hidden="true" />
                 Assinado digitalmente
-              </span>
+              </Badge>
             ) : (
-              <Button size="sm" onClick={handleAssinar} disabled={assinando} className="h-7 text-xs">
+              <Button size="sm" onClick={handleAssinar} disabled={assinando}>
                 {assinando ? (
-                  <><Loader2 className="w-3 h-3 animate-spin mr-1" /> Assinando...</>
+                  <><Loader2 className="w-4 h-4 animate-spin" /> Assinando...</>
                 ) : (
-                  <><FileSignature className="w-3 h-3 mr-1" /> Assinar com Certificado Digital</>
+                  <><FileSignature className="w-4 h-4" /> Assinar com certificado digital</>
                 )}
               </Button>
             )}
           </div>
         ) : (
-          <p className="text-xs text-muted-foreground italic">
+          <p className="text-xs text-muted-foreground">
             Nenhum certificado digital cadastrado. Cadastre em <strong>Configurações &gt; Empresas</strong> para habilitar.
           </p>
         )}
@@ -291,7 +292,7 @@ export default function PropostaRenderer({ proposal, empresaData, repData, timbr
     <div className="space-y-4 font-serif relative" style={{ fontFamily: "'Times New Roman', Times, serif", fontSize: '12pt', lineHeight: '1.5' }}>
       {/* Timbrado header */}
       {timbradoUrl && /\.(png|jpe?g|webp|svg)(\?|$)/i.test(timbradoUrl) && (
-        <div className="border-b border-border/30 pb-3 mb-3">
+        <div className="mb-3 border-b border-border pb-3">
           <img src={timbradoUrl} alt="Timbrado" className="h-16 max-w-[300px] object-contain" />
         </div>
       )}

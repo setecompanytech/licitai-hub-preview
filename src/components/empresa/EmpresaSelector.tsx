@@ -22,10 +22,10 @@ export default function EmpresaSelector() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="flex items-center gap-2 h-10 px-3 rounded-lg border border-border bg-card hover:bg-muted transition-colors text-sm font-medium text-foreground max-w-[280px]">
-          <Building2 className="w-4 h-4 text-primary flex-shrink-0" />
+        <button className="flex items-center gap-2 h-10 px-3 rounded-lg border border-sidebar-border bg-sidebar-accent/50 hover:bg-sidebar-accent transition-colors text-sm font-medium text-sidebar-foreground max-w-[280px]">
+          <Building2 className="w-4 h-4 text-sidebar-primary flex-shrink-0" />
           <span className="truncate">{label}</span>
-          <ChevronDown className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+          <ChevronDown className="w-3.5 h-3.5 text-sidebar-foreground/60 flex-shrink-0" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64">

@@ -66,52 +66,34 @@ export default function SkeletonPagina({
   }
 
   return (
-    <div role="status" aria-busy="true" className="min-h-screen bg-background flex items-start">
+    <div role="status" aria-busy="true" className="min-h-screen bg-background flex flex-col">
       <span className="sr-only">Carregando</span>
 
-      {/* Coluna lateral navy — 248px e marca de 72px, como a real; some no
-          mobile, como a real. As medidas andam junto com AppLayout/AppSidebar:
-          esqueleto de outro tamanho faz a moldura "corrigir" ao montar. */}
+      {/* A mesma faixa navy do AppLayout: marca, navegação no centro e as
+          ações à direita. Esqueleto de outra forma faz a moldura "corrigir"
+          a posição ao montar, e o olho lê isso como defeito. */}
       <div
         aria-hidden="true"
-        className="hidden md:flex w-[248px] shrink-0 flex-col bg-sidebar border-r border-sidebar-border sticky top-0 h-screen"
+        className="sticky top-0 z-40 h-16 md:h-[72px] bg-sidebar border-b border-sidebar-border flex items-center gap-2 px-4 md:px-6"
       >
-        <div className="flex items-center h-[72px] px-4 border-b border-sidebar-border">
-          <BrandLogo variant="dark" className="w-[150px]" />
-        </div>
-        <div className="flex flex-col gap-1 p-3">
-          <div className="h-9 w-full rounded-lg bg-sidebar-accent/60 mb-2" />
-          {Array.from({ length: 9 }, (_, i) => (
-            <div key={i} className="flex items-center gap-2.5 px-2 py-2">
-              <div className="h-4 w-4 rounded bg-sidebar-accent" />
-              <div className="h-3 rounded bg-sidebar-accent" style={{ width: `${52 + ((i * 13) % 34)}%` }} />
-            </div>
+        <BrandLogo variant="dark" className="w-[150px] lg:w-[176px]" />
+        <div className="hidden md:flex flex-1 items-center justify-center gap-1">
+          {Array.from({ length: 6 }, (_, i) => (
+            <div key={i} className="h-8 rounded-md bg-sidebar-accent/60" style={{ width: `${74 + ((i * 17) % 38)}px` }} />
           ))}
+        </div>
+        <div className="ml-auto flex items-center gap-1.5 md:ml-0">
+          <div className="w-8 h-8 rounded-lg bg-sidebar-accent/60" />
+          <div className="w-8 h-8 rounded-lg bg-sidebar-accent/60" />
+          <div className="hidden sm:block w-8 h-8 rounded-lg bg-sidebar-accent/60" />
+          <span className="hidden lg:block w-px h-6 bg-sidebar-border mx-1.5" />
+          <div className="hidden lg:block w-[168px] h-10 rounded-lg bg-sidebar-accent/60" />
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-sidebar-accent ring-1 ring-sidebar-border" />
         </div>
       </div>
 
-      <div className="flex-1 min-w-0 flex flex-col min-h-screen">
-        {/* Barra do topo branca — a mesma ordem do cabeçalho de verdade: lupa,
-            sino, sol, engrenagem, divisória, empresa, avatar. */}
-        <div
-          aria-hidden="true"
-          className="sticky top-0 z-30 h-16 md:h-[72px] bg-card border-b border-border flex items-center gap-3 px-4 md:px-8"
-        >
-          <BrandLogo className="w-[150px] md:hidden" />
-          <div className="ml-auto flex items-center gap-1.5">
-            <div className="w-8 h-8 rounded-lg bg-muted" />
-            <div className="w-8 h-8 rounded-lg bg-muted" />
-            <div className="hidden sm:block w-8 h-8 rounded-lg bg-muted" />
-            <div className="hidden sm:block w-8 h-8 rounded-lg bg-muted" />
-            <span className="hidden lg:block w-px h-6 bg-border mx-1.5" />
-            <div className="hidden lg:block w-[168px] h-9 rounded-lg bg-muted" />
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-muted ring-1 ring-border" />
-          </div>
-        </div>
-
-        <div className="flex-1 min-w-0 p-4 md:p-8">
-          <SkeletonCorpo cartoes={cartoes} />
-        </div>
+      <div className="flex-1 min-w-0 p-4 md:p-8">
+        <SkeletonCorpo cartoes={cartoes} />
       </div>
     </div>
   );

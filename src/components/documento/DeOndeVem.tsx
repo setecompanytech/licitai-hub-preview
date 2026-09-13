@@ -38,22 +38,22 @@ export default function DeOndeVem({
   if (itens.length === 0) return null;
 
   return (
-    <div className="rounded-lg border border-border bg-muted/30 p-3">
-      <h4 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5 mb-1.5">
-        <Info className="w-3.5 h-3.5" />
+    <div className="rounded-lg border border-border bg-muted p-4">
+      <h4 className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <Info className="h-4 w-4 shrink-0" aria-hidden="true" />
         De onde vêm estes números
       </h4>
-      <p className="text-xs text-muted-foreground leading-relaxed">
+      <p className="text-xs leading-relaxed text-muted-foreground">
         {itens.map((it, i) => (
           <span key={it.numero}>
-            {i > 0 && <span className="mx-1.5 opacity-40">•</span>}
-            <strong className="font-semibold text-foreground/80">{it.numero}</strong>
+            {i > 0 && <span className="mx-2 text-muted-foreground">•</span>}
+            <strong className="font-semibold text-foreground">{it.numero}</strong>
             {' = '}
             {it.origem}
             {it.ondeEditar && <span className="italic"> (muda em {it.ondeEditar})</span>}
           </span>
         ))}
-        {fecho && <span className="block mt-1.5">{fecho}</span>}
+        {fecho && <span className="mt-2 block">{fecho}</span>}
       </p>
     </div>
   );

@@ -1,5 +1,7 @@
-import { useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
+import LinhaKpis from '@/components/shared/LinhaKpis';
+import TarjaExemplo from '@/components/shared/TarjaExemplo';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -7,7 +9,7 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   ClipboardCheck, FileText, CheckCircle2, Clock, AlertTriangle,
-  ExternalLink, HelpCircle, Building2, Shield, RefreshCw
+  ExternalLink, HelpCircle, Building2, RefreshCw
 } from 'lucide-react';
 
 type CadastroPortal = {
@@ -41,119 +43,107 @@ const documentosNecessarios = [
   { nome: 'Certidão Municipal de Tributos', portal: 'CRC Municipal', status: 'expirado', validade: '2026-01-30' },
 ];
 
+/** Estado do cadastro → selo em tinta. Cor é reforço; o texto é a informação. */
 const statusConfig = {
-  ativo: { label: 'Ativo', color: 'bg-success/15 text-success border-success/30', icon: CheckCircle2 },
-  pendente: { label: 'Pendente', color: 'bg-warning/15 text-warning border-warning/30', icon: Clock },
-  expirado: { label: 'Expirado', color: 'bg-destructive/15 text-destructive border-destructive/30', icon: AlertTriangle },
-  nao_cadastrado: { label: 'Não cadastrado', color: 'bg-muted text-muted-foreground border-border', icon: HelpCircle },
+  ativo: { label: 'Ativo', variante: 'success' as const, icon: CheckCircle2 },
+  pendente: { label: 'Pendente', variante: 'warning' as const, icon: Clock },
+  expirado: { label: 'Expirado', variante: 'danger' as const, icon: AlertTriangle },
+  nao_cadastrado: { label: 'Não cadastrado', variante: 'muted' as const, icon: HelpCircle },
 };
 
-const docStatusConfig: Record<string, { label: string; color: string }> = {
-  ok: { label: 'OK', color: 'bg-success/15 text-success border-success/30' },
-  vencer: { label: 'A vencer', color: 'bg-warning/15 text-warning border-warning/30' },
-  pendente: { label: 'Pendente', color: 'bg-info/15 text-info border-info/30' },
-  expirado: { label: 'Expirado', color: 'bg-destructive/15 text-destructive border-destructive/30' },
+const docStatusConfig: Record<string, { label: string; variante: 'success' | 'warning' | 'danger' | 'info' }> = {
+  ok: { label: 'Regular', variante: 'success' },
+  vencer: { label: 'A vencer', variante: 'warning' },
+  pendente: { label: 'Pendente', variante: 'info' },
+  expirado: { label: 'Expirado', variante: 'danger' },
 };
 
 export default function AssessoriaCadastral() {
+  const ativos = cadastros.filter(c => c.status === 'ativo').length;
+  const pendentes = cadastros.filter(c => c.status === 'pendente').length;
+  const expirados = cadastros.filter(c => c.status === 'expirado').length;
+  const docsPendentes = cadastros.reduce((a, c) => a + c.documentosPendentes, 0);
+
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-            <ClipboardCheck className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground flex-shrink-0" />
-            Assessoria Cadastral
-          </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Suporte para cadastro no SICAF, CAUFESP, SIGA e demais CRCs
-          </p>
-        </div>
+        {/* Título, descrição, ícone e trilha vêm do registro
+            `lib/navegacao/paginas.ts` pela própria rota. */}
+        <CabecalhoPagina>
+          {/* A tela inteira ainda é lista fixa no código: enquanto não ler o
+              banco, ela se declara — cartão bonito com número inventado é
+              mais convincente, não mais verdadeiro. */}
+          <TarjaExemplo detalhe="Portais, validades e documentos ainda são lista fixa no código — esta tela não lê o banco." />
+        </CabecalhoPagina>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="stat-card text-center">
-            <CheckCircle2 className="w-5 h-5 mx-auto mb-1 text-success" />
-            <p className="text-lg font-bold">{cadastros.filter(c => c.status === 'ativo').length}</p>
-            <p className="text-xs text-muted-foreground">Ativos</p>
-          </div>
-          <div className="stat-card text-center">
-            <Clock className="w-5 h-5 mx-auto mb-1 text-warning" />
-            <p className="text-lg font-bold">{cadastros.filter(c => c.status === 'pendente').length}</p>
-            <p className="text-xs text-muted-foreground">Pendentes</p>
-          </div>
-          <div className="stat-card text-center">
-            <AlertTriangle className="w-5 h-5 mx-auto mb-1 text-destructive" />
-            <p className="text-lg font-bold">{cadastros.filter(c => c.status === 'expirado').length}</p>
-            <p className="text-xs text-muted-foreground">Expirados</p>
-          </div>
-          <div className="stat-card text-center">
-            <FileText className="w-5 h-5 mx-auto mb-1 text-info" />
-            <p className="text-lg font-bold">{cadastros.reduce((a, c) => a + c.documentosPendentes, 0)}</p>
-            <p className="text-xs text-muted-foreground">Docs Pendentes</p>
-          </div>
-        </div>
+        <LinhaKpis
+          itens={[
+            { rotulo: 'Ativos', valor: String(ativos), icone: CheckCircle2, tom: 'ok' },
+            { rotulo: 'Pendentes', valor: String(pendentes), icone: Clock, tom: 'aviso' },
+            { rotulo: 'Expirados', valor: String(expirados), icone: AlertTriangle, tom: 'aviso' },
+            { rotulo: 'Documentos pendentes', valor: String(docsPendentes), icone: FileText, tom: 'info' },
+          ]}
+        />
 
         <Tabs defaultValue="cadastros" className="space-y-4">
           <TabsList>
-            <TabsTrigger value="cadastros"><Building2 className="w-4 h-4 mr-1" /> Cadastros</TabsTrigger>
-            <TabsTrigger value="documentos"><FileText className="w-4 h-4 mr-1" /> Documentos</TabsTrigger>
+            <TabsTrigger value="cadastros"><Building2 className="w-4 h-4 mr-2" aria-hidden="true" /> Cadastros</TabsTrigger>
+            <TabsTrigger value="documentos"><FileText className="w-4 h-4 mr-2" aria-hidden="true" /> Documentos</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="cadastros" className="space-y-3">
+          <TabsContent value="cadastros" className="space-y-4">
             {cadastros.map(c => {
               const cfg = statusConfig[c.status];
               const Icon = cfg.icon;
               return (
-                <Card key={c.id} className="p-5">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-bold text-sm">{c.sigla}</span>
-                        <Badge variant="outline" className={cfg.color + ' text-xs'}>
-                          <Icon className="w-3 h-3 mr-1" /> {cfg.label}
+                <Card key={c.id} className="p-6">
+                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <span className="text-lg font-semibold">{c.sigla}</span>
+                        <Badge variant={cfg.variante}>
+                          <Icon className="w-3 h-3 mr-1" aria-hidden="true" /> {cfg.label}
                         </Badge>
                       </div>
-                      <p className="text-sm text-foreground">{c.nome}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{c.descricao}</p>
+                      <p className="text-base text-foreground">{c.nome}</p>
+                      <p className="text-sm text-muted-foreground mt-1">{c.descricao}</p>
                       {c.validade && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Validade: <span className="font-medium">{new Date(c.validade).toLocaleDateString('pt-BR')}</span>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Validade: <span className="font-medium tabular-nums">{new Date(c.validade).toLocaleDateString('pt-BR')}</span>
                         </p>
                       )}
                       {c.status !== 'ativo' && c.status !== 'nao_cadastrado' && (
-                        <div className="mt-2">
-                          <div className="flex items-center justify-between text-xs mb-1">
+                        <div className="mt-3 max-w-sm">
+                          <div className="flex items-center justify-between text-sm mb-1">
                             <span className="text-muted-foreground">Progresso do cadastro</span>
-                            <span className="font-medium">{c.progressoCadastro}%</span>
+                            <span className="font-medium tabular-nums">{c.progressoCadastro}%</span>
                           </div>
                           <Progress value={c.progressoCadastro} className="h-2" />
                         </div>
                       )}
                     </div>
-                    <div className="flex flex-col gap-1 ml-4">
+                    <div className="flex flex-wrap items-center gap-2 md:flex-col md:items-end">
                       {c.status === 'nao_cadastrado' ? (
-                        <Button size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground" asChild>
+                        <Button size="sm" asChild>
                           <a href={c.url} target="_blank" rel="noopener noreferrer">
-                            <ClipboardCheck className="w-3 h-3 mr-1" /> Iniciar Cadastro
+                            <ClipboardCheck className="w-4 h-4" aria-hidden="true" /> Iniciar cadastro
                           </a>
                         </Button>
                       ) : c.status === 'expirado' ? (
-                        <Button size="sm" className="bg-warning hover:bg-warning/90 text-warning-foreground" asChild>
+                        <Button size="sm" asChild>
                           <a href={c.url} target="_blank" rel="noopener noreferrer">
-                            <RefreshCw className="w-3 h-3 mr-1" /> Renovar
+                            <RefreshCw className="w-4 h-4" aria-hidden="true" /> Renovar
                           </a>
                         </Button>
                       ) : (
                         <Button size="sm" variant="outline" asChild>
                           <a href={c.url} target="_blank" rel="noopener noreferrer">
-                            <ExternalLink className="w-3 h-3 mr-1" /> Acessar Portal
+                            <ExternalLink className="w-4 h-4" aria-hidden="true" /> Acessar portal
                           </a>
                         </Button>
                       )}
                       {c.documentosPendentes > 0 && (
-                        <Badge variant="outline" className="bg-warning/15 text-warning border-warning/30 text-xs justify-center">
-                          {c.documentosPendentes} docs pendentes
-                        </Badge>
+                        <Badge variant="warning">{c.documentosPendentes} documentos pendentes</Badge>
                       )}
                     </div>
                   </div>
@@ -163,21 +153,21 @@ export default function AssessoriaCadastral() {
           </TabsContent>
 
           <TabsContent value="documentos">
-            <Card className="p-5">
-              <h3 className="text-sm font-semibold mb-4">Documentos para Habilitação</h3>
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold mb-4">Documentos para habilitação</h3>
               <div className="space-y-2">
                 {documentosNecessarios.map((doc, i) => {
                   const cfg = docStatusConfig[doc.status];
                   return (
-                    <div key={i} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <FileText className="w-4 h-4 text-muted-foreground" />
-                        <div>
-                          <p className="text-sm font-medium">{doc.nome}</p>
-                          <p className="text-xs text-muted-foreground">{doc.portal}{doc.validade ? ` • Validade: ${new Date(doc.validade).toLocaleDateString('pt-BR')}` : ''}</p>
+                    <div key={i} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-muted p-3">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <FileText className="w-4 h-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                        <div className="min-w-0">
+                          <p className="text-base font-medium">{doc.nome}</p>
+                          <p className="text-sm text-muted-foreground">{doc.portal}{doc.validade ? ` • Validade: ${new Date(doc.validade).toLocaleDateString('pt-BR')}` : ''}</p>
                         </div>
                       </div>
-                      <Badge variant="outline" className={cfg.color + ' text-xs'}>{cfg.label}</Badge>
+                      <Badge variant={cfg.variante}>{cfg.label}</Badge>
                     </div>
                   );
                 })}

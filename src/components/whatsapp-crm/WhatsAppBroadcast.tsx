@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -135,103 +136,122 @@ export default function WhatsAppBroadcast() {
     setNewCampanha(prev => ({ ...prev, mensagem: template.conteudo }));
   };
 
+  // Status sempre com TEXTO — a cor é reforço, nunca a única pista.
   const statusBadge = (status: string) => {
-    const map: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-      rascunho: { label: 'Rascunho', variant: 'outline' },
-      executada: { label: 'Executada', variant: 'default' },
-      agendada: { label: 'Agendada', variant: 'secondary' },
+    const map: Record<string, { label: string; variant: 'success' | 'info' | 'muted' }> = {
+      rascunho: { label: 'Rascunho', variant: 'muted' },
+      executada: { label: 'Executada', variant: 'success' },
+      agendada: { label: 'Agendada', variant: 'info' },
     };
-    const info = map[status] || { label: status, variant: 'outline' as const };
-    return <Badge variant={info.variant} className="text-xs">{info.label}</Badge>;
+    const info = map[status] || { label: status, variant: 'muted' as const };
+    return <Badge variant={info.variant}>{info.label}</Badge>;
   };
 
-  if (loading) return <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" aria-hidden="true" />
+        <span className="sr-only">Carregando as campanhas</span>
+      </div>
+    );
+  }
+
+  const dialogNovaCampanha = (
+    <Dialog open={showNew} onOpenChange={setShowNew}>
+      <DialogTrigger asChild>
+        <Button><Plus aria-hidden="true" />Nova campanha</Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-lg">
+        <DialogHeader><DialogTitle>Nova campanha de disparo</DialogTitle></DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="campanha-nome">Nome da campanha</Label>
+            <Input id="campanha-nome" value={newCampanha.nome} onChange={e => setNewCampanha(p => ({ ...p, nome: e.target.value }))} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="campanha-setor">Setor (opcional)</Label>
+            <Select value={newCampanha.setor} onValueChange={v => setNewCampanha(p => ({ ...p, setor: v }))}>
+              <SelectTrigger id="campanha-setor"><SelectValue placeholder="Todos os setores" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="licitações">Licitações</SelectItem>
+                <SelectItem value="jurídico">Jurídico</SelectItem>
+                <SelectItem value="financeiro">Financeiro</SelectItem>
+                <SelectItem value="documentos">Documentos</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {templates.length > 0 && (
+            <div className="space-y-1.5">
+              <Label>Usar modelo</Label>
+              <div className="flex flex-wrap gap-2">
+                {templates.map(t => (
+                  <Button key={t.id} variant="outline" size="sm" onClick={() => applyTemplate(t)}>{t.nome}</Button>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="space-y-1.5">
+            <Label htmlFor="campanha-mensagem">Mensagem</Label>
+            <Textarea id="campanha-mensagem" value={newCampanha.mensagem} onChange={e => setNewCampanha(p => ({ ...p, mensagem: e.target.value }))} rows={4} placeholder="Use {{nome}} para personalizar" />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="campanha-destinatarios">Destinatários (telefone por linha, opcionalmente: telefone, nome)</Label>
+            <Textarea id="campanha-destinatarios" value={newCampanha.destinatarios} onChange={e => setNewCampanha(p => ({ ...p, destinatarios: e.target.value }))} rows={4} className="font-mono text-sm" placeholder="11999999999, João&#10;11988888888, Maria" />
+          </div>
+          <Button onClick={handleCreate} className="w-full">Criar campanha</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <p className="text-sm text-muted-foreground">{campanhas.length} campanhas</p>
-        <Dialog open={showNew} onOpenChange={setShowNew}>
-          <DialogTrigger asChild>
-            <Button size="sm" className="gap-1.5"><Plus className="w-4 h-4" />Nova Campanha</Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-lg">
-            <DialogHeader><DialogTitle>Nova Campanha de Envio em Massa</DialogTitle></DialogHeader>
-            <div className="space-y-3">
-              <div><Label className="text-xs">Nome da Campanha</Label><Input value={newCampanha.nome} onChange={e => setNewCampanha(p => ({ ...p, nome: e.target.value }))} className="mt-1" /></div>
-              <div>
-                <Label className="text-xs">Setor (opcional)</Label>
-                <Select value={newCampanha.setor} onValueChange={v => setNewCampanha(p => ({ ...p, setor: v }))}>
-                  <SelectTrigger className="mt-1"><SelectValue placeholder="Todos os setores" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="licitações">Licitações</SelectItem>
-                    <SelectItem value="jurídico">Jurídico</SelectItem>
-                    <SelectItem value="financeiro">Financeiro</SelectItem>
-                    <SelectItem value="documentos">Documentos</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {templates.length > 0 && (
-                <div>
-                  <Label className="text-xs">Usar Template</Label>
-                  <div className="flex gap-1 mt-1 flex-wrap">
-                    {templates.map(t => (
-                      <Button key={t.id} variant="outline" size="sm" className="text-xs h-7" onClick={() => applyTemplate(t)}>{t.nome}</Button>
-                    ))}
-                  </div>
-                </div>
-              )}
-              <div>
-                <Label className="text-xs">Mensagem</Label>
-                <Textarea value={newCampanha.mensagem} onChange={e => setNewCampanha(p => ({ ...p, mensagem: e.target.value }))} rows={4} className="mt-1" placeholder="Use {{nome}} para personalizar" />
-              </div>
-              <div>
-                <Label className="text-xs">Destinatários (telefone por linha, opcionalmente: telefone, nome)</Label>
-                <Textarea value={newCampanha.destinatarios} onChange={e => setNewCampanha(p => ({ ...p, destinatarios: e.target.value }))} rows={4} className="mt-1 font-mono text-xs" placeholder="11999999999, João&#10;11988888888, Maria" />
-              </div>
-              <Button onClick={handleCreate} className="w-full">Criar Campanha</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm text-muted-foreground tabular-nums">{campanhas.length} campanhas</p>
+        {dialogNovaCampanha}
       </div>
 
-      <div className="grid gap-3">
+      <div className="grid gap-4">
         {campanhas.length === 0 ? (
-          <Card className="p-10 text-center">
-            <Megaphone className="w-10 h-10 mx-auto mb-3 text-muted-foreground/30" />
-            <p className="text-sm text-muted-foreground">Nenhuma campanha criada ainda</p>
-          </Card>
+          <EstadoVazio
+            icone={<Megaphone aria-hidden="true" />}
+            titulo="Nenhuma campanha criada ainda"
+            descricao="Monte uma lista de destinatários, escreva a mensagem e dispare de uma vez."
+            acao={<Button onClick={() => setShowNew(true)}><Plus aria-hidden="true" />Nova campanha</Button>}
+          />
         ) : (
           campanhas.map(c => (
-            <Card key={c.id} className="p-4">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <p className="text-sm font-semibold">{c.nome}</p>
+            <Card key={c.id} className="p-6">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0 flex-1">
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <h3 className="text-lg font-semibold text-foreground">{c.nome}</h3>
                     {statusBadge(c.status)}
-                    {c.setor && <Badge variant="outline" className="text-xs">{c.setor}</Badge>}
+                    {c.setor && <Badge variant="muted" truncate>{c.setor}</Badge>}
                   </div>
-                  <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{c.mensagem}</p>
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1"><Users className="w-3 h-3" />{c.total_destinatarios} destinatários</span>
+                  <p className="mb-3 text-sm text-muted-foreground line-clamp-2">{c.mensagem}</p>
+                  <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                    <span className="flex items-center gap-1 tabular-nums"><Users className="w-4 h-4" aria-hidden="true" />{c.total_destinatarios} destinatários</span>
                     {c.status === 'executada' && (
                       <>
-                        <span className="flex items-center gap-1 text-success"><CheckCircle2 className="w-3 h-3" />{c.enviados || c.total_destinatarios} enviados</span>
-                        {c.erros > 0 && <span className="flex items-center gap-1 text-destructive"><XCircle className="w-3 h-3" />{c.erros} erros</span>}
+                        <span className="flex items-center gap-1 tabular-nums text-success"><CheckCircle2 className="w-4 h-4" aria-hidden="true" />{c.enviados || c.total_destinatarios} enviados</span>
+                        {c.erros > 0 && <span className="flex items-center gap-1 tabular-nums text-destructive"><XCircle className="w-4 h-4" aria-hidden="true" />{c.erros} erros</span>}
                       </>
                     )}
-                    <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{new Date(c.created_at).toLocaleDateString('pt-BR')}</span>
+                    <span className="flex items-center gap-1 tabular-nums"><Clock className="w-4 h-4" aria-hidden="true" />{new Date(c.created_at).toLocaleDateString('pt-BR')}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-1 ml-3">
+                <div className="flex flex-shrink-0 flex-wrap items-center gap-2">
                   {c.status === 'rascunho' && (
-                    <Button size="sm" variant="outline" className="gap-1 text-xs" onClick={() => handleExecute(c.id)} disabled={sending === c.id}>
-                      {sending === c.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                    <Button size="sm" variant="outline" onClick={() => handleExecute(c.id)} disabled={sending === c.id}>
+                      {sending === c.id
+                        ? <Loader2 className="animate-spin" aria-hidden="true" />
+                        : <Send aria-hidden="true" />}
                       Enviar
                     </Button>
                   )}
-                  <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleDelete(c.id)}>
-                    <Trash2 className="w-4 h-4 text-destructive" />
+                  <Button size="sm" variant="ghost" onClick={() => handleDelete(c.id)} aria-label={`Remover a campanha ${c.nome}`}>
+                    <Trash2 className="text-destructive" aria-hidden="true" />
                   </Button>
                 </div>
               </div>

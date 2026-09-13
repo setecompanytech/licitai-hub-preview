@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MessageSquare, Users, Megaphone, FileText, BarChart3, Route } from 'lucide-react';
 import WhatsAppInbox from '@/components/whatsapp-crm/WhatsAppInbox';
@@ -14,47 +15,40 @@ export default function WhatsAppCRM() {
 
   return (
     <AppLayout>
-      <div className="space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
-            <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
-          </div>
-          <div className="min-w-0">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">WhatsApp CRM</h1>
-            <p className="text-xs sm:text-sm text-muted-foreground truncate">Gerencie conversas, leads e campanhas em um único painel</p>
-          </div>
-        </div>
-
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid grid-cols-3 sm:grid-cols-6 w-full max-w-3xl gap-1">
-            <TabsTrigger value="inbox" className="gap-1.5 text-xs">
-              <MessageSquare className="w-3.5 h-3.5" />Caixa de Entrada
+      {/* O <Tabs> embrulha o cabeçalho porque a TabsList mora nele: gatilho e
+          conteúdo precisam do mesmo contexto. Título, descrição, ícone e
+          trilha vêm do registro `lib/navegacao/paginas.ts`. */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <CabecalhoPagina>
+          <TabsList>
+            <TabsTrigger value="inbox">
+              <MessageSquare className="w-4 h-4 mr-2" aria-hidden="true" />Caixa de entrada
             </TabsTrigger>
-            <TabsTrigger value="pipeline" className="gap-1.5 text-xs">
-              <Users className="w-3.5 h-3.5" />Pipeline
+            <TabsTrigger value="pipeline">
+              <Users className="w-4 h-4 mr-2" aria-hidden="true" />Funil
             </TabsTrigger>
-            <TabsTrigger value="routing" className="gap-1.5 text-xs">
-              <Route className="w-3.5 h-3.5" />Roteamento IA
+            <TabsTrigger value="routing">
+              <Route className="w-4 h-4 mr-2" aria-hidden="true" />Roteamento
             </TabsTrigger>
-            <TabsTrigger value="broadcast" className="gap-1.5 text-xs">
-              <Megaphone className="w-3.5 h-3.5" />Envio em Massa
+            <TabsTrigger value="broadcast">
+              <Megaphone className="w-4 h-4 mr-2" aria-hidden="true" />Disparos
             </TabsTrigger>
-            <TabsTrigger value="templates" className="gap-1.5 text-xs">
-              <FileText className="w-3.5 h-3.5" />Templates
+            <TabsTrigger value="templates">
+              <FileText className="w-4 h-4 mr-2" aria-hidden="true" />Modelos
             </TabsTrigger>
-            <TabsTrigger value="dashboard" className="gap-1.5 text-xs">
-              <BarChart3 className="w-3.5 h-3.5" />Métricas
+            <TabsTrigger value="dashboard">
+              <BarChart3 className="w-4 h-4 mr-2" aria-hidden="true" />Painel
             </TabsTrigger>
           </TabsList>
+        </CabecalhoPagina>
 
-          <TabsContent value="inbox"><WhatsAppInbox /></TabsContent>
-          <TabsContent value="pipeline"><WhatsAppPipeline /></TabsContent>
-          <TabsContent value="routing"><WhatsAppRoutingConfig /></TabsContent>
-          <TabsContent value="broadcast"><WhatsAppBroadcast /></TabsContent>
-          <TabsContent value="templates"><WhatsAppTemplates /></TabsContent>
-          <TabsContent value="dashboard"><WhatsAppDashboard /></TabsContent>
-        </Tabs>
-      </div>
+        <TabsContent value="inbox"><WhatsAppInbox /></TabsContent>
+        <TabsContent value="pipeline"><WhatsAppPipeline /></TabsContent>
+        <TabsContent value="routing"><WhatsAppRoutingConfig /></TabsContent>
+        <TabsContent value="broadcast"><WhatsAppBroadcast /></TabsContent>
+        <TabsContent value="templates"><WhatsAppTemplates /></TabsContent>
+        <TabsContent value="dashboard"><WhatsAppDashboard /></TabsContent>
+      </Tabs>
     </AppLayout>
   );
 }

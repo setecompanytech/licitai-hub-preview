@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Upload, FileText, Loader2, X, Search,
@@ -341,15 +342,13 @@ Este relatório possui finalidade meramente informativa e não substitui parecer
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center gap-2">
-        <Scale className="w-5 h-5 text-muted-foreground" />
-        <h3 className="font-semibold text-sm">Análise Jurídico-Contábil de Concorrente</h3>
-        <Badge variant="outline" className="text-xs bg-muted text-muted-foreground border-border">
-          Lei 14.133/2021
-        </Badge>
+      <div className="flex flex-wrap items-center gap-3">
+        <Scale className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+        <h3 className="text-lg font-semibold">Análise jurídico-contábil de concorrente</h3>
+        <Badge variant="muted">Lei 14.133/2021</Badge>
       </div>
 
-      <p className="text-xs text-muted-foreground">
+      <p className="max-w-3xl text-sm text-muted-foreground">
         Envie os documentos de habilitação do concorrente e o edital da licitação. A IA realizará a leitura integral dos documentos,
         o cruzamento das exigências editalícias e a análise de conformidade com a Lei 14.133/2021, identificando irregularidades,
         falhas e vícios com fundamentação legal específica.
@@ -357,11 +356,11 @@ Este relatório possui finalidade meramente informativa e não substitui parecer
 
       {/* Seletor de Licitação */}
       <div className="space-y-2">
-        <label className="text-xs font-medium text-muted-foreground">
+        <Label htmlFor="analise-concorrente-licitacao" className="text-sm">
           Processo licitatório vinculado (opcional)
-        </label>
+        </Label>
         <Select value={licitacaoSelecionada} onValueChange={setLicitacaoSelecionada}>
-          <SelectTrigger>
+          <SelectTrigger id="analise-concorrente-licitacao">
             <SelectValue placeholder="Selecione a licitação relacionada..." />
           </SelectTrigger>
           <SelectContent>
@@ -374,7 +373,7 @@ Este relatório possui finalidade meramente informativa e não substitui parecer
           </SelectContent>
         </Select>
         {licitacaoSelecionada && licitacaoSelecionada !== 'none' && (
-          <p className="text-xs text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             {licitacoes.find(l => l.id === licitacaoSelecionada)?.objeto}
           </p>
         )}
@@ -382,36 +381,38 @@ Este relatório possui finalidade meramente informativa e não substitui parecer
 
       {/* Edital Upload */}
       <div className="space-y-2">
-        <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-          <BookOpen className="w-3.5 h-3.5" />
-          Edital da Licitação (permite cruzamento de exigências)
-        </label>
+        <p className="flex items-center gap-2 text-sm font-medium text-foreground">
+          <BookOpen className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+          Edital da licitação (permite cruzamento de exigências)
+        </p>
         {editalFile ? (
-          <div className="bg-card rounded-xl border border-border/50 flex items-center gap-3 px-4 py-3">
-            <BookOpen className="w-4 h-4 text-muted-foreground shrink-0" />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{editalFile.nome}</p>
-              <p className="text-xs text-muted-foreground">{formatSize(editalFile.tamanho)}</p>
+          <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card px-4 py-3">
+            <BookOpen className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-base font-medium">{editalFile.nome}</p>
+              <p className="text-sm text-muted-foreground">{formatSize(editalFile.tamanho)}</p>
             </div>
             <Button
               size="sm"
               variant="ghost"
               onClick={() => setEditalFile(null)}
-              className="text-destructive hover:text-destructive"
+              className="text-destructive-ink hover:bg-destructive-tint hover:text-destructive-ink"
+              title="Remover o edital anexado"
+              aria-label={`Remover o edital ${editalFile.nome}`}
             >
-              <X className="w-3 h-3" />
+              <X className="h-4 w-4" aria-hidden="true" />
             </Button>
           </div>
         ) : (
           <button
             type="button"
             onClick={() => editalRef.current?.click()}
-            className="w-full border border-dashed border-border rounded-xl p-4 flex items-center gap-3 hover:border-accent hover:bg-accent/5 transition-colors"
+            className="flex w-full items-center gap-3 rounded-lg border border-dashed border-border p-4 transition-colors hover:border-primary hover:bg-primary-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <Upload className="w-5 h-5 text-muted-foreground" />
+            <Upload className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
             <div className="text-left">
-              <span className="text-sm font-medium text-foreground block">Anexar Edital (PDF/DOCX)</span>
-              <span className="text-xs text-muted-foreground">
+              <span className="block text-base font-medium text-foreground">Anexar edital (PDF/DOCX)</span>
+              <span className="text-sm text-muted-foreground">
                 A IA cruzará cada exigência do edital com os documentos do concorrente
               </span>
             </div>
@@ -428,20 +429,20 @@ Este relatório possui finalidade meramente informativa e não substitui parecer
 
       {/* Upload area - Documentos do concorrente */}
       <div className="space-y-2">
-        <label className="text-xs font-medium text-muted-foreground">
-          Documentos do Concorrente
-        </label>
+        <p className="text-sm font-medium text-foreground">
+          Documentos do concorrente
+        </p>
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
-          className="w-full border-2 border-dashed border-border rounded-xl p-6 flex flex-col items-center gap-2 hover:border-accent/50 hover:bg-accent/5 transition-colors"
+          className="flex w-full flex-col items-center gap-2 rounded-lg border-2 border-dashed border-border p-6 transition-colors hover:border-primary hover:bg-primary-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <Upload className="w-8 h-8 text-muted-foreground" />
-          <span className="text-sm font-medium text-foreground">
+          <Upload className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
+          <span className="text-base font-medium text-foreground">
             Envie documentos do concorrente para análise
           </span>
-          <span className="text-xs text-muted-foreground">
-            PDF, ZIP, Word, JPEG/PNG/WebP ou Excel — Máximo 150MB por arquivo
+          <span className="text-sm text-muted-foreground">
+            PDF, ZIP, Word, JPEG/PNG/WebP ou Excel — máximo 150MB por arquivo
           </span>
         </button>
         <input
@@ -456,25 +457,27 @@ Este relatório possui finalidade meramente informativa e não substitui parecer
 
       {/* File list */}
       {arquivos.length > 0 && (
-        <div className="bg-card rounded-xl border border-border/50 divide-y divide-border/30">
+        <div className="divide-y divide-border rounded-lg border border-border bg-card">
           {arquivos.map((arq) => (
-            <div key={arq.id} className="flex items-center gap-3 px-4 py-3">
+            <div key={arq.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
               {arq.nome.endsWith('.zip') ? (
-                <FileArchive className="w-4 h-4 text-muted-foreground shrink-0" />
+                <FileArchive className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
               ) : (
-                <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
+                <FileText className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
               )}
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{arq.nome}</p>
-                <p className="text-xs text-muted-foreground">{formatSize(arq.tamanho)}</p>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-base font-medium">{arq.nome}</p>
+                <p className="text-sm text-muted-foreground">{formatSize(arq.tamanho)}</p>
               </div>
               <Button
                 size="sm"
                 variant="ghost"
                 onClick={() => handleRemove(arq.id)}
-                className="text-destructive hover:text-destructive"
+                className="text-destructive-ink hover:bg-destructive-tint hover:text-destructive-ink"
+                title="Remover da lista"
+                aria-label={`Remover ${arq.nome} da lista`}
               >
-                <X className="w-3 h-3" />
+                <X className="h-4 w-4" aria-hidden="true" />
               </Button>
             </div>
           ))}
@@ -484,10 +487,11 @@ Este relatório possui finalidade meramente informativa e não substitui parecer
       {/* Observations */}
       {arquivos.length > 0 && (
         <div className="space-y-2">
-          <label className="text-xs font-medium text-muted-foreground">
-            Observações adicionais (opcional) — Ex: nº do edital, modalidade, requisitos específicos
-          </label>
+          <Label htmlFor="analise-concorrente-observacoes" className="text-sm">
+            Observações adicionais (opcional) — ex.: nº do edital, modalidade, requisitos específicos
+          </Label>
           <Textarea
+            id="analise-concorrente-observacoes"
             value={observacoes}
             onChange={(e) => setObservacoes(e.target.value)}
             placeholder="Ex: Pregão Eletrônico 001/2026 – exige Liquidez Corrente mínima de 1,5 e atestado com 50% do quantitativo..."
@@ -501,12 +505,12 @@ Este relatório possui finalidade meramente informativa e não substitui parecer
         <Button
           onClick={handleAnalisar}
           disabled={analisando}
-          className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
+          className="w-full"
         >
           {analisando ? (
-            <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Analisando documentos com IA...</>
+            <><Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Analisando documentos com IA…</>
           ) : (
-            <><Search className="w-4 h-4 mr-2" /> Analisar Documentos ({arquivos.length} arquivo{arquivos.length > 1 ? 's' : ''}{editalFile ? ' + Edital' : ''})</>
+            <><Search className="h-4 w-4" aria-hidden="true" /> Analisar documentos ({arquivos.length} arquivo{arquivos.length > 1 ? 's' : ''}{editalFile ? ' + edital' : ''})</>
           )}
         </Button>
       )}
@@ -514,32 +518,32 @@ Este relatório possui finalidade meramente informativa e não substitui parecer
       {/* Results */}
       {resultado && (
         <div className="space-y-3">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <h4 className="text-sm font-semibold">Relatório de Análise Jurídico-Contábil</h4>
-            <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h4 className="text-lg font-semibold">Relatório de análise jurídico-contábil</h4>
+            <div className="flex flex-wrap items-center gap-2">
               <Button size="sm" variant="outline" onClick={handleDownloadPDF}>
-                <Download className="w-3 h-3 mr-1" /> PDF
+                <Download className="h-4 w-4" aria-hidden="true" /> PDF
               </Button>
               <Button size="sm" variant="outline" onClick={handleDownloadDOCX}>
-                <Download className="w-3 h-3 mr-1" /> Word
+                <Download className="h-4 w-4" aria-hidden="true" /> Word
               </Button>
               <Button size="sm" variant="ghost" onClick={handleDownloadMD}>
-                <Download className="w-3 h-3 mr-1" /> .md
+                <Download className="h-4 w-4" aria-hidden="true" /> .md
               </Button>
             </div>
           </div>
 
-          <div className="bg-card rounded-xl border border-border/50 p-6 max-h-[700px] overflow-y-auto prose prose-sm dark:prose-invert max-w-none prose-p:mb-5 prose-p:leading-relaxed prose-li:mb-1.5 prose-headings:mt-8 prose-headings:mb-4 prose-headings:font-bold prose-ul:my-4 prose-ol:my-4 prose-h2:text-base prose-h2:border-b prose-h2:border-border/40 prose-h2:pb-2 prose-h3:text-sm prose-strong:text-foreground [&_ul]:list-disc [&_ul]:pl-6 [&_p+p]:mt-5">
+          <div className="prose prose-sm dark:prose-invert max-h-[700px] max-w-none overflow-y-auto rounded-lg border border-border bg-card p-6 prose-p:mb-5 prose-p:leading-relaxed prose-li:mb-2 prose-headings:mb-4 prose-headings:mt-8 prose-headings:font-bold prose-ul:my-4 prose-ol:my-4 prose-h2:border-b prose-h2:border-border prose-h2:pb-2 prose-h2:text-base prose-h3:text-sm prose-strong:text-foreground [&_ul]:list-disc [&_ul]:pl-6 [&_p+p]:mt-5">
             <ReactMarkdown>{resultado}</ReactMarkdown>
           </div>
         </div>
       )}
 
       {analisando && !resultado && (
-        <div className="bg-card rounded-xl border border-border/50 p-8 flex flex-col items-center gap-3 text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-          <p className="text-sm font-medium">{progressMsg || 'Analisando documentos...'}</p>
-          <p className="text-xs text-muted-foreground">
+        <div className="flex flex-col items-center gap-3 rounded-lg border border-border bg-card p-8 text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" aria-hidden="true" />
+          <p className="text-base font-medium">{progressMsg || 'Analisando documentos…'}</p>
+          <p className="max-w-xl text-sm text-muted-foreground">
             A IA está realizando leitura integral dos documentos, extração de dados concretos e análise
             de conformidade com a Lei 14.133/2021{editalFile ? ' e cruzamento com o edital' : ''}.
           </p>

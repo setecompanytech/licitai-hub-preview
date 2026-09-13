@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Slider } from '@/components/ui/slider';
-import { Upload, ImageIcon, X, Loader2, FileText, Eye, ArrowUp, ArrowDown, Printer, RotateCw, Settings2, Ruler, FileImage, Monitor, Scissors, SplitSquareHorizontal, CheckCircle2, Info } from 'lucide-react';
+import { Upload, ImageIcon, X, Loader2, FileText, Eye, ArrowUp, ArrowDown, Printer, RotateCw, Settings2, Ruler, FileImage, Monitor, Scissors, SplitSquareHorizontal, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { limparCacheTimbrado } from '@/lib/timbrado/timbrado';
 import { toast } from 'sonner';
@@ -598,20 +599,23 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
   const pageW = isLandscape ? paper.h : paper.w;
   const pageH = isLandscape ? paper.w : paper.h;
 
+  // Campo numérico com a unidade grudada à direita. O rótulo é visível e está
+  // ligado ao campo pelo `id` (o `field` já é único em cada chamada).
   const renderMarginInput = (label: string, field: keyof PageSetup, unit = 'cm') => (
-    <div className="space-y-1">
-      <Label className="text-xs text-muted-foreground">{label}</Label>
+    <div className="space-y-2">
+      <Label htmlFor={`timbrado-${field}`} className="text-sm text-muted-foreground">{label}</Label>
       <div className="relative">
         <Input
+          id={`timbrado-${field}`}
           type="number"
           step="0.1"
           min="0"
           max={unit === '%' ? 100 : 10}
           value={pageSetup[field] as number}
           onChange={(e) => setPageSetup(prev => ({ ...prev, [field]: parseFloat(e.target.value) || 0 }))}
-          className="h-8 text-xs pr-8"
+          className="pr-9 tabular-nums"
         />
-        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{unit}</span>
+        <span aria-hidden="true" className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">{unit}</span>
       </div>
     </div>
   );
@@ -620,68 +624,70 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
     if (!sourceImageUrl) return null;
 
     return (
-      <div className="space-y-4 border border-border rounded-xl bg-muted/40 p-4">
+      <div className="space-y-4 rounded-lg border border-border bg-muted p-6">
         <div className="flex items-center gap-2">
-          <Scissors className="w-4 h-4 text-muted-foreground" />
-          <span className="text-sm font-semibold">Recorte Automático de Cabeçalho e Rodapé</span>
+          <Scissors className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+          <h3 className="text-lg font-semibold text-foreground">Recorte automático de cabeçalho e rodapé</h3>
         </div>
 
-        <p className="text-xs text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           Ajuste os controles para definir a área do <strong className="text-foreground">cabeçalho</strong> (topo) e <strong className="text-foreground">rodapé</strong> (base) do seu timbrado.
         </p>
 
-        <div className="relative rounded-lg overflow-hidden border border-border bg-white">
-          <img src={sourceImageUrl} alt="Timbrado completo" className="w-full h-auto" />
+        {/* Fac-símile do papel: a folha enviada é branca e continua branca em
+            qualquer tema — por isso `bg-white` aqui, e não `bg-card`. */}
+        <div className="relative overflow-hidden rounded-md border border-border bg-white">
+          <img src={sourceImageUrl} alt="Timbrado completo" className="h-auto w-full" />
           <div
-            className="absolute top-0 left-0 right-0 bg-accent/15 border-b-2 border-dashed border-accent transition-all pointer-events-none"
+            className="pointer-events-none absolute left-0 right-0 top-0 border-b-2 border-dashed border-primary bg-primary/15 transition-all"
             style={{ height: `${headerSplit}%` }}
           >
-            <div className="absolute bottom-1 left-2 bg-accent text-accent-foreground text-xs font-bold px-1.5 py-0.5 rounded">
+            <div className="absolute bottom-1 left-2 rounded-md bg-primary px-1.5 py-0.5 text-xs font-semibold text-primary-foreground">
               Cabeçalho ({headerSplit}%)
             </div>
           </div>
           <div
-            className="absolute bottom-0 left-0 right-0 bg-accent/15 border-t-2 border-dashed border-accent transition-all pointer-events-none"
+            className="pointer-events-none absolute bottom-0 left-0 right-0 border-t-2 border-dashed border-primary bg-primary/15 transition-all"
             style={{ height: `${footerSplit}%` }}
           >
-            <div className="absolute top-1 left-2 bg-accent text-accent-foreground text-xs font-bold px-1.5 py-0.5 rounded">
+            <div className="absolute left-2 top-1 rounded-md bg-primary px-1.5 py-0.5 text-xs font-semibold text-primary-foreground">
               Rodapé ({footerSplit}%)
             </div>
           </div>
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <span className="bg-muted/80 text-muted-foreground text-xs px-2 py-1 rounded-full backdrop-blur-sm">
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <span className="rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground">
               Área de conteúdo
             </span>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label className="text-xs font-medium flex items-center gap-1.5">
-              <ArrowUp className="w-3.5 h-3.5 text-muted-foreground" />
+            <p className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+              <ArrowUp className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
               Cabeçalho — {headerSplit}% do topo
-            </Label>
-            <Slider value={[headerSplit]} onValueChange={([v]) => setHeaderSplit(v)} min={5} max={40} step={1} className="w-full" />
+            </p>
+            <Slider aria-label="Altura do cabeçalho, em % do topo" value={[headerSplit]} onValueChange={([v]) => setHeaderSplit(v)} min={5} max={40} step={1} className="w-full" />
           </div>
           <div className="space-y-2">
-            <Label className="text-xs font-medium flex items-center gap-1.5">
-              <ArrowDown className="w-3.5 h-3.5 text-muted-foreground" />
+            <p className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+              <ArrowDown className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
               Rodapé — {footerSplit}% da base
-            </Label>
-            <Slider value={[footerSplit]} onValueChange={([v]) => setFooterSplit(v)} min={3} max={30} step={1} className="w-full" />
+            </p>
+            <Slider aria-label="Altura do rodapé, em % da base" value={[footerSplit]} onValueChange={([v]) => setFooterSplit(v)} min={3} max={30} step={1} className="w-full" />
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button onClick={applySplit} disabled={splitting} className="gap-2">
-            {splitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <SplitSquareHorizontal className="w-4 h-4" />}
-            {splitting ? 'Recortando...' : 'Aplicar Recorte'}
+        <div className="flex flex-wrap items-center gap-2">
+          <Button onClick={applySplit} disabled={splitting}>
+            {splitting ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <SplitSquareHorizontal className="w-4 h-4" aria-hidden="true" />}
+            {splitting ? 'Recortando…' : 'Aplicar recorte'}
           </Button>
           {splitDone && (
-            <span className="flex items-center gap-1 text-xs text-success">
-              <CheckCircle2 className="w-3.5 h-3.5" />
+            <Badge variant="success" className="gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5" aria-hidden="true" />
               Recorte aplicado
-            </span>
+            </Badge>
           )}
         </div>
       </div>
@@ -691,125 +697,130 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
   const renderExtractedResults = () => {
     if (!header.url && !footer.url) return null;
 
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div className="bg-muted/30 rounded-lg border border-border/50 overflow-hidden">
-          <div className="px-3 py-2 border-b border-border/30 flex items-center gap-2">
-            <ArrowUp className="w-3.5 h-3.5 text-muted-foreground" />
-            <span className="text-xs font-semibold">Cabeçalho</span>
-          </div>
-          {header.url ? (
-            <div className="p-3">
-              {isImageUrl(header.url) ? (
-                <img src={header.url} alt="Cabeçalho" className="w-full h-auto max-h-24 object-contain rounded border border-border/30 bg-white p-1" />
-              ) : (
-                <div className="h-16 flex items-center justify-center rounded border border-border/30 bg-white">
-                  <FileText className="w-6 h-6 text-muted-foreground" />
-                  <span className="text-xs ml-2 text-muted-foreground">Documento carregado</span>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="p-3 text-center">
-              <span className="text-xs text-muted-foreground italic">Não encontrado no documento</span>
-            </div>
-          )}
+    // Os dois recortes lado a lado. `bg-white` no quadro da arte é o papel —
+    // um timbrado claro sobre `bg-card` escuro sumiria no modo noturno.
+    const recorte = (
+      titulo: string,
+      Icone: typeof ArrowUp,
+      parte: { url: string | null },
+    ) => (
+      <div className="overflow-hidden rounded-lg border border-border bg-muted">
+        <div className="flex items-center gap-2 border-b border-border px-4 py-2">
+          <Icone className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+          <span className="text-sm font-semibold text-foreground">{titulo}</span>
         </div>
+        {parte.url ? (
+          <div className="p-3">
+            {isImageUrl(parte.url) ? (
+              <img src={parte.url} alt={titulo} className="h-auto max-h-24 w-full rounded-md border border-border bg-white object-contain p-1" />
+            ) : (
+              <div className="flex h-16 items-center justify-center gap-2 rounded-md border border-border bg-white">
+                <FileText className="w-6 h-6 text-muted-foreground" aria-hidden="true" />
+                <span className="text-sm text-muted-foreground">Documento carregado</span>
+              </div>
+            )}
+          </div>
+        ) : (
+          <p className="p-3 text-center text-sm italic text-muted-foreground">Não encontrado no documento</p>
+        )}
+      </div>
+    );
 
-        <div className="bg-muted/30 rounded-lg border border-border/50 overflow-hidden">
-          <div className="px-3 py-2 border-b border-border/30 flex items-center gap-2">
-            <ArrowDown className="w-3.5 h-3.5 text-muted-foreground" />
-            <span className="text-xs font-semibold">Rodapé</span>
-          </div>
-          {footer.url ? (
-            <div className="p-3">
-              {isImageUrl(footer.url) ? (
-                <img src={footer.url} alt="Rodapé" className="w-full h-auto max-h-24 object-contain rounded border border-border/30 bg-white p-1" />
-              ) : (
-                <div className="h-16 flex items-center justify-center rounded border border-border/30 bg-white">
-                  <FileText className="w-6 h-6 text-muted-foreground" />
-                  <span className="text-xs ml-2 text-muted-foreground">Documento carregado</span>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="p-3 text-center">
-              <span className="text-xs text-muted-foreground italic">Não encontrado no documento</span>
-            </div>
-          )}
-        </div>
+    return (
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        {recorte('Cabeçalho', ArrowUp, header)}
+        {recorte('Rodapé', ArrowDown, footer)}
       </div>
     );
   };
 
+  // Seletor de alinhamento da arte — o mesmo controle para cabeçalho e rodapé.
+  const renderAlinhamento = (
+    id: string,
+    valor: AlinhamentoImg,
+    aoMudar: (v: AlinhamentoImg) => void,
+  ) => (
+    <div className="space-y-2">
+      <Label htmlFor={id} className="text-sm text-muted-foreground">Alinhamento</Label>
+      <Select value={valor} onValueChange={(v) => aoMudar(v as AlinhamentoImg)}>
+        <SelectTrigger id={id}><SelectValue /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value="esticar">Preencher a área</SelectItem>
+          <SelectItem value="esquerda">Esquerda</SelectItem>
+          <SelectItem value="centro">Centro</SelectItem>
+          <SelectItem value="direita">Direita</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+  );
+
+  // Miniatura de folha dos botões de orientação — decoração, não informação:
+  // o rótulo ao lado ("Retrato"/"Paisagem") é quem diz o que está escolhido.
+  const miniaturaFolha = (ativo: boolean, retrato: boolean) => (
+    <span
+      aria-hidden="true"
+      className={`block rounded-sm border-2 ${retrato ? 'h-11 w-8' : 'h-8 w-11'} ${
+        ativo ? 'border-primary bg-primary-tint' : 'border-border bg-muted'
+      }`}
+    >
+      <span className="m-1 block space-y-0.5">
+        <span className={`block h-0.5 rounded-full ${ativo ? 'bg-primary' : 'bg-border'}`} />
+        <span className={`block h-0.5 w-3/4 rounded-full ${ativo ? 'bg-primary' : 'bg-border'}`} />
+      </span>
+    </span>
+  );
+
   const renderPageSetupPanel = () => (
-    <div className="space-y-5">
-      <div className="space-y-2">
-        <Label className="text-xs font-semibold flex items-center gap-1.5">
-          <RotateCw className="w-3.5 h-3.5 text-muted-foreground" />
-          Orientação da Página
-        </Label>
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => setPageSetup(prev => ({ ...prev, orientation: 'portrait' }))}
-            className={`relative flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all ${
-              pageSetup.orientation === 'portrait'
-                ? 'border-accent bg-accent/5 shadow-sm'
-                : 'border-border hover:border-accent/30 hover:bg-muted/30'
-            }`}
-          >
-            <div className={`w-8 h-11 rounded-sm border-2 ${pageSetup.orientation === 'portrait' ? 'border-accent bg-accent/10' : 'border-muted-foreground/30 bg-muted/20'}`}>
-              <div className="m-1 space-y-0.5">
-                <div className={`h-0.5 rounded-full ${pageSetup.orientation === 'portrait' ? 'bg-accent/40' : 'bg-muted-foreground/20'}`} />
-                <div className={`h-0.5 w-3/4 rounded-full ${pageSetup.orientation === 'portrait' ? 'bg-accent/40' : 'bg-muted-foreground/20'}`} />
-              </div>
-            </div>
-            <span className="text-xs font-medium">Retrato</span>
-            {pageSetup.orientation === 'portrait' && <div className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-accent" />}
-          </button>
-          <button
-            type="button"
-            onClick={() => setPageSetup(prev => ({ ...prev, orientation: 'landscape' }))}
-            className={`relative flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all ${
-              pageSetup.orientation === 'landscape'
-                ? 'border-accent bg-accent/5 shadow-sm'
-                : 'border-border hover:border-accent/30 hover:bg-muted/30'
-            }`}
-          >
-            <div className={`w-11 h-8 rounded-sm border-2 ${pageSetup.orientation === 'landscape' ? 'border-accent bg-accent/10' : 'border-muted-foreground/30 bg-muted/20'}`}>
-              <div className="m-1 space-y-0.5">
-                <div className={`h-0.5 rounded-full ${pageSetup.orientation === 'landscape' ? 'bg-accent/40' : 'bg-muted-foreground/20'}`} />
-                <div className={`h-0.5 w-3/4 rounded-full ${pageSetup.orientation === 'landscape' ? 'bg-accent/40' : 'bg-muted-foreground/20'}`} />
-              </div>
-            </div>
-            <span className="text-xs font-medium">Paisagem</span>
-            {pageSetup.orientation === 'landscape' && <div className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-accent" />}
-          </button>
+    <div className="space-y-6">
+      {/* ── Orientação e papel ──────────────────────────────────────────── */}
+      <fieldset className="space-y-2">
+        <legend className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-foreground">
+          <RotateCw className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+          Orientação da página
+        </legend>
+        <div className="grid grid-cols-2 gap-3">
+          {([['portrait', 'Retrato'], ['landscape', 'Paisagem']] as const).map(([valor, rotulo]) => {
+            const ativo = pageSetup.orientation === valor;
+            return (
+              <button
+                key={valor}
+                type="button"
+                onClick={() => setPageSetup(prev => ({ ...prev, orientation: valor }))}
+                aria-pressed={ativo}
+                className={`flex flex-col items-center gap-2 rounded-md border-2 p-3 transition-colors ${
+                  ativo ? 'border-primary bg-primary-tint shadow-sm' : 'border-border hover:bg-muted'
+                }`}
+              >
+                {miniaturaFolha(ativo, valor === 'portrait')}
+                <span className="text-sm font-medium text-foreground">{rotulo}</span>
+              </button>
+            );
+          })}
         </div>
-      </div>
+      </fieldset>
 
       <div className="space-y-2">
-        <Label className="text-xs font-semibold flex items-center gap-1.5">
-          <FileImage className="w-3.5 h-3.5 text-muted-foreground" />
-          Tamanho do Papel
+        <Label htmlFor="timbrado-papel" className="flex items-center gap-1.5 text-sm font-semibold">
+          <FileImage className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+          Tamanho do papel
         </Label>
         <Select value={pageSetup.paperSize} onValueChange={(v) => setPageSetup(prev => ({ ...prev, paperSize: v as PaperSize }))}>
-          <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+          <SelectTrigger id="timbrado-papel"><SelectValue /></SelectTrigger>
           <SelectContent>
             {Object.entries(PAPER_SIZES).map(([key, { label }]) => (
-              <SelectItem key={key} value={key} className="text-xs">{label}</SelectItem>
+              <SelectItem key={key} value={key}>{label}</SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
 
+      {/* ── Margens e áreas reservadas ──────────────────────────────────── */}
       <div className="space-y-2">
-        <Label className="text-xs font-semibold flex items-center gap-1.5">
-          <Ruler className="w-3.5 h-3.5 text-muted-foreground" />
+        <h4 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+          <Ruler className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
           Margens
-        </Label>
-        <div className="grid grid-cols-2 gap-3">
+        </h4>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {renderMarginInput('Superior', 'marginTop')}
           {renderMarginInput('Inferior', 'marginBottom')}
           {renderMarginInput('Esquerda', 'marginLeft')}
@@ -818,85 +829,74 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
       </div>
 
       <div className="space-y-2">
-        <Label className="text-xs font-semibold flex items-center gap-1.5">
-          <Settings2 className="w-3.5 h-3.5 text-muted-foreground" />
-          Área do Cabeçalho / Rodapé
-        </Label>
-        <div className="grid grid-cols-2 gap-3">
-          {renderMarginInput('Altura Cabeçalho', 'headerHeight')}
-          {renderMarginInput('Altura Rodapé', 'footerHeight')}
+        <h4 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+          <Settings2 className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+          Área do cabeçalho / rodapé
+        </h4>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          {renderMarginInput('Altura do cabeçalho', 'headerHeight')}
+          {renderMarginInput('Altura do rodapé', 'footerHeight')}
         </div>
       </div>
 
       {/* ── Mover/editar a arte dentro da área (03/09) ─────────────────── */}
       <div className="space-y-2">
-        <Label className="text-xs font-semibold">Posição da logomarca — Cabeçalho</Label>
-        <div className="grid grid-cols-3 gap-3">
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Alinhamento</Label>
-            <select
-              className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs"
-              value={pageSetup.headerAlign}
-              onChange={(e) => setPageSetup((prev) => ({ ...prev, headerAlign: e.target.value as AlinhamentoImg }))}
-            >
-              <option value="esticar">Preencher a área</option>
-              <option value="esquerda">Esquerda</option>
-              <option value="centro">Centro</option>
-              <option value="direita">Direita</option>
-            </select>
-          </div>
+        <h4 className="text-sm font-semibold text-foreground">Posição da logomarca — cabeçalho</h4>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          {renderAlinhamento('timbrado-align-cabecalho', pageSetup.headerAlign,
+            (v) => setPageSetup((prev) => ({ ...prev, headerAlign: v })))}
           {renderMarginInput('Largura', 'headerWidth', '%')}
           {renderMarginInput('Descer', 'headerOffsetY')}
         </div>
-        <Label className="text-xs font-semibold">Posição da logomarca — Rodapé</Label>
-        <div className="grid grid-cols-3 gap-3">
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Alinhamento</Label>
-            <select
-              className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs"
-              value={pageSetup.footerAlign}
-              onChange={(e) => setPageSetup((prev) => ({ ...prev, footerAlign: e.target.value as AlinhamentoImg }))}
-            >
-              <option value="esticar">Preencher a área</option>
-              <option value="esquerda">Esquerda</option>
-              <option value="centro">Centro</option>
-              <option value="direita">Direita</option>
-            </select>
-          </div>
-          {renderMarginInput('Largura', 'footerWidth', '%')}
-          {renderMarginInput('Subir', 'footerOffsetY')}
-        </div>
-        <Button size="sm" className="mt-1" onClick={salvarAjustes} disabled={salvandoAjustes}>
-          {salvandoAjustes ? 'Salvando…' : 'Salvar ajustes da página'}
-        </Button>
       </div>
 
       <div className="space-y-2">
-        <Label className="text-xs font-semibold">Predefinições Rápidas</Label>
-        <div className="flex flex-wrap gap-1.5">
-          <Button variant="outline" size="sm" className="text-xs h-7"
+        <h4 className="text-sm font-semibold text-foreground">Posição da logomarca — rodapé</h4>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          {renderAlinhamento('timbrado-align-rodape', pageSetup.footerAlign,
+            (v) => setPageSetup((prev) => ({ ...prev, footerAlign: v })))}
+          {renderMarginInput('Largura', 'footerWidth', '%')}
+          {renderMarginInput('Subir', 'footerOffsetY')}
+        </div>
+      </div>
+
+      {/* ── Predefinições ───────────────────────────────────────────────── */}
+      <div className="space-y-2">
+        <h4 className="text-sm font-semibold text-foreground">Predefinições rápidas</h4>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm"
             onClick={() => setPageSetup({ ...DEFAULT_SETUP, orientation: pageSetup.orientation, paperSize: pageSetup.paperSize })}>
             NBR 14724 (ABNT)
           </Button>
-          <Button variant="outline" size="sm" className="text-xs h-7"
+          <Button variant="outline" size="sm"
             onClick={() => setPageSetup(prev => ({ ...prev, marginTop: 2.54, marginBottom: 2.54, marginLeft: 2.54, marginRight: 2.54, headerHeight: 1.27, footerHeight: 1.27 }))}>
             Padrão Office
           </Button>
-          <Button variant="outline" size="sm" className="text-xs h-7"
+          <Button variant="outline" size="sm"
             onClick={() => setPageSetup(prev => ({ ...prev, marginTop: 1.5, marginBottom: 1.5, marginLeft: 1.5, marginRight: 1.5, headerHeight: 1, footerHeight: 1 }))}>
-            Margens Estreitas
+            Margens estreitas
           </Button>
         </div>
       </div>
 
-      <div className="bg-muted/30 rounded-lg p-3 border border-border/40">
-        <p className="text-xs text-muted-foreground leading-relaxed">
+      <div className="rounded-lg border border-border bg-muted p-4">
+        <p className="text-sm text-muted-foreground">
           <strong className="text-foreground">Dimensões finais:</strong>{' '}
-          {pageW} × {pageH} mm ({pageSetup.orientation === 'portrait' ? 'Retrato' : 'Paisagem'})
+          <span className="tabular-nums">{pageW} × {pageH} mm</span> ({pageSetup.orientation === 'portrait' ? 'Retrato' : 'Paisagem'})
           <br />
           <strong className="text-foreground">Área útil:</strong>{' '}
-          {(pageW - pageSetup.marginLeft * 10 - pageSetup.marginRight * 10).toFixed(0)} × {(pageH - pageSetup.marginTop * 10 - pageSetup.marginBottom * 10).toFixed(0)} mm
+          <span className="tabular-nums">
+            {(pageW - pageSetup.marginLeft * 10 - pageSetup.marginRight * 10).toFixed(0)} × {(pageH - pageSetup.marginTop * 10 - pageSetup.marginBottom * 10).toFixed(0)} mm
+          </span>
         </p>
+      </div>
+
+      {/* Ação no rodapé do formulário — era um botão solto no meio dos campos
+          de posição, e valia para o painel inteiro. */}
+      <div className="flex flex-wrap items-center gap-2 border-t border-border pt-6">
+        <Button onClick={salvarAjustes} disabled={salvandoAjustes}>
+          {salvandoAjustes ? 'Salvando…' : 'Salvar ajustes da página'}
+        </Button>
       </div>
     </div>
   );
@@ -916,13 +916,19 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
     const contentHeight = contentBottom - contentTop;
 
     return (
+      // ┌── FAC-SÍMILE DO PAPEL ──────────────────────────────────────────────┐
+      // A folha é branca com marcas em preto translúcido em qualquer tema: é a
+      // página que vai sair na impressora, não uma superfície da interface.
+      // Só a alça de redimensionar usa a cor da ação (verde), porque é
+      // controle e não papel.
+      // └─────────────────────────────────────────────────────────────────────┘
       <div className="flex flex-col items-center gap-4">
-        <div className="relative bg-white border border-border/80 shadow-lg" style={{ width: displayW, height: displayH }}>
-          <div className="absolute border border-dashed border-muted-foreground/30 pointer-events-none"
+        <div className="relative border border-border bg-white shadow-md" style={{ width: displayW, height: displayH }}>
+          <div className="pointer-events-none absolute border border-dashed border-black/20"
             style={{ top: mTop, left: mLeft, right: mRight, bottom: mBottom }} />
 
           <div className="absolute overflow-hidden" style={{ top: 0, left: 0, right: 0, height: mTop + hHeight }}>
-            <div className="absolute inset-0 bg-black/[0.04] border-b border-dashed border-border" />
+            <div className="absolute inset-0 border-b border-dashed border-black/15 bg-black/5" />
             {header.url && isImageUrl(header.url) ? (
               <div
                 className="relative z-10 w-full h-full flex"
@@ -944,7 +950,7 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
                   <img src={header.url} alt="Cabeçalho" draggable={false}
                     className="w-full h-full object-contain pointer-events-none select-none" />
                   <span
-                    className="absolute -bottom-1 -right-1 w-3 h-3 rounded-sm bg-accent border border-background cursor-nwse-resize opacity-0 group-hover:opacity-100"
+                    className="absolute -bottom-1 -right-1 w-3 h-3 cursor-nwse-resize rounded-sm bg-primary opacity-0 shadow-sm group-hover:opacity-100"
                     onPointerDown={(e) => iniciarArrasto(e, 'header', 'redimensionar')}
                     title="Arraste para redimensionar"
                   />
@@ -960,15 +966,15 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
           </div>
 
           <div className="absolute overflow-hidden" style={{ top: contentTop, left: mLeft, right: mRight, height: Math.max(contentHeight, 20) }}>
-            <div className="p-2 space-y-1.5">
+            <div aria-hidden="true" className="space-y-1.5 p-2">
               {Array.from({ length: Math.max(3, Math.floor(contentHeight / 12)) }).map((_, i) => (
-                <div key={i} className="bg-muted/25 rounded-sm" style={{ height: Math.max(3, scaleFactor * 2.5), width: `${60 + Math.sin(i * 1.7) * 30}%` }} />
+                <div key={i} className="rounded-sm bg-black/10" style={{ height: Math.max(3, scaleFactor * 2.5), width: `${60 + Math.sin(i * 1.7) * 30}%` }} />
               ))}
             </div>
           </div>
 
           <div className="absolute overflow-hidden" style={{ bottom: 0, left: 0, right: 0, height: mBottom + fHeight }}>
-            <div className="absolute inset-0 bg-black/[0.04] border-t border-dashed border-border" />
+            <div className="absolute inset-0 border-t border-dashed border-black/15 bg-black/5" />
             {footer.url && isImageUrl(footer.url) ? (
               <div
                 className="relative z-10 w-full h-full flex"
@@ -990,7 +996,7 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
                   <img src={footer.url} alt="Rodapé" draggable={false}
                     className="w-full h-full object-contain pointer-events-none select-none" />
                   <span
-                    className="absolute -top-1 -right-1 w-3 h-3 rounded-sm bg-accent border border-background cursor-nesw-resize opacity-0 group-hover:opacity-100"
+                    className="absolute -top-1 -right-1 w-3 h-3 cursor-nesw-resize rounded-sm bg-primary opacity-0 shadow-sm group-hover:opacity-100"
                     onPointerDown={(e) => iniciarArrasto(e, 'footer', 'redimensionar')}
                     title="Arraste para redimensionar"
                   />
@@ -1008,21 +1014,26 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
           <span className="absolute text-xs text-black/50 select-none" style={{ top: 2, left: mLeft }}>{pageSetup.marginTop}cm</span>
           <span className="absolute text-xs text-black/50 select-none" style={{ bottom: 2, left: mLeft }}>{pageSetup.marginBottom}cm</span>
           <span className="absolute text-xs text-black/50 select-none rotate-90 origin-top-left" style={{ top: mTop, left: 2 }}>{pageSetup.marginLeft}cm</span>
-          <span className="absolute text-muted-foreground/40 select-none" style={{ fontSize: Math.max(7, scaleFactor * 3), top: mTop * 0.3, right: mRight + 4 }}>1</span>
+          <span aria-hidden="true" className="absolute select-none text-black/30" style={{ fontSize: Math.max(7, scaleFactor * 3), top: mTop * 0.3, right: mRight + 4 }}>1</span>
         </div>
 
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span>✥ Arraste a arte para posicionar · alça no canto redimensiona · confirme em “Salvar ajustes”.</span>
-          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={salvarAjustes} disabled={salvandoAjustes}>
+        <div className="flex flex-wrap items-center justify-center gap-3 rounded-md bg-muted px-3 py-1.5 text-xs text-muted-foreground">
+          <span className="font-medium text-foreground">{PAPER_SIZES[pageSetup.paperSize].label}</span>
+          <span aria-hidden="true">·</span>
+          <span>{pageSetup.orientation === 'portrait' ? 'Retrato' : 'Paisagem'}</span>
+          <span aria-hidden="true">·</span>
+          <span className="tabular-nums">Margens: {pageSetup.marginTop}/{pageSetup.marginBottom}/{pageSetup.marginLeft}/{pageSetup.marginRight} cm</span>
+        </div>
+
+        {/* Ação no rodapé, como no painel Página — a mesma gravação, do lado de
+            onde se arrasta a arte. */}
+        <div className="flex flex-wrap items-center justify-center gap-2 border-t border-border pt-4">
+          <p className="text-sm text-muted-foreground">
+            Arraste a arte para posicionar; a alça no canto redimensiona.
+          </p>
+          <Button size="sm" variant="outline" onClick={salvarAjustes} disabled={salvandoAjustes}>
             {salvandoAjustes ? 'Salvando…' : 'Salvar ajustes'}
           </Button>
-        </div>
-        <div className="flex items-center gap-3 text-xs text-muted-foreground bg-muted/20 rounded-md px-3 py-1.5">
-          <span className="font-medium text-foreground">{PAPER_SIZES[pageSetup.paperSize].label}</span>
-          <span>•</span>
-          <span>{pageSetup.orientation === 'portrait' ? 'Retrato' : 'Paisagem'}</span>
-          <span>•</span>
-          <span>Margens: {pageSetup.marginTop}/{pageSetup.marginBottom}/{pageSetup.marginLeft}/{pageSetup.marginRight} cm</span>
         </div>
       </div>
     );
@@ -1032,24 +1043,24 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <div>
-          <Label className="flex items-center gap-2 text-base font-semibold">
-            <ImageIcon className="w-4 h-4 text-muted-foreground" />
-            Papel Timbrado / Marca d'Água
-          </Label>
-          <p className="text-xs text-muted-foreground mt-1">
-            Envie uma imagem ou documento Word do seu papel timbrado. O sistema extrai automaticamente o cabeçalho e rodapé.
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h3 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+            <ImageIcon className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+            Papel timbrado / marca d'água
+          </h3>
+          <p className="mt-1 text-base text-muted-foreground">
+            Envie uma imagem ou documento Word do seu papel timbrado. O sistema extrai automaticamente o cabeçalho e o rodapé.
           </p>
         </div>
         <Button
           variant={showPreview ? 'default' : 'outline'}
           size="sm"
           onClick={() => setShowPreview(!showPreview)}
-          className="gap-1.5"
+          className="shrink-0"
         >
-          <Printer className="w-4 h-4" />
-          {showPreview ? 'Fechar Prévia' : 'Visualizar Impressão'}
+          <Printer className="w-4 h-4" aria-hidden="true" />
+          {showPreview ? 'Fechar prévia' : 'Visualizar impressão'}
         </Button>
       </div>
 
@@ -1058,16 +1069,16 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
           type="button"
           onClick={() => fileRef.current?.click()}
           disabled={uploading || !empresaId}
-          className="w-full border-2 border-dashed border-border rounded-xl p-6 flex flex-col items-center gap-2 hover:border-accent/50 hover:bg-muted/30 transition-colors disabled:opacity-50"
+          className="flex w-full flex-col items-center gap-2 rounded-lg border-2 border-dashed border-border p-6 transition-colors hover:border-primary hover:bg-primary-tint disabled:opacity-50"
         >
           {uploading ? (
-            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" aria-hidden="true" />
           ) : (
-            <Upload className="w-8 h-8 text-muted-foreground" />
+            <Upload className="w-8 h-8 text-muted-foreground" aria-hidden="true" />
           )}
-          <span className="text-sm font-semibold">{uploading ? 'Processando...' : 'Enviar papel timbrado'}</span>
-          <span className="text-xs text-muted-foreground text-center max-w-sm">
-            PNG, JPG, WEBP, SVG, PDF ou Word — Máx. 10MB
+          <span className="text-base font-semibold text-foreground">{uploading ? 'Processando…' : 'Enviar papel timbrado'}</span>
+          <span className="max-w-sm text-center text-sm text-muted-foreground">
+            PNG, JPG, WEBP, SVG, PDF ou Word — máx. 10MB
             <br />
             <span className="font-medium">Documentos Word: extração automática de cabeçalho e rodapé</span>
           </span>
@@ -1078,13 +1089,13 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
 
           {renderExtractedResults()}
 
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="text-xs gap-1.5" onClick={() => fileRef.current?.click()}>
-              <Upload className="w-3.5 h-3.5" />
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
+              <Upload className="w-4 h-4" aria-hidden="true" />
               Trocar arquivo
             </Button>
-            <Button variant="outline" size="sm" className="text-xs text-destructive hover:text-destructive gap-1.5" onClick={handleRemoveAll}>
-              <X className="w-3.5 h-3.5" />
+            <Button variant="outline" size="sm" className="text-destructive hover:bg-destructive-tint hover:text-destructive" onClick={handleRemoveAll}>
+              <X className="w-4 h-4" aria-hidden="true" />
               Remover tudo
             </Button>
           </div>
@@ -1104,40 +1115,44 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
       />
 
       {showPreview && (
-        <div className="border border-border rounded-xl bg-card shadow-md overflow-hidden">
-          <div className="bg-muted/50 border-b border-border px-4 py-2.5 flex items-center justify-between">
+        <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted px-4 py-3">
             <div className="flex items-center gap-2">
-              <Monitor className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm font-semibold text-foreground">Configurar Página</span>
+              <Monitor className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+              <span className="text-sm font-semibold text-foreground">Configurar página</span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <Button variant={pageSetup.orientation === 'portrait' ? 'default' : 'outline'} size="sm" className="h-7 text-xs gap-1"
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant={pageSetup.orientation === 'portrait' ? 'default' : 'outline'} size="sm"
+                aria-pressed={pageSetup.orientation === 'portrait'}
                 onClick={() => setPageSetup(prev => ({ ...prev, orientation: 'portrait' }))}>
-                <div className="w-3 h-4 border border-current rounded-[1px]" />Retrato
+                <span aria-hidden="true" className="block h-4 w-3 rounded-sm border border-current" />
+                Retrato
               </Button>
-              <Button variant={pageSetup.orientation === 'landscape' ? 'default' : 'outline'} size="sm" className="h-7 text-xs gap-1"
+              <Button variant={pageSetup.orientation === 'landscape' ? 'default' : 'outline'} size="sm"
+                aria-pressed={pageSetup.orientation === 'landscape'}
                 onClick={() => setPageSetup(prev => ({ ...prev, orientation: 'landscape' }))}>
-                <div className="w-4 h-3 border border-current rounded-[1px]" />Paisagem
+                <span aria-hidden="true" className="block h-3 w-4 rounded-sm border border-current" />
+                Paisagem
               </Button>
             </div>
           </div>
 
           <Tabs value={previewTab} onValueChange={setPreviewTab} className="w-full">
-            <div className="px-4 pt-2 border-b border-border/50">
-              <TabsList className="h-8 bg-muted/30">
-                <TabsTrigger value="preview" className="text-xs gap-1.5 h-7">
-                  <Eye className="w-3.5 h-3.5" />Visualizar Impressão
+            <div className="border-b border-border px-4 pt-3">
+              <TabsList>
+                <TabsTrigger value="preview" className="gap-1.5">
+                  <Eye className="w-4 h-4" aria-hidden="true" />Visualizar impressão
                 </TabsTrigger>
-                <TabsTrigger value="page" className="text-xs gap-1.5 h-7">
-                  <Settings2 className="w-3.5 h-3.5" />Página
+                <TabsTrigger value="page" className="gap-1.5">
+                  <Settings2 className="w-4 h-4" aria-hidden="true" />Página
                 </TabsTrigger>
               </TabsList>
             </div>
 
-            <TabsContent value="preview" className="m-0 p-6 bg-muted/10">
+            <TabsContent value="preview" className="m-0 overflow-x-auto bg-muted p-6">
               {renderPagePreview()}
             </TabsContent>
-            <TabsContent value="page" className="m-0 p-5">
+            <TabsContent value="page" className="m-0 p-6">
               {renderPageSetupPanel()}
             </TabsContent>
           </Tabs>

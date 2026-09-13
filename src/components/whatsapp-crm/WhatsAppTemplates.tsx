@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -101,89 +102,119 @@ export default function WhatsAppTemplates() {
     toast.success('Copiado!');
   };
 
-  if (loading) return <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" aria-hidden="true" />
+        <span className="sr-only">Carregando os modelos</span>
+      </div>
+    );
+  }
+
+  const dialogNovoTemplate = (
+    <Dialog open={showNew} onOpenChange={setShowNew}>
+      <DialogTrigger asChild>
+        <Button><Plus aria-hidden="true" />Novo modelo</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Novo modelo de mensagem</DialogTitle></DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="modelo-nome">Nome</Label>
+            <Input id="modelo-nome" value={newTemplate.nome} onChange={e => setNewTemplate(p => ({ ...p, nome: e.target.value }))} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="modelo-categoria">Categoria</Label>
+            <Select value={newTemplate.categoria} onValueChange={v => setNewTemplate(p => ({ ...p, categoria: v }))}>
+              <SelectTrigger id="modelo-categoria"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {CATEGORIAS.map(c => <SelectItem key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="modelo-conteudo">Conteúdo</Label>
+            <Textarea id="modelo-conteudo" value={newTemplate.conteudo} onChange={e => setNewTemplate(p => ({ ...p, conteudo: e.target.value }))} rows={5} placeholder="Olá {{nome}}, sua proposta para {{orgao}} foi atualizada..." />
+            <p className="text-xs text-muted-foreground">Use {'{{variavel}}'} para campos dinâmicos</p>
+          </div>
+          {newTemplate.conteudo && extractVars(newTemplate.conteudo).length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {extractVars(newTemplate.conteudo).map(v => <Badge key={v} variant="muted">{`{{${v}}}`}</Badge>)}
+            </div>
+          )}
+          <Button onClick={handleCreate} className="w-full">Criar modelo</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <p className="text-sm text-muted-foreground">{templates.length} templates</p>
-        <Dialog open={showNew} onOpenChange={setShowNew}>
-          <DialogTrigger asChild>
-            <Button size="sm" className="gap-1.5"><Plus className="w-4 h-4" />Novo Template</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Novo Template de Mensagem</DialogTitle></DialogHeader>
-            <div className="space-y-3">
-              <div><Label className="text-xs">Nome</Label><Input value={newTemplate.nome} onChange={e => setNewTemplate(p => ({ ...p, nome: e.target.value }))} className="mt-1" /></div>
-              <div>
-                <Label className="text-xs">Categoria</Label>
-                <Select value={newTemplate.categoria} onValueChange={v => setNewTemplate(p => ({ ...p, categoria: v }))}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {CATEGORIAS.map(c => <SelectItem key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label className="text-xs">Conteúdo</Label>
-                <Textarea value={newTemplate.conteudo} onChange={e => setNewTemplate(p => ({ ...p, conteudo: e.target.value }))} rows={5} className="mt-1" placeholder="Olá {{nome}}, sua proposta para {{orgao}} foi atualizada..." />
-                <p className="text-xs text-muted-foreground mt-1">Use {'{{variavel}}'} para campos dinâmicos</p>
-              </div>
-              {newTemplate.conteudo && extractVars(newTemplate.conteudo).length > 0 && (
-                <div className="flex gap-1 flex-wrap">
-                  {extractVars(newTemplate.conteudo).map(v => <Badge key={v} variant="secondary" className="text-xs">{`{{${v}}}`}</Badge>)}
-                </div>
-              )}
-              <Button onClick={handleCreate} className="w-full">Criar Template</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm text-muted-foreground tabular-nums">{templates.length} modelos</p>
+        {dialogNovoTemplate}
       </div>
 
-      <div className="grid gap-3 md:grid-cols-2">
-        {templates.length === 0 ? (
-          <Card className="p-10 text-center col-span-2">
-            <FileText className="w-10 h-10 mx-auto mb-3 text-muted-foreground/30" />
-            <p className="text-sm text-muted-foreground">Nenhum template criado ainda</p>
-          </Card>
-        ) : (
-          templates.map(t => (
-            <Card key={t.id} className={`p-4 ${!t.ativo ? 'opacity-50' : ''}`}>
-              <div className="flex items-start justify-between mb-2">
-                <div>
-                  <p className="text-sm font-semibold">{t.nome}</p>
-                  <Badge variant="outline" className="text-xs mt-0.5">{t.categoria}</Badge>
+      {templates.length === 0 ? (
+        <EstadoVazio
+          icone={<FileText aria-hidden="true" />}
+          titulo="Nenhum modelo criado ainda"
+          descricao="Guarde as mensagens que você repete e reaproveite nos disparos."
+          acao={<Button onClick={() => setShowNew(true)}><Plus aria-hidden="true" />Novo modelo</Button>}
+        />
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2">
+          {templates.map(t => (
+            <Card key={t.id} className={`p-6 ${!t.ativo ? 'opacity-60' : ''}`}>
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="text-lg font-semibold text-foreground truncate">{t.nome}</h3>
+                  <Badge variant="muted" className="mt-1" truncate>{t.categoria}</Badge>
                 </div>
-                <Switch checked={t.ativo} onCheckedChange={v => handleToggle(t.id, v)} />
+                <div className="flex flex-shrink-0 items-center gap-2">
+                  <span className="text-sm text-muted-foreground">{t.ativo ? 'Ativo' : 'Inativo'}</span>
+                  <Switch
+                    checked={t.ativo}
+                    onCheckedChange={v => handleToggle(t.id, v)}
+                    aria-label={`${t.ativo ? 'Desativar' : 'Ativar'} o modelo ${t.nome}`}
+                  />
+                </div>
               </div>
               {editingId === t.id ? (
                 <div className="space-y-2">
-                  <Textarea value={editConteudo} onChange={e => setEditConteudo(e.target.value)} rows={4} className="text-xs" />
-                  <div className="flex gap-1">
-                    <Button size="sm" className="text-xs h-7 gap-1" onClick={() => handleSaveEdit(t.id)}><Check className="w-3 h-3" />Salvar</Button>
-                    <Button size="sm" variant="ghost" className="text-xs h-7 gap-1" onClick={() => setEditingId(null)}><X className="w-3 h-3" />Cancelar</Button>
+                  <Label htmlFor={`modelo-edicao-${t.id}`} className="sr-only">Conteúdo do modelo {t.nome}</Label>
+                  <Textarea id={`modelo-edicao-${t.id}`} value={editConteudo} onChange={e => setEditConteudo(e.target.value)} rows={4} />
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" onClick={() => handleSaveEdit(t.id)}><Check aria-hidden="true" />Salvar</Button>
+                    <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}><X aria-hidden="true" />Cancelar</Button>
                   </div>
                 </div>
               ) : (
-                <p className="text-xs text-muted-foreground whitespace-pre-wrap mb-2 line-clamp-4">{t.conteudo}</p>
+                <p className="mb-3 text-sm text-muted-foreground whitespace-pre-wrap line-clamp-4">{t.conteudo}</p>
               )}
               {t.variaveis.length > 0 && (
-                <div className="flex gap-1 flex-wrap mb-2">
-                  {t.variaveis.map(v => <Badge key={v} variant="secondary" className="text-xs">{`{{${v}}}`}</Badge>)}
+                <div className="mb-3 flex flex-wrap gap-2">
+                  {t.variaveis.map(v => <Badge key={v} variant="muted">{`{{${v}}}`}</Badge>)}
                 </div>
               )}
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">Usado {t.uso_count}x</span>
-                <div className="flex gap-1">
-                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleCopy(t.conteudo)}><Copy className="w-3.5 h-3.5" /></Button>
-                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setEditingId(t.id); setEditConteudo(t.conteudo); }}><Edit2 className="w-3.5 h-3.5" /></Button>
-                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleDelete(t.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-sm text-muted-foreground tabular-nums">Usado {t.uso_count}x</span>
+                <div className="flex flex-wrap gap-1">
+                  <Button size="sm" variant="ghost" onClick={() => handleCopy(t.conteudo)} aria-label={`Copiar o modelo ${t.nome}`}>
+                    <Copy aria-hidden="true" />
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => { setEditingId(t.id); setEditConteudo(t.conteudo); }} aria-label={`Editar o modelo ${t.nome}`}>
+                    <Edit2 aria-hidden="true" />
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => handleDelete(t.id)} aria-label={`Remover o modelo ${t.nome}`}>
+                    <Trash2 className="text-destructive" aria-hidden="true" />
+                  </Button>
                 </div>
               </div>
             </Card>
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

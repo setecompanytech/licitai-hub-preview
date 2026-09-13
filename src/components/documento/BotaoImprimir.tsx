@@ -27,7 +27,7 @@ export default function BotaoImprimir({ rotulo = 'Imprimir / PDF', className }: 
       className={`nao-imprime ${className ?? ''}`}
       onClick={() => window.print()}
     >
-      <Printer className="w-3.5 h-3.5 mr-1.5" />
+      <Printer className="h-4 w-4" aria-hidden="true" />
       {rotulo}
     </Button>
   );

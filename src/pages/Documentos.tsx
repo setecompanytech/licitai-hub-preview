@@ -1,8 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import ProcessoContextoBanner from '@/components/shared/ProcessoContextoBanner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -13,8 +16,8 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
-  FileText, Upload, Repeat, CheckCircle2, AlertTriangle,
-  Shield, FolderOpen, Download, FileArchive, Trash2, Loader2, Eye, Users,
+  FileText, Upload, Repeat, CheckCircle2, AlertTriangle, History,
+  FolderOpen, Download, FileArchive, Trash2, Loader2, Eye, Users,
   CalendarDays, Bot
 } from 'lucide-react';
 import MergeDocumentos from '@/components/documentos/MergeDocumentos';
@@ -96,10 +99,20 @@ const checklistDocumentos: Documento[] = [
 // como "pendente" mandava procurar um problema inexistente. O vencimento que se
 // aproxima é aviso, e vive no lembrete do canto da tela (LembreteDeVencimento),
 // que acompanha a pessoa em qualquer página e volta até o documento ser renovado.
-const statusConfig: Record<DocStatus, { icon: typeof CheckCircle2; color: string; label: string }> = {
-  ok: { icon: CheckCircle2, color: 'text-success', label: 'Regular' },
-  vencido: { icon: AlertTriangle, color: 'text-destructive', label: 'Vencido' },
-  ausente: { icon: AlertTriangle, color: 'text-destructive', label: 'Ausente' },
+const statusConfig: Record<DocStatus, {
+  icon: typeof CheckCircle2;
+  /** Cor do ícone da linha — tinta do estado, nunca cor solta. */
+  color: string;
+  /** Variante do Badge (identidade 12/09): o selo é o mesmo vocabulário. */
+  variante: 'success' | 'danger' | 'warning';
+  label: string;
+}> = {
+  ok: { icon: CheckCircle2, color: 'text-success-ink', variante: 'success', label: 'Regular' },
+  vencido: { icon: AlertTriangle, color: 'text-destructive-ink', variante: 'danger', label: 'Vencido' },
+  // Ausente é pendência, não impedimento — o próprio texto desta tela separa
+  // "falta pedir" de "barra a habilitação hoje". Âmbar, e o vermelho fica
+  // reservado a quem realmente impede a empresa de disputar.
+  ausente: { icon: AlertTriangle, color: 'text-warning-ink', variante: 'warning', label: 'Ausente' },
 };
 
 /** Dias até a validade, contados por DATA — hora não entra, fuso não desloca. */
@@ -684,23 +697,18 @@ export default function Documentos() {
         {/* O cofre é alcançado a partir do checklist de habilitação de um
             processo — daqui o usuário volta para a pasta de onde veio. */}
         <ProcessoContextoBanner />
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-            <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground flex-shrink-0" />
-            Controle de Documentos
-          </h1>
-          <p className="text-sm sm:text-base text-muted-foreground mt-1">
-            Conformidade com a Lei 14.133/2021 e legislação vigente
-          </p>
-        </div>
+        {/* Título, descrição, ícone e trilha vêm do registro
+            `lib/navegacao/paginas.ts` pela própria rota — a tela não repete o
+            que já está padronizado. */}
+        <CabecalhoPagina />
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
-            <TabsTrigger value="documentos" className="flex items-center gap-1">
-              <FolderOpen className="w-4 h-4" /> Documentos
+          <TabsList className="mb-4">
+            <TabsTrigger value="documentos">
+              <FolderOpen className="w-4 h-4 mr-2" aria-hidden="true" /> Documentos
             </TabsTrigger>
-            <TabsTrigger value="merge" className="flex items-center gap-1">
-              <FileArchive className="w-4 h-4" /> Juntar PDF/ZIP
+            <TabsTrigger value="merge">
+              <FileArchive className="w-4 h-4 mr-2" aria-hidden="true" /> Unir arquivos
             </TabsTrigger>
           </TabsList>
 
@@ -733,36 +741,39 @@ export default function Documentos() {
               const total = documentos.length || 1;
               const pct = (n: number) => (n / total) * 100;
 
+              // A faixa usa a MESMA tinta do selo da linha (statusConfig):
+              // ausente é âmbar nos dois lugares, senão a barra e o selo
+              // contariam a mesma pendência com cores diferentes.
               const faixas: { s: DocStatus; n: number; cor: string }[] = [
                 { s: 'ok', n: nOk, cor: 'bg-success' },
                 { s: 'vencido', n: nVenc, cor: 'bg-destructive' },
-                { s: 'ausente', n: nAus, cor: 'bg-muted-foreground/40' },
+                { s: 'ausente', n: nAus, cor: 'bg-warning' },
               ];
 
               const tomDoNumero = nVenc > 0
-                ? 'text-destructive'
+                ? 'text-destructive-ink'
                 : nAus > 0
-                  ? 'text-warning'
-                  : 'text-success';
+                  ? 'text-warning-ink'
+                  : 'text-success-ink';
 
               return (
-                <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
-                  <div className="flex items-end justify-between gap-4 mb-3">
+                <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+                  <div className="flex flex-wrap items-end justify-between gap-4 mb-3">
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-muted-foreground">Conformidade geral</p>
-                      <p className={`text-4xl font-bold tabular-nums leading-none mt-1 ${tomDoNumero}`}>
+                      <p className={`mt-1 text-[2rem] leading-10 font-bold tabular-nums ${tomDoNumero}`}>
                         {progress}%
                       </p>
                     </div>
-                    <p className="text-sm text-right text-muted-foreground leading-snug">
+                    <p className="text-sm text-right text-muted-foreground">
                       {nVenc > 0 ? (
-                        <span className="text-destructive font-medium">
+                        <span className="font-medium text-destructive-ink">
                           {nVenc} {nVenc === 1 ? 'documento vencido' : 'documentos vencidos'} — impedem a habilitação
                         </span>
                       ) : nAus > 0 ? (
                         <>Falta{nAus > 1 ? 'm' : ''} {nAus} {nAus === 1 ? 'documento' : 'documentos'} para o dossiê ficar completo</>
                       ) : (
-                        <span className="text-success font-medium">Dossiê completo e dentro da validade</span>
+                        <span className="font-medium text-success-ink">Dossiê completo e dentro da validade</span>
                       )}
                     </p>
                   </div>
@@ -789,10 +800,10 @@ export default function Documentos() {
                           key={s}
                           onClick={() => setFilter(ativo ? 'todos' : s)}
                           aria-pressed={ativo}
-                          className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors ${
+                          className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                             ativo
-                              ? 'border-foreground/30 bg-muted font-semibold text-foreground'
-                              : 'border-border text-muted-foreground hover:bg-muted/60'
+                              ? 'border-primary bg-primary-tint font-semibold text-foreground'
+                              : 'border-border text-muted-foreground hover:bg-muted'
                           }`}
                         >
                           <span className={`w-2 h-2 rounded-sm ${cor}`} aria-hidden="true" />
@@ -802,12 +813,9 @@ export default function Documentos() {
                       );
                     })}
                     {filter !== 'todos' && (
-                      <button
-                        onClick={() => setFilter('todos')}
-                        className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
-                      >
-                        limpar filtro
-                      </button>
+                      <Button variant="ghost" size="sm" onClick={() => setFilter('todos')}>
+                        Limpar filtro
+                      </Button>
                     )}
                   </div>
                 </div>
@@ -820,7 +828,7 @@ export default function Documentos() {
                 const docs = filtered.filter((d) => d.categoria === cat);
                 if (docs.length === 0) return null;
                 return (
-                  <div key={cat} className="bg-card rounded-xl border border-border/50 shadow-sm">
+                  <div key={cat} className="rounded-lg border border-border bg-card shadow-sm">
                     {/* A pasta inteira se recolhe: quem veio tratar da regularidade
                         fiscal não precisa rolar a habilitação jurídica antes. */}
                     <button
@@ -828,16 +836,16 @@ export default function Documentos() {
                       onClick={() => alternarCategoria(cat)}
                       aria-expanded={!categoriasRecolhidas[cat]}
                       title={categoriasRecolhidas[cat] ? 'Abrir a lista' : 'Recolher a lista'}
-                      className="flex w-full items-center gap-2 px-5 py-3 border-b border-border/50 text-left transition-colors hover:bg-muted/40"
+                      className="flex w-full items-center gap-3 px-6 py-3 border-b border-border text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
                     >
-                      <FolderOpen className="w-4 h-4 text-muted-foreground" />
-                      <h3 className="text-base font-semibold">{cat}</h3>
+                      <FolderOpen className="w-4 h-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                      <h3 className="text-lg font-semibold">{cat}</h3>
                       {categoriasRecolhidas[cat] && (
                         <span className="text-sm text-muted-foreground">
                           {docs.length} documento{docs.length > 1 ? 's' : ''}
                         </span>
                       )}
-                      <Badge variant="outline" className="ml-auto text-sm">
+                      <Badge variant="muted" className="ml-auto">
                         {docs[0]?.artigo}
                       </Badge>
                       <IconeRecolher
@@ -845,7 +853,7 @@ export default function Documentos() {
                         className="h-4 w-4 shrink-0 text-muted-foreground"
                       />
                     </button>
-                    <div className={`divide-y divide-border/30 ${categoriasRecolhidas[cat] ? 'hidden' : ''}`}>
+                    <div className={`divide-y divide-border ${categoriasRecolhidas[cat] ? 'hidden' : ''}`}>
                       {docs.map((doc) => {
                         const cfg = statusConfig[doc.status];
                         const Icon = cfg.icon;
@@ -854,39 +862,38 @@ export default function Documentos() {
                         const isRemoving = removingIdx === globalIdx;
 
                         return (
-                          <div key={doc.nome} className="flex items-center justify-between px-5 py-3">
-                            <div className="flex items-center gap-3">
-                              <Icon className={`w-4 h-4 ${cfg.color}`} />
+                          <div key={doc.nome} className="flex flex-wrap items-center justify-between gap-3 px-6 py-3">
+                            <div className="flex min-w-0 items-center gap-3">
+                              <Icon className={`w-4 h-4 shrink-0 ${cfg.color}`} aria-hidden="true" />
                               <div className="min-w-0">
                                 <p className="text-base font-medium">{doc.nome}</p>
                                 {doc.validade && (
-                                  <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-0.5">
-                                    <CalendarDays className="w-3.5 h-3.5 shrink-0" />
+                                  <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
+                                    <CalendarDays className="w-4 h-4 shrink-0" aria-hidden="true" />
                                     Validade: {new Date(doc.validade).toLocaleDateString('pt-BR')}
                                   </p>
                                 )}
                                 {doc.arquivo && (
-                                  <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-0.5">
-                                    <FileText className="w-3.5 h-3.5 shrink-0" />
+                                  <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
+                                    <FileText className="w-4 h-4 shrink-0" aria-hidden="true" />
                                     <span className="truncate">{nomeDoArquivo(doc.arquivo)}</span>
                                   </p>
                                 )}
                               </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline" className={`text-sm ${cfg.color}`}>
-                                {cfg.label}
-                              </Badge>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge variant={cfg.variante}>{cfg.label}</Badge>
                               {doc.arquivo ? (
-                                <div className="flex gap-1">
+                                <div className="flex flex-wrap gap-2">
                                   {doc.storagePath && (
                                     <Button
                                       size="sm"
                                       variant="outline"
                                       onClick={() => handleVisualizar(globalIdx)}
                                       title="Visualizar em tela"
+                                      aria-label={`Visualizar ${doc.nome} em tela`}
                                     >
-                                      <Eye className="w-3 h-3" />
+                                      <Eye className="w-4 h-4" aria-hidden="true" />
                                     </Button>
                                   )}
                                   {doc.storagePath && (
@@ -895,8 +902,9 @@ export default function Documentos() {
                                       variant="outline"
                                       onClick={() => handleDownload(globalIdx)}
                                       title="Baixar arquivo"
+                                      aria-label={`Baixar o arquivo de ${doc.nome}`}
                                     >
-                                      <Download className="w-3 h-3" />
+                                      <Download className="w-4 h-4" aria-hidden="true" />
                                     </Button>
                                   )}
                                   <Button
@@ -905,20 +913,22 @@ export default function Documentos() {
                                     onClick={() => handleUploadClick(globalIdx)}
                                     disabled={isUploading}
                                     title="Substituir arquivo"
+                                    aria-label={`Substituir o arquivo de ${doc.nome}`}
                                   >
                                     {/* Trocar um documento por outro é substituição, não envio: a
                                         seta para cima já é o botão "Enviar" da linha sem arquivo. */}
-                                    {isUploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Repeat className="w-3 h-3" />}
+                                    {isUploading ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Repeat className="w-4 h-4" aria-hidden="true" />}
                                   </Button>
                                   {doc.legadoPrivado && empresaAtiva && (
                                     <Button
                                       size="sm"
                                       variant="outline"
                                       onClick={() => compartilharComEmpresa(globalIdx)}
-                                      className="text-warning hover:text-warning"
+                                      className="text-warning-ink hover:text-warning-ink"
                                       title="Hoje só você vê este documento — clique para compartilhar com a equipe da empresa"
+                                      aria-label={`Compartilhar ${doc.nome} com a equipe da empresa`}
                                     >
-                                      <Users className="w-3 h-3" />
+                                      <Users className="w-4 h-4" aria-hidden="true" />
                                     </Button>
                                   )}
                                   <Button
@@ -926,10 +936,11 @@ export default function Documentos() {
                                     variant="outline"
                                     onClick={() => handleRemove(globalIdx)}
                                     disabled={isRemoving}
-                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                    className="text-destructive-ink hover:bg-destructive-tint hover:text-destructive-ink"
                                     title={doc.legadoPrivado ? 'Remover arquivo' : 'Remover (documento da empresa: dono do anexo ou Admin)'}
+                                    aria-label={`Remover ${doc.nome}`}
                                   >
-                                    {isRemoving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                                    {isRemoving ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Trash2 className="w-4 h-4" aria-hidden="true" />}
                                   </Button>
                                 </div>
                               ) : (
@@ -939,7 +950,7 @@ export default function Documentos() {
                                   onClick={() => handleUploadClick(globalIdx)}
                                   disabled={isUploading}
                                 >
-                                  {isUploading ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Upload className="w-3 h-3 mr-1" />}
+                                  {isUploading ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Upload className="w-4 h-4" aria-hidden="true" />}
                                   Enviar
                                 </Button>
                               )}
@@ -961,33 +972,37 @@ export default function Documentos() {
                 renovação, compartilhamento e remoção deixam rastro por
                 qualquer caminho, não só por esta tela. */}
             {isCompanyAdmin && (
-              <div className="rounded-lg border border-border">
+              <div className="rounded-lg border border-border bg-card shadow-sm">
                 <button
                   type="button"
-                  className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium hover:bg-muted/40"
+                  className="w-full flex items-center justify-between gap-3 px-6 py-3 text-base font-semibold transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+                  aria-expanded={historicoAberto}
                   onClick={abrirHistorico}
                 >
                   <span>Histórico de alterações (Admin)</span>
-                  <span className="text-xs text-muted-foreground">{historicoAberto ? 'recolher' : 'ver'}</span>
+                  <span className="text-sm font-medium text-muted-foreground">{historicoAberto ? 'recolher' : 'ver'}</span>
                 </button>
                 {historicoAberto && (
-                  <div className="border-t border-border divide-y divide-border/60 max-h-80 overflow-y-auto">
+                  <div className="border-t border-border divide-y divide-border max-h-80 overflow-y-auto">
                     {historicoCarregando && (
-                      <p className="p-3 text-xs text-muted-foreground flex items-center gap-2">
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" /> Carregando registros…
+                      <p className="p-4 text-sm text-muted-foreground flex items-center gap-2">
+                        <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Carregando registros…
                       </p>
                     )}
                     {!historicoCarregando && historico.length === 0 && (
-                      <p className="p-3 text-xs text-muted-foreground">
-                        Nenhum registro ainda — a trilha passa a gravar a partir da migration 20260903000006.
-                      </p>
+                      <EstadoVazio
+                        tamanho="compacto"
+                        icone={<History />}
+                        titulo="Nenhum registro ainda"
+                        descricao="A trilha passa a gravar a partir da migration 20260903000006."
+                      />
                     )}
                     {historico.map((h) => (
-                      <div key={h.id} className="px-4 py-2 text-xs flex items-center gap-2 flex-wrap">
+                      <div key={h.id} className="px-6 py-2 text-sm flex items-center gap-2 flex-wrap">
                         <span className="text-muted-foreground tabular-nums whitespace-nowrap">
                           {new Date(h.criado_em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
                         </span>
-                        <Badge variant="outline" className="text-[10px]">{h.acao}</Badge>
+                        <Badge variant="muted">{h.acao}</Badge>
                         <span className="font-medium truncate">{h.documento_nome}</span>
                         <span className="text-muted-foreground">por {nomeDoAutor(h.autor)}</span>
                         {h.validade_nova && (
@@ -1024,8 +1039,8 @@ export default function Documentos() {
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <CalendarDays className="w-5 h-5 text-muted-foreground" />
-                Validade do Documento
+                <CalendarDays className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+                Validade do documento
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
@@ -1034,26 +1049,27 @@ export default function Documentos() {
               </p>
 
               {pendingUploadIdx.current !== null && (
-                <div className="text-sm font-medium bg-muted/50 p-2 rounded">
+                <div className="rounded-md bg-muted p-3 text-sm font-medium">
                   {documentos[pendingUploadIdx.current]?.nome}
                 </div>
               )}
 
               {/* Manual date input */}
               <div className="space-y-2">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Data de Validade
+                <Label htmlFor="validade-seletor" className="text-sm font-medium">
+                  Data de validade
                 </Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
+                      id="validade-seletor"
                       variant="outline"
                       className={cn(
                         'w-full justify-start text-left font-normal',
                         !pendingValidadeDate && 'text-muted-foreground'
                       )}
                     >
-                      <CalendarDays className="mr-2 h-4 w-4" />
+                      <CalendarDays className="mr-2 h-4 w-4" aria-hidden="true" />
                       {pendingValidadeDate
                         ? format(pendingValidadeDate, 'dd/MM/yyyy', { locale: ptBR })
                         : 'Selecione a validade'}
@@ -1076,8 +1092,9 @@ export default function Documentos() {
 
               {/* Or manual text input */}
               <div className="space-y-2">
-                <Label className="text-sm text-muted-foreground">Ou digite: DD/MM/AAAA</Label>
+                <Label htmlFor="validade-digitada" className="text-sm font-medium">Ou digite: DD/MM/AAAA</Label>
                 <Input
+                  id="validade-digitada"
                   placeholder="DD/MM/AAAA"
                   // `new Date('2026-07-10')` é meia-noite UTC, que no horário de
                   // Brasília é dia 09 às 21h. Era isso que fazia o seletor
@@ -1107,31 +1124,33 @@ export default function Documentos() {
               {/* AI Analysis button */}
               <Button
                 variant="outline"
-                className="w-full gap-2 border-accent/30 text-accent hover:bg-accent/10"
+                className="w-full"
                 onClick={handleAIAnalysis}
                 disabled={analyzingIdx !== null}
               >
                 {analyzingIdx !== null ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
                 ) : (
-                  <Bot className="w-4 h-4" />
+                  <Bot className="w-4 h-4" aria-hidden="true" />
                 )}
-                Sugerir Validade por IA
+                Sugerir validade por IA
               </Button>
 
               {pendingValidadeDate && (
-                <div className="flex items-center gap-2 p-2 bg-success/10 rounded-lg text-sm">
-                  <CheckCircle2 className="w-4 h-4 text-success" />
-                  <span>Validade: <strong>{format(pendingValidadeDate, 'dd/MM/yyyy')}</strong></span>
-                </div>
+                <Alert variant="success">
+                  <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
+                  <AlertDescription>
+                    Validade: <strong>{format(pendingValidadeDate, 'dd/MM/yyyy')}</strong>
+                  </AlertDescription>
+                </Alert>
               )}
             </div>
-            <DialogFooter className="flex gap-2">
+            <DialogFooter className="flex flex-wrap gap-2">
               <Button variant="ghost" onClick={() => handleConfirmUpload(true)}>
                 Pular (sem validade)
               </Button>
               <Button onClick={() => handleConfirmUpload(false)}>
-                Confirmar e Enviar
+                Confirmar e enviar
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -1142,13 +1161,13 @@ export default function Documentos() {
         <Dialog open={!!visualizando} onOpenChange={(o) => !o && setVisualizando(null)}>
           <DialogContent className="max-w-4xl">
             <DialogHeader>
-              <DialogTitle className="text-base">{visualizando?.nome}</DialogTitle>
+              <DialogTitle className="text-lg">{visualizando?.nome}</DialogTitle>
             </DialogHeader>
             {visualizando && (
               <iframe
                 src={visualizando.url}
                 title={visualizando.nome}
-                className="w-full h-[70vh] border border-border rounded-lg bg-white"
+                className="w-full h-[70vh] rounded-lg border border-border bg-muted"
               />
             )}
           </DialogContent>

@@ -314,13 +314,17 @@
     --shadow-lg: 0 10px 30px -4px hsl(217 60% 2% / 0.58), 0 4px 12px -4px hsl(217 60% 2% / 0.40);
     --shadow-xl: 0 24px 48px -12px hsl(217 60% 2% / 0.70);
 
-    --sidebar-background: 209 58% 10%;
+    /* 13/09: a navegação virou faixa superior. No claro ela é o navy da
+       marca; no ESCURO precisa ficar acima do fundo (7%) para a barra não
+       derreter na página — por isso 14%, e não os 10% de quando era coluna
+       lateral encostada na borda da tela. */
+    --sidebar-background: 209 50% 14%;
     --sidebar-foreground: 210 25% 88%;
     --sidebar-primary: 158 58% 52%;
     --sidebar-primary-foreground: 209 61% 10%;
-    --sidebar-accent: 209 45% 20%;
+    --sidebar-accent: 209 42% 24%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 209 40% 20%;
+    --sidebar-border: 209 35% 24%;
     --sidebar-ring: 158 55% 56%;
   }
 }

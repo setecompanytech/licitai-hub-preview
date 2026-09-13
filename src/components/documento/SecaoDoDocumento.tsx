@@ -24,10 +24,10 @@ type Props = {
 export default function SecaoDoDocumento({ numero, titulo, children, className }: Props) {
   return (
     <section className={`bloco-inteiro ${className ?? ''}`}>
-      <div className="flex items-center gap-2 mb-2">
+      <div className="mb-2 flex items-center gap-2">
         <span
-          className="shrink-0 inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1
-                     rounded bg-muted text-muted-foreground text-[11px] font-bold tabular-nums"
+          className="inline-flex h-5 min-w-[1.25rem] shrink-0 items-center justify-center rounded-sm
+                     bg-muted px-1 text-xs font-bold tabular-nums text-muted-foreground"
         >
           {numero}
         </span>

@@ -6,10 +6,11 @@ import { MoneyInput } from '@/components/ui/money-input';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { Plus, Phone, Building2, DollarSign, GripVertical, Loader2 } from 'lucide-react';
+import { Plus, Phone, Building2, DollarSign, GripVertical, Loader2, Users } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger
 } from '@/components/ui/dialog';
@@ -38,6 +39,9 @@ const ETAPAS = [
   { key: 'ganho', label: 'Ganho', color: 'bg-success' },
   { key: 'perdido', label: 'Perdido', color: 'bg-destructive' },
 ];
+
+const moeda = (valor: number) =>
+  `R$ ${valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
 
 export default function WhatsAppPipeline() {
   const { user } = useAuth();
@@ -86,91 +90,127 @@ export default function WhatsAppPipeline() {
   const getEtapaLeads = (etapa: string) => leads.filter(l => l.etapa === etapa);
   const getEtapaTotal = (etapa: string) => getEtapaLeads(etapa).reduce((sum, l) => sum + (l.valor_estimado || 0), 0);
 
-  if (loading) return <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" aria-hidden="true" />
+        <span className="sr-only">Carregando os leads</span>
+      </div>
+    );
+  }
+
+  const dialogNovoLead = (
+    <Dialog open={showNew} onOpenChange={setShowNew}>
+      <DialogTrigger asChild>
+        <Button><Plus aria-hidden="true" />Novo lead</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Novo lead</DialogTitle></DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="novo-lead-nome">Nome</Label>
+            <Input id="novo-lead-nome" value={newLead.nome} onChange={e => setNewLead(p => ({ ...p, nome: e.target.value }))} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="novo-lead-telefone">Telefone</Label>
+            <Input id="novo-lead-telefone" value={newLead.telefone} onChange={e => setNewLead(p => ({ ...p, telefone: e.target.value }))} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="novo-lead-empresa">Empresa</Label>
+            <Input id="novo-lead-empresa" value={newLead.empresa} onChange={e => setNewLead(p => ({ ...p, empresa: e.target.value }))} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="novo-lead-setor">Setor</Label>
+            <Select value={newLead.setor} onValueChange={v => setNewLead(p => ({ ...p, setor: v }))}>
+              <SelectTrigger id="novo-lead-setor"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="licitações">Licitações</SelectItem>
+                <SelectItem value="jurídico">Jurídico</SelectItem>
+                <SelectItem value="financeiro">Financeiro</SelectItem>
+                <SelectItem value="documentos">Documentos</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="novo-lead-valor">Valor estimado (R$)</Label>
+            <MoneyInput id="novo-lead-valor" value={Number(newLead.valor_estimado) || 0} onValueChange={v => setNewLead(p => ({ ...p, valor_estimado: String(v) }))} />
+          </div>
+          <Button onClick={handleCreateLead} className="w-full">Criar lead</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <div>
-          <p className="text-sm text-muted-foreground">
-            {leads.length} leads • Total: R$ {leads.reduce((s, l) => s + (l.valor_estimado || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-          </p>
-        </div>
-        <Dialog open={showNew} onOpenChange={setShowNew}>
-          <DialogTrigger asChild>
-            <Button size="sm" className="gap-1.5"><Plus className="w-4 h-4" />Novo Lead</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Novo Lead</DialogTitle></DialogHeader>
-            <div className="space-y-3">
-              <div><Label className="text-xs">Nome</Label><Input value={newLead.nome} onChange={e => setNewLead(p => ({ ...p, nome: e.target.value }))} className="mt-1" /></div>
-              <div><Label className="text-xs">Telefone</Label><Input value={newLead.telefone} onChange={e => setNewLead(p => ({ ...p, telefone: e.target.value }))} className="mt-1" /></div>
-              <div><Label className="text-xs">Empresa</Label><Input value={newLead.empresa} onChange={e => setNewLead(p => ({ ...p, empresa: e.target.value }))} className="mt-1" /></div>
-              <div>
-                <Label className="text-xs">Setor</Label>
-                <Select value={newLead.setor} onValueChange={v => setNewLead(p => ({ ...p, setor: v }))}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="licitações">Licitações</SelectItem>
-                    <SelectItem value="jurídico">Jurídico</SelectItem>
-                    <SelectItem value="financeiro">Financeiro</SelectItem>
-                    <SelectItem value="documentos">Documentos</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div><Label className="text-xs">Valor Estimado (R$)</Label><MoneyInput value={Number(newLead.valor_estimado) || 0} onValueChange={v => setNewLead(p => ({ ...p, valor_estimado: String(v) }))} className="mt-1" /></div>
-              <Button onClick={handleCreateLead} className="w-full">Criar Lead</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm text-muted-foreground tabular-nums">
+          {leads.length} leads • Total: {moeda(leads.reduce((s, l) => s + (l.valor_estimado || 0), 0))}
+        </p>
+        {dialogNovoLead}
       </div>
 
-      <div className="flex gap-3 overflow-x-auto pb-4">
-        {ETAPAS.map(etapa => {
-          const etapaLeads = getEtapaLeads(etapa.key);
-          const total = getEtapaTotal(etapa.key);
-          return (
-            <div key={etapa.key} className="min-w-[260px] w-[260px] flex-shrink-0">
-              <div className="flex items-center gap-2 mb-2">
-                <div className={`w-2.5 h-2.5 rounded-full ${etapa.color}`} />
-                <span className="text-sm font-semibold">{etapa.label}</span>
-                <Badge variant="secondary" className="text-xs ml-auto">{etapaLeads.length}</Badge>
-              </div>
-              {total > 0 && (
-                <p className="text-xs text-muted-foreground mb-2">R$ {total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-              )}
-              <ScrollArea className="h-[calc(100vh-380px)]">
-                <div className="space-y-2">
-                  {etapaLeads.map(lead => (
-                    <Card key={lead.id} className="p-3 cursor-grab hover:shadow-md transition-shadow">
-                      <div className="flex items-start justify-between mb-1">
-                        <p className="text-sm font-medium truncate">{lead.nome}</p>
-                        <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                      </div>
-                      <div className="space-y-1 text-xs text-muted-foreground">
-                        <p className="flex items-center gap-1"><Phone className="w-3 h-3" />{lead.telefone}</p>
-                        {lead.empresa && <p className="flex items-center gap-1"><Building2 className="w-3 h-3" />{lead.empresa}</p>}
-                        {lead.valor_estimado > 0 && (
-                          <p className="flex items-center gap-1 text-success font-medium">
-                            <DollarSign className="w-3 h-3" />R$ {lead.valor_estimado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex gap-1 mt-2 flex-wrap">
-                        {ETAPAS.filter(e => e.key !== etapa.key).map(e => (
-                          <Button key={e.key} variant="ghost" size="sm" className="text-xs h-6 px-1.5" onClick={() => moveEtapa(lead.id, e.key)}>
-                            → {e.label}
-                          </Button>
-                        ))}
-                      </div>
-                    </Card>
-                  ))}
+      {leads.length === 0 ? (
+        <EstadoVazio
+          icone={<Users aria-hidden="true" />}
+          titulo="Nenhum lead no funil"
+          descricao="Cadastre o primeiro contato para acompanhar a negociação por etapa."
+          acao={<Button onClick={() => setShowNew(true)}><Plus aria-hidden="true" />Novo lead</Button>}
+        />
+      ) : (
+        <div className="flex gap-4 overflow-x-auto pb-4">
+          {ETAPAS.map(etapa => {
+            const etapaLeads = getEtapaLeads(etapa.key);
+            const total = getEtapaTotal(etapa.key);
+            return (
+              <section key={etapa.key} className="w-72 flex-shrink-0">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className={`w-2.5 h-2.5 rounded-full ${etapa.color}`} aria-hidden="true" />
+                  <h3 className="text-sm font-semibold text-foreground">{etapa.label}</h3>
+                  <Badge variant="muted" className="ml-auto">{etapaLeads.length}</Badge>
                 </div>
-              </ScrollArea>
-            </div>
-          );
-        })}
-      </div>
+                {total > 0 && (
+                  <p className="text-xs text-muted-foreground tabular-nums mb-2">{moeda(total)}</p>
+                )}
+                <ScrollArea className="h-[calc(100vh-420px)] min-h-64">
+                  <div className="space-y-2 pr-2">
+                    {etapaLeads.map(lead => (
+                      <Card key={lead.id} className="p-4">
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <p className="text-sm font-semibold text-foreground truncate">{lead.nome}</p>
+                          <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" aria-hidden="true" />
+                        </div>
+                        <div className="space-y-1 text-xs text-muted-foreground">
+                          <p className="flex items-center gap-1"><Phone className="w-3 h-3" aria-hidden="true" />{lead.telefone}</p>
+                          {lead.empresa && <p className="flex items-center gap-1 truncate"><Building2 className="w-3 h-3 shrink-0" aria-hidden="true" />{lead.empresa}</p>}
+                          {lead.valor_estimado > 0 && (
+                            <p className="flex items-center gap-1 text-success font-semibold tabular-nums">
+                              <DollarSign className="w-3 h-3" aria-hidden="true" />{moeda(lead.valor_estimado)}
+                            </p>
+                          )}
+                        </div>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {ETAPAS.filter(e => e.key !== etapa.key).map(e => (
+                            <Button
+                              key={e.key}
+                              variant="outline"
+                              size="sm"
+                              onClick={() => moveEtapa(lead.id, e.key)}
+                              aria-label={`Mover ${lead.nome} para ${e.label}`}
+                            >
+                              → {e.label}
+                            </Button>
+                          ))}
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </section>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

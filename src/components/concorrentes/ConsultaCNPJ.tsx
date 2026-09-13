@@ -2,13 +2,19 @@ import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Search, Building2, Globe, FileText, CheckCircle2, AlertTriangle, Loader2, ExternalLink, Download, FileSpreadsheet, FileDown } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Search, FileText, CheckCircle2, AlertTriangle, Loader2, ExternalLink, Download, FileSpreadsheet, FileDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { downloadCSV, downloadTextReport, downloadPDF } from '@/lib/download-utils';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+
+/**
+ * Consulta de CNPJ — componente interno da aba "Consulta CNPJ" da tela
+ * Concorrentes: começa direto no conteúdo, sem cabeçalho de página.
+ */
 
 type DadosCNPJ = {
   razaoSocial: string;
@@ -31,8 +37,8 @@ type DadosCNPJ = {
 function InfoField({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
     <div>
-      <p className="text-xs text-muted-foreground uppercase tracking-wider mb-0.5">{label}</p>
-      <p className={`text-sm text-foreground ${highlight ? 'font-semibold' : ''}`}>{value}</p>
+      <dt className="text-sm text-muted-foreground">{label}</dt>
+      <dd className={`mt-0.5 text-base text-foreground ${highlight ? 'font-semibold' : ''}`}>{value || '—'}</dd>
     </div>
   );
 }
@@ -72,56 +78,67 @@ export default function ConsultaCNPJ() {
     }
   };
 
+  // Situação cadastral: a tinta e o ícone do badge saem juntos do mesmo dado —
+  // um CNPJ "BAIXADA"/"SUSPENSA" não pode exibir visto de confirmação.
+  const situacaoAtiva = resultado?.situacao === 'ATIVA';
+  const IconeSituacao = situacaoAtiva ? CheckCircle2 : AlertTriangle;
+
   return (
     <div className="space-y-4">
-      <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
-        <h3 className="text-sm font-semibold flex items-center gap-2 mb-4">
-          <Search className="w-4 h-4 text-muted-foreground" />
-          Consulta de CNPJ – Receita Federal (BrasilAPI)
-        </h3>
+      <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+        <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+          <Search className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+          Consulta de CNPJ — Receita Federal (BrasilAPI)
+        </h2>
 
-        <div className="flex gap-2">
-          <Input
-            placeholder="Digite o CNPJ (ex: 12.345.678/0001-01)"
-            value={cnpjInput}
-            onChange={(e) => setCnpjInput(e.target.value)}
-            className="flex-1"
-            onKeyDown={(e) => e.key === 'Enter' && handleConsultar()}
-          />
-          <Button onClick={handleConsultar} disabled={loading} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-            <span className="ml-1">{loading ? 'Consultando...' : 'Consultar'}</span>
+        <div className="mt-4 flex flex-wrap items-end gap-3">
+          <div className="flex min-w-0 flex-1 flex-col gap-1 sm:max-w-md">
+            <label htmlFor="cnpj-consulta" className="text-sm font-medium text-foreground">CNPJ</label>
+            <Input
+              id="cnpj-consulta"
+              placeholder="Ex.: 12.345.678/0001-01"
+              value={cnpjInput}
+              inputMode="numeric"
+              aria-invalid={erro ? true : undefined}
+              onChange={(e) => setCnpjInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleConsultar()}
+            />
+          </div>
+          <Button onClick={handleConsultar} disabled={loading}>
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+            {loading ? 'Consultando…' : 'Consultar'}
           </Button>
         </div>
 
         {erro && (
-          <div className="flex items-center gap-2 mt-3 text-sm text-destructive">
-            <AlertTriangle className="w-4 h-4" /> {erro}
-          </div>
+          <Alert variant="destructive" className="mt-4">
+            <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+            <AlertDescription>{erro}</AlertDescription>
+          </Alert>
         )}
 
-        <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
-          <a href="https://brasilapi.com.br" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-accent transition-colors">
-            <ExternalLink className="w-3 h-3" /> BrasilAPI
+        <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+          <a href="https://brasilapi.com.br" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-primary hover:underline">
+            <ExternalLink className="h-3 w-3" aria-hidden="true" /> BrasilAPI
           </a>
-          <a href="https://servicos.receita.fazenda.gov.br/servicos/cnpjreva/cnpjreva_solicitacao.asp" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-accent transition-colors">
-            <ExternalLink className="w-3 h-3" /> Receita Federal
+          <a href="https://servicos.receita.fazenda.gov.br/servicos/cnpjreva/cnpjreva_solicitacao.asp" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-primary hover:underline">
+            <ExternalLink className="h-3 w-3" aria-hidden="true" /> Receita Federal
           </a>
         </div>
       </div>
 
       {resultado && (
-        <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm animate-fade-in space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold flex items-center gap-2">
-              <FileText className="w-4 h-4 text-muted-foreground" />
-              Resultado da Consulta
-            </h3>
-            <div className="flex items-center gap-2">
+        <div className="animate-fade-in space-y-4 rounded-lg border border-border bg-card p-6 shadow-sm">
+          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+            <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+              <FileText className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+              Resultado da consulta
+            </h2>
+            <div className="flex flex-wrap items-center gap-2">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button size="sm" variant="outline">
-                    <Download className="w-3.5 h-3.5 mr-1" /> Exportar
+                    <Download className="h-4 w-4" /> Exportar
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -204,15 +221,13 @@ export default function ConsultaCNPJ() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Badge variant="outline" className={
-                resultado.situacao === 'ATIVA' ? 'bg-success/15 text-success border-success/30' : 'bg-destructive/15 text-destructive border-destructive/30'
-              }>
-                <CheckCircle2 className="w-3 h-3 mr-1" /> {resultado.situacao}
+              <Badge variant={situacaoAtiva ? 'success' : 'danger'}>
+                <IconeSituacao className="mr-1 h-3 w-3" aria-hidden="true" /> {resultado.situacao || 'Situação não informada'}
               </Badge>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <dl className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <InfoField label="Razão Social" value={resultado.razaoSocial} />
             <InfoField label="Nome Fantasia" value={resultado.nomeFantasia} />
             <InfoField label="CNPJ" value={resultado.cnpj} />
@@ -226,18 +241,16 @@ export default function ConsultaCNPJ() {
             <InfoField label="Município/UF" value={`${resultado.municipio} / ${resultado.uf}`} />
             <InfoField label="E-mail" value={resultado.email} />
             <InfoField label="Telefone" value={resultado.telefone} />
-          </div>
+          </dl>
 
           {resultado.cnaesSecundarios.length > 0 && (
-            <div className="border-t border-border/30 pt-4">
-              <h4 className="text-xs font-semibold text-muted-foreground mb-3">
-                CNAEs Secundários ({resultado.cnaesSecundarios.length})
-              </h4>
+            <div className="border-t border-border pt-4">
+              <h3 className="mb-3 text-base font-semibold text-foreground">
+                CNAEs secundários ({resultado.cnaesSecundarios.length})
+              </h3>
               <div className="flex flex-wrap gap-2">
                 {resultado.cnaesSecundarios.map((cnae, i) => (
-                  <Badge key={i} variant="outline" className="bg-muted text-muted-foreground border-border text-xs">
-                    {cnae}
-                  </Badge>
+                  <Badge key={i} variant="muted">{cnae}</Badge>
                 ))}
               </div>
             </div>

@@ -129,7 +129,7 @@ ${truncated}`
       </p>
 
       {file ? (
-        <div className="flex items-center gap-4 bg-muted/30 rounded-lg p-4 border border-border/50">
+        <div className="flex flex-wrap items-center gap-4 rounded-lg border border-border bg-muted p-4">
           <FileText className="w-8 h-8 text-muted-foreground shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-foreground truncate">{file.name}</p>
@@ -148,7 +148,7 @@ ${truncated}`
                 )}
               </Button>
             )}
-            <Button variant="outline" size="sm" onClick={handleRemove}>
+            <Button variant="outline" size="sm" onClick={handleRemove} aria-label="Remover arquivo">
               <X className="w-4 h-4" />
             </Button>
           </div>
@@ -157,7 +157,7 @@ ${truncated}`
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
-          className="w-full border-2 border-dashed border-border rounded-lg p-5 flex flex-col items-center gap-2 hover:border-accent/50 hover:bg-muted/30 transition-colors"
+          className="flex w-full flex-col items-center gap-2 rounded-lg border-2 border-dashed border-border p-6 transition-colors hover:border-primary hover:bg-primary-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           <Upload className="w-7 h-7 text-muted-foreground" />
           <span className="text-sm font-medium text-foreground">Envie documento da empresa para extração por IA</span>

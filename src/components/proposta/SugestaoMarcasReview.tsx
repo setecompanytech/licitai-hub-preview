@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Check, X, Sparkles, TrendingUp, Building2, Package, Loader2, RefreshCw, Info } from 'lucide-react';
 import { useSugestaoMarcas, type SugestaoMarca } from '@/hooks/useSugestaoMarcas';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 
 interface SugestaoMarcasReviewProps {
   licitacaoId: string;
@@ -27,11 +28,19 @@ const fonteLabel: Record<string, string> = {
   historico: 'Histórico',
 };
 
-const scoreColor = (score: number) => {
-  if (score >= 90) return 'text-success bg-success/10';
-  if (score >= 70) return 'text-info bg-info/10';
-  if (score >= 50) return 'text-warning bg-warning/10';
-  return 'text-destructive bg-destructive/10';
+/** Faixa de confiança → família semântica em tinta (fundo/tinta/contorno). */
+const scoreVariant = (score: number): 'success' | 'info' | 'warning' | 'danger' => {
+  if (score >= 90) return 'success';
+  if (score >= 70) return 'info';
+  if (score >= 50) return 'warning';
+  return 'danger';
+};
+
+const scoreTint: Record<'success' | 'info' | 'warning' | 'danger', string> = {
+  success: 'border-success-line bg-success-tint text-success-ink',
+  info: 'border-border bg-muted text-foreground',
+  warning: 'border-warning-line bg-warning-tint text-warning-ink',
+  danger: 'border-destructive-line bg-destructive-tint text-destructive-ink',
 };
 
 function SugestaoCard({ sugestao, onAceitar, onRejeitar, onAplicar }: {
@@ -42,14 +51,15 @@ function SugestaoCard({ sugestao, onAceitar, onRejeitar, onAplicar }: {
 }) {
   const isAceito = sugestao.status === 'aceito';
   const isRejeitado = sugestao.status === 'rejeitado';
+  const variante = scoreVariant(sugestao.score_confianca);
 
   return (
-    <div className={`flex items-start gap-3 p-3 rounded-lg border transition-all ${
-      isAceito ? 'bg-success/10 border-success/30' :
-      isRejeitado ? 'bg-muted/50 border-muted opacity-60' :
-      'bg-card border-border hover:border-primary/30'
+    <div className={`flex items-start gap-3 rounded-lg border p-3 transition-colors ${
+      isAceito ? 'border-success-line bg-success-tint' :
+      isRejeitado ? 'border-border bg-muted opacity-60' :
+      'border-border bg-card hover:border-primary'
     }`}>
-      <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${scoreColor(sugestao.score_confianca)}`}>
+      <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-sm font-bold tabular-nums ${scoreTint[variante]}`}>
         {sugestao.ranking}º
       </div>
 
@@ -69,19 +79,19 @@ function SugestaoCard({ sugestao, onAceitar, onRejeitar, onAplicar }: {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <Badge variant="outline" className="text-xs">
+          <Badge variant="muted">
             {fonteLabel[sugestao.fonte] || sugestao.fonte}
           </Badge>
-          <Badge className={`text-xs ${scoreColor(sugestao.score_confianca)}`}>
+          <Badge variant={variante}>
             {sugestao.score_confianca}% confiança
           </Badge>
           {sugestao.preco_historico && (
-            <span className="text-xs text-muted-foreground flex items-center gap-1">
-              <TrendingUp className="h-3 w-3" />
+            <span className="flex items-center gap-1 text-xs tabular-nums text-muted-foreground">
+              <TrendingUp className="h-3 w-3" aria-hidden="true" />
               R$ {sugestao.preco_historico.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </span>
           )}
-          {isAceito && <Badge className="bg-success text-success-foreground text-xs">Aceito ✓</Badge>}
+          {isAceito && <Badge variant="success">Aceito</Badge>}
         </div>
 
         {sugestao.justificativa_ia && (
@@ -110,10 +120,24 @@ function SugestaoCard({ sugestao, onAceitar, onRejeitar, onAplicar }: {
 
       {!isAceito && !isRejeitado && (
         <div className="flex gap-1 shrink-0">
-          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-success hover:bg-success/10" onClick={onAplicar} title="Aplicar na proposta">
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-9 w-9 p-0 text-success-ink hover:bg-success-tint hover:text-success-ink"
+            onClick={onAplicar}
+            title="Aplicar na proposta"
+            aria-label="Aplicar na proposta"
+          >
             <Check className="h-4 w-4" />
           </Button>
-          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10" onClick={onRejeitar} title="Rejeitar">
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-9 w-9 p-0 text-destructive hover:bg-destructive-tint hover:text-destructive"
+            onClick={onRejeitar}
+            title="Rejeitar"
+            aria-label="Rejeitar sugestão"
+          >
             <X className="h-4 w-4" />
           </Button>
         </div>
@@ -160,16 +184,16 @@ export default function SugestaoMarcasReview({ licitacaoId, itens, onMarcaAplica
   return (
     <Card>
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-muted-foreground" />
-            Sugestão de Marcas & Modelos
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+            <Sparkles className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+            Sugestão de marcas e modelos
           </CardTitle>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {sugestoes.length > 0 && (
-              <div className="flex gap-1.5 text-xs">
-                <Badge variant="outline">{totalPendentes} pendentes</Badge>
-                <Badge className="bg-success text-success-foreground">{totalAceitas} aceitas</Badge>
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="muted">{totalPendentes} pendentes</Badge>
+                <Badge variant="success">{totalAceitas} aceitas</Badge>
               </div>
             )}
             <Button
@@ -199,19 +223,20 @@ export default function SugestaoMarcasReview({ licitacaoId, itens, onMarcaAplica
         )}
 
         {!isGenerating && sugestoes.length === 0 && (
-          <div className="text-center py-6 text-muted-foreground">
-            <Sparkles className="h-10 w-10 mx-auto mb-2 opacity-30" />
-            <p className="text-sm">Nenhuma sugestão gerada ainda.</p>
-            <p className="text-xs mt-1">Clique em "Gerar Sugestões" para analisar o histórico de processos anteriores e sugerir marcas/modelos compatíveis com o TR.</p>
-          </div>
+          <EstadoVazio
+            tamanho="compacto"
+            icone={<Sparkles />}
+            titulo="Nenhuma sugestão gerada ainda"
+            descricao={'Clique em "Gerar Sugestões" para analisar o histórico de processos anteriores e sugerir marcas/modelos compatíveis com o TR.'}
+          />
         )}
 
         {!isGenerating && Object.entries(sugestoesPorItem).map(([descricao, sugs]) => (
           <div key={descricao} className="space-y-2">
-            <h4 className="text-sm font-medium text-foreground truncate" title={descricao}>
-              📦 {descricao}
+            <h4 className="truncate text-sm font-semibold text-foreground" title={descricao}>
+              {descricao}
             </h4>
-            <div className="space-y-1.5 pl-2 border-l-2 border-primary/20">
+            <div className="space-y-2 border-l-2 border-border pl-3">
               {sugs.map(sug => (
                 <SugestaoCard
                   key={sug.id}

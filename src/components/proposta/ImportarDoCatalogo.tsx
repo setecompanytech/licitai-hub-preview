@@ -4,10 +4,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Package, ShoppingCart, Loader2, FileText, ChevronDown, ChevronUp, CheckSquare, Trash2 } from 'lucide-react';
 import { useProcessoAtivo, type ProcessoResumo } from '@/hooks/useProcessoAtivo';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { toast } from 'sonner';
 
 const formatCurrency = (v: number) =>
@@ -245,30 +245,34 @@ export default function ImportarDoCatalogo({ onImport, licitacaoNumero, licitaca
   };
 
   return (
-    <div className="border border-border/50 rounded-lg overflow-hidden">
+    <div className="overflow-hidden rounded-lg border border-border bg-card">
       <button
+        type="button"
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center justify-between px-4 py-2.5 bg-muted/30 hover:bg-muted/50 transition-colors"
+        aria-expanded={expanded}
+        className="flex w-full items-center justify-between gap-3 bg-muted px-4 py-3 transition-colors hover:bg-primary-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
       >
-        <div className="flex items-center gap-2 text-sm font-medium">
-          <Package className="w-4 h-4 text-muted-foreground" />
-          Importar do Catálogo de Precificação
-        </div>
-        {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
+          <Package className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+          Importar do catálogo de precificação
+        </span>
+        {expanded
+          ? <ChevronUp className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+          : <ChevronDown className="w-4 h-4 text-muted-foreground" aria-hidden="true" />}
       </button>
 
       {expanded && (
-        <div className="p-4 space-y-3">
-          <div className="flex items-center gap-2 flex-wrap">
+        <div className="space-y-3 p-4">
+          <div className="flex flex-wrap items-center gap-2">
             {licitacaoId ? (
-              <Badge variant="outline" className="h-8 px-3 text-xs gap-1.5 font-normal">
-                <FileText className="w-3 h-3" />
+              <Badge variant="info" className="gap-1.5 px-3 py-1.5">
+                <FileText className="w-3 h-3" aria-hidden="true" />
                 Itens deste processo{licitacaoNumero ? `: ${licitacaoNumero}` : ''}
               </Badge>
             ) : (
               <Select value={filterLicitacao} onValueChange={(v) => { setFilterLicitacao(v); setSelected(new Set()); }}>
-                <SelectTrigger className="h-8 text-xs w-[280px]">
-                  <FileText className="w-3 h-3 mr-1" />
+                <SelectTrigger className="w-full text-sm sm:w-[280px]" aria-label="Filtrar por licitação">
+                  <FileText className="w-4 h-4 mr-2 text-muted-foreground" aria-hidden="true" />
                   <SelectValue placeholder="Filtrar por licitação" />
                 </SelectTrigger>
                 <SelectContent className="max-h-[300px]">
@@ -285,16 +289,22 @@ export default function ImportarDoCatalogo({ onImport, licitacaoNumero, licitaca
                 </SelectContent>
               </Select>
             )}
-            <Button variant="outline" size="sm" onClick={toggleSelectAll} className="h-8 text-xs gap-1">
-              <CheckSquare className="w-3 h-3" /> {allSelected ? 'Desmarcar todos' : 'Marcar todos'}
+            <Button variant="outline" size="sm" onClick={toggleSelectAll}>
+              <CheckSquare className="w-4 h-4" /> {allSelected ? 'Desmarcar todos' : 'Marcar todos'}
             </Button>
             {selected.size > 0 && (
               <>
-                <Button size="sm" onClick={handleImport} className="bg-accent hover:bg-accent/90 text-accent-foreground h-8">
-                  <ShoppingCart className="w-3 h-3 mr-1" /> Importar {selected.size} item(ns)
+                <Button size="sm" onClick={handleImport}>
+                  <ShoppingCart className="w-4 h-4" /> Importar {selected.size} item(ns)
                 </Button>
-                <Button size="sm" variant="outline" onClick={handleExcluir} disabled={excluindo} className="h-8 text-destructive border-destructive/40 hover:bg-destructive/10">
-                  {excluindo ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Trash2 className="w-3 h-3 mr-1" />}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleExcluir}
+                  disabled={excluindo}
+                  className="border-destructive-line text-destructive hover:bg-destructive-tint hover:text-destructive"
+                >
+                  {excluindo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                   Excluir selecionados
                 </Button>
               </>
@@ -306,21 +316,24 @@ export default function ImportarDoCatalogo({ onImport, licitacaoNumero, licitaca
               <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
             </div>
           ) : filteredItems.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-4">
-              Nenhum item encontrado. Extraia os itens do edital ou precifique na aba Precificação.
-            </p>
+            <EstadoVazio
+              tamanho="compacto"
+              icone={<Package />}
+              titulo="Nenhum item encontrado"
+              descricao="Extraia os itens do edital ou precifique na aba Precificação."
+            />
           ) : (
-            <div className="max-h-[250px] overflow-y-auto space-y-1">
+            <div className="max-h-[250px] space-y-1 overflow-y-auto">
               {filteredItems.some(i => i._fonte === 'edital') && (
-                <p className="text-xs text-warning/80 px-1 pb-1">
+                <p className="px-1 pb-1 text-xs text-muted-foreground">
                   Itens extraídos do edital (valores de referência). Preencha seu preço após importar.
                 </p>
               )}
               {filteredItems.map(item => (
                 <label
                   key={item.id}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all text-xs ${
-                    selected.has(item.id) ? 'bg-accent/10 border border-accent/20' : 'hover:bg-muted/30 border border-transparent'
+                  className={`flex cursor-pointer items-center gap-3 rounded-md border px-3 py-2 text-sm transition-colors ${
+                    selected.has(item.id) ? 'border-primary bg-primary-tint' : 'border-transparent hover:bg-muted'
                   }`}
                 >
                   <input
@@ -330,14 +343,14 @@ export default function ImportarDoCatalogo({ onImport, licitacaoNumero, licitaca
                     className="rounded border-border"
                   />
                   <span className="flex-1 truncate">{item.descricao}</span>
-                  <span className="text-muted-foreground">{item.quantidade} {item.unidade}</span>
+                  <span className="shrink-0 text-muted-foreground tabular-nums">{item.quantidade} {item.unidade}</span>
                   {item.preco_unitario > 0
-                    ? <span className="font-medium">{formatCurrency(item.preco_unitario)}</span>
-                    : <span className="text-muted-foreground text-xs">sem preço</span>
+                    ? <span className="shrink-0 font-medium tabular-nums">{formatCurrency(item.preco_unitario)}</span>
+                    : <span className="shrink-0 text-muted-foreground">sem preço</span>
                   }
                   {item._fonte === 'edital'
-                    ? <Badge variant="outline" className="text-xs shrink-0 border-warning/40 text-warning">Edital</Badge>
-                    : <span className="font-semibold text-foreground">{formatCurrency(item.preco_total)}</span>
+                    ? <Badge variant="warning" className="shrink-0">Edital</Badge>
+                    : <span className="shrink-0 font-semibold text-foreground tabular-nums">{formatCurrency(item.preco_total)}</span>
                   }
                 </label>
               ))}

@@ -1,16 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
-import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import {
-  Search, Send, Plus, Phone, MoreVertical, Bot, User, Clock,
-  MessageSquare, Loader2, Sparkles, Tag
+  Search, Send, Plus, Phone, Clock, MessageSquare, Loader2, Sparkles,
 } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger
@@ -184,37 +183,47 @@ export default function WhatsAppInbox() {
 
   const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
-  const setorColor: Record<string, string> = {
-    'licitações': 'bg-muted text-muted-foreground',
-    'jurídico': 'bg-muted text-muted-foreground',
-    'financeiro': 'bg-muted text-muted-foreground',
-    'documentos': 'bg-muted text-muted-foreground',
-  };
-
   return (
-    <div className="flex gap-0 h-[calc(100vh-220px)] border rounded-xl overflow-hidden bg-card">
-      {/* Sidebar - Lista de conversas */}
-      <div className="w-80 border-r flex flex-col flex-shrink-0">
-        <div className="p-3 border-b space-y-2">
+    <div className="flex h-[calc(100vh-280px)] min-h-96 overflow-hidden rounded-lg border border-border bg-card">
+      {/* Lista de conversas */}
+      <div className="flex w-64 flex-shrink-0 flex-col border-r border-border sm:w-80">
+        <div className="space-y-3 border-b border-border p-4">
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-muted-foreground" />
-              <Input placeholder="Buscar conversa..." value={busca} onChange={e => setBusca(e.target.value)} className="pl-8 h-9 text-sm" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+              <Input
+                placeholder="Buscar conversa..."
+                aria-label="Buscar conversa"
+                value={busca}
+                onChange={e => setBusca(e.target.value)}
+                className="pl-9"
+              />
             </div>
             <Dialog open={showNewDialog} onOpenChange={setShowNewDialog}>
               <DialogTrigger asChild>
-                <Button size="icon" variant="outline" className="h-9 w-9"><Plus className="w-4 h-4" /></Button>
+                <Button size="icon" variant="outline" className="h-11 w-11 flex-shrink-0" aria-label="Nova conversa">
+                  <Plus aria-hidden="true" />
+                </Button>
               </DialogTrigger>
               <DialogContent>
-                <DialogHeader><DialogTitle>Nova Conversa</DialogTitle></DialogHeader>
-                <div className="space-y-3">
-                  <div><Label className="text-xs">Nome</Label><Input value={newContact.nome} onChange={e => setNewContact(p => ({ ...p, nome: e.target.value }))} className="mt-1" /></div>
-                  <div><Label className="text-xs">Telefone</Label><Input value={newContact.telefone} onChange={e => setNewContact(p => ({ ...p, telefone: e.target.value }))} placeholder="(11) 99999-9999" className="mt-1" /></div>
-                  <div><Label className="text-xs">Empresa</Label><Input value={newContact.empresa} onChange={e => setNewContact(p => ({ ...p, empresa: e.target.value }))} className="mt-1" /></div>
-                  <div>
-                    <Label className="text-xs">Setor</Label>
+                <DialogHeader><DialogTitle>Nova conversa</DialogTitle></DialogHeader>
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="nova-conversa-nome">Nome</Label>
+                    <Input id="nova-conversa-nome" value={newContact.nome} onChange={e => setNewContact(p => ({ ...p, nome: e.target.value }))} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="nova-conversa-telefone">Telefone</Label>
+                    <Input id="nova-conversa-telefone" value={newContact.telefone} onChange={e => setNewContact(p => ({ ...p, telefone: e.target.value }))} placeholder="(11) 99999-9999" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="nova-conversa-empresa">Empresa</Label>
+                    <Input id="nova-conversa-empresa" value={newContact.empresa} onChange={e => setNewContact(p => ({ ...p, empresa: e.target.value }))} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="nova-conversa-setor">Setor</Label>
                     <Select value={newContact.setor} onValueChange={v => setNewContact(p => ({ ...p, setor: v }))}>
-                      <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                      <SelectTrigger id="nova-conversa-setor"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="licitações">Licitações</SelectItem>
                         <SelectItem value="jurídico">Jurídico</SelectItem>
@@ -223,14 +232,20 @@ export default function WhatsAppInbox() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <Button onClick={handleCreateConversa} className="w-full">Criar Conversa</Button>
+                  <Button onClick={handleCreateConversa} className="w-full">Criar conversa</Button>
                 </div>
               </DialogContent>
             </Dialog>
           </div>
-          <div className="flex gap-1 overflow-x-auto">
+          <div className="flex flex-wrap gap-2">
             {SETORES_FILTER.map(s => (
-              <Button key={s} variant={filtroSetor === s ? 'default' : 'ghost'} size="sm" className="text-xs h-7 whitespace-nowrap" onClick={() => setFiltroSetor(s)}>
+              <Button
+                key={s}
+                variant={filtroSetor === s ? 'default' : 'ghost'}
+                size="sm"
+                aria-pressed={filtroSetor === s}
+                onClick={() => setFiltroSetor(s)}
+              >
                 {s === 'Todos' ? s : s.charAt(0).toUpperCase() + s.slice(1)}
               </Button>
             ))}
@@ -239,28 +254,37 @@ export default function WhatsAppInbox() {
 
         <ScrollArea className="flex-1">
           {loading ? (
-            <div className="flex items-center justify-center py-10"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+            <div className="flex items-center justify-center py-10">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" aria-hidden="true" />
+              <span className="sr-only">Carregando conversas</span>
+            </div>
           ) : filteredConversas.length === 0 ? (
-            <div className="text-center py-10 text-sm text-muted-foreground">Nenhuma conversa encontrada</div>
+            <EstadoVazio
+              tamanho="compacto"
+              icone={<MessageSquare aria-hidden="true" />}
+              titulo="Nenhuma conversa encontrada"
+              descricao="Ajuste a busca e o setor, ou crie uma conversa nova."
+            />
           ) : (
             filteredConversas.map(c => (
               <button
                 key={c.id}
                 onClick={() => setConversaAtiva(c)}
-                className={`w-full flex items-start gap-3 p-3 hover:bg-muted/50 transition-colors border-b border-border/30 text-left ${conversaAtiva?.id === c.id ? 'bg-accent/10' : ''}`}
+                aria-current={conversaAtiva?.id === c.id ? 'true' : undefined}
+                className={`w-full flex items-start gap-3 p-4 hover:bg-muted transition-colors border-b border-border text-left ${conversaAtiva?.id === c.id ? 'bg-primary-tint' : ''}`}
               >
                 <Avatar className="w-10 h-10 flex-shrink-0">
-                  <AvatarFallback className="text-xs bg-primary/10 text-primary">{getInitials(c.contato_nome)}</AvatarFallback>
+                  <AvatarFallback className="text-xs bg-primary-tint text-primary">{getInitials(c.contato_nome)}</AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium truncate">{c.contato_nome}</span>
-                    <span className="text-xs text-muted-foreground">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-semibold text-foreground truncate">{c.contato_nome}</span>
+                    <span className="text-xs text-muted-foreground tabular-nums shrink-0">
                       {new Date(c.ultima_mensagem_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>
-                  <p className="text-xs text-muted-foreground truncate">{c.ultima_mensagem || 'Nova conversa'}</p>
-                  <Badge className={`text-xs mt-1 ${setorColor[c.setor] || 'bg-muted text-muted-foreground'}`}>{c.setor}</Badge>
+                  <p className="text-sm text-muted-foreground truncate">{c.ultima_mensagem || 'Nova conversa'}</p>
+                  <Badge variant="muted" className="mt-1.5" truncate>{c.setor}</Badge>
                 </div>
               </button>
             ))
@@ -268,43 +292,41 @@ export default function WhatsAppInbox() {
         </ScrollArea>
       </div>
 
-      {/* Chat area */}
-      <div className="flex-1 flex flex-col">
+      {/* Conversa aberta */}
+      <div className="flex-1 flex flex-col min-w-0">
         {conversaAtiva ? (
           <>
-            {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/20">
-              <div className="flex items-center gap-3">
-                <Avatar className="w-9 h-9">
-                  <AvatarFallback className="text-xs bg-primary/10 text-primary">{getInitials(conversaAtiva.contato_nome)}</AvatarFallback>
+            <div className="flex items-center justify-between gap-3 border-b border-border bg-muted px-4 py-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <Avatar className="w-10 h-10 flex-shrink-0">
+                  <AvatarFallback className="text-xs bg-primary-tint text-primary">{getInitials(conversaAtiva.contato_nome)}</AvatarFallback>
                 </Avatar>
-                <div>
-                  <p className="text-sm font-medium">{conversaAtiva.contato_nome}</p>
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <Phone className="w-3 h-3" />{conversaAtiva.contato_telefone}
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-foreground truncate">{conversaAtiva.contato_nome}</p>
+                  <p className="text-xs text-muted-foreground flex flex-wrap items-center gap-1">
+                    <Phone className="w-3 h-3" aria-hidden="true" />{conversaAtiva.contato_telefone}
                     {conversaAtiva.contato_empresa && <span>• {conversaAtiva.contato_empresa}</span>}
                   </p>
                 </div>
               </div>
-              <Badge className={setorColor[conversaAtiva.setor] || ''}>{conversaAtiva.setor}</Badge>
+              <Badge variant="muted" truncate>{conversaAtiva.setor}</Badge>
             </div>
 
-            {/* Messages */}
             <ScrollArea className="flex-1 p-4">
               <div className="space-y-3 max-w-2xl mx-auto">
                 {mensagens.map(m => (
                   <div key={m.id} className={`flex ${m.direcao === 'saida' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 ${m.direcao === 'saida'
-                      ? 'bg-accent text-accent-foreground rounded-br-md'
-                      : 'bg-muted rounded-bl-md'
+                    <div className={`max-w-[75%] rounded-lg px-4 py-2.5 ${m.direcao === 'saida'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-foreground'
                     }`}>
                       <p className="text-sm whitespace-pre-wrap">{m.conteudo}</p>
-                      <div className={`flex items-center gap-1 mt-1 ${m.direcao === 'saida' ? 'text-accent-foreground/70' : 'text-muted-foreground'}`}>
-                        <Clock className="w-3 h-3" />
-                        <span className="text-xs">
+                      <div className={`flex items-center gap-1 mt-1 text-xs ${m.direcao === 'saida' ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
+                        <Clock className="w-3 h-3" aria-hidden="true" />
+                        <span className="tabular-nums">
                           {new Date(m.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                         </span>
-                        {m.status === 'simulado' && <span className="text-xs ml-1">(simulado)</span>}
+                        {m.status === 'simulado' && <span className="ml-1">(simulado)</span>}
                       </div>
                     </div>
                   </div>
@@ -313,38 +335,50 @@ export default function WhatsAppInbox() {
               </div>
             </ScrollArea>
 
-            {/* Input */}
-            <div className="p-3 border-t bg-muted/10">
+            <div className="border-t border-border bg-card p-4">
               <div className="flex items-center gap-2 max-w-2xl mx-auto">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="flex-shrink-0 h-9 w-9"
+                  className="h-11 w-11 flex-shrink-0"
                   onClick={handleAISuggest}
                   disabled={generatingAI || mensagens.length === 0}
                   title="Sugestão IA"
+                  aria-label="Gerar sugestão de resposta com IA"
                 >
-                  {generatingAI ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-accent" />}
+                  {generatingAI
+                    ? <Loader2 className="animate-spin" aria-hidden="true" />
+                    : <Sparkles className="text-primary" aria-hidden="true" />}
                 </Button>
                 <Input
                   placeholder="Digite uma mensagem..."
+                  aria-label="Mensagem para enviar"
                   value={novaMensagem}
                   onChange={e => setNovaMensagem(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSend()}
                   className="flex-1"
                 />
-                <Button size="icon" onClick={handleSend} disabled={sending || !novaMensagem.trim()} className="bg-accent hover:bg-accent/90 text-accent-foreground h-9 w-9">
-                  {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                <Button
+                  size="icon"
+                  onClick={handleSend}
+                  disabled={sending || !novaMensagem.trim()}
+                  className="h-11 w-11 flex-shrink-0"
+                  aria-label="Enviar mensagem"
+                >
+                  {sending
+                    ? <Loader2 className="animate-spin" aria-hidden="true" />
+                    : <Send aria-hidden="true" />}
                 </Button>
               </div>
             </div>
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center text-muted-foreground">
-            <div className="text-center">
-              <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-30" />
-              <p className="text-sm">Selecione uma conversa ou crie uma nova</p>
-            </div>
+          <div className="flex-1 flex items-center justify-center">
+            <EstadoVazio
+              icone={<MessageSquare aria-hidden="true" />}
+              titulo="Nenhuma conversa aberta"
+              descricao="Escolha uma conversa na lista ao lado ou crie uma nova."
+            />
           </div>
         )}
       </div>

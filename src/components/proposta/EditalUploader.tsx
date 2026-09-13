@@ -2,7 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import { lerTextoDoEdital } from '@/lib/processo/textoDoEdital';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Upload, FileText, Loader2, X, CheckCircle, Sparkles, AlertCircle, Download , FolderOpen } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Upload, FileText, Loader2, X, CheckCircle, Sparkles, Download, FolderOpen } from 'lucide-react';
 import { toast } from 'sonner';
 import { streamAIChat } from '@/lib/ai-stream';
 import { useEditalExtraction } from '@/hooks/useEditalExtraction';
@@ -365,71 +366,71 @@ ${truncated}`
   return (
     <div className="space-y-3">
       {licitacaoId && !extracted && (
-        <div className="flex items-start gap-3 rounded-xl border border-accent/30 bg-accent/5 p-4">
-          <FolderOpen className="w-5 h-5 text-accent shrink-0 mt-0.5" />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium">O edital deste processo já está no sistema</p>
-            <p className="text-xs text-muted-foreground mt-0.5">
+        <div className="flex flex-wrap items-start gap-3 rounded-lg border border-border bg-primary-tint p-4">
+          <FolderOpen className="w-5 h-5 shrink-0 text-primary" aria-hidden="true" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-foreground">O edital deste processo já está no sistema</p>
+            <p className="mt-1 text-sm text-muted-foreground">
               Ler daqui preenche objeto, prazos, local de entrega, condições de pagamento e
               garantia com o que o edital diz — sem upload.
             </p>
           </div>
           <Button size="sm" onClick={lerDoProcesso} disabled={isExtracting} className="shrink-0">
             {isExtracting
-              ? <><Loader2 className="w-4 h-4 animate-spin mr-1" /> Lendo…</>
+              ? <><Loader2 className="w-4 h-4 animate-spin" /> Lendo…</>
               : <>Ler edital do processo</>}
           </Button>
         </div>
       )}
 
       {editalFile ? (
-        <div className="bg-muted/30 rounded-xl p-4 border border-border/50 space-y-3">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center shrink-0">
-              <FileText className="w-6 h-6 text-muted-foreground" />
+        <div className="space-y-3 rounded-lg border border-border bg-muted p-4">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-card">
+              <FileText className="w-6 h-6 text-muted-foreground" aria-hidden="true" />
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-foreground truncate">{editalFile.name}</p>
-              <p className="text-xs text-muted-foreground">
-                {(editalFile.size / 1024).toFixed(0)} KB
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-foreground">{editalFile.name}</p>
+              <p className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                <span className="tabular-nums">{(editalFile.size / 1024).toFixed(0)} KB</span>
                 {extracted && (
-                  <Badge className="ml-2 bg-success/10 text-success border-success/20 text-xs">
-                    <CheckCircle className="w-3 h-3 mr-1" /> Dados extraídos
+                  <Badge variant="success">
+                    <CheckCircle className="w-3 h-3 mr-1" aria-hidden="true" /> Dados extraídos
                   </Badge>
                 )}
               </p>
             </div>
-            <div className="flex gap-2 shrink-0">
+            <div className="flex shrink-0 flex-wrap gap-2">
               {!extracted && (
-                <Button size="sm" onClick={() => handleExtract()} disabled={isExtracting} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+                <Button size="sm" onClick={() => handleExtract()} disabled={isExtracting}>
                   {isExtracting ? (
-                    <><Loader2 className="w-4 h-4 animate-spin mr-1" /> Extraindo...</>
+                    <><Loader2 className="w-4 h-4 animate-spin" /> Extraindo...</>
                   ) : (
-                    <><Sparkles className="w-4 h-4 mr-1" /> Extrair com IA</>
+                    <><Sparkles className="w-4 h-4" /> Extrair com IA</>
                   )}
                 </Button>
               )}
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleRemove}>
+              <Button variant="ghost" size="icon" className="h-9 w-9" onClick={handleRemove} aria-label="Remover edital anexado">
                 <X className="w-4 h-4" />
               </Button>
             </div>
           </div>
 
           {isExtracting && progress && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground animate-pulse">
-              <Loader2 className="w-3 h-3 animate-spin" />
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
               {progress}
             </div>
           )}
 
           {extracted && (
             <>
-              <div className="flex items-center gap-2 p-2.5 bg-success/5 border border-success/20 rounded-lg">
-                <CheckCircle className="w-4 h-4 text-success shrink-0" />
-                <p className="text-xs text-success">
-                  Extração concluída! Avance para revisar e editar os dados extraídos nas próximas etapas.
-                </p>
-              </div>
+              <Alert variant="success">
+                <CheckCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Extração concluída. Avance para revisar e editar os dados extraídos nas próximas etapas.
+                </AlertDescription>
+              </Alert>
 
               {licitacaoId && (
                 <SugestaoMarcasReview
@@ -478,36 +479,36 @@ ${truncated}`
                 setProgress('');
                 toast.success(`${itens.length} itens importados da extração anterior!`);
               }}
-              className="w-full border-2 border-accent/40 bg-accent/5 rounded-xl p-4 flex items-center gap-3 hover:bg-accent/10 transition-all"
+              className="flex w-full items-center gap-3 rounded-lg border border-border bg-primary-tint p-4 transition-colors hover:bg-primary-tint/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
-              <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center shrink-0">
-                <Download className="w-5 h-5 text-accent" />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-card">
+                <Download className="w-5 h-5 text-primary" aria-hidden="true" />
               </div>
-              <div className="text-left flex-1">
-                <span className="text-sm font-semibold text-foreground block">Importar itens já extraídos</span>
-                <span className="text-xs text-muted-foreground">Reutilize a extração centralizada desta licitação</span>
+              <div className="flex-1 text-left">
+                <span className="block text-sm font-semibold text-foreground">Importar itens já extraídos</span>
+                <span className="text-sm text-muted-foreground">Reutilize a extração centralizada desta licitação</span>
               </div>
             </button>
           )}
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
-            className="w-full border-2 border-dashed border-border/60 rounded-xl p-8 flex flex-col items-center gap-3 hover:border-accent/50 hover:bg-accent/5 transition-all group"
+            className="group flex w-full flex-col items-center gap-3 rounded-lg border-2 border-dashed border-border p-8 transition-colors hover:border-primary hover:bg-primary-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
-            <div className="w-14 h-14 rounded-full bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
-              <Upload className="w-7 h-7 text-accent" />
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary-tint text-primary transition-colors group-hover:bg-card">
+              <Upload className="w-7 h-7" aria-hidden="true" />
             </div>
             <div className="text-center">
-              <span className="text-sm font-semibold text-foreground block">Envie o edital para extração automática</span>
-              <span className="text-xs text-muted-foreground mt-1 block">
+              <span className="block text-base font-semibold text-foreground">Envie o edital para extração automática</span>
+              <span className="mt-1 block text-sm text-muted-foreground">
                 A IA extrairá: órgão, itens, preços, prazos de pagamento, entrega, validade e local
               </span>
             </div>
-            <div className="flex items-center gap-2 mt-1">
-              <Badge variant="outline" className="text-xs">PDF</Badge>
-              <Badge variant="outline" className="text-xs">DOC</Badge>
-              <Badge variant="outline" className="text-xs">DOCX</Badge>
-              <Badge variant="outline" className="text-xs">TXT</Badge>
+            <div className="mt-1 flex flex-wrap items-center justify-center gap-2">
+              <Badge variant="muted">PDF</Badge>
+              <Badge variant="muted">DOC</Badge>
+              <Badge variant="muted">DOCX</Badge>
+              <Badge variant="muted">TXT</Badge>
               <span className="text-xs text-muted-foreground">Máx. 10MB</span>
             </div>
           </button>

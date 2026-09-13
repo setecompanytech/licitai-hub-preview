@@ -8,12 +8,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import {
   Upload, Download, Trash2, Loader2, Bot,
-  CheckCircle2, Plus, FileText,
+  CheckCircle2, AlertTriangle, Plus, FileText,
   ShoppingBasket, Monitor, Sparkles, Package, Utensils,
   Wrench, Shirt, Pill, Building2, FolderOpen, Filter, Search
 } from 'lucide-react';
@@ -416,48 +418,53 @@ export default function AtestadosCapacidadeTecnica() {
   const segmentosAtivos = SEGMENTOS_ACT.filter(s => docs.some(d => d.segmento === s.value));
 
   return (
-    <div className="bg-card rounded-xl border border-border/50 shadow-sm">
+    <div className="rounded-lg border border-border bg-card shadow-sm">
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-3 border-b border-border/50">
-        <div className="flex items-center gap-2">
-          <FolderOpen className="w-4 h-4 text-muted-foreground" />
-          <h3 className="text-sm font-semibold">Atestados de Capacidade Técnica</h3>
-          <Badge variant="outline" className="text-xs">Art. 67</Badge>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-6 py-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <FolderOpen className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <h3 className="text-lg font-semibold">Atestados de capacidade técnica</h3>
+          <Badge variant="muted">Art. 67</Badge>
         </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="secondary" className="text-xs">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="muted">
             {totalDocs} atestado{totalDocs !== 1 ? 's' : ''} em {segmentosComDoc} segmento{segmentosComDoc !== 1 ? 's' : ''}
           </Badge>
-          <Button size="sm" onClick={openUploadDialog} className="gap-1 text-xs">
-            <Plus className="w-3 h-3" />
-            Adicionar Atestado
+          <Button size="sm" onClick={openUploadDialog}>
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            Adicionar atestado
           </Button>
         </div>
       </div>
 
       {/* Filters */}
       {totalDocs > 0 && (
-        <div className="px-5 py-2.5 border-b border-border/30 space-y-2">
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1 max-w-xs">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+        <div className="space-y-3 border-b border-border px-6 py-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative max-w-xs flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
               <Input
-                placeholder="Buscar atestado..."
+                placeholder="Buscar atestado…"
+                aria-label="Buscar atestado por objeto, órgão ou segmento"
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                className="pl-8 h-8 text-xs"
+                className="pl-10"
               />
             </div>
-            <Filter className="w-3.5 h-3.5 text-muted-foreground" />
+            <Filter className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
           </div>
-          <div className="flex flex-wrap gap-1.5">
+          {/* Chips de segmento — `aria-pressed` diz qual filtro está ligado
+              para quem não enxerga a tinta verde. */}
+          <div className="flex flex-wrap gap-2">
             <button
+              type="button"
               onClick={() => setFilterSegmento('todos')}
+              aria-pressed={filterSegmento === 'todos'}
               className={cn(
-                'px-2.5 py-1 rounded-full text-xs font-medium transition-colors border',
+                'inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                 filterSegmento === 'todos'
-                  ? 'bg-primary text-primary-foreground border-primary'
-                  : 'bg-muted/50 text-muted-foreground border-border/50 hover:bg-muted'
+                  ? 'border-primary bg-primary-tint font-semibold text-foreground'
+                  : 'border-border text-muted-foreground hover:bg-muted'
               )}
             >
               Todos ({totalDocs})
@@ -468,15 +475,17 @@ export default function AtestadosCapacidadeTecnica() {
               return (
                 <button
                   key={seg.value}
+                  type="button"
                   onClick={() => setFilterSegmento(seg.value)}
+                  aria-pressed={filterSegmento === seg.value}
                   className={cn(
-                    'px-2.5 py-1 rounded-full text-xs font-medium transition-colors border flex items-center gap-1',
+                    'inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                     filterSegmento === seg.value
-                      ? 'bg-primary text-primary-foreground border-primary'
-                      : 'bg-muted/50 text-muted-foreground border-border/50 hover:bg-muted'
+                      ? 'border-primary bg-primary-tint font-semibold text-foreground'
+                      : 'border-border text-muted-foreground hover:bg-muted'
                   )}
                 >
-                  <Icon className="w-3 h-3" />
+                  <Icon className="h-3 w-3" aria-hidden="true" />
                   {seg.label} ({count})
                 </button>
               );
@@ -488,74 +497,91 @@ export default function AtestadosCapacidadeTecnica() {
       {/* Docs list */}
       {loading ? (
         <div className="flex items-center justify-center py-8">
-          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" aria-hidden="true" />
+          <span className="sr-only">Carregando atestados…</span>
         </div>
       ) : filteredDocs.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
-          <FileText className="w-8 h-8 mb-2 opacity-40" />
-          <p className="text-sm">{totalDocs === 0 ? 'Nenhum atestado cadastrado' : 'Nenhum resultado para o filtro'}</p>
-          {totalDocs === 0 && (
-            <Button size="sm" variant="outline" className="mt-3 gap-1" onClick={openUploadDialog}>
-              <Plus className="w-3 h-3" /> Adicionar primeiro atestado
+        <EstadoVazio
+          tamanho="compacto"
+          icone={<FileText />}
+          titulo={totalDocs === 0 ? 'Nenhum atestado cadastrado' : 'Nenhum resultado para o filtro'}
+          descricao={
+            totalDocs === 0
+              ? 'O atestado prova o que a empresa já forneceu — é ele que a qualificação técnica do art. 67 pede.'
+              : 'Ajuste a busca ou escolha outro segmento.'
+          }
+          acao={totalDocs === 0 ? (
+            <Button variant="outline" onClick={openUploadDialog}>
+              <Plus className="h-4 w-4" aria-hidden="true" /> Adicionar primeiro atestado
             </Button>
-          )}
-        </div>
+          ) : undefined}
+        />
       ) : (
-        <div className="divide-y divide-border/30">
+        <div className="divide-y divide-border">
           {filteredDocs.map(doc => {
             const seg = SEGMENTOS_ACT.find(s => s.value === doc.segmento);
             const Icon = seg?.icon || ShoppingBasket;
             return (
-              <div key={doc.id} className="px-5 py-3 flex items-start justify-between hover:bg-muted/20 transition-colors">
-                <div className="flex items-start gap-3 flex-1 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <Icon className="w-4 h-4 text-muted-foreground" />
+              <div key={doc.id} className="flex flex-wrap items-start justify-between gap-3 px-6 py-3 transition-colors hover:bg-muted">
+                <div className="flex min-w-0 flex-1 items-start gap-3">
+                  <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted">
+                    <Icon className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Badge variant="outline" className="text-xs">{seg?.label || doc.segmento}</Badge>
-                      <CheckCircle2 className="w-3.5 h-3.5 text-success" />
-                      <span className="text-xs text-success font-medium">Cadastrado</span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant="muted">{seg?.label || doc.segmento}</Badge>
+                      <Badge variant="success">
+                        <CheckCircle2 className="mr-1 h-3 w-3" aria-hidden="true" /> Cadastrado
+                      </Badge>
                     </div>
                     {/* Key fields: Objeto, Cliente/Órgão, Ano */}
                     {doc.dados_extraidos?.objeto && (
-                      <p className="text-xs mt-1.5 font-medium text-foreground line-clamp-2">
-                        <span className="text-muted-foreground font-normal">Objeto: </span>
+                      <p className="mt-2 line-clamp-2 text-sm font-medium text-foreground">
+                        <span className="font-normal text-muted-foreground">Objeto: </span>
                         {doc.dados_extraidos.objeto}
                       </p>
                     )}
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
+                    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
                       {doc.dados_extraidos?.orgao_emissor && (
-                        <span className="text-xs text-foreground">
+                        <span className="text-sm text-foreground">
                           <span className="text-muted-foreground">Cliente/Órgão: </span>
                           <strong>{doc.dados_extraidos.orgao_emissor}</strong>
                         </span>
                       )}
                       {doc.dados_extraidos?.ano_fornecimento && (
-                        <span className="text-xs text-foreground">
+                        <span className="text-sm text-foreground">
                           <span className="text-muted-foreground">Ano: </span>
-                          <strong>{doc.dados_extraidos.ano_fornecimento}</strong>
+                          <strong className="tabular-nums">{doc.dados_extraidos.ano_fornecimento}</strong>
                         </span>
                       )}
                       {doc.dados_extraidos?.valor && (
-                        <Badge variant="outline" className="text-xs">R$ {doc.dados_extraidos.valor}</Badge>
+                        <Badge variant="muted">R$ {doc.dados_extraidos.valor}</Badge>
                       )}
                     </div>
                   </div>
                 </div>
-                <div className="flex gap-1 flex-shrink-0 ml-2">
-                  <Button size="sm" variant="ghost" onClick={() => handleDownload(doc)} title="Baixar">
-                    <Download className="w-3.5 h-3.5" />
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleDownload(doc)}
+                    title="Baixar arquivo"
+                    aria-label={`Baixar o atestado de ${seg?.label || doc.segmento}`}
+                  >
+                    <Download className="h-4 w-4" aria-hidden="true" />
                   </Button>
                   <Button
                     size="sm"
-                    variant="ghost"
+                    variant="outline"
                     onClick={() => handleRemove(doc)}
                     disabled={removingId === doc.id}
-                    className="text-destructive hover:text-destructive"
-                    title="Remover"
+                    className="text-destructive-ink hover:bg-destructive-tint hover:text-destructive-ink"
+                    title="Remover atestado"
+                    aria-label={`Remover o atestado de ${seg?.label || doc.segmento}`}
                   >
-                    {removingId === doc.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                    {removingId === doc.id
+                      ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                      : <Trash2 className="h-4 w-4" aria-hidden="true" />}
                   </Button>
                 </div>
               </div>
@@ -569,19 +595,19 @@ export default function AtestadosCapacidadeTecnica() {
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5 text-muted-foreground" />
-              Adicionar Atestado de Capacidade Técnica
+              <FileText className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+              Adicionar atestado de capacidade técnica
             </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4">
             {/* Segment selector */}
-            <div>
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="space-y-2">
+              <Label htmlFor="act-segmento" className="text-sm font-medium">
                 Segmento
               </Label>
               <Select value={selectedSegmento} onValueChange={setSelectedSegmento}>
-                <SelectTrigger className="mt-1">
+                <SelectTrigger id="act-segmento">
                   <SelectValue placeholder="Selecione o segmento do atestado" />
                 </SelectTrigger>
                 <SelectContent>
@@ -590,10 +616,10 @@ export default function AtestadosCapacidadeTecnica() {
                     return (
                       <SelectItem key={seg.value} value={seg.value}>
                         <div className="flex items-center gap-2">
-                          <Icon className="w-4 h-4 text-muted-foreground" />
+                          <Icon className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                           <div>
                             <span className="text-sm">{seg.label}</span>
-                            <span className="text-xs text-muted-foreground ml-1.5">– {seg.sublabel}</span>
+                            <span className="ml-2 text-xs text-muted-foreground">– {seg.sublabel}</span>
                           </div>
                         </div>
                       </SelectItem>
@@ -604,26 +630,26 @@ export default function AtestadosCapacidadeTecnica() {
             </div>
 
             {/* File */}
-            <div>
-              <Label className="text-xs">Arquivo (PDF/PNG/JPG)</Label>
+            <div className="space-y-2">
+              <Label htmlFor="act-arquivo" className="text-sm font-medium">Arquivo (PDF/PNG/JPG)</Label>
               <Input
+                id="act-arquivo"
                 key={fileInputKey}
                 type="file"
                 accept=".pdf,.png,.jpg,.jpeg,.webp"
                 onChange={handleFileSelect}
-                className="mt-1"
               />
 
               {pendingFile && (
-                <div className="mt-2 rounded-lg border border-border/50 bg-muted/30 px-3 py-2">
-                  <div className="flex items-start justify-between gap-3">
+                <div className="rounded-md border border-border bg-muted px-3 py-2">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-xs font-medium text-foreground truncate">{pendingFile.name}</p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="truncate text-sm font-medium text-foreground">{pendingFile.name}</p>
+                      <p className="text-sm text-muted-foreground">
                         {pendingFile.type === 'application/pdf' ? 'PDF' : 'Imagem'} • {formatFileSize(pendingFile.size)}
                       </p>
                     </div>
-                    <Badge variant="outline" className="text-xs whitespace-nowrap">Arquivo selecionado</Badge>
+                    <Badge variant="muted">Arquivo selecionado</Badge>
                   </div>
                 </div>
               )}
@@ -633,77 +659,85 @@ export default function AtestadosCapacidadeTecnica() {
             {pendingFile && selectedSegmento && (
               <Button
                 variant="outline"
-                className="w-full gap-2 border-accent/30 text-accent hover:bg-accent/10"
+                className="w-full"
                 onClick={handleAIExtract}
                 disabled={analyzing}
               >
-                {analyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bot className="w-4 h-4" />}
-                {analyzing ? 'Extraindo dados com IA...' : 'Extrair Dados com IA'}
+                {analyzing
+                  ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                  : <Bot className="h-4 w-4" aria-hidden="true" />}
+                {analyzing ? 'Extraindo dados com IA…' : 'Extrair dados com IA'}
               </Button>
             )}
 
             {extractionStatus !== 'idle' && (
-              <div
-                className={cn(
-                  'rounded-lg border px-3 py-2 text-xs',
-                  extractionStatus === 'success' && 'border-success/30 bg-success/10 text-foreground',
-                  extractionStatus === 'warning' && 'border-warning/30 bg-warning/10 text-foreground',
-                  extractionStatus === 'error' && 'border-destructive/30 bg-destructive/10 text-foreground',
-                )}
+              <Alert
+                variant={
+                  extractionStatus === 'success' ? 'success'
+                    : extractionStatus === 'warning' ? 'warning'
+                      : 'destructive'
+                }
               >
-                {extractionMessage}
-              </div>
+                {extractionStatus === 'success'
+                  ? <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+                  : <AlertTriangle className="h-4 w-4" aria-hidden="true" />}
+                <AlertDescription>{extractionMessage}</AlertDescription>
+              </Alert>
             )}
 
             {/* Extracted data display */}
             {extractedData && (
-              <div className="space-y-2 p-3 bg-muted rounded-lg border border-border">
-                <p className="text-xs font-semibold text-foreground flex items-center gap-1">
-                  <Bot className="w-3 h-3" /> Dados Extraídos pela IA
+              <div className="space-y-4 rounded-lg border border-border bg-muted p-4">
+                <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <Bot className="h-4 w-4" aria-hidden="true" /> Dados extraídos pela IA
                 </p>
-                <div>
-                  <Label className="text-xs text-muted-foreground">Objeto</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="act-objeto" className="text-sm">Objeto</Label>
                   <Textarea
+                    id="act-objeto"
                     value={extractedData.objeto || ''}
                     onChange={e => setExtractedData(prev => ({ ...prev, objeto: e.target.value }))}
-                    className="mt-0.5 text-xs min-h-[50px]"
+                    rows={2}
                     placeholder="Descrição do objeto atestado"
                   />
                 </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground">Cliente / Órgão Contratante</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="act-orgao" className="text-sm">Cliente / órgão contratante</Label>
                   <Input
+                    id="act-orgao"
                     value={extractedData.orgao_emissor || ''}
                     onChange={e => setExtractedData(prev => ({ ...prev, orgao_emissor: e.target.value }))}
-                    className="mt-0.5 text-xs h-8"
                     placeholder="Órgão público ou empresa contratante"
                   />
                 </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Ano do Fornecimento</Label>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="act-ano" className="text-sm">Ano do fornecimento</Label>
                     <Input
+                      id="act-ano"
                       value={extractedData.ano_fornecimento || ''}
                       onChange={e => setExtractedData(prev => ({ ...prev, ano_fornecimento: e.target.value }))}
-                      className="mt-0.5 text-xs h-8"
+                      className="tabular-nums"
                       placeholder="Ex: 2024"
                     />
                   </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Valor</Label>
+                  <div className="space-y-2">
+                    <Label htmlFor="act-valor" className="text-sm">Valor</Label>
                     <Input
+                      id="act-valor"
                       value={extractedData.valor || ''}
                       onChange={e => setExtractedData(prev => ({ ...prev, valor: e.target.value }))}
-                      className="mt-0.5 text-xs h-8"
+                      className="tabular-nums"
                       placeholder="Valor contratual"
                     />
                   </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">CNPJ Contratante</Label>
+                  <div className="space-y-2">
+                    <Label htmlFor="act-cnpj" className="text-sm">CNPJ contratante</Label>
                     <Input
+                      id="act-cnpj"
                       value={extractedData.cnpj_contratante || ''}
                       onChange={e => setExtractedData(prev => ({ ...prev, cnpj_contratante: e.target.value }))}
-                      className="mt-0.5 text-xs h-8"
+                      className="tabular-nums"
                       placeholder="00.000.000/0000-00"
                     />
                   </div>
@@ -712,18 +746,20 @@ export default function AtestadosCapacidadeTecnica() {
             )}
 
             {/* Info about validity */}
-            <p className="text-xs text-muted-foreground italic">
-              ℹ️ Atestados de capacidade técnica para fornecimento não possuem validade e permanecem válidos permanentemente.
+            <p className="text-sm text-muted-foreground">
+              Atestados de capacidade técnica para fornecimento não possuem validade e permanecem válidos permanentemente.
             </p>
           </div>
 
-          <DialogFooter className="flex gap-2">
+          <DialogFooter className="flex flex-wrap gap-2">
             <Button variant="ghost" onClick={() => setUploadDialogOpen(false)}>
               Cancelar
             </Button>
             <Button onClick={handleUpload} disabled={uploading || !pendingFile || !selectedSegmento}>
-              {uploading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Upload className="w-4 h-4 mr-1" />}
-              Enviar Atestado
+              {uploading
+                ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                : <Upload className="h-4 w-4" aria-hidden="true" />}
+              Enviar atestado
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Search, Building2, FileText, Loader2, AlertTriangle, ExternalLink, Download, FileSpreadsheet, FileDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -34,11 +35,37 @@ type DadosSintegra = {
   dataConsulta: string;
 };
 
+/**
+ * A situação cadastral do SINTEGRA volta como texto livre da SEFAZ de cada UF
+ * ("HABILITADA", "NÃO HABILITADA", "BAIXADA", "SUSPENSA"…). A tinta do badge
+ * tem que acompanhar o texto: verde só quando a situação é positiva de fato —
+ * "NÃO HABILITADA" contém "HABILITADA" e não pode cair em tinta de sucesso.
+ * Situação que não se reconhece fica em `muted`, nunca em verde.
+ */
+const SITUACAO_NEGATIVA = /\b(NAO|SEM)\b|BAIXAD|CANCELAD|SUSPENS|INAPT|INATIV|IRREGULAR|NULA|DESABILITAD|BLOQUEAD|IMPEDID/;
+const SITUACAO_POSITIVA = /HABILITAD|ATIV|REGULAR/;
+
+function varianteSituacao(situacao: string): 'success' | 'danger' | 'muted' {
+  const texto = (situacao ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase()
+    .trim();
+  if (!texto) return 'muted';
+  if (SITUACAO_NEGATIVA.test(texto)) return 'danger';
+  if (SITUACAO_POSITIVA.test(texto)) return 'success';
+  return 'muted';
+}
+
+/**
+ * Consulta SINTEGRA — componente interno da aba "Sintegra" da tela
+ * Concorrentes: começa direto no conteúdo, sem cabeçalho de página.
+ */
 function InfoField({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
     <div>
-      <p className="text-xs text-muted-foreground uppercase tracking-wider mb-0.5">{label}</p>
-      <p className={`text-sm text-foreground ${highlight ? 'font-semibold' : ''}`}>{value || '—'}</p>
+      <dt className="text-sm text-muted-foreground">{label}</dt>
+      <dd className={`mt-0.5 text-base text-foreground ${highlight ? 'font-semibold' : ''}`}>{value || '—'}</dd>
     </div>
   );
 }
@@ -87,52 +114,61 @@ export default function ConsultaSintegra() {
 
   return (
     <div className="space-y-4">
-      <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
-        <h3 className="text-sm font-semibold flex items-center gap-2 mb-4">
-          <Building2 className="w-4 h-4 text-muted-foreground" />
-          Consulta SINTEGRA – Inscrição Estadual
-        </h3>
-        <div className="flex gap-2">
-          <Input
-            placeholder="Digite o CNPJ"
-            value={cnpjInput}
-            onChange={(e) => setCnpjInput(e.target.value)}
-            className="flex-1"
-            onKeyDown={(e) => e.key === 'Enter' && handleConsultar()}
-          />
-          <Select value={uf} onValueChange={setUf}>
-            <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {UFS.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Button onClick={handleConsultar} disabled={loading} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-            <span className="ml-1">{loading ? 'Consultando...' : 'Consultar'}</span>
+      <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+        <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+          <Building2 className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+          Consulta SINTEGRA — inscrição estadual
+        </h2>
+        <div className="mt-4 flex flex-wrap items-end gap-3">
+          <div className="flex min-w-0 flex-1 flex-col gap-1 sm:max-w-sm">
+            <label htmlFor="sintegra-cnpj" className="text-sm font-medium text-foreground">CNPJ</label>
+            <Input
+              id="sintegra-cnpj"
+              placeholder="Ex.: 12.345.678/0001-01"
+              value={cnpjInput}
+              inputMode="numeric"
+              aria-invalid={erro ? true : undefined}
+              onChange={(e) => setCnpjInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleConsultar()}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="sintegra-uf" className="text-sm font-medium text-foreground">UF</label>
+            <Select value={uf} onValueChange={setUf}>
+              <SelectTrigger id="sintegra-uf" className="w-28"><SelectValue /></SelectTrigger>
+              <SelectContent className="max-h-80">
+                {UFS.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button onClick={handleConsultar} disabled={loading}>
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+            {loading ? 'Consultando…' : 'Consultar'}
           </Button>
         </div>
         {erro && (
-          <div className="flex items-center gap-2 mt-3 text-sm text-destructive">
-            <AlertTriangle className="w-4 h-4" /> {erro}
-          </div>
+          <Alert variant="destructive" className="mt-4">
+            <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+            <AlertDescription>{erro}</AlertDescription>
+          </Alert>
         )}
-        <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
-          <a href="http://www.sintegra.gov.br" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-accent transition-colors">
-            <ExternalLink className="w-3 h-3" /> SINTEGRA Oficial
+        <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+          <a href="http://www.sintegra.gov.br" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-primary hover:underline">
+            <ExternalLink className="h-3 w-3" aria-hidden="true" /> SINTEGRA oficial
           </a>
         </div>
       </div>
 
       {resultado && (
-        <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm animate-fade-in space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold flex items-center gap-2">
-              <FileText className="w-4 h-4 text-muted-foreground" /> Resultado SINTEGRA
-            </h3>
-            <div className="flex items-center gap-2">
+        <div className="animate-fade-in space-y-4 rounded-lg border border-border bg-card p-6 shadow-sm">
+          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+            <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+              <FileText className="h-5 w-5 text-muted-foreground" aria-hidden="true" /> Resultado SINTEGRA
+            </h2>
+            <div className="flex flex-wrap items-center gap-2">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button size="sm" variant="outline"><Download className="w-3.5 h-3.5 mr-1" /> Exportar</Button>
+                  <Button size="sm" variant="outline"><Download className="h-4 w-4" /> Exportar</Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => { downloadCSV(`sintegra-${resultado.cnpj.replace(/\D/g, '')}`, ['Campo', 'Valor'], rows); toast.success('CSV exportado!'); }}>
@@ -146,12 +182,12 @@ export default function ConsultaSintegra() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Badge variant="outline" className="bg-success/15 text-success border-success/30 text-xs">
-                {resultado.situacaoCadastral}
+              <Badge variant={varianteSituacao(resultado.situacaoCadastral)}>
+                {resultado.situacaoCadastral || 'Situação não informada'}
               </Badge>
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <dl className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <InfoField label="CNPJ" value={resultado.cnpj} />
             <InfoField label="Inscrição Estadual" value={resultado.inscricaoEstadual} highlight />
             <InfoField label="Razão Social" value={resultado.razaoSocial} />
@@ -162,7 +198,7 @@ export default function ConsultaSintegra() {
             <InfoField label="Município/UF" value={`${resultado.municipio} / ${resultado.uf}`} />
             <InfoField label="Endereço" value={resultado.endereco} />
             <InfoField label="CEP" value={resultado.cep} />
-          </div>
+          </dl>
         </div>
       )}
     </div>

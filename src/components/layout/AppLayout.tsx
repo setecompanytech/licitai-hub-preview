@@ -3,7 +3,6 @@ import BrandLogo from '@/components/shared/BrandLogo';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import AppTopNav from './AppTopNav';
-import AppSidebar from './AppSidebar';
 import LembreteDeVencimento from '@/components/documentos/LembreteDeVencimento';
 import LembreteDeConvocacao from '@/components/monitoramento/LembreteDeConvocacao';
 import AlertaVencimentoBanner from './AlertaVencimentoBanner';
@@ -22,7 +21,6 @@ import MeuPerfilModal from '@/components/perfil/MeuPerfilModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useAvatarUrl } from '@/hooks/useAvatarPerfil';
-import { useTemMouse } from '@/hooks/useTemMouse';
 
 const profileMenuItems = [
   { label: 'Dados da Empresa', icon: Building2, path: '/configuracoes', hash: '#empresa' },
@@ -35,30 +33,22 @@ const profileMenuItems = [
 ];
 
 /**
- * Moldura de toda tela interna (identidade 12/09): sidebar navy de altura
- * total à esquerda (248px; trilho de 72px), barra branca de 72px SÓ sobre o
- * conteúdo, e o conteúdo em #F5F7FA com 32px de respiro — sem teto de
- * largura, para tabela e Kanban usarem a tela toda (o antigo `amplo` saiu:
- * era a exceção que virou regra).
+ * Moldura de toda tela interna.
+ *
+ * Desde 13/09/2026 a navegação vive no CENTRO da faixa superior, a pedido do
+ * dono do produto — a coluna da esquerda saiu. A faixa herdou os tokens
+ * `sidebar-*` (navy nos dois temas): a massa escura da identidade mudou de
+ * lugar, não desapareceu. Marca à esquerda, navegação no meio, ações à
+ * direita; o conteúdo ocupa a largura inteira, com 32px de respiro.
+ *
+ * A busca por módulo que existia dentro da coluna saiu junto: quem procura
+ * qualquer coisa no sistema usa a lupa da direita (Ctrl+K), que já achava
+ * páginas, ações, módulos do Financeiro e a identidade visual. Duas lupas
+ * para o mesmo gesto era a duplicidade que este movimento resolveu.
  */
 const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function AppLayout({ children }, _ref) {
   const [notifOpen, setNotifOpen] = useState(false);
-  const temMouse = useTemMouse();
   const [profileOpen, setProfileOpen] = useState(false);
-  /* A escolha entre trilho e coluna fica gravada no navegador: quem trabalha
-     com o trilho não quer reabrir a coluna a cada tela. `try` porque navegador
-     em janela privada pode recusar o armazenamento.
-     A chave é a mesma de quando "oculto" era largura zero — quem tinha o menu
-     escondido acorda com o trilho, que é o mínimo que a barra tem agora. */
-  const [menuAberto, setMenuAberto] = useState(() => {
-    try { return localStorage.getItem('praefectus:menu-lateral') !== 'oculto'; }
-    catch { return true; }
-  });
-
-  useEffect(() => {
-    try { localStorage.setItem('praefectus:menu-lateral', menuAberto ? 'visivel' : 'oculto'); }
-    catch { /* sem armazenamento: a preferência vale só nesta sessão */ }
-  }, [menuAberto]);
   const [perfilModalOpen, setPerfilModalOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -132,40 +122,19 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-start">
-      <AppSidebar aberta={menuAberto} onAlternar={() => setMenuAberto((o) => !o)} />
-
-      {/* Coluna do conteúdo: barra do topo + main. O `min-w-0` é obrigatório —
-          sem ele uma tabela com overflow-x empurra a largura da página. */}
-      <div className="flex-1 min-w-0 flex flex-col min-h-screen">
-      {/* Barra do topo CLARA, só sobre o conteúdo (a sidebar navy é irmã, de
-          altura total, e carrega a marca no desktop). z-30 fica ABAIXO do
-          trilho auto-escondido (z-40), que precisa passar por cima dela. */}
-      <header className="nao-imprime sticky top-0 z-30 h-16 md:h-[72px] bg-card border-b border-border flex items-center px-4 md:px-8 gap-2 sm:gap-3">
-        {/* O hambúrguer que ficava aqui saiu em 10/09/2026: quem alterna a
-            barra lateral é o botão no topo da própria barra (ver AppSidebar).
-            Abaixo de 768px a gaveta do AppTopNav continua com o seu botão. */}
-
-        {/* Marca: no celular vive aqui (a sidebar some); no desktop vive na
-            sidebar — e quando o trilho se esconde (mouse + menu recolhido), o
-            símbolo fica aqui para a marca não sumir da tela. */}
-        <Link to="/dashboard" aria-label="Praefectus — página inicial" className="flex items-center flex-shrink-0 md:hidden">
-          <BrandLogo className="w-[150px]" />
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Faixa da navegação: navy nos dois temas (tokens sidebar-*), marca à
+          esquerda, navegação centrada, ações à direita. */}
+      <header className="nao-imprime sticky top-0 z-40 h-16 md:h-[72px] bg-sidebar text-sidebar-foreground border-b border-sidebar-border flex items-center gap-2 px-4 md:px-6">
+        <Link to="/dashboard" aria-label="Praefectus — página inicial" className="flex items-center flex-shrink-0">
+          <BrandLogo variant="dark" className="w-[150px] lg:w-[176px]" />
         </Link>
-        {!menuAberto && temMouse && (
-          <Link to="/dashboard" aria-label="Praefectus — página inicial" className="hidden md:flex items-center flex-shrink-0">
-            <BrandLogo mode="symbol" width={36} />
-          </Link>
-        )}
 
-        {/* REBRAND — a partir de `lg` quem navega é a barra lateral, como no
-            protótipo. O menu horizontal continua vivo abaixo desse ponto: ele
-            é quem carrega a gaveta do mobile. As duas leem a MESMA lista de
-            navegação, então não divergem. */}
-        <div className="flex-1 flex items-center min-w-0 md:hidden">
+        {/* min-w-0 para a fila de grupos poder encolher antes de empurrar as
+            ações da direita para fora da tela. */}
+        <div className="flex flex-1 min-w-0 items-center justify-center">
           <AppTopNav />
         </div>
-        <div className="hidden md:block flex-1" />
 
         {/* Right: Tools
             A ordem é do EFÊMERO para o PERMANENTE, da esquerda para a direita:
@@ -184,7 +153,7 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
             só há informação. */}
         <div className="flex items-center gap-0.5 sm:gap-1.5 flex-shrink-0">
           <button
-            className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            className="p-2 rounded-lg text-sidebar-foreground/85 hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/60 transition-colors"
             onClick={() => window.dispatchEvent(new CustomEvent('praefectus:abrir-busca'))}
             title="Pesquisa geral (Ctrl+K)"
             aria-label="Pesquisa geral"
@@ -193,7 +162,7 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
           </button>
 
           <button
-            className="relative p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            className="relative p-2 rounded-lg text-sidebar-foreground/85 hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/60 transition-colors"
             onClick={() => setNotifOpen(!notifOpen)}
             title="Notificações"
           >
@@ -210,7 +179,7 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
           </div>
 
           <button
-            className="hidden sm:flex p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            className="hidden sm:flex p-2 rounded-lg text-sidebar-foreground/85 hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/60 transition-colors"
             onClick={() => navigate('/configuracoes')}
             title="Configurações"
           >
@@ -219,7 +188,7 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
 
           <span
             aria-hidden="true"
-            className="hidden lg:block w-px h-6 bg-border mx-1.5"
+            className="hidden lg:block w-px h-6 bg-sidebar-border mx-1.5"
           />
 
           <div className="hidden lg:block">
@@ -229,7 +198,7 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
           {/* Avatar dropdown */}
           <div className="relative" ref={profileRef}>
             <button
-              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-navy text-white ring-1 ring-border flex items-center justify-center text-xs sm:text-sm font-bold hover:ring-2 hover:ring-primary/50 transition-all cursor-pointer overflow-hidden shrink-0"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-sidebar-accent text-sidebar-accent-foreground ring-1 ring-sidebar-border flex items-center justify-center text-xs sm:text-sm font-bold hover:ring-2 hover:ring-sidebar-ring transition-all cursor-pointer overflow-hidden shrink-0"
               onClick={() => setProfileOpen(o => !o)}
               title="Minha conta"
             >
@@ -291,8 +260,8 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
         </div>
       </header>
 
-        {/* Conteúdo: 16px no celular, 32px no desktop; sem teto de largura. */}
-        <main className="flex-1 min-w-0 p-4 md:p-8">
+      {/* Conteúdo: 16px no celular, 32px no desktop; sem teto de largura. */}
+      <main className="flex-1 min-w-0 p-4 md:p-8">
         {/* Banner de manutenção e aviso de vencimento são da sessão, não do
             documento: no papel viram ruído com data de validade. */}
         <div className="nao-imprime">
@@ -314,8 +283,7 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
             Nas demais telas, continua sendo o caminho de volta. */}
         {location.pathname !== '/dashboard' && <BotaoVoltar />}
         {children}
-        </main>
-      </div>
+      </main>
 
       <NotificationCenter
         open={notifOpen}

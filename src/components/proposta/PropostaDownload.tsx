@@ -718,31 +718,33 @@ export default function PropostaDownload({
   };
 
   return (
-    <div className="flex items-center gap-2 flex-wrap">
+    // Barra de ação densa: `size="sm"` em todos, `flex-wrap` para o celular.
+    // Os ícones só ecoam o formato — o rótulo ao lado é quem informa.
+    <div className="flex flex-wrap items-center gap-2">
       {licitacaoId && (
         <Button size="sm" onClick={handleArquivar} disabled={arquivando}>
-          {arquivando ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <FolderPlus className="w-4 h-4 mr-1" />}
-          Salvar na pasta Proposta
+          {arquivando ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <FolderPlus className="w-4 h-4" aria-hidden="true" />}
+          {arquivando ? 'Salvando…' : 'Salvar na pasta Proposta'}
         </Button>
       )}
       <Button variant="outline" size="sm" onClick={() => handlePDF(pageOrientation)}>
-        <FileText className="w-4 h-4 mr-1 text-destructive" />
+        <FileText className="w-4 h-4 text-destructive" aria-hidden="true" />
         PDF {pageOrientation === 'landscape' ? 'Paisagem' : 'Retrato'}
       </Button>
       <Button variant="outline" size="sm" onClick={() => handlePDF(pageOrientation === 'portrait' ? 'landscape' : 'portrait')}>
-        <FileText className="w-4 h-4 mr-1 text-destructive" />
+        <FileText className="w-4 h-4 text-destructive" aria-hidden="true" />
         PDF {pageOrientation === 'portrait' ? 'Paisagem' : 'Retrato'}
       </Button>
       <Button variant="outline" size="sm" onClick={() => handleWord(pageOrientation === 'landscape')}>
-        <File className="w-4 h-4 mr-1 text-blue-500" />
+        <File className="w-4 h-4 text-info" aria-hidden="true" />
         Word {pageOrientation === 'landscape' ? 'Paisagem' : 'Retrato'}
       </Button>
       <Button variant="outline" size="sm" onClick={() => handleWord(pageOrientation !== 'landscape')}>
-        <File className="w-4 h-4 mr-1 text-blue-500" />
+        <File className="w-4 h-4 text-info" aria-hidden="true" />
         Word {pageOrientation === 'portrait' ? 'Paisagem' : 'Retrato'}
       </Button>
       <Button variant="outline" size="sm" onClick={handleExcel}>
-        <Sheet className="w-4 h-4 mr-1 text-green-500" />
+        <Sheet className="w-4 h-4 text-success" aria-hidden="true" />
         Excel
       </Button>
     </div>

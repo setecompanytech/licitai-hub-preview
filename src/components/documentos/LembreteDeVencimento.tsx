@@ -104,7 +104,7 @@ export default function LembreteDeVencimento() {
     <div
       role="status"
       aria-live="polite"
-      className="flex flex-col gap-2.5"
+      className="flex flex-col gap-3"
     >
       {mostrados.map((l) => {
         const { caixa, texto, Icone } = ESTILO[l.gravidade];
@@ -112,12 +112,12 @@ export default function LembreteDeVencimento() {
           <div
             key={l.chave}
             className={cn(
-              'animate-fade-in rounded-xl border border-border border-l-[3px] bg-card px-3.5 py-3 shadow-md',
+              'animate-fade-in rounded-lg border border-border border-l-[3px] bg-card px-4 py-3 shadow-md',
               caixa,
             )}
           >
-            <div className="flex items-start gap-2.5">
-              <Icone className={cn('mt-0.5 h-4 w-4 shrink-0', texto)} />
+            <div className="flex items-start gap-3">
+              <Icone className={cn('mt-0.5 h-4 w-4 shrink-0', texto)} aria-hidden="true" />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold text-foreground">{l.nome}</p>
                 <p className={cn('text-xs font-medium', texto)}>
@@ -132,9 +132,9 @@ export default function LembreteDeVencimento() {
                 )}
                 <button
                   onClick={() => navigate('/documentos')}
-                  className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-accent hover:underline"
+                  className="mt-2 inline-flex items-center gap-1 rounded text-xs font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
-                  Atualizar documento <ArrowRight className="h-3 w-3" />
+                  Atualizar documento <ArrowRight className="h-3 w-3" aria-hidden="true" />
                 </button>
               </div>
               <button
@@ -142,9 +142,9 @@ export default function LembreteDeVencimento() {
                 // Dizer que só adia evita a promessa que o × costuma fazer.
                 title="Lembrar mais tarde"
                 aria-label={`Adiar o lembrete de ${l.nome}`}
-                className="rounded p-1 text-muted-foreground transition-colors hover:bg-foreground/10"
+                className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <X className="h-3.5 w-3.5" />
+                <X className="h-4 w-4" aria-hidden="true" />
               </button>
             </div>
           </div>
@@ -154,7 +154,7 @@ export default function LembreteDeVencimento() {
       {ocultos > 0 && (
         <button
           onClick={() => setTudo(true)}
-          className="rounded-lg border border-border bg-card/95 px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-lg hover:text-foreground"
+          className="rounded-md border border-border bg-card px-3 py-2 text-xs font-medium text-muted-foreground shadow-md transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           e mais {ocultos} documento{ocultos > 1 ? 's' : ''} a vencer
         </button>

@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
@@ -126,17 +127,22 @@ export default function AlertasVencimentoEmail() {
   };
 
   if (carregando) {
-    return <Card className="p-6 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></Card>;
+    return (
+      <Card className="flex justify-center p-6">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" aria-hidden="true" />
+        <span className="sr-only">Carregando alertas de vencimento…</span>
+      </Card>
+    );
   }
 
   return (
-    <Card className="p-4 space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <Card className="space-y-6 p-6">
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
         <div className="flex items-start gap-3">
-          <BellRing className="w-5 h-5 text-muted-foreground mt-0.5" />
-          <div>
-            <h3 className="text-sm font-semibold">Alertas de vencimento por e-mail</h3>
-            <p className="text-xs text-muted-foreground max-w-xl">
+          <BellRing className="mt-1 h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <div className="min-w-0">
+            <h3 className="text-lg font-semibold">Alertas de vencimento por e-mail</h3>
+            <p className="mt-1 max-w-xl text-sm text-muted-foreground">
               Disparo diário (7h) para assessorias contábeis e setores cadastrados. A cor esquenta
               conforme o prazo aperta; documento <b>vencido</b> repete todos os dias — e o alerta
               cessa sozinho quando o documento renovado é anexado no sistema (a validade nova o
@@ -144,15 +150,21 @@ export default function AlertasVencimentoEmail() {
             </p>
           </div>
         </div>
-        <div className="flex items-end gap-3 shrink-0">
-          <div>
-            <Label className="text-xs">Antecedência (dias)</Label>
-            <Input type="number" min={5} max={120} value={antecedencia}
+        <div className="flex flex-wrap items-end gap-4 sm:shrink-0">
+          <div className="space-y-2">
+            <Label htmlFor="alertas-docs-antecedencia" className="text-sm">Antecedência (dias)</Label>
+            <Input
+              id="alertas-docs-antecedencia"
+              type="number"
+              min={5}
+              max={120}
+              value={antecedencia}
               onChange={e => setAntecedencia(e.target.value)}
               onBlur={() => ativo && salvarConfig(true)}
-              className="h-8 w-24" />
+              className="w-28 tabular-nums"
+            />
           </div>
-          <div className="flex items-center gap-2 pb-1">
+          <div className="flex items-center gap-2 pb-3">
             <Switch checked={ativo} disabled={salvando} onCheckedChange={salvarConfig} id="alertas-docs" />
             <Label htmlFor="alertas-docs" className="text-sm">{ativo ? 'Ligado' : 'Desligado'}</Label>
           </div>
@@ -160,22 +172,22 @@ export default function AlertasVencimentoEmail() {
       </div>
 
       {/* Cadastro de destinatários */}
-      <div className="rounded-md border p-3 space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_180px_auto] gap-2 items-end">
-          <div>
-            <Label className="text-xs">Nome</Label>
-            <Input value={novo.nome} onChange={e => setNovo(n => ({ ...n, nome: e.target.value }))}
-              placeholder="Ex.: Contabilidade XYZ" className="h-9" />
+      <div className="space-y-4 rounded-lg border border-border p-4">
+        <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-[1fr_1fr_180px_auto]">
+          <div className="space-y-2">
+            <Label htmlFor="alertas-docs-nome" className="text-sm">Nome</Label>
+            <Input id="alertas-docs-nome" value={novo.nome} onChange={e => setNovo(n => ({ ...n, nome: e.target.value }))}
+              placeholder="Ex.: Contabilidade XYZ" />
           </div>
-          <div>
-            <Label className="text-xs">E-mail</Label>
-            <Input type="email" value={novo.email} onChange={e => setNovo(n => ({ ...n, email: e.target.value }))}
-              placeholder="alertas@contabilidade.com.br" className="h-9" />
+          <div className="space-y-2">
+            <Label htmlFor="alertas-docs-email" className="text-sm">E-mail</Label>
+            <Input id="alertas-docs-email" type="email" value={novo.email} onChange={e => setNovo(n => ({ ...n, email: e.target.value }))}
+              placeholder="alertas@contabilidade.com.br" />
           </div>
-          <div>
-            <Label className="text-xs">Tipo</Label>
+          <div className="space-y-2">
+            <Label htmlFor="alertas-docs-tipo" className="text-sm">Tipo</Label>
             <Select value={novo.tipo} onValueChange={(v: Destinatario['tipo']) => setNovo(n => ({ ...n, tipo: v }))}>
-              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+              <SelectTrigger id="alertas-docs-tipo"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="assessoria_contabil">Assessoria contábil</SelectItem>
                 <SelectItem value="interno">Setor interno</SelectItem>
@@ -183,28 +195,42 @@ export default function AlertasVencimentoEmail() {
               </SelectContent>
             </Select>
           </div>
-          <Button size="sm" onClick={adicionar} disabled={salvando}>
-            <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar
+          <Button onClick={adicionar} disabled={salvando}>
+            <Plus className="h-4 w-4" aria-hidden="true" /> Adicionar
           </Button>
         </div>
 
         {destinatarios.length === 0 ? (
-          <p className="text-xs text-muted-foreground text-center py-2">
-            Nenhum destinatário — cadastre o e-mail da assessoria e dos setores que devem ser avisados.
-          </p>
+          <EstadoVazio
+            tamanho="compacto"
+            icone={<Mail />}
+            titulo="Nenhum destinatário"
+            descricao="Cadastre o e-mail da assessoria e dos setores que devem ser avisados."
+          />
         ) : (
-          <div className="space-y-1">
+          <div className="space-y-2">
             {destinatarios.map(d => (
-              <div key={d.id} className={`flex items-center gap-2 rounded-md border px-2.5 py-1.5 ${d.ativo ? '' : 'opacity-50'}`}>
-                <Mail className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                <div className="flex-1 min-w-0">
+              <div key={d.id} className={`flex flex-wrap items-center gap-3 rounded-md border border-border px-3 py-2 ${d.ativo ? '' : 'opacity-50'}`}>
+                <Mail className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <div className="min-w-0 flex-1">
                   <span className="text-sm font-medium">{d.nome}</span>
-                  <span className="text-xs text-muted-foreground ml-2">{d.email}</span>
+                  <span className="ml-2 text-sm text-muted-foreground">{d.email}</span>
                 </div>
-                <Badge variant="outline" className="text-xs font-normal">{TIPO_LABEL[d.tipo]}</Badge>
-                <Switch checked={d.ativo} onCheckedChange={() => alternarDestinatario(d)} />
-                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => remover(d)}>
-                  <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                <Badge variant="muted">{TIPO_LABEL[d.tipo]}</Badge>
+                <Switch
+                  checked={d.ativo}
+                  onCheckedChange={() => alternarDestinatario(d)}
+                  aria-label={`${d.ativo ? 'Desativar' : 'Ativar'} os alertas para ${d.email}`}
+                />
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => remover(d)}
+                  className="text-destructive-ink hover:bg-destructive-tint hover:text-destructive-ink"
+                  title="Remover destinatário"
+                  aria-label={`Remover ${d.email} dos alertas`}
+                >
+                  <Trash2 className="h-4 w-4" aria-hidden="true" />
                 </Button>
               </div>
             ))}
@@ -213,15 +239,17 @@ export default function AlertasVencimentoEmail() {
       </div>
 
       {trilha.length > 0 && (
-        <div className="rounded-md border p-3">
-          <p className="text-xs font-semibold mb-1.5">Últimos disparos</p>
-          {trilha.map((t, i) => (
-            <p key={i} className="text-xs text-muted-foreground truncate">
-              {new Date(t.enviado_em).toLocaleString('pt-BR')} · {t.destinatario_email} ·{' '}
-              {t.docs_no_digest} doc{t.docs_no_digest === 1 ? '' : 's'}
-              {t.vencidos > 0 && <span className="text-destructive font-medium"> ({t.vencidos} vencido{t.vencidos === 1 ? '' : 's'})</span>}
-            </p>
-          ))}
+        <div className="rounded-lg border border-border p-4">
+          <p className="mb-2 text-sm font-semibold">Últimos disparos</p>
+          <div className="space-y-1">
+            {trilha.map((t, i) => (
+              <p key={i} className="truncate text-xs text-muted-foreground">
+                {new Date(t.enviado_em).toLocaleString('pt-BR')} · {t.destinatario_email} ·{' '}
+                {t.docs_no_digest} doc{t.docs_no_digest === 1 ? '' : 's'}
+                {t.vencidos > 0 && <span className="font-medium text-destructive-ink"> ({t.vencidos} vencido{t.vencidos === 1 ? '' : 's'})</span>}
+              </p>
+            ))}
+          </div>
         </div>
       )}
     </Card>

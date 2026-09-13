@@ -3,9 +3,10 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { 
-  FileArchive, FilePlus, FileText, Trash2, GripVertical, 
-  Download, Loader2, ArrowUpDown, CheckCircle2 
+import { Label } from '@/components/ui/label';
+import {
+  FileArchive, FilePlus, FileText, Trash2, GripVertical,
+  Download, Loader2, ChevronUp, ChevronDown
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -140,67 +141,101 @@ export default function MergeDocumentos() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-2">
-          <FileArchive className="w-5 h-5 text-muted-foreground" />
-          <h3 className="font-semibold text-sm">Juntar Documentos</h3>
-          <Badge variant="outline" className="text-xs">{arquivos.length} arquivo(s)</Badge>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <FileArchive className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <h3 className="text-lg font-semibold">Juntar documentos</h3>
+          <Badge variant="muted">{arquivos.length} arquivo(s)</Badge>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="inline-flex rounded-lg border border-border overflow-hidden">
+        {/* Formato de saída: dois estados, um só de cada vez — `aria-pressed`
+            diz qual está escolhido a quem não enxerga a tinta. */}
+        <div className="inline-flex overflow-hidden rounded-md border border-border" role="group" aria-label="Formato do arquivo de saída">
+          {(['pdf', 'zip'] as const).map((f) => (
             <button
-              onClick={() => setFormato('pdf')}
-              className={cn('px-3 py-1.5 text-xs font-medium transition-colors', formato === 'pdf' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-muted')}
+              key={f}
+              type="button"
+              onClick={() => setFormato(f)}
+              aria-pressed={formato === f}
+              className={cn(
+                'px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
+                formato === f
+                  ? 'bg-primary-tint font-semibold text-foreground'
+                  : 'text-muted-foreground hover:bg-muted',
+              )}
             >
-              PDF
+              {f.toUpperCase()}
             </button>
-            <button
-              onClick={() => setFormato('zip')}
-              className={cn('px-3 py-1.5 text-xs font-medium transition-colors', formato === 'zip' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-muted')}
-            >
-              ZIP
-            </button>
-          </div>
+          ))}
         </div>
       </div>
 
       {/* File name */}
-      <div className="flex items-center gap-2">
-        <Input
-          value={nomeArquivo}
-          onChange={(e) => setNomeArquivo(e.target.value)}
-          placeholder="Nome do arquivo de saída"
-          className="flex-1"
-        />
-        <span className="text-sm text-muted-foreground">.{formato}</span>
+      <div className="space-y-2">
+        <Label htmlFor="merge-nome-saida" className="text-sm">Nome do arquivo de saída</Label>
+        <div className="flex flex-wrap items-center gap-2">
+          <Input
+            id="merge-nome-saida"
+            value={nomeArquivo}
+            onChange={(e) => setNomeArquivo(e.target.value)}
+            placeholder="Nome do arquivo de saída"
+            className="min-w-0 flex-1"
+          />
+          <span className="text-sm text-muted-foreground">.{formato}</span>
+        </div>
       </div>
 
       {/* Drop zone */}
-      <label className="flex flex-col items-center justify-center py-8 border-2 border-dashed border-border/60 rounded-xl cursor-pointer hover:border-accent/50 hover:bg-accent/5 transition-colors">
-        <FilePlus className="w-8 h-8 text-muted-foreground mb-2" />
-        <span className="text-sm text-muted-foreground">Clique ou arraste arquivos aqui</span>
-        <span className="text-xs text-muted-foreground mt-1">PDF, imagens, documentos</span>
-        <input type="file" multiple className="hidden" onChange={handleAddFiles} accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" />
+      <label className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-border py-8 transition-colors hover:border-primary hover:bg-primary-tint focus-within:outline-none focus-within:ring-2 focus-within:ring-ring">
+        <FilePlus className="mb-2 h-8 w-8 text-muted-foreground" aria-hidden="true" />
+        <span className="text-base font-medium text-foreground">Clique ou arraste arquivos aqui</span>
+        <span className="mt-1 text-sm text-muted-foreground">PDF, imagens, documentos</span>
+        <input type="file" multiple className="sr-only" onChange={handleAddFiles} accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" />
       </label>
 
       {/* File list */}
       {arquivos.length > 0 && (
-        <Card className="divide-y divide-border/30">
+        <Card className="divide-y divide-border">
           {arquivos.map((arq, index) => (
-            <div key={arq.id} className="flex items-center gap-3 px-4 py-3">
-              <GripVertical className="w-4 h-4 text-muted-foreground/40 flex-shrink-0" />
-              <span className="text-xs font-mono text-muted-foreground w-6">{index + 1}.</span>
-              <FileText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{arq.nome}</p>
-                <p className="text-xs text-muted-foreground">{arq.tamanho}</p>
+            <div key={arq.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
+              <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <span className="w-6 text-sm tabular-nums text-muted-foreground">{index + 1}.</span>
+              <FileText className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-base font-medium">{arq.nome}</p>
+                <p className="text-sm text-muted-foreground">{arq.tamanho}</p>
               </div>
-              <div className="flex items-center gap-1">
-                <Button size="sm" variant="ghost" onClick={() => handleMoveUp(index)} disabled={index === 0}>
-                  <ArrowUpDown className="w-3 h-3" />
+              <div className="flex flex-wrap items-center gap-2">
+                {/* A ordem manda no documento final — subir E descer, porque
+                    com só um sentido a última linha nunca chega ao topo. */}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleMoveUp(index)}
+                  disabled={index === 0}
+                  title="Mover para cima"
+                  aria-label={`Mover ${arq.nome} para cima`}
+                >
+                  <ChevronUp className="h-4 w-4" aria-hidden="true" />
                 </Button>
-                <Button size="sm" variant="ghost" onClick={() => handleRemove(arq.id)} className="text-destructive hover:text-destructive">
-                  <Trash2 className="w-3 h-3" />
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleMoveDown(index)}
+                  disabled={index === arquivos.length - 1}
+                  title="Mover para baixo"
+                  aria-label={`Mover ${arq.nome} para baixo`}
+                >
+                  <ChevronDown className="h-4 w-4" aria-hidden="true" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleRemove(arq.id)}
+                  className="text-destructive-ink hover:bg-destructive-tint hover:text-destructive-ink"
+                  title="Remover da lista"
+                  aria-label={`Remover ${arq.nome} da lista`}
+                >
+                  <Trash2 className="h-4 w-4" aria-hidden="true" />
                 </Button>
               </div>
             </div>
@@ -210,11 +245,11 @@ export default function MergeDocumentos() {
 
       {/* Action */}
       {arquivos.length >= 2 && (
-        <Button onClick={handleMerge} disabled={processando} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
+        <Button onClick={handleMerge} disabled={processando} className="w-full">
           {processando ? (
-            <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Processando...</>
+            <><Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Processando…</>
           ) : (
-            <><Download className="w-4 h-4 mr-2" /> Gerar {formato.toUpperCase()} ({arquivos.length} arquivos)</>
+            <><Download className="h-4 w-4" aria-hidden="true" /> Gerar {formato.toUpperCase()} ({arquivos.length} arquivos)</>
           )}
         </Button>
       )}

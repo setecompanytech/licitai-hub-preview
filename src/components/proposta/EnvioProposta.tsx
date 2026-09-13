@@ -3,12 +3,14 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  Send, Upload, FileText, CheckCircle2, AlertTriangle,
-  Loader2, Globe, Shield, Clock, Eye, Bot, Zap,
-  XCircle, RefreshCw, ExternalLink, Package
+  Upload, FileText, CheckCircle2, AlertTriangle,
+  Loader2, Globe, Shield, Eye, Bot, Zap,
+  XCircle, RefreshCw, Package
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -196,34 +198,34 @@ export default function EnvioProposta() {
   return (
     <div className="space-y-4">
       {/* Header com status */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <Badge variant="outline" className="gap-1 text-xs">
-          <Bot className="w-3 h-3" />
-          Envio Automatizado via Agente Cloud
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge variant="muted" className="gap-1">
+          <Bot className="w-3 h-3" aria-hidden="true" />
+          Envio automatizado via Agente Cloud
         </Badge>
         {/* Três estados honestos: respondeu / configurado mas mudo / inexistente */}
         {agenteOnline === true && (
-          <Badge className="bg-success/10 text-success border-success/30 gap-1 text-xs">
-            <Zap className="w-3 h-3" /> Agente respondeu agora
+          <Badge variant="success" className="gap-1">
+            <Zap className="w-3 h-3" aria-hidden="true" /> Agente respondeu agora
           </Badge>
         )}
         {agenteOnline === false && agenteConfigurado === true && (
-          <Badge variant="destructive" className="gap-1 text-xs" title={agenteErro || undefined}>
-            <XCircle className="w-3 h-3" /> Agente não responde
+          <Badge variant="danger" className="gap-1" title={agenteErro || undefined}>
+            <XCircle className="w-3 h-3" aria-hidden="true" /> Agente não responde
           </Badge>
         )}
         {agenteConfigurado === false && (
-          <Badge variant="outline" className="gap-1 text-xs border-warning/40 text-warning">
-            <AlertTriangle className="w-3 h-3" /> Nenhum agente configurado
+          <Badge variant="warning" className="gap-1">
+            <AlertTriangle className="w-3 h-3" aria-hidden="true" /> Nenhum agente configurado
           </Badge>
         )}
       </div>
 
       {/* Portal + Pregão */}
-      <div className="flex items-center gap-3 flex-wrap">
+      <div className="flex flex-wrap items-center gap-3">
         <Select value={portal} onValueChange={setPortal}>
-          <SelectTrigger className="w-[260px]">
-            <Globe className="w-4 h-4 mr-2 text-muted-foreground" />
+          <SelectTrigger className="w-full sm:w-[260px]" aria-label="Portal de compras">
+            <Globe className="w-4 h-4 mr-2 text-muted-foreground" aria-hidden="true" />
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -238,16 +240,17 @@ export default function EnvioProposta() {
           placeholder="Número do Pregão (ex: PE-001/2026)"
           value={numeroPregao}
           onChange={e => setNumeroPregao(e.target.value)}
-          className="w-[280px]"
+          className="w-full sm:w-[280px]"
+          aria-label="Número do pregão"
         />
         {temCredencial === false && (
-          <Badge variant="outline" className="text-destructive border-destructive/30 gap-1 text-xs">
-            <AlertTriangle className="w-3 h-3" /> Sem credencial para {portalSelecionado?.nome}
+          <Badge variant="danger" className="gap-1">
+            <AlertTriangle className="w-3 h-3" aria-hidden="true" /> Sem credencial para {portalSelecionado?.nome}
           </Badge>
         )}
         {temCredencial === true && (
-          <Badge variant="outline" className="text-success border-success/30 gap-1 text-xs">
-            <CheckCircle2 className="w-3 h-3" /> Credencial OK
+          <Badge variant="success" className="gap-1">
+            <CheckCircle2 className="w-3 h-3" aria-hidden="true" /> Credencial OK
           </Badge>
         )}
       </div>
@@ -272,17 +275,17 @@ export default function EnvioProposta() {
         <TabsContent value="itens" className="space-y-3">
           <Card className="p-5">
             {itensFormatados.length > 0 ? (
-              <div className="space-y-2">
-                <h3 className="font-semibold text-sm mb-3">Itens da Proposta (vindos da Precificação)</h3>
-                <div className="max-h-[400px] overflow-y-auto space-y-2">
+              <div className="space-y-3">
+                <h3 className="text-lg font-semibold text-foreground">Itens da proposta (vindos da Precificação)</h3>
+                <div className="max-h-[400px] space-y-2 overflow-y-auto">
                   {itensFormatados.map((item, idx) => (
-                    <div key={idx} className="flex items-start gap-3 p-3 rounded-lg border border-border/50 bg-muted/20">
-                      <span className="text-xs font-mono text-muted-foreground mt-1 w-6 text-right">#{item.numero}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{item.descricao}</p>
-                        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                          <span>{item.quantidade} {item.unidade}</span>
-                          <span className="font-semibold text-foreground">
+                    <div key={idx} className="flex items-start gap-3 rounded-lg border border-border bg-muted p-3">
+                      <span className="mt-1 w-6 text-right text-sm text-muted-foreground tabular-nums">#{item.numero}</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-foreground">{item.descricao}</p>
+                        <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                          <span className="tabular-nums">{item.quantidade} {item.unidade}</span>
+                          <span className="font-semibold text-foreground tabular-nums">
                             R$ {item.valor_unitario.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </span>
                           {item.marca && <span>Marca: {item.marca}</span>}
@@ -292,24 +295,24 @@ export default function EnvioProposta() {
                     </div>
                   ))}
                 </div>
-                <p className="text-xs text-muted-foreground mt-2">
+                <p className="text-xs text-muted-foreground">
                   Total: {itensFormatados.length} itens — Valor total: R$ {itensFormatados.reduce((acc, i) => acc + i.valor_unitario * i.quantidade, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </p>
               </div>
             ) : (
-              <div className="text-center py-10 text-muted-foreground">
-                <Package className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                <p className="text-sm font-medium">Nenhum item na proposta</p>
-                <p className="text-xs mt-1">Adicione itens via <strong>Precificação</strong> → <strong>"Adicionar à Proposta"</strong></p>
-              </div>
+              <EstadoVazio
+                icone={<Package />}
+                titulo="Nenhum item na proposta"
+                descricao={'Adicione itens via Precificação → "Adicionar à Proposta".'}
+              />
             )}
           </Card>
         </TabsContent>
 
         {/* Declarações */}
         <TabsContent value="declaracoes" className="space-y-3">
-          <Card className="p-5 space-y-4">
-            <h3 className="font-semibold text-sm mb-2">Declarações obrigatórias</h3>
+          <Card className="space-y-4 p-5">
+            <h3 className="text-lg font-semibold text-foreground">Declarações obrigatórias</h3>
             {[
               { key: 'meEpp', label: 'Declaração de enquadramento como ME/EPP', desc: 'Conforme LC 123/2006' },
               { key: 'inexistenciaFato', label: 'Inexistência de fato impeditivo', desc: 'Art. 63, §1º da Lei 14.133/2021' },
@@ -317,15 +320,15 @@ export default function EnvioProposta() {
               { key: 'elaboracaoIndep', label: 'Elaboração independente de proposta', desc: 'Instrução Normativa nº 01/2009' },
               { key: 'reservadoMeEpp', label: 'Ciência de item reservado para ME/EPP', desc: 'Quando aplicável' },
             ].map(decl => (
-              <label key={decl.key} className="flex items-start gap-3 p-3 rounded-lg border border-border/50 hover:bg-muted/30 cursor-pointer transition-colors">
+              <label key={decl.key} className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3 transition-colors hover:bg-muted">
                 <input
                   type="checkbox"
                   checked={(declaracoes as any)[decl.key]}
                   onChange={e => setDeclaracoes(prev => ({ ...prev, [decl.key]: e.target.checked }))}
-                  className="mt-0.5 w-4 h-4 accent-accent"
+                  className="mt-0.5 h-4 w-4 rounded border-border accent-primary"
                 />
                 <div>
-                  <p className="text-sm font-medium">{decl.label}</p>
+                  <p className="text-sm font-medium text-foreground">{decl.label}</p>
                   <p className="text-xs text-muted-foreground">{decl.desc}</p>
                 </div>
               </label>
@@ -336,15 +339,15 @@ export default function EnvioProposta() {
         {/* Anexos */}
         <TabsContent value="anexos" className="space-y-3">
           <Card className="p-5">
-            <h3 className="font-semibold text-sm mb-4">Anexos da Proposta</h3>
-            <label className="flex flex-col items-center justify-center py-10 border-2 border-dashed border-border/60 rounded-xl cursor-pointer hover:border-accent/50 hover:bg-accent/5 transition-colors">
-              <Upload className="w-8 h-8 text-muted-foreground mb-2" />
-              <span className="text-sm text-muted-foreground">Arraste documentos ou clique para selecionar</span>
-              <span className="text-xs text-muted-foreground mt-1">Proposta comercial (PDF), planilhas, atestados, certidões</span>
-              <input 
-                type="file" 
-                multiple 
-                className="hidden" 
+            <h3 className="mb-4 text-lg font-semibold text-foreground">Anexos da proposta</h3>
+            <label className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-border py-10 transition-colors hover:border-primary hover:bg-primary-tint focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+              <Upload className="mb-2 w-8 h-8 text-muted-foreground" aria-hidden="true" />
+              <span className="text-sm text-foreground">Arraste documentos ou clique para selecionar</span>
+              <span className="mt-1 text-xs text-muted-foreground">Proposta comercial (PDF), planilhas, atestados, certidões</span>
+              <input
+                type="file"
+                multiple
+                className="hidden"
                 onChange={e => {
                   if (e.target.files) setAnexos(prev => [...prev, ...Array.from(e.target.files!)]);
                 }}
@@ -353,11 +356,16 @@ export default function EnvioProposta() {
             {anexos.length > 0 && (
               <div className="mt-3 space-y-1">
                 {anexos.map((f, i) => (
-                  <div key={i} className="flex items-center gap-2 text-sm p-2 rounded bg-muted/30">
-                    <FileText className="w-4 h-4 text-muted-foreground" />
+                  <div key={i} className="flex items-center gap-2 rounded-md bg-muted p-2 text-sm">
+                    <FileText className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
                     <span className="flex-1 truncate">{f.name}</span>
-                    <span className="text-xs text-muted-foreground">{(f.size / 1024).toFixed(0)} KB</span>
-                    <button onClick={() => setAnexos(prev => prev.filter((_, j) => j !== i))} className="text-destructive hover:text-destructive/80">
+                    <span className="text-xs text-muted-foreground tabular-nums">{(f.size / 1024).toFixed(0)} KB</span>
+                    <button
+                      type="button"
+                      onClick={() => setAnexos(prev => prev.filter((_, j) => j !== i))}
+                      className="rounded-md p-1 text-destructive transition-colors hover:bg-destructive-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      aria-label={`Remover anexo ${f.name}`}
+                    >
                       <XCircle className="w-4 h-4" />
                     </button>
                   </div>
@@ -369,34 +377,34 @@ export default function EnvioProposta() {
 
         {/* Revisão & Envio */}
         <TabsContent value="revisao" className="space-y-4">
-          <Card className="p-5 space-y-4">
-            <h3 className="font-semibold text-sm">Resumo da Proposta</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div className="text-center p-3 bg-muted/30 rounded-lg">
-                <Globe className="w-5 h-5 mx-auto mb-1 text-muted-foreground" />
+          <Card className="space-y-4 p-5">
+            <h3 className="text-lg font-semibold text-foreground">Resumo da proposta</h3>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4">
+              <div className="rounded-lg bg-muted p-4 text-center">
+                <Globe className="mx-auto mb-1 w-5 h-5 text-muted-foreground" aria-hidden="true" />
                 <p className="text-xs text-muted-foreground">Portal</p>
-                <p className="text-sm font-semibold">{portalSelecionado?.icon} {portalSelecionado?.nome}</p>
+                <p className="text-sm font-semibold text-foreground">{portalSelecionado?.icon} {portalSelecionado?.nome}</p>
               </div>
-              <div className="text-center p-3 bg-muted/30 rounded-lg">
-                <Package className="w-5 h-5 mx-auto mb-1 text-muted-foreground" />
+              <div className="rounded-lg bg-muted p-4 text-center">
+                <Package className="mx-auto mb-1 w-5 h-5 text-muted-foreground" aria-hidden="true" />
                 <p className="text-xs text-muted-foreground">Itens</p>
-                <p className="text-sm font-semibold">{itensFormatados.length}</p>
+                <p className="text-sm font-semibold text-foreground tabular-nums">{itensFormatados.length}</p>
               </div>
-              <div className="text-center p-3 bg-muted/30 rounded-lg">
-                <Shield className="w-5 h-5 mx-auto mb-1 text-muted-foreground" />
+              <div className="rounded-lg bg-muted p-4 text-center">
+                <Shield className="mx-auto mb-1 w-5 h-5 text-muted-foreground" aria-hidden="true" />
                 <p className="text-xs text-muted-foreground">Declarações</p>
-                <p className="text-sm font-semibold">{declaracoesCompletas}/5</p>
+                <p className="text-sm font-semibold text-foreground tabular-nums">{declaracoesCompletas}/5</p>
               </div>
-              <div className="text-center p-3 bg-muted/30 rounded-lg">
-                <FileText className="w-5 h-5 mx-auto mb-1 text-muted-foreground" />
+              <div className="rounded-lg bg-muted p-4 text-center">
+                <FileText className="mx-auto mb-1 w-5 h-5 text-muted-foreground" aria-hidden="true" />
                 <p className="text-xs text-muted-foreground">Pregão</p>
-                <p className="text-sm font-semibold">{numeroPregao || '—'}</p>
+                <p className="text-sm font-semibold text-foreground">{numeroPregao || '—'}</p>
               </div>
             </div>
 
             {/* Checklist de prontidão */}
-            <div className="space-y-2 p-3 rounded-lg bg-muted/20 border border-border/50">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Checklist de Envio</p>
+            <div className="space-y-2 rounded-lg border border-border bg-muted p-4">
+              <p className="text-sm font-semibold text-foreground">Checklist de envio</p>
               {[
                 { ok: !!numeroPregao.trim(), label: 'Número do pregão informado' },
                 { ok: itensFormatados.length > 0, label: 'Itens com valores cadastrados' },
@@ -406,68 +414,58 @@ export default function EnvioProposta() {
               ].map((check, idx) => (
                 <div key={idx} className="flex items-center gap-2 text-sm">
                   {check.ok ? (
-                    <CheckCircle2 className="w-4 h-4 text-success flex-shrink-0" />
+                    <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-success-ink" aria-hidden="true" />
                   ) : (
-                    <XCircle className="w-4 h-4 text-destructive flex-shrink-0" />
+                    <XCircle className="w-4 h-4 flex-shrink-0 text-destructive" aria-hidden="true" />
                   )}
-                  <span className={check.ok ? 'text-foreground' : 'text-muted-foreground'}>{check.label}</span>
+                  <span className={check.ok ? 'text-foreground' : 'text-muted-foreground'}>
+                    {check.label} — {check.ok ? 'pronto' : 'pendente'}
+                  </span>
                 </div>
               ))}
             </div>
 
             {/* Aviso */}
-            <div className="flex items-start gap-2 p-3 bg-warning/10 border border-warning/30 rounded-lg text-sm">
-              <AlertTriangle className="w-4 h-4 text-warning flex-shrink-0 mt-0.5" />
-              <div className="text-xs text-muted-foreground">
-                <p className="font-medium text-warning">Atenção</p>
-                <p className="mt-0.5">
-                  O Agente Cloud acessará o portal <strong>{portalSelecionado?.nome}</strong> com suas credenciais e 
-                  preencherá os campos da proposta automaticamente. Você poderá acompanhar o progresso em tempo real 
-                  no <strong>Monitoramento de Chat</strong>.
-                </p>
-              </div>
-            </div>
+            <Alert variant="warning">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Atenção</AlertTitle>
+              <AlertDescription>
+                O Agente Cloud acessará o portal <strong>{portalSelecionado?.nome}</strong> com suas credenciais e
+                preencherá os campos da proposta automaticamente. Você poderá acompanhar o progresso em tempo real
+                no <strong>Monitoramento de Chat</strong>.
+              </AlertDescription>
+            </Alert>
 
             {/* Resultado do envio */}
             {envioResult && (
-              <div className={`flex items-start gap-2 p-3 rounded-lg border text-sm ${
-                envioResult.ok 
-                  ? 'bg-success/10 border-success/30'
-                  : 'bg-destructive/10 border-destructive/30'
-              }`}>
-                {envioResult.ok ? (
-                  <CheckCircle2 className="w-5 h-5 text-success flex-shrink-0 mt-0.5" />
-                ) : (
-                  <XCircle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
-                )}
-                <div>
-                  <p className="font-medium text-sm">{envioResult.ok ? 'Proposta enviada!' : 'Falha no envio'}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{envioResult.mensagem}</p>
-                </div>
-              </div>
+              <Alert variant={envioResult.ok ? 'success' : 'destructive'}>
+                {envioResult.ok ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                <AlertTitle>{envioResult.ok ? 'Proposta enviada' : 'Falha no envio'}</AlertTitle>
+                <AlertDescription>{envioResult.mensagem}</AlertDescription>
+              </Alert>
             )}
 
-            <Button 
-              onClick={handleEnviar} 
-              disabled={envioStatus === 'enviando' || envioStatus === 'validando' || !prontaParaEnvio} 
-              className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
+            <Button
+              onClick={handleEnviar}
+              disabled={envioStatus === 'enviando' || envioStatus === 'validando' || !prontaParaEnvio}
+              className="w-full"
             >
               {envioStatus === 'enviando' || envioStatus === 'validando' ? (
-                <><Loader2 className="w-4 h-4 animate-spin mr-2" /> {envioStatus === 'validando' ? 'Validando...' : 'Enviando ao Agente Cloud...'}</>
+                <><Loader2 className="w-4 h-4 animate-spin" /> {envioStatus === 'validando' ? 'Validando...' : 'Enviando ao Agente Cloud...'}</>
               ) : envioStatus === 'sucesso' ? (
-                <><CheckCircle2 className="w-4 h-4 mr-2" /> Enviado com sucesso</>
+                <><CheckCircle2 className="w-4 h-4" /> Enviado com sucesso</>
               ) : (
-                <><Bot className="w-4 h-4 mr-2" /> Enviar Proposta via Agente Cloud</>
+                <><Bot className="w-4 h-4" /> Enviar proposta via Agente Cloud</>
               )}
             </Button>
 
             {envioStatus === 'sucesso' && (
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => { setEnvioStatus('idle'); setEnvioResult(null); }}
                 className="w-full"
               >
-                <RefreshCw className="w-4 h-4 mr-2" /> Enviar nova proposta
+                <RefreshCw className="w-4 h-4" /> Enviar nova proposta
               </Button>
             )}
           </Card>

@@ -13,6 +13,7 @@ import { downloadCSV, downloadTextReport, downloadPDF } from '@/lib/download-uti
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -46,22 +47,30 @@ type EmissaoResponse = {
   dataConsulta: string;
 };
 
+/**
+ * Certidões negativas — componente interno da aba "Certidões" da tela
+ * Concorrentes: começa direto no conteúdo, sem cabeçalho de página.
+ *
+ * Cor de estado (identidade 12/09) vem SEMPRE das famílias em tinta
+ * (`*-tint` / `*-ink` / `*-line`), via variante do Badge ou da caixa — nunca
+ * de alfa composto à mão; e todo estado carrega TEXTO, não só cor.
+ */
 const statusConfig = {
-  regular: { label: 'Regular', icon: CheckCircle2, className: 'bg-success/15 text-success border-success/30' },
-  pendente: { label: 'Irregular', icon: AlertCircle, className: 'bg-destructive/15 text-destructive border-destructive/30' },
-  verificar: { label: 'Verificar', icon: HelpCircle, className: 'bg-warning/15 text-warning border-warning/30' },
+  regular: { label: 'Regular', icon: CheckCircle2, variante: 'success' as const },
+  pendente: { label: 'Irregular', icon: AlertCircle, variante: 'danger' as const },
+  verificar: { label: 'Verificar', icon: HelpCircle, variante: 'warning' as const },
 };
 const verificacaoStatusConfig = {
-  regular: { label: 'Regular', icon: CheckCircle2, color: 'text-success' },
-  irregular: { label: 'Irregular', icon: AlertCircle, color: 'text-destructive' },
-  erro: { label: 'Erro', icon: WifiOff, color: 'text-muted-foreground' },
-  verificando: { label: 'Verificando', icon: Loader2, color: 'text-muted-foreground' },
+  regular: { label: 'Regular', icon: CheckCircle2, tinta: 'text-success-ink', caixa: 'border-success-line bg-success-tint' },
+  irregular: { label: 'Irregular', icon: AlertCircle, tinta: 'text-destructive-ink', caixa: 'border-destructive-line bg-destructive-tint' },
+  erro: { label: 'Erro', icon: WifiOff, tinta: 'text-muted-foreground', caixa: 'border-border bg-muted' },
+  verificando: { label: 'Verificando', icon: Loader2, tinta: 'text-muted-foreground', caixa: 'border-border bg-muted' },
 };
 const emissaoStatusConfig = {
-  emitida: { label: 'Emitida', icon: CheckCircle2, color: 'text-success', bg: 'border-success/30 bg-success/5' },
-  pendente: { label: 'Pendente', icon: HelpCircle, color: 'text-warning', bg: 'border-warning/30 bg-warning/5' },
-  erro: { label: 'Irregular', icon: AlertCircle, color: 'text-destructive', bg: 'border-destructive/30 bg-destructive/5' },
-  captcha: { label: 'CAPTCHA', icon: ShieldAlert, color: 'text-muted-foreground', bg: 'border-border/50 bg-muted/30' },
+  emitida: { label: 'Emitida', icon: CheckCircle2, variante: 'success' as const, caixa: 'border-success-line bg-success-tint' },
+  pendente: { label: 'Pendente', icon: HelpCircle, variante: 'warning' as const, caixa: 'border-warning-line bg-warning-tint' },
+  erro: { label: 'Irregular', icon: AlertCircle, variante: 'danger' as const, caixa: 'border-destructive-line bg-destructive-tint' },
+  captcha: { label: 'CAPTCHA', icon: ShieldAlert, variante: 'muted' as const, caixa: 'border-border bg-muted' },
 };
 
 export default function CertidoesNegativas() {
@@ -153,39 +162,49 @@ export default function CertidoesNegativas() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
-        <h3 className="text-sm font-semibold flex items-center gap-2 mb-1">
-          <Shield className="w-4 h-4 text-muted-foreground" />
-          Certidões Negativas – Verificação & Emissão Automática
-        </h3>
-        <p className="text-xs text-muted-foreground mb-4">
+      <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+        <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+          <Shield className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+          Certidões negativas — verificação e emissão automática
+        </h2>
+        <p className="mt-1 text-sm text-muted-foreground">
           Consulta em APIs públicas + emissão automática via scraping nos portais oficiais
         </p>
-        <div className="flex gap-2">
-          <Input placeholder="CNPJ" value={cnpjInput} onChange={(e) => setCnpjInput(e.target.value)} className="flex-1" />
-          <Input placeholder="Razão Social (opcional)" value={razaoSocial} onChange={(e) => setRazaoSocial(e.target.value)} className="flex-1" />
-        </div>
-        <div className="flex gap-2 mt-2">
-          <div className="flex-1">
+
+        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="flex flex-col gap-1">
+            <label htmlFor="certidoes-cnpj" className="text-sm font-medium text-foreground">CNPJ</label>
+            <Input id="certidoes-cnpj" placeholder="Ex.: 12.345.678/0001-01" value={cnpjInput}
+              inputMode="numeric" aria-invalid={erro ? true : undefined}
+              onChange={(e) => setCnpjInput(e.target.value)} />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="certidoes-razao" className="text-sm font-medium text-foreground">Razão social (opcional)</label>
+            <Input id="certidoes-razao" placeholder="Razão social da empresa" value={razaoSocial}
+              onChange={(e) => setRazaoSocial(e.target.value)} />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="certidoes-uf" className="text-sm font-medium text-foreground">UF (estado)</label>
             <Select value={ufSelecionada} onValueChange={(v) => { setUfSelecionada(v); setMunicipioSelecionado(''); }}>
-              <SelectTrigger className="w-full">
-                <MapPin className="w-3.5 h-3.5 mr-1 text-muted-foreground" />
-                <SelectValue placeholder="UF (Estado)" />
+              <SelectTrigger id="certidoes-uf" className="w-full">
+                <MapPin className="mr-1 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <SelectValue placeholder="Selecione a UF" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="max-h-80">
                 {ufsDisponiveis.map(e => (
-                  <SelectItem key={e.uf} value={e.uf}>{e.uf} – {e.nome}</SelectItem>
+                  <SelectItem key={e.uf} value={e.uf}>{e.uf} — {e.nome}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-          <div className="flex-1">
+          <div className="flex flex-col gap-1">
+            <label htmlFor="certidoes-municipio" className="text-sm font-medium text-foreground">Município</label>
             <Select value={municipioSelecionado} onValueChange={setMunicipioSelecionado} disabled={!ufSelecionada}>
-              <SelectTrigger className="w-full">
-                <Building2 className="w-3.5 h-3.5 mr-1 text-muted-foreground" />
-                <SelectValue placeholder={ufSelecionada ? "Município" : "Selecione UF primeiro"} />
+              <SelectTrigger id="certidoes-municipio" className="w-full">
+                <Building2 className="mr-1 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <SelectValue placeholder={ufSelecionada ? 'Selecione o município' : 'Selecione a UF primeiro'} />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="max-h-80">
                 {municipiosDisponiveis.map(c => (
                   <SelectItem key={c} value={c}>{c}</SelectItem>
                 ))}
@@ -193,14 +212,15 @@ export default function CertidoesNegativas() {
             </Select>
           </div>
         </div>
+
         {portaisRegionais.length > 0 && (
-          <div className="mt-2 p-2 rounded-lg bg-muted border border-border">
-            <p className="text-xs font-medium text-foreground mb-1 flex items-center gap-1">
-              <MapPin className="w-3 h-3" /> Portais regionais identificados ({portaisRegionais.length}):
+          <div className="mt-4 rounded-md border border-border bg-muted p-3">
+            <p className="flex items-center gap-1 text-sm font-medium text-foreground">
+              <MapPin className="h-4 w-4" aria-hidden="true" /> Portais regionais identificados ({portaisRegionais.length}):
             </p>
-            <div className="flex flex-wrap gap-1">
+            <div className="mt-2 flex flex-wrap gap-2">
               {portaisRegionais.map((p, i) => (
-                <Badge key={i} variant="outline" className="text-xs bg-background text-muted-foreground border-border">
+                <Badge key={i} variant="muted">
                   {p.tipo === 'estadual' ? '🏛️' : '🏙️'} {p.nome.split(' - ')[0]}
                   {p.requerLogin && ' 🔒'}
                 </Badge>
@@ -208,45 +228,53 @@ export default function CertidoesNegativas() {
             </div>
           </div>
         )}
-        <div className="flex gap-2 mt-3">
-          <Button onClick={handleConsultar} disabled={isLoading} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-            {loading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Search className="w-4 h-4 mr-1" />}
-            {loading ? 'Verificando...' : 'Verificar Status'}
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Button onClick={handleConsultar} disabled={isLoading}>
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+            {loading ? 'Verificando…' : 'Verificar status'}
           </Button>
-          <Button onClick={handleEmitir} disabled={isLoading} variant="outline" className="border-success/50 text-success hover:bg-success/10">
-            {loadingEmissao ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Zap className="w-4 h-4 mr-1" />}
-            {loadingEmissao ? 'Emitindo...' : 'Emitir Certidões'}
+          <Button onClick={handleEmitir} disabled={isLoading} variant="outline">
+            {loadingEmissao ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+            {loadingEmissao ? 'Emitindo…' : 'Emitir certidões'}
           </Button>
         </div>
-        <div className="flex flex-wrap gap-1.5 mt-3">
-          <Badge variant="outline" className="text-xs gap-1 bg-success/10 text-success border-success/30"><Wifi className="w-3 h-3" /> APIs Públicas</Badge>
-          <Badge variant="outline" className="text-xs gap-1 bg-muted text-muted-foreground border-border"><Globe className="w-3 h-3" /> Firecrawl (Scraping)</Badge>
-          <Badge variant="outline" className="text-xs gap-1 bg-muted text-muted-foreground"><Bot className="w-3 h-3" /> IA (Extração)</Badge>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Badge variant="success" className="gap-1"><Wifi className="h-3 w-3" aria-hidden="true" /> APIs públicas</Badge>
+          <Badge variant="muted" className="gap-1"><Globe className="h-3 w-3" aria-hidden="true" /> Firecrawl (scraping)</Badge>
+          <Badge variant="muted" className="gap-1"><Bot className="h-3 w-3" aria-hidden="true" /> IA (extração)</Badge>
         </div>
-        {erro && <div className="flex items-center gap-2 mt-3 text-sm text-destructive"><AlertTriangle className="w-4 h-4" /> {erro}</div>}
+
+        {erro && (
+          <Alert variant="destructive" className="mt-4">
+            <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+            <AlertDescription>{erro}</AlertDescription>
+          </Alert>
+        )}
       </div>
 
       {/* Loading states */}
       {loading && (
-        <div className="bg-card rounded-xl border border-border/50 p-8 shadow-sm text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto text-muted-foreground mb-3" />
-          <p className="text-sm text-muted-foreground">Consultando APIs públicas em tempo real...</p>
-          <div className="flex justify-center gap-3 mt-3">
+        <div role="status" className="rounded-lg border border-border bg-card p-6 text-center shadow-sm">
+          <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-muted-foreground" aria-hidden="true" />
+          <p className="text-base text-muted-foreground">Consultando APIs públicas em tempo real…</p>
+          <div className="mt-3 flex flex-wrap justify-center gap-2">
             {['CEIS', 'CNEP', 'CEPIM', 'Receita', 'TST', 'FGTS'].map(f => (
-              <Badge key={f} variant="outline" className="text-xs animate-pulse">{f}</Badge>
+              <Badge key={f} variant="muted" className="animate-pulse">{f}</Badge>
             ))}
           </div>
         </div>
       )}
 
       {loadingEmissao && (
-        <div className="bg-card rounded-xl border border-border/50 p-8 shadow-sm text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto text-muted-foreground mb-3" />
-          <p className="text-sm font-medium text-foreground">Emitindo certidões nos portais oficiais...</p>
-          <p className="text-xs text-muted-foreground mt-1">Preenchendo formulários e extraindo resultados via scraping</p>
-          <div className="flex justify-center gap-3 mt-3">
+        <div role="status" className="rounded-lg border border-border bg-card p-6 text-center shadow-sm">
+          <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-muted-foreground" aria-hidden="true" />
+          <p className="text-base font-medium text-foreground">Emitindo certidões nos portais oficiais…</p>
+          <p className="mt-1 text-sm text-muted-foreground">Preenchendo formulários e extraindo resultados via scraping</p>
+          <div className="mt-3 flex flex-wrap justify-center gap-2">
             {['Receita Federal', 'TST', 'Caixa/FGTS', 'Transparência'].map(f => (
-              <Badge key={f} variant="outline" className="text-xs animate-pulse bg-muted text-muted-foreground border-border">{f}</Badge>
+              <Badge key={f} variant="muted" className="animate-pulse">{f}</Badge>
             ))}
           </div>
         </div>
@@ -256,30 +284,30 @@ export default function CertidoesNegativas() {
       {(resultado || emissaoResult) && (
         <Tabs value={emissaoResult ? 'emissao' : activeTab} onValueChange={setActiveTab}>
           <TabsList>
-            {resultado && <TabsTrigger value="verificar"><Search className="w-3.5 h-3.5 mr-1" /> Verificação</TabsTrigger>}
-            {emissaoResult && <TabsTrigger value="emissao"><Zap className="w-3.5 h-3.5 mr-1" /> Emissão</TabsTrigger>}
+            {resultado && <TabsTrigger value="verificar"><Search className="mr-1 h-4 w-4" aria-hidden="true" /> Verificação</TabsTrigger>}
+            {emissaoResult && <TabsTrigger value="emissao"><Zap className="mr-1 h-4 w-4" aria-hidden="true" /> Emissão</TabsTrigger>}
           </TabsList>
 
           {/* ══ Emission Results ══ */}
           {emissaoResult && (
             <TabsContent value="emissao" className="space-y-4 animate-fade-in">
               {/* Summary cards */}
-              <div className="grid grid-cols-4 gap-3">
-                <div className="bg-card rounded-xl border border-border/50 p-3 text-center shadow-sm">
-                  <p className="text-lg font-bold text-foreground">{emissaoResult.resumo.total}</p>
-                  <p className="text-xs text-muted-foreground">Total</p>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+                  <p className="text-sm text-muted-foreground">Total</p>
+                  <p className="mt-2 text-[2rem] font-bold leading-10 tabular-nums text-foreground">{emissaoResult.resumo.total}</p>
                 </div>
-                <div className="bg-success/5 rounded-xl border border-success/30 p-3 text-center shadow-sm">
-                  <p className="text-lg font-bold text-success">{emissaoResult.resumo.emitidas}</p>
-                  <p className="text-xs text-success">Emitidas</p>
+                <div className="rounded-lg border border-success-line bg-success-tint p-6 shadow-sm">
+                  <p className="text-sm text-success-ink">Emitidas</p>
+                  <p className="mt-2 text-[2rem] font-bold leading-10 tabular-nums text-success-ink">{emissaoResult.resumo.emitidas}</p>
                 </div>
-                <div className="bg-muted/30 rounded-xl border border-border/50 p-3 text-center shadow-sm">
-                  <p className="text-lg font-bold text-muted-foreground">{emissaoResult.resumo.captcha}</p>
-                  <p className="text-xs text-muted-foreground">CAPTCHA</p>
+                <div className="rounded-lg border border-border bg-muted p-6 shadow-sm">
+                  <p className="text-sm text-muted-foreground">CAPTCHA</p>
+                  <p className="mt-2 text-[2rem] font-bold leading-10 tabular-nums text-foreground">{emissaoResult.resumo.captcha}</p>
                 </div>
-                <div className="bg-destructive/5 rounded-xl border border-destructive/30 p-3 text-center shadow-sm">
-                  <p className="text-lg font-bold text-destructive">{emissaoResult.resumo.erros}</p>
-                  <p className="text-xs text-destructive">Irregulares</p>
+                <div className="rounded-lg border border-destructive-line bg-destructive-tint p-6 shadow-sm">
+                  <p className="text-sm text-destructive-ink">Irregulares</p>
+                  <p className="mt-2 text-[2rem] font-bold leading-10 tabular-nums text-destructive-ink">{emissaoResult.resumo.erros}</p>
                 </div>
               </div>
 
@@ -287,7 +315,7 @@ export default function CertidoesNegativas() {
               <div className="flex justify-end">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button size="sm" variant="outline"><Download className="w-3.5 h-3.5 mr-1" /> Exportar Emissão</Button>
+                    <Button size="sm" variant="outline"><Download className="h-4 w-4" /> Exportar emissão</Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={() => {
@@ -335,39 +363,39 @@ export default function CertidoesNegativas() {
               </div>
 
               {/* Results grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {emissaoResult.resultados.map((r, i) => {
                   const cfg = emissaoStatusConfig[r.status];
                   const Icon = cfg.icon;
                   return (
-                    <div key={i} className={`bg-card rounded-xl border-2 ${cfg.bg} p-4 shadow-sm hover:shadow-md transition-shadow relative`}>
-                      <div className="absolute top-2 right-2">
-                        <Badge variant="outline" className={`text-xs gap-0.5 ${cfg.color}`}>
-                          <Icon className="w-2.5 h-2.5" /> {cfg.label}
+                    <div key={i} className={`rounded-lg border p-6 shadow-sm transition-shadow hover:shadow-md ${cfg.caixa}`}>
+                      <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
+                        <h3 className="min-w-0 text-base font-semibold text-foreground">{r.certidao}</h3>
+                        <Badge variant={cfg.variante} className="gap-1">
+                          <Icon className="h-3 w-3" aria-hidden="true" /> {cfg.label}
                         </Badge>
                       </div>
-                      <h4 className="text-xs font-semibold leading-tight pr-16 mb-2">{r.certidao}</h4>
-                      <p className="text-xs text-muted-foreground mb-2 line-clamp-3">{r.detalhes}</p>
+                      <p className="line-clamp-3 text-sm text-muted-foreground">{r.detalhes}</p>
                       {r.codigo && (
-                        <p className="text-xs text-foreground mb-1">
+                        <p className="mt-2 text-sm text-foreground">
                           Código: <span className="font-mono font-medium">{r.codigo}</span>
                         </p>
                       )}
                       {r.validade && (
-                        <p className="text-xs text-muted-foreground mb-1">
+                        <p className="mt-1 text-sm text-muted-foreground">
                           Válida até: <span className="font-medium text-foreground">{new Date(r.validade).toLocaleDateString('pt-BR')}</span>
                         </p>
                       )}
                       {r.dataEmissao && (
-                        <p className="text-xs text-muted-foreground">
-                          <Clock className="w-3 h-3 inline mr-0.5" />
+                        <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                          <Clock className="h-3 w-3" aria-hidden="true" />
                           Emitida: {new Date(r.dataEmissao).toLocaleString('pt-BR')}
                         </p>
                       )}
                       {r.url && (
                         <a href={r.url} target="_blank" rel="noopener noreferrer"
-                          className="flex items-center gap-1 mt-2 text-xs text-accent hover:underline">
-                          <ExternalLink className="w-3 h-3" /> {r.status === 'captcha' ? 'Emitir manualmente' : 'Acessar portal'}
+                          className="mt-3 flex items-center gap-1 text-sm text-primary hover:underline">
+                          <ExternalLink className="h-3 w-3" aria-hidden="true" /> {r.status === 'captcha' ? 'Emitir manualmente' : 'Acessar portal'}
                         </a>
                       )}
                     </div>
@@ -381,31 +409,28 @@ export default function CertidoesNegativas() {
           {resultado && (
             <TabsContent value="verificar" className="space-y-4 animate-fade-in">
               {resultado.verificacoesReais && resultado.verificacoesReais.length > 0 && (
-                <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
-                  <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
-                    <Wifi className="w-4 h-4 text-muted-foreground" /> Verificações em Tempo Real
-                    <Badge variant="outline" className="text-xs ml-auto bg-muted text-muted-foreground">
-                      <Clock className="w-3 h-3 mr-0.5" />{new Date().toLocaleTimeString('pt-BR')}
+                <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+                  <h3 className="mb-3 flex flex-wrap items-center gap-2 text-lg font-semibold text-foreground">
+                    <Wifi className="h-5 w-5 text-muted-foreground" aria-hidden="true" /> Verificações em tempo real
+                    <Badge variant="muted" className="ml-auto gap-1">
+                      <Clock className="h-3 w-3" aria-hidden="true" />{new Date().toLocaleTimeString('pt-BR')}
                     </Badge>
                   </h3>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
                     {resultado.verificacoesReais.map((v, i) => {
                       const cfg = verificacaoStatusConfig[v.status] || verificacaoStatusConfig.erro;
                       const Icon = cfg.icon;
                       return (
                         <TooltipProvider key={i}><Tooltip><TooltipTrigger asChild>
-                          <div className={`rounded-lg border p-3 text-center cursor-help transition-all hover:shadow-md ${
-                            v.status === 'regular' ? 'border-success/30 bg-success/5' :
-                            v.status === 'irregular' ? 'border-destructive/30 bg-destructive/5' : 'border-border/50 bg-muted/30'
-                          }`}>
-                            <Icon className={`w-5 h-5 mx-auto mb-1 ${cfg.color} ${v.status === 'verificando' ? 'animate-spin' : ''}`} />
-                            <p className="text-xs font-semibold truncate">{v.fonte}</p>
-                            <p className={`text-xs font-medium ${cfg.color}`}>{cfg.label}</p>
+                          <div className={`cursor-help rounded-md border p-3 text-center transition-shadow hover:shadow-md ${cfg.caixa}`}>
+                            <Icon className={`mx-auto mb-1 h-5 w-5 ${cfg.tinta} ${v.status === 'verificando' ? 'animate-spin' : ''}`} aria-hidden="true" />
+                            <p className="truncate text-sm font-semibold text-foreground">{v.fonte}</p>
+                            <p className={`text-sm font-medium ${cfg.tinta}`}>{cfg.label}</p>
                           </div>
                         </TooltipTrigger><TooltipContent side="bottom" className="max-w-xs">
-                          <p className="text-xs font-semibold">{v.fonte}</p>
-                          <p className="text-xs text-muted-foreground mt-1">{v.detalhes}</p>
-                          {v.url && <p className="text-xs text-muted-foreground mt-1">🔗 {v.url}</p>}
+                          <p className="text-sm font-semibold">{v.fonte}</p>
+                          <p className="mt-1 text-sm text-muted-foreground">{v.detalhes}</p>
+                          {v.url && <p className="mt-1 break-all text-xs text-muted-foreground">{v.url}</p>}
                         </TooltipContent></Tooltip></TooltipProvider>
                       );
                     })}
@@ -414,20 +439,23 @@ export default function CertidoesNegativas() {
               )}
 
               {resultado.alertas && resultado.alertas.length > 0 && (
-                <div className="bg-destructive/5 rounded-xl border border-destructive/30 p-4">
-                  <h4 className="text-xs font-semibold text-destructive flex items-center gap-1.5 mb-2">
-                    <AlertTriangle className="w-4 h-4" /> Alertas
-                  </h4>
-                  <ul className="space-y-1">{resultado.alertas.map((a, i) => <li key={i} className="text-xs text-destructive/80">{a}</li>)}</ul>
-                </div>
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+                  <AlertDescription>
+                    <p className="font-semibold">Alertas</p>
+                    <ul className="mt-1 list-inside list-disc space-y-1">
+                      {resultado.alertas.map((a, i) => <li key={i}>{a}</li>)}
+                    </ul>
+                  </AlertDescription>
+                </Alert>
               )}
 
-              <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-semibold">Resumo da Análise</h3>
+              <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="text-lg font-semibold text-foreground">Resumo da análise</h3>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button size="sm" variant="outline"><Download className="w-3.5 h-3.5 mr-1" /> Exportar</Button>
+                      <Button size="sm" variant="outline"><Download className="h-4 w-4" /> Exportar</Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => {
@@ -453,12 +481,12 @@ export default function CertidoesNegativas() {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
-                <p className="text-sm text-muted-foreground">{resultado.resumo}</p>
+                <p className="text-base text-muted-foreground">{resultado.resumo}</p>
                 {resultado.recomendacoes.length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-border/30">
-                    <p className="text-xs font-semibold text-muted-foreground mb-2">Recomendações:</p>
-                    <ul className="space-y-1">{resultado.recomendacoes.map((r, i) => (
-                      <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5"><span className="text-muted-foreground mt-0.5">→</span> {r}</li>
+                  <div className="mt-4 border-t border-border pt-4">
+                    <p className="text-sm font-semibold text-foreground">Recomendações:</p>
+                    <ul className="mt-2 space-y-1">{resultado.recomendacoes.map((r, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground"><span aria-hidden="true" className="mt-0.5">→</span> {r}</li>
                     ))}</ul>
                   </div>
                 )}
@@ -466,29 +494,33 @@ export default function CertidoesNegativas() {
 
               {certidoesReais.length > 0 && (
                 <div>
-                  <h3 className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
-                    <Wifi className="w-3.5 h-3.5 text-success" /> Verificadas via API ({certidoesReais.length})
+                  <h3 className="mb-3 flex items-center gap-2 text-lg font-semibold text-foreground">
+                    <Wifi className="h-5 w-5 text-muted-foreground" aria-hidden="true" /> Verificadas via API ({certidoesReais.length})
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {certidoesReais.map((cert, i) => {
                       const st = statusConfig[cert.statusProvavel] || statusConfig.verificar;
                       const Icon = st.icon;
                       return (
-                        <div key={i} className="bg-card rounded-xl border-2 border-border p-4 shadow-sm hover:shadow-md transition-shadow relative">
-                          <div className="absolute top-2 right-2">
-                            <Badge className="text-xs bg-muted text-muted-foreground border-border gap-0.5"><Wifi className="w-2.5 h-2.5" /> REAL</Badge>
+                        <div key={i} className="rounded-lg border border-border bg-card p-6 shadow-sm transition-shadow hover:shadow-md">
+                          <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
+                            <h4 className="min-w-0 text-base font-semibold text-foreground">{cert.nome}</h4>
+                            <Badge variant="muted" className="gap-1"><Wifi className="h-3 w-3" aria-hidden="true" /> Verificação real</Badge>
                           </div>
-                          <h4 className="text-xs font-semibold leading-tight pr-14 mb-2">{cert.nome}</h4>
-                          <Badge variant="outline" className={`${st.className} text-xs mb-2`}><Icon className="w-3 h-3 mr-0.5" /> {st.label}</Badge>
-                          <p className="text-xs text-muted-foreground mb-2">{cert.orgao}</p>
-                          <div className="text-xs text-muted-foreground space-y-1">
+                          <Badge variant={st.variante} className="mb-2 gap-1"><Icon className="h-3 w-3" aria-hidden="true" /> {st.label}</Badge>
+                          <p className="text-sm text-muted-foreground">{cert.orgao}</p>
+                          <div className="mt-2 space-y-1 text-sm text-muted-foreground">
                             {cert.validadeDias > 0 && <p>Validade: <span className="font-medium text-foreground">{cert.validadeDias} dias</span></p>}
                             <p className="line-clamp-3">{cert.observacoes}</p>
-                            {cert.dataVerificacao && <p className="text-muted-foreground"><Clock className="w-3 h-3 inline mr-0.5" />Verificado: {new Date(cert.dataVerificacao).toLocaleString('pt-BR')}</p>}
+                            {cert.dataVerificacao && (
+                              <p className="flex items-center gap-1 text-xs">
+                                <Clock className="h-3 w-3" aria-hidden="true" />Verificado: {new Date(cert.dataVerificacao).toLocaleString('pt-BR')}
+                              </p>
+                            )}
                           </div>
                           {cert.url && cert.url !== '#' && (
-                            <a href={cert.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 mt-2 text-xs text-accent hover:underline">
-                              <ExternalLink className="w-3 h-3" /> Acessar portal
+                            <a href={cert.url} target="_blank" rel="noopener noreferrer" className="mt-3 flex items-center gap-1 text-sm text-primary hover:underline">
+                              <ExternalLink className="h-3 w-3" aria-hidden="true" /> Acessar portal
                             </a>
                           )}
                         </div>
@@ -500,26 +532,28 @@ export default function CertidoesNegativas() {
 
               {certidoesIA.length > 0 && (
                 <div>
-                  <h3 className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
-                    <Bot className="w-3.5 h-3.5 text-muted-foreground" /> Complementar – IA ({certidoesIA.length})
+                  <h3 className="mb-3 flex items-center gap-2 text-lg font-semibold text-foreground">
+                    <Bot className="h-5 w-5 text-muted-foreground" aria-hidden="true" /> Complementar — IA ({certidoesIA.length})
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {certidoesIA.map((cert, i) => {
                       const st = statusConfig[cert.statusProvavel] || statusConfig.verificar;
                       const Icon = st.icon;
                       return (
-                        <div key={i} className="bg-card rounded-xl border border-border/50 p-4 shadow-sm hover:shadow-md transition-shadow relative opacity-90">
-                          <div className="absolute top-2 right-2"><Badge variant="outline" className="text-xs gap-0.5"><Bot className="w-2.5 h-2.5" /> IA</Badge></div>
-                          <h4 className="text-xs font-semibold leading-tight pr-10 mb-2">{cert.nome}</h4>
-                          <Badge variant="outline" className={`${st.className} text-xs mb-2`}><Icon className="w-3 h-3 mr-0.5" /> {st.label}</Badge>
-                          <p className="text-xs text-muted-foreground mb-2">{cert.orgao}</p>
-                          <div className="text-xs text-muted-foreground space-y-1">
+                        <div key={i} className="rounded-lg border border-border bg-card p-6 shadow-sm transition-shadow hover:shadow-md">
+                          <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
+                            <h4 className="min-w-0 text-base font-semibold text-foreground">{cert.nome}</h4>
+                            <Badge variant="muted" className="gap-1"><Bot className="h-3 w-3" aria-hidden="true" /> IA</Badge>
+                          </div>
+                          <Badge variant={st.variante} className="mb-2 gap-1"><Icon className="h-3 w-3" aria-hidden="true" /> {st.label}</Badge>
+                          <p className="text-sm text-muted-foreground">{cert.orgao}</p>
+                          <div className="mt-2 space-y-1 text-sm text-muted-foreground">
                             {cert.validadeDias > 0 && <p>Validade: <span className="font-medium text-foreground">{cert.validadeDias} dias</span></p>}
                             <p className="line-clamp-2">{cert.observacoes}</p>
                           </div>
                           {cert.url && cert.url !== '#' && (
-                            <a href={cert.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 mt-2 text-xs text-accent hover:underline">
-                              <ExternalLink className="w-3 h-3" /> Emitir certidão
+                            <a href={cert.url} target="_blank" rel="noopener noreferrer" className="mt-3 flex items-center gap-1 text-sm text-primary hover:underline">
+                              <ExternalLink className="h-3 w-3" aria-hidden="true" /> Emitir certidão
                             </a>
                           )}
                         </div>
