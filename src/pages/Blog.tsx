@@ -12,7 +12,7 @@ import ReactMarkdown from 'react-markdown';
 import {
   BookOpen, Search, Clock, User, ArrowRight, TrendingUp,
   Scale, Lightbulb, CloudRain, AlertTriangle,
-  Gavel, RefreshCw, ExternalLink, ChevronLeft, Star,
+  Gavel, RefreshCw, ExternalLink, ChevronLeft, Star, X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -87,7 +87,7 @@ export default function Blog() {
     if (error) {
       console.error('Erro ao buscar artigos:', error);
     } else {
-      setArtigos((data as any[]) || []);
+      setArtigos((data as unknown as Artigo[]) || []);
     }
     setLoading(false);
   };
@@ -104,8 +104,8 @@ export default function Blog() {
       } else {
         toast.error(data?.error || 'Erro ao gerar artigos');
       }
-    } catch (e: any) {
-      toast.error(e.message || 'Erro ao conectar com o serviço');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Erro ao conectar com o serviço');
     } finally {
       setGerando(false);
     }
@@ -138,12 +138,28 @@ export default function Blog() {
     </Button>
   );
 
+  /* Vazio por filtro e vazio por base sem artigo são coisas diferentes, e a
+     ação tem de casar com o texto: quem filtrou tudo precisa LIMPAR o filtro —
+     "Gerar artigos" não devolveria o artigo que a busca escondeu, e ainda
+     duplicaria o botão que já está no cabeçalho. */
+  const temFiltro = busca.trim() !== '' || categoriaAtiva !== 'todos';
+
+  const limparFiltros = () => {
+    setBusca('');
+    setCategoriaAtiva('todos');
+  };
+
   if (artigoAberto) {
     return (
       <AppLayout>
         <div className="mx-auto max-w-5xl space-y-6">
           <CabecalhoPagina
             titulo={artigoAberto.titulo}
+            /* Sem `descricao` explícita, o cabeçalho cai no registro e o artigo
+               herdaria a linha do MÓDULO ("Artigos sobre licitação…") — a URL
+               continua /blog. O resumo do próprio artigo é o que cabe aqui, e
+               ele não aparecia em lugar nenhum da leitura. */
+            descricao={artigoAberto.resumo}
             trilha={[
               { rotulo: 'Painel', para: '/dashboard' },
               { rotulo: 'Ferramentas' },

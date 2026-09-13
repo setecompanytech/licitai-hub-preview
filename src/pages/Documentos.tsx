@@ -699,7 +699,17 @@ export default function Documentos() {
         <ProcessoContextoBanner />
         {/* Título, descrição, ícone e trilha vêm do registro
             `lib/navegacao/paginas.ts` pela própria rota — a tela não repete o
-            que já está padronizado. */}
+            que já está padronizado.
+
+            Sem `acoes`, de propósito: o registro declara `acao: 'Enviar
+            documento'` para /documentos, mas aqui não existe envio avulso — o
+            arquivo entra POR VAGA do checklist ("Enviar"/"Substituir" na linha),
+            e o input escondido só sabe o destino porque a linha clicada gravou
+            `pendingUploadIdx`. Um botão global teria de escolher a vaga sozinho,
+            o que é adivinhação. A divergência está no registro, não na tela, e
+            foi reportada para o dono do registro decidir (remover a ação, como
+            /assessoria-cadastral já faz, ou trocá-la por uma que exista de
+            verdade no topo). */}
         <CabecalhoPagina />
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -830,29 +840,40 @@ export default function Documentos() {
                 return (
                   <div key={cat} className="rounded-lg border border-border bg-card shadow-sm">
                     {/* A pasta inteira se recolhe: quem veio tratar da regularidade
-                        fiscal não precisa rolar a habilitação jurídica antes. */}
-                    <button
-                      type="button"
-                      onClick={() => alternarCategoria(cat)}
-                      aria-expanded={!categoriasRecolhidas[cat]}
-                      title={categoriasRecolhidas[cat] ? 'Abrir a lista' : 'Recolher a lista'}
-                      className="flex w-full items-center gap-3 px-6 py-3 border-b border-border text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-                    >
-                      <FolderOpen className="w-4 h-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                      <h3 className="text-lg font-semibold">{cat}</h3>
-                      {categoriasRecolhidas[cat] && (
-                        <span className="text-sm text-muted-foreground">
-                          {docs.length} documento{docs.length > 1 ? 's' : ''}
-                        </span>
-                      )}
-                      <Badge variant="muted" className="ml-auto">
-                        {docs[0]?.artigo}
-                      </Badge>
-                      <IconeRecolher
-                        aberto={!categoriasRecolhidas[cat]}
-                        className="h-4 w-4 shrink-0 text-muted-foreground"
-                      />
-                    </button>
+                        fiscal não precisa rolar a habilitação jurídica antes.
+
+                        O cabeçalho ENVOLVE o botão, em vez de morar dentro dele
+                        (padrão de acordeão do WAI-ARIA). Título dentro de
+                        <button> some duas vezes: <button> só aceita conteúdo de
+                        frase, e `role=button` marca os filhos como
+                        apresentacionais — o leitor de tela anunciava o nome do
+                        botão e nenhum cabeçalho, deixando a lista de categorias
+                        fora do sumário da página. Envolvendo, o nível 3 volta ao
+                        sumário e a linha inteira continua clicável. */}
+                    <h3>
+                      <button
+                        type="button"
+                        onClick={() => alternarCategoria(cat)}
+                        aria-expanded={!categoriasRecolhidas[cat]}
+                        title={categoriasRecolhidas[cat] ? 'Abrir a lista' : 'Recolher a lista'}
+                        className="flex w-full items-center gap-3 px-6 py-3 border-b border-border text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+                      >
+                        <FolderOpen className="w-4 h-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                        <span className="text-lg font-semibold">{cat}</span>
+                        {categoriasRecolhidas[cat] && (
+                          <span className="text-sm text-muted-foreground">
+                            {docs.length} documento{docs.length > 1 ? 's' : ''}
+                          </span>
+                        )}
+                        <Badge variant="muted" className="ml-auto">
+                          {docs[0]?.artigo}
+                        </Badge>
+                        <IconeRecolher
+                          aberto={!categoriasRecolhidas[cat]}
+                          className="h-4 w-4 shrink-0 text-muted-foreground"
+                        />
+                      </button>
+                    </h3>
                     <div className={`divide-y divide-border ${categoriasRecolhidas[cat] ? 'hidden' : ''}`}>
                       {docs.map((doc) => {
                         const cfg = statusConfig[doc.status];
@@ -973,17 +994,22 @@ export default function Documentos() {
                 qualquer caminho, não só por esta tela. */}
             {isCompanyAdmin && (
               <div className="rounded-lg border border-border bg-card shadow-sm">
-                <button
-                  type="button"
-                  className="w-full flex items-center justify-between gap-3 px-6 py-3 transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-                  aria-expanded={historicoAberto}
-                  onClick={abrirHistorico}
-                >
-                  {/* Mesmo tamanho dos demais títulos de cartão desta tela
-                      (categoria e atestados): text-lg font-semibold. */}
-                  <h3 className="text-lg font-semibold">Histórico de alterações (Admin)</h3>
-                  <span className="text-sm font-medium text-muted-foreground">{historicoAberto ? 'recolher' : 'ver'}</span>
-                </button>
+                {/* Cabeçalho envolvendo o botão, como nas pastas de categoria
+                    acima — o título fica no sumário de cabeçalhos da página e a
+                    faixa inteira segue clicável. */}
+                <h3>
+                  <button
+                    type="button"
+                    className="w-full flex items-center justify-between gap-3 px-6 py-3 transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+                    aria-expanded={historicoAberto}
+                    onClick={abrirHistorico}
+                  >
+                    {/* Mesmo tamanho dos demais títulos de cartão desta tela
+                        (categoria e atestados): text-lg font-semibold. */}
+                    <span className="text-lg font-semibold">Histórico de alterações (Admin)</span>
+                    <span className="text-sm font-medium text-muted-foreground">{historicoAberto ? 'recolher' : 'ver'}</span>
+                  </button>
+                </h3>
                 {historicoAberto && (
                   <div className="border-t border-border divide-y divide-border max-h-80 overflow-y-auto">
                     {historicoCarregando && (

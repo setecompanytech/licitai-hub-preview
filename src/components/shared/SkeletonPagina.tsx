@@ -74,7 +74,7 @@ export default function SkeletonPagina({
           a posição ao montar, e o olho lê isso como defeito. */}
       <div
         aria-hidden="true"
-        className="sticky top-0 z-40 h-16 md:h-[72px] bg-sidebar border-b border-sidebar-border flex items-center gap-2 px-4 md:px-6"
+        className="sticky top-0 z-40 h-16 md:h-[72px] bg-sidebar border-b border-sidebar-border flex items-center gap-2 px-5 md:px-8 xl:px-12 2xl:px-16"
       >
         <BrandLogo variant="dark" className="w-[164px] lg:w-[200px]" />
         <div className="hidden md:flex flex-1 items-center justify-center gap-1">
@@ -92,7 +92,7 @@ export default function SkeletonPagina({
         </div>
       </div>
 
-      <div className="flex-1 min-w-0 p-4 md:p-8">
+      <div className="flex-1 min-w-0 px-5 py-5 md:px-8 md:py-8 xl:px-12 2xl:px-16">
         <SkeletonCorpo cartoes={cartoes} />
       </div>
     </div>

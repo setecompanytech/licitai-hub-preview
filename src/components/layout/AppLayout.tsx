@@ -130,7 +130,7 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
     <div className="min-h-screen bg-background flex flex-col">
       {/* Faixa da navegação: navy nos dois temas (tokens sidebar-*), marca à
           esquerda, navegação centrada, ações à direita. */}
-      <header className="nao-imprime sticky top-0 z-40 h-16 md:h-[72px] bg-sidebar text-sidebar-foreground border-b border-sidebar-border flex items-center gap-2 px-4 md:px-6">
+      <header className="nao-imprime sticky top-0 z-40 h-16 md:h-[72px] bg-sidebar text-sidebar-foreground border-b border-sidebar-border flex items-center gap-2 px-5 md:px-8 xl:px-12 2xl:px-16">
         <Link to="/dashboard" aria-label="Praefectus — página inicial" className="flex shrink-0 items-center">
           <BrandLogo variant="dark" className="w-[164px] lg:w-[200px]" />
         </Link>
@@ -269,8 +269,12 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
         </div>
       </header>
 
-      {/* Conteúdo: 16px no celular, 32px no desktop; sem teto de largura. */}
-      <main className="flex-1 min-w-0 p-4 md:p-8">
+      {/* Respiro lateral que cresce com a tela — 20px no celular, 32 no
+          desktop, 48 a partir de 1280 e 64 a partir de 1536. A mesma régua
+          do cabeçalho acima, para a marca e o título da tela ficarem na
+          mesma vertical. Sem teto de largura: tabela e Kanban continuam
+          usando a tela inteira em monitor grande. */}
+      <main className="flex-1 min-w-0 px-5 py-5 md:px-8 md:py-8 xl:px-12 2xl:px-16">
         {/* Banner de manutenção e aviso de vencimento são da sessão, não do
             documento: no papel viram ruído com data de validade. */}
         <div className="nao-imprime">

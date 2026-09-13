@@ -76,6 +76,17 @@ export default function AssessoriaCadastral() {
           <TarjaExemplo detalhe="Portais, validades e documentos ainda são lista fixa no código — esta tela não lê o banco." />
         </CabecalhoPagina>
 
+        {/* PENDÊNCIA CONHECIDA, não escolha de design: "Expirados" é o mesmo
+            estado que o selo do cartão pinta de vermelho (`statusConfig.expirado`
+            → variante `danger`), mas aqui sai em âmbar porque `LinhaKpis` só
+            oferece os tons `ok`/`aviso`/`info` — não há tom de gravidade alta.
+            Ler "atenção" no topo e "impedimento" no cartão, para o mesmo
+            cadastro, é incoerência de leitura.
+            Correção de verdade: um tom `critico`
+            (bg-destructive-tint/text-destructive-ink) em
+            `components/shared/LinhaKpis.tsx`, e este item apontado para ele.
+            O componente é compartilhado e está fora deste lote — fica
+            registrado para não virar precedente de "expirado é âmbar". */}
         <LinhaKpis
           itens={[
             { rotulo: 'Ativos', valor: String(ativos), icone: CheckCircle2, tom: 'ok' },
