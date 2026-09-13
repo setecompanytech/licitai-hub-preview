@@ -13,18 +13,21 @@ import {
   Archive,
   BarChart3,
   Bell,
+  BellRing,
   BookOpen,
   Bot,
   Building2,
   Calculator,
   CalendarDays,
   ClipboardCheck,
+  CreditCard,
   Crosshair,
   DollarSign,
   Download,
   FileBarChart,
   FileText,
   Gauge,
+  Globe,
   GraduationCap,
   HeadphonesIcon,
   Kanban,
@@ -39,8 +42,10 @@ import {
   ShieldCheck,
   ShoppingCart,
   SlidersHorizontal,
+  Palette,
   Target,
   TrendingUp,
+  User,
   Users,
   Workflow,
   // Ícones de GRUPO — usados só na barra lateral, um por categoria.
@@ -74,6 +79,46 @@ export interface NavGroup {
   curto?: string;
   items: NavItem[];
 }
+
+/**
+ * O menu da conta — o que vive atrás do avatar, não na barra (13/09/2026).
+ *
+ * A barra responde "o que eu faço"; este menu responde "quem eu sou, qual
+ * empresa e como o sistema se comporta comigo". Antes as duas perguntas se
+ * misturavam: o grupo "Configuração" abria a MESMA tela que o avatar já
+ * abria por seção, e "Notificações" (avatar) convivia com "Preferências de
+ * Alertas" (barra) — dois nomes quase iguais para telas diferentes.
+ *
+ * `hash` leva à seção da tela de Configurações; sem ele, é tela própria.
+ */
+export interface ItemDaConta {
+  icon: ElementType;
+  label: string;
+  path: string;
+  hash?: string;
+  /** Cabeçalho da seção dentro do menu. */
+  secao: 'Conta' | 'Empresa' | 'Preferências' | 'Plataforma';
+  adminOnly?: boolean;
+}
+
+export const menuDaConta: ItemDaConta[] = [
+  { icon: Shield, label: 'Segurança', path: '/configuracoes', hash: '#seguranca', secao: 'Conta' },
+  { icon: Palette, label: 'Aparência', path: '/configuracoes', hash: '#aparencia', secao: 'Conta' },
+
+  { icon: Building2, label: 'Dados da empresa', path: '/configuracoes', hash: '#empresa', secao: 'Empresa' },
+  { icon: User, label: 'Representante legal', path: '/configuracoes', hash: '#representante', secao: 'Empresa' },
+  { icon: Building2, label: 'Empresas', path: '/empresas', secao: 'Empresa' },
+  { icon: Users, label: 'Equipe', path: '/equipe', secao: 'Empresa' },
+
+  { icon: Globe, label: 'Monitoramento', path: '/configuracoes', hash: '#monitoramento', secao: 'Preferências' },
+  /* Dois nomes que já se confundiram: este é o aviso DO SISTEMA (sino);
+     o de baixo é o que você quer receber sobre editais. */
+  { icon: Bell, label: 'Notificações do sistema', path: '/configuracoes', hash: '#notificacoes', secao: 'Preferências' },
+  { icon: BellRing, label: 'Alertas de editais', path: '/configuracoes/alertas', secao: 'Preferências' },
+
+  { icon: CreditCard, label: 'Plano e assinatura', path: '/configuracoes', hash: '#plano', secao: 'Plataforma' },
+  { icon: Settings, label: 'Todas as configurações', path: '/configuracoes', secao: 'Plataforma' },
+];
 
 export const navGroups: NavGroup[] = [
   /* "Painel" saiu, e Dashboard e Analytics vieram para cá.
@@ -127,6 +172,9 @@ export const navGroups: NavGroup[] = [
       { icon: Crosshair, label: 'Robô de Lances', path: '/robo-lances' },
       { icon: Archive, label: 'Histórico', path: '/historico-licitacoes' },
       { icon: Gauge, label: 'Metas do Comercial', path: '/metas-comercial' },
+      /* A parametrização mora ao lado do painel que ela alimenta: estava em
+         "Configuração", longe da tela cujo número ela define. */
+      { icon: SlidersHorizontal, label: 'Definir Metas', path: '/definir-metas', adminOnly: true },
       { icon: FileText,     label: 'Contratos', path: '/gestao-contratos' },
       { icon: ShoppingCart, label: 'Compras, Pedidos e Estoque', path: '/gestao-compras' },
     ],
@@ -167,22 +215,6 @@ export const navGroups: NavGroup[] = [
       { icon: GraduationCap, label: 'Tutorial', path: '/tutorial' },
       { icon: BookOpen, label: 'Blog', path: '/blog' },
       { icon: Download, label: 'E-book', path: '/ebook' },
-    ],
-  },
-  {
-    title: 'Configuração',
-    icone: Settings,
-    items: [
-      { icon: Building2, label: 'Empresas', path: '/empresas' },
-      { icon: Users, label: 'Equipe', path: '/equipe' },
-      { icon: Bell, label: 'Preferências de Alertas', path: '/configuracoes/alertas' },
-      /* Mesma tela de "Metas do Comercial", entrando direto na aba de
-         parametrização. O rótulo e o ícone dizem isso agora: antes eram
-         'Definir Metas' com o MESMO ícone Gauge da entrada de Gestão, e duas
-         portas idênticas para uma tela só passavam por duas funções — o dono
-         do produto descreveu cada uma como se fizesse coisa diferente. */
-      { icon: SlidersHorizontal, label: 'Definir Metas', path: '/definir-metas', adminOnly: true },
-      { icon: Settings, label: 'Configurações', path: '/configuracoes' },
       { icon: HeadphonesIcon, label: 'Suporte', path: '/suporte' },
     ],
   },

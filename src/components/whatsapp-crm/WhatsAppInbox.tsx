@@ -9,7 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import {
-  Search, Send, Plus, Phone, Clock, MessageSquare, Loader2, Sparkles,
+  Search, Send, Plus, Phone, Clock, MessageSquare, Loader2, Sparkles, ArrowLeft,
 } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger
@@ -185,8 +185,12 @@ export default function WhatsAppInbox() {
 
   return (
     <div className="flex h-[calc(100vh-280px)] min-h-96 overflow-hidden rounded-lg border border-border bg-card">
-      {/* Lista de conversas */}
-      <div className="flex w-64 flex-shrink-0 flex-col border-r border-border sm:w-80">
+      {/* Lista de conversas. No celular ela ocupa a largura toda e dá lugar à
+          conversa aberta (o botão "voltar" do cabeçalho traz de volta); a
+          partir de `sm` as duas colunas convivem, como sempre conviveram. */}
+      <div
+        className={`${conversaAtiva ? 'hidden sm:flex' : 'flex'} w-full flex-col border-r border-border sm:w-80 sm:flex-shrink-0`}
+      >
         <div className="space-y-3 border-b border-border p-4">
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
@@ -293,11 +297,20 @@ export default function WhatsAppInbox() {
       </div>
 
       {/* Conversa aberta */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className={`${conversaAtiva ? 'flex' : 'hidden sm:flex'} min-w-0 flex-1 flex-col`}>
         {conversaAtiva ? (
           <>
             <div className="flex items-center justify-between gap-3 border-b border-border bg-muted px-4 py-3">
               <div className="flex min-w-0 items-center gap-3">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-11 w-11 flex-shrink-0 sm:hidden"
+                  onClick={() => setConversaAtiva(null)}
+                  aria-label="Voltar para a lista de conversas"
+                >
+                  <ArrowLeft aria-hidden="true" />
+                </Button>
                 <Avatar className="w-10 h-10 flex-shrink-0">
                   <AvatarFallback className="text-xs bg-primary-tint text-primary">{getInitials(conversaAtiva.contato_nome)}</AvatarFallback>
                 </Avatar>

@@ -115,7 +115,11 @@ export const paginasPadrao: PaginaPadrao[] = [
   {
     rota: '/monitoramento-chat', grupo: 'Monitoramento', titulo: 'Chat e mural', icone: MessageSquare,
     descricao: 'Mensagens do processo e o mural da equipe no mesmo lugar',
-    padrao: 'conversa', abas: ['Processo', 'Chat', 'Mural'],
+    // Os rótulos são os que a tela mostra, na mesma ordem. Os antigos
+    // ('Processo', 'Chat', 'Mural') invertiam o sentido: 'Processo' é o mural do
+    // processo e 'Mural' são as publicações do portal. A primeira aba só existe
+    // quando a URL traz ?lid.
+    padrao: 'conversa', abas: ['Mural do Processo', 'Chat do Pregoeiro', 'Publicações do Portal'],
   },
 
   // ── Gestão de Processos ───────────────────────────────────────────────
@@ -247,34 +251,34 @@ export const paginasPadrao: PaginaPadrao[] = [
     padrao: 'cartoes',
   },
 
-  // ── Configuração ──────────────────────────────────────────────────────
+  // ── Conta (menu do avatar) e telas que mudaram de grupo em 13/09 ──────
   {
-    rota: '/empresas', grupo: 'Configuração', titulo: 'Empresas', icone: Building2,
+    rota: '/empresas', grupo: 'Conta', titulo: 'Empresas', icone: Building2,
     descricao: 'As empresas que você opera e os certificados de cada uma',
     acao: 'Nova empresa', padrao: 'cartoes',
   },
   {
-    rota: '/equipe', grupo: 'Configuração', titulo: 'Equipe', icone: Users,
+    rota: '/equipe', grupo: 'Conta', titulo: 'Equipe', icone: Users,
     descricao: 'Quem tem acesso, o que cada um faz e como é remunerado',
     acao: 'Convidar pessoa', padrao: 'abas', abas: ['Membros', 'Tarefas', 'Comissões', 'Relatório'],
   },
   {
-    rota: '/configuracoes/alertas', grupo: 'Configuração', titulo: 'Preferências de alertas', icone: Bell,
+    rota: '/configuracoes/alertas', grupo: 'Conta', titulo: 'Alertas de editais', icone: Bell,
     descricao: 'O que você quer ser avisado, por qual canal e com que antecedência',
     padrao: 'abas', abas: ['Segmentos', 'Empresa', 'Canais'],
   },
   {
-    rota: '/definir-metas', grupo: 'Configuração', titulo: 'Definir metas', icone: SlidersHorizontal,
+    rota: '/definir-metas', grupo: 'Gestão de Processos', titulo: 'Definir metas', icone: SlidersHorizontal,
     descricao: 'Alvo por pessoa e período, e as regras que medem o alcance',
     acao: 'Nova meta', padrao: 'formulario',
   },
   {
-    rota: '/configuracoes', grupo: 'Configuração', titulo: 'Configurações', icone: Settings,
+    rota: '/configuracoes', grupo: 'Conta', titulo: 'Configurações', icone: Settings,
     descricao: 'Dados da empresa, plano, regime tributário, timbrado e segurança',
     padrao: 'abas', abas: ['Geral', 'Plano', 'Regime', 'Timbrado', 'Segurança'],
   },
   {
-    rota: '/suporte', grupo: 'Configuração', titulo: 'Suporte', icone: HeadphonesIcon,
+    rota: '/suporte', grupo: 'Ferramentas', titulo: 'Suporte', icone: HeadphonesIcon,
     descricao: 'Fale com a equipe e acompanhe seus chamados',
     acao: 'Abrir chamado', padrao: 'abas', abas: ['Chat', 'Chamados'],
   },

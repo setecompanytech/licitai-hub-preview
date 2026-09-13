@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -8,9 +10,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import ReactMarkdown from 'react-markdown';
 import {
-  BookOpen, Search, Clock, User, Tag, ArrowRight, TrendingUp,
-  Scale, FileText, Building2, Lightbulb, CloudRain, AlertTriangle,
-  Gavel, RefreshCw, ExternalLink, ChevronLeft
+  BookOpen, Search, Clock, User, ArrowRight, TrendingUp,
+  Scale, Lightbulb, CloudRain, AlertTriangle,
+  Gavel, RefreshCw, ExternalLink, ChevronLeft, Star,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -42,6 +44,25 @@ const categorias = [
   { id: 'mercado', label: 'Mercado', icon: TrendingUp },
   { id: 'reajustes', label: 'Reajustes & CCTs', icon: TrendingUp },
 ];
+
+/* O corpo do artigo vem em Markdown, e este projeto NÃO tem o plugin
+   `@tailwindcss/typography` — as classes `prose` que estavam aqui não pintavam
+   nada, e com o preflight do Tailwind o texto saía todo do mesmo tamanho, sem
+   título nem lista. A hierarquia abaixo é escrita com os tokens da identidade,
+   para o artigo ficar legível de verdade. */
+const CORPO_ARTIGO = [
+  'max-w-none text-base leading-7 text-foreground',
+  '[&>*+*]:mt-4',
+  '[&_h1]:text-lg [&_h1]:font-semibold [&_h1]:text-foreground [&_h1]:mt-6',
+  '[&_h2]:text-lg [&_h2]:font-semibold [&_h2]:text-foreground [&_h2]:mt-6',
+  '[&_h3]:text-base [&_h3]:font-semibold [&_h3]:text-foreground [&_h3]:mt-4',
+  '[&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:mt-1',
+  '[&_a]:text-primary [&_a]:underline [&_a]:underline-offset-4',
+  '[&_strong]:font-semibold [&_strong]:text-foreground',
+  '[&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-4 [&_blockquote]:text-muted-foreground',
+  '[&_code]:rounded-md [&_code]:bg-muted [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:text-sm',
+  '[&_table]:w-full [&_th]:text-left [&_th]:text-sm [&_th]:font-semibold [&_td]:text-sm [&_td]:align-top',
+].join(' ');
 
 export default function Blog() {
   const [busca, setBusca] = useState('');
@@ -98,54 +119,82 @@ export default function Blog() {
 
   const destaques = artigos.filter(a => a.destaque).slice(0, 2);
 
+  const botaoGerar = (
+    <Button onClick={gerarArtigos} disabled={gerando}>
+      <RefreshCw className={gerando ? 'animate-spin' : undefined} aria-hidden="true" />
+      {gerando ? 'Gerando...' : 'Gerar artigos'}
+    </Button>
+  );
+
   if (artigoAberto) {
     return (
       <AppLayout>
-        <div className="space-y-4 max-w-5xl mx-auto">
-          <Button variant="ghost" size="sm" onClick={() => setArtigoAberto(null)} className="gap-1">
-            <ChevronLeft className="w-4 h-4" /> Voltar ao Blog
-          </Button>
-          <div>
-            <div className="flex gap-2 mb-3">
+        <div className="mx-auto max-w-5xl space-y-6">
+          <CabecalhoPagina
+            titulo={artigoAberto.titulo}
+            trilha={[
+              { rotulo: 'Painel', para: '/dashboard' },
+              { rotulo: 'Ferramentas' },
+              { rotulo: 'Blog' },
+            ]}
+            acoes={
+              <Button variant="outline" onClick={() => setArtigoAberto(null)}>
+                <ChevronLeft aria-hidden="true" />
+                Voltar ao blog
+              </Button>
+            }
+          >
+            <div className="flex flex-wrap gap-2">
               {artigoAberto.caso_fortuito && (
-                <Badge variant="outline" className="bg-warning/15 text-warning border-warning/30 text-xs">
-                  <AlertTriangle className="w-3 h-3 mr-1" /> Caso Fortuito
+                <Badge variant="warning">
+                  <AlertTriangle className="mr-1 h-3 w-3" aria-hidden="true" /> Caso fortuito
                 </Badge>
               )}
               {artigoAberto.forca_maior && (
-                <Badge variant="outline" className="bg-destructive/15 text-destructive border-destructive/30 text-xs">
-                  <AlertTriangle className="w-3 h-3 mr-1" /> Força Maior
+                <Badge variant="danger">
+                  <AlertTriangle className="mr-1 h-3 w-3" aria-hidden="true" /> Força maior
                 </Badge>
               )}
               {artigoAberto.tcu_referencia && (
-                <Badge variant="outline" className="bg-info/15 text-info border-info/30 text-xs">
-                  <Gavel className="w-3 h-3 mr-1" /> TCU: {artigoAberto.tcu_referencia}
+                <Badge variant="info">
+                  <Gavel className="mr-1 h-3 w-3" aria-hidden="true" /> TCU: {artigoAberto.tcu_referencia}
                 </Badge>
               )}
             </div>
-            <h1 className="text-2xl font-bold tracking-tight">{artigoAberto.titulo}</h1>
-            <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1"><User className="w-3 h-3" /> {artigoAberto.autor}</span>
-              <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {artigoAberto.tempo_leitura}</span>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <User className="h-3.5 w-3.5" aria-hidden="true" /> {artigoAberto.autor}
+              </span>
+              <span className="flex items-center gap-1">
+                <Clock className="h-3.5 w-3.5" aria-hidden="true" /> {artigoAberto.tempo_leitura}
+              </span>
               <span>{new Date(artigoAberto.data_publicacao).toLocaleDateString('pt-BR')}</span>
               {artigoAberto.fonte_nome && artigoAberto.fonte_url && (
-                <a href={artigoAberto.fonte_url} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-1 text-accent hover:underline">
-                  <ExternalLink className="w-3 h-3" /> {artigoAberto.fonte_nome}
+                <a
+                  href={artigoAberto.fonte_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-primary underline-offset-4 hover:underline"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" /> {artigoAberto.fonte_nome}
                 </a>
               )}
             </div>
-          </div>
+          </CabecalhoPagina>
+
           <Card className="p-6">
-            <div className="prose prose-sm dark:prose-invert max-w-none">
+            <div className={CORPO_ARTIGO}>
               <ReactMarkdown>{artigoAberto.conteudo}</ReactMarkdown>
             </div>
           </Card>
-          <div className="flex gap-1 flex-wrap">
-            {artigoAberto.tags?.map(tag => (
-              <Badge key={tag} variant="outline" className="text-xs px-1.5 py-0">{tag}</Badge>
-            ))}
-          </div>
+
+          {artigoAberto.tags?.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {artigoAberto.tags.map(tag => (
+                <Badge key={tag} variant="muted">{tag}</Badge>
+              ))}
+            </div>
+          )}
         </div>
       </AppLayout>
     );
@@ -154,49 +203,50 @@ export default function Blog() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-              <BookOpen className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground flex-shrink-0" />
-              Blog & Conteúdos
-            </h1>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-              Artigos gerados por IA sobre clima, licitações e jurisprudência do TCU
-            </p>
-          </div>
-          <Button onClick={gerarArtigos} disabled={gerando} size="sm" className="gap-1 self-start sm:self-auto flex-shrink-0">
-            <RefreshCw className={`w-4 h-4 ${gerando ? 'animate-spin' : ''}`} />
-            {gerando ? 'Gerando...' : 'Gerar Artigos'}
-          </Button>
-        </div>
+        <CabecalhoPagina
+          acoes={botaoGerar}
+          filtros={
+            <div className="relative w-full max-w-md">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+              <Input
+                aria-label="Buscar artigo"
+                placeholder="Buscar artigo..."
+                value={busca}
+                onChange={e => setBusca(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          }
+        />
 
         {/* Destaques */}
         {destaques.length > 0 && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {destaques.map(artigo => (
-              <Card key={artigo.id} className="p-5 hover:shadow-md transition-shadow cursor-pointer group"
-                onClick={() => setArtigoAberto(artigo)}>
-                <div className="flex gap-2 mb-2">
-                  <Badge variant="outline" className="bg-muted text-muted-foreground border-border text-xs">
-                    ⭐ Destaque
+              <Card
+                key={artigo.id}
+                onClick={() => setArtigoAberto(artigo)}
+                className="group cursor-pointer p-6 transition-shadow hover:shadow-md"
+              >
+                <div className="mb-3 flex flex-wrap gap-2">
+                  <Badge variant="muted">
+                    <Star className="mr-1 h-3 w-3" aria-hidden="true" /> Destaque
                   </Badge>
-                  {artigo.caso_fortuito && (
-                    <Badge variant="outline" className="bg-warning/15 text-warning border-warning/30 text-xs">
-                      Caso Fortuito
-                    </Badge>
-                  )}
-                  {artigo.forca_maior && (
-                    <Badge variant="outline" className="bg-destructive/15 text-destructive border-destructive/30 text-xs">
-                      Força Maior
-                    </Badge>
-                  )}
+                  {artigo.caso_fortuito && <Badge variant="warning">Caso fortuito</Badge>}
+                  {artigo.forca_maior && <Badge variant="danger">Força maior</Badge>}
                 </div>
-                <h2 className="font-bold text-lg mb-2 group-hover:text-accent transition-colors">{artigo.titulo}</h2>
-                <p className="text-sm text-muted-foreground mb-3">{artigo.resumo}</p>
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <div className="flex items-center gap-3">
-                    <span className="flex items-center gap-1"><User className="w-3 h-3" /> {artigo.autor}</span>
-                    <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {artigo.tempo_leitura}</span>
+                <h2 className="mb-2 text-lg font-semibold text-foreground transition-colors group-hover:text-primary">
+                  {artigo.titulo}
+                </h2>
+                <p className="mb-4 text-base text-muted-foreground">{artigo.resumo}</p>
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="flex items-center gap-1">
+                      <User className="h-3 w-3" aria-hidden="true" /> {artigo.autor}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" aria-hidden="true" /> {artigo.tempo_leitura}
+                    </span>
                   </div>
                   <span>{new Date(artigo.data_publicacao).toLocaleDateString('pt-BR')}</span>
                 </div>
@@ -205,22 +255,20 @@ export default function Blog() {
           </div>
         )}
 
-        {/* Busca e filtros */}
-        <div className="flex gap-3 items-center">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input placeholder="Buscar artigo..." value={busca} onChange={e => setBusca(e.target.value)} className="pl-10" />
-          </div>
-        </div>
-
-        <div className="flex gap-2 flex-wrap">
+        {/* Categorias */}
+        <div className="flex flex-wrap gap-2">
           {categorias.map(cat => {
             const Icon = cat.icon;
+            const ativa = categoriaAtiva === cat.id;
             return (
-              <Button key={cat.id} variant={categoriaAtiva === cat.id ? 'default' : 'outline'} size="sm"
+              <Button
+                key={cat.id}
+                variant={ativa ? 'default' : 'outline'}
+                size="sm"
+                aria-pressed={ativa}
                 onClick={() => setCategoriaAtiva(cat.id)}
-                className={categoriaAtiva === cat.id ? 'bg-accent hover:bg-accent/90 text-accent-foreground' : ''}>
-                <Icon className="w-3 h-3 mr-1" /> {cat.label}
+              >
+                <Icon aria-hidden="true" /> {cat.label}
               </Button>
             );
           })}
@@ -230,60 +278,68 @@ export default function Blog() {
         {loading ? (
           <div className="space-y-3">
             {[1, 2, 3].map(i => (
-              <Card key={i} className="p-4">
-                <Skeleton className="h-5 w-3/4 mb-2" />
-                <Skeleton className="h-3 w-full mb-2" />
+              <Card key={i} className="p-6">
+                <Skeleton className="mb-2 h-5 w-3/4" />
+                <Skeleton className="mb-2 h-3 w-full" />
                 <Skeleton className="h-3 w-1/2" />
               </Card>
             ))}
           </div>
         ) : artigosFiltrados.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            <Search className="w-10 h-10 mx-auto mb-3 opacity-40" />
-            <p className="text-sm">Nenhum artigo encontrado.</p>
-            <p className="text-xs mt-1">Clique em "Gerar Artigos" para alimentar o blog com IA.</p>
-          </div>
+          <EstadoVazio
+            icone={<Search />}
+            titulo="Nenhum artigo encontrado"
+            descricao={
+              busca || categoriaAtiva !== 'todos'
+                ? 'Nenhum artigo casa com a busca ou a categoria escolhida — limpe os filtros para ver tudo'
+                : 'Gere artigos com IA para alimentar o blog'
+            }
+            acao={botaoGerar}
+          />
         ) : (
           <div className="space-y-3">
             {artigosFiltrados.map(artigo => (
-              <Card key={artigo.id} className="p-4 hover:shadow-md transition-shadow cursor-pointer group"
-                onClick={() => setArtigoAberto(artigo)}>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex gap-1 mb-1">
-                      {artigo.caso_fortuito && (
-                        <Badge variant="outline" className="bg-warning/15 text-warning border-warning/30 text-xs px-1.5 py-0">
-                          Caso Fortuito
-                        </Badge>
-                      )}
-                      {artigo.forca_maior && (
-                        <Badge variant="outline" className="bg-destructive/15 text-destructive border-destructive/30 text-xs px-1.5 py-0">
-                          Força Maior
-                        </Badge>
-                      )}
-                      {artigo.tcu_referencia && (
-                        <Badge variant="outline" className="bg-info/15 text-info border-info/30 text-xs px-1.5 py-0">
-                          TCU
-                        </Badge>
-                      )}
-                    </div>
-                    <h3 className="font-semibold text-sm group-hover:text-accent transition-colors mb-1">{artigo.titulo}</h3>
-                    <p className="text-xs text-muted-foreground mb-2">{artigo.resumo}</p>
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1"><User className="w-3 h-3" /> {artigo.autor}</span>
-                      <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {artigo.tempo_leitura}</span>
+              <Card
+                key={artigo.id}
+                onClick={() => setArtigoAberto(artigo)}
+                className="group cursor-pointer p-6 transition-shadow hover:shadow-md"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0 flex-1">
+                    {(artigo.caso_fortuito || artigo.forca_maior || artigo.tcu_referencia) && (
+                      <div className="mb-2 flex flex-wrap gap-2">
+                        {artigo.caso_fortuito && <Badge variant="warning">Caso fortuito</Badge>}
+                        {artigo.forca_maior && <Badge variant="danger">Força maior</Badge>}
+                        {artigo.tcu_referencia && <Badge variant="info">TCU</Badge>}
+                      </div>
+                    )}
+                    <h3 className="mb-1 text-base font-semibold text-foreground transition-colors group-hover:text-primary">
+                      {artigo.titulo}
+                    </h3>
+                    <p className="mb-2 text-sm text-muted-foreground">{artigo.resumo}</p>
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <User className="h-3 w-3" aria-hidden="true" /> {artigo.autor}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" aria-hidden="true" /> {artigo.tempo_leitura}
+                      </span>
                       <span>{new Date(artigo.data_publicacao).toLocaleDateString('pt-BR')}</span>
                       {artigo.fonte_nome && (
-                        <span className="flex items-center gap-1"><ExternalLink className="w-3 h-3" /> {artigo.fonte_nome}</span>
+                        <span className="flex items-center gap-1">
+                          <ExternalLink className="h-3 w-3" aria-hidden="true" /> {artigo.fonte_nome}
+                        </span>
                       )}
                     </div>
-                    <div className="flex gap-1 mt-2">
-                      {artigo.tags?.slice(0, 5).map(tag => (
-                        <Badge key={tag} variant="outline" className="text-xs px-1.5 py-0">{tag}</Badge>
-                      ))}
-                    </div>
+                    {artigo.tags?.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {artigo.tags.slice(0, 5).map(tag => (
+                          <Badge key={tag} variant="muted">{tag}</Badge>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-accent transition-colors ml-3 mt-1" />
+                  <ArrowRight className="mt-1 h-4 w-4 flex-shrink-0 text-muted-foreground transition-colors group-hover:text-primary" aria-hidden="true" />
                 </div>
               </Card>
             ))}

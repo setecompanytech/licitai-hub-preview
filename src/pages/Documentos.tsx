@@ -975,11 +975,13 @@ export default function Documentos() {
               <div className="rounded-lg border border-border bg-card shadow-sm">
                 <button
                   type="button"
-                  className="w-full flex items-center justify-between gap-3 px-6 py-3 text-base font-semibold transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+                  className="w-full flex items-center justify-between gap-3 px-6 py-3 transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
                   aria-expanded={historicoAberto}
                   onClick={abrirHistorico}
                 >
-                  <span>Histórico de alterações (Admin)</span>
+                  {/* Mesmo tamanho dos demais títulos de cartão desta tela
+                      (categoria e atestados): text-lg font-semibold. */}
+                  <h3 className="text-lg font-semibold">Histórico de alterações (Admin)</h3>
                   <span className="text-sm font-medium text-muted-foreground">{historicoAberto ? 'recolher' : 'ver'}</span>
                 </button>
                 {historicoAberto && (

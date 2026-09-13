@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { Calendar } from '@/components/ui/calendar';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import {
   CalendarDays, FileText, AlertTriangle, Clock, CheckCircle2,
   ChevronRight, Shield, Building2, Database, Trophy, FileWarning,
@@ -41,12 +43,14 @@ interface DocValidade {
   status: 'ok' | 'vencendo' | 'vencido';
 }
 
+/** Ponto colorido antes do número do processo — reforço do status, que também
+ *  vai escrito no selo ao lado. Só tokens. */
 const statusColors: Record<string, string> = {
   Publicado: 'bg-info',
   Monitorando: 'bg-info',
   'Em Análise': 'bg-warning',
   'Proposta Enviada': 'bg-primary',
-  'Em Disputa': 'bg-accent',
+  'Em Disputa': 'bg-primary',
   Vencida: 'bg-success',
   Perdida: 'bg-destructive',
   Homologada: 'bg-success',
@@ -267,6 +271,11 @@ export default function CalendarioLicitacoes() {
     [docsValidade]
   );
 
+  // As duas metades do alerta, cada uma em seu Alert — a mesma filtragem que
+  // antes era repetida cinco vezes dentro do JSX.
+  const docsVencidos = useMemo(() => docsAlerta.filter((d) => d.status === 'vencido'), [docsAlerta]);
+  const docsVencendo = useMemo(() => docsAlerta.filter((d) => d.status === 'vencendo'), [docsAlerta]);
+
   // Urgentes (próximos 3 dias)
   const urgentes = useMemo(() => {
     const limit = addDays(hoje, 3);
@@ -301,11 +310,15 @@ export default function CalendarioLicitacoes() {
     return { licitacao: licitDates, documento: docDates, urgente: urgentDates, backup: bkpDates };
   }, [eventDates]);
 
-  const modifiersStyles = {
-    licitacao: { backgroundColor: 'hsl(var(--accent) / 0.2)', borderRadius: '50%' },
-    documento: { border: '2px solid hsl(var(--warning))', borderRadius: '50%' },
-    urgente: { backgroundColor: 'hsl(var(--destructive) / 0.2)', borderRadius: '50%' },
-    backup: { border: '2px solid hsl(var(--info))', borderRadius: '50%' },
+  /* Marcação do dia por classe, não por `style` com `hsl(...)` escrito à mão:
+     cor dentro do .tsx é o que a identidade 12/09 proíbe, e a tinta do token
+     acompanha o tema sozinha. `modifiersClassNames` é a API equivalente do
+     react-day-picker — mesmos quatro modificadores, mesma leitura. */
+  const modifiersClassNames = {
+    licitacao: 'bg-primary-tint text-primary font-semibold rounded-full',
+    documento: 'border-2 border-warning rounded-full',
+    urgente: 'bg-destructive-tint text-destructive-ink font-semibold rounded-full',
+    backup: 'border-2 border-info rounded-full',
   };
 
   const formatCurrency = (v: number) =>
@@ -319,83 +332,80 @@ export default function CalendarioLicitacoes() {
 
   return (
     <div className="space-y-4">
-      {/* Alertas urgentes */}
-      {(urgentes.length > 0 || docsAlerta.filter((d) => d.status === 'vencido').length > 0) && (
-        <div className="flex items-start gap-3 px-4 py-3 bg-destructive/10 border border-destructive/20 rounded-lg text-sm animate-fade-in">
-          <AlertTriangle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
-          <div>
+      {/* Alertas urgentes — Alert de ui em tinta (`destructive`/`warning`), no
+          lugar das caixas com alfa composto na mão (`bg-destructive/10`). */}
+      {(urgentes.length > 0 || docsVencidos.length > 0) && (
+        <Alert variant="destructive">
+          <AlertTriangle className="w-5 h-5" aria-hidden="true" />
+          <AlertTitle>Exige atenção agora</AlertTitle>
+          <AlertDescription className="space-y-3">
             {urgentes.length > 0 && (
-              <>
-                <p className="font-semibold text-destructive">
+              <div>
+                <p className="font-semibold">
                   {urgentes.length} licitaç{urgentes.length > 1 ? 'ões' : 'ão'} nos próximos 3 dias
                 </p>
-                <ul className="mt-1 space-y-0.5">
+                <ul className="mt-1 space-y-1">
                   {urgentes.map((l) => (
-                    <li key={l.id} className="text-xs text-destructive/80">
+                    <li key={l.id}>
                       • {l.numero} — {l.orgao} —{' '}
                       {l.data_abertura &&
                         format(new Date(l.data_abertura), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                     </li>
                   ))}
                 </ul>
-              </>
+              </div>
             )}
-            {docsAlerta.filter((d) => d.status === 'vencido').length > 0 && (
-              <>
-                <p className="font-semibold text-destructive mt-2">
-                  {docsAlerta.filter((d) => d.status === 'vencido').length} documento(s) vencido(s)
+            {docsVencidos.length > 0 && (
+              <div>
+                <p className="font-semibold">
+                  {docsVencidos.length} documento(s) vencido(s)
                 </p>
-                <ul className="mt-1 space-y-0.5">
-                  {docsAlerta
-                    .filter((d) => d.status === 'vencido')
-                    .map((d) => (
-                      <li key={d.id} className="text-xs text-destructive/80">
-                        • {d.nome} — venceu em {format(new Date(d.validade), 'dd/MM/yyyy')}
-                      </li>
-                    ))}
+                <ul className="mt-1 space-y-1">
+                  {docsVencidos.map((d) => (
+                    <li key={d.id}>
+                      • {d.nome} — venceu em {format(new Date(d.validade), 'dd/MM/yyyy')}
+                    </li>
+                  ))}
                 </ul>
-              </>
+              </div>
             )}
-          </div>
-        </div>
+          </AlertDescription>
+        </Alert>
       )}
 
       {/* Warning: docs vencendo */}
-      {docsAlerta.filter((d) => d.status === 'vencendo').length > 0 && (
-        <div className="flex items-start gap-3 px-4 py-3 bg-warning/10 border border-warning/20 rounded-lg text-sm animate-fade-in">
-          <Clock className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="font-semibold text-warning">
-              {docsAlerta.filter((d) => d.status === 'vencendo').length} documento(s) próximo(s) do
-              vencimento
-            </p>
-            <ul className="mt-1 space-y-0.5">
-              {docsAlerta
-                .filter((d) => d.status === 'vencendo')
-                .map((d) => {
-                  const diff = Math.ceil(
-                    (new Date(d.validade).getTime() - hoje.getTime()) / 86400000
-                  );
-                  return (
-                    <li key={d.id} className="text-xs text-warning/80">
-                      • {d.nome} — vence em <strong>{diff} dia{diff > 1 ? 's' : ''}</strong> (
-                      {format(new Date(d.validade), 'dd/MM/yyyy')})
-                    </li>
-                  );
-                })}
+      {docsVencendo.length > 0 && (
+        <Alert variant="warning">
+          <Clock className="w-5 h-5" aria-hidden="true" />
+          <AlertTitle>
+            {docsVencendo.length} documento(s) próximo(s) do vencimento
+          </AlertTitle>
+          <AlertDescription>
+            <ul className="mt-1 space-y-1">
+              {docsVencendo.map((d) => {
+                const diff = Math.ceil(
+                  (new Date(d.validade).getTime() - hoje.getTime()) / 86400000
+                );
+                return (
+                  <li key={d.id}>
+                    • {d.nome} — vence em <strong>{diff} dia{diff > 1 ? 's' : ''}</strong> (
+                    {format(new Date(d.validade), 'dd/MM/yyyy')})
+                  </li>
+                );
+              })}
             </ul>
-          </div>
-        </div>
+          </AlertDescription>
+        </Alert>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Calendar */}
-        <Card className="lg:col-span-1 p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold flex items-center gap-2">
-              <CalendarDays className="w-4 h-4 text-accent" />
+        <Card className="lg:col-span-1 p-6">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <CalendarDays className="w-5 h-5 text-primary" aria-hidden="true" />
               Calendário
-            </h3>
+            </h2>
             <SyncCalendarButton
               events={[
                 ...licitacoes
@@ -427,106 +437,102 @@ export default function CalendarioLicitacoes() {
             onSelect={setSelectedDate}
             locale={ptBR}
             modifiers={modifiers}
-            modifiersStyles={modifiersStyles}
-            className="rounded-md border pointer-events-auto"
+            modifiersClassNames={modifiersClassNames}
+            className="rounded-md border border-border pointer-events-auto"
           />
-          <div className="flex flex-wrap gap-3 mt-3 text-xs">
-            <span className="flex items-center gap-1">
-              <span className="w-3 h-3 rounded-full bg-accent/20 border border-accent/40" /> Licitação
+          <div className="flex flex-wrap gap-3 mt-4 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1.5">
+              <span aria-hidden="true" className="w-3 h-3 rounded-full bg-primary-tint border border-primary" /> Licitação
             </span>
-            <span className="flex items-center gap-1">
-              <span className="w-3 h-3 rounded-full border-2 border-warning" /> Documento
+            <span className="flex items-center gap-1.5">
+              <span aria-hidden="true" className="w-3 h-3 rounded-full border-2 border-warning" /> Documento
             </span>
-            <span className="flex items-center gap-1">
-              <span className="w-3 h-3 rounded-full bg-destructive/20" /> Urgente
+            <span className="flex items-center gap-1.5">
+              <span aria-hidden="true" className="w-3 h-3 rounded-full bg-destructive-tint border border-destructive-line" /> Urgente
             </span>
-            <span className="flex items-center gap-1">
-              <span className="w-3 h-3 rounded-full border-2 border-info" /> Backup
+            <span className="flex items-center gap-1.5">
+              <span aria-hidden="true" className="w-3 h-3 rounded-full border-2 border-info" /> Backup
             </span>
           </div>
         </Card>
 
         {/* Events panel */}
-        <Card className="lg:col-span-2 p-4">
+        <Card className="lg:col-span-2 p-6">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+              <h2 className="text-lg font-semibold">
                 {selectedDate
                   ? format(selectedDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
                   : 'Selecione uma data'}
-              </h3>
-              <TabsList className="h-8">
-                <TabsTrigger value="todos" className="text-xs px-2 h-6">
-                  Dia
-                </TabsTrigger>
-                <TabsTrigger value="proximos" className="text-xs px-2 h-6">
-                  Próximos 30d
-                </TabsTrigger>
-                <TabsTrigger value="documentos" className="text-xs px-2 h-6">
-                  Documentos
-                </TabsTrigger>
+              </h2>
+              <TabsList>
+                <TabsTrigger value="todos">Dia</TabsTrigger>
+                <TabsTrigger value="proximos">Próximos 30d</TabsTrigger>
+                <TabsTrigger value="documentos">Documentos</TabsTrigger>
               </TabsList>
             </div>
 
             {/* Tab: selected day */}
             <TabsContent value="todos" className="mt-0">
               {selectedEvents.licitacoes.length === 0 && selectedEvents.docs.length === 0 && !selectedEvents.backups ? (
-                <div className="text-center py-8 text-muted-foreground text-sm">
-                  <CalendarDays className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                  Nenhum evento nesta data
-                </div>
+                <EstadoVazio
+                  tamanho="compacto"
+                  icone={<CalendarDays />}
+                  titulo="Nenhum evento nesta data"
+                  descricao="Escolha outro dia no calendário ao lado para ver sessões, entregas e vencimentos."
+                />
               ) : (
                 <div className="space-y-2 h-[min(52vh,520px)] overflow-y-auto overscroll-contain pr-2">
                   {selectedEvents.licitacoes.map((l) => (
-                    <div
+                    <button
                       key={l.id}
-                      className="flex items-center justify-between p-3 rounded-lg border border-border/50 hover:bg-muted/50 transition-colors cursor-pointer"
+                      type="button"
+                      className="flex w-full items-center justify-between gap-3 p-3 text-left rounded-lg border border-border bg-card hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                       onClick={() => navigate('/kanban')}
                     >
-                      <div className="flex items-start gap-3 min-w-0">
-                        <div
+                      <span className="flex items-start gap-3 min-w-0">
+                        <span
+                          aria-hidden="true"
                           className={cn(
                             'w-2 h-2 rounded-full mt-1.5 flex-shrink-0',
                             statusColors[l.status] || 'bg-muted-foreground'
                           )}
                         />
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium truncate">{l.numero}</p>
-                          <p className="text-xs text-muted-foreground truncate">{l.orgao}</p>
-                          <p className="text-xs text-muted-foreground truncate">{l.objeto}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-                        <Badge variant="outline" className="text-xs">
-                          {l.status}
-                        </Badge>
+                        <span className="min-w-0 block">
+                          <span className="block text-sm font-medium truncate">{l.numero}</span>
+                          <span className="block text-sm text-muted-foreground truncate">{l.orgao}</span>
+                          <span className="block text-sm text-muted-foreground truncate">{l.objeto}</span>
+                        </span>
+                      </span>
+                      <span className="flex items-center gap-2 flex-shrink-0">
+                        <Badge variant="muted">{l.status}</Badge>
                         {l.valor_estimado && (
-                          <span className="text-xs font-medium text-accent">
+                          <span className="text-sm font-medium tabular-nums text-foreground">
                             {formatCurrency(l.valor_estimado)}
                           </span>
                         )}
-                        <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                      </div>
-                    </div>
+                        <ChevronRight className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+                      </span>
+                    </button>
                   ))}
                   {selectedEvents.docs.map((doc) => (
                     <div
                       key={doc.id}
                       className={cn(
-                        'flex items-center justify-between p-3 rounded-lg border',
+                        'flex flex-wrap items-center justify-between gap-2 p-3 rounded-lg border',
                         doc.status === 'vencido'
-                          ? 'border-destructive/30 bg-destructive/5'
-                          : 'border-warning/30 bg-warning/5'
+                          ? 'border-destructive-line bg-destructive-tint'
+                          : 'border-warning-line bg-warning-tint'
                       )}
                     >
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
                         {origemIcon(doc.origem)}
-                        <div>
-                          <p className="text-sm font-medium">{doc.nome}</p>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">{doc.nome}</p>
                           <p
                             className={cn(
-                              'text-xs',
-                              doc.status === 'vencido' ? 'text-destructive' : 'text-warning'
+                              'text-sm',
+                              doc.status === 'vencido' ? 'text-destructive-ink' : 'text-warning-ink'
                             )}
                           >
                             {doc.status === 'vencido' ? 'Vencido' : 'Vence'} em{' '}
@@ -534,31 +540,23 @@ export default function CalendarioLicitacoes() {
                           </p>
                         </div>
                       </div>
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          'text-xs',
-                          doc.status === 'vencido' ? 'text-destructive' : 'text-warning'
-                        )}
-                      >
+                      <Badge variant={doc.status === 'vencido' ? 'danger' : 'warning'}>
                         {doc.status === 'vencido' ? 'Vencido' : 'Vencendo'}
                       </Badge>
                     </div>
                   ))}
                   {selectedEvents.backups && (
-                    <div className="flex items-center justify-between p-3 rounded-lg border border-info/30 bg-info/5">
-                      <div className="flex items-center gap-2">
-                        <Database className="w-4 h-4 text-info" />
-                        <div>
+                    <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-lg border border-border bg-card">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Database className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+                        <div className="min-w-0">
                           <p className="text-sm font-medium">Backup programado</p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-sm text-muted-foreground">
                             Backup automático agendado para esta data
                           </p>
                         </div>
                       </div>
-                      <Badge variant="outline" className="text-xs text-info border-info/30">
-                        Agendado
-                      </Badge>
+                      <Badge variant="info">Agendado</Badge>
                     </div>
                   )}
                 </div>
@@ -568,10 +566,12 @@ export default function CalendarioLicitacoes() {
             {/* Tab: upcoming 30 days */}
             <TabsContent value="proximos" className="mt-0">
               {upcoming.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground text-sm">
-                  <CheckCircle2 className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                  Nenhuma licitação nos próximos 30 dias
-                </div>
+                <EstadoVazio
+                  tamanho="compacto"
+                  icone={<CheckCircle2 />}
+                  titulo="Nenhuma licitação nos próximos 30 dias"
+                  descricao="Nada com data de abertura marcada para o próximo mês."
+                />
               ) : (
                 <div className="space-y-2 h-[min(52vh,520px)] overflow-y-auto overscroll-contain pr-2">
                   {upcoming.map((l) => {
@@ -579,39 +579,38 @@ export default function CalendarioLicitacoes() {
                     const diffDias = Math.ceil((d.getTime() - hoje.getTime()) / 86400000);
                     const isUrgent = diffDias <= 3;
                     return (
-                      <div
+                      <button
                         key={l.id}
+                        type="button"
                         className={cn(
-                          'flex items-center justify-between p-3 rounded-lg border transition-colors cursor-pointer hover:bg-muted/50',
-                          isUrgent ? 'border-destructive/30 bg-destructive/5' : 'border-border/50'
+                          'flex w-full items-center justify-between gap-3 p-3 text-left rounded-lg border transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                          isUrgent ? 'border-destructive-line bg-destructive-tint' : 'border-border bg-card'
                         )}
                         onClick={() => navigate('/kanban')}
                       >
-                        <div className="flex items-start gap-3 min-w-0">
-                          <div className="text-center flex-shrink-0 w-12">
-                            <p className="text-lg font-bold leading-none">{format(d, 'dd')}</p>
-                            <p className="text-xs uppercase text-muted-foreground">
+                        <span className="flex items-start gap-3 min-w-0">
+                          <span className="text-center flex-shrink-0 w-12 block">
+                            <span className="block text-lg font-bold tabular-nums leading-6">{format(d, 'dd')}</span>
+                            <span className="block text-xs uppercase text-muted-foreground">
                               {format(d, 'MMM', { locale: ptBR })}
-                            </p>
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium truncate">
+                            </span>
+                          </span>
+                          <span className="min-w-0 block">
+                            <span className="block text-sm font-medium truncate">
                               {l.numero} — {l.orgao}
-                            </p>
-                            <p className="text-xs text-muted-foreground truncate">{l.objeto}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 flex-shrink-0">
+                            </span>
+                            <span className="block text-sm text-muted-foreground truncate">{l.objeto}</span>
+                          </span>
+                        </span>
+                        <span className="flex flex-wrap items-center justify-end gap-2 flex-shrink-0">
                           {isUrgent && (
-                            <Badge variant="destructive" className="text-xs">
-                              {diffDias === 0 ? 'Hoje' : `${diffDias}d`}
+                            <Badge variant="danger">
+                              {diffDias === 0 ? 'Hoje' : `Em ${diffDias}d`}
                             </Badge>
                           )}
-                          <Badge variant="outline" className="text-xs">
-                            {l.modalidade}
-                          </Badge>
-                        </div>
-                      </div>
+                          <Badge variant="muted">{l.modalidade}</Badge>
+                        </span>
+                      </button>
                     );
                   })}
                 </div>
@@ -621,13 +620,12 @@ export default function CalendarioLicitacoes() {
             {/* Tab: documents */}
             <TabsContent value="documentos" className="mt-0">
               {docsValidade.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground text-sm">
-                  <FileText className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                  <p>Nenhum documento com data de validade cadastrada</p>
-                  <p className="text-xs mt-1">
-                    Cadastre a validade nos documentos de habilitação ou nos certificados digitais.
-                  </p>
-                </div>
+                <EstadoVazio
+                  tamanho="compacto"
+                  icone={<FileText />}
+                  titulo="Nenhum documento com data de validade cadastrada"
+                  descricao="Cadastre a validade nos documentos de habilitação ou nos certificados digitais."
+                />
               ) : (
                 <div className="space-y-2 h-[min(52vh,520px)] overflow-y-auto overscroll-contain pr-2">
                   {docsValidade
@@ -642,19 +640,19 @@ export default function CalendarioLicitacoes() {
                         <div
                           key={doc.id}
                           className={cn(
-                            'flex items-center justify-between p-3 rounded-lg border',
+                            'flex flex-wrap items-center justify-between gap-2 p-3 rounded-lg border',
                             doc.status === 'vencido'
-                              ? 'border-destructive/30 bg-destructive/5'
+                              ? 'border-destructive-line bg-destructive-tint'
                               : doc.status === 'vencendo'
-                              ? 'border-warning/30 bg-warning/5'
-                              : 'border-border/50'
+                              ? 'border-warning-line bg-warning-tint'
+                              : 'border-border bg-card'
                           )}
                         >
                           <div className="flex items-center gap-2 min-w-0">
                             {origemIcon(doc.origem)}
                             <div className="min-w-0">
                               <p className="text-sm font-medium truncate">{doc.nome}</p>
-                              <p className="text-xs text-muted-foreground">
+                              <p className="text-sm text-muted-foreground">
                                 Validade: {format(val, 'dd/MM/yyyy')}
                                 {doc.status === 'vencido'
                                   ? ` (vencido há ${Math.abs(diff)} dia${Math.abs(diff) > 1 ? 's' : ''})`
@@ -665,15 +663,14 @@ export default function CalendarioLicitacoes() {
                             </div>
                           </div>
                           <Badge
-                            variant="outline"
-                            className={cn(
-                              'text-xs flex-shrink-0',
+                            variant={
                               doc.status === 'vencido'
-                                ? 'text-destructive border-destructive/30'
+                                ? 'danger'
                                 : doc.status === 'vencendo'
-                                ? 'text-warning border-warning/30'
-                                : 'text-success border-success/30'
-                            )}
+                                ? 'warning'
+                                : 'success'
+                            }
+                            className="flex-shrink-0"
                           >
                             {doc.status === 'vencido'
                               ? 'Vencido'
@@ -708,13 +705,13 @@ export default function CalendarioLicitacoes() {
           `contrato assinado`: o número aparecia MENOR do que a realidade, num
           cartão que a pessoa usa para conferir resultado.
           Agora passa por `normalizarStatus`, que é a autoridade. */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         {(() => {
           const ganhas = licitacoes.filter((l) => {
             const s = normalizarStatus(l.status);
             return s === 'Vencida' || s === 'Homologada';
           }).length;
-          const vencidos = docsAlerta.filter((d) => d.status === 'vencido').length;
+          const vencidos = docsVencidos.length;
 
           const cartoes = [
             { rot: 'Total de processos', val: licitacoes.length, ic: CalendarDays, nota: 'Com data no calendário' },
@@ -727,17 +724,17 @@ export default function CalendarioLicitacoes() {
           return cartoes.map(({ rot, val, ic: Icone, nota, alerta, bom }) => (
             <Card key={rot} className={cn('p-4 min-w-0', alerta && 'border-warning-line bg-warning-tint')}>
               <div className="flex items-start justify-between gap-2 mb-2">
-                <span className={cn('text-xs', alerta ? 'text-warning-ink' : 'text-muted-foreground')}>{rot}</span>
-                <Icone className={cn('w-4 h-4 shrink-0', alerta ? 'text-warning-ink' : 'text-muted-foreground/70')} aria-hidden="true" />
+                <span className={cn('text-sm', alerta ? 'text-warning-ink' : 'text-muted-foreground')}>{rot}</span>
+                <Icone className={cn('w-4 h-4 shrink-0', alerta ? 'text-warning-ink' : 'text-muted-foreground')} aria-hidden="true" />
               </div>
               <p className={cn(
-                'text-2xl font-bold tabular-nums leading-none',
+                'text-[2rem] leading-10 font-bold tabular-nums',
                 alerta && 'text-warning-ink',
                 bom && 'text-success',
               )}>
                 {val}
               </p>
-              <p className={cn('text-xs mt-1.5', alerta ? 'text-warning-ink' : 'text-muted-foreground')}>{nota}</p>
+              <p className={cn('text-xs mt-1', alerta ? 'text-warning-ink' : 'text-muted-foreground')}>{nota}</p>
             </Card>
           ));
         })()}

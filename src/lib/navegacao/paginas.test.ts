@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { navGroups } from './menu';
+import { navGroups, menuDaConta } from './menu';
 import { paginasPadrao, padraoDaRota, trilhaDaRota } from './paginas';
 
 /**
@@ -9,7 +9,12 @@ import { paginasPadrao, padraoDaRota, trilhaDaRota } from './paginas';
  * ter mantido o arquivamento quebrado por meses, na versão de navegação.
  */
 describe('padronização das telas do menu', () => {
-  const rotasDoMenu = navGroups.flatMap((g) => g.items.map((i) => i.path));
+  // Desde 13/09 a navegação tem duas portas: a barra (navGroups) e o menu da
+  // conta, atrás do avatar (menuDaConta). Tela de qualquer uma das duas
+  // precisa de padronização.
+  const rotasDaBarra = navGroups.flatMap((g) => g.items.map((i) => i.path));
+  const rotasDaConta = menuDaConta.filter((i) => !i.hash).map((i) => i.path);
+  const rotasDoMenu = [...new Set([...rotasDaBarra, ...rotasDaConta])];
 
   it('cobre toda rota do menu', () => {
     const semPadrao = rotasDoMenu.filter((r) => !padraoDaRota(r));
@@ -24,6 +29,8 @@ describe('padronização das telas do menu', () => {
   it('usa o grupo real do menu em cada tela', () => {
     const grupoDaRota = new Map<string, string>();
     for (const g of navGroups) for (const i of g.items) grupoDaRota.set(i.path, g.title);
+    // O que vive atrás do avatar responde por "Conta" na trilha.
+    for (const r of rotasDaConta) if (!grupoDaRota.has(r)) grupoDaRota.set(r, 'Conta');
     const divergentes = paginasPadrao
       .filter((p) => grupoDaRota.get(p.rota) !== p.grupo)
       .map((p) => `${p.rota}: ${p.grupo} ≠ ${grupoDaRota.get(p.rota)}`);

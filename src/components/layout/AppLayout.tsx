@@ -6,7 +6,7 @@ import AppTopNav from './AppTopNav';
 import LembreteDeVencimento from '@/components/documentos/LembreteDeVencimento';
 import LembreteDeConvocacao from '@/components/monitoramento/LembreteDeConvocacao';
 import AlertaVencimentoBanner from './AlertaVencimentoBanner';
-import { Bell, Search, Building2, User, Shield, Globe, CreditCard, LogOut, Palette } from 'lucide-react';
+import { Bell, Search, User, LogOut } from 'lucide-react';
 import NotificationCenter from '@/components/notifications/NotificationCenter';
 import EmpresaSelector from '@/components/empresa/EmpresaSelector';
 import AureliaChat from '@/components/aurelia/AureliaChat';
@@ -21,16 +21,9 @@ import MeuPerfilModal from '@/components/perfil/MeuPerfilModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useAvatarUrl } from '@/hooks/useAvatarPerfil';
+import { menuDaConta, type ItemDaConta } from '@/lib/navegacao/menu';
+import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
 
-const profileMenuItems = [
-  { label: 'Dados da Empresa', icon: Building2, path: '/configuracoes', hash: '#empresa' },
-  { label: 'Representante Legal', icon: User, path: '/configuracoes', hash: '#representante' },
-  { label: 'Monitoramento', icon: Globe, path: '/configuracoes', hash: '#monitoramento' },
-  { label: 'Notificações', icon: Bell, path: '/configuracoes', hash: '#notificacoes' },
-  { label: 'Segurança', icon: Shield, path: '/configuracoes', hash: '#seguranca' },
-  { label: 'Plano & Assinatura', icon: CreditCard, path: '/configuracoes', hash: '#plano' },
-  { label: 'Aparência', icon: Palette, path: '/configuracoes', hash: '#aparencia' },
-];
 
 /**
  * Moldura de toda tela interna.
@@ -57,6 +50,18 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
   const { empresaAtiva } = useEmpresa();
   const [unreadCount, setUnreadCount] = useState(0);
   const avatarUrl = useAvatarUrl();
+  const { isAdmin: isEmpresaAdmin } = useMembroPermissoes();
+
+  // O menu da conta vem de menu.ts (mesma fonte da barra) e chega agrupado
+  // por seção: "Conta", "Empresa", "Preferências", "Plataforma".
+  const secoesDaConta = menuDaConta
+    .filter((i) => !i.adminOnly || isEmpresaAdmin)
+    .reduce<{ secao: ItemDaConta['secao']; itens: ItemDaConta[] }[]>((acc, item) => {
+      const atual = acc[acc.length - 1];
+      if (atual && atual.secao === item.secao) atual.itens.push(item);
+      else acc.push({ secao: item.secao, itens: [item] });
+      return acc;
+    }, []);
 
   const userName = user?.user_metadata?.nome_completo || empresaAtiva?.razao_social || user?.email || '';
   const userEmail = user?.email || '';
@@ -219,7 +224,7 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
                   )}
                 </div>
 
-                <div className="py-1.5 max-h-[260px] overflow-y-auto">
+                <div className="py-1.5 max-h-[min(60vh,420px)] overflow-y-auto">
                   {/* Meu Perfil — acima de tudo */}
                   <button
                     className="w-full flex items-center gap-3 px-5 py-2 text-[13px] text-foreground hover:bg-muted transition-colors text-left font-medium"
@@ -229,15 +234,22 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
                     <span>Meu Perfil</span>
                   </button>
                   <div className="mx-4 my-1 border-t border-border" />
-                  {profileMenuItems.map((item) => (
-                    <button
-                      key={item.label}
-                      className="w-full flex items-center gap-3 px-5 py-2 text-[13px] text-foreground hover:bg-muted transition-colors text-left"
-                      onClick={() => handleProfileNav(item.path, item.hash)}
-                    >
-                      <item.icon className="w-4 h-4 text-muted-foreground shrink-0" />
-                      <span>{item.label}</span>
-                    </button>
+                  {secoesDaConta.map(({ secao, itens }) => (
+                    <div key={secao}>
+                      <p className="px-5 pb-1 pt-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                        {secao}
+                      </p>
+                      {itens.map((item) => (
+                        <button
+                          key={item.label}
+                          className="w-full flex items-center gap-3 px-5 py-2 text-[13px] text-foreground hover:bg-muted transition-colors text-left"
+                          onClick={() => handleProfileNav(item.path, item.hash ?? '')}
+                        >
+                          <item.icon className="w-4 h-4 text-muted-foreground shrink-0" />
+                          <span>{item.label}</span>
+                        </button>
+                      ))}
+                    </div>
                   ))}
                   <ExportarDados variant="menu-item" />
                 </div>

@@ -138,6 +138,7 @@ export default function MonitoramentoChat() {
                 type="button"
                 variant="ghost"
                 size="icon"
+                className="h-11 w-11 flex-shrink-0"
                 onClick={alternarMudo}
                 title={somLigado ? 'Silenciar alertas' : 'Reativar o som'}
                 aria-label={somLigado ? 'Silenciar alertas' : 'Reativar o som'}

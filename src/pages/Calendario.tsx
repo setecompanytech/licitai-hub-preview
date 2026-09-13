@@ -1,20 +1,25 @@
 import AppLayout from '@/components/layout/AppLayout';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import CalendarioLicitacoes from '@/components/calendario/CalendarioLicitacoes';
-import { CalendarDays } from 'lucide-react';
 
+/**
+ * Calendário (identidade 12/09).
+ *
+ * Título, descrição, ícone e trilha vêm do registro `lib/navegacao/paginas.ts`
+ * pela própria rota — a tela não repete o que já está padronizado.
+ *
+ * O registro declara a ação principal "Novo compromisso", que esta tela NÃO
+ * tem: aqui não existe criação de compromisso (isso vive em
+ * `/meus-compromissos`). Inventar o botão seria colocar na régua um controle
+ * sem função, então o cabeçalho fica sem ação e a divergência foi reportada.
+ * A ação real da tela — sincronizar a agenda com Google/Outlook/ICS — segue
+ * junto do calendário que ela exporta, dentro de `CalendarioLicitacoes`.
+ */
 export default function Calendario() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-            <CalendarDays className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground flex-shrink-0" />
-            Calendário de Licitações
-          </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Acompanhamento em tempo real de abertura, encerramento e validade de documentos
-          </p>
-        </div>
+        <CabecalhoPagina />
         <CalendarioLicitacoes />
       </div>
     </AppLayout>
