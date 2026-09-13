@@ -13,16 +13,17 @@ import { Building2, Package } from 'lucide-react';
  * geração de `PRDnnnnn`, os mesmos diálogos de NCM e CEST. A camada de dados
  * das duas era idêntica; o que diferia era só a moldura. Sobrou a moldura.
  *
- * ⚠️ O portão de acesso NÃO mudou e não deve mudar aqui. Em `src/App.tsx`:
+ * O portão era mais fraco que o da outra porta, e deixou de ser. Até 13/09:
  *
  *     /produtos        → <ProtectedPages>  (só autenticação)
  *     /gestao-compras  → <PlanPages>       (autenticação + plano)
  *
- * São gates diferentes para o mesmo cadastro, e essa assimetria é anterior a
- * esta unificação. Unificar o miolo não a criou nem a corrigiu — quem entrava
- * em cada rota continua entrando exatamente como entrava. Mexer no gate é
- * decisão de produto, não efeito colateral de refatoração, então fica
- * registrado no relatório em vez de ser resolvido de surpresa aqui.
+ * Duas fechaduras diferentes para a mesma sala: quem batia em `/gestao-compras`
+ * por falta de plano alcançava o cadastro inteiro digitando `/produtos`. A
+ * assimetria é anterior à unificação — e passou despercebida porque esta rota
+ * é órfã: não está em `menu.ts`, `paginas.ts` nem `route-permissions.ts`, e
+ * nenhum link do app aponta para ela. Agora as duas pedem o mesmo plano
+ * (`plan-features.ts`), e `src/data/plan-features.test.ts` trava a igualdade.
  *
  * A ação principal ("Incluir produto") vive dentro de `CadastroProdutos`,
  * junto dos filtros — não se repete no cabeçalho, para não haver dois botões
