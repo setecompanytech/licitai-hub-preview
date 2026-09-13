@@ -136,9 +136,18 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Sessão ausente/expirada não é falha do servidor: responder 500 fazia o
+  // front tratar como erro de runtime (tela branca). Devolvemos 401 com um
+  // corpo previsível — "não assinante" — para o app seguir renderizando.
+  const semSessao = (motivo: string) =>
+    new Response(
+      JSON.stringify({ subscribed: false, product_id: null, subscription_end: null, inherited_from: null, reason: motivo }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 },
+    );
+
   try {
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("No authorization header");
+    if (!authHeader) return semSessao("no_authorization_header");
 
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -150,12 +159,13 @@ serve(async (req) => {
     );
 
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-    if (userError || !user) throw new Error("User not authenticated");
+    if (userError || !user) return semSessao("user_not_authenticated");
 
     const userEmail = user.email;
-    if (!userEmail) throw new Error("User email not found");
+    if (!userEmail) return semSessao("user_email_not_found");
 
     logStep("User authenticated", { userId: user.id, email: userEmail });
+
 
     const adminClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
