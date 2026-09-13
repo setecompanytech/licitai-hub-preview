@@ -149,8 +149,6 @@ const ABAS = [
     usaLocalizacao: false,
   },
   {
-    // Fora do registro (ver relatório de migração): a precificação
-    // conversacional com a AURÉLIA não tem aba declarada em paginas.ts.
     id: 'aurelia-cotar',
     label: 'Nova precificação',
     icone: Sparkles,

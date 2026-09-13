@@ -73,7 +73,7 @@ export const paginasPadrao: PaginaPadrao[] = [
     rota: '/precificacao', grupo: 'Inteligência', titulo: 'Precificação', icone: DollarSign,
     descricao: 'Do item do edital ao preço final, com custos, tributos e margem',
     acao: 'Nova composição', padrao: 'abas',
-    abas: ['Itens do edital', 'Marketplaces', 'Preços gov', 'Cotações', 'Calculadora', 'Catálogo', 'Inteligência'],
+    abas: ['Itens do edital', 'Marketplaces', 'Preços gov', 'Cotações', 'Calculadora', 'Catálogo', 'Inteligência', 'Nova precificação'],
   },
   {
     rota: '/proposta-tecnica', grupo: 'Inteligência', titulo: 'Proposta comercial', icone: FileBarChart,
