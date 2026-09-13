@@ -11,7 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import ReactMarkdown from 'react-markdown';
 import {
   BookOpen, Search, Clock, User, ArrowRight, TrendingUp,
-  Scale, Lightbulb, CloudRain, AlertTriangle,
+  Scale, Lightbulb, CloudRain, AlertTriangle, FileText,
   Gavel, RefreshCw, ExternalLink, ChevronLeft, Star, X,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -160,6 +160,12 @@ export default function Blog() {
                continua /blog. O resumo do próprio artigo é o que cabe aqui, e
                ele não aparecia em lugar nenhum da leitura. */
             descricao={artigoAberto.resumo}
+            /* Mesmo vazamento da descrição, agora no ícone: a URL continua
+               /blog, então sem prop explícita o cabeçalho pinta o BookOpen do
+               MÓDULO colado no título do ARTIGO. Prop explícita vence o
+               registro, e a subview passa a ter o ícone que é dela — um
+               documento —, como as telas de detalhe de contrato já fazem. */
+            icone={<FileText />}
             trilha={[
               { rotulo: 'Painel', para: '/dashboard' },
               { rotulo: 'Ferramentas' },

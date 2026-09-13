@@ -116,6 +116,10 @@ export const menuDaConta: ItemDaConta[] = [
   { icon: Bell, label: 'Notificações do sistema', path: '/configuracoes', hash: '#notificacoes', secao: 'Preferências' },
   { icon: BellRing, label: 'Alertas de editais', path: '/configuracoes/alertas', secao: 'Preferências' },
 
+  /* Parametrizar a meta é ato de dono, não tarefa do dia: fica com o resto
+     do que se configura uma vez, atrás do avatar. O acompanhamento diário
+     continua na barra, em Gestão › Metas do Comercial. */
+  { icon: SlidersHorizontal, label: 'Definir metas', path: '/definir-metas', secao: 'Plataforma', adminOnly: true },
   { icon: CreditCard, label: 'Plano e assinatura', path: '/configuracoes', hash: '#plano', secao: 'Plataforma' },
   { icon: Settings, label: 'Todas as configurações', path: '/configuracoes', secao: 'Plataforma' },
 ];
@@ -172,9 +176,6 @@ export const navGroups: NavGroup[] = [
       { icon: Crosshair, label: 'Robô de Lances', path: '/robo-lances' },
       { icon: Archive, label: 'Histórico', path: '/historico-licitacoes' },
       { icon: Gauge, label: 'Metas do Comercial', path: '/metas-comercial' },
-      /* A parametrização mora ao lado do painel que ela alimenta: estava em
-         "Configuração", longe da tela cujo número ela define. */
-      { icon: SlidersHorizontal, label: 'Definir Metas', path: '/definir-metas', adminOnly: true },
       { icon: FileText,     label: 'Contratos', path: '/gestao-contratos' },
       { icon: ShoppingCart, label: 'Compras, Pedidos e Estoque', path: '/gestao-compras' },
     ],

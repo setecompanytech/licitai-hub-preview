@@ -268,7 +268,7 @@ export const paginasPadrao: PaginaPadrao[] = [
     padrao: 'abas', abas: ['Segmentos', 'Empresa', 'Canais'],
   },
   {
-    rota: '/definir-metas', grupo: 'Gestão de Processos', titulo: 'Definir metas', icone: SlidersHorizontal,
+    rota: '/definir-metas', grupo: 'Conta', titulo: 'Definir metas', icone: SlidersHorizontal,
     descricao: 'Alvo por pessoa e período, e as regras que medem o alcance',
     acao: 'Nova meta', padrao: 'formulario',
   },
