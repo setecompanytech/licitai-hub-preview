@@ -15,6 +15,7 @@ import {
   Bell,
   BellRing,
   BookOpen,
+  Banknote,
   Bot,
   Building2,
   Calculator,
@@ -26,6 +27,7 @@ import {
   Download,
   FileBarChart,
   FileText,
+  FolderTree,
   Gauge,
   Globe,
   GraduationCap,
@@ -47,6 +49,7 @@ import {
   User,
   Users,
   Workflow,
+  Zap,
   // Ícones de GRUPO — usados só na barra lateral, um por categoria.
   Brain,
   CircleDollarSign,
@@ -195,10 +198,22 @@ export const navGroups: NavGroup[] = [
     ],
   },
   {
+    /* As cinco pastas do Financeiro viraram itens de menu em 13/09.
+       Antes o grupo tinha um item só — "Financeiro" — que abria a estante de
+       pastas fechadas: quem queria conciliar um extrato clicava em Financeiro,
+       depois em Bancos & Conciliação, depois no módulo. Três cliques para uma
+       tarefa diária, e o menu não dizia que o sistema tinha essas cinco áreas.
+       Os rótulos e a ordem são os mesmos de `GROUPS` em `FinHomeHub`, e o
+       `?pasta=` é o endereço que a estante passou a entender. Divergir daquela
+       lista aqui faria o menu prometer pasta que a tela não abre. */
     title: 'Financeiro',
     icone: CircleDollarSign,
     items: [
-      { icon: DollarSign, label: 'Financeiro', path: '/financeiro' },
+      { icon: Zap, label: 'Operação Diária', path: '/financeiro?pasta=operacao' },
+      { icon: Banknote, label: 'Bancos & Conciliação', path: '/financeiro?pasta=bancos' },
+      { icon: FileText, label: 'Fiscal & Documentos', path: '/financeiro?pasta=fiscal' },
+      { icon: FileBarChart, label: 'Análises & Relatórios', path: '/financeiro?pasta=relatorios' },
+      { icon: FolderTree, label: 'Cadastros & Configuração', path: '/financeiro?pasta=cadastros' },
     ],
   },
   {

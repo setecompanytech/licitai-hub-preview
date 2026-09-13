@@ -84,9 +84,25 @@ export default function AppSidebar({ aoNavegar, permiteRecolher = true }: AppSid
     }))
     .filter((g) => g.items.length > 0);
 
+  /**
+   * O item aceso é o que descreve ONDE a pessoa está — e desde que o
+   * Financeiro passou a listar suas cinco pastas, cinco itens compartilham a
+   * mesma rota e se distinguem só pela busca (`/financeiro?pasta=bancos`).
+   * Comparar apenas o caminho acenderia os cinco de uma vez, que é pior do que
+   * não acender nenhum: a barra afirmaria que a pessoa está em cinco lugares.
+   */
   const ehAtivo = (path: string) => {
-    const base = path.split('?')[0];
-    return location.pathname === base || location.pathname.startsWith(base + '/');
+    const [base, busca] = path.split('?');
+    const mesmoCaminho =
+      location.pathname === base || location.pathname.startsWith(base + '/');
+    if (!mesmoCaminho) return false;
+    if (!busca) return true;
+    const esperado = new URLSearchParams(busca);
+    const atual = new URLSearchParams(location.search);
+    for (const [chave, valor] of esperado) {
+      if (atual.get(chave) !== valor) return false;
+    }
+    return true;
   };
 
   const irPara = (path: string) => {

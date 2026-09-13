@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -129,7 +130,28 @@ export default function FinHomeHub({ onNavigate }: FinHomeHubProps) {
      rolava sem fim e nenhuma categoria cabia na tela. Agora a pessoa escolhe
      a pasta e só então vê o que tem dentro. A busca ignora as pastas — quem
      digita já sabe o que procura. */
-  const [pastaAberta, setPastaAberta] = useState<string | null>(null);
+  /* A pasta mora na URL desde 13/09, porque virou destino de menu: a barra
+     lateral lista as cinco e cada uma precisa de endereço próprio. De quebra,
+     o Voltar do navegador passou a fechar a pasta em vez de sair do
+     Financeiro, e a pasta aberta sobrevive ao F5. */
+  const [paramsDaUrl, setParamsDaUrl] = useSearchParams();
+  const pastaAberta = paramsDaUrl.get('pasta');
+  const setPastaAberta = useCallback(
+    (id: string | null) => {
+      setParamsDaUrl(
+        (anterior) => {
+          const proximo = new URLSearchParams(anterior);
+          if (id) proximo.set('pasta', id);
+          else proximo.delete('pasta');
+          return proximo;
+        },
+        // Abrir e fechar pasta não é navegar para outra tela: sem `replace`,
+        // sair do Financeiro exigiria desfazer cada pasta visitada.
+        { replace: true },
+      );
+    },
+    [setParamsDaUrl],
+  );
   const [activeGroup, setActiveGroup] = useState<string>("all");
   const [favorites, setFavorites] = useState<string[]>(() => loadList(FAVORITES_KEY));
   const [recents, setRecents] = useState<string[]>(() => loadList(RECENTS_KEY));

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import FinHomeHub, { HUB_ITEMS } from './FinHomeHub';
 
 /**
@@ -14,7 +15,14 @@ vi.mock('@/hooks/useFinanceiro', () => ({
 }));
 vi.mock('./FinConferencia', () => ({ default: () => null }));
 
-const montar = () => render(<FinHomeHub onNavigate={vi.fn()} />);
+/* A pasta aberta mora em `?pasta=` desde 13/09, quando as cinco viraram itens
+   do menu lateral e cada uma precisou de endereço próprio — daí o router. */
+const montar = () =>
+  render(
+    <MemoryRouter initialEntries={['/financeiro']}>
+      <FinHomeHub onNavigate={vi.fn()} />
+    </MemoryRouter>,
+  );
 
 describe('FinHomeHub — estante de pastas', () => {
   it('abre com as pastas fechadas, uma por categoria mais os recentes', () => {

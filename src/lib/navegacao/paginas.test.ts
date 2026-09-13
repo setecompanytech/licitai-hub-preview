@@ -12,8 +12,14 @@ describe('padronização das telas do menu', () => {
   // Desde 13/09 a navegação tem duas portas: a barra (navGroups) e o menu da
   // conta, atrás do avatar (menuDaConta). Tela de qualquer uma das duas
   // precisa de padronização.
-  const rotasDaBarra = navGroups.flatMap((g) => g.items.map((i) => i.path));
-  const rotasDaConta = menuDaConta.filter((i) => !i.hash).map((i) => i.path);
+  // A rota BASE, sem a busca: um item pode apontar para um estado da tela
+  // (`/financeiro?pasta=bancos`), e estado não é tela — as cinco pastas do
+  // Financeiro dividem um título, uma descrição e uma trilha só. Padronizar
+  // cada uma como página própria duplicaria o registro cinco vezes para dizer
+  // a mesma coisa.
+  const base = (rota: string) => rota.split('?')[0];
+  const rotasDaBarra = navGroups.flatMap((g) => g.items.map((i) => base(i.path)));
+  const rotasDaConta = menuDaConta.filter((i) => !i.hash).map((i) => base(i.path));
   const rotasDoMenu = [...new Set([...rotasDaBarra, ...rotasDaConta])];
 
   it('cobre toda rota do menu', () => {
@@ -28,7 +34,7 @@ describe('padronização das telas do menu', () => {
 
   it('usa o grupo real do menu em cada tela', () => {
     const grupoDaRota = new Map<string, string>();
-    for (const g of navGroups) for (const i of g.items) grupoDaRota.set(i.path, g.title);
+    for (const g of navGroups) for (const i of g.items) grupoDaRota.set(base(i.path), g.title);
     // O que vive atrás do avatar responde por "Conta" na trilha.
     for (const r of rotasDaConta) if (!grupoDaRota.has(r)) grupoDaRota.set(r, 'Conta');
     const divergentes = paginasPadrao
