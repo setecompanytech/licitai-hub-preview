@@ -86,6 +86,11 @@ checar "subtela do financeiro no caminho"    "/financeiro/lancamentos"
 # versão acima é quem responde por essas correções agora.
 checar "forma de fornecimento no contrato"   "Entrega única (integral)"
 
+# Identidade 12/09 — literais que só existem na reformulação visual.
+checar "hero da prancha (identidade nova)"    "Sua próxima oportunidade"
+checar "marca em SVG (BrandLogo)"             "M4 60 A44 44 0 0 1 90 49"
+checar "cabeçalho de página padrão"           "Você está em"
+
 # Checagem invertida. Identificador que o código NÃO declara não pode ser
 # renomeado pelo minificador — sobra literal no bundle. Foi assim que a aba
 # Bonificações foi ao ar chamando podePagar() sem que a função existisse.
