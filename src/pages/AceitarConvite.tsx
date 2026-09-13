@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Lock, User, Loader2, CheckCircle2, AlertCircle, KeyRound } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import PraefectusLogo from '@/components/shared/PraefectusLogo';
+import MolduraAcesso from '@/components/auth/MolduraAcesso';
 
 const equipeLabels: Record<string, string> = {
   geral: 'Geral',
@@ -194,7 +194,7 @@ export default function AceitarConvite() {
         return;
       }
 
-      toast.success('Conta criada com sucesso! Bem-vindo ao PRAEFECTUS.');
+      toast.success('Conta criada com sucesso! Bem-vindo ao Praefectus.');
       setTimeout(() => navigate('/dashboard'), 1500);
     } finally {
       setSubmitting(false);
@@ -202,13 +202,8 @@ export default function AceitarConvite() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--gradient-dark)' }}>
-      <div className="w-full max-w-md">
-        <div className="flex items-center justify-center gap-3 mb-8">
-          <PraefectusLogo size="xl" variant="light" />
-        </div>
-
-        <div className="bg-card rounded-2xl border border-border/50 shadow-2xl p-8">
+    <MolduraAcesso>
+        <div>
           {status === 'loading' && (
             <div className="text-center space-y-3 py-6">
               <Loader2 className="w-8 h-8 animate-spin mx-auto text-muted-foreground" />
@@ -219,7 +214,7 @@ export default function AceitarConvite() {
           {status === 'invalid' && (
             <div className="text-center space-y-4 py-6">
               <AlertCircle className="w-12 h-12 text-destructive mx-auto" />
-              <h2 className="text-xl font-bold">Convite inválido ou expirado</h2>
+              <h2 className="font-heading text-[1.75rem] font-bold leading-9 text-foreground">Convite inválido ou expirado</h2>
               <p className="text-sm text-muted-foreground">
                 Este link de convite não existe ou não é mais válido.
               </p>
@@ -232,7 +227,7 @@ export default function AceitarConvite() {
           {status === 'expired' && (
             <div className="text-center space-y-4 py-6">
               <AlertCircle className="w-12 h-12 text-destructive mx-auto" />
-              <h2 className="text-xl font-bold">Convite expirado</h2>
+              <h2 className="font-heading text-[1.75rem] font-bold leading-9 text-foreground">Convite expirado</h2>
               <p className="text-sm text-muted-foreground">
                 Este convite expirou. Solicite ao administrador que envie um novo convite.
               </p>
@@ -245,12 +240,12 @@ export default function AceitarConvite() {
           {status === 'used' && (
             <div className="text-center space-y-4 py-6">
               <CheckCircle2 className="w-12 h-12 text-success mx-auto" />
-              <h2 className="text-xl font-bold">Convite já utilizado</h2>
+              <h2 className="font-heading text-[1.75rem] font-bold leading-9 text-foreground">Convite já utilizado</h2>
               <p className="text-sm text-muted-foreground">
                 Este convite já foi aceito. Acesse sua conta normalmente.
               </p>
               <Button
-                className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
+                className="w-full"
                 onClick={() => navigate('/auth')}
               >
                 Ir para o login
@@ -261,14 +256,14 @@ export default function AceitarConvite() {
           {status === 'success' && (
             <div className="text-center space-y-3 py-6">
               <CheckCircle2 className="w-12 h-12 text-success mx-auto" />
-              <h2 className="text-xl font-bold">Conta criada!</h2>
+              <h2 className="font-heading text-[1.75rem] font-bold leading-9 text-foreground">Conta criada!</h2>
               <p className="text-sm text-muted-foreground">Redirecionando...</p>
             </div>
           )}
 
           {status === 'valid' && convite && (
             <>
-              <h2 className="text-xl font-bold text-center mb-2">Criar sua conta</h2>
+              <h2 className="font-heading text-[1.75rem] font-bold leading-9 text-foreground text-center mb-2">Criar sua conta</h2>
               <p className="text-xs text-muted-foreground text-center mb-1">
                 Você foi convidado para
               </p>
@@ -364,7 +359,7 @@ export default function AceitarConvite() {
                 </div>
                 <Button
                   type="submit"
-                  className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
+                  className="w-full"
                   disabled={submitting}
                 >
                   {submitting && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
@@ -374,7 +369,6 @@ export default function AceitarConvite() {
             </>
           )}
         </div>
-      </div>
-    </div>
+    </MolduraAcesso>
   );
 }

@@ -8,8 +8,13 @@ const alertVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-background text-foreground",
-        destructive: "border-destructive/50 text-destructive dark:border-destructive [&>svg]:text-destructive",
+        default: "bg-card text-foreground",
+        // Famílias semânticas em tinta (identidade 12/09): fundo *-tint, texto
+        // *-ink, contorno *-line — as mesmas do Badge.
+        destructive: "border-destructive-line bg-destructive-tint text-destructive-ink [&>svg]:text-destructive-ink",
+        success: "border-success-line bg-success-tint text-success-ink [&>svg]:text-success-ink",
+        warning: "border-warning-line bg-warning-tint text-warning-ink [&>svg]:text-warning-ink",
+        info: "border-border bg-muted text-foreground [&>svg]:text-primary",
       },
     },
     defaultVariants: {

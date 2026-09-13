@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Shield, Loader2, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
-import PraefectusLogo from '@/components/shared/PraefectusLogo';
+import MolduraAcesso from '@/components/auth/MolduraAcesso';
 
 interface MfaVerificationProps {
   onSuccess: () => void;
@@ -14,9 +15,15 @@ interface MfaVerificationProps {
 export default function MfaVerification({ onSuccess, onCancel }: MfaVerificationProps) {
   const [code, setCode] = useState('');
   const [verifying, setVerifying] = useState(false);
+  const tituloRef = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => {
+    tituloRef.current?.focus();
+  }, []);
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (verifying) return;
     if (code.length !== 6) {
       toast.error('Informe o código de 6 dígitos');
       return;
@@ -49,8 +56,8 @@ export default function MfaVerification({ onSuccess, onCancel }: MfaVerification
       if (verifyError) throw verifyError;
 
       onSuccess();
-    } catch (err: any) {
-      toast.error(err.message || 'Código inválido. Tente novamente.');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error && err.message ? err.message : 'Código inválido. Tente novamente.');
       setCode('');
     } finally {
       setVerifying(false);
@@ -58,55 +65,48 @@ export default function MfaVerification({ onSuccess, onCancel }: MfaVerification
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--gradient-dark)' }}>
-      <div className="w-full max-w-md">
-        <div className="flex items-center justify-center gap-3 mb-8">
-          <PraefectusLogo size="xl" variant="light" />
-        </div>
+    <MolduraAcesso>
+      <button
+        type="button"
+        onClick={onCancel}
+        className="inline-flex min-h-11 items-center gap-2 rounded-md text-sm font-semibold text-primary transition-colors hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      >
+        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+        Voltar ao login
+      </button>
 
-        <div className="bg-card rounded-2xl border border-border/50 shadow-2xl p-8">
-          <button
-            onClick={onCancel}
-            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Voltar
-          </button>
+      <div className="mt-8">
+        <h1 ref={tituloRef} tabIndex={-1} className="font-heading text-[1.75rem] font-bold leading-9 text-foreground outline-none">
+          Verificação em dois fatores
+        </h1>
+        <p className="mt-2 text-base leading-6 text-muted-foreground">
+          Insira o código de 6 dígitos do seu aplicativo autenticador para continuar.
+        </p>
 
-          <div className="flex items-center gap-2 mb-2">
-            <Shield className="w-5 h-5 text-accent" />
-            <h2 className="text-lg font-bold">Verificação em Dois Fatores</h2>
-          </div>
-          <p className="text-sm text-muted-foreground mb-6">
-            Insira o código de 6 dígitos do seu aplicativo autenticador para continuar.
-          </p>
-
-          <form onSubmit={handleVerify} className="space-y-4">
+        <form onSubmit={handleVerify} className="mt-8 space-y-5">
+          <div className="space-y-2">
+            <Label htmlFor="mfaCodigo">Código de verificação</Label>
             <Input
+              id="mfaCodigo"
               value={code}
               onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
               placeholder="000000"
-              className="text-center text-3xl tracking-[0.5em] font-mono h-14"
+              className="h-14 text-center font-mono text-3xl tracking-[0.5em]"
               maxLength={6}
-              autoFocus
               autoComplete="one-time-code"
               inputMode="numeric"
             />
-            <Button
-              type="submit"
-              className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
-              disabled={verifying || code.length !== 6}
-            >
-              {verifying ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Shield className="w-4 h-4 mr-2" />}
-              Verificar
-            </Button>
-          </form>
+          </div>
+          <Button type="submit" className="w-full" disabled={verifying || code.length !== 6} aria-busy={verifying || undefined}>
+            {verifying ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Shield aria-hidden="true" />}
+            Verificar
+          </Button>
+        </form>
 
-          <p className="text-xs text-muted-foreground text-center mt-4">
-            Use o Google Authenticator, Authy ou outro app TOTP compatível.
-          </p>
-        </div>
+        <p className="mt-4 text-xs leading-4 text-muted-foreground">
+          Use o Google Authenticator, Authy ou outro app TOTP compatível.
+        </p>
       </div>
-    </div>
+    </MolduraAcesso>
   );
 }

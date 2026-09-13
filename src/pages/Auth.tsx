@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -9,14 +9,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import {
-  Zap, Mail, Lock, User, ArrowRight, Loader2, ShieldCheck, KeyRound, ArrowLeft,
+  Mail, Lock, User, ArrowRight, Loader2, ShieldCheck, KeyRound, ArrowLeft,
   Phone, Building2, Briefcase, MapPin, ChevronRight,
-  Eye, EyeOff, Search, Sparkles, Bot, Info, AlertTriangle
+  Eye, EyeOff, Info, AlertTriangle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import PraefectusLogo from '@/components/shared/PraefectusLogo';
 import MfaVerification from '@/components/auth/MfaVerification';
-import '@/styles/login.css';
+import MolduraAcesso from '@/components/auth/MolduraAcesso';
+import OpcaoAcesso from '@/components/auth/OpcaoAcesso';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const CARGOS = [
   'Diretor(a)', 'Gerente', 'Coordenador(a)', 'Analista', 'Assistente',
@@ -47,10 +49,21 @@ const FATURAMENTO_ANUAL = [
 
 type AuthStep = 'escolha' | 'manual' | 'certificado' | 'signup' | 'forgot' | 'mfa';
 
+/**
+ * Só caminho INTERNO serve de destino pós-login: uma barra no início e não
+ * duas (`//x` é outra origem), sem esquema. Qualquer outra coisa cai no painel
+ * — o `?redirect=` vem da URL e não pode virar redirecionamento aberto.
+ */
+function destinoSeguro(bruto: string | null): string {
+  if (!bruto) return '/dashboard';
+  if (!bruto.startsWith('/') || bruto.startsWith('//') || bruto.startsWith('/\\')) return '/dashboard';
+  return bruto;
+}
+
 export default function Auth() {
   const [searchParams] = useSearchParams();
   const initialStep = (searchParams.get('step') as AuthStep) || 'escolha';
-  const redirectAfterAuth = searchParams.get('redirect') || '/dashboard';
+  const redirectAfterAuth = destinoSeguro(searchParams.get('redirect'));
   const [step, setStep] = useState<AuthStep>(initialStep);
   const [email, setEmail] = useState('');
   const [emailConfirm, setEmailConfirm] = useState('');
@@ -117,6 +130,13 @@ export default function Auth() {
     return () => { cancelled = true; };
   }, []);
 
+  // Ao trocar de passo, o foco vai para o título da etapa: quem navega por
+  // teclado/leitor de tela não fica perdido no meio da tela anterior.
+  const tituloRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    tituloRef.current?.focus();
+  }, [step]);
+
   // MFA verification screen
   if (step === 'mfa') {
     return (
@@ -148,13 +168,14 @@ export default function Auth() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     setLoading(true);
 
     // Limpeza preventiva de tokens residuais
     try {
       const { purgeSupabaseAuthStorage } = await import('@/lib/auth-bootstrap');
       purgeSupabaseAuthStorage();
-    } catch {}
+    } catch { /* sem armazenamento acessível: segue sem a limpeza */ }
 
     // Retry automático com backoff para erros transitórios de rede.
     // Resolve "Failed to fetch" causado por instabilidade momentânea
@@ -290,6 +311,7 @@ export default function Auth() {
 
   const handleForgot = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     setLoading(true);
 
     // O campo aceita login ou e-mail. Sem resolver o login aqui, quem entra
@@ -315,12 +337,19 @@ export default function Auth() {
     }
   };
 
-  const backButton = (to: AuthStep = 'escolha') => (
-    <button type="button" onClick={() => setStep(to)} className="lg__voltar">
-      <ArrowLeft className="w-[15px] h-[15px]" />
-      Voltar
+  const voltarPara = (to: AuthStep, rotulo: string) => (
+    <button
+      type="button"
+      onClick={() => setStep(to)}
+      className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-md text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+    >
+      <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+      {rotulo}
     </button>
   );
+
+  const classeTitulo = 'font-heading text-[1.75rem] font-bold leading-9 text-foreground outline-none';
+  const classeLink = 'inline-flex min-h-11 items-center gap-2 rounded-md text-sm font-semibold text-primary transition-colors hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
 
   // Signup form - professional multi-section layout
   if (step === 'signup') {
@@ -496,7 +525,7 @@ export default function Auth() {
                 <Separator className="mb-4" />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-xs font-medium">Como conheceu o PRAEFECTUS?</Label>
+                    <Label className="text-xs font-medium">Como conheceu o Praefectus?</Label>
                     <Select value={comoConheceu} onValueChange={setComoConheceu}>
                       <SelectTrigger className="mt-1.5">
                         <SelectValue placeholder="Selecionar" />
@@ -556,7 +585,7 @@ export default function Auth() {
                   <a href="/termos-de-uso" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline font-semibold">Termos de Uso</a>{' '}
                   e a{' '}
                   <a href="/politica-de-privacidade" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline font-semibold">Política de Privacidade</a>{' '}
-                  da plataforma PRAEFECTUS, manifestando consentimento livre, informado e inequívoco, nos termos do{' '}
+                  da plataforma Praefectus, manifestando consentimento livre, informado e inequívoco, nos termos do{' '}
                   <strong>Art. 7º, inciso I, da Lei nº 13.709/2018 (LGPD)</strong>, para o tratamento de meus dados pessoais nas finalidades descritas nos referidos documentos.
                 </label>
               </div>
@@ -589,287 +618,214 @@ export default function Auth() {
   }
 
   /* ===========================================================================
-     Login — vidro sobre foto, o desenho aprovado do protótipo.
-
-     Estrutura transcrita de `prototype-praefectus/index.html` (bloco `.lg`,
-     linhas 3344-3468); estilo em `src/styles/login.css`.
-
-     TRÊS DIFERENÇAS DELIBERADAS em relação ao protótipo, todas pela mesma
-     razão — isto é a produção, não uma demonstração:
-
-     1. O botão "Protótipo de avaliação — use caio-teste@… / 123456" NÃO existe.
-     2. A área de soltar certificado (.lg__solta) não foi trazida: o app não tem
-        login por certificado, ele orienta a vincular o certificado depois do
-        primeiro acesso. Caixa de arrastar arquivo que não recebe arquivo é
-        promessa falsa na porta de entrada.
-     3. O "Manter conectado" ficou de fora: o Supabase já persiste a sessão e
-        não há o que a caixinha ligasse ou desligasse. Marcada e inerte, ela
-        mentiria sobre uma escolha que o usuário não tem.
-
-     Nada da lógica mudou: handleLogin (com resolução de login→e-mail, retry de
-     rede e checagem de MFA), handleForgot, os passos e o botão de limpar cache
-     são exatamente os que já estavam aqui.
+     Acesso — prancha 12/09: painel institucional claro + coluna branca de
+     acesso (MolduraAcesso). Nada da lógica mudou: handleLogin (resolução de
+     login→e-mail, retry de rede, checagem de MFA), handleForgot, os passos e o
+     botão de limpar cache são os que já estavam aqui. Diferenças deliberadas
+     que continuam valendo: sem botão de cadastro público (conta é criada pelo
+     administrador), sem caixa de soltar certificado (o app não autentica por
+     certificado na porta — ele identifica e é vinculado depois do primeiro
+     acesso) e sem "manter conectado" (a sessão já persiste).
      ========================================================================= */
   return (
-    <div className="lg">
-      {/* ── Painel esquerdo: marca ── */}
-      <div className="lg__marca">
-        <div className="lg__orb-a" aria-hidden="true" />
-        <div className="lg__orb-b" aria-hidden="true" />
-        <div className="lg__marca-inner">
-          <p className="lg__eyebrow">
-            <Zap style={{ width: 12, height: 12, display: 'inline', verticalAlign: '-1px', marginRight: 6 }} />
-            Plataforma de Licitações com IA
+    <MolduraAcesso>
+      <Link to="/" className={classeLink}>
+        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+        Voltar ao site
+      </Link>
+
+      {/* ===== ESCOLHA ===== */}
+      {step === 'escolha' && (
+        <div className="mt-8">
+          <h1 ref={tituloRef} tabIndex={-1} className={classeTitulo}>Acesse sua conta</h1>
+          <p className="mt-2 text-base leading-6 text-muted-foreground">Escolha como deseja entrar na plataforma</p>
+
+          <div className="mt-8 flex flex-col gap-4">
+            <OpcaoAcesso
+              icone={<KeyRound />}
+              titulo="Login e senha"
+              descricao="Entre com seu e-mail e senha cadastrados"
+              onClick={() => setStep('manual')}
+              disabled={loading}
+            />
+            <OpcaoAcesso
+              icone={<ShieldCheck />}
+              titulo="Certificado digital"
+              descricao="Acesse com seu e-CNPJ ou e-CPF"
+              badge="Requer conta vinculada"
+              onClick={() => setStep('certificado')}
+              disabled={loading}
+            />
+          </div>
+
+          <Separator className="my-8" />
+          <p className="text-center text-sm leading-5 text-muted-foreground">
+            Para criar uma conta, entre em contato com o administrador.
           </p>
-
-          <div className="lg__logo">
-            <span className="lg__logo-mark" aria-hidden="true" />
-            PRAEFECTUS
-          </div>
-          <span className="lg__logo-rule" aria-hidden="true" />
-
-          <p className="lg__tagline">
-            Do edital publicado ao contrato assinado — sem perder nenhuma oportunidade pelo caminho.
-          </p>
-
-          <div className="lg__provas">
-            <div className="lg__prova">
-              <span><Search style={{ width: 16, height: 16 }} /></span>
-              <div>Monitora <b>13 portais</b> em tempo real, você não precisa fazer nada</div>
-            </div>
-            <div className="lg__prova">
-              <span><Sparkles style={{ width: 16, height: 16 }} /></span>
-              <div><b>Score de aderência por IA</b> — saiba se vale licitar antes de começar</div>
-            </div>
-            <div className="lg__prova">
-              <span><Bot style={{ width: 16, height: 16 }} /></span>
-              <div><b>Robô de lances automatizado</b> — dispute enquanto faz outra coisa</div>
-            </div>
-          </div>
-
-          <div className="lg__stats">
-            <div className="lg__stat">
-              <span className="lg__stat__n">R$ 2,3 Bi</span>
-              <span className="lg__stat__l">em contratos<br />monitorados</span>
-            </div>
-            <div className="lg__stat__div" />
-            <div className="lg__stat">
-              <span className="lg__stat__n">4.200+</span>
-              <span className="lg__stat__l">licitações/mês<br />analisadas</span>
-            </div>
-            <div className="lg__stat__div" />
-            <div className="lg__stat">
-              <span className="lg__stat__n">18 UFs</span>
-              <span className="lg__stat__l">empresas<br />atendidas</span>
-            </div>
-          </div>
         </div>
-      </div>
+      )}
 
-      {/* ── Painel direito: formulário ── */}
-      <div className="lg__card">
-        {/* ===== STEP: ESCOLHA ===== */}
-        {step === 'escolha' && (
-          <div className="lg__passo">
-            <h1 className="lg__t">Acesse sua conta</h1>
-            <p className="lg__s">Escolha como deseja entrar na plataforma</p>
+      {/* ===== LOGIN COM E-MAIL ===== */}
+      {step === 'manual' && (
+        <div className="mt-8">
+          <h1 ref={tituloRef} tabIndex={-1} className={classeTitulo}>Entrar com e-mail</h1>
+          <p className="mt-2 text-base leading-6 text-muted-foreground">Use as credenciais cadastradas pelo administrador</p>
 
-            <div className="lg__opcoes">
-              <button type="button" onClick={() => setStep('manual')} className="lg__opcao">
-                <span className="lg__opcao__ic"><KeyRound style={{ width: 20, height: 20 }} /></span>
-                <span className="lg__opcao__txt">
-                  <span className="lg__opcao__t">Login e Senha</span>
-                  <span className="lg__opcao__d">Acesse com seu e-mail e senha cadastrados</span>
-                </span>
-                <ArrowRight className="lg__opcao__seta" style={{ width: 18, height: 18 }} />
-              </button>
+          {networkError && (
+            <Alert variant="destructive" className="mt-6">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Conexão instável</AlertTitle>
+              <AlertDescription>Não conseguimos falar com o servidor. Aguarde alguns segundos e tente de novo.</AlertDescription>
+            </Alert>
+          )}
 
-              <button type="button" onClick={() => setStep('certificado')} className="lg__opcao">
-                <span className="lg__opcao__ic"><ShieldCheck style={{ width: 20, height: 20 }} /></span>
-                <span className="lg__opcao__txt">
-                  <span className="lg__opcao__t">Certificado Digital</span>
-                  <span className="lg__opcao__d">Acesse com e-CNPJ ou e-CPF (A1/A3)</span>
-                  <span className="lg__req">requer conta já vinculada</span>
-                </span>
-                <ArrowRight className="lg__opcao__seta" style={{ width: 18, height: 18 }} />
-              </button>
+          <form onSubmit={handleLogin} noValidate className="mt-8 space-y-5">
+            <div className="space-y-2">
+              <Label htmlFor="lgEmail">E-mail ou login</Label>
+              <Input
+                id="lgEmail"
+                type="text"
+                inputMode="email"
+                placeholder="voce@empresa.com.br"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                required
+                autoComplete="username"
+                spellCheck={false}
+              />
             </div>
 
-            <p className="lg__pe">
-              Para criar uma conta, entre em contato com o administrador.
-            </p>
-          </div>
-        )}
-
-        {/* ===== STEP: LOGIN MANUAL ===== */}
-        {step === 'manual' && (
-          <div className="lg__passo">
-            {backButton()}
-            <h1 className="lg__t" style={{ textAlign: 'left' }}>Entrar com e-mail</h1>
-            <p className="lg__s" style={{ textAlign: 'left', marginBottom: 22 }}>
-              Use as credenciais cadastradas pelo administrador
-            </p>
-
-            <form onSubmit={handleLogin} noValidate>
-              <div className="lg__campo">
-                <label className="lg__rot" htmlFor="lgEmail">Login ou e-mail</label>
-                <div className="lg__cx">
-                  <User style={{ width: 16, height: 16 }} />
-                  <input
-                    id="lgEmail"
-                    type="text"
-                    placeholder="voce@empresa.com.br"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    required
-                    autoComplete="username"
-                    spellCheck={false}
-                  />
-                </div>
-              </div>
-
-              <div className="lg__campo">
-                <label className="lg__rot" htmlFor="lgSenha">Senha</label>
-                <div className="lg__cx">
-                  <Lock style={{ width: 16, height: 16 }} />
-                  <input
-                    id="lgSenha"
-                    type={mostrarSenha ? 'text' : 'password'}
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    onKeyUp={e => setCapsLock(e.getModifierState?.('CapsLock') ?? false)}
-                    required
-                    minLength={6}
-                    autoComplete="current-password"
-                  />
-                  <button
-                    type="button"
-                    className="lg__olho"
-                    onClick={() => setMostrarSenha(v => !v)}
-                    aria-label={mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'}
-                  >
-                    {mostrarSenha
-                      ? <EyeOff style={{ width: 17, height: 17 }} />
-                      : <Eye style={{ width: 17, height: 17 }} />}
-                  </button>
-                </div>
-                {capsLock && (
-                  <div className="lg__caps">
-                    <AlertTriangle style={{ width: 13, height: 13 }} /> Caps Lock está ligado
-                  </div>
-                )}
-              </div>
-
-              <div className="lg__linha" style={{ justifyContent: 'flex-end' }}>
-                <button type="button" onClick={() => setStep('forgot')} className="lg__link">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <Label htmlFor="lgSenha">Senha</Label>
+                <button type="button" onClick={() => setStep('forgot')} className={`${classeLink} min-h-0`}>
                   Esqueci minha senha
                 </button>
               </div>
-
-              <button type="submit" className="lg__btn" disabled={loading}>
-                {loading
-                  ? <Loader2 className="lg__spin" style={{ width: 17, height: 17 }} />
-                  : <KeyRound style={{ width: 17, height: 17 }} />}
-                Entrar na plataforma
-              </button>
-            </form>
-
-            <div style={{ marginTop: 16, textAlign: 'center' }}>
-              <button
-                type="button"
-                onClick={async () => {
-                  try {
-                    if ('serviceWorker' in navigator) {
-                      const registrations = await navigator.serviceWorker.getRegistrations();
-                      await Promise.all(registrations.map((r) => r.unregister()));
-                    }
-                    if ('caches' in window) {
-                      const keys = await caches.keys();
-                      await Promise.all(keys.map((k) => caches.delete(k)));
-                    }
-                  } finally {
-                    window.location.href = window.location.href.split('?')[0] + '?v=' + Date.now();
-                  }
-                }}
-                style={{ fontSize: 11, color: 'var(--lg-form-soft)', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer' }}
-              >
-                Limpar cache e recarregar
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ===== STEP: CERTIFICADO DIGITAL ===== */}
-        {step === 'certificado' && (
-          <div className="lg__passo">
-            {backButton()}
-            <h1 className="lg__t" style={{ textAlign: 'left' }}>Certificado Digital</h1>
-            <p className="lg__s" style={{ textAlign: 'left', marginBottom: 20 }}>e-CNPJ ou e-CPF, nos padrões A1 e A3</p>
-
-            <div className="lg__nota">
-              <Info style={{ width: 15, height: 15 }} />
-              <span>
-                O certificado <b>identifica</b>, mas não cria conta. Ele precisa estar
-                vinculado a um usuário — o vínculo é feito em <b>Configuração › Empresas</b>{' '}
-                depois do primeiro acesso.
-              </span>
+              <div className="relative">
+                <Input
+                  id="lgSenha"
+                  type={mostrarSenha ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  onKeyUp={e => setCapsLock(e.getModifierState?.('CapsLock') ?? false)}
+                  required
+                  minLength={6}
+                  autoComplete="current-password"
+                  aria-describedby={capsLock ? 'lgCaps' : undefined}
+                  className="pr-12"
+                />
+                <button
+                  type="button"
+                  onClick={() => setMostrarSenha(v => !v)}
+                  aria-label={mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'}
+                  aria-pressed={mostrarSenha}
+                  className="absolute right-1 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  {mostrarSenha ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              {capsLock && (
+                <p id="lgCaps" role="status" className="flex items-center gap-1.5 text-sm leading-5 text-warning-ink">
+                  <AlertTriangle className="h-4 w-4" aria-hidden="true" /> Caps Lock está ligado
+                </p>
+              )}
             </div>
 
+            <Button type="submit" className="w-full" disabled={loading} aria-busy={loading || undefined}>
+              {loading ? <Loader2 className="animate-spin" aria-hidden="true" /> : <KeyRound aria-hidden="true" />}
+              Entrar
+            </Button>
+          </form>
+
+          {voltarPara('escolha', 'Voltar às opções de acesso')}
+
+          <div className="mt-6 text-center">
             <button
               type="button"
-              onClick={() => setStep('manual')}
-              className="lg__btn lg__btn--vidro"
-              style={{ marginTop: 18 }}
+              onClick={async () => {
+                try {
+                  if ('serviceWorker' in navigator) {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    await Promise.all(registrations.map((r) => r.unregister()));
+                  }
+                  if ('caches' in window) {
+                    const keys = await caches.keys();
+                    await Promise.all(keys.map((k) => caches.delete(k)));
+                  }
+                } finally {
+                  window.location.href = window.location.href.split('?')[0] + '?v=' + Date.now();
+                }
+              }}
+              className="min-h-11 rounded-md px-2 text-xs text-muted-foreground underline underline-offset-2 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <KeyRound style={{ width: 16, height: 16 }} />
-              Entrar com e-mail e senha
+              Limpar cache e recarregar
             </button>
-
-            <p className="lg__pe">
-              Aceitos: e-CNPJ A1/A3 e e-CPF A1/A3, nos formatos .pfx, .p12, .cer, .crt e .pem.
-            </p>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* ===== STEP: ESQUECEU SENHA ===== */}
-        {step === 'forgot' && (
-          <div className="lg__passo">
-            {backButton('manual')}
-            <h1 className="lg__t" style={{ textAlign: 'left' }}>Recuperar senha</h1>
-            <p className="lg__s" style={{ textAlign: 'left', marginBottom: 22 }}>
-              Informe seu login ou e-mail para receber o link de recuperação
-            </p>
+      {/* ===== CERTIFICADO DIGITAL ===== */}
+      {step === 'certificado' && (
+        <div className="mt-8">
+          <h1 ref={tituloRef} tabIndex={-1} className={classeTitulo}>Certificado digital</h1>
+          <p className="mt-2 text-base leading-6 text-muted-foreground">e-CNPJ ou e-CPF, nos padrões A1 e A3</p>
 
-            <form onSubmit={handleForgot} noValidate>
-              <div className="lg__campo">
-                <label className="lg__rot" htmlFor="lgRecuperar">Login ou e-mail</label>
-                <div className="lg__cx">
-                  <Mail style={{ width: 16, height: 16 }} />
-                  <input
-                    id="lgRecuperar"
-                    type="text"
-                    placeholder="voce@empresa.com.br"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    required
-                    spellCheck={false}
-                  />
-                </div>
-              </div>
+          <Alert variant="info" className="mt-6">
+            <Info className="h-4 w-4" />
+            <AlertTitle>O certificado identifica, mas não cria conta</AlertTitle>
+            <AlertDescription>
+              Ele precisa estar vinculado a um usuário — o vínculo é feito em <b>Configuração › Empresas</b>{' '}
+              depois do primeiro acesso com e-mail e senha.
+            </AlertDescription>
+          </Alert>
 
-              <button type="submit" className="lg__btn" style={{ marginTop: 4 }} disabled={loading}>
-                {loading
-                  ? <Loader2 className="lg__spin" style={{ width: 17, height: 17 }} />
-                  : <ArrowRight style={{ width: 17, height: 17 }} />}
-                Enviar link de recuperação
-              </button>
-            </form>
-          </div>
-        )}
-      </div>
+          <Button type="button" variant="outline" className="mt-6 w-full" onClick={() => setStep('manual')}>
+            <KeyRound aria-hidden="true" />
+            Entrar com e-mail e senha
+          </Button>
 
-      <div className="lg__rodape">© {new Date().getFullYear()} Praefectus — Gestão de Licitações com IA</div>
-    </div>
+          <p className="mt-4 text-xs leading-4 text-muted-foreground">
+            Aceitos: e-CNPJ A1/A3 e e-CPF A1/A3, nos formatos .pfx, .p12, .cer, .crt e .pem.
+          </p>
+
+          {voltarPara('escolha', 'Voltar às opções de acesso')}
+        </div>
+      )}
+
+      {/* ===== RECUPERAR SENHA ===== */}
+      {step === 'forgot' && (
+        <div className="mt-8">
+          <h1 ref={tituloRef} tabIndex={-1} className={classeTitulo}>Recuperar senha</h1>
+          <p className="mt-2 text-base leading-6 text-muted-foreground">
+            Informe seu login ou e-mail para receber o link de recuperação
+          </p>
+
+          <form onSubmit={handleForgot} noValidate className="mt-8 space-y-5">
+            <div className="space-y-2">
+              <Label htmlFor="lgRecuperar">E-mail ou login</Label>
+              <Input
+                id="lgRecuperar"
+                type="text"
+                inputMode="email"
+                placeholder="voce@empresa.com.br"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                required
+                autoComplete="username"
+                spellCheck={false}
+              />
+            </div>
+            <Button type="submit" className="w-full" disabled={loading} aria-busy={loading || undefined}>
+              {loading ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Mail aria-hidden="true" />}
+              Enviar link de recuperação
+            </Button>
+          </form>
+
+          {voltarPara('manual', 'Voltar ao login')}
+        </div>
+      )}
+    </MolduraAcesso>
   );
 }

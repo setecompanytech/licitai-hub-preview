@@ -12,7 +12,10 @@ const TabsList = React.forwardRef<
   <TabsPrimitive.List
     ref={ref}
     className={cn(
-      "inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground",
+      // Embrulha por padrão: fila com 5+ abas quebra em duas linhas no celular
+      // em vez de empurrar a largura da página. Quem quer grade passa
+      // `grid grid-cols-N` por className, como já acontece.
+      "inline-flex h-auto max-w-full flex-wrap items-center justify-start gap-1 rounded-md bg-muted p-1 text-muted-foreground",
       className,
     )}
     {...props}

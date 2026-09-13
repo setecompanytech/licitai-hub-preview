@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Lock, Loader2, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
-import PraefectusLogo from '@/components/shared/PraefectusLogo';
+import MolduraAcesso from '@/components/auth/MolduraAcesso';
 
 export default function ResetPassword() {
   const [password, setPassword] = useState('');
@@ -134,13 +134,8 @@ export default function ResetPassword() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--gradient-dark)' }}>
-      <div className="w-full max-w-md">
-        <div className="flex items-center justify-center gap-3 mb-8">
-          <PraefectusLogo size="xl" variant="light" />
-        </div>
-
-        <div className="bg-card rounded-2xl border border-border/50 shadow-2xl p-8">
+    <MolduraAcesso>
+        <div>
           {verifying ? (
             <div className="text-center space-y-3 py-6">
               <Loader2 className="w-8 h-8 animate-spin mx-auto text-muted-foreground" />
@@ -149,14 +144,14 @@ export default function ResetPassword() {
           ) : success ? (
             <div className="text-center space-y-3">
               <CheckCircle2 className="w-12 h-12 text-success mx-auto" />
-              <h2 className="text-xl font-bold">Senha alterada!</h2>
+              <h2 className="font-heading text-[1.75rem] font-bold leading-9 text-foreground">Senha alterada!</h2>
               <p className="text-sm text-muted-foreground">Redirecionando...</p>
             </div>
           ) : pendingTokenHash ? (
             <div className="text-center space-y-5 py-2">
               <ShieldCheck className="w-12 h-12 text-muted-foreground mx-auto" />
               <div>
-                <h2 className="text-xl font-bold mb-1">
+                <h2 className="font-heading text-[1.75rem] font-bold leading-9 text-foreground mb-1">
                   {isInvite ? 'Confirmar convite' : 'Confirmar acesso'}
                 </h2>
                 <p className="text-sm text-muted-foreground">
@@ -166,7 +161,7 @@ export default function ResetPassword() {
                 </p>
               </div>
               <Button
-                className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
+                className="w-full"
                 onClick={handleConfirm}
                 disabled={confirming}
               >
@@ -176,12 +171,12 @@ export default function ResetPassword() {
             </div>
           ) : canReset ? (
             <>
-              <h2 className="text-xl font-bold text-center mb-2">
+              <h2 className="font-heading text-[1.75rem] font-bold leading-9 text-foreground text-center mb-2">
                 {isInvite ? 'Bem-vindo! Crie sua senha' : 'Definir nova senha'}
               </h2>
               <p className="text-xs text-muted-foreground text-center mb-6">
                 {isInvite
-                  ? 'Defina uma senha para acessar sua conta no PRAEFECTUS.'
+                  ? 'Defina uma senha para acessar sua conta no Praefectus.'
                   : 'Escolha uma nova senha para sua conta.'}
               </p>
               <form onSubmit={handleReset} className="space-y-4">
@@ -193,7 +188,7 @@ export default function ResetPassword() {
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input type="password" placeholder="Confirmar senha" value={confirm} onChange={(e) => setConfirm(e.target.value)} className="pl-10" required minLength={6} />
                 </div>
-                <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground" disabled={loading}>
+                <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                   {isInvite ? 'Criar senha e acessar' : 'Salvar nova senha'}
                 </Button>
@@ -205,7 +200,6 @@ export default function ResetPassword() {
             </div>
           )}
         </div>
-      </div>
-    </div>
+    </MolduraAcesso>
   );
 }
