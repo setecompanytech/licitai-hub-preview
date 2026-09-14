@@ -312,7 +312,15 @@ export default function AprovacaoDePrecificacao({
 
   const motivosParaAprovar: string[] = [];
   if (!isAdmin) motivosParaAprovar.push('Aprovar limites exige administrador da empresa.');
-  if (!rascunhoAtual) motivosParaAprovar.push('Salve a revisão antes de aprovar.');
+  if (!rascunhoAtual) {
+    // Sem revisão em curso e nada alterado, a vigente JÁ está aprovada — pedir
+    // "salve antes de aprovar" mandava a pessoa salvar algo que não mudou.
+    motivosParaAprovar.push(
+      vigente && !sujo
+        ? `Versão ${vigente.numero} já está aprovada. Altere e salve para criar uma nova revisão.`
+        : 'Salve a revisão antes de aprovar.',
+    );
+  }
   else if (sujo) motivosParaAprovar.push('Há alterações não salvas — a aprovação vale para o que está gravado.');
   if (bloqueios) motivosParaAprovar.push(`${bloqueios === 1 ? '1 pendência bloqueia' : `${bloqueios} pendências bloqueiam`} a aprovação — veja o painel de pendências.`);
 
@@ -404,7 +412,9 @@ export default function AprovacaoDePrecificacao({
       alinhamento: 'direita',
       prioridade: 'sempre',
       render: ({ calculado, formulario: fi }) => (
-        <span className="flex flex-col items-end">
+        // inline-flex: no cartão do celular o preço fica onde o limite fica, e não
+        // empurrado sozinho para a borda direita.
+        <span className="inline-flex flex-col items-end">
           {formatarCentavos(calculado.precoInicialCentavos)}
           {calculado.precoInicialCentavos != null && !fi.textos.precoInicial.trim() && (
             <span className="g-meta text-muted-foreground">sugerido</span>
@@ -564,14 +574,16 @@ export default function AprovacaoDePrecificacao({
               </p>
             }
             rodape={
-              <>
+              // Um contêiner próprio: no celular o rodapé da tabela empilha, e as
+              // duas frases saíam coladas ("3 itensTotal inicial…").
+              <div className="flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-1">
                 <span>
                   {visiveis.length === linhas.length ? `${linhas.length} itens` : `${visiveis.length} de ${linhas.length} itens`}
                 </span>
                 <span className="tabular-nums text-foreground">
                   Total inicial dos autorizados: {formatarCentavos(calculo.totalInicialCentavos)}
                 </span>
-              </>
+              </div>
             }
           />
           {formulario.premissas.criterio === 'menor_preco_lote' && calculo.lotes.length > 0 && (
