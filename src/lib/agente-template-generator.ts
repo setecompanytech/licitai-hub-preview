@@ -335,7 +335,12 @@ app.post('/sessao/iniciar', authMiddleware, async (req, res) => {
       // quem chamou tenha enviado. Foi assim que os itens quase chegaram ao
       // agente sem chegar: a edge function mandava, o session-manager sabia
       // usar, e esta linha no meio jogava fora.
-      itens, tipo_disputa,
+      //
+      // E foi assim de novo com a UASG (14/09/2026, sessao 903d686e): o
+      // front mandava 925315, a edge function repassava, o session-manager
+      // guardava — e esta lista nao a nomeava. Chegou null; sem ela a busca
+      // do Compras.gov achou dez "7/2026" de outros orgaos e nenhum da SEDUC.
+      itens, tipo_disputa, uasg,
     } = req.body;
 
     const callbackUrl = req.headers['x-callback-url'] || process.env.CALLBACK_URL;
@@ -361,6 +366,7 @@ app.post('/sessao/iniciar', authMiddleware, async (req, res) => {
       // tratam ausencia como "abrir o processo e parar", e nao como erro.
       itens: Array.isArray(itens) ? itens : [],
       tipo_disputa: tipo_disputa || null,
+      uasg: uasg ? String(uasg) : null,
       credenciais_portal, callbackUrl, agentKey: AGENT_KEY,
     });
 
