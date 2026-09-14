@@ -189,7 +189,7 @@ export const paginasPadrao: PaginaPadrao[] = [
        POR VAGA do checklist — cada linha tem o seu "Enviar"/"Substituir", e o
        campo de arquivo só sabe o destino porque a linha clicada o registrou.
        Um botão no topo teria de adivinhar a vaga. */
-    padrao: 'abas', abas: ['Documentos', 'Unir arquivos'],
+    padrao: 'abas', abas: ['Documentos', 'Atestados', 'Unir arquivos', 'Alertas', 'Histórico'],
   },
   {
     rota: '/assessoria-cadastral', grupo: 'Jurídico & Contábil', titulo: 'Assessoria cadastral', icone: ClipboardCheck,

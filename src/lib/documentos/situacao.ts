@@ -88,3 +88,92 @@ export function frasePrazo(valor: string, hoje = new Date()): string {
   const frase = prazoPorExtenso(dias);
   return frase.charAt(0).toUpperCase() + frase.slice(1);
 }
+
+/* ───────────────────────────────────────────────────────────────────────────
+   A situação do DOCUMENTO, que é mais do que a situação da validade.
+
+   `SituacaoValidade` responde "o prazo está bom?". A tela de Documentos
+   precisa de uma pergunta maior — "posso contar com este documento?" —, e ela
+   soma três casos que a validade sozinha não cobre:
+
+     ausente        a vaga existe no checklist e não há arquivo nenhum;
+     sem_validade   há arquivo, o documento VENCE por natureza, e ninguém
+                    informou até quando;
+     nao_se_aplica  há arquivo e o documento não tem prazo (contrato social,
+                    cartão CNPJ, declaração).
+
+   Os dois últimos chegavam ao banco como o mesmo `validade = NULL` e, na tela,
+   viravam os dois "Regular" — o cofre parecia completo com seis certidões sem
+   data. Quem distingue é `VAGAS_PREVISTAS.vence`, que declara a natureza do
+   documento; o banco não tem como saber.
+
+   ⚠️ Esta régua NÃO muda o vocabulário de `SituacaoValidade`, que o Calendário
+   e o Painel já consomem. Ela o ENVOLVE.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+export type SituacaoDocumento =
+  | SituacaoValidade
+  | 'ausente'
+  | 'sem_validade'
+  | 'nao_se_aplica';
+
+export interface EntradaParaSituacao {
+  /** Caminho do arquivo no storage. Vazio/nulo = nada anexado. */
+  arquivoPath?: string | null;
+  /** `documentos.validade` — coluna `date`, ou nulo. */
+  validade?: string | null;
+  /** O documento vence por natureza? Vem de `VAGAS_PREVISTAS.vence`. */
+  vencePorNatureza?: boolean;
+}
+
+/**
+ * A situação de um documento do cofre.
+ *
+ * A ordem das perguntas importa e não é arbitrária: sem arquivo, nada mais
+ * interessa; com arquivo e sem prazo por natureza, a validade não é cobrada;
+ * só então o prazo decide.
+ */
+export function situacaoDoDocumento(
+  entrada: EntradaParaSituacao,
+  opcoes?: { diasDeAlerta?: number; hoje?: Date },
+): SituacaoDocumento {
+  const temArquivo = !!entrada.arquivoPath && String(entrada.arquivoPath).trim() !== '';
+  if (!temArquivo) return 'ausente';
+
+  if (entrada.vencePorNatureza === false) return 'nao_se_aplica';
+
+  if (!entrada.validade) return 'sem_validade';
+
+  // `null` aqui significa data ilegível — e "não sei ler" não pode virar
+  // "regular", que é o que a tela fazia.
+  return situacaoDaValidade(entrada.validade, opcoes) ?? 'sem_validade';
+}
+
+export const ROTULO_DO_DOCUMENTO: Record<SituacaoDocumento, string> = {
+  ...ROTULO_DA_SITUACAO,
+  ausente: 'Ausente',
+  sem_validade: 'Validade não informada',
+  nao_se_aplica: 'Sem vencimento',
+};
+
+/**
+ * O que conta como REGULAR nos indicadores.
+ *
+ * `vencendo` e `vence_hoje` entram, e isso é decisão de produto preservada da
+ * tela anterior, escrita lá por extenso: "o selo diz o que o documento É, não
+ * o que vai acontecer com ele. Certidão válida por mais 26 dias é REGULAR".
+ * O vencimento que se aproxima é AVISO, e tem lugar próprio.
+ *
+ * A consequência precisa estar na tela, e é por isso que esta função existe
+ * separada em vez de embutida: quem lê "Regulares: 9" tem de poder descobrir
+ * que 2 daqueles 9 vencem este mês. Somar o subconjunto de novo no total seria
+ * contar o mesmo documento duas vezes.
+ */
+export function contaComoRegular(situacao: SituacaoDocumento): boolean {
+  return situacao === 'ok' || situacao === 'vencendo' || situacao === 'vence_hoje' || situacao === 'nao_se_aplica';
+}
+
+/** Quantos dos regulares vencem dentro da janela de alerta. */
+export function ehRegularMasVencendo(situacao: SituacaoDocumento): boolean {
+  return situacao === 'vencendo' || situacao === 'vence_hoje';
+}

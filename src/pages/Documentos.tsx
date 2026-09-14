@@ -1,1205 +1,963 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import EstadoVazio from '@/components/shared/EstadoVazio';
 import ProcessoContextoBanner from '@/components/shared/ProcessoContextoBanner';
+import AbasGestao, { type AbaGestao } from '@/components/gestao/AbasGestao';
+import AreaComPainel from '@/components/gestao/AreaComPainel';
+import BarraFiltros from '@/components/gestao/BarraFiltros';
+import TabelaGestao, {
+  type ColunaGestao, type OrdenacaoTabela,
+} from '@/components/gestao/TabelaGestao';
+import { AvisoDeContexto, AvisoDeFalha } from '@/components/gestao/SeloSituacao';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import {
-  FileText, Upload, Repeat, CheckCircle2, AlertTriangle, History,
-  FolderOpen, Download, FileArchive, Trash2, Loader2, Eye, Users,
-  CalendarDays, Bot
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Download, Eye, FolderOpen, Loader2, MoreHorizontal, PencilLine, Plus,
+  Repeat, Trash2, Upload, Users,
 } from 'lucide-react';
 import MergeDocumentos from '@/components/documentos/MergeDocumentos';
 import AtestadosCapacidadeTecnica from '@/components/documentos/AtestadosCapacidadeTecnica';
-import AlertaVencimentoDocumentos from '@/components/documentos/AlertaVencimentoDocumentos';
-import { IconeRecolher, lerRecolhida, gravarRecolhida } from '@/components/ui/secao-recolhivel';
-// A escolha de qual data é a validade tem teste próprio: um documento fiscal
-// traz emissão, hora e prazo juntos, e a errada manda renovar o que está bom —
-// ou leva a empresa à sessão com certidão vencida.
-import { extrairValidadeDoTexto, montarData, normalizarEspacos } from '@/lib/documentos/validade';
+import AlertasVencimentoEmail from '@/components/documentos/AlertasVencimentoEmail';
+import DialogValidade from '@/components/documentos/DialogValidade';
+import HistoricoDocumentos from '@/components/documentos/HistoricoDocumentos';
+import IndicadoresCofre, { ConformidadeDocumental } from '@/components/documentos/IndicadoresCofre';
+import PainelDocumento from '@/components/documentos/PainelDocumento';
+import SeloDocumento, { ValidadeDoDocumento } from '@/components/documentos/SeloDocumento';
+import {
+  FILTROS_DE_SITUACAO, ORDEM_NA_TELA, ROTULO_DO_FILTRO, casaComFiltro, contarCofre,
+  montarItensDoCofre, nomeDoArquivo,
+  type FiltroSituacao, type ItemDoCofre, type LinhaGravada,
+} from '@/components/documentos/item-do-cofre';
+import {
+  CATEGORIAS_PREVISTAS, VAGAS_PREVISTAS, type CategoriaPrevista,
+} from '@/lib/documentos/previstos';
+import { diaDaValidade } from '@/lib/documentos/situacao';
+import { useAbaNaUrl } from '@/lib/navegacao/aba-na-url';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useAuthorization } from '@/hooks/useAuthorization';
-import AlertasVencimentoEmail from '@/components/documentos/AlertasVencimentoEmail';
-import { useColaboradores } from '@/hooks/useMetasComercial';
-import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
-type DocStatus = 'ok' | 'vencido' | 'ausente';
+/* ═══════════════════════════════════════════════════════════════════════════
+   O COFRE DE HABILITAÇÃO — reestruturação de 14/09.
 
-type Documento = {
-  nome: string;
-  categoria: string;
-  artigo: string;
-  status: DocStatus;
-  validade?: string;
-  arquivo?: string;
-  storagePath?: string;
-  /** Id da linha no banco — é por ele que renovação e remoção acontecem. */
-  dbId?: string;
-  /** Linha anterior à conversão para empresa: só o dono vê, até compartilhar. */
-  legadoPrivado?: boolean;
-};
+   O que esta tela responde, na ordem: "consigo me habilitar hoje?", "o que
+   falta?", "onde está o documento X?". As decisões abaixo saíram todas de
+   defeitos encontrados na inspeção, e estão escritas aqui porque desfazê-las
+   sem saber o motivo é fácil.
 
-type VisionImage = {
-  name: string;
-  dataUrl: string;
-};
+   1. A LISTA É DAS VAGAS, NÃO DOS ARQUIVOS. `montarItensDoCofre` parte de
+      `VAGAS_PREVISTAS`; a vaga sem arquivo aparece como linha "Ausente". Uma
+      tabela alimentada pelo `select` mostraria cofre vazio como tela vazia, e
+      é justamente o vazio que precisa ser visto.
 
-type DocumentAnalysisPayload = {
-  images: VisionImage[];
-  supportText: string;
-};
+   2. "SEM VALIDADE" VIROU O QUINTO INDICADOR, não uma linha de aviso.
+      Justificativa: (a) sem ele a aritmética não fecha — previstos = regulares
+      + vencidos + ausentes + sem validade, propriedade travada em
+      `situacao-documento.test.ts` —, e um total que não bate com as partes
+      obriga quem lê a desconfiar do painel inteiro; (b) um aviso em texto não
+      entrega o que os outros quatro entregam, que é o CLIQUE para a lista dos
+      afetados. O estado nasceu porque estava escondido; escondê-lo de novo
+      atrás de uma frase seria repetir o defeito em outro formato.
 
-// Checklist de documentos exigidos pela Lei 14.133/2021 — status começa como 'ausente'
-// e será atualizado conforme o usuário faz upload
-const checklistDocumentos: Documento[] = [
-  { nome: 'Ato Constitutivo / Contrato Social', categoria: 'Habilitação Jurídica', artigo: 'Art. 66', status: 'ausente' },
-  { nome: 'Cédula de Identidade dos Sócios', categoria: 'Habilitação Jurídica', artigo: 'Art. 66', status: 'ausente' },
-  // Documento AUXILIAR: informa o que está arquivado na Junta, mas não substitui
-  // o teor jurídico do contrato social (objeto, capital, poderes). Vale o mesmo
-  // para a certidão de inteiro teor e a específica.
-  { nome: 'Certidão Simplificada da Junta Comercial', categoria: 'Habilitação Jurídica', artigo: 'Art. 66', status: 'ausente' },
-  { nome: 'Cartão CNPJ', categoria: 'Regularidade Fiscal', artigo: 'Art. 68, I', status: 'ausente' },
-  // Art. 68, II — prova de INSCRIÇÃO no cadastro de contribuintes, que não se
-  // confunde com a certidão de regularidade do inciso III. A sigla muda em cada
-  // ente (FIC no Pará, CISC em Belém), então a vaga é nomeada pela função e o
-  // sistema reconhece as siglas locais pelo nome do arquivo.
-  { nome: 'Inscrição Estadual (cadastro de contribuintes)', categoria: 'Regularidade Fiscal', artigo: 'Art. 68, II', status: 'ausente' },
-  { nome: 'Inscrição Municipal (cadastro de contribuintes)', categoria: 'Regularidade Fiscal', artigo: 'Art. 68, II', status: 'ausente' },
-  { nome: 'Certidão Negativa de Débitos Federais (CND)', categoria: 'Regularidade Fiscal', artigo: 'Art. 68', status: 'ausente' },
-  { nome: 'Certidão de Regularidade do FGTS (CRF)', categoria: 'Regularidade Fiscal', artigo: 'Art. 68', status: 'ausente' },
-  { nome: 'Certidão Negativa de Débitos Estaduais', categoria: 'Regularidade Fiscal', artigo: 'Art. 68', status: 'ausente' },
-  { nome: 'Certidão Negativa de Débitos Municipais', categoria: 'Regularidade Fiscal', artigo: 'Art. 68', status: 'ausente' },
-  { nome: 'CNDT – Certidão Trabalhista', categoria: 'Regularidade Fiscal', artigo: 'Art. 68', status: 'ausente' },
-  { nome: 'Registro no CREA/CAU', categoria: 'Qualificação Técnica', artigo: 'Art. 67', status: 'ausente' },
-  // Atestado de Capacidade Técnica é gerenciado pelo componente dedicado com subcategorias por segmento
-  { nome: 'CAT – Certidão de Acervo Técnico', categoria: 'Qualificação Técnica', artigo: 'Art. 67', status: 'ausente' },
-  { nome: 'Balanço Patrimonial (último exercício)', categoria: 'Qualif. Econômico-Financeira', artigo: 'Art. 69', status: 'ausente' },
-  { nome: 'Certidão Negativa de Falência', categoria: 'Qualif. Econômico-Financeira', artigo: 'Art. 69', status: 'ausente' },
-  { nome: 'Declaração de Inexistência de Fato Impeditivo', categoria: 'Declarações', artigo: 'Art. 63, §1º', status: 'ausente' },
-  { nome: 'Declaração de Não Emprego de Menor', categoria: 'Declarações', artigo: 'Art. 68, VI', status: 'ausente' },
-  { nome: 'Declaração ME/EPP (se aplicável)', categoria: 'Declarações', artigo: 'LC 123/2006', status: 'ausente' },
-];
+   3. NÃO HÁ CAIXA DE SELEÇÃO nas linhas. A prévia mostra uma, mas não existe
+      nenhuma ação em lote implementada e autorizada nesta tela — exclusão
+      passa por RLS linha a linha (dono do anexo ou Admin) e cada envio precisa
+      da vaga de destino. Caixa que só marca a linha aberta é controle que
+      promete o que não cumpre, e o comando proíbe. Quando houver lote de
+      verdade (baixar selecionados como .zip, por exemplo), a coluna entra.
 
-// O selo diz o que o documento É, não o que vai acontecer com ele. Certidão
-// válida por mais 26 dias é REGULAR — não há o que fazer com ela hoje, e marcá-la
-// como "pendente" mandava procurar um problema inexistente. O vencimento que se
-// aproxima é aviso, e vive no lembrete do canto da tela (LembreteDeVencimento),
-// que acompanha a pessoa em qualquer página e volta até o documento ser renovado.
-const statusConfig: Record<DocStatus, {
-  icon: typeof CheckCircle2;
-  /** Cor do ícone da linha — tinta do estado, nunca cor solta. */
-  color: string;
-  /** Variante do Badge (identidade 12/09): o selo é o mesmo vocabulário. */
-  variante: 'success' | 'danger' | 'warning';
-  label: string;
-}> = {
-  ok: { icon: CheckCircle2, color: 'text-success-ink', variante: 'success', label: 'Regular' },
-  vencido: { icon: AlertTriangle, color: 'text-destructive-ink', variante: 'danger', label: 'Vencido' },
-  // Ausente é pendência, não impedimento — o próprio texto desta tela separa
-  // "falta pedir" de "barra a habilitação hoje". Âmbar, e o vermelho fica
-  // reservado a quem realmente impede a empresa de disputar.
-  ausente: { icon: AlertTriangle, color: 'text-warning-ink', variante: 'warning', label: 'Ausente' },
-};
+   4. OS INDICADORES CONTAM O CHECKLIST INTEIRO, não o recorte filtrado — se
+      seguissem o filtro, clicar em "Vencidos" zeraria os outros quatro e o
+      painel viraria eco do próprio clique. A frase abaixo da faixa diz isso.
+   ═══════════════════════════════════════════════════════════════════════════ */
 
-/** Dias até a validade, contados por DATA — hora não entra, fuso não desloca. */
-const diasAteVencer = (validade: string): number | null => {
-  const m = String(validade).match(/(\d{4})-(\d{2})-(\d{2})/);
-  if (!m) return null;
-  const alvo = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-  const agora = new Date();
-  const hoje = Date.UTC(agora.getFullYear(), agora.getMonth(), agora.getDate());
-  return Math.round((alvo - hoje) / 86400000);
-};
-
-
-
-const imageFileToVisionPayload = async (file: File): Promise<VisionImage[]> =>
-  new Promise((resolve, reject) => {
-    const objectUrl = URL.createObjectURL(file);
-    const img = new Image();
-
-    img.onload = () => {
-      try {
-        const maxDimension = 1800;
-        const scale = Math.min(1, maxDimension / Math.max(img.width, img.height));
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.max(1, Math.round(img.width * scale));
-        canvas.height = Math.max(1, Math.round(img.height * scale));
-
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          reject(new Error('Não foi possível preparar a imagem para análise.'));
-          return;
-        }
-
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve([{ name: file.name, dataUrl: canvas.toDataURL('image/jpeg', 0.9) }]);
-      } finally {
-        URL.revokeObjectURL(objectUrl);
-      }
-    };
-
-    img.onerror = () => {
-      URL.revokeObjectURL(objectUrl);
-      reject(new Error('Não foi possível abrir a imagem enviada.'));
-    };
-
-    img.src = objectUrl;
-  });
-
-const extractPdfSupportText = async (pdf: any, maxPages: number) => {
-  const pageTexts: string[] = [];
-
-  for (let i = 1; i <= maxPages; i += 1) {
-    const page = await pdf.getPage(i);
-    const textContent = await page.getTextContent();
-    const pageText = textContent.items
-      .map((item: any) => ('str' in item ? item.str : ''))
-      .join(' ');
-
-    pageTexts.push(pageText);
-  }
-
-  return normalizarEspacos(pageTexts.join('\n'));
-};
-
-const renderPdfToVisionImages = async (pdf: any, fileName: string, maxPages: number): Promise<VisionImage[]> => {
-  const images: VisionImage[] = [];
-
-  for (let i = 1; i <= maxPages; i += 1) {
-    const page = await pdf.getPage(i);
-    const firstViewport = page.getViewport({ scale: 1 });
-    const scale = Math.min(
-      1.5,
-      1600 / Math.max(firstViewport.width, 1),
-      1600 / Math.max(firstViewport.height, 1),
-    );
-    const viewport = page.getViewport({ scale: Math.max(scale, 0.5) });
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.round(viewport.width);
-    canvas.height = Math.round(viewport.height);
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) continue;
-
-    await page.render({ canvasContext: ctx, viewport }).promise;
-    images.push({
-      name: `${fileName}_p${i}`,
-      dataUrl: canvas.toDataURL('image/jpeg', 0.88),
-    });
-  }
-
-  return images;
-};
-
-const buildDocumentAnalysisPayload = async (file: File): Promise<DocumentAnalysisPayload> => {
-  if (file.type.startsWith('image/')) {
-    return {
-      images: await imageFileToVisionPayload(file),
-      supportText: '',
-    };
-  }
-
-  if (file.type === 'application/pdf') {
-    const pdfjsLib = await import('pdfjs-dist');
-    pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
-
-    const arrayBuffer = await file.arrayBuffer();
-    let pdf: any;
-
-    try {
-      pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    } catch {
-      pdf = await pdfjsLib.getDocument({ data: arrayBuffer, disableWorker: true } as any).promise;
-    }
-
-    const maxPages = Math.min(pdf.numPages, 3);
-    const [supportText, images] = await Promise.all([
-      extractPdfSupportText(pdf, maxPages),
-      renderPdfToVisionImages(pdf, file.name, maxPages),
-    ]);
-
-    return { images, supportText };
-  }
-
-  return { images: [], supportText: '' };
-};
+type FiltroCategoria = 'todas' | CategoriaPrevista;
 
 /**
- * Nome do arquivo sem o caminho interno do armazenamento.
+ * Chaves de ordenação. Ordenar é APRESENTAÇÃO: nada aqui muda filtro, cálculo
+ * ou escrita.
  *
- * O caminho gravado inclui a pasta do usuário — um identificador de 36
- * caracteres que a tela mostrava por inteiro antes do nome. Ele não diz nada a
- * quem confere documento e empurrava o nome real para fora da vista.
+ * Categoria ordena pela posição na LEI (`CATEGORIAS_PREVISTAS`), não pelo
+ * alfabeto: "Declarações" antes de "Habilitação Jurídica" inverteria a ordem em
+ * que o edital pede os documentos.
+ *
+ * Validade sem data vai para o fim do crescente (`Infinity`) — "não tem data"
+ * não é "vence primeiro".
  */
-function nomeDoArquivo(caminho: string): string {
-  return caminho.split('/').pop() || caminho;
-}
+const CHAVE_ORDENACAO: Record<string, (i: ItemDoCofre) => string | number> = {
+  documento: (i) => i.nome.toLowerCase(),
+  categoria: (i) => CATEGORIAS_PREVISTAS.indexOf(i.categoria),
+  validade: (i) => (i.validade ? diaDaValidade(i.validade).getTime() : Number.POSITIVE_INFINITY),
+  situacao: (i) => ORDEM_NA_TELA[i.situacao],
+};
+
+const TIPOS_ACEITOS = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'];
+const TAMANHO_MAXIMO = 10 * 1024 * 1024;
 
 export default function Documentos() {
-  const [filter, setFilter] = useState<DocStatus | 'todos'>('todos');
-  const [activeTab, setActiveTab] = useState('documentos');
-  const [documentos, setDocumentos] = useState<Documento[]>(checklistDocumentos);
-  const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
-  // Visualização em tela: conferir validade e assinatura de uma certidão exigia
-  // baixar o arquivo e abrir fora do sistema — para um documento que já está
-  // aqui e cuja conferência é o trabalho desta tela.
-  const [visualizando, setVisualizando] = useState<{ nome: string; url: string } | null>(null);
-  const [removingIdx, setRemovingIdx] = useState<number | null>(null);
-  const [analyzingIdx, setAnalyzingIdx] = useState<number | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const pendingUploadIdx = useRef<number | null>(null);
   const { user } = useAuth();
-  const { empresaAtiva } = useEmpresa();
-  // Trilha de auditoria (03/09): quem alterou o quê, para o Admin. Hooks no
-  // topo, SEMPRE — a tela branca de 02/09 veio de hook depois de return.
+  const { empresaAtiva, empresas, todasSelecionadas, setEmpresaAtiva } = useEmpresa();
+  // Trilha de auditoria: quem alterou o quê, para o Admin. Hooks no TOPO,
+  // SEMPRE — a tela branca de 02/09 veio de hook depois de return.
   const { isCompanyAdmin } = useAuthorization();
-  const { data: colaboradores = [] } = useColaboradores();
-  const [historico, setHistorico] = useState<Array<{
-    id: string; documento_nome: string; acao: string; autor: string | null;
-    validade_nova: string | null; criado_em: string;
-  }>>([]);
-  const [historicoAberto, setHistoricoAberto] = useState(false);
-  const [historicoCarregando, setHistoricoCarregando] = useState(false);
 
-  const nomeDoAutor = (uid: string | null) => {
-    if (!uid) return 'sistema';
-    const c = (colaboradores as Array<{ user_id: string; nome?: string; email?: string }>).find((x) => x.user_id === uid);
-    return c?.nome || c?.email || 'membro da equipe';
-  };
+  // A aba mora em `?aba=`: assim o Voltar do navegador, o F5 e o link
+  // compartilhado caem onde a pessoa estava. Antes era `useState`, e voltar de
+  // um documento recomeçava sempre no checklist.
+  const [aba, definirAba] = useAbaNaUrl('documentos');
 
-  const abrirHistorico = async () => {
-    setHistoricoAberto((v) => !v);
-    if (historicoAberto || historico.length > 0 || !empresaAtiva) return;
-    setHistoricoCarregando(true);
-    const { data } = await (supabase.from('documentos_historico' as never) as any)
-      .select('id, documento_nome, acao, autor, validade_nova, criado_em')
-      .eq('empresa_id', empresaAtiva.id)
-      .order('criado_em', { ascending: false })
-      .limit(100);
-    setHistorico(data ?? []);
-    setHistoricoCarregando(false);
-  };
+  const [linhas, setLinhas] = useState<LinhaGravada[]>([]);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
 
-  // Validade dialog state
-  const [validadeDialogOpen, setValidadeDialogOpen] = useState(false);
-  const [pendingFile, setPendingFile] = useState<File | null>(null);
-  // Qual pasta está recolhida — preferência de quem lê, guardada no navegador.
-  const [categoriasRecolhidas, setCategoriasRecolhidas] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(
-      [...new Set(checklistDocumentos.map((d) => d.categoria))].map((c) => [
-        c,
-        lerRecolhida(`documentos-categoria-${c}`, false),
-      ]),
-    ),
-  );
-  const alternarCategoria = useCallback((cat: string) => {
-    setCategoriasRecolhidas((atual) => {
-      const nova = !atual[cat];
-      gravarRecolhida(`documentos-categoria-${cat}`, nova);
-      return { ...atual, [cat]: nova };
-    });
-  }, []);
+  const [busca, setBusca] = useState('');
+  const [filtroCategoria, setFiltroCategoria] = useState<FiltroCategoria>('todas');
+  const [filtroSituacao, setFiltroSituacao] = useState<FiltroSituacao>('todas');
+  const [validadeDe, setValidadeDe] = useState('');
+  const [validadeAte, setValidadeAte] = useState('');
 
-  const [pendingValidadeDate, setPendingValidadeDate] = useState<Date | undefined>(undefined);
-  const [pendingManualDate, setPendingManualDate] = useState('');
+  const [selecionadoNome, setSelecionadoNome] = useState<string | null>(null);
+  const [ordenacao, setOrdenacao] = useState<OrdenacaoTabela>({ chave: 'situacao', direcao: 'asc' });
 
-  // Sync checklist status from uploaded documents in DB
-  useEffect(() => {
+  const [enviandoNome, setEnviandoNome] = useState<string | null>(null);
+  const [removendoNome, setRemovendoNome] = useState<string | null>(null);
+  const [salvandoValidade, setSalvandoValidade] = useState(false);
+  const [visualizando, setVisualizando] = useState<{ nome: string; url: string } | null>(null);
+  const [aExcluir, setAExcluir] = useState<ItemDoCofre | null>(null);
+  const [dialogo, setDialogo] = useState<{ item: ItemDoCofre; arquivo: File | null } | null>(null);
+
+  const inputArquivo = useRef<HTMLInputElement>(null);
+  const vagaPendente = useRef<ItemDoCofre | null>(null);
+  const controleDeCarga = useRef<AbortController | null>(null);
+
+  /**
+   * MODO "TODAS AS EMPRESAS" — o buraco que a tela tinha.
+   *
+   * `todasSelecionadas` põe `empresaAtiva` em `null`, e a consulta caía no ramo
+   * `user_id` puro: o cofre da empresa SUMIA e a tela mostrava 18 vagas
+   * ausentes, sem uma palavra explicando. Quem tem duas empresas e nunca
+   * escolheu uma ativa (o padrão do `EmpresaContext`) via um cofre vazio e
+   * concluía que o sistema tinha perdido os documentos.
+   *
+   * O cofre é de UMA empresa — o casamento é por nome de vaga, e duas empresas
+   * disputariam a mesma linha "Certidão Negativa de Débitos Federais (CND)".
+   * Então a tela não adivinha: declara que não apurou e oferece a escolha.
+   */
+  const modoTodasEmpresas = todasSelecionadas && empresas.length > 0;
+  const razaoSemApuracao = modoTodasEmpresas
+    ? 'Escolha uma empresa — o cofre é de uma empresa por vez'
+    : undefined;
+
+  /** Identidade da carga atual: muda quando a empresa muda. */
+  const chaveDaEmpresa = modoTodasEmpresas ? 'todas' : (empresaAtiva?.id ?? 'pessoal');
+
+  const carregar = useCallback(async () => {
     if (!user) return;
-    const syncFromDB = async () => {
-      // Documento é DA EMPRESA (princípio nº 2): a régua é a empresa ativa.
-      // Linha antiga sem empresa (legado privado) continua visível SÓ para o
-      // dono, exatamente como antes — compartilhar é decisão dele, na tela.
-      let q = supabase
-        .from('documentos')
-        .select('id, nome, validade, arquivo_path, empresa_id, user_id');
-      q = empresaAtiva
-        ? q.or(`empresa_id.eq.${empresaAtiva.id},and(user_id.eq.${user.id},empresa_id.is.null)`)
-        : q.eq('user_id', user.id);
-      const { data: dataRaw } = await q;
-      if (!dataRaw) return;
-      // `empresa_id` nasce na migration 20260903000002; o types.ts gerado
-      // ainda não a conhece — tipagem local, como nas demais colunas novas.
-      const data = dataRaw as unknown as Array<{
-        id: string; nome: string; validade: string | null;
-        arquivo_path: string | null; empresa_id: string | null; user_id: string;
-      }>;
-      setDocumentos(
-        checklistDocumentos.map((doc) => {
-          // A linha da empresa vence a linha privada de mesmo nome.
-          const match = data.find((d) => d.nome === doc.nome && d.empresa_id)
-            ?? data.find((d) => d.nome === doc.nome);
-          if (!match) {
-            return { ...doc, status: 'ausente' as DocStatus, validade: undefined, arquivo: undefined, storagePath: undefined };
-          }
+    if (modoTodasEmpresas) {
+      // Nada a consultar: sem empresa definida não existe cofre. Zerar a lista
+      // aqui evita mostrar o acervo da empresa anterior sob o aviso.
+      setLinhas([]);
+      setErro(null);
+      setCarregando(false);
+      return;
+    }
 
-          const dias = match.validade ? diasAteVencer(match.validade) : null;
-          const status: DocStatus = dias !== null && dias < 0 ? 'vencido' : 'ok';
+    // Guarda de requisição: a resposta da empresa ANTERIOR pode chegar depois
+    // da troca. Sem abortar, os documentos da empresa A apareciam listados sob
+    // o nome da empresa B — e nada na tela denunciava a troca.
+    controleDeCarga.current?.abort();
+    const controle = new AbortController();
+    controleDeCarga.current = controle;
 
-          return {
-            ...doc,
-            status,
-            validade: match.validade || undefined,
-            arquivo: match.arquivo_path || undefined,
-            storagePath: match.arquivo_path || undefined,
-            dbId: match.id,
-            legadoPrivado: !match.empresa_id,
-          };
-        })
-      );
-    };
-    syncFromDB();
+    setCarregando(true);
+    setErro(null);
 
-    const channel = supabase
+    // Documento é DA EMPRESA (princípio nº 2): a régua é a empresa ativa.
+    // Linha antiga sem empresa (legado privado) continua visível SÓ para o
+    // dono — compartilhar é decisão dele, na tela.
+    let consulta = supabase
+      .from('documentos')
+      .select('id, nome, validade, arquivo_path, empresa_id, user_id, tamanho_bytes, created_at, updated_at, descricao');
+    consulta = empresaAtiva
+      ? consulta.or(`empresa_id.eq.${empresaAtiva.id},and(user_id.eq.${user.id},empresa_id.is.null)`)
+      : consulta.eq('user_id', user.id);
+
+    const { data, error } = await consulta.abortSignal(controle.signal);
+    if (controle.signal.aborted) return;
+
+    if (error) {
+      // Princípio 3: mensagem real do banco e caminho de volta. Nunca trocar o
+      // erro por dado demonstrativo — cofre falso é pior que cofre ilegível.
+      setErro(error.message);
+      setCarregando(false);
+      return;
+    }
+
+    // `empresa_id` nasce na migration 20260903000002; o `types.ts` gerado ainda
+    // não a conhece — tipagem local, como nas demais colunas novas.
+    setLinhas((data ?? []) as unknown as LinhaGravada[]);
+    setCarregando(false);
+  }, [user, empresaAtiva, modoTodasEmpresas]);
+
+  useEffect(() => {
+    carregar();
+    return () => controleDeCarga.current?.abort();
+  }, [carregar]);
+
+  /* Na troca de empresa, a seleção e o painel morrem: o documento aberto
+     pertencia ao cofre anterior, e manter o painel sobre ele mostraria dados de
+     uma empresa enquanto a lista já é de outra. Os FILTROS sobrevivem de
+     propósito — quem estava caçando vencidos continua caçando vencidos. */
+  useEffect(() => {
+    setSelecionadoNome(null);
+  }, [chaveDaEmpresa]);
+
+  /* Realtime nos DOIS canais, preservado: o anexo do colega tem de aparecer
+     aqui sem F5 (é o ponto da conversão para empresa), e a linha pessoal
+     legada continua sendo do usuário. */
+  useEffect(() => {
+    if (!user || modoTodasEmpresas) return;
+    const canal = supabase
       .channel(`documentos-realtime-${empresaAtiva?.id ?? user.id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'documentos', filter: `user_id=eq.${user.id}` }, () => syncFromDB());
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'documentos', filter: `user_id=eq.${user.id}` }, () => carregar());
     if (empresaAtiva) {
-      // O anexo do colega tem de aparecer aqui sem F5 — é o ponto da conversão.
-      channel.on('postgres_changes', { event: '*', schema: 'public', table: 'documentos', filter: `empresa_id=eq.${empresaAtiva.id}` }, () => syncFromDB());
+      canal.on('postgres_changes', { event: '*', schema: 'public', table: 'documentos', filter: `empresa_id=eq.${empresaAtiva.id}` }, () => carregar());
     }
-    channel.subscribe();
+    canal.subscribe();
+    return () => { supabase.removeChannel(canal); };
+  }, [user, empresaAtiva, modoTodasEmpresas, carregar]);
 
-    return () => { supabase.removeChannel(channel); };
-  }, [user, empresaAtiva]);
+  const itens = useMemo(() => montarItensDoCofre(linhas), [linhas]);
 
-  const categorias = [...new Set(documentos.map((d) => d.categoria))];
-  const filtered = filter === 'todos' ? documentos : documentos.filter((d) => d.status === filter);
-  const okCount = documentos.filter((d) => d.status === 'ok').length;
-  const progress = Math.round((okCount / documentos.length) * 100);
+  const contagem = useMemo(
+    () => contarCofre(itens.map((i) => i.situacao), VAGAS_PREVISTAS.length),
+    [itens],
+  );
 
-  const handleUploadClick = (globalIdx: number) => {
-    pendingUploadIdx.current = globalIdx;
-    fileInputRef.current?.click();
+  const termo = busca.trim().toLowerCase();
+
+  const filtrados = useMemo(() => itens.filter((i) => {
+    if (termo && !i.nome.toLowerCase().includes(termo)) return false;
+    if (filtroCategoria !== 'todas' && i.categoria !== filtroCategoria) return false;
+    if (!casaComFiltro(i.situacao, filtroSituacao)) return false;
+    if (validadeDe || validadeAte) {
+      // Recorte por PERÍODO só alcança quem tem data. Item sem validade fica de
+      // fora — e o rodapé da tabela diz isso, para a ausência não parecer sumiço.
+      if (!i.validade) return false;
+      const dia = i.validade.slice(0, 10);
+      if (validadeDe && dia < validadeDe) return false;
+      if (validadeAte && dia > validadeAte) return false;
+    }
+    return true;
+  }), [itens, termo, filtroCategoria, filtroSituacao, validadeDe, validadeAte]);
+
+  const ordenados = useMemo(() => {
+    const extrair = CHAVE_ORDENACAO[ordenacao.chave];
+    if (!extrair) return filtrados;
+    const sinal = ordenacao.direcao === 'asc' ? 1 : -1;
+    return [...filtrados].sort((a, b) => {
+      const va = extrair(a);
+      const vb = extrair(b);
+      if (va === vb) return a.nome.localeCompare(b.nome);
+      return va > vb ? sinal : -sinal;
+    });
+  }, [filtrados, ordenacao]);
+
+  const selecionado = useMemo(
+    () => itens.find((i) => i.nome === selecionadoNome) ?? null,
+    [itens, selecionadoNome],
+  );
+
+  const ausentes = useMemo(() => itens.filter((i) => i.situacao === 'ausente'), [itens]);
+
+  const filtrosAplicados =
+    (termo ? 1 : 0) +
+    (filtroCategoria !== 'todas' ? 1 : 0) +
+    (filtroSituacao !== 'todas' ? 1 : 0) +
+    (validadeDe || validadeAte ? 1 : 0);
+
+  const limparFiltros = () => {
+    setBusca('');
+    setFiltroCategoria('todas');
+    setFiltroSituacao('todas');
+    setValidadeDe('');
+    setValidadeAte('');
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    const idx = pendingUploadIdx.current;
-    if (!file || idx === null || !user) return;
+  const alternarOrdenacao = (chave: string) => {
+    setOrdenacao((atual) => (atual.chave === chave
+      ? { chave, direcao: atual.direcao === 'asc' ? 'desc' : 'asc' }
+      : { chave, direcao: 'asc' }));
+  };
 
-    const allowed = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'];
-    if (!allowed.includes(file.type)) {
-      toast.error('Formato não suportado. Use PDF, PNG, JPG ou WEBP.');
-      e.target.value = '';
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error('Arquivo muito grande. Máximo 10MB.');
-      e.target.value = '';
-      return;
-    }
+  // ── Envio de arquivo ──────────────────────────────────────────────────────
 
-    // Open validade dialog before uploading
-    setPendingFile(file);
-    setPendingValidadeDate(documentos[idx].validade ? new Date(documentos[idx].validade!) : undefined);
-    setPendingManualDate(documentos[idx].validade || '');
-    setValidadeDialogOpen(true);
+  const escolherArquivo = (item: ItemDoCofre) => {
+    vagaPendente.current = item;
+    inputArquivo.current?.click();
+  };
+
+  const aoEscolherArquivo = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const arquivo = e.target.files?.[0];
+    const item = vagaPendente.current;
     e.target.value = '';
+    if (!arquivo || !item || !user) return;
+
+    if (!TIPOS_ACEITOS.includes(arquivo.type)) {
+      toast.error('Formato não suportado. Use PDF, PNG, JPG ou WEBP.');
+      return;
+    }
+    if (arquivo.size > TAMANHO_MAXIMO) {
+      toast.error('Arquivo muito grande. Máximo 10MB.');
+      return;
+    }
+    setDialogo({ item, arquivo });
   };
 
-  const handleConfirmUpload = async (skipValidade = false) => {
-    const file = pendingFile;
-    const idx = pendingUploadIdx.current;
-    if (!file || idx === null || !user) return;
+  const enviarArquivo = async (item: ItemDoCofre, arquivo: File, validade?: string) => {
+    if (!user) return;
+    setDialogo(null);
+    setEnviandoNome(item.nome);
 
-    setValidadeDialogOpen(false);
-    setUploadingIdx(idx);
-
-    const slug = documentos[idx].nome.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 60);
-    const ext = file.name.split('.').pop();
+    const slug = item.nome.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 60);
+    const ext = arquivo.name.split('.').pop();
     // Arquivo da empresa vive em empresa/<id>/… — é o que as policies do
-    // storage liberam para os colegas. Sem empresa ativa, cai no caminho
-    // pessoal antigo.
-    const path = empresaAtiva
+    // storage liberam para os colegas. Sem empresa ativa, o caminho pessoal.
+    const caminho = empresaAtiva
       ? `empresa/${empresaAtiva.id}/${slug}.${ext}`
       : `${user.id}/${slug}.${ext}`;
 
-    // Remove o arquivo anterior. Pode falhar quando ele mora na pasta pessoal
-    // de OUTRO colega (legado) — aí só o dono original alcança; o arquivo
-    // antigo fica órfão no bucket, o que é aceitável: a linha passa a apontar
-    // para o novo.
-    if (documentos[idx].storagePath && documentos[idx].storagePath !== path) {
-      await supabase.storage.from('documentos-habilitacao').remove([documentos[idx].storagePath!]);
+    // Remove o arquivo anterior. Pode falhar quando ele mora na pasta pessoal de
+    // OUTRO colega (legado) — aí o antigo fica órfão no bucket, o que é
+    // aceitável: a linha passa a apontar para o novo.
+    if (item.arquivoPath && item.arquivoPath !== caminho) {
+      await supabase.storage.from('documentos-habilitacao').remove([item.arquivoPath]);
     }
 
-    const { error } = await supabase.storage.from('documentos-habilitacao').upload(path, file, { upsert: true });
-    if (error) {
-      toast.error('Erro ao enviar: ' + error.message);
-      setUploadingIdx(null);
-      setPendingFile(null);
+    const { error: erroUpload } = await supabase.storage
+      .from('documentos-habilitacao')
+      .upload(caminho, arquivo, { upsert: true });
+    if (erroUpload) {
+      toast.error('Erro ao enviar: ' + erroUpload.message);
+      setEnviandoNome(null);
       return;
     }
 
-    // Determine validade
-    let validadeStr: string | undefined;
-    if (!skipValidade) {
-      if (pendingValidadeDate) {
-        validadeStr = format(pendingValidadeDate, 'yyyy-MM-dd');
-      } else if (pendingManualDate) {
-        validadeStr = pendingManualDate;
-      }
-    }
+    if (item.dbId) {
+      /* SUBSTITUIR PRESERVA O ID: é UPDATE na linha existente, nunca
+         apagar-e-recriar. O delete é do dono/Admin, e renovar a CRF vencida é
+         exatamente a rotina que o colaborador comum precisa fazer.
 
-    // Calculate new status
-    let newStatus: DocStatus = 'ok';
-    if (validadeStr) {
-      const valDate = new Date(validadeStr);
-      if (valDate < new Date()) newStatus = 'vencido';
-    }
-
-    // Renovar é UPDATE na linha existente (o RLS permite a qualquer membro);
-    // apagar-e-recriar exigiria delete, que é do dono/admin — e renovar a CRF
-    // vencida é exatamente a rotina que o colaborador precisa fazer.
-    const linhaExistente = documentos[idx].dbId;
-    if (linhaExistente) {
-      const { data: atualizadas, error: updateDbError } = await supabase
+         ⚠️ `empresa_id` aqui tinha um defeito silencioso: gravava
+         `empresaAtiva?.id ?? null` e, SEM empresa ativa, escrevia NULL numa
+         linha que já era compartilhada — a equipe inteira perdia o documento
+         de vista, sem erro, sem aviso, num gesto que a pessoa fez para
+         ATUALIZAR o arquivo. Agora, na falta de empresa ativa, o valor gravado
+         é o que já estava lá. Com empresa ativa, a promoção da linha legada
+         continua (o documento renovado nasce compartilhado). */
+      const { data: atualizadas, error: erroUpdate } = await supabase
         .from('documentos')
         .update({
-          arquivo_path: path,
-          validade: validadeStr ?? null,
-          tamanho_bytes: file.size,
-          // Renovação com empresa ativa promove a linha legada: o documento
-          // novo já nasce compartilhado.
-          empresa_id: empresaAtiva?.id ?? null,
+          arquivo_path: caminho,
+          validade: validade ?? null,
+          tamanho_bytes: arquivo.size,
+          empresa_id: empresaAtiva?.id ?? item.empresaIdGravado ?? null,
         } as never)
-        .eq('id', linhaExistente)
+        .eq('id', item.dbId)
         .select('id');
-      if (updateDbError || !atualizadas?.length) {
-        toast.error('Erro ao atualizar cadastro do documento: ' + (updateDbError?.message ?? 'sem permissão para esta linha'));
-        setUploadingIdx(null);
-        setPendingFile(null);
+      if (erroUpdate || !atualizadas?.length) {
+        toast.error('Erro ao atualizar cadastro do documento: '
+          + (erroUpdate?.message ?? 'sem permissão para esta linha'));
+        setEnviandoNome(null);
         return;
       }
     } else {
-      const { error: insertDbError } = await supabase
+      const { error: erroInsert } = await supabase
         .from('documentos')
         .insert({
           user_id: user.id,
           empresa_id: empresaAtiva?.id ?? null,
-          nome: documentos[idx].nome,
-          tipo: documentos[idx].categoria,
-          descricao: `${documentos[idx].categoria} • ${documentos[idx].artigo}`,
-          arquivo_path: path,
-          validade: validadeStr,
-          tamanho_bytes: file.size,
+          nome: item.nome,
+          tipo: item.categoria,
+          descricao: `${item.categoria} • ${item.artigo}`,
+          arquivo_path: caminho,
+          validade,
+          tamanho_bytes: arquivo.size,
         } as never);
-
-      if (insertDbError) {
-        toast.error('Erro ao salvar metadados do documento: ' + insertDbError.message);
-        setUploadingIdx(null);
-        setPendingFile(null);
+      if (erroInsert) {
+        toast.error('Erro ao salvar metadados do documento: ' + erroInsert.message);
+        setEnviandoNome(null);
         return;
       }
     }
 
-    setDocumentos(prev => prev.map((d, i) =>
-      i === idx ? {
-        ...d,
-        arquivo: file.name,
-        storagePath: path,
-        status: newStatus,
-        validade: validadeStr || d.validade
-      } : d
-    ));
-
-    toast.success(`"${documentos[idx].nome}" enviado com sucesso!`);
-    setUploadingIdx(null);
-    setPendingFile(null);
-    setPendingValidadeDate(undefined);
-    setPendingManualDate('');
+    toast.success(`"${item.nome}" enviado com sucesso!`);
+    setEnviandoNome(null);
+    await carregar();
   };
 
-  const handleAIAnalysis = async () => {
-    const idx = pendingUploadIdx.current;
-    if (idx === null || !pendingFile) return;
-
-    setAnalyzingIdx(idx);
-    
-    try {
-      const { images, supportText } = await buildDocumentAnalysisPayload(pendingFile);
-      const localSuggestion = extrairValidadeDoTexto(supportText);
-
-      if (localSuggestion) {
-        setPendingValidadeDate(localSuggestion);
-        setPendingManualDate(format(localSuggestion, 'yyyy-MM-dd'));
-        toast.success(`Validade identificada: ${format(localSuggestion, 'dd/MM/yyyy')}`);
-        return;
-      }
-
-      if (images.length === 0 && supportText.length < 10) {
-        toast.error('Não foi possível preparar o arquivo para análise automática.');
-        return;
-      }
-
-      const { data, error } = await supabase.functions.invoke('document-vision-extract', {
-        body: {
-          fileName: documentos[idx].nome,
-          images,
-          text: supportText,
-          mode: 'document_validity',
-        },
-      });
-
-      if (error) throw error;
-
-      const aiSuggestion = typeof data?.validityDate === 'string'
-        ? extrairValidadeDoTexto(data.validityDate)
-        : null;
-
-      const fallbackText = [
-        typeof data?.evidenceText === 'string' ? data.evidenceText : '',
-        typeof data?.text === 'string' ? data.text : '',
-        supportText,
-      ].filter(Boolean).join('\n');
-
-      const foundDate = aiSuggestion ?? extrairValidadeDoTexto(fallbackText);
-
-      if (foundDate) {
-        setPendingValidadeDate(foundDate);
-        setPendingManualDate(format(foundDate, 'yyyy-MM-dd'));
-        toast.success(`Validade identificada: ${format(foundDate, 'dd/MM/yyyy')}`);
-      } else {
-        toast.info('Não identifiquei uma data de validade neste documento.');
-      }
-    } catch (error) {
-      console.error(error);
-      toast.error('Erro na análise por IA. Informe a validade manualmente.');
-    } finally {
-      setAnalyzingIdx(null);
+  /** Editar metadados = editar a VALIDADE, sem tocar no arquivo. */
+  const salvarValidade = async (item: ItemDoCofre, validade?: string) => {
+    if (!item.dbId) return;
+    setSalvandoValidade(true);
+    const { data: ok, error } = await supabase
+      .from('documentos')
+      // `empresa_id` fica FORA do update de propósito: editar uma data não é
+      // decisão de compartilhamento, e mexer nela aqui reabriria por outra
+      // porta o descompartilhamento silencioso corrigido acima.
+      .update({ validade: validade ?? null } as never)
+      .eq('id', item.dbId)
+      .select('id');
+    setSalvandoValidade(false);
+    if (error || !ok?.length) {
+      toast.error('Não foi possível salvar a validade: ' + (error?.message ?? 'sem permissão para esta linha'));
+      return;
     }
+    setDialogo(null);
+    toast.success('Validade atualizada.');
+    await carregar();
   };
 
-  const handleVisualizar = async (globalIdx: number) => {
-    const doc = documentos[globalIdx];
-    if (!doc.storagePath) { toast.error('Nenhum arquivo para visualizar.'); return; }
+  const visualizar = async (item: ItemDoCofre) => {
+    if (!item.arquivoPath) { toast.error('Nenhum arquivo para visualizar.'); return; }
     const { data, error } = await supabase.storage
-      .from('documentos-habilitacao').createSignedUrl(doc.storagePath, 600);
+      .from('documentos-habilitacao').createSignedUrl(item.arquivoPath, 600);
     if (error || !data?.signedUrl) {
       toast.error('Erro ao abrir: ' + (error?.message ?? 'arquivo não encontrado'));
       return;
     }
-    setVisualizando({ nome: doc.nome, url: data.signedUrl });
+    setVisualizando({ nome: item.nome, url: data.signedUrl });
   };
 
-  const handleDownload = async (globalIdx: number) => {
-    const doc = documentos[globalIdx];
-    if (!doc.storagePath || !user) {
-      toast.error('Nenhum arquivo disponível para download.');
-      return;
-    }
-
-    const { data, error } = await supabase.storage.from('documentos-habilitacao').download(doc.storagePath);
+  const baixar = async (item: ItemDoCofre) => {
+    if (!item.arquivoPath) { toast.error('Nenhum arquivo disponível para download.'); return; }
+    const { data, error } = await supabase.storage
+      .from('documentos-habilitacao').download(item.arquivoPath);
     if (error || !data) {
       toast.error('Erro ao baixar: ' + (error?.message ?? 'arquivo não encontrado'));
       return;
     }
-
     const url = URL.createObjectURL(data);
     const a = document.createElement('a');
     a.href = url;
-    a.download = doc.arquivo || 'documento';
+    a.download = nomeDoArquivo(item.arquivoPath);
     document.body.appendChild(a);
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
-    toast.success(`"${doc.nome}" baixado com sucesso!`);
+    toast.success(`"${item.nome}" baixado com sucesso!`);
   };
 
-  /** Linha anterior à conversão (só o dono vê): move o arquivo para a pasta
-   *  da empresa e grava o empresa_id — compartilhar é decisão de quem anexou,
-   *  nunca efeito de migration (princípio 7). */
-  const compartilharComEmpresa = async (globalIdx: number) => {
-    const doc = documentos[globalIdx];
-    if (!doc.dbId || !empresaAtiva || !user) return;
-    let novoPath = doc.storagePath;
-    if (doc.storagePath && doc.storagePath.startsWith(`${user.id}/`)) {
-      novoPath = `empresa/${empresaAtiva.id}/${doc.storagePath.split('/').pop()}`;
-      const { error: moveErr } = await supabase.storage
+  /** Linha anterior à conversão: move o arquivo e grava o `empresa_id`.
+   *  Compartilhar é decisão de quem anexou, nunca efeito de migration. */
+  const compartilhar = async (item: ItemDoCofre) => {
+    if (!item.dbId || !empresaAtiva || !user) return;
+    let novoCaminho = item.arquivoPath;
+    if (item.arquivoPath?.startsWith(`${user.id}/`)) {
+      novoCaminho = `empresa/${empresaAtiva.id}/${nomeDoArquivo(item.arquivoPath)}`;
+      const { error: erroMove } = await supabase.storage
         .from('documentos-habilitacao')
-        .move(doc.storagePath, novoPath);
-      if (moveErr && !/already exists/i.test(moveErr.message)) {
-        toast.error('Não foi possível mover o arquivo: ' + moveErr.message);
+        .move(item.arquivoPath, novoCaminho);
+      if (erroMove && !/already exists/i.test(erroMove.message)) {
+        toast.error('Não foi possível mover o arquivo: ' + erroMove.message);
         return;
       }
     }
     const { data: ok, error } = await supabase
       .from('documentos')
-      .update({ empresa_id: empresaAtiva.id, arquivo_path: novoPath ?? null } as never)
-      .eq('id', doc.dbId)
+      .update({ empresa_id: empresaAtiva.id, arquivo_path: novoCaminho ?? null } as never)
+      .eq('id', item.dbId)
       .select('id');
     if (error || !ok?.length) {
       toast.error('Não foi possível compartilhar: ' + (error?.message ?? 'linha não encontrada'));
       return;
     }
     toast.success(`Agora toda a equipe de ${empresaAtiva.nome_fantasia ?? empresaAtiva.razao_social} vê este documento.`);
-    setDocumentos(prev => prev.map((d, i) =>
-      i === globalIdx ? { ...d, legadoPrivado: false, storagePath: novoPath, arquivo: novoPath } : d));
+    await carregar();
   };
 
-  const handleRemove = async (globalIdx: number) => {
+  const excluir = async (item: ItemDoCofre) => {
+    setAExcluir(null);
     if (!user) return;
-    const doc = documentos[globalIdx];
+    setRemovendoNome(item.nome);
 
-    setRemovingIdx(globalIdx);
-
-    // A LINHA sai primeiro: é nela que o RLS decide (dono ou admin da
-    // empresa). Na ordem inversa, um membro sem permissão perderia o ARQUIVO
-    // e a linha ficaria apontando para o nada.
-    if (doc.dbId) {
-      const { data: removidas, error: deleteDbError } = await supabase
-        .from('documentos')
-        .delete()
-        .eq('id', doc.dbId)
-        .select('id');
-      if (deleteDbError || !removidas?.length) {
-        toast.error(deleteDbError
-          ? 'Erro ao remover cadastro: ' + deleteDbError.message
+    // A LINHA sai primeiro: é nela que o RLS decide (dono ou Admin da empresa).
+    // Na ordem inversa, um membro sem permissão perderia o ARQUIVO e a linha
+    // ficaria apontando para o nada.
+    if (item.dbId) {
+      const { data: removidas, error } = await supabase
+        .from('documentos').delete().eq('id', item.dbId).select('id');
+      if (error || !removidas?.length) {
+        toast.error(error
+          ? 'Erro ao remover cadastro: ' + error.message
           : 'Documento da empresa: só o dono do anexo ou o Admin podem remover.');
-        setRemovingIdx(null);
+        setRemovendoNome(null);
         return;
       }
     }
-
-    if (doc.storagePath) {
-      // Arquivo em pasta pessoal de outro colega (legado) pode ficar órfão —
-      // aceitável: o registro já se foi e nada mais o alcança pela tela.
-      await supabase.storage.from('documentos-habilitacao').remove([doc.storagePath]);
+    if (item.arquivoPath) {
+      await supabase.storage.from('documentos-habilitacao').remove([item.arquivoPath]);
     }
 
-    setDocumentos(prev => prev.map((d, i) =>
-      i === globalIdx ? { ...d, arquivo: undefined, storagePath: undefined, validade: undefined, status: 'ausente' as DocStatus } : d
-    ));
-
-    toast.success(`"${doc.nome}" removido.`);
-    setRemovingIdx(null);
+    toast.success(`"${item.nome}" removido.`);
+    setRemovendoNome(null);
+    await carregar();
   };
 
-  const getGlobalIndex = (doc: Documento) => documentos.findIndex(d => d.nome === doc.nome);
+  /* O painel leva à trilha de auditoria; o filtro por documento é do próprio
+     Histórico, que tem busca por nome. Levar para lá já filtrado exigiria um
+     segundo parâmetro na URL, e a aba ainda é restrita ao Admin — o botão só
+     aparece para quem pode ver. */
+  const abrirHistorico = () => definirAba('historico');
+
+  // ── Composição ────────────────────────────────────────────────────────────
+
+  const abas: AbaGestao[] = [
+    { valor: 'documentos', rotulo: 'Documentos' },
+    { valor: 'atestados', rotulo: 'Atestados' },
+    { valor: 'merge', rotulo: 'Unir arquivos' },
+    { valor: 'alertas', rotulo: 'Alertas' },
+    // Trilha de auditoria: só o Admin da empresa. A aba não aparece para os
+    // demais, e o acesso por link direto cai no "Acesso restrito" do próprio
+    // componente — sumir sem explicação seria falha silenciosa.
+    ...(isCompanyAdmin ? [{ valor: 'historico', rotulo: 'Histórico' }] : []),
+  ];
+
+  const colunas: ColunaGestao<ItemDoCofre>[] = [
+    {
+      chave: 'documento',
+      titulo: 'Documento',
+      prioridade: 'sempre',
+      ordenavel: true,
+      largura: '34%',
+      render: (i) => (
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <span className="font-medium text-foreground">{i.nome}</span>
+          <span className="g-meta flex flex-wrap items-center gap-x-2 text-muted-foreground">
+            {i.artigo}
+            {i.arquivoPath && (
+              <span className="truncate">· {nomeDoArquivo(i.arquivoPath)}</span>
+            )}
+            {i.legadoPrivado && <Badge variant="muted">Só você vê</Badge>}
+          </span>
+        </div>
+      ),
+    },
+    {
+      chave: 'categoria',
+      titulo: 'Categoria',
+      prioridade: 'desktop',
+      ordenavel: true,
+      render: (i) => <span className="line-clamp-2">{i.categoria}</span>,
+    },
+    {
+      chave: 'validade',
+      titulo: 'Validade',
+      prioridade: 'sempre',
+      ordenavel: true,
+      largura: '11rem',
+      render: (i) => <ValidadeDoDocumento validade={i.validade} situacao={i.situacao} />,
+    },
+    {
+      chave: 'situacao',
+      titulo: 'Situação',
+      prioridade: 'sempre',
+      ordenavel: true,
+      largura: '13rem',
+      render: (i) => <SeloDocumento situacao={i.situacao} />,
+    },
+    {
+      chave: 'acoes',
+      titulo: <span className="sr-only">Ações</span>,
+      alinhamento: 'direita',
+      prioridade: 'desktop',
+      largura: '11rem',
+      // `stopPropagation` no contêiner: clicar num botão de ação não pode também
+      // selecionar a linha e abrir o painel por cima do que a pessoa pediu.
+      render: (i) => (
+        <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+          {i.arquivoPath ? (
+            <>
+              <Button
+                size="sm" variant="ghost" onClick={() => visualizar(i)}
+                title="Visualizar em tela" aria-label={`Visualizar ${i.nome} em tela`}
+              >
+                <Eye aria-hidden="true" />
+              </Button>
+              <Button
+                size="sm" variant="ghost" onClick={() => baixar(i)}
+                title="Baixar arquivo" aria-label={`Baixar o arquivo de ${i.nome}`}
+              >
+                <Download aria-hidden="true" />
+              </Button>
+            </>
+          ) : (
+            <Button
+              size="sm" variant="outline"
+              onClick={() => escolherArquivo(i)}
+              disabled={enviandoNome === i.nome}
+              aria-label={`Anexar arquivo de ${i.nome}`}
+            >
+              {enviandoNome === i.nome
+                ? <Loader2 className="animate-spin" aria-hidden="true" />
+                : <Upload aria-hidden="true" />}
+              Anexar
+            </Button>
+          )}
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="ghost" aria-label={`Mais ações para ${i.nome}`}>
+                <MoreHorizontal aria-hidden="true" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={() => escolherArquivo(i)}>
+                {i.arquivoPath
+                  ? <><Repeat aria-hidden="true" className="mr-2 h-4 w-4" /> Substituir arquivo</>
+                  : <><Upload aria-hidden="true" className="mr-2 h-4 w-4" /> Anexar documento</>}
+              </DropdownMenuItem>
+              {i.dbId && i.vencePorNatureza && (
+                <DropdownMenuItem onSelect={() => setDialogo({ item: i, arquivo: null })}>
+                  <PencilLine aria-hidden="true" className="mr-2 h-4 w-4" /> Editar validade
+                </DropdownMenuItem>
+              )}
+              {i.legadoPrivado && empresaAtiva && (
+                <DropdownMenuItem onSelect={() => compartilhar(i)}>
+                  <Users aria-hidden="true" className="mr-2 h-4 w-4" /> Compartilhar com a equipe
+                </DropdownMenuItem>
+              )}
+              {i.arquivoPath && (
+                <>
+                  <DropdownMenuSeparator />
+                  {/* Excluir mora no menu secundário e SEMPRE pede confirmação:
+                      é a única ação desta tela que não tem desfazer. */}
+                  <DropdownMenuItem
+                    className="text-destructive-ink focus:text-destructive-ink"
+                    onSelect={() => setAExcluir(i)}
+                  >
+                    <Trash2 aria-hidden="true" className="mr-2 h-4 w-4" /> Excluir
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      ),
+    },
+  ];
+
+  const painel = selecionado ? (
+    <PainelDocumento
+      item={selecionado}
+      ocupado={
+        enviandoNome === selecionado.nome ? 'enviando'
+          : removendoNome === selecionado.nome ? 'removendo'
+            : null
+      }
+      podeVerHistorico={isCompanyAdmin}
+      nomeDaEmpresa={empresaAtiva?.nome_fantasia ?? empresaAtiva?.razao_social ?? null}
+      aoVisualizar={() => visualizar(selecionado)}
+      aoBaixar={() => baixar(selecionado)}
+      aoAnexar={() => escolherArquivo(selecionado)}
+      aoEditarValidade={() => setDialogo({ item: selecionado, arquivo: null })}
+      aoExcluir={() => setAExcluir(selecionado)}
+      aoCompartilhar={() => compartilhar(selecionado)}
+      aoAbrirHistorico={abrirHistorico}
+    />
+  ) : null;
 
   return (
     <AppLayout>
-      <div className="space-y-6">
+      <div className="flex flex-col gap-4">
         {/* O cofre é alcançado a partir do checklist de habilitação de um
-            processo — daqui o usuário volta para a pasta de onde veio. */}
+            processo — daqui a pessoa volta para a pasta de onde veio. */}
         <ProcessoContextoBanner />
-        {/* Título, descrição, ícone e trilha vêm do registro
-            `lib/navegacao/paginas.ts` pela própria rota — a tela não repete o
-            que já está padronizado.
 
-            Sem `acoes`, de propósito: o registro declara `acao: 'Enviar
-            documento'` para /documentos, mas aqui não existe envio avulso — o
-            arquivo entra POR VAGA do checklist ("Enviar"/"Substituir" na linha),
-            e o input escondido só sabe o destino porque a linha clicada gravou
-            `pendingUploadIdx`. Um botão global teria de escolher a vaga sozinho,
-            o que é adivinhação. A divergência está no registro, não na tela, e
-            foi reportada para o dono do registro decidir (remover a ação, como
-            /assessoria-cadastral já faz, ou trocá-la por uma que exista de
-            verdade no topo). */}
+        {/* Título, descrição, ícone e trilha vêm do registro
+            `lib/navegacao/paginas.ts` pela própria rota. Sem `acoes`: o envio é
+            POR VAGA, e a ação "Adicionar documento" vive na barra de
+            ferramentas da aba, onde ela sabe escolher a vaga de destino. */}
         <CabecalhoPagina />
 
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-4">
-            <TabsTrigger value="documentos">
-              <FolderOpen className="w-4 h-4 mr-2" aria-hidden="true" /> Documentos
-            </TabsTrigger>
-            <TabsTrigger value="merge">
-              <FileArchive className="w-4 h-4 mr-2" aria-hidden="true" /> Unir arquivos
-            </TabsTrigger>
-          </TabsList>
+        <AbasGestao abas={abas} valor={aba} aoMudar={definirAba} />
 
-          <TabsContent value="documentos" className="space-y-4">
-            <AlertaVencimentoDocumentos documentos={documentos} />
-            <AlertasVencimentoEmail />
+        {aba === 'documentos' && (
+          <div className="flex flex-col gap-4">
+            {erro && (
+              <AvisoDeFalha aoTentarNovamente={carregar}>
+                Não foi possível carregar os documentos: {erro}
+              </AvisoDeFalha>
+            )}
 
-            {/* REBRAND — o `dc-conf` do protótipo, com uma diferença deliberada.
+            <ConformidadeDocumental contagem={contagem} indisponivel={razaoSemApuracao} />
 
-                Era uma barra de progresso ÚNICA: "72%" e um traço azul. Mas a
-                pergunta de quem abre esta tela não é "quanto está pronto" — é
-                "consigo me habilitar hoje". E o que responde isso não é o
-                número, é a COMPOSIÇÃO do que falta: dez pendências ausentes se
-                resolvem pedindo os documentos; UMA vencida barra a empresa no
-                mesmo dia.
-
-                Então a barra virou segmentada: regular, vencido e ausente lado
-                a lado, cada faixa proporcional. A leitura passa a ser
-                instantânea e não depende de ler a legenda embaixo.
-
-                O número grande também mudou de cor conforme a saúde. Verde
-                ganha o direito de dizer "pode ir"; enquanto houver vencido, ele
-                fica vermelho mesmo com 90% de conformidade — porque 90% com uma
-                certidão vencida é inabilitação. */}
-            {(() => {
-              const conta = (s: DocStatus) => documentos.filter((d) => d.status === s).length;
-              const nOk = conta('ok');
-              const nVenc = conta('vencido');
-              const nAus = conta('ausente');
-              const total = documentos.length || 1;
-              const pct = (n: number) => (n / total) * 100;
-
-              // A faixa usa a MESMA tinta do selo da linha (statusConfig):
-              // ausente é âmbar nos dois lugares, senão a barra e o selo
-              // contariam a mesma pendência com cores diferentes.
-              const faixas: { s: DocStatus; n: number; cor: string }[] = [
-                { s: 'ok', n: nOk, cor: 'bg-success' },
-                { s: 'vencido', n: nVenc, cor: 'bg-destructive' },
-                { s: 'ausente', n: nAus, cor: 'bg-warning' },
-              ];
-
-              const tomDoNumero = nVenc > 0
-                ? 'text-destructive-ink'
-                : nAus > 0
-                  ? 'text-warning-ink'
-                  : 'text-success-ink';
-
-              return (
-                <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-                  <div className="flex flex-wrap items-end justify-between gap-4 mb-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-muted-foreground">Conformidade geral</p>
-                      <p className={`mt-1 text-[2rem] leading-10 font-bold tabular-nums ${tomDoNumero}`}>
-                        {progress}%
-                      </p>
-                    </div>
-                    <p className="text-sm text-right text-muted-foreground">
-                      {nVenc > 0 ? (
-                        <span className="font-medium text-destructive-ink">
-                          {nVenc} {nVenc === 1 ? 'documento vencido' : 'documentos vencidos'} — impedem a habilitação
-                        </span>
-                      ) : nAus > 0 ? (
-                        <>Falta{nAus > 1 ? 'm' : ''} {nAus} {nAus === 1 ? 'documento' : 'documentos'} para o dossiê ficar completo</>
-                      ) : (
-                        <span className="font-medium text-success-ink">Dossiê completo e dentro da validade</span>
-                      )}
-                    </p>
-                  </div>
-
-                  {/* Barra segmentada. O `gap` de 2px entre as faixas é o que
-                      separa "duas fatias" de "uma fatia com sombra". */}
-                  <div className="flex gap-0.5 h-2.5 rounded-full overflow-hidden bg-muted">
-                    {faixas.filter((f) => f.n > 0).map((f) => (
-                      <div
-                        key={f.s}
-                        className={`${f.cor} transition-[width] duration-500 motion-reduce:transition-none`}
-                        style={{ width: `${pct(f.n)}%` }}
-                        title={`${f.n} ${statusConfig[f.s].label}`}
-                      />
-                    ))}
-                  </div>
-
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    {faixas.map(({ s, n, cor }) => {
-                      const cfg = statusConfig[s];
-                      const ativo = filter === s;
-                      return (
-                        <button
-                          key={s}
-                          onClick={() => setFilter(ativo ? 'todos' : s)}
-                          aria-pressed={ativo}
-                          className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-                            ativo
-                              ? 'border-primary bg-primary-tint font-semibold text-foreground'
-                              : 'border-border text-muted-foreground hover:bg-muted'
-                          }`}
-                        >
-                          <span className={`w-2 h-2 rounded-sm ${cor}`} aria-hidden="true" />
-                          <span className="tabular-nums font-medium text-foreground">{n}</span>
-                          {cfg.label}
-                        </button>
-                      );
-                    })}
-                    {filter !== 'todos' && (
-                      <Button variant="ghost" size="sm" onClick={() => setFilter('todos')}>
-                        Limpar filtro
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* Docs by Category */}
-            <div className="space-y-4">
-              {categorias.map((cat) => {
-                const docs = filtered.filter((d) => d.categoria === cat);
-                if (docs.length === 0) return null;
-                return (
-                  <div key={cat} className="rounded-lg border border-border bg-card shadow-sm">
-                    {/* A pasta inteira se recolhe: quem veio tratar da regularidade
-                        fiscal não precisa rolar a habilitação jurídica antes.
-
-                        O cabeçalho ENVOLVE o botão, em vez de morar dentro dele
-                        (padrão de acordeão do WAI-ARIA). Título dentro de
-                        <button> some duas vezes: <button> só aceita conteúdo de
-                        frase, e `role=button` marca os filhos como
-                        apresentacionais — o leitor de tela anunciava o nome do
-                        botão e nenhum cabeçalho, deixando a lista de categorias
-                        fora do sumário da página. Envolvendo, o nível 3 volta ao
-                        sumário e a linha inteira continua clicável. */}
-                    <h3>
-                      <button
-                        type="button"
-                        onClick={() => alternarCategoria(cat)}
-                        aria-expanded={!categoriasRecolhidas[cat]}
-                        title={categoriasRecolhidas[cat] ? 'Abrir a lista' : 'Recolher a lista'}
-                        className="flex w-full items-center gap-3 px-6 py-3 border-b border-border text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-                      >
-                        <FolderOpen className="w-4 h-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                        <span className="text-lg font-semibold">{cat}</span>
-                        {categoriasRecolhidas[cat] && (
-                          <span className="text-sm text-muted-foreground">
-                            {docs.length} documento{docs.length > 1 ? 's' : ''}
-                          </span>
-                        )}
-                        <Badge variant="muted" className="ml-auto">
-                          {docs[0]?.artigo}
-                        </Badge>
-                        <IconeRecolher
-                          aberto={!categoriasRecolhidas[cat]}
-                          className="h-4 w-4 shrink-0 text-muted-foreground"
-                        />
-                      </button>
-                    </h3>
-                    <div className={`divide-y divide-border ${categoriasRecolhidas[cat] ? 'hidden' : ''}`}>
-                      {docs.map((doc) => {
-                        const cfg = statusConfig[doc.status];
-                        const Icon = cfg.icon;
-                        const globalIdx = getGlobalIndex(doc);
-                        const isUploading = uploadingIdx === globalIdx;
-                        const isRemoving = removingIdx === globalIdx;
-
-                        return (
-                          <div key={doc.nome} className="flex flex-wrap items-center justify-between gap-3 px-6 py-3">
-                            <div className="flex min-w-0 items-center gap-3">
-                              <Icon className={`w-4 h-4 shrink-0 ${cfg.color}`} aria-hidden="true" />
-                              <div className="min-w-0">
-                                <p className="text-base font-medium">{doc.nome}</p>
-                                {doc.validade && (
-                                  <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
-                                    <CalendarDays className="w-4 h-4 shrink-0" aria-hidden="true" />
-                                    Validade: {new Date(doc.validade).toLocaleDateString('pt-BR')}
-                                  </p>
-                                )}
-                                {doc.arquivo && (
-                                  <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
-                                    <FileText className="w-4 h-4 shrink-0" aria-hidden="true" />
-                                    <span className="truncate">{nomeDoArquivo(doc.arquivo)}</span>
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <Badge variant={cfg.variante}>{cfg.label}</Badge>
-                              {doc.arquivo ? (
-                                <div className="flex flex-wrap gap-2">
-                                  {doc.storagePath && (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => handleVisualizar(globalIdx)}
-                                      title="Visualizar em tela"
-                                      aria-label={`Visualizar ${doc.nome} em tela`}
-                                    >
-                                      <Eye className="w-4 h-4" aria-hidden="true" />
-                                    </Button>
-                                  )}
-                                  {doc.storagePath && (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => handleDownload(globalIdx)}
-                                      title="Baixar arquivo"
-                                      aria-label={`Baixar o arquivo de ${doc.nome}`}
-                                    >
-                                      <Download className="w-4 h-4" aria-hidden="true" />
-                                    </Button>
-                                  )}
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleUploadClick(globalIdx)}
-                                    disabled={isUploading}
-                                    title="Substituir arquivo"
-                                    aria-label={`Substituir o arquivo de ${doc.nome}`}
-                                  >
-                                    {/* Trocar um documento por outro é substituição, não envio: a
-                                        seta para cima já é o botão "Enviar" da linha sem arquivo. */}
-                                    {isUploading ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Repeat className="w-4 h-4" aria-hidden="true" />}
-                                  </Button>
-                                  {doc.legadoPrivado && empresaAtiva && (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => compartilharComEmpresa(globalIdx)}
-                                      className="text-warning-ink hover:text-warning-ink"
-                                      title="Hoje só você vê este documento — clique para compartilhar com a equipe da empresa"
-                                      aria-label={`Compartilhar ${doc.nome} com a equipe da empresa`}
-                                    >
-                                      <Users className="w-4 h-4" aria-hidden="true" />
-                                    </Button>
-                                  )}
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleRemove(globalIdx)}
-                                    disabled={isRemoving}
-                                    className="text-destructive-ink hover:bg-destructive-tint hover:text-destructive-ink"
-                                    title={doc.legadoPrivado ? 'Remover arquivo' : 'Remover (documento da empresa: dono do anexo ou Admin)'}
-                                    aria-label={`Remover ${doc.nome}`}
-                                  >
-                                    {isRemoving ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Trash2 className="w-4 h-4" aria-hidden="true" />}
-                                  </Button>
-                                </div>
-                              ) : (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleUploadClick(globalIdx)}
-                                  disabled={isUploading}
-                                >
-                                  {isUploading ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Upload className="w-4 h-4" aria-hidden="true" />}
-                                  Enviar
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="flex flex-col gap-2">
+              <IndicadoresCofre
+                contagem={contagem}
+                filtro={filtroSituacao}
+                aoFiltrar={setFiltroSituacao}
+                indisponivel={razaoSemApuracao}
+              />
+              {/* Regra dita em texto: os números contam o checklist INTEIRO.
+                  Se seguissem o filtro, clicar em "Vencidos" zeraria os outros
+                  quatro e o painel viraria eco do próprio clique. */}
+              <p className="g-meta text-muted-foreground">
+                Os indicadores contam o checklist inteiro; clicar num deles filtra a tabela abaixo.
+                &ldquo;A vencer&rdquo; é subconjunto de &ldquo;Regulares&rdquo; e não soma de novo no total.
+              </p>
             </div>
 
-            {/* Atestados de Capacidade Técnica — subcategorias por segmento */}
-            <AtestadosCapacidadeTecnica />
+            <BarraFiltros
+              busca={busca}
+              aoBuscar={setBusca}
+              placeholderBusca="Buscar documento pelo nome"
+              filtrosAplicados={filtrosAplicados}
+              aoLimpar={limparFiltros}
+              acao={
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button className="g-controle rounded-[var(--g-raio)]" disabled={modoTodasEmpresas}>
+                      <Plus aria-hidden="true" /> Adicionar documento
+                    </Button>
+                  </DropdownMenuTrigger>
+                  {/* O envio é por VAGA — o menu escolhe a vaga em vez de a
+                      tela adivinhar, que era a razão de esta ação não existir. */}
+                  <DropdownMenuContent align="end" className="max-h-80 w-72 overflow-y-auto">
+                    <DropdownMenuLabel>Vagas ainda sem arquivo</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {ausentes.length === 0 ? (
+                      <DropdownMenuItem disabled>
+                        Todas as vagas já têm arquivo — use &ldquo;Substituir&rdquo; na linha
+                      </DropdownMenuItem>
+                    ) : (
+                      ausentes.map((i) => (
+                        <DropdownMenuItem key={i.nome} onSelect={() => escolherArquivo(i)}>
+                          <span className="truncate">{i.nome}</span>
+                        </DropdownMenuItem>
+                      ))
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              }
+            >
+              <div className="flex w-full flex-col gap-1 md:w-56">
+                <Label htmlFor="filtro-categoria" className="g-meta text-muted-foreground">Categoria</Label>
+                <Select
+                  value={filtroCategoria}
+                  onValueChange={(v) => setFiltroCategoria(v as FiltroCategoria)}
+                >
+                  <SelectTrigger id="filtro-categoria" className="g-controle rounded-[var(--g-raio)]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todas">Todas as categorias</SelectItem>
+                    {CATEGORIAS_PREVISTAS.map((c) => (
+                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            {/* ── Trilha de auditoria — só o Admin vê ─────────────────────
-                O registro nasce de GATILHO no banco: envio, substituição,
-                renovação, compartilhamento e remoção deixam rastro por
-                qualquer caminho, não só por esta tela. */}
-            {isCompanyAdmin && (
-              <div className="rounded-lg border border-border bg-card shadow-sm">
-                {/* Cabeçalho envolvendo o botão, como nas pastas de categoria
-                    acima — o título fica no sumário de cabeçalhos da página e a
-                    faixa inteira segue clicável. */}
-                <h3>
-                  <button
-                    type="button"
-                    className="w-full flex items-center justify-between gap-3 px-6 py-3 transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-                    aria-expanded={historicoAberto}
-                    onClick={abrirHistorico}
-                  >
-                    {/* Mesmo tamanho dos demais títulos de cartão desta tela
-                        (categoria e atestados): text-lg font-semibold. */}
-                    <span className="text-lg font-semibold">Histórico de alterações (Admin)</span>
-                    <span className="text-sm font-medium text-muted-foreground">{historicoAberto ? 'recolher' : 'ver'}</span>
-                  </button>
-                </h3>
-                {historicoAberto && (
-                  <div className="border-t border-border divide-y divide-border max-h-80 overflow-y-auto">
-                    {historicoCarregando && (
-                      <p className="p-4 text-sm text-muted-foreground flex items-center gap-2">
-                        <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Carregando registros…
-                      </p>
-                    )}
-                    {!historicoCarregando && historico.length === 0 && (
-                      <EstadoVazio
-                        tamanho="compacto"
-                        icone={<History />}
-                        titulo="Nenhum registro ainda"
-                        descricao="A trilha passa a gravar a partir da migration 20260903000006."
-                      />
-                    )}
-                    {historico.map((h) => (
-                      <div key={h.id} className="px-6 py-2 text-sm flex items-center gap-2 flex-wrap">
-                        <span className="text-muted-foreground tabular-nums whitespace-nowrap">
-                          {new Date(h.criado_em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
-                        </span>
-                        <Badge variant="muted">{h.acao}</Badge>
-                        <span className="font-medium truncate">{h.documento_nome}</span>
-                        <span className="text-muted-foreground">por {nomeDoAutor(h.autor)}</span>
-                        {h.validade_nova && (
-                          <span className="text-muted-foreground whitespace-nowrap">
-                            · validade {h.validade_nova.slice(0, 10).split('-').reverse().join('/')}
-                          </span>
-                        )}
-                      </div>
+              <div className="flex w-full flex-col gap-1 md:w-56">
+                <Label htmlFor="filtro-situacao" className="g-meta text-muted-foreground">Situação</Label>
+                <Select
+                  value={filtroSituacao}
+                  onValueChange={(v) => setFiltroSituacao(v as FiltroSituacao)}
+                >
+                  <SelectTrigger id="filtro-situacao" className="g-controle rounded-[var(--g-raio)]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {FILTROS_DE_SITUACAO.map((f) => (
+                      <SelectItem key={f} value={f}>{ROTULO_DO_FILTRO[f]}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex w-full flex-col gap-1 md:w-auto">
+                <span className="g-meta text-muted-foreground">Período de validade</span>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="date"
+                    aria-label="Validade a partir de"
+                    value={validadeDe}
+                    onChange={(e) => setValidadeDe(e.target.value)}
+                    className="g-controle rounded-[var(--g-raio)] md:w-40"
+                  />
+                  <span className="g-corpo text-muted-foreground">até</span>
+                  <Input
+                    type="date"
+                    aria-label="Validade até"
+                    value={validadeAte}
+                    onChange={(e) => setValidadeAte(e.target.value)}
+                    className="g-controle rounded-[var(--g-raio)] md:w-40"
+                  />
+                </div>
+              </div>
+            </BarraFiltros>
+
+            {modoTodasEmpresas ? (
+              <AvisoDeContexto
+                titulo="Cofre de documentos: escolha uma empresa"
+                acao={
+                  <div className="flex flex-wrap gap-2">
+                    {empresas.map((e) => (
+                      <Button
+                        key={e.empresa_id}
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setEmpresaAtiva(e.empresa_id)}
+                      >
+                        {e.empresa.nome_fantasia || e.empresa.razao_social}
+                      </Button>
                     ))}
                   </div>
-                )}
-              </div>
+                }
+              >
+                O checklist de habilitação é de uma empresa por vez — cada CNPJ tem as suas
+                certidões, com prazos próprios. Em &ldquo;Todas as empresas&rdquo; não há um cofre
+                para mostrar, e listar um vazio faria parecer que os documentos sumiram.
+              </AvisoDeContexto>
+            ) : (
+              <AreaComPainel
+                painel={painel}
+                tituloPainel={selecionado?.nome ?? 'Detalhes do documento'}
+                aoFechar={() => setSelecionadoNome(null)}
+              >
+                <TabelaGestao
+                  descricao="Checklist de documentos de habilitação da empresa"
+                  colunas={colunas}
+                  itens={ordenados}
+                  chaveDoItem={(i) => i.nome}
+                  aoSelecionar={(i) => setSelecionadoNome(i.nome)}
+                  selecionado={(i) => i.nome === selecionadoNome}
+                  ordenacao={ordenacao}
+                  aoOrdenar={alternarOrdenacao}
+                  carregando={carregando && !erro}
+                  vazio={
+                    // Sem resultado de FILTRO é diferente de cofre vazio — e o
+                    // cofre nunca está vazio, porque as vagas previstas são
+                    // sempre linhas. Só o filtro pode zerar a lista.
+                    <EstadoVazio
+                      icone={<FolderOpen />}
+                      titulo="Nenhum documento com esses filtros"
+                      descricao="Ajuste a busca, a categoria, a situação ou o período de validade para ver as demais vagas do checklist."
+                      acao={<Button variant="outline" onClick={limparFiltros}>Limpar filtros</Button>}
+                    />
+                  }
+                  rodape={
+                    <>
+                      <span className="tabular-nums">
+                        {ordenados.length} de {itens.length} {itens.length === 1 ? 'item previsto' : 'itens previstos'}
+                      </span>
+                      {(validadeDe || validadeAte) && (
+                        <span>
+                          O recorte por período mostra só os itens COM data de validade.
+                        </span>
+                      )}
+                    </>
+                  }
+                />
+              </AreaComPainel>
             )}
-          </TabsContent>
+          </div>
+        )}
 
-          <TabsContent value="merge">
-            <MergeDocumentos />
-          </TabsContent>
+        {/* As quatro abas seguintes são pontos de montagem: o conteúdo de cada
+            uma pertence ao seu próprio componente. */}
+        {aba === 'atestados' && <AtestadosCapacidadeTecnica />}
+        {aba === 'merge' && <MergeDocumentos />}
+        {aba === 'alertas' && <AlertasVencimentoEmail />}
+        {/* O Histórico resolve sozinho a própria autorização e os próprios
+            filtros (RLS + `isCompanyAdmin` lá dentro). Esta tela só decide se a
+            ABA existe — esconder a aba nunca autorizou nada. */}
+        {aba === 'historico' && <HistoricoDocumentos />}
 
-
-        </Tabs>
-
-        {/* Hidden file input */}
+        {/* Campo de arquivo escondido: o destino é a vaga que o clique gravou. */}
         <input
-          ref={fileInputRef}
+          ref={inputArquivo}
           type="file"
           accept=".pdf,.png,.jpg,.jpeg,.webp"
           className="hidden"
-          onChange={handleFileChange}
+          onChange={aoEscolherArquivo}
         />
 
-        {/* Validade Dialog */}
-        <Dialog open={validadeDialogOpen} onOpenChange={setValidadeDialogOpen}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <CalendarDays className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
-                Validade do documento
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Informe a data de vencimento do documento ou utilize a análise por IA para sugestão automática.
-              </p>
+        {dialogo && (
+          <DialogValidade
+            aberto
+            aoFechar={() => setDialogo(null)}
+            nomeDoDocumento={dialogo.item.nome}
+            vencePorNatureza={dialogo.item.vencePorNatureza}
+            arquivo={dialogo.arquivo}
+            validadeInicial={dialogo.item.validade}
+            salvando={salvandoValidade || enviandoNome === dialogo.item.nome}
+            aoConfirmar={(validade) => {
+              if (dialogo.arquivo) enviarArquivo(dialogo.item, dialogo.arquivo, validade);
+              else salvarValidade(dialogo.item, validade);
+            }}
+          />
+        )}
 
-              {pendingUploadIdx.current !== null && (
-                <div className="rounded-md bg-muted p-3 text-sm font-medium">
-                  {documentos[pendingUploadIdx.current]?.nome}
-                </div>
-              )}
-
-              {/* Manual date input */}
-              <div className="space-y-2">
-                <Label htmlFor="validade-seletor" className="text-sm font-medium">
-                  Data de validade
-                </Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      id="validade-seletor"
-                      variant="outline"
-                      className={cn(
-                        'w-full justify-start text-left font-normal',
-                        !pendingValidadeDate && 'text-muted-foreground'
-                      )}
-                    >
-                      <CalendarDays className="mr-2 h-4 w-4" aria-hidden="true" />
-                      {pendingValidadeDate
-                        ? format(pendingValidadeDate, 'dd/MM/yyyy', { locale: ptBR })
-                        : 'Selecione a validade'}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={pendingValidadeDate}
-                      onSelect={(date) => {
-                        setPendingValidadeDate(date);
-                        if (date) setPendingManualDate(format(date, 'yyyy-MM-dd'));
-                      }}
-                      initialFocus
-                      className="p-3 pointer-events-auto"
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-
-              {/* Or manual text input */}
-              <div className="space-y-2">
-                <Label htmlFor="validade-digitada" className="text-sm font-medium">Ou digite: DD/MM/AAAA</Label>
-                <Input
-                  id="validade-digitada"
-                  placeholder="DD/MM/AAAA"
-                  // `new Date('2026-07-10')` é meia-noite UTC, que no horário de
-                  // Brasília é dia 09 às 21h. Era isso que fazia o seletor
-                  // mostrar 10/07 e este campo, 09/07 — e digitar 10/07/2026
-                  // gravar 2026-07-09. Data de calendário se monta por partes.
-                  value={pendingManualDate ? (() => {
-                    const m = pendingManualDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-                    const d = m ? montarData(Number(m[1]), Number(m[2]), Number(m[3])) : null;
-                    return d ? format(d, 'dd/MM/yyyy') : pendingManualDate;
-                  })() : ''}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    const match = val.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-                    if (match) {
-                      const d = montarData(Number(match[3]), Number(match[2]), Number(match[1]));
-                      if (d) {
-                        setPendingValidadeDate(d);
-                        setPendingManualDate(format(d, 'yyyy-MM-dd'));
-                        return;
-                      }
-                    }
-                    setPendingManualDate(val);
-                  }}
-                />
-              </div>
-
-              {/* AI Analysis button */}
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={handleAIAnalysis}
-                disabled={analyzingIdx !== null}
-              >
-                {analyzingIdx !== null ? (
-                  <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-                ) : (
-                  <Bot className="w-4 h-4" aria-hidden="true" />
-                )}
-                Sugerir validade por IA
-              </Button>
-
-              {pendingValidadeDate && (
-                <Alert variant="success">
-                  <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
-                  <AlertDescription>
-                    Validade: <strong>{format(pendingValidadeDate, 'dd/MM/yyyy')}</strong>
-                  </AlertDescription>
-                </Alert>
-              )}
-            </div>
-            <DialogFooter className="flex flex-wrap gap-2">
-              <Button variant="ghost" onClick={() => handleConfirmUpload(true)}>
-                Pular (sem validade)
-              </Button>
-              <Button onClick={() => handleConfirmUpload(false)}>
-                Confirmar e enviar
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Conferência em tela. O PDF abre aqui; formato que o navegador não
-            renderiza cai no download, que é o que já existia. */}
+        {/* Conferência em tela: o PDF abre aqui; formato que o navegador não
+            renderiza cai no download. */}
         <Dialog open={!!visualizando} onOpenChange={(o) => !o && setVisualizando(null)}>
           <DialogContent className="max-w-4xl">
             <DialogHeader>
-              <DialogTitle className="text-lg">{visualizando?.nome}</DialogTitle>
+              <DialogTitle className="g-titulo-secao">{visualizando?.nome}</DialogTitle>
             </DialogHeader>
             {visualizando && (
               <iframe
                 src={visualizando.url}
                 title={visualizando.nome}
-                className="w-full h-[70vh] rounded-lg border border-border bg-muted"
+                className="h-[70vh] w-full rounded-[var(--g-raio)] border border-border bg-muted"
               />
             )}
           </DialogContent>
         </Dialog>
+
+        <AlertDialog open={!!aExcluir} onOpenChange={(o) => !o && setAExcluir(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir &ldquo;{aExcluir?.nome}&rdquo;?</AlertDialogTitle>
+              <AlertDialogDescription>
+                O arquivo sai do cofre e a vaga volta para &ldquo;Ausente&rdquo;. Não há como
+                desfazer — será preciso anexar o documento de novo.
+                {aExcluir && !aExcluir.legadoPrivado
+                  && ' Documento da empresa: só o dono do anexo ou o Admin conseguem remover.'}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => aExcluir && excluir(aExcluir)}
+              >
+                Excluir documento
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </AppLayout>
   );
