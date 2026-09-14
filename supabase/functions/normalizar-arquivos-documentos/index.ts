@@ -23,6 +23,14 @@ Deno.serve(async (req) => {
     new Response(JSON.stringify(b), { status: s, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   try {
+    // Só com o CRON_SECRET. A função roda com service role e está implantada
+    // com verify_jwt = false: sem este teste, qualquer um na internet a
+    // disparava e recebia de volta o nome dos documentos de TODAS as empresas.
+    // Quem chama é o SQL Editor, via `public.cron_auth_header()`.
+    const cronSecret = Deno.env.get("CRON_SECRET");
+    const token = req.headers.get("authorization")?.replace("Bearer ", "");
+    if (!cronSecret || token !== cronSecret) return json({ ok: false, erro: "Unauthorized" }, 401);
+
     const db = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
