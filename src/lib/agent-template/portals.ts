@@ -922,13 +922,76 @@ class ComprasGovPortal extends BasePortal {
   async lerDesfechoDaBusca() {
     return this.page.evaluate(() => {
       const texto = document.body.innerText || '';
-      const captcha = [...document.querySelectorAll('iframe[src*="hcaptcha"]')]
-        .some((f) => { const r = f.getBoundingClientRect(); return r.width > 50 && r.height > 50; });
-      if (captcha) return 'captcha';
+      // A resposta da pesquisa manda, antes de qualquer captcha: o iframe do
+      // hCaptcha continua no DOM, com tamanho, depois de resolvido (so fica
+      // invisivel), e olhar para ele primeiro deixava o robo "esperando o
+      // captcha" com os resultados na tela (sessao dab1837b, 14/09/2026).
       if (/(PREG[AÃ]O|DISPENSA|CONCORR[EÊ]NCIA|LEIL[AÃ]O)[^\\n]*N[°º]\\s*\\d+\\/\\d{4}/i.test(texto)) return 'resultados';
-      if (/nenhum (registro|resultado)|n[aã]o (foram|foi) encontrad/i.test(texto)) return 'nenhum';
+      // "Nenhuma compra encontrada" e o texto real da pagina (14/09/2026,
+      // sessao 903d686e); sem ele aqui o robo ficava "esperando o captcha"
+      // com a resposta na tela.
+      if (/nenhuma? (registro|resultado|compra)|n[aã]o (foram|foi) encontrad/i.test(texto)) return 'nenhum';
+      const visivel = (el) => {
+        for (let e = el; e && e !== document.body; e = e.parentElement) {
+          const s = getComputedStyle(e);
+          if (s.display === 'none' || s.visibility === 'hidden' || Number(s.opacity) === 0) return false;
+        }
+        return true;
+      };
+      const captcha = [...document.querySelectorAll('iframe[src*="hcaptcha"]')]
+        .some((f) => { const r = f.getBoundingClientRect(); return r.width > 50 && r.height > 50 && visivel(f); });
+      if (captcha) return 'captcha';
       return 'nada';
     }).catch(() => 'nada');
+  }
+
+  /**
+   * Digita num campo PrimeNG (p-inputmask) e CONFERE o que ficou.
+   *
+   * O InputMask intercepta cada tecla e reposiciona o cursor pelo proprio
+   * buffer; com as teclas sinteticas do Puppeteer ele embaralha — "72026"
+   * virou "20267" na sessao 903d686e (14/09/2026), e a pesquisa voltou
+   * "Nenhuma compra encontrada" sem ninguem saber por que. Aqui: digita como
+   * pessoa, le o valor de volta e, se nao bater, entrega o texto inteiro de
+   * uma vez (como um colar), que a mascara valida pelo evento input. Devolve
+   * o que ficou no campo, para o log dizer a verdade.
+   */
+  async digitarConferindo(seletor, valor) {
+    const alvo = String(valor);
+    // Com o campo focado a mascara mostra as posicoes vazias como "_"
+    // ("72026____"); so o que a pessoa digitou conta.
+    const ler = () => this.page.$eval(seletor, (el) => (el.value || '').replace(/[_\\s]/g, '')).catch(() => '');
+    await this.page.click(seletor, { clickCount: 3 });
+    await this.page.keyboard.press('Backspace');
+    await this.page.type(seletor, alvo, { delay: 70 });
+    let lido = await ler();
+    if (lido !== alvo) {
+      await this.page.$eval(seletor, (el) => {
+        el.focus();
+        el.setSelectionRange(0, (el.value || '').length);
+      }).catch(() => {});
+      await this.page.keyboard.press('Backspace');
+      // sendCharacter = Input.insertText do CDP: entra como um colar, sem
+      // keydown/keypress para a mascara interceptar.
+      await this.page.keyboard.sendCharacter(alvo);
+      await this.delayHumano(200, 400);
+      lido = await ler();
+    }
+    if (lido !== alvo) {
+      await this.page.$eval(seletor, (el, v) => {
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+        setter.call(el, v);
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+        el.dispatchEvent(new Event('blur', { bubbles: true }));
+      }, alvo).catch(() => {});
+      await this.delayHumano(200, 400);
+      lido = await ler();
+    }
+    if (lido !== alvo) {
+      console.warn('⚠️ O campo ' + seletor + ' ficou com "' + lido + '" em vez de "' + alvo + '"');
+    }
+    return lido;
   }
 
   /**
@@ -979,14 +1042,14 @@ class ComprasGovPortal extends BasePortal {
           if (cb && !cb.checked) cb.click();
         }
       });
+      let uasgNaTela = '';
       if (alvo && alvo.uasg) {
-        await this.page.click('#unidadeCompradora', { clickCount: 3 });
-        await this.page.type('#unidadeCompradora', String(alvo.uasg), { delay: 60 });
+        uasgNaTela = await this.digitarConferindo('#unidadeCompradora', String(alvo.uasg).replace(/\\D/g, ''));
       }
-      await this.page.click('input[placeholder="Ex: 102021"]', { clickCount: 3 });
-      await this.page.type('input[placeholder="Ex: 102021"]', numero.campo, { delay: 70 });
+      const numeroNaTela = await this.digitarConferindo('input[placeholder="Ex: 102021"]', numero.campo);
       await this.delayHumano(300, 700);
-      console.log('🔎 Pesquisando a compra ' + numero.rotulo + ' (campo: ' + numero.campo + ')');
+      console.log('🔎 Pesquisando a compra ' + numero.rotulo + ' (campo: ' + numero.campo
+        + ', na tela: ' + numeroNaTela + (uasgNaTela ? ', UASG na tela: ' + uasgNaTela : ', sem UASG') + ')');
       await this.page.click('button.br-button.is-primary');
 
       // Espera o desfecho: resultados, "nenhum", ou captcha.
