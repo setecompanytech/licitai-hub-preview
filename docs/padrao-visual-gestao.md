@@ -16,12 +16,22 @@ vence e a apresentação se adapta**.
 
 ## 1. Moldura (já implementada, não refazer)
 
+> ⚠️ **A moldura mudou em 13/09, depois que este documento foi escrito.** A
+> coluna de 240px descrita abaixo foi substituída por um cabeçalho horizontal,
+> a pedido do dono do produto, no mesmo dia. O que vale hoje é a tabela de
+> baixo. A COMPOSIÇÃO das telas (seções 2 a 6 deste documento) não mudou — o
+> comando do cabeçalho diz por escrito que "não constitui uma reformulação
+> completa das telas internas".
+
 | Peça | Onde | O quê |
 | --- | --- | --- |
-| Coluna de navegação | `src/components/layout/AppSidebar.tsx` | 240px, navy, recolhível (68px). Marca ≤180px, busca única (⌘K) abaixo dela, grupos recolhíveis, item ativo com fundo verde e texto branco |
-| Faixa superior | `src/components/layout/AppLayout.tsx` | Branca, 64px. Voltar + trilha à esquerda; empresa, sino, tema e avatar à direita |
-| Trilha | `src/components/layout/TrilhaDoTopo.tsx` | Vem de `paginas.ts`; `extra` acrescenta o identificador do registro aberto |
-| Área principal | `AppLayout` | Fundo `--background`, 24px de respiro (16px no celular), sem teto de largura |
+| Cabeçalho | `src/components/layout/AppHeader.tsx` | Horizontal, fixo, 56px no celular e 64px no desktop, fundo `--card`. Marca, Painel, Ferramentas, busca única (⌘K), sino, tema, empresa e avatar. Item ativo com sublinhado verde |
+| Diretório | `src/components/layout/MenuDeFerramentas.tsx` | Sobreposição com busca, recentes, favoritos e as funções em colunas. Abre por "Ferramentas", pelo evento `praefectus:abrir-ferramentas` ou por Ctrl+Shift+K |
+| Registro | `src/lib/navegacao/registro.ts` | A lista única de funções. Menu, busca, favoritos, recentes e atalhos do painel leem daqui — antes eram quatro listas divergentes |
+| Trilha | `src/components/layout/TrilhaDoTopo.tsx` | No topo do container de conteúdo, ao lado do Voltar. `CabecalhoPagina` registra pelo contexto; quem desenha é o layout |
+| Área principal | `AppLayout` | Container de até 1440px, fundo `--background`, 32px de respiro no desktop e 16px no celular |
+
+O que saiu: `AppSidebar.tsx` e os tokens `--g-barra-lateral` / `--g-barra-lateral-fechada`.
 
 A tela **não** desenha moldura, trilha nem respiro: ela começa no título.
 
@@ -131,6 +141,24 @@ Não é o desktop reduzido.
 - Tabela mostra o essencial e manda o resto para o detalhe.
 - Alvo de toque ~44px; campo com fonte ≥16px (abaixo disso o iOS dá zoom).
 - **Nenhuma** rolagem horizontal na página inteira.
+
+---
+
+## 5b. Atalhos de teclado — um gesto, um destino
+
+| Atalho | Abre | Evento equivalente |
+| --- | --- | --- |
+| `Ctrl/⌘ + K` | busca global (`GlobalSearch`) | `praefectus:abrir-busca` |
+| `Ctrl/⌘ + Shift + K` | diretório de ferramentas | `praefectus:abrir-ferramentas` |
+| — | paleta do Financeiro | `praefectus:abrir-paleta-financeiro` |
+
+A paleta do Financeiro **perdeu** o Ctrl+K em 13/09: ela o disputava com a
+busca global, e dentro de `/financeiro` a tecla abria dois diálogos empilhados
+— o de cima decidido pela ordem de montagem, não por escolha de ninguém.
+
+`src/lib/navegacao/atalhos.test.ts` varre os três arquivos e falha se algum
+voltar a escutar a tecla do outro. O conflito não mora em nenhum deles: mora no
+fato de os três existirem.
 
 ---
 

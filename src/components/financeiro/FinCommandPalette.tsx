@@ -10,15 +10,23 @@ interface Props {
 export default function FinCommandPalette({ onNavigate }: Props) {
   const [open, setOpen] = useState(false);
 
+  /**
+   * Esta paleta NÃO responde mais a Ctrl+K (13/09/2026).
+   *
+   * Ela disputava a tecla com a busca global (`GlobalSearch`), que é montada em
+   * toda tela interna pelo `AppLayout`. Dentro do Financeiro, portanto, um
+   * Ctrl+K abria DOIS diálogos empilhados — e o de cima era decidido pela ordem
+   * de montagem, não por escolha de ninguém.
+   *
+   * Quem fica com a tecla é a busca global, porque atende as 56 telas e conhece
+   * também os módulos do Financeiro (`GlobalSearch` indexa `HUB_ITEMS`): quem
+   * digita Ctrl+K aqui continua achando o que procurava. Esta paleta segue viva
+   * pelo gatilho da própria tela e pelo evento abaixo.
+   */
   useEffect(() => {
-    const down = (e: KeyboardEvent) => {
-      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        setOpen((o) => !o);
-      }
-    };
-    document.addEventListener("keydown", down);
-    return () => document.removeEventListener("keydown", down);
+    const abrir = () => setOpen(true);
+    window.addEventListener("praefectus:abrir-paleta-financeiro", abrir);
+    return () => window.removeEventListener("praefectus:abrir-paleta-financeiro", abrir);
   }, []);
 
   const groups = ["operacao", "bancos", "fiscal", "relatorios", "cadastros"] as const;

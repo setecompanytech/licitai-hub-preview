@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +28,7 @@ import {
   STATUS_PROCESSO, FAIXAS, FAIXAS_PADRAO, type Faixa,
   faixaDe, aparenciaStatus, rotuloStatus, prazoPerdidoNoRadar,
 } from '@/lib/licitacao/status';
+import { PARAM_RECORTE, recorteDaUrl } from '@/lib/licitacao/recortes-do-painel';
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
 import RegistrarPerdaDialog, { type PerdaAlvo } from '@/components/metas/RegistrarPerdaDialog';
 
@@ -59,6 +60,15 @@ export default function PainelLicitacoes() {
   const { user } = useAuth();
   const { empresaAtiva, todasSelecionadas } = useEmpresa();
   const navigate = useNavigate();
+  /* O recorte vem na URL (`?recorte=ganhas`), posto pelo indicador clicável do
+     Resumo operacional. É o MESMO predicado que conta o cartão
+     (`lib/licitacao/recortes-do-painel`) — por isso o número do indicador e a
+     quantidade de linhas daqui não podem divergir: é a mesma função.
+     Na URL, e não em estado interno, porque assim o endereço é compartilhável
+     e o botão Voltar desfaz o filtro. */
+  const [searchParams, setSearchParams] = useSearchParams();
+  const recorte = recorteDaUrl(searchParams.get(PARAM_RECORTE));
+  const secaoRef = useRef<HTMLDivElement | null>(null);
   const { arquivarProcesso, registrarPerda } = useLicitacaoIntegration();
   const [perdaAlvo, setPerdaAlvo] = useState<PerdaAlvo | null>(null);
   const [salvandoPerda, setSalvandoPerda] = useState(false);
@@ -207,7 +217,14 @@ export default function PainelLicitacoes() {
   const filtered = useMemo(() => {
     let result = [...licitacoes];
 
-    result = result.filter((l) => faixasAtivas.includes(faixaDe(l.status, l.arquivado_em)));
+    if (recorte) {
+      // Com recorte vindo do indicador, as FAIXAS não se aplicam: elas escondem
+      // o Arquivo por padrão, e um processo ganho e arquivado continua ganho —
+      // filtrá-lo fora daria menos linhas do que o número do cartão prometeu.
+      result = result.filter((l) => recorte.aceita(l.status));
+    } else {
+      result = result.filter((l) => faixasAtivas.includes(faixaDe(l.status, l.arquivado_em)));
+    }
 
     if (search) {
       const q = search.toLowerCase();
@@ -222,18 +239,25 @@ export default function PainelLicitacoes() {
     if (modalidadeFilter !== 'todos') result = result.filter((l) => l.modalidade === modalidadeFilter);
     if (ufFilter !== 'todos') result = result.filter((l) => l.uf === ufFilter);
 
+    /* Os três campos de ordenação são duas datas em texto ISO e um número.
+       O `any` que estava aqui escondia isso: `string | number` é o tipo real, e
+       escrevê-lo mantém a comparação verificável (ISO ordena como texto). Sem
+       valor, o registro vai para o FIM da ordem nos dois sentidos. */
+    const semValor = sortAsc ? Infinity : -Infinity;
+    const chave = (l: Licitacao): string | number => {
+      const bruto = l[sortField];
+      if (bruto == null) return semValor;
+      return typeof bruto === 'string' ? bruto.toLowerCase() : bruto;
+    };
     result.sort((a, b) => {
-      let va: any = a[sortField];
-      let vb: any = b[sortField];
-      if (va == null) va = sortAsc ? Infinity : -Infinity;
-      if (vb == null) vb = sortAsc ? Infinity : -Infinity;
-      if (typeof va === 'string') va = va.toLowerCase();
-      if (typeof vb === 'string') vb = vb.toLowerCase();
+      const va = chave(a);
+      const vb = chave(b);
+      if (va === vb) return 0;
       return sortAsc ? (va > vb ? 1 : -1) : (va < vb ? 1 : -1);
     });
 
     return result;
-  }, [licitacoes, faixasAtivas, search, statusFilter, modalidadeFilter, ufFilter, sortField, sortAsc]);
+  }, [licitacoes, recorte, faixasAtivas, search, statusFilter, modalidadeFilter, ufFilter, sortField, sortAsc]);
 
   /** Quantos processos existem em cada faixa — independente dos demais filtros. */
   const contagemPorFaixa = useMemo(() => {
@@ -248,7 +272,30 @@ export default function PainelLicitacoes() {
   // Reset page on filter change
   useEffect(() => {
     setPage(0);
-  }, [faixasAtivas, search, statusFilter, modalidadeFilter, ufFilter]);
+  }, [recorte, faixasAtivas, search, statusFilter, modalidadeFilter, ufFilter]);
+
+  /* Chegar aqui vindo de um indicador do topo é uma navegação DENTRO da mesma
+     página: o React Router troca a query string e nada se move na tela — a
+     pessoa clica, o filtro muda quatro rolagens abaixo e parece que o clique
+     não fez nada. Por isso a seção se traz para a vista quando o recorte muda.
+     `scrollIntoView` não existe no jsdom (e não existe em navegador antigo):
+     a checagem evita derrubar o render em teste. */
+  useEffect(() => {
+    if (!recorte) return;
+    const alvo = secaoRef.current;
+    if (alvo && typeof alvo.scrollIntoView === 'function') {
+      alvo.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [recorte]);
+
+  /** Tira o recorte da URL sem apagar os outros parâmetros da página. */
+  const limparRecorte = () => {
+    setSearchParams((atual) => {
+      const proximo = new URLSearchParams(atual);
+      proximo.delete(PARAM_RECORTE);
+      return proximo;
+    }, { replace: true });
+  };
 
   // Summary stats
   const stats = useMemo(() => {
@@ -284,6 +331,9 @@ export default function PainelLicitacoes() {
     setModalidadeFilter('todos');
     setUfFilter('todos');
     setFaixasAtivas(FAIXAS_PADRAO);
+    // O recorte mora na URL, então limpar só o estado local deixaria a lista
+    // ainda filtrada e o botão "Limpar filtros" parecendo quebrado.
+    if (recorte) limparRecorte();
   }
 
   if (loading) {
@@ -309,7 +359,22 @@ export default function PainelLicitacoes() {
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" ref={secaoRef}>
+      {/* Chegou de um indicador do topo: a listagem diz em que recorte está e
+          oferece a saída. Sem este aviso, a pessoa lê a lista filtrada como se
+          fosse a lista inteira — e conclui que os outros processos sumiram. */}
+      {recorte && (
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-primary/20 bg-primary-tint p-4">
+          <p className="min-w-0 flex-1 text-sm leading-5 text-foreground">
+            Mostrando <strong>{recorte.descricaoDoFiltro.toLowerCase()}</strong> — {filtered.length}{' '}
+            {filtered.length === 1 ? 'processo' : 'processos'}, do indicador do resumo.
+          </p>
+          <Button type="button" variant="outline" size="sm" onClick={limparRecorte}>
+            Ver todos
+          </Button>
+        </div>
+      )}
+
       {/* Resumo do que os filtros deixaram passar. Cinco colunas só a partir de
           lg: em 640px cada célula teria 128px e o valor estimado, que é moeda
           por extenso, seria truncado no meio dos dígitos.
@@ -335,8 +400,10 @@ export default function PainelLicitacoes() {
         ))}
       </div>
 
-      {/* Faixas do ciclo de vida — a triagem que o sistema passa a fazer pelo usuário */}
-      <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+      {/* Faixas do ciclo de vida — a triagem que o sistema passa a fazer pelo
+          usuário. Com um recorte vindo do indicador elas ficam desligadas: duas
+          triagens ao mesmo tempo dariam um número que nenhum cartão prometeu. */}
+      <div className={cn('rounded-lg border border-border bg-card p-4 shadow-sm', recorte && 'opacity-60')}>
         <div className="flex flex-wrap items-center gap-2">
           {FAIXAS.map((f) => {
             const ativa = faixasAtivas.includes(f.id);
@@ -346,8 +413,9 @@ export default function PainelLicitacoes() {
                 type="button"
                 variant="outline"
                 size="sm"
-                title={f.descricao}
+                title={recorte ? 'Saia do recorte para triar por faixa' : f.descricao}
                 aria-pressed={ativa}
+                disabled={!!recorte}
                 onClick={() =>
                   setFaixasAtivas((prev) =>
                     prev.includes(f.id) ? prev.filter((x) => x !== f.id) : [...prev, f.id]

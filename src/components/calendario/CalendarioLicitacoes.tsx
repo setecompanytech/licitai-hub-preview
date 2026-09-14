@@ -18,6 +18,20 @@ import {
 import { cn } from '@/lib/utils';
 // Autoridade única do vocabulário de status (CLAUDE.md, princípio 1).
 import { normalizarStatus } from '@/lib/licitacao/status';
+/* Vencimento de documento passou a ter uma régua só, compartilhada com o
+   painel: `lib/documentos/validade`. Duas correções vieram com ela — "vence
+   hoje" deixou de cair no balde de 30 dias, e a comparação virou de DIA (antes
+   era contra `new Date()` COM hora, e às 9h da manhã um documento válido o dia
+   inteiro já aparecia vencido). A leitura das três fontes saiu daqui para
+   `useVencimentosDeDocumentos`, porque o painel precisa exatamente destes
+   mesmos vencimentos e uma segunda consulta divergiria na primeira mudança. */
+import {
+  diaDaValidade, diasAteVencer, exigeAtencao, frasePrazo,
+  ORDEM_DE_URGENCIA, ROTULO_DA_SITUACAO, type SituacaoValidade,
+} from '@/lib/documentos/situacao';
+import {
+  useVencimentosDeDocumentos, ROTA_DA_ORIGEM, ROTULO_DA_ORIGEM, type DocValidade,
+} from '@/hooks/useVencimentosDeDocumentos';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
@@ -39,15 +53,6 @@ interface LicitacaoEvento {
   valor_estimado: number | null;
 }
 
-interface DocValidade {
-  id: string;
-  nome: string;
-  validade: string;
-  tipo: string;
-  origem: 'documento' | 'certificado_empresa' | 'certificado_portal';
-  status: 'ok' | 'vencendo' | 'vencido';
-}
-
 /** Ponto colorido antes do número do processo — reforço do status, que também
  *  vai escrito no selo ao lado. Só tokens. */
 const statusColors: Record<string, string> = {
@@ -62,40 +67,29 @@ const statusColors: Record<string, string> = {
   Arquivada: 'bg-muted-foreground',
 };
 
-function calcDocStatus(validade: string): 'ok' | 'vencendo' | 'vencido' {
-  const hoje = new Date();
-  const val = new Date(validade);
-  if (val < hoje) return 'vencido';
-  const diff = Math.ceil((val.getTime() - hoje.getTime()) / 86400000);
-  return diff <= 30 ? 'vencendo' : 'ok';
-}
+/* Tinta por situação de validade, num lugar só. Cada bloco reescrevia o
+   ternário "vencido ? destrutivo : aviso" — com a categoria nova ("vence
+   hoje") seriam cinco lugares para lembrar. Vence hoje acompanha o vencido no
+   vermelho: a ação é hoje nos dois casos. */
+const PELE_DA_SITUACAO: Record<
+  SituacaoValidade,
+  { caixa: string; tinta: string; selo: 'danger' | 'warning' | 'success' }
+> = {
+  vencido: { caixa: 'border-destructive-line bg-destructive-tint', tinta: 'text-destructive-ink', selo: 'danger' },
+  vence_hoje: { caixa: 'border-destructive-line bg-destructive-tint', tinta: 'text-destructive-ink', selo: 'danger' },
+  vencendo: { caixa: 'border-warning-line bg-warning-tint', tinta: 'text-warning-ink', selo: 'warning' },
+  ok: { caixa: 'border-border bg-card hover:bg-muted', tinta: 'text-muted-foreground', selo: 'success' },
+};
 
 /* Todo evento da agenda tem que alcançar a origem dele — era o defeito central
-   desta tela: a data existia, mas o clique não levava ao registro.
-
-   Para a validade de documento, quem decide o destino é a fonte de onde a
-   consulta tirou a data (é por isso que `DocValidade.origem` existe):
-
-     documento            → /documentos           (habilitação)
-     certificado_empresa  → /empresas             (certificado digital da PJ)
-     certificado_portal   → /robo-lances          (credenciais de portal)
+   desta tela: a data existia, mas o clique não levava ao registro. O mapa
+   origem → rota mora em `useVencimentosDeDocumentos` (ROTA_DA_ORIGEM), junto
+   da consulta que produz a origem, e é o mesmo que o painel usa.
 
    O cadastro de credencial de portal mora na aba "Portais" do Robô de Lances,
    e essa aba ainda vive em `useState` — `RoboLances` não lê `?aba=`. Mandar
    `?aba=portais` seria um link que finge navegar e cai em "Disputar" sem
-   avisar; por isso leva-se à tela, e a aba fica a um clique. Quando o Robô
-   adotar `useAbaNaUrl`, é só completar o parâmetro aqui. */
-const rotaDaOrigem: Record<DocValidade['origem'], string> = {
-  documento: '/documentos',
-  certificado_empresa: '/empresas',
-  certificado_portal: '/robo-lances',
-};
-
-const rotuloDaOrigem: Record<DocValidade['origem'], string> = {
-  documento: 'Abrir em Documentos',
-  certificado_empresa: 'Abrir em Empresas',
-  certificado_portal: 'Abrir em Robô de lances',
-};
+   avisar; por isso leva-se à tela, e a aba fica a um clique. */
 
 export default function CalendarioLicitacoes() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
@@ -130,95 +124,14 @@ export default function CalendarioLicitacoes() {
     enabled: !!user,
   });
 
-  // Fetch document expiry dates
+  /* Os vencimentos vêm do hook compartilhado com o painel — mesma consulta,
+     mesmo cache, mesma classificação de situação. */
   const {
-    data: docsValidade = [],
-    isLoading: carregandoDocs,
-    error: erroDocs,
-    refetch: recarregarDocs,
-  } = useQuery({
-    queryKey: ['calendario-docs-validade', user?.id],
-    queryFn: async () => {
-      if (!user) return [];
-      const docs: DocValidade[] = [];
-      // As três fontes são independentes, então as falhas são acumuladas e
-      // nomeadas: "não consegui ler X" é acionável, "deu erro" não é.
-      const falhas: string[] = [];
-
-      // 1) Documentos with validade
-      const { data: documentos, error: erroDocumentos } = await supabase
-        .from('documentos')
-        .select('id, nome, tipo, validade')
-        .eq('user_id', user.id)
-        .not('validade', 'is', null);
-      if (erroDocumentos) falhas.push('documentos de habilitação');
-      // Sem `any`: as três tabelas já estão no `types.ts` gerado, então a
-      // linha vem tipada da própria consulta. O `any` que estava aqui é de
-      // quando elas ainda não estavam — e engolia erro de coluna renomeada.
-      (documentos || []).forEach((d) => {
-        if (d.validade) {
-          docs.push({
-            id: d.id,
-            nome: d.nome,
-            validade: d.validade,
-            tipo: d.tipo,
-            origem: 'documento',
-            status: calcDocStatus(d.validade),
-          });
-        }
-      });
-
-      // 2) Empresa certificates
-      const { data: empresas, error: erroEmpresas } = await supabase
-        .from('empresas')
-        .select('id, razao_social, certificado_validade')
-        .eq('created_by', user.id)
-        .not('certificado_validade', 'is', null);
-      if (erroEmpresas) falhas.push('certificados das empresas');
-      (empresas || []).forEach((e) => {
-        if (e.certificado_validade) {
-          docs.push({
-            id: `cert-emp-${e.id}`,
-            nome: `Certificado Digital — ${e.razao_social}`,
-            validade: e.certificado_validade,
-            tipo: 'certificado',
-            origem: 'certificado_empresa',
-            status: calcDocStatus(e.certificado_validade),
-          });
-        }
-      });
-
-      // 3) Portal credentials certificates
-      const { data: creds, error: erroCreds } = await supabase
-        .from('credenciais_portais_safe')
-        .select('id, portal_nome, validade_certificado')
-        .eq('user_id', user.id)
-        .not('validade_certificado', 'is', null);
-      if (erroCreds) falhas.push('certificados dos portais');
-      (creds || []).forEach((c) => {
-        if (c.validade_certificado) {
-          docs.push({
-            id: `cert-portal-${c.id}`,
-            nome: `Certificado ${c.portal_nome}`,
-            validade: c.validade_certificado,
-            tipo: 'certificado_portal',
-            origem: 'certificado_portal',
-            status: calcDocStatus(c.validade_certificado),
-          });
-        }
-      });
-
-      // Lista parcial de vencimentos é pior do que lista nenhuma: quem olha e
-      // não vê a certidão conclui que ela está em dia. Falhou uma fonte, a
-      // aba inteira vira erro com retentativa.
-      if (falhas.length > 0) {
-        throw new Error(`Não foi possível ler ${falhas.join(', ')}.`);
-      }
-
-      return docs;
-    },
-    enabled: !!user,
-  });
+    documentos: docsValidade,
+    carregando: carregandoDocs,
+    erro: erroDocs,
+    recarregar: recarregarDocs,
+  } = useVencimentosDeDocumentos();
 
   // Fetch backup config for calendar integration
   const {
@@ -305,7 +218,7 @@ export default function CalendarioLicitacoes() {
     });
 
     docsValidade.forEach((doc) => {
-      const key = format(new Date(doc.validade), 'yyyy-MM-dd');
+      const key = format(diaDaValidade(doc.validade), 'yyyy-MM-dd');
       getEntry(key).docs.push(doc);
     });
 
@@ -335,10 +248,10 @@ export default function CalendarioLicitacoes() {
       .sort((a, b) => new Date(a.data_abertura!).getTime() - new Date(b.data_abertura!).getTime());
   }, [licitacoes]);
 
-  // Docs vencendo/vencidos
+  // Tudo que pede atenção: vencido, vence hoje ou vence dentro da janela.
   const docsAlerta = useMemo(
-    () => docsValidade.filter((d) => d.status === 'vencendo' || d.status === 'vencido')
-      .sort((a, b) => new Date(a.validade).getTime() - new Date(b.validade).getTime()),
+    () => docsValidade.filter((d) => exigeAtencao(d.situacao))
+      .sort((a, b) => diaDaValidade(a.validade).getTime() - diaDaValidade(b.validade).getTime()),
     [docsValidade]
   );
 
@@ -350,17 +263,19 @@ export default function CalendarioLicitacoes() {
      e o `useMemo` ainda tira o sort do caminho de cada render. */
   const docsOrdenados = useMemo(
     () =>
-      [...docsValidade].sort((a, b) => {
-        const order = { vencido: 0, vencendo: 1, ok: 2 };
-        return order[a.status] - order[b.status] || new Date(a.validade).getTime() - new Date(b.validade).getTime();
-      }),
+      [...docsValidade].sort((a, b) =>
+        ORDEM_DE_URGENCIA[a.situacao] - ORDEM_DE_URGENCIA[b.situacao] ||
+        diaDaValidade(a.validade).getTime() - diaDaValidade(b.validade).getTime()),
     [docsValidade]
   );
 
-  // As duas metades do alerta, cada uma em seu Alert — a mesma filtragem que
-  // antes era repetida cinco vezes dentro do JSX.
-  const docsVencidos = useMemo(() => docsAlerta.filter((d) => d.status === 'vencido'), [docsAlerta]);
-  const docsVencendo = useMemo(() => docsAlerta.filter((d) => d.status === 'vencendo'), [docsAlerta]);
+  /* As metades do alerta, cada uma em seu Alert. "Vence hoje" passou a ser uma
+     categoria própria: no balde de 30 dias, o único dia em que ainda dá para
+     renovar a certidão a tempo ficava com o mesmo peso visual de um prazo de
+     um mês. Ele acompanha o vencido no alerta vermelho porque a ação é hoje. */
+  const docsVencidos = useMemo(() => docsAlerta.filter((d) => d.situacao === 'vencido'), [docsAlerta]);
+  const docsVencemHoje = useMemo(() => docsAlerta.filter((d) => d.situacao === 'vence_hoje'), [docsAlerta]);
+  const docsVencendo = useMemo(() => docsAlerta.filter((d) => d.situacao === 'vencendo'), [docsAlerta]);
 
   // Urgentes (próximos 3 dias)
   const urgentes = useMemo(() => {
@@ -388,7 +303,7 @@ export default function CalendarioLicitacoes() {
           const dt = l.data_abertura ? new Date(l.data_abertura) : null;
           return dt && isWithinInterval(dt, { start: hoje, end: addDays(hoje, 3) });
         }) ||
-        val.docs.some((doc) => doc.status === 'vencido')
+        val.docs.some((doc) => doc.situacao === 'vencido' || doc.situacao === 'vence_hoje')
       )
         urgentDates.push(d);
     });
@@ -444,7 +359,7 @@ export default function CalendarioLicitacoes() {
   };
 
   const irParaProcesso = (id: string) => navigate(`/processo/${id}`);
-  const irParaOrigemDoDoc = (doc: DocValidade) => navigate(rotaDaOrigem[doc.origem]);
+  const irParaOrigemDoDoc = (doc: DocValidade) => navigate(ROTA_DA_ORIGEM[doc.origem]);
 
   /* A grade do mês ganha a coluna larga da composição (≈65%), e o calendário
      do shadcn nasce com célula de 36px fixos (`w-9`) — largura que não olha
@@ -584,7 +499,7 @@ export default function CalendarioLicitacoes() {
 
       {/* Alertas urgentes — Alert de ui em tinta (`destructive`/`warning`), no
           lugar das caixas com alfa composto na mão (`bg-destructive/10`). */}
-      {(urgentes.length > 0 || docsVencidos.length > 0) && (
+      {(urgentes.length > 0 || docsVencidos.length > 0 || docsVencemHoje.length > 0) && (
         <Alert variant="destructive">
           <AlertTriangle className="w-5 h-5" aria-hidden="true" />
           <AlertTitle>Exige atenção agora</AlertTitle>
@@ -627,10 +542,34 @@ export default function CalendarioLicitacoes() {
                       <button
                         type="button"
                         onClick={() => irParaOrigemDoDoc(d)}
-                        title={rotuloDaOrigem[d.origem]}
+                        title={ROTULO_DA_ORIGEM[d.origem]}
                         className="text-left underline underline-offset-2 hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm"
                       >
-                        {d.nome} — venceu em {format(new Date(d.validade), 'dd/MM/yyyy')}
+                        {d.nome} — venceu em {format(diaDaValidade(d.validade), 'dd/MM/yyyy')}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {/* Vence HOJE — separado do vencido e do "em 30 dias" porque a ação
+                é diferente: ainda dá para usar o documento, e é o último dia. */}
+            {docsVencemHoje.length > 0 && (
+              <div>
+                <p className="font-semibold">
+                  {docsVencemHoje.length} documento(s) vence(m) hoje
+                </p>
+                <ul className="mt-1 space-y-1">
+                  {docsVencemHoje.map((d) => (
+                    <li key={d.id}>
+                      •{' '}
+                      <button
+                        type="button"
+                        onClick={() => irParaOrigemDoDoc(d)}
+                        title={ROTULO_DA_ORIGEM[d.origem]}
+                        className="text-left underline underline-offset-2 hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm"
+                      >
+                        {d.nome} — último dia de validade ({format(diaDaValidade(d.validade), 'dd/MM/yyyy')})
                       </button>
                     </li>
                   ))}
@@ -651,20 +590,21 @@ export default function CalendarioLicitacoes() {
           <AlertDescription>
             <ul className="mt-1 space-y-1">
               {docsVencendo.map((d) => {
-                const diff = Math.ceil(
-                  (new Date(d.validade).getTime() - hoje.getTime()) / 86400000
-                );
+                // Dias de calendário (a régua compartilhada). A conta antiga
+                // usava `hoje` COM hora, então o mesmo documento dizia "vence
+                // em 5 dias" de manhã e "em 4" à tarde.
+                const diff = diasAteVencer(d.validade);
                 return (
                   <li key={d.id}>
                     •{' '}
                     <button
                       type="button"
                       onClick={() => irParaOrigemDoDoc(d)}
-                      title={rotuloDaOrigem[d.origem]}
+                      title={ROTULO_DA_ORIGEM[d.origem]}
                       className="text-left underline underline-offset-2 hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm"
                     >
                       {d.nome} — vence em <strong>{diff} dia{diff > 1 ? 's' : ''}</strong> (
-                      {format(new Date(d.validade), 'dd/MM/yyyy')})
+                      {format(diaDaValidade(d.validade), 'dd/MM/yyyy')})
                     </button>
                   </li>
                 );
@@ -714,8 +654,8 @@ export default function CalendarioLicitacoes() {
                   .map((d): CalendarEvent => ({
                     uid: d.id,
                     title: `⚠ Vencimento: ${d.nome}`,
-                    description: `Documento com vencimento em ${format(new Date(d.validade), 'dd/MM/yyyy')}. Origem: ${d.origem}`,
-                    start: new Date(d.validade),
+                    description: `Documento com vencimento em ${format(diaDaValidade(d.validade), 'dd/MM/yyyy')}. Origem: ${d.origem}`,
+                    start: diaDaValidade(d.validade),
                     alarm: 1440,
                     allDay: true,
                   })),
@@ -820,32 +760,24 @@ export default function CalendarioLicitacoes() {
                       key={doc.id}
                       type="button"
                       onClick={() => irParaOrigemDoDoc(doc)}
-                      title={rotuloDaOrigem[doc.origem]}
+                      title={ROTULO_DA_ORIGEM[doc.origem]}
                       className={cn(
                         'group flex w-full flex-wrap items-center justify-between gap-2 p-3 text-left rounded-lg border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-                        doc.status === 'vencido'
-                          ? 'border-destructive-line bg-destructive-tint'
-                          : 'border-warning-line bg-warning-tint'
+                        PELE_DA_SITUACAO[doc.situacao].caixa
                       )}
                     >
                       <span className="flex items-center gap-2 min-w-0">
                         {origemIcon(doc.origem)}
                         <span className="min-w-0 block">
                           <span className="block text-sm font-medium truncate group-hover:underline">{doc.nome}</span>
-                          <span
-                            className={cn(
-                              'block text-sm',
-                              doc.status === 'vencido' ? 'text-destructive-ink' : 'text-warning-ink'
-                            )}
-                          >
-                            {doc.status === 'vencido' ? 'Vencido' : 'Vence'} em{' '}
-                            {format(new Date(doc.validade), 'dd/MM/yyyy')}
+                          <span className={cn('block text-sm', PELE_DA_SITUACAO[doc.situacao].tinta)}>
+                            {frasePrazo(doc.validade)} · {format(diaDaValidade(doc.validade), 'dd/MM/yyyy')}
                           </span>
                         </span>
                       </span>
                       <span className="flex items-center gap-2 flex-shrink-0">
-                        <span className={badgeVariants({ variant: doc.status === 'vencido' ? 'danger' : 'warning' })}>
-                          {doc.status === 'vencido' ? 'Vencido' : 'Vencendo'}
+                        <span className={badgeVariants({ variant: PELE_DA_SITUACAO[doc.situacao].selo })}>
+                          {ROTULO_DA_SITUACAO[doc.situacao]}
                         </span>
                         <ChevronRight className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
                       </span>
@@ -936,21 +868,16 @@ export default function CalendarioLicitacoes() {
               ) : (
                 <div className="space-y-2 h-[min(52vh,520px)] overflow-y-auto overscroll-contain pr-2">
                   {docsOrdenados.map((doc) => {
-                    const val = new Date(doc.validade);
-                    const diff = Math.ceil((val.getTime() - hoje.getTime()) / 86400000);
+                    const val = diaDaValidade(doc.validade);
                     return (
                       <button
                         key={doc.id}
                         type="button"
                         onClick={() => irParaOrigemDoDoc(doc)}
-                        title={rotuloDaOrigem[doc.origem]}
+                        title={ROTULO_DA_ORIGEM[doc.origem]}
                         className={cn(
                           'group flex w-full flex-wrap items-center justify-between gap-2 p-3 text-left rounded-lg border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-                          doc.status === 'vencido'
-                            ? 'border-destructive-line bg-destructive-tint'
-                            : doc.status === 'vencendo'
-                            ? 'border-warning-line bg-warning-tint'
-                            : 'border-border bg-card hover:bg-muted'
+                          PELE_DA_SITUACAO[doc.situacao].caixa
                         )}
                       >
                         <span className="flex items-center gap-2 min-w-0">
@@ -959,30 +886,17 @@ export default function CalendarioLicitacoes() {
                             <span className="block text-sm font-medium truncate group-hover:underline">{doc.nome}</span>
                             <span className="block text-sm text-muted-foreground">
                               Validade: {format(val, 'dd/MM/yyyy')}
-                              {doc.status === 'vencido'
-                                ? ` (vencido há ${Math.abs(diff)} dia${Math.abs(diff) > 1 ? 's' : ''})`
-                                : doc.status === 'vencendo'
-                                ? ` (${diff} dia${diff > 1 ? 's' : ''} restante${diff > 1 ? 's' : ''})`
-                                : ''}
+                              {doc.situacao !== 'ok' && ` (${frasePrazo(doc.validade).toLowerCase()})`}
                             </span>
                           </span>
                         </span>
                         <span className="flex items-center gap-2 flex-shrink-0">
                           <span
                             className={badgeVariants({
-                              variant:
-                                doc.status === 'vencido'
-                                  ? 'danger'
-                                  : doc.status === 'vencendo'
-                                  ? 'warning'
-                                  : 'success',
+                              variant: PELE_DA_SITUACAO[doc.situacao].selo,
                             })}
                           >
-                            {doc.status === 'vencido'
-                              ? 'Vencido'
-                              : doc.status === 'vencendo'
-                              ? 'Vencendo'
-                              : 'Regular'}
+                            {ROTULO_DA_SITUACAO[doc.situacao]}
                           </span>
                           <ChevronRight className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
                         </span>

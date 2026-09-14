@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import EstadoVazio from '@/components/shared/EstadoVazio';
 import { cn } from '@/lib/utils';
+import { ANCORA_LISTAGEM } from '@/lib/licitacao/recortes-do-painel';
 import { CONTORNOS_UF, MAPA_VIEWBOX } from './mapa-brasil-contornos';
 
 interface VolumePorUF {
@@ -86,8 +87,14 @@ export default function MapaLicitacoesPorEstado({ dados, limite = 6 }: Props) {
           titulo="Nenhuma licitação com estado informado"
           descricao="O mapa se pinta conforme a UF dos processos cadastrados. Informe o estado nas licitações para vê-las aqui."
           acao={
+            /* Levava a `/licitacoes`, que é rota legada e REDIRECIONA para
+               `/monitoramento-editais` — a busca no PNCP, base pública. O mapa
+               conta a tabela `licitacoes` (processos da empresa), então o botão
+               mandava a pessoa procurar os próprios processos numa tela que não
+               os tem. Agora leva à listagem de processos do painel, que é a
+               mesma origem do número. */
             <Button variant="outline" asChild>
-              <Link to="/licitacoes">Ver licitações</Link>
+              <Link to={`/dashboard#${ANCORA_LISTAGEM}`}>Ver processos da empresa</Link>
             </Button>
           }
         />

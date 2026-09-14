@@ -1,179 +1,152 @@
-import { useNavigate } from 'react-router-dom';
-import {
-  Download, Bell, Target, Search, Scale,
-  Kanban, Shield, MessageSquare, Crosshair, TrendingUp, Building2, Settings, Plug, Gauge,
-  Users, DollarSign, ClipboardCheck, FileText,
-  CalendarDays, ListChecks, Calculator, Workflow, FileBarChart, Sparkles,
-} from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { usePreferenciasDeNavegacao } from '@/hooks/usePreferenciasDeNavegacao';
+import { funcoesDoSistema, type FuncaoDoSistema } from '@/lib/navegacao/registro';
+// `Map` do lucide sombreia o `Map` nativo do JavaScript — e o erro aparece
+// longe daqui, num `new Map(...)` que passa a ser lido como construtor de um
+// componente React. Renomeado na importação.
+import {
+  Target, Brain, Map as IconeMapa, Zap, Scale, Users,
+} from 'lucide-react';
+import type { ElementType } from 'react';
 
-interface QuickItem {
-  /** Exclusivo do administrador mesmo quando a ROTA é aberta à equipe —
-   *  caso das Metas: todos acompanham, só o admin define. */
-  adminOnly?: boolean;
-  icon: React.ElementType;
-  label: string;
-  path: string;
-  badge?: 'novo';
-}
-
-interface QuickGroup {
-  title: string;
-  accent?: boolean;
-  items: QuickItem[];
-}
-
-const groups: QuickGroup[] = [
+/**
+ * Os atalhos do painel — uma curadoria, não a classificação oficial.
+ *
+ * Estes seis grupos existem para a primeira tela do dia, e por isso NÃO
+ * espelham o menu: "Automação" junta Workflow, Robô, Assistente e API, que no
+ * diretório moram em três categorias diferentes. O comando de 13/09 diz isso
+ * com todas as letras — "esses grupos são atalhos do painel; preserve a
+ * classificação oficial de cada função no menu global".
+ *
+ * O que mudou é de onde vêm nome, ícone e permissão: do registro único, e não
+ * mais de uma lista escrita à mão aqui. A lista antiga tinha divergido em três
+ * pontos que ninguém enxergava lendo este arquivo — chamava
+ * `/monitoramento-editais` de "Encontrar Editais" (um terceiro nome para a
+ * mesma tela), inventava um grupo "Automação" que o menu não tinha, e o
+ * atalho "Definir Metas" apontava para `/metas-comercial?tab=parametros`
+ * enquanto o item de mesmo nome no menu levava a `/definir-metas`. Duas telas
+ * diferentes, um nome só.
+ *
+ * Aqui ficam apenas ROTAS. O resto o registro responde.
+ */
+const GRUPOS: { titulo: string; icone: ElementType; rotas: string[] }[] = [
   {
-    title: 'Monitoramento',
-    items: [
-      { icon: Download, label: 'Encontrar Editais', path: '/monitoramento-editais' },
-      { icon: Bell, label: 'Boletins Diários', path: '/boletins' },
-      { icon: Target, label: 'Estratégicas', path: '/licitacoes-estrategicas' },
-      { icon: MessageSquare, label: 'Chat e Mural', path: '/monitoramento-chat' },
-    ],
+    titulo: 'Oportunidades de negócio',
+    icone: Target,
+    rotas: ['/monitoramento-editais', '/boletins', '/licitacoes-estrategicas', '/monitoramento-chat'],
   },
   {
-    title: 'Gestão de processos',
-    items: [
-      { icon: ListChecks, label: 'Compromissos', path: '/meus-compromissos' },
-      { icon: CalendarDays, label: 'Calendário', path: '/calendario' },
-      { icon: Kanban, label: 'Kanban', path: '/kanban' },
-      { icon: FileText, label: 'Contratos', path: '/gestao-contratos' },
-    ],
+    titulo: 'Inteligência',
+    icone: Brain,
+    rotas: ['/precificacao', '/proposta-tecnica', '/analise-mercado', '/concorrentes'],
   },
   {
-    title: 'Inteligência & preços',
-    accent: true,
-    items: [
-      { icon: DollarSign, label: 'Precificação', path: '/precificacao' },
-      { icon: FileBarChart, label: 'Proposta Comercial', path: '/proposta-tecnica' },
-      { icon: TrendingUp, label: 'Análise de Mercado', path: '/analise-mercado' },
-      { icon: Users, label: 'Concorrentes', path: '/concorrentes' },
-    ],
+    titulo: 'Gestão',
+    icone: IconeMapa,
+    rotas: ['/meus-compromissos', '/calendario', '/kanban', '/gestao-contratos'],
   },
   {
-    title: 'Jurídico & contábil',
-    items: [
-      { icon: Scale, label: 'Apoio Jurídico', path: '/apoio-juridico' },
-      { icon: Calculator, label: 'Apoio Contábil', path: '/apoio-contabil' },
-      { icon: Shield, label: 'Documentos', path: '/documentos' },
-      { icon: Sparkles, label: 'IA Especializada', path: '/assistente-especializado', badge: 'novo' },
-    ],
+    titulo: 'Automação',
+    icone: Zap,
+    rotas: ['/workflow-ia', '/robo-lances', '/assistente', '/api-integracao'],
   },
   {
-    title: 'Automação',
-    items: [
-      { icon: Workflow, label: 'Workflow IA', path: '/workflow-ia', badge: 'novo' },
-      { icon: Crosshair, label: 'Robô de Lances', path: '/robo-lances' },
-      { icon: ClipboardCheck, label: 'Assessoria Cadastral', path: '/assessoria-cadastral' },
-      { icon: MessageSquare, label: 'WhatsApp CRM', path: '/whatsapp-crm' },
-    ],
+    titulo: 'Jurídico e documentos',
+    icone: Scale,
+    rotas: ['/documentos', '/apoio-juridico', '/apoio-contabil', '/assessoria-cadastral'],
   },
   {
-    // Só administradores veem: todas as rotas aqui são administrativas, e o
-    // filtro de permissão as nega para operador/visualizador — o cartão some
-    // inteiro em vez de aparecer pela metade. Suporte não entra: é de todos e
-    // já vive no menu superior.
-    title: 'Administração',
-    items: [
-      { icon: Building2, label: 'Empresas', path: '/empresas' },
-      { icon: Users, label: 'Equipe', path: '/equipe' },
-      { icon: Settings, label: 'Configurações', path: '/configuracoes' },
-      { icon: Gauge, label: 'Definir Metas', path: '/metas-comercial?tab=parametros', adminOnly: true },
-      { icon: Plug, label: 'API & Integração', path: '/api-integracao' },
-    ],
+    titulo: 'Administração',
+    icone: Users,
+    rotas: ['/empresas', '/equipe', '/definir-metas', '/configuracoes'],
   },
 ];
 
-export default function QuickAccessGrid() {
-  const navigate = useNavigate();
+interface QuickAccessGridProps {
+  /** Liga a estrela de favoritar em cada atalho. */
+  personalizando?: boolean;
+}
+
+export default function QuickAccessGrid({ personalizando = false }: QuickAccessGridProps) {
   const { canAccessRoute, isAdmin } = useMembroPermissoes();
+  const { ehFavorito, alternarFavorito, registrarAcesso } = usePreferenciasDeNavegacao();
 
-  // O Painel oferecia TODOS os atalhos a qualquer pessoa, enquanto o menu
-  // superior já filtrava por permissão — duas portas para o mesmo lugar com
-  // regras diferentes. Aqui passa a valer a mesma regra, e grupo que esvazia
-  // some em vez de virar cartão vazio.
-  const gruposVisiveis = groups
-    .map((g) => ({
-      ...g,
-      items: g.items.filter((it) => {
-        if (it.adminOnly && !isAdmin) return false;
-        // Rota com parâmetro (?tab=) é avaliada pelo caminho base.
-        return canAccessRoute(it.path.split('?')[0]);
-      }),
-    }))
-    .filter((g) => g.items.length > 0);
+  const porRota = new Map(funcoesDoSistema.map((f) => [f.rota, f]));
 
-  // REBRAND — a grade segue o protótipo: os GRUPOS em duas colunas largas, e
-  // os itens de cada grupo em ladrilhos de três por fileira, com o ícone em
-  // cima do nome. Antes eram seis colunas estreitas com lista vertical, e o
-  // nome de cada item quebrava em duas linhas.
-  // Duas colunas dispensam o cálculo de coluna que existia aqui: qualquer
-  // número de grupos preenche as fileiras sem deixar buraco à direita.
+  const permitida = (f: FuncaoDoSistema) =>
+    (!f.adminOnly || isAdmin) && canAccessRoute(f.rota.split('?')[0]);
+
+  const grupos = GRUPOS.map((g) => ({
+    ...g,
+    // Atalho para rota que não existe mais no registro some, em vez de virar
+    // um ladrilho morto. E o comando proíbe reservar espaço vazio para função
+    // indisponível — a grade fecha em torno do que sobrou.
+    funcoes: g.rotas.map((r) => porRota.get(r)).filter((f): f is FuncaoDoSistema => !!f && permitida(f)),
+  })).filter((g) => g.funcoes.length > 0);
+
+  if (grupos.length === 0) return null;
+
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 [&>*]:min-w-0">
-      {gruposVisiveis.map((group) => (
-        <div
-          key={group.title}
-          className={cn(
-            'rounded-lg border p-6 shadow-sm',
-            group.accent
-              ? 'bg-primary-tint/50 border-primary/20'
-              : 'bg-card border-border'
-          )}
+    <div className="grid gap-4 lg:grid-cols-2">
+      {grupos.map((grupo) => (
+        <section
+          key={grupo.titulo}
+          className="rounded-xl border border-border bg-card p-5 shadow-sm"
         >
-          <div className="flex items-center gap-2 mb-4">
-            <h3 className="text-lg font-semibold">{group.title}</h3>
-            {group.accent && <Badge variant="success">Destaque</Badge>}
-          </div>
+          <h3 className="mb-4 flex items-center gap-2 text-base font-semibold leading-6 text-foreground">
+            <grupo.icone className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+            {grupo.titulo}
+          </h3>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 [&>*]:min-w-0">
-            {group.items.map((item) => {
-              const Icon = item.icon;
-              return (
-                <Tooltip key={item.path + item.label} delayDuration={400}>
-                  <TooltipTrigger asChild>
-                    {/* Ladrilho = Button outline em coluna. `whitespace-normal`
-                        e `[&_svg]:size-5` sobrescrevem o nowrap e o ícone de
-                        16px que o Button traz para linha de texto. */}
-                    <Button
-                      variant="outline"
-                      onClick={() => navigate(item.path)}
-                      className="group relative h-auto flex-col gap-2 whitespace-normal px-2 py-5 text-center [&_svg]:size-5"
-                    >
-                      {item.badge && (
-                        // O selo fica ACIMA do ladrilho, montado na borda, como
-                        // no protótipo — dentro, ele empurraria o ícone e
-                        // desalinharia a fileira inteira.
-                        <Badge variant="success" className="absolute -top-2 left-1/2 -translate-x-1/2">
-                          Novidade
-                        </Badge>
-                      )}
-                      {/* O ícone cresce junto, um pouco mais que o ladrilho —
-                          é o que faz o gesto parecer que o cartão se aproxima,
-                          e não que foi só esticado. */}
-                      <Icon
-                        className="text-primary transition-transform duration-200 ease-out group-hover:scale-110 motion-reduce:transform-none motion-reduce:transition-none"
-                        aria-hidden="true"
-                      />
-                      <span className="text-sm font-medium leading-tight line-clamp-2">
-                        {item.label}
-                      </span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="text-xs">
-                    {item.label}
-                  </TooltipContent>
-                </Tooltip>
-              );
-            })}
+          {/* 2×2 como pede a referência. No celular, duas colunas enquanto os
+              rótulos couberem — `min-w-0` com `truncate` decide isso sozinho,
+              sem ponto de quebra declarado. */}
+          <div className="grid grid-cols-2 gap-3">
+            {grupo.funcoes.map((f) => (
+              <div key={f.id} className="relative">
+                <Link
+                  to={f.rota}
+                  onClick={() => registrarAcesso(f.id)}
+                  className={cn(
+                    'flex h-full min-h-[88px] flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card px-3 py-4 text-center transition-colors',
+                    'hover:border-primary/40 hover:bg-muted/40',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                  )}
+                >
+                  <f.icone className="h-6 w-6 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  <span className="min-w-0 text-sm font-medium leading-5 text-foreground">
+                    {f.nome}
+                  </span>
+                </Link>
+
+                {personalizando && (
+                  // Fora do `Link`, e não dentro: âncora dentro de âncora não é
+                  // HTML válido, e um `stopPropagation` resolveria o clique mas
+                  // não o leitor de tela, que anunciaria um link só.
+                  <button
+                    type="button"
+                    onClick={() => alternarFavorito(f.id)}
+                    aria-pressed={ehFavorito(f.id)}
+                    aria-label={
+                      ehFavorito(f.id)
+                        ? `Remover ${f.nome} dos favoritos`
+                        : `Adicionar ${f.nome} aos favoritos`
+                    }
+                    className="absolute right-1 top-1 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <Star
+                      className={cn('h-4 w-4', ehFavorito(f.id) && 'fill-primary text-primary')}
+                      aria-hidden="true"
+                    />
+                  </button>
+                )}
+              </div>
+            ))}
           </div>
-        </div>
+        </section>
       ))}
     </div>
   );

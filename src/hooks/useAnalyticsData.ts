@@ -2,6 +2,19 @@ import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
+/* As três listas de status viviam AQUI DENTRO — a redeclaração que o princípio
+   1 do CLAUDE.md proíbe. Elas saíram para `lib/licitacao/recortes-do-painel`,
+   onde ficam ao lado do filtro da listagem que precisa reproduzir exatamente
+   esta conta, e onde está registrado o que a auditoria de 13/09 mediu: trocar
+   estas listas por `normalizarStatus` MUDA os números da tela (em especial
+   "Em andamento", que hoje ignora o status canônico 'Em Análise'). O valor
+   não mudou nesta passagem de propósito — mudar critério de apuração é
+   decisão do dono do produto. Ler o cabeçalho daquele arquivo antes de mexer. */
+import {
+  STATUS_ANDAMENTO,
+  STATUS_GANHO,
+  STATUS_PERDIDO,
+} from '@/lib/licitacao/recortes-do-painel';
 
 export type ModalidadeBreakdown = {
   modalidade: string;
@@ -49,9 +62,6 @@ export type AnalyticsKpis = {
 };
 
 const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-const STATUS_GANHO = ['Vencida', 'vencida', 'Homologada'];
-const STATUS_PERDIDO = ['Perdida', 'perdida'];
-const STATUS_ANDAMENTO = ['Monitorando', 'Analisando', 'Proposta Enviada', 'enviada', 'proposta', 'Em Disputa', 'Publicado'];
 
 const STATUS_COLORS: Record<string, string> = {
   'Monitorando': 'hsl(var(--info))',
@@ -77,11 +87,36 @@ function isPregao(modalidade: string) {
   return modalidade?.toLowerCase().includes('pregão') || modalidade?.toLowerCase().includes('pregao');
 }
 
+/**
+ * A linha como esta tela a lê — exatamente as colunas do `select` abaixo.
+ * Era `any[]`, e `any` aqui apagava justamente os erros que este hook produz:
+ * coluna renomeada, campo que não veio no select, `status` comparado com uma
+ * lista de strings. O tipo explícito é o que faz o compilador cobrar.
+ */
+type LicitacaoDeAnalytics = {
+  id: string;
+  numero: string | null;
+  orgao: string | null;
+  objeto: string | null;
+  modalidade: string | null;
+  status: string | null;
+  valor_estimado: number | null;
+  valor_adjudicado: number | null;
+  uf: string | null;
+  municipio: string | null;
+  data_abertura: string | null;
+  data_encerramento: string | null;
+  created_at: string;
+  updated_at: string | null;
+};
+
 export function useAnalyticsData() {
   const { user } = useAuth();
   const { empresaAtiva, todasSelecionadas } = useEmpresa();
-  const [licitacoes, setLicitacoes] = useState<any[]>([]);
+  const [licitacoes, setLicitacoes] = useState<LicitacaoDeAnalytics[]>([]);
   const [loading, setLoading] = useState(true);
+  /** Mensagem real do banco quando a carga falha. Ver o comentário em `loadData`. */
+  const [erro, setErro] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     if (!user) return;
@@ -98,8 +133,19 @@ export function useAnalyticsData() {
       q = q.eq('empresa_id', empresaAtiva.id);
     }
 
-    const { data } = await q;
-    setLicitacoes(data || []);
+    /* O `error` era descartado (`const { data } = await q`): RLS negando,
+       rede caída ou coluna renomeada viravam `data: null` → lista vazia, e a
+       tela anunciava uma empresa sem nenhum processo. É a falha silenciosa do
+       princípio 3 do CLAUDE.md. A lista anterior NÃO é apagada no erro —
+       sumir com o que já estava na tela é a mesma mentira em outro formato. */
+    const { data, error } = await q;
+    if (error) {
+      setErro(error.message);
+      setLoading(false);
+      return;
+    }
+    setErro(null);
+    setLicitacoes((data || []) as LicitacaoDeAnalytics[]);
     setLoading(false);
   }, [user, empresaAtiva, todasSelecionadas]);
 
@@ -216,5 +262,9 @@ export function useAnalyticsData() {
     return items;
   })();
 
-  return { kpis, modalidadeBreakdown, statusBreakdown, ufBreakdown, timeline, licitacoes, loading };
+  return {
+    kpis, modalidadeBreakdown, statusBreakdown, ufBreakdown, timeline, licitacoes, loading,
+    erro,
+    recarregar: loadData,
+  };
 }

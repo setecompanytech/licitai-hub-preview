@@ -1069,9 +1069,13 @@
   --g-controle: 40px;         /* altura de input e botão (piso da faixa 40–44) */
   --g-linha: 44px;            /* altura mínima de linha de tabela e alvo de toque */
   --g-painel: 384px;          /* painel lateral, meio da faixa 360–420 */
-  --g-barra-lateral: 240px;   /* coluna de navegação */
-  --g-barra-lateral-fechada: 68px;
-  --g-topo: 64px;             /* faixa superior branca */
+  /* A navegação voltou para o topo em 13/09 e a coluna navy de 240px saiu com
+     o AppSidebar; `--g-barra-lateral` e `--g-barra-lateral-fechada` ficaram
+     sem consumidor e foram REMOVIDAS aqui — token órfão envelhece divergente
+     e depois alguém o usa achando que ainda descreve algo que existe. */
+  --g-topo: 64px;             /* cabeçalho horizontal, desktop */
+  --g-topo-celular: 56px;     /* o mesmo cabeçalho abaixo de 768px */
+  --g-conteudo: 1440px;       /* teto do container central do conteúdo */
 }
 
 @layer components {

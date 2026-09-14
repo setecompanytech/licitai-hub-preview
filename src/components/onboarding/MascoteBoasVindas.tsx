@@ -21,9 +21,9 @@ import mascote from '@/assets/brand/mascote-robo-sem-fundo.png';
  * Até 10/09/2026 ele também ACENDIA o caminho: recortava um buraco no véu
  * sobre o grupo "Ferramentas" e desenhava uma seta dourada até lá. Saiu a
  * pedido do Ian — visualmente pesado — e por uma razão estrutural: dependia
- * de medir a posição de um botão da barra lateral, que agora se esconde até o
- * mouse chegar na borda. Apontar para o que pode não estar na tela é pior que
- * não apontar. O atalho dentro do card é o dedo apontado.
+ * de medir a posição de um botão da barra lateral — que desde 13/09 nem existe
+ * mais, com a navegação de volta ao topo. Apontar para o que pode não estar na
+ * tela é pior que não apontar. O atalho dentro do card é o dedo apontado.
  *
  * Identidade 12/09: o modal passou a ser o Dialog de ui (véu, foco preso,
  * Escape, rolagem interna) vestido com os tokens do tema. A folha
@@ -142,7 +142,11 @@ export default function MascoteBoasVindas({ open, onClose }: Props) {
               marcando cada etapa conforme avança — o sistema guarda de onde você parou.
             </p>
             <p className="mt-3 text-sm text-muted-foreground">
-              Ele mora no menu à esquerda, dentro de <b className="font-semibold text-foreground">Ferramentas</b> — ou vá direto pelo
+              {/* "no menu à esquerda" era instrução para a coluna lateral, que
+                  saiu em 13/09. Texto que manda procurar onde não há nada é
+                  pior que texto nenhum: quem segue a instrução conclui que o
+                  sistema está quebrado, não que a dica envelheceu. */}
+              Ele mora em <b className="font-semibold text-foreground">Ferramentas</b>, no topo da tela — ou vá direto pelo
               atalho abaixo.
             </p>
 
