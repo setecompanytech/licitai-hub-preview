@@ -79,6 +79,7 @@ const IndicesRepactuacao = lazyPage(() => import("./pages/IndicesRepactuacao"));
 const RelatorioContabil = lazyPage(() => import("./pages/RelatorioContabil"));
 const AdminMarketing = lazyPage(() => import("./pages/AdminMarketing"));
 const AuditoriaAdmin = lazyPage(() => import("./pages/AuditoriaAdmin"));
+const AdminRoboLances = lazyPage(() => import("./pages/AdminRoboLances"));
 const MeusCompromissos = lazyPage(() => import("./pages/MeusCompromissos"));
 const WorkflowIA = lazyPage(() => import("./pages/WorkflowIA"));
 const EquipeColaboradores = lazyPage(() => import("./pages/EquipeColaboradores"));
@@ -182,6 +183,7 @@ const App = () => (
               <Route path="/admin/fontes-fabricantes" element={<ProtectedPages><AdminGuard><AdminFontesFabricantes /></AdminGuard></ProtectedPages>} />
               <Route path="/admin/marketing" element={<ProtectedPages><AdminGuard><AdminMarketing /></AdminGuard></ProtectedPages>} />
               <Route path="/admin/auditoria" element={<ProtectedPages><AdminGuard><AuditoriaAdmin /></AdminGuard></ProtectedPages>} />
+              <Route path="/admin/robo-lances" element={<ProtectedPages><AdminGuard><AdminRoboLances /></AdminGuard></ProtectedPages>} />
               <Route path="/admin/distribuicao" element={<ProtectedPages><AdminGuard><PainelDistribuicao /></AdminGuard></ProtectedPages>} />
               <Route path="/admin/mural-telemetria" element={<ProtectedPages><AdminGuard><AdminMuralTelemetria /></AdminGuard></ProtectedPages>} />
               <Route path="/monitoramento-chat" element={<ProtectedPages><MonitoramentoChat /></ProtectedPages>} />

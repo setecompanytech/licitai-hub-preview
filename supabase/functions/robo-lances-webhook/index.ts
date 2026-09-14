@@ -8,7 +8,31 @@ import {
   erroDeColunaAusente,
   ehAgenteGerenciado,
   chaveParaOAgente,
+  chaveEsperadaNoCallback,
 } from "../_shared/robo-acao.ts";
+// O que é da empresa e o que é da operação Praefectus — ver o cabeçalho do arquivo.
+import {
+  FRASES_AO_CLIENTE,
+  corpoDeErro,
+  textoDoErro,
+  ehEstouroDeTempo,
+  motivoDeNegocio,
+  ehAdminDaPlataforma,
+  estadoDoLigado,
+  agentesParaUsuario,
+  comAgenteGerenciado,
+  agenteCompartilhado,
+  rotearSessoes,
+  idsDeSessaoNaSaude,
+  reduzirSaudeParaCliente,
+  tentativasParaCliente,
+  motivoDoCertificadoParaCliente,
+  certificadoParaCliente,
+  contarSessoesVivasNaSaude,
+  saudeParaGuardar,
+  ehUuid,
+  type EstadoDoLigado,
+} from "../_shared/robo-plataforma.ts";
 
 /**
  * O que da configuração do agente pode sair desta função para o navegador.
@@ -38,6 +62,13 @@ serve(async (req) => {
   // A chave do agente gerenciado mora SÓ aqui, como segredo da edge function.
   // Ver `configurar-agente` e `chaveParaOAgente` (_shared/robo-acao.ts).
   const chaveGerenciada = Deno.env.get("AGENTE_API_KEY") || null;
+  // O agente da PLATAFORMA, para quem não tem linha própria em
+  // `agente_externo_config` (ver `agentesParaUsuario`,
+  // _shared/robo-plataforma.ts). Segredo e não coluna pelo mesmo motivo da
+  // chave: trocar a VPS é trocar o segredo, sem caçar linhas no banco.
+  const ambiente = { AGENTE_URL_BASE: Deno.env.get("AGENTE_URL_BASE") || null };
+  // Fora do `try` para o `catch` saber a quem responde (ver o fim da função).
+  let acaoAtual = "";
 
   try {
     const url = new URL(req.url);
@@ -49,6 +80,7 @@ serve(async (req) => {
     // URL termina no nome da função — a forma que três telas usavam e que
     // respondia 404 "Ação desconhecida" (ver _shared/robo-acao.ts).
     const action = resolverAcao(url.pathname, body);
+    acaoAtual = action;
 
     // ─── ACTIONS FROM THE FRONTEND (authenticated user) ───
 
@@ -63,6 +95,17 @@ serve(async (req) => {
       );
       if (authErr || !user) {
         return jsonResponse({ error: "Token inválido" }, 401);
+      }
+
+      // ── EXCLUSIVO DA OPERAÇÃO PRAEFECTUS (14/09/2026) ─────────────────────
+      //
+      // Endereço, chave e slots do agente não são decisão do cliente. Até aqui
+      // todo administrador de empresa cadastrava a própria linha pela tela do
+      // robô; agora quem não tem linha usa o agente da plataforma
+      // (`AGENTE_URL_BASE`), e esta ação fica com o administrador da
+      // plataforma (`user_roles.role = 'admin'`).
+      if (!(await ehAdminDaPlataforma(supabase, user.id))) {
+        return jsonResponse({ error: FRASES_AO_CLIENTE.exclusivoDaPlataforma }, 403);
       }
 
       const { url_base, nome, api_key, max_sessoes_paralelas } = body;
@@ -163,15 +206,59 @@ serve(async (req) => {
 
     if (action === "enviar-sessao") {
       // Send a bid session to the external agent
-      const authHeader = req.headers.get("authorization");
-      if (!authHeader) {
-        return jsonResponse({ error: "Não autorizado" }, 401);
+      const { user, resposta: naoAutenticado } = await usuarioDaRequisicao(supabase, req);
+      if (!user) return naoAutenticado!;
+      const ehAdmin = await ehAdminDaPlataforma(supabase, user.id);
+
+      // ── O ROBÔ DA EMPRESA ESTÁ LIGADO? ANTES DE QUALQUER ESCRITA ──────────
+      //
+      // Desligar o robô é a decisão da empresa de NÃO operar
+      // (`robo_empresa_config`, migration 20260914000004). A recusa vem antes
+      // de ler agente, credencial ou itens: sessão gravada com status
+      // "enviando" para uma empresa que desligou o robô seria a mesma linha
+      // órfã que as recusas abaixo já evitam.
+      //
+      // A empresa vem do corpo; sem ela, do processo — senão omitir
+      // `empresa_id` bastaria para contornar o desligamento. E só vale empresa
+      // de que a pessoa é membro: a de outra serviria para o mesmo contorno.
+      //
+      // Sem linha ou sem a tabela = ligado (princípio 7). Falha de leitura de
+      // outro tipo NÃO é ligado: recusa com 503, porque atropelar um
+      // "desligado" é pior do que pedir para tentar de novo.
+      let empresaDaSessao: string | null = ehUuid(body.empresa_id) ? body.empresa_id : null;
+      if (!empresaDaSessao && ehUuid(body.licitacao_id)) {
+        const { data: processo } = await supabase
+          .from("licitacoes")
+          .select("empresa_id")
+          .eq("id", body.licitacao_id)
+          .maybeSingle();
+        empresaDaSessao = processo?.empresa_id ?? null;
       }
-      const { data: { user }, error: authErr } = await supabase.auth.getUser(
-        authHeader.replace("Bearer ", "")
-      );
-      if (authErr || !user) {
-        return jsonResponse({ error: "Token inválido" }, 401);
+      if (empresaDaSessao && !ehAdmin) {
+        const { data: membro } = await supabase
+          .from("empresa_membros")
+          .select("empresa_id")
+          .eq("empresa_id", empresaDaSessao)
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (!membro) return jsonResponse({ error: FRASES_AO_CLIENTE.foraDaEmpresa }, 403);
+      }
+      if (empresaDaSessao) {
+        const ligado = await lerLigadoDaEmpresa(supabase, empresaDaSessao);
+        if (ligado.estado === "desligado") {
+          return jsonResponse({ error: FRASES_AO_CLIENTE.roboDesligado }, 409);
+        }
+        if (ligado.estado === "indeterminado") {
+          await registrarNoLog(
+            supabase, user.id, "enviar-sessao-recusada",
+            { etapa: "ler-ligado", empresa_id: empresaDaSessao },
+            { erro: ligado.detalhe }
+          );
+          return jsonResponse(
+            corpoDeErro(FRASES_AO_CLIENTE.ligadoIncerto, { ehAdmin, detalhe: ligado.detalhe }),
+            503
+          );
+        }
       }
 
       // Get agent config
@@ -198,19 +285,25 @@ serve(async (req) => {
         .order("updated_at", { ascending: false });
 
       if (erroAgente) {
+        await registrarNoLog(supabase, user.id, "enviar-sessao-recusada", { etapa: "ler-agente" }, {
+          erro: erroAgente.message,
+        });
         return jsonResponse(
-          { error: `Não foi possível ler a configuração do agente: ${erroAgente.message}` },
+          corpoDeErro(FRASES_AO_CLIENTE.falhaInterna, { ehAdmin, detalhe: erroAgente.message }),
           500
         );
       }
 
-      const agente = agentesAtivos?.[0];
+      // Sem linha própria ativa, o agente da PLATAFORMA (`AGENTE_URL_BASE`).
+      // Ele não tem linha: `agente.id` é nulo e a sessão é gravada com
+      // `agente_id` nulo — que é como o callback e o freio a reconhecem.
+      const agente = agentesParaUsuario(agentesAtivos, ambiente)[0];
 
       if (!agente) {
-        return jsonResponse(
-          { error: "Nenhum agente ativo configurado. Configure um agente externo primeiro." },
-          400
-        );
+        const detalhe = "Nenhuma linha ativa em agente_externo_config para o usuário e segredo " +
+                        "AGENTE_URL_BASE ausente ou inválido.";
+        await registrarNoLog(supabase, user.id, "enviar-sessao-recusada", { etapa: "sem-agente" }, { erro: detalhe });
+        return jsonResponse(corpoDeErro(FRASES_AO_CLIENTE.semRobo, { ehAdmin, detalhe }), 400);
       }
 
       // O PORTAL DA TELA NAO E O PORTAL DO AGENTE.
@@ -248,8 +341,13 @@ serve(async (req) => {
       try {
         credenciais = await credencialEmClaro(supabase, user.id, body.portal_id);
       } catch (e: any) {
+        await registrarNoLog(
+          supabase, user.id, "enviar-sessao-recusada",
+          { etapa: "ler-credencial", portal_id: body.portal_id },
+          { erro: textoDoErro(e) }
+        );
         return jsonResponse(
-          { error: `Não foi possível ler a credencial do portal: ${e.message}` },
+          corpoDeErro(FRASES_AO_CLIENTE.credencialIlegivel, { ehAdmin, detalhe: textoDoErro(e) }),
           500
         );
       }
@@ -304,16 +402,33 @@ serve(async (req) => {
         max_lances: body.max_lances || 20,
         modo: "real",
         status: "enviando",
+        // Nulo no agente gerenciado, que não tem linha.
         agente_id: agente.id,
       };
 
-      const { data: sessao, error: sessErr } = await supabase
+      // `empresa_id` fora do `sessaoData` de propósito: o `sessaoData` também
+      // viaja para o agente e para o log. Na sessão, ele decide quem da
+      // empresa a vê (migration 20260914000002) — e é por ele que a saúde
+      // reduzida mostra ao colega a sessão que outra pessoa disparou. Sem a
+      // coluna, grava como antes.
+      let { data: sessao, error: sessErr } = await supabase
         .from("sessoes_lance_real")
-        .insert(sessaoData)
+        .insert({ ...sessaoData, empresa_id: empresaDaSessao })
         .select()
         .single();
+      if (sessErr && erroDeColunaAusente(sessErr)) {
+        ({ data: sessao, error: sessErr } = await supabase
+          .from("sessoes_lance_real")
+          .insert(sessaoData)
+          .select()
+          .single());
+      }
 
-      if (sessErr) throw sessErr;
+      if (sessErr || !sessao) {
+        const detalhe = sessErr?.message ?? "insert da sessão sem retorno";
+        await registrarNoLog(supabase, user.id, "enviar-sessao-recusada", { etapa: "gravar-sessao" }, { erro: detalhe });
+        return jsonResponse(corpoDeErro(FRASES_AO_CLIENTE.falhaInterna, { ehAdmin, detalhe }), 500);
+      }
 
       // OS ITENS DA SESSAO, COM OS TRES VALORES SEPARADOS.
       //
@@ -374,11 +489,15 @@ serve(async (req) => {
           .update({ status: "erro", erro: `Itens da disputa nao gravados: ${itensErr.message}` })
           .eq("id", sessao.id);
 
+        await registrarNoLog(supabase, user.id, "enviar-sessao-recusada", { sessao_id: sessao.id, etapa: "gravar-itens" }, {
+          erro: itensErr.message,
+        });
         return jsonResponse(
-          {
-            error: `A sessão foi criada mas os itens da disputa não foram gravados ` +
-                   `(${itensErr.message}). O robô não foi acionado.`,
-          },
+          corpoDeErro(
+            "Os itens da disputa não puderam ser gravados, e o robô não foi acionado. " +
+              "Tente novamente; se persistir, fale com o suporte.",
+            { ehAdmin, detalhe: itensErr.message }
+          ),
           500
         );
       }
@@ -457,23 +576,56 @@ serve(async (req) => {
             .update({ status: "ativo" })
             .eq("id", sessao.id);
           sessao.status = "ativo";
-        } else {
-          await supabase
-            .from("sessoes_lance_real")
-            .update({ status: "erro", erro: agentData.error || "Erro no agente" })
-            .eq("id", sessao.id);
-          sessao.status = "erro";
-          sessao.erro = agentData.error;
+          return jsonResponse({ success: true, sessao });
         }
 
-        return jsonResponse({ success: true, sessao });
-      } catch (e: any) {
+        // ── RECUSA DO AGENTE NÃO É 200 (14/09/2026) ─────────────────────────
+        //
+        // A resposta anterior era `200 { success: true, sessao: { status:
+        // "erro" } }` — e a tela, que decide pelo `error`, dizia "Sessão
+        // aceita pelo robô" para uma sessão recusada. Agora é 502 com a frase
+        // de negócio. O erro cru fica na sessão (diagnóstico da plataforma) e
+        // no `webhook_log`; o administrador da plataforma o recebe em
+        // `detalhe_tecnico`.
+        const erroCru = agentData?.error || `O agente respondeu HTTP ${agentResp.status}`;
         await supabase
           .from("sessoes_lance_real")
-          .update({ status: "erro", erro: e.message })
+          .update({ status: "erro", erro: erroCru })
           .eq("id", sessao.id);
-
-        return jsonResponse({ success: false, error: `Agente inacessível: ${e.message}` }, 502);
+        await registrarNoLog(
+          supabase, user.id, "enviar-sessao-falha",
+          { sessao_id: sessao.id, etapa: "agente-recusou" },
+          { erro: erroCru, status_code: agentResp.status, resposta: agentData }
+        );
+        const frase = motivoDeNegocio(agentData?.error, FRASES_AO_CLIENTE.sessaoNaoIniciada);
+        return jsonResponse(
+          corpoDeErro(frase, {
+            ehAdmin,
+            detalhe: erroCru,
+            extra: { success: false, sessao: { ...sessao, status: "erro", erro: ehAdmin ? erroCru : frase } },
+          }),
+          502
+        );
+      } catch (e) {
+        const erroCru = textoDoErro(e);
+        await supabase
+          .from("sessoes_lance_real")
+          .update({ status: "erro", erro: erroCru })
+          .eq("id", sessao.id);
+        await registrarNoLog(
+          supabase, user.id, "enviar-sessao-falha",
+          { sessao_id: sessao.id, etapa: "agente-sem-resposta" },
+          { erro: erroCru }
+        );
+        // Estouro de tempo não é "fora do ar": o agente pode estar entrando no
+        // portal agora (ver o comentário do timeout acima), e a frase diz isso.
+        return jsonResponse(
+          corpoDeErro(
+            ehEstouroDeTempo(e) ? FRASES_AO_CLIENTE.semRespostaATempo : FRASES_AO_CLIENTE.roboForaDoAr,
+            { ehAdmin, detalhe: erroCru, extra: { success: false } }
+          ),
+          502
+        );
       }
     }
 
@@ -491,7 +643,10 @@ serve(async (req) => {
       // Verify session exists
       const { data: sessao } = await supabase
         .from("sessoes_lance_real")
-        .select("*, agente_externo_config!inner(api_key_hash, user_id, url_base)")
+        // Junção SEM `!inner`: sessão do agente gerenciado não tem linha de
+        // agente (`agente_id` nulo), e o `!inner` a descartaria — o callback
+        // responderia 404 a um robô que está trabalhando.
+        .select("*, agente_externo_config(api_key_hash, user_id, url_base)")
         .eq("id", sessao_id)
         .single();
 
@@ -502,8 +657,9 @@ serve(async (req) => {
       // Validate agent key
       //
       // Agente gerenciado: vale o segredo AGENTE_API_KEY, não a linha — a
-      // chave antiga gravada no banco estava no bundle público.
-      const expectedKey = chaveParaOAgente((sessao as any).agente_externo_config, chaveGerenciada);
+      // chave antiga gravada no banco estava no bundle público. Sessão sem
+      // linha de agente é a do gerenciado (ver `chaveEsperadaNoCallback`).
+      const expectedKey = chaveEsperadaNoCallback((sessao as any).agente_externo_config, chaveGerenciada);
       if (!expectedKey || agentKey !== expectedKey) {
         return jsonResponse({ error: "Chave do agente inválida" }, 403);
       }
@@ -846,15 +1002,13 @@ serve(async (req) => {
     // grava só status/erro, como antes, e avisa em `observacoes`. O freio nunca
     // espera a contabilidade.
     if (action === "parar-sessao") {
-      const authHeader = req.headers.get("authorization");
-      if (!authHeader) return jsonResponse({ error: "Não autorizado" }, 401);
-      const { data: { user }, error: authErr } = await supabase.auth.getUser(
-        authHeader.replace("Bearer ", "")
-      );
-      if (authErr || !user) return jsonResponse({ error: "Token inválido" }, 401);
+      const { user, resposta: naoAutenticado } = await usuarioDaRequisicao(supabase, req);
+      if (!user) return naoAutenticado!;
+      const ehAdmin = await ehAdminDaPlataforma(supabase, user.id);
 
       const { sessao_id } = body;
       if (!sessao_id) return jsonResponse({ error: "sessao_id é obrigatório" }, 400);
+      if (!ehUuid(sessao_id)) return jsonResponse({ error: FRASES_AO_CLIENTE.sessaoNaoEncontrada }, 404);
 
       // `select("*")` de propósito: com ou sem a migration nova a leitura não
       // falha por coluna ausente — `empresa_id` só vem `undefined`.
@@ -864,9 +1018,15 @@ serve(async (req) => {
         .eq("id", sessao_id)
         .maybeSingle();
       if (erroSessao) {
-        return jsonResponse({ error: `Não foi possível ler a sessão: ${erroSessao.message}` }, 500);
+        await registrarNoLog(supabase, user.id, "parar-sessao-falha", { sessao_id, etapa: "ler-sessao" }, {
+          erro: erroSessao.message,
+        });
+        return jsonResponse(
+          corpoDeErro(FRASES_AO_CLIENTE.falhaInterna, { ehAdmin, detalhe: erroSessao.message }),
+          500
+        );
       }
-      if (!sessao) return jsonResponse({ error: "Sessão não encontrada" }, 404);
+      if (!sessao) return jsonResponse({ error: FRASES_AO_CLIENTE.sessaoNaoEncontrada }, 404);
 
       // Processo é da empresa (princípio 2): o colega que opera o processo
       // precisa conseguir frear o robô que outra pessoa disparou. Sessão sem
@@ -880,8 +1040,11 @@ serve(async (req) => {
           .eq("user_id", user.id)
           .maybeSingle();
         if (erroMembro) {
+          await registrarNoLog(supabase, user.id, "parar-sessao-falha", { sessao_id, etapa: "ler-papel" }, {
+            erro: erroMembro.message,
+          });
           return jsonResponse(
-            { error: `Não foi possível conferir seu papel na empresa: ${erroMembro.message}` },
+            corpoDeErro(FRASES_AO_CLIENTE.falhaInterna, { ehAdmin, detalhe: erroMembro.message }),
             500
           );
         }
@@ -897,7 +1060,14 @@ serve(async (req) => {
         );
       }
 
+      // O cliente lê a frase; o detalhe (migration, mensagem do banco) vai para
+      // o log e, para o administrador da plataforma, em `detalhe_tecnico`.
       const observacoes: string[] = [];
+      const detalhesTecnicos: string[] = [];
+      const anotar = (frase: string, detalhe?: string) => {
+        observacoes.push(frase);
+        if (detalhe) detalhesTecnicos.push(detalhe);
+      };
       let colunasDaParada = true;
 
       // 1. A LÁPIDE, antes de qualquer chamada ao agente.
@@ -908,17 +1078,21 @@ serve(async (req) => {
         .eq("id", sessao_id);
       if (erroLapide && erroDeColunaAusente(erroLapide)) {
         colunasDaParada = false;
-        observacoes.push(
-          "O banco ainda não tem as colunas da parada em dois tempos (migration " +
-          "20260914000002 não aplicada): o pedido não ficou registrado na sessão."
+        anotar(
+          "O pedido de parada não ficou registrado na sessão.",
+          "O banco ainda não tem as colunas da parada em dois tempos (migration 20260914000002 não aplicada)."
         );
       } else if (erroLapide) {
-        observacoes.push(`O pedido de parada não foi registrado na sessão: ${erroLapide.message}`);
+        anotar("O pedido de parada não ficou registrado na sessão.", erroLapide.message);
       }
 
       // 2. Os agentes — os do DONO da sessão, não os de quem clicou: o colega
       // que freia o robô não tem agente próprio. O agente em que a sessão foi
       // aberta vai primeiro, porque é onde ela vive.
+      //
+      // Depois deles, o agente da PLATAFORMA (`AGENTE_URL_BASE`): é onde vivem
+      // as sessões de quem não tem agente próprio, gravadas com `agente_id`
+      // nulo — e por isso ele passa à frente quando a sessão não tem vínculo.
       const filtroAgentes = sessao.agente_id
         ? `user_id.eq.${sessao.user_id},id.eq.${sessao.agente_id}`
         : `user_id.eq.${sessao.user_id}`;
@@ -926,15 +1100,17 @@ serve(async (req) => {
         .from("agente_externo_config")
         .select("id, nome, url_base, api_key_hash")
         .or(filtroAgentes);
-      const agentes = [...(agentesLidos || [])].sort(
+      const doDono = [...(agentesLidos || [])].sort(
         (a, b) => Number(b.id === sessao.agente_id) - Number(a.id === sessao.agente_id)
       );
+      const agentes = comAgenteGerenciado(doDono, ambiente, { primeiro: !sessao.agente_id });
 
       const tentativas: Array<Record<string, unknown>> = [];
       if (erroAgentes) {
         tentativas.push({ agente: null, motivo: `Não foi possível ler os agentes: ${erroAgentes.message}` });
-      } else if (!agentes.length) {
-        tentativas.push({ agente: null, motivo: "Nenhum agente configurado para esta sessão" });
+      }
+      if (!agentes.length) {
+        tentativas.push({ agente: null, motivo: "Nenhum agente configurado para esta sessão e segredo AGENTE_URL_BASE ausente" });
       }
 
       let confirmadaEm: string | null = null;
@@ -958,7 +1134,7 @@ serve(async (req) => {
           }
           tentativas.push({ agente: agente.nome, status: resp.status, motivo: corpo?.error ?? null });
         } catch (e) {
-          tentativas.push({ agente: agente.nome, motivo: e instanceof Error ? e.message : "sem resposta" });
+          tentativas.push({ agente: agente.nome, motivo: textoDoErro(e) });
         }
       }
 
@@ -983,8 +1159,9 @@ serve(async (req) => {
             .eq("id", sessao_id));
         }
         if (erroFinal) {
-          observacoes.push(
-            `O agente confirmou a parada, mas a sessão não foi atualizada no banco: ${erroFinal.message}`
+          anotar(
+            "O robô confirmou a parada, mas a lista de sessões ainda não reflete isso.",
+            `Sessão não atualizada no banco após a confirmação: ${erroFinal.message}`
           );
         }
       } else {
@@ -994,6 +1171,9 @@ serve(async (req) => {
           .join(" · ");
         // Sem `updated_at`: na lista ele é o "último sinal" do robô, e um
         // pedido nosso não é sinal dele.
+        //
+        // A nota com o resumo cru fica na SESSÃO, que é o registro de
+        // diagnóstico que a plataforma lê; a resposta ao cliente sai sem ele.
         const { error: erroNota } = await supabase
           .from("sessoes_lance_real")
           .update({
@@ -1002,7 +1182,10 @@ serve(async (req) => {
           })
           .eq("id", sessao_id);
         if (erroNota) {
-          observacoes.push(`A nota das tentativas não foi gravada na sessão: ${erroNota.message}`);
+          anotar(
+            "A falta de confirmação não ficou anotada na sessão.",
+            `A nota das tentativas não foi gravada na sessão: ${erroNota.message}`
+          );
         }
       }
 
@@ -1017,9 +1200,12 @@ serve(async (req) => {
           solicitada_em: solicitadaEm,
           confirmada_em: confirmadaEm,
           tentativas,
+          detalhes_tecnicos: detalhesTecnicos,
         },
       });
-      if (erroLog) observacoes.push(`O registro de auditoria da parada falhou: ${erroLog.message}`);
+      if (erroLog) {
+        anotar("O registro de auditoria da parada falhou.", `webhook_log: ${erroLog.message}`);
+      }
 
       return jsonResponse({
         // `parou` fica por compatibilidade com telas antigas; significa o mesmo
@@ -1029,8 +1215,10 @@ serve(async (req) => {
         parada_solicitada_em: solicitadaEm,
         parada_confirmada_em: confirmadaEm,
         sessao_id,
-        tentativas,
+        // Cliente: sem nome de agente nem erro cru (ver `tentativasParaCliente`).
+        tentativas: ehAdmin ? tentativas : tentativasParaCliente(tentativas),
         ...(observacoes.length ? { observacoes } : {}),
+        ...(ehAdmin && detalhesTecnicos.length ? { detalhe_tecnico: detalhesTecnicos } : {}),
       });
     }
 
@@ -1046,23 +1234,37 @@ serve(async (req) => {
     // Diferente de parar-sessao, aqui NAO se escreve no banco: focar e uma
     // acao de visualizacao, nao muda o estado de nada. Se falhar, a sessao
     // continua rodando exatamente como estava.
+    //
+    // Só sessão que a pessoa pode ver (dela ou das empresas dela): no agente
+    // compartilhado, o id de outra empresa traria para a frente a janela dela.
     if (action === "focar-sessao") {
-      const authHeader = req.headers.get("authorization");
-      if (!authHeader) return jsonResponse({ error: "Não autorizado" }, 401);
-      const { data: { user } } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
-      if (!user) return jsonResponse({ error: "Token inválido" }, 401);
+      const { user, resposta: naoAutenticado } = await usuarioDaRequisicao(supabase, req);
+      if (!user) return naoAutenticado!;
+      const ehAdmin = await ehAdminDaPlataforma(supabase, user.id);
 
       const { sessao_id } = body;
       if (!sessao_id) return jsonResponse({ error: "sessao_id é obrigatório" }, 400);
 
-      const { data: agentes } = await supabase
+      if (!ehAdmin && !(await sessoesVisiveis(supabase, user.id, [sessao_id])).has(sessao_id)) {
+        return jsonResponse({ focou: false, sessao_id, error: FRASES_AO_CLIENTE.sessaoNaoEncontrada }, 404);
+      }
+
+      const { data: proprios } = await supabase
         .from("agente_externo_config")
         .select("id, nome, url_base, api_key_hash")
         .eq("user_id", user.id);
+      const agentes = agentesParaUsuario(proprios, ambiente);
 
-      if (!agentes?.length) return jsonResponse({ error: "Nenhum agente configurado" }, 400);
+      if (!agentes.length) {
+        const detalhe = "Nenhum agente próprio e segredo AGENTE_URL_BASE ausente ou inválido.";
+        await registrarNoLog(supabase, user.id, "focar-sessao-falha", { sessao_id, etapa: "sem-agente" }, { erro: detalhe });
+        return jsonResponse(
+          corpoDeErro(FRASES_AO_CLIENTE.semRobo, { ehAdmin, detalhe, extra: { focou: false, sessao_id } }),
+          400
+        );
+      }
 
-      let ultimoMotivo: string | null = null;
+      const tentativas: Array<Record<string, unknown>> = [];
       for (const agente of agentes) {
         const base = agente.url_base.replace(/\/$/, "");
         try {
@@ -1077,37 +1279,39 @@ serve(async (req) => {
           });
           const corpo = await resp.json().catch(() => ({}));
           if (resp.ok) return jsonResponse({ focou: true, sessao_id, edital: corpo?.edital ?? null });
-          ultimoMotivo = corpo?.error ?? `o agente respondeu ${resp.status}`;
+          // 404 aqui costuma ser agente ANTIGO, sem a rota. O detalhe fica no
+          // log e no `detalhe_tecnico`: poupa procurar defeito onde só falta
+          // atualizar o agente da VPS.
+          tentativas.push({ agente: agente.nome, status: resp.status, motivo: corpo?.error ?? null });
         } catch (e) {
-          // 404 aqui costuma ser agente ANTIGO, sem a rota. Dizer isso poupa
-          // procurar defeito onde só falta atualizar o agente da VPS.
-          ultimoMotivo = e instanceof Error ? e.message : "sem resposta";
+          tentativas.push({ agente: agente.nome, motivo: textoDoErro(e) });
         }
       }
 
+      await registrarNoLog(supabase, user.id, "focar-sessao-falha", { sessao_id, tentativas });
       return jsonResponse(
-        {
-          focou: false,
-          sessao_id,
-          error: ultimoMotivo || "Nenhum agente conseguiu trazer a janela para frente",
-        },
+        corpoDeErro(FRASES_AO_CLIENTE.focoNaoAconteceu, {
+          ehAdmin,
+          detalhe: tentativas,
+          extra: { focou: false, sessao_id },
+        }),
         502
       );
     }
 
     if (action === "kill-switch") {
-      const authHeader = req.headers.get("authorization");
-      if (!authHeader) {
-        return jsonResponse({ error: "Não autorizado" }, 401);
-      }
-      const { data: { user } } = await supabase.auth.getUser(
-        authHeader.replace("Bearer ", "")
-      );
-      if (!user) return jsonResponse({ error: "Token inválido" }, 401);
+      const { user, resposta: naoAutenticado } = await usuarioDaRequisicao(supabase, req);
+      if (!user) return naoAutenticado!;
+      const ehAdmin = await ehAdminDaPlataforma(supabase, user.id);
 
       const { motivo } = body;
       const motivoTexto = motivo || "Acionada pelo operador";
       const observacoes: string[] = [];
+      const detalhesTecnicos: string[] = [];
+      const anotar = (frase: string, detalhe?: string) => {
+        observacoes.push(frase);
+        if (detalhe) detalhesTecnicos.push(detalhe);
+      };
 
       // ── EM DOIS TEMPOS, COMO parar-sessao (14/09/2026) ────────────────────
       //
@@ -1139,13 +1343,18 @@ serve(async (req) => {
       };
       let { data: sessoesLidas, error: erroSessoes } = await lerSessoes(true);
       if (erroSessoes && erroDeColunaAusente(erroSessoes)) {
-        observacoes.push(
-          "Migration 20260914000002 não aplicada: o freio alcançou só as sessões iniciadas por você."
+        anotar(
+          "O freio alcançou só as sessões iniciadas por você.",
+          "Migration 20260914000002 não aplicada: sem `empresa_id` nas sessões."
         );
         ({ data: sessoesLidas, error: erroSessoes } = await lerSessoes(false));
       }
       if (erroSessoes) {
-        return jsonResponse({ error: `Não foi possível ler as sessões ativas: ${erroSessoes.message}` }, 500);
+        await registrarNoLog(supabase, user.id, "kill-switch-falha", { etapa: "ler-sessoes" }, { erro: erroSessoes.message });
+        return jsonResponse(
+          corpoDeErro(FRASES_AO_CLIENTE.falhaInterna, { ehAdmin, detalhe: erroSessoes.message }),
+          500
+        );
       }
       const sessoesAtivas = sessoesLidas || [];
       const idsSessao = sessoesAtivas.map((s: { id: string }) => s.id);
@@ -1167,11 +1376,13 @@ serve(async (req) => {
           ({ error: erroMarca } = await supabase.from("sessoes_lance_real").update(marcas).in("id", idsSessao));
         }
         if (erroMarca) {
-          observacoes.push(`A marca de parada emergencial não foi gravada nas sessões: ${erroMarca.message}`);
+          anotar("A marca de parada emergencial não foi gravada nas sessões.", erroMarca.message);
         }
       }
 
-      // Agentes: os das sessões alvo (onde elas vivem) e os ativos de quem aciona.
+      // Agentes: os das sessões alvo (onde elas vivem), os ativos de quem
+      // aciona e — para sessão sem vínculo, ou para quem não tem agente
+      // próprio — o da plataforma.
       const idsAgente = [
         ...new Set(sessoesAtivas.map((s: { agente_id?: string | null }) => s.agente_id).filter(Boolean)),
       ] as string[];
@@ -1179,22 +1390,83 @@ serve(async (req) => {
         .from("agente_externo_config")
         .select("id, nome, url_base, api_key_hash, status, user_id")
         .or(idsAgente.length ? `user_id.eq.${user.id},id.in.(${idsAgente.join(",")})` : `user_id.eq.${user.id}`);
-      const agentes = (agentesLidos || []).filter(
+      const linhas = (agentesLidos || []).filter(
         (a: { id: string; status: string }) => a.status === "ativo" || idsAgente.includes(a.id)
       );
+      const precisaDoGerenciado = !linhas.length || sessoesAtivas.some(
+        (s: { agente_id?: string | null }) => !s.agente_id || !linhas.some((a: { id: string }) => a.id === s.agente_id)
+      );
+      const agentes = precisaDoGerenciado
+        ? comAgenteGerenciado(linhas, ambiente, { deduplicar: false })
+        : agentesParaUsuario(linhas, null);
 
-      const agentResults: Array<{ id: string; agente: string; ok: boolean; http: number; detalhe: string | null }> = [];
-      for (const agente of agentes) {
+      const { porAgente, semAgente } = rotearSessoes(
+        sessoesAtivas.map((s: { id: string; agente_id?: string | null }) => ({ id: s.id, agente_id: s.agente_id ?? null })),
+        agentes
+      );
+
+      const confirmadas = new Set<string>();
+      const agentResults: Array<{
+        id: string | null; agente: string; ok: boolean; http: number; detalhe: string | null;
+        modo: "kill-switch" | "por-sessao";
+      }> = [];
+      for (const [i, agente] of agentes.entries()) {
+        const base = String(agente.url_base || "").replace(/\/+$/, "");
+        const headers = {
+          "Content-Type": "application/json",
+          "X-Agent-Key": chaveParaOAgente(agente, chaveGerenciada),
+        };
+        const daqui = porAgente.get(i) || [];
+
+        // ── AGENTE COMPARTILHADO: SESSÃO POR SESSÃO ─────────────────────────
+        //
+        // A rota /kill-switch do agente encerra TUDO o que roda nele. No
+        // agente da plataforma isso são as disputas de todas as empresas: o
+        // freio de uma virava o apagão das outras. Ali o freio pede
+        // `/sessao/encerrar` para cada sessão alvo — e agente compartilhado
+        // sem sessão alvo nem é chamado.
+        if (agenteCompartilhado(agente, ambiente.AGENTE_URL_BASE)) {
+          if (!daqui.length) continue;
+          const respostas = await Promise.all(daqui.map(async (sid) => {
+            try {
+              const resp = await fetch(`${base}/sessao/encerrar`, {
+                method: "POST",
+                headers,
+                body: JSON.stringify({ sessao_id: sid, motivo }),
+                signal: AbortSignal.timeout(8000),
+              });
+              await resp.body?.cancel().catch(() => {});
+              return { sid, ok: resp.ok, http: resp.status, detalhe: resp.ok ? null : `HTTP ${resp.status}` };
+            } catch (e) {
+              return { sid, ok: false, http: 0, detalhe: textoDoErro(e) };
+            }
+          }));
+          respostas.filter((r) => r.ok).forEach((r) => confirmadas.add(r.sid));
+          const falhas = respostas.filter((r) => !r.ok);
+          agentResults.push({
+            id: agente.id,
+            agente: agente.nome,
+            ok: falhas.length === 0,
+            http: falhas[0]?.http ?? 200,
+            detalhe: falhas.length
+              ? `${falhas.length} de ${respostas.length} sessão(ões) sem confirmação: ` +
+                falhas.map((f) => `${f.sid}: ${f.detalhe}`).join("; ")
+              : null,
+            modo: "por-sessao",
+          });
+          continue;
+        }
+
+        // Agente próprio (servidor de uma empresa só): a rota /kill-switch,
+        // que para tudo o que roda NELE — como antes.
         try {
-          const resp = await fetch(`${agente.url_base}/kill-switch`, {
+          const resp = await fetch(`${base}/kill-switch`, {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "X-Agent-Key": chaveParaOAgente(agente, chaveGerenciada),
-            },
+            headers,
             body: JSON.stringify({ motivo }),
             signal: AbortSignal.timeout(5000),
           });
+          await resp.body?.cancel().catch(() => {});
           agentResults.push({
             id: agente.id,
             agente: agente.nome,
@@ -1203,31 +1475,34 @@ serve(async (req) => {
             detalhe: resp.ok ? null : (resp.status === 404
               ? "o agente não implementa a rota /kill-switch"
               : `HTTP ${resp.status}`),
+            modo: "kill-switch",
           });
+          if (resp.ok) daqui.forEach((sid) => confirmadas.add(sid));
         } catch (e) {
           agentResults.push({
             id: agente.id,
             agente: agente.nome,
             ok: false,
             http: 0,
-            detalhe: e instanceof Error ? e.message : "sem resposta do agente",
+            detalhe: textoDoErro(e) || "sem resposta do agente",
+            modo: "kill-switch",
           });
         }
       }
 
       // 3. O desfecho — "encerrado" só na sessão cujo agente confirmou.
       //
-      // A rota /kill-switch do agente para tudo o que roda NELE. Sessão com
-      // `agente_id` depende da resposta daquele agente; sessão sem vínculo só
-      // conta como confirmada se TODOS os agentes avisados confirmaram — sem
-      // saber onde ela vive, "algum confirmou" não prova nada sobre ela.
-      const okPorAgente = new Map(agentResults.map((r) => [r.id, r.ok]));
-      const todosConfirmaram = agentResults.length > 0 && agentResults.every((r) => r.ok);
-      const idsConfirmados = sessoesAtivas
-        .filter((s: { agente_id?: string | null }) =>
-          s.agente_id ? okPorAgente.get(s.agente_id) === true : todosConfirmaram)
-        .map((s: { id: string }) => s.id);
-      const idsAguardando = idsSessao.filter((id: string) => !idsConfirmados.includes(id));
+      // Sessão sem agente conhecido (sem vínculo e sem agente da plataforma
+      // configurado) só conta como confirmada se TODOS os /kill-switch
+      // avisados confirmaram — sem saber onde ela vive, "algum confirmou" não
+      // prova nada sobre ela, e o encerramento sessão a sessão de um agente
+      // compartilhado não a alcança.
+      const globais = agentResults.filter((r) => r.modo === "kill-switch");
+      if (globais.length > 0 && globais.every((r) => r.ok)) {
+        semAgente.forEach((id) => confirmadas.add(id));
+      }
+      const idsConfirmados = idsSessao.filter((id: string) => confirmadas.has(id));
+      const idsAguardando = idsSessao.filter((id: string) => !confirmadas.has(id));
 
       if (idsConfirmados.length) {
         const campos: Record<string, unknown> = {
@@ -1241,7 +1516,10 @@ serve(async (req) => {
           ({ error: erroFinal } = await supabase.from("sessoes_lance_real").update(campos).in("id", idsConfirmados));
         }
         if (erroFinal) {
-          observacoes.push(`O agente confirmou, mas as sessões não foram atualizadas no banco: ${erroFinal.message}`);
+          anotar(
+            "O robô confirmou a parada, mas a lista de sessões ainda não reflete isso.",
+            `Sessões não atualizadas no banco após a confirmação: ${erroFinal.message}`
+          );
         }
       }
       if (idsAguardando.length) {
@@ -1253,7 +1531,9 @@ serve(async (req) => {
                   "O robô pode continuar operando no portal.",
           })
           .in("id", idsAguardando);
-        if (erroNota) observacoes.push(`A nota de parada pendente não foi gravada: ${erroNota.message}`);
+        if (erroNota) {
+          anotar("A falta de confirmação não ficou anotada nas sessões.", `Nota de parada pendente: ${erroNota.message}`);
+        }
       }
 
       // 4. Trilha
@@ -1268,6 +1548,7 @@ serve(async (req) => {
           sessoes_confirmadas: idsConfirmados,
           agentResults,
           observacoes,
+          detalhes_tecnicos: detalhesTecnicos,
         },
       });
 
@@ -1284,8 +1565,13 @@ serve(async (req) => {
         agentes_total: agentResults.length,
         agentes_confirmaram: confirmaram,
         agente_parou: agentResults.length > 0 && confirmaram === agentResults.length,
-        agentes_notificados: agentResults,
+        // Cliente: sem id, nome, HTTP nem erro cru — `KillSwitchButton` lê
+        // só `ok` e `detalhe`.
+        agentes_notificados: ehAdmin
+          ? agentResults
+          : agentResults.map((r) => ({ ok: r.ok, detalhe: r.ok ? null : FRASES_AO_CLIENTE.freioSemConfirmacao })),
         observacoes,
+        ...(ehAdmin && detalhesTecnicos.length ? { detalhe_tecnico: detalhesTecnicos } : {}),
       });
     }
 
@@ -1296,51 +1582,115 @@ serve(async (req) => {
     // acao existe para quando o agente estava fora do ar naquele momento — sem
     // ela, a unica saida seria gerar um novo link e reenviar o arquivo inteiro.
     if (action === "instalar-certificado") {
-      const authHeader = req.headers.get("authorization");
-      if (!authHeader) return jsonResponse({ error: "Não autorizado" }, 401);
-      const { data: { user } } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
-      if (!user) return jsonResponse({ error: "Token inválido" }, 401);
+      const { user, resposta: naoAutenticado } = await usuarioDaRequisicao(supabase, req);
+      if (!user) return naoAutenticado!;
+      const ehAdmin = await ehAdminDaPlataforma(supabase, user.id);
 
-      const resultado = await instalarCertificadoNoAgente(supabase, user.id);
+      // Com agente próprio ativo, o helper escolhe sozinho — como antes. Sem
+      // ele, o agente da PLATAFORMA vai como terceiro argumento.
+      //
+      // ⚠️ `_shared/certificado-agente.ts` ainda lê o agente só por `user_id`
+      // e ignora esse argumento. Enquanto não aceitar, o resultado volta com
+      // "Nenhum agente ativo configurado…" — detectado abaixo e registrado no
+      // `webhook_log`, para não passar por falha do cliente.
+      const { data: proprios } = await supabase
+        .from("agente_externo_config")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("status", "ativo")
+        .limit(1);
+      const gerenciado = (proprios || []).length ? null : agentesParaUsuario([], ambiente)[0] ?? null;
+      if (!(proprios || []).length && !gerenciado) {
+        const detalhe = "Nenhum agente próprio ativo e segredo AGENTE_URL_BASE ausente ou inválido.";
+        await registrarNoLog(supabase, user.id, "instalar-certificado-falha", { etapa: "sem-agente" }, { erro: detalhe });
+        return jsonResponse(
+          {
+            instalado: false,
+            motivo: FRASES_AO_CLIENTE.semRobo,
+            certificado: null,
+            ...(ehAdmin ? { detalhe_tecnico: detalhe } : {}),
+          },
+          400
+        );
+      }
+
+      const instalar = instalarCertificadoNoAgente as unknown as (
+        ...args: unknown[]
+      ) => Promise<{ instalado: boolean; motivo: string | null; certificado?: Record<string, unknown> | null }>;
+      const resultado = await instalar(
+        supabase,
+        user.id,
+        gerenciado ? { ...gerenciado, api_key_hash: chaveGerenciada } : undefined
+      );
+
+      if (!resultado.instalado) {
+        const helperIgnorouOGerenciado = !!gerenciado &&
+          /^Nenhum agente ativo configurado/.test(resultado.motivo || "");
+        await registrarNoLog(
+          supabase,
+          user.id,
+          "instalar-certificado-falha",
+          {
+            etapa: helperIgnorouOGerenciado ? "helper-sem-agente-gerenciado" : "instalacao",
+            agente_gerenciado: !!gerenciado,
+            certificado: resultado.certificado ?? null,
+          },
+          {
+            erro: helperIgnorouOGerenciado
+              ? "certificado-agente.ts ainda não aceita o agente gerenciado (3º argumento): " + resultado.motivo
+              : resultado.motivo,
+          }
+        );
+      }
+
+      let certificado: unknown = resultado.certificado ?? null;
+      if (!ehAdmin && certificado) {
+        const empresas = await empresasDoUsuario(supabase, user.id);
+        certificado = certificadoParaCliente(certificado, await cnpjsDasEmpresas(supabase, empresas));
+      }
       return jsonResponse(
         {
           instalado: resultado.instalado,
-          motivo: resultado.motivo,
-          certificado: resultado.certificado ?? null,
+          motivo: ehAdmin ? resultado.motivo : motivoDoCertificadoParaCliente(resultado.motivo),
+          certificado,
         },
         resultado.instalado ? 200 : 400
       );
     }
 
-    // Healthcheck AO VIVO. Antes, o único ping acontecia ao configurar o
-    // agente: versão, RAM e "ativo" ficavam congelados no banco desde então —
-    // a tela dizia "Agente Online" lendo uma linha de meses atrás. Aqui
-    // perguntamos ao agente e atualizamos o registro. Também substitui o
-    // heartbeat que o agente nunca empurrou: puxamos o sinal de vida.
     // A pessoa responde o que a tela pediu, e QUEM DIGITA é o robô.
     //
     // Medido em 09/09/2026: um código do gov.br levava ~50s para ir do celular
     // até o campo — WhatsApp, leitura, troca de aba, teclado do VNC — e o código
     // vale ~60s. Três tentativas queimaram e a conta do cliente foi bloqueada
     // por excesso de erro (ERL0018900). Por aqui o mesmo número chega em ~2s.
+    //
+    // Só para sessão que a pessoa pode ver: no agente compartilhado, digitar
+    // no pedido de outra empresa seria operar a conta dela no portal.
     if (action === "responder-humano") {
-      const authHeader = req.headers.get("authorization");
-      if (!authHeader) return jsonResponse({ error: "Não autorizado" }, 401);
-      const { data: { user } } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
-      if (!user) return jsonResponse({ error: "Token inválido" }, 401);
+      const { user, resposta: naoAutenticado } = await usuarioDaRequisicao(supabase, req);
+      if (!user) return naoAutenticado!;
+      const ehAdmin = await ehAdminDaPlataforma(supabase, user.id);
 
       const { sessao_id, valor } = body;
       if (!sessao_id || valor === undefined || valor === null || String(valor).trim() === "") {
         return jsonResponse({ error: "sessao_id e valor são obrigatórios" }, 400);
       }
 
-      const { data: agentes } = await supabase
+      if (!ehAdmin && !(await sessoesVisiveis(supabase, user.id, [sessao_id])).has(sessao_id)) {
+        return jsonResponse({ aceito: false, error: FRASES_AO_CLIENTE.sessaoNaoEncontrada }, 404);
+      }
+
+      const { data: proprios } = await supabase
         .from("agente_externo_config")
         .select("id, nome, url_base, api_key_hash")
         .eq("user_id", user.id);
+      const agentes = agentesParaUsuario(proprios, ambiente);
 
-      if (!agentes?.length) {
-        return jsonResponse({ error: "Nenhum agente configurado" }, 400);
+      if (!agentes.length) {
+        const detalhe = "Nenhum agente próprio e segredo AGENTE_URL_BASE ausente ou inválido.";
+        await registrarNoLog(supabase, user.id, "responder-humano-falha", { sessao_id, etapa: "sem-agente" }, { erro: detalhe });
+        return jsonResponse(corpoDeErro(FRASES_AO_CLIENTE.semRobo, { ehAdmin, detalhe }), 400);
       }
 
       // Sem adivinhar em qual agente a sessão vive: pergunta a cada um, e o
@@ -1362,87 +1712,105 @@ serve(async (req) => {
           if (resp.ok && corpo?.aceito) {
             // O valor NUNCA volta na resposta nem entra em log: é código de
             // acesso de conta de terceiro.
-            return jsonResponse({ aceito: true, agente: agente.nome, tipo: corpo.tipo ?? null });
+            return jsonResponse({
+              aceito: true,
+              tipo: corpo.tipo ?? null,
+              ...(ehAdmin ? { agente: agente.nome } : {}),
+            });
           }
           tentativas.push({ agente: agente.nome, status: resp.status, motivo: corpo?.error ?? null });
         } catch (e) {
-          tentativas.push({ agente: agente.nome, motivo: e instanceof Error ? e.message : "sem resposta" });
+          tentativas.push({ agente: agente.nome, motivo: textoDoErro(e) });
         }
       }
 
-      return jsonResponse({
-        aceito: false,
-        error: "Nenhum agente tinha pedido em aberto para esta sessão — " +
-          "a tela pode ter seguido sozinha, ou a sessão já terminou.",
-        tentativas,
-      }, 409);
+      // O log leva as tentativas — nunca o valor.
+      await registrarNoLog(supabase, user.id, "responder-humano-falha", { sessao_id, tentativas });
+      return jsonResponse(
+        {
+          aceito: false,
+          error: FRASES_AO_CLIENTE.semPedidoEmAberto,
+          ...(ehAdmin ? { tentativas } : {}),
+        },
+        409
+      );
     }
 
+    // Healthcheck AO VIVO. Antes, o único ping acontecia ao configurar o
+    // agente: versão, RAM e "ativo" ficavam congelados no banco desde então —
+    // a tela dizia "Agente Online" lendo uma linha de meses atrás. Aqui
+    // perguntamos ao agente e atualizamos o registro. Também substitui o
+    // heartbeat que o agente nunca empurrou: puxamos o sinal de vida.
+    //
+    // ── DUAS VISÕES (14/09/2026) ────────────────────────────────────────────
+    //
+    // Administrador da plataforma: a saúde completa, como sempre foi — agora
+    // também com `sessoes` e `desfechos_humano`, que `usePedidosDoRobo` já lia
+    // e esta ação nunca devolvia (a lista de sessões vivas vinha sempre vazia).
+    //
+    // Cliente: `reduzirSaudeParaCliente` (_shared/robo-plataforma.ts), onde o
+    // contrato está escrito campo a campo. Sem endereço, nome do host, versão,
+    // RAM, slots nem erro cru — e só as sessões e os pedidos de código que ele
+    // pode ver. O `/health` do agente compartilhado traz os de TODAS as
+    // empresas.
     if (action === "healthcheck") {
-      const authHeader = req.headers.get("authorization");
-      if (!authHeader) return jsonResponse({ error: "Não autorizado" }, 401);
-      const { data: { user } } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
-      if (!user) return jsonResponse({ error: "Token inválido" }, 401);
+      const { user, resposta: naoAutenticado } = await usuarioDaRequisicao(supabase, req);
+      if (!user) return naoAutenticado!;
+      const ehAdmin = await ehAdminDaPlataforma(supabase, user.id);
 
-      const { data: agentes } = await supabase
+      const { data: proprios } = await supabase
         .from("agente_externo_config")
         .select("id, nome, url_base, capacidades")
         .eq("user_id", user.id);
+      const agentes = agentesParaUsuario(proprios, ambiente);
 
-      if (!agentes?.length) {
+      if (!agentes.length) {
         return jsonResponse({ configurado: false, online: false, agentes: [] });
       }
 
-      const resultados = [];
-      for (const agente of agentes) {
-        const base = agente.url_base.replace(/\/$/, "");
-        let online = false;
-        let saude: Record<string, unknown> | null = null;
-        let erro: string | null = null;
-        const capacidadesAtuais = (agente as { capacidades?: Record<string, unknown> }).capacidades;
-        const t0 = Date.now();
-        try {
-          const resp = await fetch(`${base}/health`, {
-            headers: { Accept: "application/json" },
-            signal: AbortSignal.timeout(8000),
-          });
-          if (resp.ok) {
-            saude = await resp.json().catch(() => ({}));
-            online = true;
-          } else {
-            erro = `HTTP ${resp.status}`;
-          }
-        } catch (e) {
-          erro = e instanceof Error ? e.message : "sem resposta";
-        }
+      // O freio do agente gerenciado não tem linha própria onde morar: vale o
+      // último teste gravado nas linhas que apontam para o mesmo host.
+      const freioGerenciado = agentes.some((a) => a.gerenciado)
+        ? await freioDoAgenteGerenciado(supabase, ambiente.AGENTE_URL_BASE)
+        : null;
+
+      const resultados = await Promise.all(agentes.map(async (agente) => {
+        const { online, saude, erro, latencia_ms } = await sondarAgente(agente.url_base);
+        const capacidadesAtuais = agente.capacidades as Record<string, unknown> | undefined;
 
         // O registro passa a refletir a realidade — inclusive quando é ruim.
-        await supabase
-          .from("agente_externo_config")
-          .update({
-            status: online ? "ativo" : "erro",
-            ultimo_heartbeat: online ? new Date().toISOString() : undefined,
-            versao_agente: (saude?.version as string) ?? undefined,
-            ram_mb: ((saude?.capacidade as Record<string, number>)?.ram_total_mb) ?? undefined,
-            sessoes_ativas: (saude?.sessoes_ativas as number) ?? undefined,
-            // Mescla: o snapshot de saúde não pode apagar o resultado do
-            // teste do freio de emergência guardado no mesmo campo.
-            capacidades: saude
-              ? ({ ...(capacidadesAtuais || {}), saude } as never)
-              : undefined,
-          })
-          .eq("id", agente.id);
+        // O agente gerenciado não tem linha: nada a atualizar.
+        if (agente.id) {
+          await supabase
+            .from("agente_externo_config")
+            .update({
+              status: online ? "ativo" : "erro",
+              ultimo_heartbeat: online ? new Date().toISOString() : undefined,
+              versao_agente: (saude?.version as string) ?? undefined,
+              ram_mb: ((saude?.capacidade as Record<string, number>)?.ram_total_mb) ?? undefined,
+              sessoes_ativas: (saude?.sessoes_ativas as number) ?? undefined,
+              // Mescla: o snapshot de saúde não pode apagar o resultado do
+              // teste do freio de emergência guardado no mesmo campo. E vai
+              // SEM sessões, pedidos e certificado — ver `saudeParaGuardar`.
+              capacidades: saude
+                ? ({ ...(capacidadesAtuais || {}), saude: saudeParaGuardar(saude) } as never)
+                : undefined,
+            })
+            .eq("id", agente.id);
+        }
 
-        resultados.push({
+        return {
           id: agente.id,
           nome: agente.nome,
           url_base: agente.url_base,
+          gerenciado: agente.gerenciado,
           online,
           erro,
-          latencia_ms: Date.now() - t0,
+          latencia_ms,
           versao: saude?.version ?? null,
           capacidade: saude?.capacidade ?? null,
           sessoes_ativas: saude?.sessoes_ativas ?? null,
+          sessoes: saude?.sessoes ?? null,
           certificado: saude?.certificado ?? null,
           portais_suportados: saude?.portais_suportados ?? null,
           // O que o robô está esperando de uma pessoa AGORA. Vem da tela real
@@ -1450,27 +1818,43 @@ serve(async (req) => {
           // desligar a verificação em duas etapas, esta lista vem vazia e
           // nenhum campo aparece na interface.
           aguardando_humano: saude?.aguardando_humano ?? null,
+          desfechos_humano: saude?.desfechos_humano ?? null,
           // Freio de emergência: só o teste explícito prova que existe
-          kill_switch: (capacidadesAtuais as { kill_switch?: unknown })?.kill_switch ?? null,
-        });
-      }
+          kill_switch: agente.gerenciado
+            ? freioGerenciado
+            : (capacidadesAtuais as { kill_switch?: unknown })?.kill_switch ?? null,
+        };
+      }));
 
-      return jsonResponse({
+      const completa = {
         configurado: true,
         online: resultados.some((r) => r.online),
         agentes: resultados,
-      });
+      };
+      if (ehAdmin) return jsonResponse(completa);
+
+      const empresas = await empresasDoUsuario(supabase, user.id);
+      const visiveis = await sessoesVisiveis(supabase, user.id, idsDeSessaoNaSaude(completa), empresas);
+      const cnpjs = resultados.some((r) => r.certificado && typeof r.certificado === "object")
+        ? await cnpjsDasEmpresas(supabase, empresas)
+        : [];
+      return jsonResponse(reduzirSaudeParaCliente(completa, visiveis, { cnpjsVisiveis: cnpjs }));
     }
 
     // Teste do freio de emergência. Sondar a rota por HEAD/OPTIONS não
     // distingue "ausente" de "protegida" neste agente, e um POST às cegas
     // durante uma disputa abortaria lances reais. Então o teste é DELIBERADO
     // e só roda sem sessões ativas — como se testa um alarme de incêndio.
+    //
+    // Exclusivo da operação Praefectus (14/09/2026). No agente compartilhado
+    // "sem sessões ativas" quer dizer sem as de NINGUÉM: o teste pergunta ao
+    // próprio agente antes, e não roda se ele estiver ocupado ou mudo.
     if (action === "testar-kill-switch") {
-      const authHeader = req.headers.get("authorization");
-      if (!authHeader) return jsonResponse({ error: "Não autorizado" }, 401);
-      const { data: { user } } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
-      if (!user) return jsonResponse({ error: "Token inválido" }, 401);
+      const { user, resposta: naoAutenticado } = await usuarioDaRequisicao(supabase, req);
+      if (!user) return naoAutenticado!;
+      if (!(await ehAdminDaPlataforma(supabase, user.id))) {
+        return jsonResponse({ error: FRASES_AO_CLIENTE.exclusivoDaPlataforma }, 403);
+      }
 
       const { data: ativas } = await supabase
         .from("sessoes_lance_real")
@@ -1483,15 +1867,40 @@ serve(async (req) => {
         }, 409);
       }
 
-      const { data: agentes } = await supabase
+      const { data: proprios } = await supabase
         .from("agente_externo_config")
         .select("id, nome, url_base, api_key_hash, capacidades")
         .eq("user_id", user.id);
-      if (!agentes?.length) return jsonResponse({ error: "Nenhum agente configurado." }, 400);
+      const agentes = comAgenteGerenciado(proprios, ambiente);
+      if (!agentes.length) {
+        return jsonResponse({ error: "Nenhum agente configurado e segredo AGENTE_URL_BASE ausente." }, 400);
+      }
 
-      const resultados = [];
+      const resultados: Array<Record<string, unknown>> = [];
+      let freioDoGerenciado: Record<string, unknown> | null = null;
       for (const agente of agentes) {
         const base = agente.url_base.replace(/\/$/, "");
+        const compartilhado = agenteCompartilhado(agente, ambiente.AGENTE_URL_BASE);
+
+        if (compartilhado) {
+          const sondagem = await sondarAgente(base);
+          const vivas = contarSessoesVivasNaSaude(sondagem.saude);
+          if (!sondagem.online || vivas > 0) {
+            // Pulado não é reprovado: nada é gravado, e o último teste vale.
+            resultados.push({
+              agente: agente.nome,
+              ok: false,
+              http: 0,
+              pulado: true,
+              detalhe: !sondagem.online
+                ? `o agente não respondeu ao /health (${sondagem.erro}) — sem confirmar que está vazio, o teste não roda`
+                : `há ${vivas} sessão(ões) em andamento neste agente, de qualquer empresa — o teste não roda`,
+              testado_em: null,
+            });
+            continue;
+          }
+        }
+
         let ok = false, http = 0, detalhe: string | null = null;
         try {
           const resp = await fetch(`${base}/kill-switch`, {
@@ -1500,6 +1909,7 @@ serve(async (req) => {
             body: JSON.stringify({ motivo: "Teste de verificação do freio de emergência (sem sessões ativas)", teste: true }),
             signal: AbortSignal.timeout(8000),
           });
+          await resp.body?.cancel().catch(() => {});
           ok = resp.ok;
           http = resp.status;
           if (!ok) {
@@ -1508,15 +1918,24 @@ serve(async (req) => {
               : `HTTP ${resp.status}`;
           }
         } catch (e) {
-          detalhe = e instanceof Error ? e.message : "sem resposta do agente";
+          detalhe = textoDoErro(e) || "sem resposta do agente";
         }
 
         const registro = { ok, http, detalhe, testado_em: new Date().toISOString() };
-        const capacidades = (agente as { capacidades?: Record<string, unknown> }).capacidades || {};
-        await supabase
-          .from("agente_externo_config")
-          .update({ capacidades: { ...capacidades, kill_switch: registro } as never })
-          .eq("id", agente.id);
+        if (agente.id) {
+          const capacidades = (agente.capacidades as Record<string, unknown>) || {};
+          await supabase
+            .from("agente_externo_config")
+            .update({ capacidades: { ...capacidades, kill_switch: registro } as never })
+            .eq("id", agente.id);
+        }
+        // O freio é do HOST, não da linha: toda linha que aponta para o agente
+        // compartilhado — de qualquer empresa — passa a refletir este teste,
+        // e o `healthcheck` do agente gerenciado o lê de lá.
+        if (compartilhado) {
+          await propagarFreio(supabase, agente.url_base, registro);
+          if (agente.gerenciado) freioDoGerenciado = registro;
+        }
 
         resultados.push({ agente: agente.nome, ...registro });
       }
@@ -1525,49 +1944,163 @@ serve(async (req) => {
         user_id: user.id,
         direcao: "saida",
         tipo: "teste-kill-switch",
-        payload: { resultados },
+        payload: {
+          resultados,
+          // Reserva de leitura para `freioDoAgenteGerenciado` quando nenhuma
+          // linha aponta para o host da plataforma.
+          ...(freioDoGerenciado ? { kill_switch_gerenciado: freioDoGerenciado } : {}),
+        },
       });
 
+      const executados = resultados.filter((r) => !r.pulado);
       return jsonResponse({
-        verificado: resultados.every((r) => r.ok),
+        verificado: executados.length > 0 && executados.every((r) => r.ok),
         resultados,
       });
     }
 
+    // Exclusivo da plataforma na parte do agente: o cliente recebe as próprias
+    // sessões e `agentes: []` (o formato fica, o conteúdo sai).
     if (action === "status") {
-      const authHeader = req.headers.get("authorization");
-      if (!authHeader) {
-        return jsonResponse({ error: "Não autorizado" }, 401);
-      }
-      const { data: { user } } = await supabase.auth.getUser(
-        authHeader.replace("Bearer ", "")
-      );
-      if (!user) return jsonResponse({ error: "Token inválido" }, 401);
+      const { user, resposta: naoAutenticado } = await usuarioDaRequisicao(supabase, req);
+      if (!user) return naoAutenticado!;
+      const ehAdmin = await ehAdminDaPlataforma(supabase, user.id);
 
-      const [agenteResp, sessoesResp] = await Promise.all([
-        supabase
-          .from("agente_externo_config")
-          // Esta resposta vai ao navegador: nunca `*`, que levaria a chave.
-          .select(COLUNAS_PUBLICAS_DO_AGENTE)
-          .eq("user_id", user.id),
-        supabase
-          .from("sessoes_lance_real")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false })
-          .limit(50),
-      ]);
+      const sessoesResp = await supabase
+        .from("sessoes_lance_real")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      if (!ehAdmin) {
+        return jsonResponse({ agentes: [], sessoes: sessoesResp.data || [] });
+      }
+
+      const agenteResp = await supabase
+        .from("agente_externo_config")
+        // Esta resposta vai ao navegador: nunca `*`, que levaria a chave.
+        .select(COLUNAS_PUBLICAS_DO_AGENTE)
+        .eq("user_id", user.id);
+      const gerenciado = agentesParaUsuario([], ambiente)[0] ?? null;
 
       return jsonResponse({
         agentes: agenteResp.data || [],
         sessoes: sessoesResp.data || [],
+        // O que o servidor sabe do agente da plataforma — sem a chave, só se ela existe.
+        agente_gerenciado: {
+          configurado: !!gerenciado,
+          url_base: gerenciado?.url_base ?? null,
+          chave_configurada: !!chaveGerenciada,
+        },
+      });
+    }
+
+    // ─── situacao-do-robo ───
+    //
+    // A pergunta que o CLIENTE faz, em palavras dele: "o robô da minha empresa
+    // pode trabalhar agora?". Sem host, versão, RAM, slots nem erro técnico —
+    // isso é da operação Praefectus.
+    //
+    //   disponivel          algum agente que atende o usuário respondeu ao
+    //                       /health (2xx em até 8s)
+    //   motivo              frase de negócio quando algo impede; null quando não
+    //   ligado              `robo_empresa_config.ligado`; sem linha ou sem a
+    //                       tabela (migration 20260914000004) = true
+    //   portais_suportados  os portais que o agente no ar opera, ou null
+    //   verificado_em       ISO
+    //
+    // Só para membro da empresa (403 para os demais). O administrador da
+    // plataforma consulta qualquer empresa e recebe `detalhe_tecnico`.
+    if (action === "situacao-do-robo") {
+      const { user, resposta: naoAutenticado } = await usuarioDaRequisicao(supabase, req);
+      if (!user) return naoAutenticado!;
+      const ehAdmin = await ehAdminDaPlataforma(supabase, user.id);
+
+      const empresaId = typeof body.empresa_id === "string" ? body.empresa_id.trim() : "";
+      if (!empresaId) return jsonResponse({ error: "empresa_id é obrigatório" }, 400);
+
+      if (!ehAdmin) {
+        if (!ehUuid(empresaId)) return jsonResponse({ error: FRASES_AO_CLIENTE.foraDaEmpresa }, 403);
+        const { data: membro, error: erroMembro } = await supabase
+          .from("empresa_membros")
+          .select("empresa_id")
+          .eq("empresa_id", empresaId)
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (erroMembro) {
+          await registrarNoLog(supabase, user.id, "situacao-do-robo-falha", { empresa_id: empresaId, etapa: "ler-membro" }, {
+            erro: erroMembro.message,
+          });
+          return jsonResponse({ error: FRASES_AO_CLIENTE.situacaoIlegivel }, 503);
+        }
+        if (!membro) return jsonResponse({ error: FRASES_AO_CLIENTE.foraDaEmpresa }, 403);
+      }
+
+      const ligadoLido = await lerLigadoDaEmpresa(supabase, empresaId);
+      if (ligadoLido.estado === "indeterminado") {
+        await registrarNoLog(supabase, user.id, "situacao-do-robo-falha", { empresa_id: empresaId, etapa: "ler-ligado" }, {
+          erro: ligadoLido.detalhe,
+        });
+        return jsonResponse(
+          corpoDeErro(FRASES_AO_CLIENTE.situacaoIlegivel, { ehAdmin, detalhe: ligadoLido.detalhe }),
+          503
+        );
+      }
+      const ligado = ligadoLido.estado !== "desligado";
+
+      const { data: proprios } = await supabase
+        .from("agente_externo_config")
+        .select("id, nome, url_base")
+        .eq("user_id", user.id);
+      const agentes = agentesParaUsuario(proprios, ambiente);
+      const sondagens = await Promise.all(agentes.map((a) => sondarAgente(a.url_base)));
+      const noAr = sondagens.find((s) => s.online) ?? null;
+      const disponivel = noAr !== null;
+
+      const motivo = !agentes.length
+        ? FRASES_AO_CLIENTE.semRobo
+        : !ligado
+        ? FRASES_AO_CLIENTE.situacaoDesligado
+        : !disponivel
+        ? FRASES_AO_CLIENTE.situacaoForaDoAr
+        : null;
+
+      const portais = noAr && Array.isArray(noAr.saude?.portais_suportados)
+        ? (noAr.saude!.portais_suportados as unknown[]).filter((p): p is string => typeof p === "string")
+        : null;
+
+      // Rastro da indisponibilidade (princípio 3) — é o que a operação
+      // procura quando um cliente liga dizendo que o robô sumiu.
+      const detalhe = !agentes.length
+        ? "Nenhum agente próprio e segredo AGENTE_URL_BASE ausente ou inválido."
+        : !disponivel
+        ? sondagens.map((s, i) => `${agentes[i].nome}: ${s.erro}`).join(" · ")
+        : null;
+      if (detalhe) {
+        await registrarNoLog(supabase, user.id, "situacao-do-robo-indisponivel", { empresa_id: empresaId }, { erro: detalhe });
+      }
+
+      return jsonResponse({
+        disponivel,
+        motivo,
+        ligado,
+        portais_suportados: portais,
+        verificado_em: new Date().toISOString(),
+        ...(ehAdmin && detalhe ? { detalhe_tecnico: detalhe } : {}),
       });
     }
 
     return jsonResponse({ error: `Ação desconhecida: ${action}` }, 404);
   } catch (e: any) {
     console.error("robo-lances-webhook error:", e);
-    return jsonResponse({ error: e.message || "Erro interno" }, 500);
+    // O callback é do agente, que registra a resposta no log dele — lá o
+    // texto cru ajuda a achar o defeito. As telas recebem a frase de negócio;
+    // o detalhe fica no log da edge function (a linha acima).
+    return jsonResponse(
+      { error: acaoAtual === "callback" ? (e?.message || "Erro interno") : FRASES_AO_CLIENTE.falhaInterna },
+      500
+    );
   }
 });
 
@@ -1576,4 +2109,211 @@ function jsonResponse(data: any, status = 200) {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+// ─── Apoio: leituras e sondagens que várias ações repetem ───────────────────
+//
+// Aqui, e não em `_shared/robo-plataforma.ts`, porque falam com o banco e com
+// a rede. As DECISÕES sobre o que elas devolvem ficam lá, onde há teste.
+
+/** Quem chama. Sem usuário, `resposta` já é o 401 a devolver. */
+async function usuarioDaRequisicao(
+  supabase: any,
+  req: Request,
+): Promise<{ user: { id: string; email?: string | null } | null; resposta: Response | null }> {
+  const authHeader = req.headers.get("authorization");
+  if (!authHeader) return { user: null, resposta: jsonResponse({ error: "Não autorizado" }, 401) };
+  const { data, error } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
+  if (error || !data?.user) return { user: null, resposta: jsonResponse({ error: "Token inválido" }, 401) };
+  return { user: data.user, resposta: null };
+}
+
+/**
+ * Trilha de uma ação no `webhook_log` — é para onde vai o detalhe técnico que
+ * não pode ir para o cliente. Falha do log não derruba a ação: avisa no
+ * console da função, que é o rastro que sobra.
+ */
+async function registrarNoLog(
+  supabase: any,
+  userId: string,
+  tipo: string,
+  payload: Record<string, unknown>,
+  extra: { erro?: unknown; status_code?: number; resposta?: unknown } = {},
+): Promise<void> {
+  const linha: Record<string, unknown> = { user_id: userId, direcao: "saida", tipo, payload };
+  if (extra.erro !== undefined && extra.erro !== null) {
+    linha.erro = typeof extra.erro === "string" ? extra.erro : JSON.stringify(extra.erro);
+  }
+  if (extra.status_code !== undefined) linha.status_code = extra.status_code;
+  if (extra.resposta !== undefined) linha.resposta = extra.resposta;
+  try {
+    const { error } = await supabase.from("webhook_log").insert(linha);
+    if (error) console.error(`robo-lances-webhook: webhook_log (${tipo}) não gravado:`, error.message);
+  } catch (e) {
+    console.error(`robo-lances-webhook: webhook_log (${tipo}) não gravado:`, textoDoErro(e));
+  }
+}
+
+/** `robo_empresa_config` → ligado / desligado / indeterminado (ver `estadoDoLigado`). */
+async function lerLigadoDaEmpresa(supabase: any, empresaId: string): Promise<EstadoDoLigado> {
+  try {
+    const leitura = await supabase
+      .from("robo_empresa_config")
+      .select("ligado")
+      .eq("empresa_id", empresaId)
+      .maybeSingle();
+    return estadoDoLigado(leitura);
+  } catch (e) {
+    return estadoDoLigado({ error: e });
+  }
+}
+
+/** Empresas de que o usuário é membro, com qualquer papel. Falha → nenhuma. */
+async function empresasDoUsuario(supabase: any, userId: string): Promise<string[]> {
+  const { data, error } = await supabase.from("empresa_membros").select("empresa_id").eq("user_id", userId);
+  if (error) {
+    console.error("robo-lances-webhook: empresa_membros ilegível:", error.message);
+    return [];
+  }
+  return [...new Set((data || []).map((m: { empresa_id: string }) => m.empresa_id).filter(Boolean))] as string[];
+}
+
+/** CNPJs das empresas — para reconhecer o certificado DELAS no agente compartilhado. */
+async function cnpjsDasEmpresas(supabase: any, empresas: string[]): Promise<string[]> {
+  if (!empresas.length) return [];
+  const { data, error } = await supabase.from("empresas").select("cnpj").in("id", empresas);
+  if (error) {
+    console.error("robo-lances-webhook: empresas ilegíveis:", error.message);
+    return [];
+  }
+  return (data || []).map((e: { cnpj?: string | null }) => e.cnpj).filter(Boolean) as string[];
+}
+
+/**
+ * Destes ids, quais sessões o usuário pode ver: as que ele iniciou e as das
+ * empresas de que é membro — o mesmo critério das policies de
+ * `sessoes_lance_real`.
+ *
+ * Sem a coluna `empresa_id` (migration 20260914000002), só as dele. Falha de
+ * leitura → nenhuma: na dúvida, o cliente não vê a sessão alheia.
+ */
+async function sessoesVisiveis(
+  supabase: any,
+  userId: string,
+  ids: unknown[],
+  empresas?: string[],
+): Promise<Set<string>> {
+  const validos = [...new Set(ids.filter(ehUuid))];
+  if (!validos.length) return new Set();
+  const minhasEmpresas = empresas ?? await empresasDoUsuario(supabase, userId);
+  const base = () => supabase.from("sessoes_lance_real").select("id").in("id", validos);
+
+  let { data, error } = minhasEmpresas.length
+    ? await base().or(`user_id.eq.${userId},empresa_id.in.(${minhasEmpresas.join(",")})`)
+    : await base().eq("user_id", userId);
+  if (error && erroDeColunaAusente(error) && minhasEmpresas.length) {
+    ({ data, error } = await base().eq("user_id", userId));
+  }
+  if (error) {
+    console.error("robo-lances-webhook: sessões visíveis ilegíveis:", error.message);
+    return new Set();
+  }
+  return new Set((data || []).map((s: { id: string }) => s.id));
+}
+
+/** Pergunta ao agente se está vivo (`GET /health`, 8s). Nunca lança. */
+async function sondarAgente(urlBase: string): Promise<{
+  online: boolean;
+  saude: Record<string, unknown> | null;
+  erro: string | null;
+  latencia_ms: number;
+}> {
+  const base = String(urlBase || "").replace(/\/+$/, "");
+  const t0 = Date.now();
+  try {
+    const resp = await fetch(`${base}/health`, {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (resp.ok) {
+      const saude = await resp.json().catch(() => ({}));
+      return {
+        online: true,
+        saude: saude && typeof saude === "object" ? saude : {},
+        erro: null,
+        latencia_ms: Date.now() - t0,
+      };
+    }
+    await resp.body?.cancel().catch(() => {});
+    return { online: false, saude: null, erro: `HTTP ${resp.status}`, latencia_ms: Date.now() - t0 };
+  } catch (e) {
+    return { online: false, saude: null, erro: textoDoErro(e) || "sem resposta", latencia_ms: Date.now() - t0 };
+  }
+}
+
+/** As linhas de `agente_externo_config` — de qualquer empresa — que apontam para este host. */
+async function linhasDoHost(
+  supabase: any,
+  urlBase: string,
+): Promise<Array<{ id: string; url_base: string; capacidades: Record<string, unknown> | null }>> {
+  let host: string;
+  try {
+    host = new URL(urlBase).hostname;
+  } catch {
+    return [];
+  }
+  const { data, error } = await supabase
+    .from("agente_externo_config")
+    .select("id, url_base, capacidades")
+    .ilike("url_base", `%${host}%`);
+  if (error) {
+    console.error("robo-lances-webhook: linhas do host ilegíveis:", error.message);
+    return [];
+  }
+  // O `ilike` só estreita; quem decide é a comparação de hostname.
+  return (data || []).filter((l: { url_base: string }) => ehAgenteGerenciado(l.url_base, urlBase));
+}
+
+/**
+ * O último teste do freio do agente gerenciado.
+ *
+ * Ele não tem linha própria: vale o teste mais recente gravado nas linhas que
+ * apontam para o mesmo host (`testar-kill-switch` propaga para todas). Sem
+ * nenhuma linha, a reserva é o `webhook_log` do próprio teste.
+ */
+async function freioDoAgenteGerenciado(
+  supabase: any,
+  urlBase: string | null,
+): Promise<Record<string, unknown> | null> {
+  if (!urlBase) return null;
+  let freio: Record<string, unknown> | null = null;
+  for (const linha of await linhasDoHost(supabase, urlBase)) {
+    const ks = linha.capacidades?.kill_switch as Record<string, unknown> | undefined;
+    if (!ks || typeof ks !== "object") continue;
+    if (!freio || String(ks.testado_em || "") > String(freio.testado_em || "")) freio = ks;
+  }
+  if (freio) return freio;
+
+  const { data } = await supabase
+    .from("webhook_log")
+    .select("payload")
+    .eq("tipo", "teste-kill-switch")
+    .order("created_at", { ascending: false })
+    .limit(20);
+  for (const r of data || []) {
+    const ks = (r as { payload?: { kill_switch_gerenciado?: unknown } }).payload?.kill_switch_gerenciado;
+    if (ks && typeof ks === "object") return ks as Record<string, unknown>;
+  }
+  return null;
+}
+
+/** Grava o resultado do teste do freio em todas as linhas que apontam para o host. */
+async function propagarFreio(supabase: any, urlBase: string, registro: Record<string, unknown>): Promise<void> {
+  for (const linha of await linhasDoHost(supabase, urlBase)) {
+    const { error } = await supabase
+      .from("agente_externo_config")
+      .update({ capacidades: { ...(linha.capacidades || {}), kill_switch: registro } })
+      .eq("id", linha.id);
+    if (error) console.error("robo-lances-webhook: freio não propagado para", linha.id, error.message);
+  }
 }

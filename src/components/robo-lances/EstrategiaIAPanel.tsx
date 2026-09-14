@@ -1,11 +1,8 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Brain, TrendingDown, Target, BarChart3, Loader2, Sparkles, DollarSign,
-} from 'lucide-react';
+import { Brain, Loader2, Info } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -16,14 +13,30 @@ type Props = {
   lance?: LanceConfig | null;
 };
 
+/**
+ * Só o texto que a IA escreveu.
+ *
+ * Até 14/09/2026 o resultado trazia quatro cartões numéricos que a IA nunca
+ * produziu: "desconto médio 25%" e "confiança 72%" fixos no código, decremento
+ * de 80% do configurado e um "piso seguro" de 70% do valor de referência. O
+ * piso era o pior: parecia recomendação de limite, e limite na Praefectus vem
+ * da precificação aprovada — nunca de um percentual inventado.
+ */
 type AnaliseResult = {
-  decremento_sugerido: number;
-  valor_minimo_sugerido: number;
-  desconto_medio: number;
-  confianca: number;
   analise: string;
 };
 
+/** O texto da resposta, em qualquer dos formatos que a função de chat devolve. */
+function textoDaResposta(data: unknown): string | null {
+  if (typeof data === 'string') return data.trim() || null;
+  const d = (data ?? {}) as Record<string, unknown>;
+  const escolhas = Array.isArray(d.choices) ? (d.choices as Array<{ message?: { content?: unknown } }>) : [];
+  const candidatos = [d.resposta, d.reply, d.content, d.text, d.message, escolhas[0]?.message?.content];
+  const texto = candidatos.find((c) => typeof c === 'string' && c.trim());
+  return typeof texto === 'string' ? texto.trim() : null;
+}
+
+/** Usado no contexto enviado à IA (valores da disputa), não na tela. */
 const formatCurrency = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -59,8 +72,8 @@ export default function EstrategiaIAPanel({ lance }: Props) {
 
 1. Qual o desconto médio esperado para este tipo de objeto? (%)
 2. Qual decremento (em R$) você sugere para maximizar chances de vitória sem comprometer a margem?
-3. Qual valor mínimo (piso) é seguro para evitar inexequibilidade?
-4. Qual a confiança dessa análise (0-100)?
+3. Quais riscos de inexequibilidade observar nesse tipo de objeto?
+4. Que limitações essa análise tem, por não usar os dados desta disputa?
 
 Forneça também um briefing estratégico completo com dicas para a disputa.
 
@@ -71,18 +84,14 @@ Responda em português, com dados numéricos claros e recomendações práticas.
 
       if (error) throw error;
 
-      // Parse the streaming response
-      const text = typeof data === 'string' ? data : JSON.stringify(data);
-
-      setResult({
-        decremento_sugerido: lance ? lance.decrementoMin * 0.8 : 1.5,
-        valor_minimo_sugerido: lance ? lance.valorReferencia * 0.7 : 0,
-        desconto_medio: 25,
-        confianca: 72,
-        analise: text,
-      });
-
-      toast.success('Análise preditiva concluída!');
+      const texto = textoDaResposta(data);
+      if (!texto) {
+        // Nunca despejar JSON na tela do cliente.
+        toast.error('A análise veio num formato que esta tela não sabe ler. Tente novamente.');
+        return;
+      }
+      setResult({ analise: texto });
+      toast.success('Análise gerada.');
     } catch (err) {
       console.error(err);
       toast.error('Erro na análise IA. Tente novamente.');
@@ -98,9 +107,9 @@ Responda em português, com dados numéricos claros e recomendações práticas.
           <Brain className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
           Estratégia Preditiva IA
         </h3>
-        <Badge variant="muted">
-          <Sparkles className="w-3 h-3 mr-1" aria-hidden="true" /> Gemini AI
-        </Badge>
+        {/* O selo "Gemini AI" saiu em 14/09/2026: o fornecedor do modelo é
+            decisão de bastidor da Praefectus, pode mudar sem aviso, e este
+            painel passou a morar na tela do cliente. */}
       </div>
 
       {/* Input fields */}
@@ -142,29 +151,11 @@ Responda em português, com dados numéricos claros e recomendações práticas.
       {/* Results */}
       {result && (
         <div className="space-y-3 border-t border-border pt-4">
-          {/* KPI Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            <div className="bg-muted rounded-lg p-3 text-center">
-              <TrendingDown className="w-4 h-4 mx-auto text-success mb-1" aria-hidden="true" />
-              <p className="text-xs text-muted-foreground">Desconto Médio</p>
-              <p className="text-lg font-bold text-success-ink tabular-nums">{result.desconto_medio}%</p>
-            </div>
-            <div className="bg-muted rounded-lg p-3 text-center">
-              <DollarSign className="w-4 h-4 mx-auto text-muted-foreground mb-1" aria-hidden="true" />
-              <p className="text-xs text-muted-foreground">Decremento</p>
-              <p className="text-lg font-bold text-foreground tabular-nums">{formatCurrency(result.decremento_sugerido)}</p>
-            </div>
-            <div className="bg-muted rounded-lg p-3 text-center">
-              <Target className="w-4 h-4 mx-auto text-warning mb-1" aria-hidden="true" />
-              <p className="text-xs text-muted-foreground">Piso Seguro</p>
-              <p className="text-lg font-bold text-warning-ink tabular-nums">{formatCurrency(result.valor_minimo_sugerido)}</p>
-            </div>
-            <div className="bg-muted rounded-lg p-3 text-center">
-              <BarChart3 className="w-4 h-4 mx-auto text-muted-foreground mb-1" aria-hidden="true" />
-              <p className="text-xs text-muted-foreground">Confiança</p>
-              <p className="text-lg font-bold text-foreground tabular-nums">{result.confianca}%</p>
-            </div>
-          </div>
+          <p className="flex items-start gap-2 text-xs text-muted-foreground">
+            <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            Texto gerado por IA a partir de padrões gerais de pregões. Não usa os lances desta disputa e não
+            substitui os limites aprovados na Precificação.
+          </p>
 
           {/* AI Analysis */}
           <div className="bg-muted rounded-lg p-4 max-h-48 overflow-y-auto">

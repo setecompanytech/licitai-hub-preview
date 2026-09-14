@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  resumirErroParaCliente,
   estadoDoRobo,
   lanceLiberadoNoPortal,
   projetarParticipacao,
@@ -146,3 +147,41 @@ describe('capacidade do portal', () => {
     expect(lanceLiberadoNoPortal(null, ['comprasgovbr'])).toBe(false);
   });
 });
+
+describe('erro em linguagem de cliente', () => {
+  it('"Signal timed out." vira falta de resposta do portal', () => {
+    expect(resumirErroParaCliente('Signal timed out.')).toEqual({
+      texto: 'O portal não respondeu a tempo.',
+      acao: 'Tentar de novo mais tarde',
+    });
+  });
+
+  it('processo não encontrado vence a menção à conta vencida no mesmo texto', () => {
+    const bruto =
+      'Processo "TESTE-001" nao encontrado em Seus Processos do Portal de Compras Publicas. ' +
+      'Obs.: o portal informa que o acesso esta vencido desde 17/04/2026, com 0 creditos.';
+    const r = resumirErroParaCliente(bruto);
+    expect(r.texto).toBe('O processo não foi localizado na conta do portal.');
+    // Nada da conta usada nos bastidores chega ao cliente.
+    expect(r.texto).not.toMatch(/credit|vencid|17\/04/i);
+  });
+
+  it('credencial, certificado e conta têm ação própria; o resto vai ao suporte', () => {
+    expect(resumirErroParaCliente('Login falhou: senha incorreta').acao).toBe('Revisar o acesso ao portal');
+    expect(resumirErroParaCliente('Certificado .pfx rejeitado').acao).toBe('Revisar o certificado digital');
+    expect(resumirErroParaCliente('Conta com assinatura expirada').acao).toBe('Verificar a conta no portal');
+    expect(resumirErroParaCliente('ECONNRESET 10.0.0.3:3500').acao).toBe('Falar com o suporte');
+    expect(resumirErroParaCliente(null).acao).toBe('Falar com o suporte');
+  });
+
+  it('a pendência do painel usa o texto traduzido, nunca o erro cru', () => {
+    const p = projetarParticipacao(
+      disputa(),
+      sessao({ status: 'erro', erro: 'Signal timed out.' }),
+      opcoes,
+    );
+    expect(p.pendenciaPrincipal).toBe('O portal não respondeu a tempo.');
+    expect(p.proximaAcao).toBe('Tentar de novo mais tarde');
+  });
+});
+

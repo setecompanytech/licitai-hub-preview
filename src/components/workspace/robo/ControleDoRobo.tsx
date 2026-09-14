@@ -15,7 +15,7 @@ import ListaDeCampos, { type Campo } from '@/components/gestao/ListaDeCampos';
 import { usePapelEmpresa } from '@/hooks/usePapelEmpresa';
 import type { LanceConfirmado, ParticipacaoCarregada } from '@/hooks/useParticipacoesDoRobo';
 import { solicitarParada, type ResultadoDaParada } from '@/lib/robo/comandos';
-import { ROTULO_DO_ESTADO_DO_ROBO, type EstadoDoRobo } from '@/lib/robo/situacao-da-participacao';
+import { ROTULO_DO_ESTADO_DO_ROBO, resumirErroParaCliente, type EstadoDoRobo } from '@/lib/robo/situacao-da-participacao';
 import { NaoInformado } from './ValoresDoItem';
 import { formatarMoeda, horaDeBrasilia } from './formatos';
 
@@ -169,7 +169,10 @@ export default function ControleDoRobo({ participacao, recarregar }: ControleDoR
     },
   ];
   if (estado === 'erro' && sessao.erro) {
-    campos.push({ rotulo: 'Erro informado pelo serviço', valor: sessao.erro, largo: true });
+    // Frase do cliente, nunca o erro cru do agente — o texto completo fica no
+    // Admin Praefectus › Robô de Lances.
+    const erroDoCliente = resumirErroParaCliente(sessao.erro);
+    campos.push({ rotulo: 'O que aconteceu', valor: `${erroDoCliente.texto} ${erroDoCliente.acao}.`, largo: true });
   }
 
   return (

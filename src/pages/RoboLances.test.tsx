@@ -1,26 +1,27 @@
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 /**
- * Testes da reestruturação visual do Robô de Lances (13/09/2026).
+ * Testes da tela do Robô de Lances — a tela do CLIENTE.
  *
  * ─── O QUE ESTES TESTES GUARDAM, E POR QUE ────────────────────────────────
  *
- *  1. As quatro abas principais e a visibilidade por papel. Três delas são de
- *     administrador; um operador que as enxergasse chegaria a credenciais da
- *     empresa e ao nível de automação.
- *  2. As três colunas da composição aprovada. É a única verificação que
- *     sobrevive a uma refatoração de CSS — por isso as colunas carregam
- *     `data-coluna`.
- *  3. O limite financeiro. Este é o teste que existe por causa de um defeito
- *     real: a página declarava `limiteFinanceiro` sem nunca ter setter, e o
- *     diálogo de autorização recebia zero para sempre — com zero, a checagem
- *     `excedeLimite` daquele diálogo é sempre falsa, e a trava não travava.
- *  4. Conexão, prontidão e limites como blocos distintos, porque respondem a
- *     perguntas diferentes e o desenho antigo os lia como um semáforo só.
- *  5. (14/09/2026) O painel de participações abre a aba Disputar, e os
- *     controles que prometiam o que não faziam foram ligados ou renomeados.
+ *  1. (14/09/2026) A separação entre cliente e plataforma. As abas Agente,
+ *     Portais e Configurações mostravam ao administrador da empresa o que é
+ *     da operação Praefectus — agente, healthcheck, freio, tela remota,
+ *     simulação, auditoria encadeada, fornecedor de IA —, e uma frase falsa
+ *     ("Sistema pronto para disputas reais"). Nada disso pode voltar a esta
+ *     tela, nem para o administrador da empresa.
+ *  2. Ligar/desligar o robô visível a todos e travado para quem só visualiza.
+ *  3. Os avisos da operação: o geral aparece; o de portal sem disputa, não.
+ *  4. As três colunas da composição aprovada — `data-coluna` sobrevive a CSS.
+ *  5. O limite financeiro. Existe por causa de um defeito real: a página
+ *     declarava `limiteFinanceiro` sem setter, e a trava do diálogo de
+ *     autorização recebia zero para sempre.
+ *  6. O painel de participações acima das ferramentas, e os controles que
+ *     prometiam o que não faziam, ligados ou renomeados.
  *
  * NADA aqui abre sessão nem envia lance: supabase, hooks e edge functions são
  * todos dublês. A regra de segurança do módulo é que validação de robô não se
@@ -34,7 +35,7 @@ vi.mock('@/hooks/usePapelEmpresa', () => ({
 }));
 
 /* ── Respostas do banco, por tabela ─────────────────────────────────────── */
-type Resposta = { data: unknown; error: { message: string } | null };
+type Resposta = { data: unknown; error: { message: string; code?: string } | null };
 const respostas: Record<string, Resposta> = {};
 
 const DISPUTA = {
@@ -86,6 +87,8 @@ function cadeiaDa(tabela: string) {
   return cadeia;
 }
 
+// Sem resposta configurada: a `situacao-do-robo` "não implantada" devolve
+// `data: null`, e a tela tem de dizer "indisponível", nunca "pronto".
 const invoke = vi.fn(async () => ({ data: null, error: null }));
 
 vi.mock('@/integrations/supabase/client', () => ({
@@ -107,7 +110,7 @@ vi.mock('@/contexts/AuthContext', () => {
 });
 vi.mock('@/contexts/EmpresaContext', () => {
   const valor = {
-    empresaAtiva: { id: 'empresa-1', cnpj: '12345678000190', razao_social: 'Acme Licitações LTDA' },
+    empresaAtiva: { id: 'empresa-1', cnpj: '12345678000190', razao_social: 'Acme Licitações LTDA', nome_fantasia: null },
     empresas: [] as unknown[],
   };
   return { useEmpresa: () => valor };
@@ -156,7 +159,10 @@ vi.mock('sonner', () => ({
 
 /* ── Dublês de peças pesadas ou que falam com a rede ─────────────────────
    As fábricas de `vi.mock` são içadas para o topo do arquivo: nada de
-   variável declarada aqui fora pode ser CHAMADA dentro delas. */
+   variável declarada aqui fora pode ser CHAMADA dentro delas.
+
+   `EstrategiaIAPanel` NÃO é dublado: é o componente real que tem de chegar
+   sem o selo do fornecedor de IA. */
 vi.mock('@/components/layout/AppLayout', () => ({
   default: ({ children }: { children?: React.ReactNode }) => (
     <div data-testid="app-layout">{children}</div>
@@ -172,7 +178,6 @@ vi.mock('@/components/robo-lances/ConfigurarLanceDialog', () => ({
   default: ({ trigger }: { trigger?: React.ReactNode }) => <>{trigger}</>,
 }));
 vi.mock('@/components/licitacoes/LicitacaoChat', () => ({ default: () => null }));
-vi.mock('@/components/robo-lances/SimulacaoDisputa', () => ({ default: () => null }));
 vi.mock('@/components/robo-lances/DisputasResumo', () => ({ default: () => null }));
 vi.mock('@/components/robo-lances/ExportarResultados', () => ({
   default: () => <button type="button">Exportar</button>,
@@ -180,17 +185,9 @@ vi.mock('@/components/robo-lances/ExportarResultados', () => ({
 vi.mock('@/components/robo-lances/NivelAutomacaoSelector', () => ({ default: () => null }));
 vi.mock('@/components/robo-lances/AceiteTermosDialog', () => ({ default: () => null }));
 vi.mock('@/components/robo-lances/PainelRisco', () => ({ default: () => null }));
-vi.mock('@/components/robo-lances/AuditTrailViewer', () => ({ default: () => null }));
-vi.mock('@/components/robo-lances/DisputaRealtimePanel', () => ({ default: () => null }));
-vi.mock('@/components/robo-lances/PortalHealthcheck', () => ({ default: () => null }));
-vi.mock('@/components/robo-lances/EstrategiaIAPanel', () => ({ default: () => null }));
-vi.mock('@/components/robo-lances/VncWebViewer', () => ({ default: () => null }));
-vi.mock('@/components/robo-lances/SessoesDoRobo', () => ({ default: () => null }));
 vi.mock('@/components/robo-lances/ConferenciaDosItens', () => ({ default: () => null }));
 vi.mock('@/components/robo-lances/PedidoDoRobo', () => ({ default: () => null }));
-vi.mock('@/components/robo-lances/AcessoManualPortal', () => ({ default: () => null }));
 vi.mock('@/components/robo-lances/CredenciaisPortalForm', () => ({ default: () => null }));
-vi.mock('@/components/robo-lances/AgenteExternoConfig', () => ({ default: () => null }));
 vi.mock('@/components/robo-lances/KillSwitchButton', () => ({ default: () => null }));
 vi.mock('@/components/metas/RegistrarPerdaDialog', () => ({ default: () => null }));
 
@@ -205,13 +202,21 @@ vi.mock('@/components/robo-lances/AutorizacaoLanceDialog', () => ({
 }));
 
 import RoboLances from './RoboLances';
+import { toast } from 'sonner';
 
-/** O painel guarda aba e busca na URL — a página precisa de um roteador. */
+/**
+ * O painel guarda aba e busca na URL — a página precisa de um roteador. E a
+ * situação do robô e os avisos vêm pelo react-query — precisa de um cliente,
+ * novo a cada teste para um não herdar o cache do outro.
+ */
 function renderizar() {
+  const cliente = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <MemoryRouter initialEntries={['/robo-lances']}>
-      <RoboLances />
-    </MemoryRouter>,
+    <QueryClientProvider client={cliente}>
+      <MemoryRouter initialEntries={['/robo-lances']}>
+        <RoboLances />
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 
@@ -241,33 +246,184 @@ beforeEach(() => {
   for (const k of Object.keys(respostas)) delete respostas[k];
   respostas.robo_lances_disputas = { data: [DISPUTA], error: null };
   respostas.robo_aceite_termos = { data: [{ limite_financeiro: 5000 }], error: null };
+  // `clearAllMocks` não desfaz implementação trocada por um teste.
+  invoke.mockImplementation(async () => ({ data: null, error: null }));
   papel.isAdmin = true;
   papel.podeOperar = true;
   papel.isViewer = false;
   papel.papel = 'admin';
 });
 
-describe('RoboLances — abas principais e papel', () => {
-  it('mostra as quatro abas para o administrador, com os rótulos exatos', async () => {
+describe('RoboLances — a tela do cliente não mostra o que é da plataforma', () => {
+  it('não tem as abas Agente, Portais e Configurações — nem para o administrador da empresa', async () => {
     renderizar();
+    await screen.findByRole('button', { name: /PE 90001\/2026/ });
 
-    expect(await screen.findByRole('tab', { name: /Disputar/ })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: /Agente/ })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: /Portais/ })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: /Configurações/ })).toBeInTheDocument();
-  });
-
-  it('esconde Agente, Portais e Configurações de quem não é administrador', async () => {
-    papel.isAdmin = false;
-    papel.papel = 'operador';
-    renderizar();
-
-    expect(await screen.findByRole('tab', { name: /Disputar/ })).toBeInTheDocument();
-    expect(screen.queryByRole('tab', { name: /Agente/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole('tab', { name: /Portais/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: /^Agente/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: /^Portais/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: /Configurações/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: /^Disputar/ })).not.toBeInTheDocument();
   });
 
+  it('não afirma "Sistema pronto", não tem "Regras de lance" nem o nome do fornecedor de IA', async () => {
+    renderizar();
+    await selecionarDisputa();
+
+    // O painel de estratégia REAL está na tela — a ausência do selo vale.
+    expect(await screen.findByText('Estratégia Preditiva IA')).toBeInTheDocument();
+    expect(screen.queryByText(/Gemini/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Sistema pronto/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Regras de lance/i)).not.toBeInTheDocument();
+  });
+
+  it('o checklist do cliente não traz conexão, prontidão do agente, freio nem slots', async () => {
+    renderizar();
+    await selecionarDisputa();
+
+    expect(await screen.findByText('Autenticação')).toBeInTheDocument();
+    expect(screen.queryByText('Conexão')).not.toBeInTheDocument();
+    expect(screen.queryByText('Prontidão do robô')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Sinal de vida|Slots Disponíveis|Freio de emergência verificado|Portais respondendo/)).not.toBeInTheDocument();
+
+    // Os três blocos do painel da direita continuam.
+    expect(screen.getByText('Limites')).toBeInTheDocument();
+    expect(screen.getByText('Estado da sessão')).toBeInTheDocument();
+    expect(screen.getAllByText('Eventos').length).toBeGreaterThan(0);
+  });
+
+  it('sem resposta da situação do robô, diz "indisponível no momento" — nunca "pronto"', async () => {
+    renderizar();
+
+    expect((await screen.findAllByText('Situação do robô indisponível no momento')).length).toBeGreaterThan(0);
+    expect(screen.queryByText('Disponível')).not.toBeInTheDocument();
+  });
+
+  it('troca o selo "Nível 1" pelo botão do modo de operação', async () => {
+    renderizar();
+
+    expect(await screen.findByRole('button', { name: /Modo: Nível 1 — Assistente/ })).toBeInTheDocument();
+  });
+
+  it('mostra CNPJ e razão social da empresa, com "Gerenciar portais" e "Avisos"', async () => {
+    renderizar();
+
+    expect(await screen.findByText('Acme Licitações LTDA')).toBeInTheDocument();
+    expect(screen.getByText(/12\.345\.678\/0001-90/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Gerenciar portais/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Avisos/ })).toBeInTheDocument();
+  });
+});
+
+describe('RoboLances — ligar e desligar o robô', () => {
+  it('o controle aparece para todos e fica travado para quem só visualiza', async () => {
+    papel.isAdmin = false;
+    papel.podeOperar = false;
+    papel.isViewer = true;
+    papel.papel = 'viewer';
+    renderizar();
+
+    const botao = await screen.findByRole('button', { name: /Desligar o robô/ });
+    await waitFor(() => expect(botao).toBeDisabled());
+    expect(screen.getByText('Robô ligado')).toBeInTheDocument();
+    expect(screen.getByText(/exige o papel de operador/)).toBeInTheDocument();
+  });
+
+  it('migration não aplicada: robô considerado ligado, com a nota junto do botão', async () => {
+    respostas.robo_empresa_config = {
+      data: null,
+      error: { code: '42P01', message: 'relation "public.robo_empresa_config" does not exist' },
+    };
+    renderizar();
+
+    expect(await screen.findByText('Liga/desliga disponível após atualização do banco')).toBeInTheDocument();
+    expect(screen.getByText('Robô ligado')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Desligar o robô/ })).toBeDisabled();
+  });
+});
+
+describe('RoboLances — recusa do envio ao robô', () => {
+  /** A resposta não-2xx do supabase-js: frase genérica em `message`, corpo em `context`. */
+  function recusa(status: number, corpo: unknown) {
+    return {
+      data: null,
+      error: {
+        message: 'Edge Function returned a non-2xx status code',
+        context: { status, json: async () => corpo },
+      },
+    };
+  }
+
+  async function enviar() {
+    respostas.robo_lances_disputas = { data: [{ ...DISPUTA, portal: 'Compras.gov.br' }], error: null };
+    renderizar();
+    await selecionarDisputa();
+    fireEvent.click(screen.getByRole('button', { name: /Enviar ao robô/ }));
+  }
+
+  it('409 (robô desligado): mostra a frase do servidor e relê o liga/desliga', async () => {
+    invoke.mockImplementation((async (nome: string) =>
+      nome === 'robo-lances-webhook/enviar-sessao'
+        ? recusa(409, { success: false, error: 'O robô de lances desta empresa está desligado.' })
+        : { data: null, error: null }) as never);
+    await enviar();
+
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith('O robô de lances desta empresa está desligado.', expect.anything()),
+    );
+    expect(toast.error).not.toHaveBeenCalledWith(expect.stringMatching(/non-2xx/), expect.anything());
+  });
+
+  it('502 sem corpo legível: frase para o cliente, nunca "non-2xx status code"', async () => {
+    invoke.mockImplementation((async (nome: string) =>
+      nome === 'robo-lances-webhook/enviar-sessao' ? recusa(502, null) : { data: null, error: null }) as never);
+    await enviar();
+
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
+        expect.stringMatching(/não aceitou a sessão/),
+        expect.anything(),
+      ),
+    );
+    expect(toast.error).not.toHaveBeenCalledWith(expect.stringMatching(/non-2xx/), expect.anything());
+  });
+});
+
+describe('RoboLances — avisos da operação', () => {
+  it('mostra o aviso geral e esconde o de um portal em que a empresa não disputa', async () => {
+    respostas.robo_avisos_portal = {
+      data: [
+        {
+          id: 'aviso-geral', portal_id: null, severidade: 'atencao', ativo: true,
+          titulo: 'Instabilidade na comunicação com os portais',
+          mensagem: 'A ferramenta continua disponível, mas algumas ações podem falhar. Já estamos monitorando o problema.',
+          inicio_em: '2020-01-01T00:00:00Z', fim_em: null,
+        },
+        {
+          id: 'aviso-licitanet', portal_id: 'licitanet', severidade: 'critico', ativo: true,
+          titulo: 'LicitaNet fora do ar',
+          mensagem: 'O portal não responde desde as 9h.',
+          inicio_em: '2020-01-01T00:00:00Z', fim_em: null,
+        },
+      ],
+      error: null,
+    };
+    const { container } = renderizar();
+
+    expect(await screen.findByText('Instabilidade na comunicação com os portais')).toBeInTheDocument();
+    expect(screen.queryByText('LicitaNet fora do ar')).not.toBeInTheDocument();
+    // O contador do botão conta os dois: a lista completa mora nele.
+    expect(screen.getByRole('button', { name: /Avisos/ })).toHaveTextContent('2');
+
+    // Acima do painel de participações.
+    const faixa = container.querySelector('[data-faixa="avisos"]');
+    const painel = container.querySelector('[data-painel="participacoes"]');
+    expect(faixa).toBeTruthy();
+    expect(painel).toBeTruthy();
+    expect(faixa!.compareDocumentPosition(painel!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+});
+
+describe('RoboLances — papel na disputa', () => {
   it('esconde "Nova sessão" e "Enviar ao robô" de quem só visualiza, dizendo por quê', async () => {
     papel.isAdmin = false;
     papel.podeOperar = false;
@@ -281,6 +437,15 @@ describe('RoboLances — abas principais e papel', () => {
     expect(screen.queryByRole('button', { name: /Assistir ao vivo/ })).not.toBeInTheDocument();
     // Ausência sem explicação é indistinguível de defeito.
     expect(screen.getAllByText(/modo leitura/i).length).toBeGreaterThan(0);
+  });
+
+  it('o operador envia ao robô, mas não tem "Assistir ao vivo" nem trilha de auditoria', async () => {
+    renderizar();
+    await selecionarDisputa();
+
+    expect(screen.getByRole('button', { name: /Enviar ao robô/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Assistir ao vivo/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /trilha de auditoria/i })).not.toBeInTheDocument();
   });
 });
 
@@ -303,43 +468,14 @@ describe('RoboLances — as três colunas', () => {
     expect(container.querySelector('[data-coluna="controle"]')).toBeTruthy();
   });
 
-  it('mantém as quatro subabas do painel de eventos', async () => {
+  it('o painel de eventos tem só Mural e Operações — Simulação e Auditoria são da plataforma', async () => {
     renderizar();
     await selecionarDisputa();
 
     expect(screen.getByRole('tab', { name: /Mural/ })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: /Simulação/ })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /Operações/ })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: /Auditoria/ })).toBeInTheDocument();
-  });
-});
-
-describe('RoboLances — os seis eixos como blocos distintos', () => {
-  it('separa conexão, autenticação, prontidão, limites, estado da sessão e eventos', async () => {
-    renderizar();
-    await selecionarDisputa();
-
-    // Os três do checklist — cada um com a pergunta que responde.
-    expect(await screen.findByText('Conexão')).toBeInTheDocument();
-    expect(screen.getByText('O portal responde?')).toBeInTheDocument();
-    expect(screen.getByText('Autenticação')).toBeInTheDocument();
-    expect(screen.getByText('Minhas credenciais valem?')).toBeInTheDocument();
-    expect(screen.getByText('Prontidão do robô')).toBeInTheDocument();
-    expect(screen.getByText('O robô está pronto para operar?')).toBeInTheDocument();
-
-    // Os três do painel da direita.
-    expect(screen.getByText('Limites')).toBeInTheDocument();
-    expect(screen.getByText('Estado da sessão')).toBeInTheDocument();
-    expect(screen.getAllByText('Eventos').length).toBeGreaterThan(0);
-  });
-
-  it('não deixa o eixo de conexão sugerir que a automação foi validada', async () => {
-    renderizar();
-    await selecionarDisputa();
-
-    expect(
-      await screen.findByText(/Portal respondendo não significa automação validada/i),
-    ).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: /Simulação/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: /Auditoria/ })).not.toBeInTheDocument();
   });
 });
 
@@ -374,7 +510,7 @@ describe('RoboLances — limite financeiro (o defeito da trava que não travava)
 });
 
 describe('RoboLances — painel de participações e controles honestos', () => {
-  it('abre a aba Disputar com o painel de participações acima das ferramentas', async () => {
+  it('abre com o painel de participações acima das ferramentas', async () => {
     const { container } = renderizar();
 
     expect(await screen.findByRole('heading', { name: 'Participações do robô' })).toBeInTheDocument();

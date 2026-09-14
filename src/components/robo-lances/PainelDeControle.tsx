@@ -8,9 +8,20 @@ import AtivacaoChecklist from './AtivacaoChecklist';
 import type { LanceConfig } from './ConfigurarLanceDialog';
 import type { NivelAutomacao } from './NivelAutomacaoSelector';
 import type { DesfechoDoRobo, SessaoViva } from './usePedidosDoRobo';
+import { nomeDoPortal } from '@/lib/robo/portais';
 import {
   Activity, History, Monitor, RefreshCw, Send, ShieldCheck, Wallet, CheckCircle2,
 } from 'lucide-react';
+
+/** Estado da sessão como o agente informa → como o cliente lê. */
+const SITUACAO_DA_SESSAO: Record<string, string> = {
+  ativo: 'Em operação',
+  enviando: 'Entrando no portal',
+  pendente: 'Aguardando início',
+  pausado: 'Pausada',
+  encerrado: 'Encerrada',
+  erro: 'Com falha',
+};
 
 /**
  * PainelDeControle — a coluna da direita da aba Disputar.
@@ -61,13 +72,26 @@ type Props = {
   desfechos: DesfechoDoRobo[];
   paradaEmergencial: boolean;
   enviandoAoRobo: boolean;
-  destacarAssistir: boolean;
+  destacarAssistir?: boolean;
   estrategiaAutorizada: boolean;
   onEnviarAoRobo: () => void;
-  onAssistir: () => void;
+  /**
+   * Abre a tela remota do robô. OPCIONAL desde 14/09/2026: a tela remota é
+   * ferramenta da operação Praefectus, não do cliente. Sem este callback o
+   * botão "Assistir ao vivo" não é desenhado — botão sem destino é o defeito
+   * que o padrão visual proíbe.
+   */
+  onAssistir?: () => void;
   onAutorizarEstrategia: () => void;
   onParadaEmergencial: () => void;
-  onVerEventos: () => void;
+  /** Leva à trilha de auditoria. Sem ele, o botão do bloco Eventos não aparece. */
+  onVerEventos?: () => void;
+  /**
+   * Qual versão do checklist entra no painel. `plataforma` (padrão) é a
+   * completa, com healthcheck, freio e capacidade; `cliente` mostra só o que é
+   * da empresa — ver `AtivacaoChecklist`.
+   */
+  modoDoChecklist?: 'cliente' | 'plataforma';
   /** Menu "Ações" — montado na página, que é quem tem os handlers da disputa. */
   acoes: ReactNode;
 };
@@ -83,13 +107,14 @@ export default function PainelDeControle({
   desfechos,
   paradaEmergencial,
   enviandoAoRobo,
-  destacarAssistir,
+  destacarAssistir = false,
   estrategiaAutorizada,
   onEnviarAoRobo,
   onAssistir,
   onAutorizarEstrategia,
   onParadaEmergencial,
   onVerEventos,
+  modoDoChecklist = 'plataforma',
   acoes,
 }: Props) {
   return (
@@ -106,8 +131,10 @@ export default function PainelDeControle({
             </SeloSituacao>
             <ListaDeCampos
               campos={[
-                { rotulo: 'Situação no agente', valor: sessaoViva.status },
-                { rotulo: 'Portal', valor: sessaoViva.portal_id },
+                // Palavra de cliente, não vocabulário do agente: "ativo" e o id
+                // interno do portal não dizem nada a quem opera a disputa.
+                { rotulo: 'Situação da sessão', valor: SITUACAO_DA_SESSAO[sessaoViva.status] ?? 'Em andamento' },
+                { rotulo: 'Portal', valor: nomeDoPortal(sessaoViva.portal_id) },
               ]}
             />
             <KillSwitchButton
@@ -150,16 +177,19 @@ export default function PainelDeControle({
 
               {/* O ATALHO PRECISA ESTAR À MÃO ANTES DO ENVIO: uma sessão que
                   falha dura ~13 segundos, medidos. Quem clica em enviar e só
-                  depois procura onde assistir chega quando já acabou. */}
-              <Button
-                variant={destacarAssistir ? 'default' : 'outline'}
-                onClick={onAssistir}
-                className={`w-full justify-center ${destacarAssistir ? 'animate-pulse-glow' : ''}`}
-                title="Abre a tela remota já conectada. A sessão pode durar poucos segundos — deixá-la aberta antes de enviar é o jeito de acompanhar desde o início."
-              >
-                <Monitor className="w-4 h-4" aria-hidden="true" />
-                {destacarAssistir ? 'Assista agora — o robô está entrando' : 'Assistir ao vivo'}
-              </Button>
+                  depois procura onde assistir chega quando já acabou.
+                  Só existe onde há tela remota para abrir (operação Praefectus). */}
+              {onAssistir && (
+                <Button
+                  variant={destacarAssistir ? 'default' : 'outline'}
+                  onClick={onAssistir}
+                  className={`w-full justify-center ${destacarAssistir ? 'animate-pulse-glow' : ''}`}
+                  title="Abre a tela remota já conectada. A sessão pode durar poucos segundos — deixá-la aberta antes de enviar é o jeito de acompanhar desde o início."
+                >
+                  <Monitor className="w-4 h-4" aria-hidden="true" />
+                  {destacarAssistir ? 'Assista agora — o robô está entrando' : 'Assistir ao vivo'}
+                </Button>
+              )}
 
               {nivel === 2 && !estrategiaAutorizada && lance.status === 'aguardando' && (
                 <Button variant="outline" onClick={onAutorizarEstrategia} className="w-full justify-center">
@@ -174,8 +204,9 @@ export default function PainelDeControle({
             </>
           ) : (
             <div className="rounded-md border border-dashed border-border px-3 py-2 g-corpo text-muted-foreground">
-              Você acompanha esta disputa em modo leitura. Enviar ao robô e assistir ao vivo
-              exigem o papel de operador — peça em Equipe → Permissões.
+              {onAssistir
+                ? 'Você acompanha esta disputa em modo leitura. Enviar ao robô e assistir ao vivo exigem o papel de operador — peça em Equipe → Permissões.'
+                : 'Você acompanha esta disputa em modo leitura. Enviar ao robô exige o papel de operador — peça em Equipe → Permissões.'}
             </div>
           )}
           {acoes}
@@ -239,7 +270,7 @@ export default function PainelDeControle({
           O checklist é a autoridade sobre os três, e ele mesmo os separa com
           esses nomes. Repetir aqui um resumo próprio criaria uma segunda
           fonte da mesma verdade — e duas fontes divergem. */}
-      <AtivacaoChecklist somenteLeitura={!isAdmin} />
+      <AtivacaoChecklist modo={modoDoChecklist} somenteLeitura={!isAdmin} />
 
       {/* ── EIXO 6 · EVENTOS — "o que já aconteceu?" ────────────────────────
           Só os desfechos dos pedidos que o robô fez a uma pessoa (código de
@@ -262,9 +293,11 @@ export default function PainelDeControle({
             }))}
           />
         )}
-        <Button variant="outline" onClick={onVerEventos} className="w-full justify-center">
-          <History className="w-4 h-4" aria-hidden="true" /> Abrir trilha de auditoria
-        </Button>
+        {onVerEventos && (
+          <Button variant="outline" onClick={onVerEventos} className="w-full justify-center">
+            <History className="w-4 h-4" aria-hidden="true" /> Abrir trilha de auditoria
+          </Button>
+        )}
       </BlocoDoPainel>
     </div>
   );

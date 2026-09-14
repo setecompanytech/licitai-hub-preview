@@ -38,9 +38,23 @@ import { KeyRound, Monitor, Loader2, Send } from 'lucide-react';
 type Props = {
   /** Chamado quando o pedido é de captcha — leva a pessoa até a tela remota. */
   onAbrirTelaRemota?: () => void;
+  /**
+   * Oferece o caminho até a tela remota. `false` por padrão desde 14/09/2026:
+   * a tela remota é ferramenta da operação Praefectus, e a tela do cliente não
+   * pode ter botão que leve a ela. O campo do código continua — é a empresa
+   * quem recebe o código do portal, e só ela pode respondê-lo.
+   */
+  permitirTelaRemota?: boolean;
 };
 
-export default function PedidoDoRobo({ onAbrirTelaRemota }: Props) {
+/** Leva o foco ao campo do código, na própria tela — sem trocar de aba. */
+function irParaOCampo() {
+  const campo = document.getElementById('pedido-robo-codigo');
+  campo?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+  (campo as HTMLInputElement | null)?.focus?.({ preventScroll: true });
+}
+
+export default function PedidoDoRobo({ onAbrirTelaRemota, permitirTelaRemota = false }: Props) {
   const [valor, setValor] = useState('');
   const [enviando, setEnviando] = useState(false);
 
@@ -152,27 +166,40 @@ export default function PedidoDoRobo({ onAbrirTelaRemota }: Props) {
                 No caso do código, não: a mensagem do agente diz "cole aqui", e
                 aqui não há campo nenhum — este cartão flutua sobre qualquer
                 aba. Então o texto aponta para onde o campo está. */}
+            {/* Sem tela remota (tela do cliente), o pedido de clique não tem
+                o que oferecer além da verdade: não se responde por aqui. */}
             <p className="text-sm text-muted-foreground mt-1">
               {ehCod
-                ? 'Ele parou numa verificação em duas etapas. O campo para colar o código está na aba Agente Cloud — o robô digita e confirma por você.'
-                : pedido.mensagem}
+                ? permitirTelaRemota
+                  ? 'Ele parou numa verificação em duas etapas. O campo para colar o código está na aba Agente Cloud — o robô digita e confirma por você.'
+                  : 'Ele parou numa verificação em duas etapas. O campo para colar o código está no topo da tela do robô — o robô digita e confirma por você.'
+                : permitirTelaRemota
+                  ? pedido.mensagem
+                  : 'O portal pediu uma ação que não pode ser respondida por esta tela. Se a sessão não seguir em alguns minutos, fale com o suporte.'}
             </p>
             <div className="flex flex-wrap items-center gap-2 mt-3">
-              <Button
-                onClick={() => {
-                  toast.dismiss(id);
-                  onAbrirTelaRemota?.();
-                }}
-              >
-                <Monitor className="w-4 h-4" aria-hidden="true" />
-                {ehCod ? 'Ir para o campo' : 'Abrir a tela remota'}
-              </Button>
+              {(ehCod || permitirTelaRemota) && (
+                <Button
+                  onClick={() => {
+                    toast.dismiss(id);
+                    if (permitirTelaRemota) onAbrirTelaRemota?.();
+                    else irParaOCampo();
+                  }}
+                >
+                  {ehCod ? (
+                    <KeyRound className="w-4 h-4" aria-hidden="true" />
+                  ) : (
+                    <Monitor className="w-4 h-4" aria-hidden="true" />
+                  )}
+                  {ehCod ? 'Ir para o campo' : 'Abrir a tela remota'}
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 className="text-muted-foreground"
                 onClick={() => toast.dismiss(id)}
               >
-                Já estou lá
+                {ehCod || permitirTelaRemota ? 'Já estou lá' : 'Entendi'}
               </Button>
             </div>
           </div>
@@ -192,7 +219,7 @@ export default function PedidoDoRobo({ onAbrirTelaRemota }: Props) {
         },
       },
     );
-  }, [chave, pedido, onAbrirTelaRemota]);
+  }, [chave, pedido, onAbrirTelaRemota, permitirTelaRemota]);
 
   if (!pedido) return null;
 
@@ -276,8 +303,13 @@ export default function PedidoDoRobo({ onAbrirTelaRemota }: Props) {
               </span>
             )}
           </div>
-          <p className="text-base text-muted-foreground mt-1">{pedido.mensagem}</p>
-          {pedido.tela && (
+          <p className="text-base text-muted-foreground mt-1">
+            {ehCodigo || permitirTelaRemota
+              ? pedido.mensagem
+              : 'O portal pediu uma ação que não pode ser respondida por esta tela. Se a sessão não seguir em alguns minutos, fale com o suporte.'}
+          </p>
+          {/* O endereço da tela em que o robô parou é diagnóstico da operação. */}
+          {pedido.tela && permitirTelaRemota && (
             <p className="text-xs text-muted-foreground mt-2 truncate">
               Tela: {pedido.tela}
             </p>
@@ -321,12 +353,12 @@ export default function PedidoDoRobo({ onAbrirTelaRemota }: Props) {
             </Button>
           </div>
         </div>
-      ) : (
+      ) : permitirTelaRemota ? (
         <Button onClick={onAbrirTelaRemota} size="lg" className="w-full sm:w-auto">
           <Monitor className="w-5 h-5" aria-hidden="true" />
           Abrir a tela remota
         </Button>
-      )}
+      ) : null}
     </div>
   );
 }

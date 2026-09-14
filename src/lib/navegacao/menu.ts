@@ -254,6 +254,9 @@ export const navGroups: NavGroup[] = [
       { icon: TrendingUp, label: 'Marketing', path: '/admin/marketing' },
       { icon: Send, label: 'Distribuição', path: '/admin/distribuicao' },
       { icon: ShieldCheck, label: 'Auditoria', path: '/admin/auditoria' },
+      /* A operação do robô (agente, tela remota, erro técnico, avisos) — o que
+         saiu da tela do cliente em 14/09/2026. Mesmo título do paginas.ts. */
+      { icon: Crosshair, label: 'Robô de Lances', path: '/admin/robo-lances' },
       { icon: BarChart3, label: 'Métricas SaaS', path: '/admin/metricas-saas' },
     ],
   },

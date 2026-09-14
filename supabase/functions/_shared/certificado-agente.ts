@@ -14,6 +14,7 @@
  */
 
 import { decrypt, deriveKey } from "./credenciais-cifra.ts";
+import { chaveParaOAgente } from "./robo-acao.ts";
 
 export type ResultadoInstalacao = {
   instalado: boolean;
@@ -34,6 +35,15 @@ export type ResultadoInstalacao = {
 export async function instalarCertificadoNoAgente(
   adminClient: any,
   userId: string,
+  /**
+   * Agente a usar quando o usuário não tem agente próprio ativo. Sem ele, o
+   * padrão é o agente da Praefectus (segredos AGENTE_URL_BASE + AGENTE_API_KEY).
+   *
+   * Desde 14/09/2026 o cliente não cadastra mais agente: quem não tem linha em
+   * `agente_externo_config` usa o da plataforma. Sem este fallback, o upload
+   * do certificado de um cliente novo nunca chegaria a agente nenhum.
+   */
+  agentePadrao?: { url_base?: string | null; api_key_hash?: string | null } | null,
 ): Promise<ResultadoInstalacao> {
   // 1. O envio mais recente que tem arquivo E senha.
   const { data: tokens, error: erroToken } = await adminClient
@@ -76,7 +86,10 @@ export async function instalarCertificadoNoAgente(
     return { instalado: false, motivo: `Não foi possível ler a configuração do agente: ${erroAgente.message}` };
   }
 
-  const agente = agentes?.[0];
+  const chaveGerenciada = Deno.env.get("AGENTE_API_KEY") || null;
+  const urlGerenciada = (Deno.env.get("AGENTE_URL_BASE") || "").trim();
+  const gerenciadoPorAmbiente = urlGerenciada ? { url_base: urlGerenciada, api_key_hash: chaveGerenciada } : null;
+  const agente = agentes?.[0] ?? agentePadrao ?? gerenciadoPorAmbiente;
   if (!agente?.url_base) {
     return { instalado: false, motivo: "Nenhum agente ativo configurado para receber o certificado." };
   }
@@ -113,7 +126,9 @@ export async function instalarCertificadoNoAgente(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Agent-Key": agente.api_key_hash || "",
+        // A chave do agente gerenciado vem do segredo, nunca da linha — a que
+        // estava gravada nas linhas vazou no bundle antigo (ver robo-acao.ts).
+        "X-Agent-Key": chaveParaOAgente(agente, chaveGerenciada),
       },
       body: JSON.stringify({ arquivo_base64: base64, senha }),
       // Importar na base NSS envolve processo externo; 10s seria apertado.

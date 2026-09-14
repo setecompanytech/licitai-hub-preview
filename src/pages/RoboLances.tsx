@@ -3,15 +3,12 @@ import { usePapelEmpresa } from '@/hooks/usePapelEmpresa';
 import ProcessoContextoBanner from '@/components/shared/ProcessoContextoBanner';
 import { useProcessoAtivo } from '@/hooks/useProcessoAtivo';
 import AppLayout from '@/components/layout/AppLayout';
-import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import EstadoVazio from '@/components/shared/EstadoVazio';
-import { Badge, badgeVariants } from '@/components/ui/badge';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import AbasGestao from '@/components/gestao/AbasGestao';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -26,36 +23,34 @@ import {
   AlertTriangle, Trash2, Edit2,
   ChevronDown, Search, MessageSquare, ListChecks, Info,
   Building2, Hash, CalendarDays, FileText, Shield,
-  Zap, Target, ArrowDown, Trophy, XCircle, History,
+  Target, ArrowDown, Trophy, XCircle,
 } from 'lucide-react';
-import CredenciaisPortalForm from '@/components/robo-lances/CredenciaisPortalForm';
 import ConfigurarLanceDialog, { type LanceConfig, type DisputeItem } from '@/components/robo-lances/ConfigurarLanceDialog';
-import AgenteExternoConfig from '@/components/robo-lances/AgenteExternoConfig';
-// AgenteTemplateDownload removed — agent is now cloud-managed
 import LicitacaoChat from '@/components/licitacoes/LicitacaoChat';
-import SimulacaoDisputa from '@/components/robo-lances/SimulacaoDisputa';
 import DisputasResumo from '@/components/robo-lances/DisputasResumo';
 import ExportarResultados from '@/components/robo-lances/ExportarResultados';
-import NivelAutomacaoSelector, { type NivelAutomacao } from '@/components/robo-lances/NivelAutomacaoSelector';
+import type { NivelAutomacao } from '@/components/robo-lances/NivelAutomacaoSelector';
 import AceiteTermosDialog from '@/components/robo-lances/AceiteTermosDialog';
 import PainelRisco from '@/components/robo-lances/PainelRisco';
-import AuditTrailViewer from '@/components/robo-lances/AuditTrailViewer';
 import AutorizacaoLanceDialog from '@/components/robo-lances/AutorizacaoLanceDialog';
-import DisputaRealtimePanel from '@/components/robo-lances/DisputaRealtimePanel';
-import PortalHealthcheck from '@/components/robo-lances/PortalHealthcheck';
 import EstrategiaIAPanel from '@/components/robo-lances/EstrategiaIAPanel';
 import AtivacaoChecklist from '@/components/robo-lances/AtivacaoChecklist';
 import PainelDeControle from '@/components/robo-lances/PainelDeControle';
-import VncWebViewer from '@/components/robo-lances/VncWebViewer';
-import SessoesDoRobo from '@/components/robo-lances/SessoesDoRobo';
 import ConferenciaDosItens from '@/components/robo-lances/ConferenciaDosItens';
 import PedidoDoRobo from '@/components/robo-lances/PedidoDoRobo';
 import { usePedidosDoRobo } from '@/components/robo-lances/usePedidosDoRobo';
-import AcessoManualPortal from '@/components/robo-lances/AcessoManualPortal';
 import PainelDeParticipacoes from '@/components/robo-lances/painel/PainelDeParticipacoes';
 import type { ResultadoDoFreio } from '@/components/robo-lances/KillSwitchButton';
+import CabecalhoDoRobo from '@/components/robo-lances/cliente/CabecalhoDoRobo';
+import FaixaDaEmpresa from '@/components/robo-lances/cliente/FaixaDaEmpresa';
+import AvisosDosPortais from '@/components/robo-lances/cliente/AvisosDosPortais';
+import DialogoModoDeOperacao from '@/components/robo-lances/cliente/DialogoModoDeOperacao';
+import { useRoboDaEmpresa, type LinhaDoRoboDaEmpresa } from '@/components/robo-lances/cliente/useRoboDaEmpresa';
+import { useSituacaoDoRobo } from '@/components/robo-lances/cliente/useSituacaoDoRobo';
+import { useAvisosDosPortais } from '@/components/robo-lances/cliente/useAvisosDosPortais';
 import { ValorIndisponivel } from '@/components/gestao/SeloSituacao';
 import { idDoPortal, nomeDoPortal, agenteOpera } from '@/lib/robo/portais';
+import { resumirErroParaCliente } from '@/lib/robo/situacao-da-participacao';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { toast } from 'sonner';
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
@@ -107,20 +102,6 @@ const statusVariant: Record<string, BadgeVariant> = {
 
 const rotuloStatus = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-/** Falha silenciosa também vale para permissão: dizer por que não aparece. */
-function SemPermissao() {
-  return (
-    <div className="mx-auto max-w-xl rounded-lg border border-border bg-card shadow-sm">
-      <EstadoVazio
-        icone={<Shield />}
-        titulo="Área restrita ao administrador"
-        descricao="Credenciais de portal, infraestrutura do agente e nível de automação são configurações da empresa. Peça a um administrador em Equipe → Permissões."
-        tamanho="compacto"
-      />
-    </div>
-  );
-}
-
 export default function RoboLances() {
   const { user } = useAuth();
   const { empresaAtiva } = useEmpresa();
@@ -144,8 +125,10 @@ export default function RoboLances() {
   // até 30 s, contradizendo a coluna ao lado.
   const [versaoDasDisputas, setVersaoDasDisputas] = useState(0);
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const [bottomTab, setBottomTab] = useState<'mural' | 'operacoes' | 'simulacao' | 'auditoria'>('mural');
-  const [activeMainTab, setActiveMainTab] = useState('disputar');
+  // Simulação e Auditoria saíram das subabas em 14/09/2026: simular disputa e
+  // reproduzir a trilha encadeada por hash são ferramentas da operação
+  // Praefectus, e foram para o Admin › Robô de Lances.
+  const [bottomTab, setBottomTab] = useState<'mural' | 'operacoes'>('mural');
 
   // ── Governance: 3 Levels ──
   const [nivelAutomacao, setNivelAutomacao] = useState<NivelAutomacao>(() => {
@@ -182,11 +165,13 @@ export default function RoboLances() {
   const { isAdmin, podeOperar } = usePapelEmpresa();
   const [paradaEmergencial, setParadaEmergencial] = useState(false);
 
-  // Sem permissão, a aba administrativa não fica selecionada de forma órfã.
-  useEffect(() => {
-    if (!isAdmin && activeMainTab !== 'disputar') setActiveMainTab('disputar');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdmin]);
+  // ── O que é da EMPRESA (14/09/2026) ──
+  // Ligado/desligado (`robo_empresa_config`), disponibilidade respondida pelo
+  // servidor (`situacao-do-robo`) e avisos da operação (`robo_avisos_portal`).
+  // Os três no lugar do que a tela mostrava antes: agente, healthcheck, slots.
+  const roboDaEmpresa = useRoboDaEmpresa(empresaAtiva?.id);
+  const { situacao: situacaoDoRobo, recarregar: relerSituacaoDoRobo } = useSituacaoDoRobo(empresaAtiva?.id);
+  const avisosDosPortais = useAvisosDosPortais();
   // O Robô passa a saber em qual processo se está disputando — antes ele
   // ignorava a pasta de origem e obrigava a reselecionar o edital.
   const { processoId } = useProcessoAtivo();
@@ -246,25 +231,40 @@ export default function RoboLances() {
     });
   }, [user, empresaAtiva?.id, processoId]);
 
-  const handleNivelChange = async (novoNivel: NivelAutomacao) => {
+  /**
+   * Troca o nível de automação. Devolve `true` quando o nível foi aplicado — o
+   * diálogo do modo de operação fecha para o aceite de termos abrir por cima.
+   */
+  const handleNivelChange = async (novoNivel: NivelAutomacao): Promise<boolean> => {
     if (!isAdmin) {
       toast.error('Só o administrador da empresa altera o nível de automação.');
-      return;
+      return false;
     }
     // Freio verificado é PRÉ-REQUISITO dos níveis com envio automático. O
     // próprio sistema exige "botão de parada emergencial" no nível 3 — mas
     // exigia o botão existir na tela, não o freio funcionar do outro lado.
+    //
+    // A mensagem dizia "rode Testar freio de emergência no checklist". Esse
+    // teste saiu da tela do cliente (14/09/2026) — é ferramenta da operação
+    // Praefectus —, então apontar para ele mandaria a pessoa atrás de um botão
+    // que ela não tem. O detalhe do agente vai para o console.
     if (novoNivel > 1) {
-      const { data } = await supabase.functions.invoke('robo-lances-webhook/healthcheck', { body: {} });
-      const ks = (data as { agentes?: Array<{ kill_switch?: { ok?: boolean; detalhe?: string | null } | null }> } | null)
-        ?.agentes?.[0]?.kill_switch;
+      let ks: { ok?: boolean; detalhe?: string | null } | null | undefined = null;
+      try {
+        const { data } = await supabase.functions.invoke('robo-lances-webhook/healthcheck', { body: {} });
+        ks = (data as { agentes?: Array<{ kill_switch?: { ok?: boolean; detalhe?: string | null } | null }> } | null)
+          ?.agentes?.[0]?.kill_switch;
+      } catch (e) {
+        console.error('[robo-lances] verificar freio antes do nível', e);
+      }
       if (!ks?.ok) {
+        if (ks?.detalhe) console.error('[robo-lances] freio não verificado', ks.detalhe);
         toast.error(
-          `Nível ${novoNivel} bloqueado: a parada de emergência ainda não foi verificada no agente` +
-          `${ks?.detalhe ? ` (${ks.detalhe})` : ''}. Rode "Testar freio de emergência" no checklist antes de ativar envio automático.`,
+          `Nível ${novoNivel} indisponível no momento: a parada de emergência do robô ainda não foi verificada ` +
+          'pela equipe Praefectus. Fale com o suporte para ativar o envio automático.',
           { duration: 15000 },
         );
-        return;
+        return false;
       }
     }
     if (novoNivel > 1) {
@@ -281,6 +281,7 @@ export default function RoboLances() {
       setEstrategiaAutorizada(false);
       registrar('nivel_alterado', { de: nivelAutomacao, para: 1 }, { nivelAutomacao: 1 });
     }
+    return true;
   };
 
   /**
@@ -358,24 +359,25 @@ export default function RoboLances() {
     setVersaoDasDisputas((v) => v + 1);
   };
 
-  // Configurações globais persistidas em localStorage
-  const [configDecremento, setConfigDecremento] = useState(() => localStorage.getItem('robo_config_decremento') || '1.5');
-  const [configLanceMin, setConfigLanceMin] = useState(() => localStorage.getItem('robo_config_lance_min') || '85');
-  const [configIntervalo, setConfigIntervalo] = useState(() => localStorage.getItem('robo_config_intervalo') || '30');
-  const [configMaxLances, setConfigMaxLances] = useState(() => localStorage.getItem('robo_config_max_lances') || '20');
+  // As "Regras de lance — padrão deste navegador" saíram em 14/09/2026. Eram
+  // quatro campos gravados no localStorage que nada no app lia: nem o cadastro
+  // de disputa, nem o agente. Configuração que não se aplica a coisa alguma é
+  // promessa falsa; a regra de lance de verdade é a de cada disputa, em
+  // "Editar parâmetros".
 
-  const handleSaveConfig = () => {
-    localStorage.setItem('robo_config_decremento', configDecremento);
-    localStorage.setItem('robo_config_lance_min', configLanceMin);
-    localStorage.setItem('robo_config_intervalo', configIntervalo);
-    localStorage.setItem('robo_config_max_lances', configMaxLances);
-    // "Salvas com sucesso" dava a entender que a equipe e o agente passavam a
-    // seguir estas regras. Elas moram no localStorage deste navegador e nada
-    // mais no app as lê.
-    toast.success('Regras salvas neste navegador', {
-      description: 'Não são compartilhadas com a equipe nem enviadas ao agente.',
-    });
+  /**
+   * O robô foi ligado ou desligado. O servidor pode mudar a disponibilidade
+   * por isso, e o painel de participações pode ter sessões paradas — os dois
+   * releem na hora, em vez de esperar o próximo ciclo.
+   */
+  const aoAlterarLigado = (linha: LinhaDoRoboDaEmpresa) => {
+    roboDaEmpresa.aplicar(linha);
+    relerSituacaoDoRobo();
+    setVersaoDasDisputas((v) => v + 1);
   };
+
+  /** Portais das disputas desta tela — decide quais avisos de portal se aplicam. */
+  const portaisDasDisputas = useMemo(() => lances.map((l) => l.portal), [lances]);
 
   const selectedLance = useMemo(
     () => lances.find((l) => l.id === selectedId) ?? null,
@@ -448,7 +450,7 @@ export default function RoboLances() {
       const eventos: Operation[] = linhasSessao.map((s) => ({
         id: `sessao-${s.id}`,
         timestamp: new Date(s.created_at),
-        acao: 'Sessão no agente',
+        acao: 'Sessão do robô',
         // `erro` preenchido é a única leitura segura de falha: `status` varia
         // por portal e `resultado` só existe depois do encerramento.
         resultado: s.erro ? 'erro' : s.resultado ? 'sucesso' : 'info',
@@ -457,7 +459,16 @@ export default function RoboLances() {
           `situação: ${s.status}`,
           s.rodada_atual ? `rodada ${s.rodada_atual}` : null,
           s.resultado ? `resultado: ${s.resultado}` : null,
-          s.erro,
+          // O `erro` da sessão é texto de máquina ("Signal timed out.") e às
+          // vezes de bastidor (situação da conta usada no portal). Aqui vai o
+          // resumo em linguagem de cliente, com o que fazer; o texto completo
+          // fica no Admin Praefectus › Robô de Lances.
+          s.erro
+            ? (() => {
+                const r = resumirErroParaCliente(s.erro);
+                return `${r.texto} ${r.acao}.`;
+              })()
+            : null,
         ].filter(Boolean).join(' · '),
       }));
 
@@ -726,44 +737,10 @@ export default function RoboLances() {
    */
   const [enviandoAoRobo, setEnviandoAoRobo] = useState(false);
 
-  /**
-   * O convite deixou de ser um pop-up e virou um FAROL.
-   *
-   * A primeira versao abria um cartao no meio da tela ao enviar. Resolvia o
-   * "usuario perdido", mas com dois avisos para o mesmo trabalho em quinze
-   * segundos — o cartao do PedidoDoRobo dispara logo depois, e com instrucao
-   * de verdade.
-   *
-   * O que nao podia se perder junto: o estimulo a assistir DESDE O COMECO. A
-   * parte mais convincente do robo e ve-lo entrando no portal e digitando o
-   * login, e isso acontece nos primeiros segundos — quem chega depois so ve
-   * tela preta.
-   *
-   * Entao, em vez de bloquear a tela, o botao que ja existe acende e pulsa.
-   * Aponta em vez de interromper.
-   */
-  const [destacarAssistir, setDestacarAssistir] = useState(false);
-  useEffect(() => {
-    if (!destacarAssistir) return;
-    // Uma sessao que falha dura ~13s, medidos. Vinte segundos cobrem o inicio
-    // sem virar enfeite permanente — farol que fica aceso deixa de ser aviso.
-    const t = setTimeout(() => setDestacarAssistir(false), 20000);
-    return () => clearTimeout(t);
-  }, [destacarAssistir]);
-
-  /**
-   * Um caminho só até a tela do robô, e ele termina COM a tela aberta.
-   *
-   * Antes eram quatro passos: trocar de aba, rolar até quase o fim da página,
-   * achar o painel e clicar em "Abrir VNC Integrado". A sessão pode terminar em
-   * segundos — ninguém chegava a tempo, e a conclusão era que a tela remota não
-   * funcionava.
-   *
-   * O contador existe porque o pedido se repete: enviar duas sessões seguidas
-   * precisa abrir duas vezes, e um booleano já em `true` não dispara efeito
-   * nenhum na segunda.
-   */
-  const [pedidoDeTelaRemota, setPedidoDeTelaRemota] = useState(0);
+  // O farol "Assista agora" e o caminho até a tela remota (VNC) saíram desta
+  // tela em 14/09/2026, junto com a aba Agente: assistir ao robô pela tela
+  // remota é ferramenta da operação Praefectus, e mora no Admin › Robô de
+  // Lances. O cliente acompanha pelo painel de participações e pelos eventos.
 
   /**
    * Existe robô DE PÉ nesta disputa agora?
@@ -779,11 +756,6 @@ export default function RoboLances() {
   const sessaoVivaDesta = (estadoDoRobo?.sessoesVivas || []).find(
     (sv) => sv.edital === selectedLance?.edital,
   );
-
-  const irParaTelaRemota = () => {
-    setActiveMainTab('agente');
-    setPedidoDeTelaRemota((n) => n + 1);
-  };
 
   /**
    * Participação sem processo vinculado, aberta a partir do painel.
@@ -805,6 +777,18 @@ export default function RoboLances() {
     const handleEnviarAoRobo = async () => {
     if (!selectedLance) return;
 
+    // Robô desligado pela empresa: o servidor recusaria de qualquer jeito, mas
+    // a recusa dele chegaria depois de uma ida e volta, e com texto de
+    // servidor. Aqui a pessoa lê o motivo e onde resolver. Migration pendente
+    // e leitura não confirmada NÃO barram — nesses casos ninguém desligou nada.
+    const ligadoOuDesligado = roboDaEmpresa.estado;
+    if (ligadoOuDesligado.confirmado && !ligadoOuDesligado.migracaoPendente && !ligadoOuDesligado.ligado) {
+      toast.error('O robô da empresa está desligado. Ligue-o no topo da tela para iniciar sessões.', {
+        duration: 10000,
+      });
+      return;
+    }
+
     const portalId = idDoPortal(selectedLance.portal);
     if (!portalId) {
       toast.error(
@@ -814,48 +798,21 @@ export default function RoboLances() {
       return;
     }
 
-    setEnviandoAoRobo(true);
-    setDestacarAssistir(true);
-
-    // O CONVITE SAI NO PRIMEIRO CLIQUE, antes de qualquer ida ao servidor.
+    // Reconhecer o portal não é o mesmo que o robô NO AR saber operá-lo.
     //
-    // Só assim dá para ver o começo: o robô abre o Chrome e carrega a tela de
-    // login em poucos segundos, e a chamada de envio só retorna DEPOIS que ele
-    // terminou de entrar e navegar. Avisar no fim é avisar quando não serve.
-    //
-    // O id fica guardado para o convite ser retirado caso o envio seja recusado
-    // antes de o robô abrir qualquer coisa — convidar para assistir a uma
-    // sessão que não existe seria a mesma mentira, na direção contrária.
-
-    // Reconhecer o portal não é o mesmo que o agente NO AR saber operá-lo.
-    //
-    // A VPS pode estar num build atrás do template — em 09/09/2026 estava, com 8
-    // dos 23 módulos. Perguntar ao `/health` é a única forma de responder isso
-    // sem escrever no código uma verdade que envelhece. E a resposta vem com a
-    // lista, então a mensagem diz o que ELE tem, não o que falta.
-    try {
-      const { data: saude } = await supabase.functions.invoke(
-        'robo-lances-webhook/healthcheck',
-        { body: {} },
-      );
-      const suportados = (saude as {
-        agentes?: Array<{ portais_suportados?: string[] | null }>;
-      } | null)?.agentes?.[0]?.portais_suportados;
-
-      if (!agenteOpera(portalId, suportados)) {
-        toast.error(
-          `O agente no ar ainda não tem o módulo de ${nomeDoPortal(portalId)}. ` +
-            `Hoje ele opera: ${(suportados || []).join(', ')}.`,
-          { duration: 15000 },
-        );
-        setEnviandoAoRobo(false);
-        return;
-      }
-    } catch {
-      // Healthcheck indisponível não impede o envio: a edge function repete a
-      // validação, e o agente é a autoridade final. Barrar aqui trocaria um
-      // erro informativo por um bloqueio sem causa visível.
+    // A pergunta ia ao healthcheck do agente, e a recusa listava ao cliente os
+    // módulos instalados na VPS ("Hoje ele opera: comprasgov, bll…"). Agora vai
+    // à `situacao-do-robo`, que responde a mesma coisa sem expor a máquina. A
+    // lista é aceita no vocabulário do agente ou no do armazenamento, porque
+    // os dois diferem justamente no Compras.gov. Sem resposta, não barra: o
+    // servidor repete a validação e é a autoridade final.
+    const suportados = situacaoDoRobo?.portais_suportados;
+    if (suportados?.length && !agenteOpera(portalId, suportados) && !suportados.includes(portalId)) {
+      toast.error(`O robô ainda não opera no portal ${nomeDoPortal(portalId)}.`, { duration: 12000 });
+      return;
     }
+
+    setEnviandoAoRobo(true);
 
     try {
       const { data, error } = await supabase.functions.invoke(
@@ -925,6 +882,11 @@ export default function RoboLances() {
       // onde está a causa, fica guardado em `error.context`. Sem abrir isso, o
       // usuário recebe uma frase que não diz nada e o defeito vira caça ao
       // tesouro. Foi exatamente o que aconteceu no primeiro teste real.
+      //
+      // Contrato do servidor (14/09/2026): recusa do agente vem como 502
+      // `{ success: false, error }`, e robô desligado pela empresa como 409 —
+      // nos dois, `error` já é a frase para mostrar. Sem corpo legível, a
+      // frase de transporte ("non-2xx status code") vai ao console, não à tela.
       let motivo = (data as { error?: string } | null)?.error;
 
       if (!motivo && error) {
@@ -933,7 +895,14 @@ export default function RoboLances() {
           const corpo = await contexto.json().catch(() => null);
           motivo = (corpo as { error?: string } | null)?.error;
         }
-        motivo = motivo || error.message;
+        // 409: o servidor diz que o robô está desligado. Se a tela ainda o
+        // mostrava ligado (outra pessoa desligou, ou a leitura envelheceu),
+        // relê agora — o selo do topo não pode contradizer a recusa.
+        if (contexto?.status === 409) roboDaEmpresa.recarregar();
+        if (!motivo) {
+          console.error('[robo-lances] enviar-sessao sem motivo legível', contexto?.status, error.message);
+          motivo = 'O robô não aceitou a sessão e não informou o motivo. Tente de novo ou fale com o suporte.';
+        }
       }
 
       if (motivo) {
@@ -956,7 +925,10 @@ export default function RoboLances() {
       // que aconteceu, para quem dispensou o convite.
       toast.success('Sessão aceita pelo robô.', { duration: 6000 });
     } catch (e) {
-      toast.error(`Não foi possível falar com o robô: ${(e as Error).message}`, {
+      // A exceção aqui é de transporte (rede, função fora do ar) — texto de
+      // máquina. Vai ao console; a pessoa lê o que aconteceu e o que fazer.
+      console.error('[robo-lances] enviar-sessao', e);
+      toast.error('Não foi possível falar com o robô agora. Tente de novo em instantes.', {
         duration: 15000,
       });
     } finally {
@@ -1031,52 +1003,11 @@ export default function RoboLances() {
   );
 
   /* ── Selo de nível ──
-     O selo não é enfeite: é a informação mais cara desta tela. Nível 3
-     significa que o sistema envia lance com dinheiro da empresa sem ninguém
-     confirmar, e quem abre a página precisa saber disso antes de clicar em
-     qualquer coisa. Ele vinha só dentro da aba de configuração, a dois cliques
-     de distância.
-
-     Armado (nível 2 ou 3), o selo vira ATALHO para a aba de disputa — que é
-     onde mora a parada de emergência. É navegação, não capacidade nova: o
-     botão de parada continua exatamente onde estava, com o mesmo escopo e as
-     mesmas regras. Só o caminho até ele encurtou.
-
-     Veste o Badge semântico de ui (tinta + texto), com o mesmo desenho quer
-     seja botão, quer seja só selo. */
-  const nivelArmado = nivelAutomacao >= 2;
-  const seloNivelClasse = cn(
-    badgeVariants({
-      variant: nivelAutomacao >= 3 ? 'danger' : nivelAutomacao === 2 ? 'warning' : 'muted',
-    }),
-    'gap-1.5 py-1',
-    nivelArmado && 'cursor-pointer hover:brightness-95',
-  );
-  const seloNivelExplica =
-    nivelAutomacao >= 3
-      ? 'O sistema envia lances sem confirmação humana. Clique para ir à disputa, onde fica a parada de emergência.'
-      : nivelAutomacao === 2
-        ? 'O sistema sugere; o envio pede confirmação. Clique para ir à disputa.'
-        : 'Somente acompanhamento — nenhum lance é enviado.';
-  const seloNivelConteudo = (
-    <>
-      <Zap className="w-3 h-3" aria-hidden="true" />
-      Nível {nivelAutomacao}
-      {nivelArmado && <span className="font-normal">· armado</span>}
-    </>
-  );
-  const seloNivel = nivelArmado ? (
-    <button
-      type="button"
-      onClick={() => setActiveMainTab('disputar')}
-      className={seloNivelClasse}
-      title={seloNivelExplica}
-    >
-      {seloNivelConteudo}
-    </button>
-  ) : (
-    <span className={seloNivelClasse} title={seloNivelExplica}>{seloNivelConteudo}</span>
-  );
+     O selo "Nível 1" do cabeçalho virou o botão do modo de operação
+     (`DialogoModoDeOperacao`), com o mesmo tom de risco e o nome do nível em
+     texto. Com a tela reduzida a uma aba só, o atalho "ir para a disputa" que
+     ele fazia perdeu o destino — e o seletor, que morava no estado vazio e na
+     aba Configurações, passou a morar atrás dele. */
 
   /**
    * O menu "Ações" da disputa selecionada.
@@ -1173,30 +1104,32 @@ export default function RoboLances() {
         <ProcessoContextoBanner />
       </div>
 
-      <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="flex flex-col">
-        {/* ── Cabeçalho do módulo (identidade 12/09) ──
-            A faixa herói navy com a foto do aperto de mão saiu: o cabeçalho
-            padrão é claro, com o ícone do módulo em tinta verde, o título em
-            navy e a ação principal à direita. As abas e o selo de nível ficam
-            entre o título e o conteúdo — a navegação e o estado de risco,
-            lado a lado, visíveis antes de qualquer clique.
+        {/* ── A TELA DO CLIENTE (14/09/2026) ──────────────────────────────────
+            As abas Agente, Portais e Configurações saíram. Mostravam ao
+            administrador da EMPRESA o que é da operação da PLATAFORMA: endereço,
+            chave e versão do agente, RAM, slots, healthcheck, teste do freio,
+            tela remota, simulação, trilha de auditoria encadeada e o nome do
+            fornecedor de IA. Tudo isso mora agora no Admin Praefectus › Robô de
+            Lances.
 
-            Título, descrição, ícone e trilha NÃO são escritos aqui: vêm de
-            `lib/navegacao/paginas.ts` pela rota atual. Repeti-los no .tsx era
-            como os 93 títulos à mão divergiam — mudar o nome do módulo
-            passava a exigir caçar a string em cada tela.
-
-            Credenciais da empresa, infraestrutura do agente e nível de
-            automação (decisão de risco financeiro) são do administrador.
-            Operador e visualizador ficam com a aba de trabalho.
-
-            Agente Cloud vem logo depois de Disputar porque é o movimento
-            seguinte de quem acabou de enviar: a sessão pode durar segundos, e
-            ter "Portais" no caminho obriga a atravessar uma aba que não
-            interessa naquele instante. Portais é cadastro — se faz uma vez,
-            não a cada disputa. */}
-        <CabecalhoPagina
-          denso
+            O que ficou é o que a empresa decide, na ordem em que ela pergunta:
+            o robô está ligado e disponível? (cabeçalho) · de qual empresa é
+            este robô, e o acesso aos portais? (faixa da empresa) · há aviso da
+            operação? (faixa de avisos) · em que fase está cada participação?
+            (painel) · e a configuração de cada disputa (ferramentas). */}
+        <CabecalhoDoRobo
+          empresaId={empresaAtiva?.id}
+          estado={roboDaEmpresa.estado}
+          podeOperar={podeOperar}
+          aoAlterarLigado={aoAlterarLigado}
+          aoRelerLigado={roboDaEmpresa.recarregar}
+          modo={
+            <DialogoModoDeOperacao
+              nivel={nivelAutomacao}
+              podeAlterar={isAdmin}
+              aoAlterar={handleNivelChange}
+            />
+          }
           acoes={
             <>
               <ExportarResultados lances={lances} />
@@ -1213,32 +1146,8 @@ export default function RoboLances() {
               )}
             </>
           }
-        >
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            {/* `AbasGestao` e não `TabsList`: o módulo inteiro usa aba
-                sublinhada com a ativa em verde, e a pílula do shadcn é outra
-                linguagem. As três abas de administrador continuam saindo da
-                fila quando o papel não é admin — a lista é montada antes. */}
-            <AbasGestao
-              abas={[
-                { valor: 'disputar', rotulo: 'Disputar' },
-                ...(isAdmin
-                  ? [
-                      { valor: 'agente', rotulo: 'Agente' },
-                      { valor: 'portais', rotulo: 'Portais' },
-                      { valor: 'configuracoes', rotulo: 'Configurações' },
-                    ]
-                  : []),
-              ]}
-              valor={activeMainTab}
-              aoMudar={setActiveMainTab}
-              className="min-w-0 flex-1"
-            />
-            {seloNivel}
-          </div>
-        </CabecalhoPagina>
+        />
 
-        {/* ── DISPUTAR TAB ── */}
         {/* ── AS TRÊS COLUNAS ──────────────────────────────────────────────
             Composição exigida pela referência aprovada e por
             `docs/padrao-visual-gestao.md`: sessões à esquerda, sessão
@@ -1256,7 +1165,23 @@ export default function RoboLances() {
             `items-start` para as colunas não esticarem à altura da mais alta —
             o painel da direita costuma ser o mais alto, e sem isso a lista da
             esquerda ganhava um vazio do tamanho do checklist. */}
-        <TabsContent value="disputar" className="m-0 flex min-w-0 flex-col gap-6">
+        <div className="flex min-w-0 flex-col gap-6">
+          {/* Primeiro de tudo quando existe: o robô parado esperando um código
+              que o portal mandou à empresa. O código vale segundos. Sem pedido,
+              não desenha nada. Sem tela remota — ela é da operação Praefectus. */}
+          <PedidoDoRobo />
+
+          <div className="flex min-w-0 flex-col gap-3">
+            <FaixaDaEmpresa
+              empresa={empresaAtiva}
+              isAdmin={isAdmin}
+              avisos={avisosDosPortais.avisos}
+              erroDosAvisos={avisosDosPortais.erro}
+              aoRecarregarAvisos={() => { avisosDosPortais.recarregar(); }}
+            />
+            <AvisosDosPortais avisos={avisosDosPortais.avisos} portaisDasDisputas={portaisDasDisputas} />
+          </div>
+
           {/* ── PAINEL DE PARTICIPAÇÕES (14/09/2026) ──────────────────────────
               Primeiro conteúdo da aba: responde "em que fase está cada
               participação e o que o robô está fazendo nela" antes de qualquer
@@ -1387,7 +1312,9 @@ export default function RoboLances() {
             <DisputasResumo lances={lances} onSelect={alternarSelecao} selectedId={selectedId} />
 
             {!selectedLance ? (
-              /* empty state with level selector */
+              /* O seletor de nível saiu daqui (14/09/2026): mora no botão do
+                 modo de operação, no topo. No estado vazio ele disputava a
+                 atenção com a instrução de selecionar uma disputa. */
               <div className="flex-1 flex flex-col items-center justify-center gap-6 p-6">
                 <EstadoVazio
                   icone={<Target />}
@@ -1395,10 +1322,6 @@ export default function RoboLances() {
                   descricao={'Abra uma disputa da lista ao lado ou use "Nova sessão", no topo da tela, para gerenciar os lances.'}
                   className="py-0"
                 />
-                {/* Level selector in empty state */}
-                <div className="w-full max-w-3xl">
-                  <NivelAutomacaoSelector nivel={nivelAutomacao} onChange={handleNivelChange} />
-                </div>
               </div>
             ) : (
               <>
@@ -1558,21 +1481,30 @@ export default function RoboLances() {
                   <PainelRisco lance={selectedLance} nivel={nivelAutomacao} />
                 </div>
 
+                {/* ── Estratégia sugerida para ESTA disputa ──
+                    Veio da antiga aba Configurações, onde recebia a disputa
+                    selecionada mas ficava a uma aba de distância dela. */}
+                <div className="px-4 py-4 border-t border-border">
+                  <EstrategiaIAPanel lance={selectedLance} />
+                </div>
+
                 {/* ── EIXO 6 · EVENTOS — "o que já aconteceu?" ──────────────
                     O sexto eixo do comando. Fica no centro, e não na coluna da
-                    direita, porque é o único que precisa de largura: mural,
-                    simulação, operações e auditoria são leitura demorada, não
-                    resposta de relance. O rótulo da seção nomeia o eixo, para
-                    que ele não se confunda com o estado da sessão (que diz o
-                    que está acontecendo AGORA, e mora à direita).
+                    direita, porque é o único que precisa de largura: mural e
+                    operações são leitura demorada, não resposta de relance. O
+                    rótulo da seção nomeia o eixo, para que ele não se confunda
+                    com o estado da sessão (que diz o que está acontecendo AGORA,
+                    e mora à direita).
 
-                    Abas de ui aninhadas nas abas principais: o Radix isola os
-                    dois contextos, e cada painel só monta quando ativo — o
-                    mesmo que o `bottomTab === …` fazia à mão. */}
+                    Simulação e Auditoria saíram em 14/09/2026 — ferramentas da
+                    operação Praefectus, hoje no Admin › Robô de Lances.
+
+                    Cada painel só monta quando ativo — o mesmo que o
+                    `bottomTab === …` fazia à mão. */}
                 <div className="border-t border-border">
                   <Tabs
                     value={bottomTab}
-                    onValueChange={(v) => setBottomTab(v as 'mural' | 'operacoes' | 'simulacao' | 'auditoria')}
+                    onValueChange={(v) => setBottomTab(v as 'mural' | 'operacoes')}
                   >
                     <div className="px-4 pt-4 space-y-2">
                       <h3 className="g-titulo-secao text-foreground">Eventos</h3>
@@ -1580,14 +1512,8 @@ export default function RoboLances() {
                         <TabsTrigger value="mural">
                           <MessageSquare className="w-4 h-4 mr-1.5" aria-hidden="true" /> Mural
                         </TabsTrigger>
-                        <TabsTrigger value="simulacao">
-                          <Zap className="w-4 h-4 mr-1.5" aria-hidden="true" /> Simulação
-                        </TabsTrigger>
                         <TabsTrigger value="operacoes">
                           <ListChecks className="w-4 h-4 mr-1.5" aria-hidden="true" /> Operações
-                        </TabsTrigger>
-                        <TabsTrigger value="auditoria">
-                          <History className="w-4 h-4 mr-1.5" aria-hidden="true" /> Auditoria
                         </TabsTrigger>
                       </TabsList>
                     </div>
@@ -1607,20 +1533,6 @@ export default function RoboLances() {
                           className="h-full"
                         />
                       )}
-                    </TabsContent>
-
-                    <TabsContent value="simulacao" className="m-0 p-4">
-                      <SimulacaoDisputa
-                        lance={selectedLance}
-                        onUpdate={(updated) => {
-                          setLances(prev => prev.map(l => l.id === updated.id ? updated : l));
-                        }}
-                        licitacaoId={selectedLance.licitacaoId}
-                      />
-                    </TabsContent>
-
-                    <TabsContent value="auditoria" className="m-0 p-4">
-                      <AuditTrailViewer sessaoId={undefined} />
                     </TabsContent>
 
                     {/* Ligada a `sessoes_lance_real` + `lances_historico` —
@@ -1666,16 +1578,21 @@ export default function RoboLances() {
           </section>
 
           {/* ── COLUNA 3 · CHECKLIST E AÇÕES ───────────────────────────────
-              Os seis eixos que antes se misturavam. Três deles moram dentro do
-              checklist, que os agrupa com os mesmos nomes (conexão,
-              autenticação, prontidão); os outros três — limites, estado da
-              sessão e eventos — são blocos do painel.
+              Limites, estado da sessão e eventos são blocos do painel. O
+              checklist entra na versão do CLIENTE (14/09/2026): acesso aos
+              portais, certificado e uma linha de disponibilidade do robô —
+              conexão dos portais e prontidão do agente são da operação
+              Praefectus e saíram desta tela.
 
-              Sem disputa selecionada, só os eixos que independem dela: se o
-              portal responde, se as credenciais valem e se o robô está de pé
-              são perguntas da empresa, não da sessão. Limites e estado da
-              sessão não têm o que dizer, e inventar um "R$ 0,00" ou um "sem
-              robô de pé" ali seria afirmar sobre uma disputa que não existe. */}
+              Sem disputa selecionada, só o que independe dela: se as
+              credenciais valem e se o robô está disponível são perguntas da
+              empresa, não da sessão. Limites e estado da sessão não têm o que
+              dizer, e inventar um "R$ 0,00" ou um "sem robô de pé" ali seria
+              afirmar sobre uma disputa que não existe.
+
+              `PainelDeControle` sem `onAssistir` nem `onVerEventos`: a tela
+              remota e a trilha de auditoria não existem para o cliente, e
+              botão sem destino é defeito. */}
           <aside
             data-coluna="controle"
             aria-label="Checklist e ações"
@@ -1693,114 +1610,20 @@ export default function RoboLances() {
                 desfechos={estadoDoRobo?.desfechos || []}
                 paradaEmergencial={paradaEmergencial}
                 enviandoAoRobo={enviandoAoRobo}
-                destacarAssistir={destacarAssistir}
                 estrategiaAutorizada={estrategiaAutorizada}
                 onEnviarAoRobo={handleEnviarAoRobo}
-                onAssistir={() => {
-                  setDestacarAssistir(false);
-                  irParaTelaRemota();
-                }}
                 onAutorizarEstrategia={() => setAutorizacaoOpen(true)}
                 onParadaEmergencial={handleParadaEmergencial}
-                onVerEventos={() => setBottomTab('auditoria')}
+                modoDoChecklist="cliente"
                 acoes={<>{gatilhoEditar}{menuDeAcoes}</>}
               />
             ) : (
-              <AtivacaoChecklist somenteLeitura={!isAdmin} />
+              <AtivacaoChecklist modo="cliente" somenteLeitura={!isAdmin} />
             )}
           </aside>
           </div>
           </section>
-        </TabsContent>
-
-        {/* ── PORTAIS TAB ── */}
-        <TabsContent value="portais" className="m-0 space-y-6">
-          {!isAdmin ? <SemPermissao /> : (<>
-          <CredenciaisPortalForm />
-          <PortalHealthcheck />
-          </>)}
-        </TabsContent>
-
-        {/* ── AGENTE CLOUD TAB ── */}
-        <TabsContent value="agente" className="m-0 space-y-6">
-          {!isAdmin ? <SemPermissao /> : (<>
-          {/* A ordem segue o USO e a URGÊNCIA, não a configuração.
-              O painel com prazo não pode exigir rolagem: a tela remota mostra o
-              robô enquanto ele trabalha, e ele pode terminar em segundos. Tudo
-              que ficasse acima dela — checklist inclusive — vira distância a
-              percorrer com o relógio correndo.
-              Sessões vem logo abaixo porque é a mesma pergunta ("o robô
-              funcionou?") respondida depois que a janela fechou.
-              Checklist, config e healthcheck são ajuste: consultados quando
-              algo está errado, não a cada disputa. */}
-          {/* Acima do VNC de propósito: quando o robô pede um código, isso é a
-              coisa mais urgente da tela — e um código de verificação vale
-              segundos. Quando ele não pede nada, este bloco não desenha nada. */}
-          <PedidoDoRobo onAbrirTelaRemota={irParaTelaRemota} />
-          <VncWebViewer abrirEm={pedidoDeTelaRemota} />
-          {/* Logo abaixo da tela remota porque é a alternativa a ela: quem não
-              quer usar o VNC vai querer entrar no portal pelo próprio navegador,
-              e é justamente aí que a tentação de instalar o .pfx aparece. */}
-          <AcessoManualPortal />
-          <SessoesDoRobo />
-          {/* O Checklist de Ativação saiu daqui e passou a viver na coluna da
-              direita da aba Disputar, onde a composição aprovada o pede — e
-              onde ele é consultado de verdade: a pergunta "o robô está pronto?"
-              se faz na hora de disputar, não numa aba de infraestrutura. Não
-              ficou nos dois lugares de propósito; o padrão visual proíbe
-              navegação duplicada, e dois painéis iguais em abas diferentes
-              convidam a acreditar que são coisas diferentes. */}
-          <AgenteExternoConfig />
-          <PortalHealthcheck />
-          </>)}
-        </TabsContent>
-
-        {/* ── CONFIGURAÇÕES TAB ── */}
-        <TabsContent value="configuracoes" className="m-0 space-y-6">
-          {!isAdmin ? <SemPermissao /> : (<>
-          <NivelAutomacaoSelector nivel={nivelAutomacao} onChange={handleNivelChange} />
-          <EstrategiaIAPanel lance={selectedLance} />
-          <DisputaRealtimePanel />
-
-          <div className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-4 max-w-2xl">
-            <h3 className="text-lg font-semibold flex items-center gap-2">
-              <Settings className="w-5 h-5 text-muted-foreground" aria-hidden="true" /> Regras de lance — padrão deste navegador
-            </h3>
-            {/* "Padrão Global" era falso: os valores vão para o localStorage e
-                nenhuma outra parte do app os lê — nem o cadastro de disputa,
-                nem o agente. */}
-            <p className="text-sm text-muted-foreground">
-              Ficam guardadas só neste navegador: não valem para a equipe, não chegam ao agente e hoje não
-              são aplicadas a nenhuma disputa.
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="config-decremento">Decremento padrão (%)</Label>
-                <Input id="config-decremento" type="number" step="0.1" value={configDecremento} onChange={(e) => setConfigDecremento(e.target.value)} className="mt-1" />
-              </div>
-              <div>
-                <Label htmlFor="config-lance-min">Lance mínimo (% do estimado)</Label>
-                <Input id="config-lance-min" type="number" step="1" value={configLanceMin} onChange={(e) => setConfigLanceMin(e.target.value)} className="mt-1" />
-              </div>
-              <div>
-                <Label htmlFor="config-intervalo">Intervalo entre lances (seg)</Label>
-                <Input id="config-intervalo" type="number" step="1" min="1" value={configIntervalo} onChange={(e) => setConfigIntervalo(e.target.value)} className="mt-1" />
-              </div>
-              <div>
-                <Label htmlFor="config-max-lances">Máx. lances por sessão</Label>
-                <Input id="config-max-lances" type="number" step="1" min="1" value={configMaxLances} onChange={(e) => setConfigMaxLances(e.target.value)} className="mt-1" />
-              </div>
-            </div>
-            <Button onClick={handleSaveConfig}>
-              Salvar neste navegador
-            </Button>
-          </div>
-
-          {/* Audit trail in config tab too */}
-          <AuditTrailViewer />
-          </>)}
-        </TabsContent>
-      </Tabs>
+        </div>
 
       {/* ── Governance Dialogs ── */}
       <AceiteTermosDialog

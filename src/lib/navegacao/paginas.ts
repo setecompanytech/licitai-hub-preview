@@ -325,6 +325,14 @@ export const paginasPadrao: PaginaPadrao[] = [
     acao: 'Exportar PDF', padrao: 'tabela',
   },
   {
+    // A operação do robô que saiu da tela do cliente em 14/09/2026. Mesmo
+    // ícone do módulo do cliente: é o mesmo robô, visto por quem o opera.
+    rota: '/admin/robo-lances', grupo: 'Admin', titulo: 'Robô de Lances', icone: Crosshair,
+    descricao: 'Agente, sessões, diagnóstico e avisos do robô, operados pela equipe Praefectus',
+    padrao: 'abas',
+    abas: ['Agente e infraestrutura', 'Sessões e tela remota', 'Diagnóstico', 'Avisos aos clientes', 'Auditoria e eventos'],
+  },
+  {
     rota: '/admin/metricas-saas', grupo: 'Admin', titulo: 'Métricas SaaS', icone: BarChart3,
     descricao: 'Assinantes, receita recorrente e retenção da plataforma',
     padrao: 'painel',

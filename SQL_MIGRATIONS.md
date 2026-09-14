@@ -13377,3 +13377,28 @@ Esta migration não troca a chave que vazou no bundle — a rotação é no `.en
 VPS (`AGENT_API_KEY`) e no segredo `AGENTE_API_KEY` das edge functions, ao mesmo
 tempo, seguida da atualização das linhas do agente gerenciado.
 
+---
+
+## 20260914000004 — robô de lances: o que é da empresa e o que é da Praefectus
+
+O cliente via, na tela do robô, endereço e versão do agente, RAM, slots, teste
+do freio e erro técnico cru do portal. A referência de mercado mostra o limite:
+o cliente liga e desliga o robô da empresa, informa o próprio acesso aos
+portais e lê avisos escritos por gente; a operação fica com a plataforma.
+
+- `robo_empresa_config` — robô da empresa ligado/desligado. **Sem linha =
+  ligado** (comportamento anterior, princípio 7). Admin/operador alteram;
+  membros leem. Desligado, o servidor recusa iniciar sessão nova.
+- `robo_avisos_portal` — avisos por portal (ou todos), escritos pelo
+  administrador da plataforma (`user_roles.role = 'admin'`), lidos pelo cliente
+  quando vigentes.
+- Leitura de diagnóstico para o administrador da plataforma em
+  `sessoes_lance_real`, `webhook_log` e `agente_externo_config` (somente
+  SELECT; lances e preços não entram).
+
+Repete `is_empresa_operador` (idempotente) para não depender da ordem em que
+0002 e 0004 forem aplicadas. Reversão no cabeçalho do arquivo.
+- `nomes_de_empresas_para_plataforma(uuid[])` — só id, razão social e nome
+  fantasia, só para o administrador da plataforma. Evita liberar `empresas`
+  inteira (CPF, RG e dados do representante legal de todos os clientes).
+

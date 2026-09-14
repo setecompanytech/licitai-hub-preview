@@ -97,3 +97,21 @@ export function chaveParaOAgente(
   if (chaveGerenciada && ehAgenteGerenciado(agente.url_base)) return chaveGerenciada;
   return typeof agente.api_key_hash === "string" ? agente.api_key_hash : "";
 }
+
+/**
+ * A chave que o `callback` exige de uma sessão.
+ *
+ * Sessão com linha de agente: a regra de `chaveParaOAgente`. Sessão SEM linha
+ * (`agente_id` nulo) é a do agente gerenciado da plataforma — que desde
+ * 14/09/2026 atende quem não tem agente próprio e não grava linha nenhuma —,
+ * então vale o segredo `AGENTE_API_KEY`. Sem o segredo, vazio: o callback
+ * recusa, que é o comportamento anterior (a junção `!inner` descartava a
+ * sessão e respondia 404).
+ */
+export function chaveEsperadaNoCallback(
+  agenteDaSessao: { url_base?: unknown; api_key_hash?: unknown } | null | undefined,
+  chaveGerenciada: string | null | undefined,
+): string {
+  if (agenteDaSessao) return chaveParaOAgente(agenteDaSessao, chaveGerenciada);
+  return chaveGerenciada || "";
+}

@@ -113,6 +113,47 @@ function normalizarPortal(p: string | null | undefined): string {
     .replace(/[^a-z0-9]/g, '');
 }
 
+/**
+ * O erro do robô em linguagem de cliente.
+ *
+ * O `erro` da sessão é texto de máquina e às vezes de bastidor: em 14/09/2026 a
+ * tabela do cliente mostrava "Signal timed out." e um parágrafo do agente com a
+ * situação da CONTA usada no portal ("acesso vencido… 0 créditos"). O cliente
+ * precisa saber o que aconteceu e o que fazer; o texto completo fica no Admin
+ * Praefectus › Robô de Lances.
+ *
+ * A ordem das regras importa: "processo não encontrado" vem antes de "conta
+ * vencida", porque quando os dois aparecem juntos a causa da falha é o primeiro.
+ */
+export interface ErroParaCliente {
+  texto: string;
+  acao: string;
+}
+
+export function resumirErroParaCliente(erro: string | null | undefined): ErroParaCliente {
+  const e = String(erro ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+  if (!e.trim()) return { texto: 'O robô informou uma falha na sessão.', acao: 'Falar com o suporte' };
+  if (/(nao (foi )?encontrad|nao localizad)/.test(e) && /(processo|pregao|edital|licitac|disputa)/.test(e)) {
+    return { texto: 'O processo não foi localizado na conta do portal.', acao: 'Conferir o número do processo' };
+  }
+  if (/(timed? ?out|timeout|tempo (de resposta )?esgotado|sem resposta|nao respondeu)/.test(e)) {
+    return { texto: 'O portal não respondeu a tempo.', acao: 'Tentar de novo mais tarde' };
+  }
+  if (/(certificado|\bpfx\b)/.test(e)) {
+    return { texto: 'O portal não aceitou o certificado digital.', acao: 'Revisar o certificado digital' };
+  }
+  if (/(senha|credencia|login|autentica|usuario invalido)/.test(e)) {
+    return { texto: 'O portal recusou o acesso com as credenciais cadastradas.', acao: 'Revisar o acesso ao portal' };
+  }
+  if (/(credito|vencid|expirad|assinatura|inadimpl)/.test(e)) {
+    return { texto: 'A conta no portal precisa de regularização.', acao: 'Verificar a conta no portal' };
+  }
+  return { texto: 'O robô não conseguiu concluir a operação no portal.', acao: 'Falar com o suporte' };
+}
+
 export function lanceLiberadoNoPortal(portal: string | null, liberados: readonly string[]): boolean {
   const alvo = normalizarPortal(portal);
   if (!alvo) return false;
@@ -196,9 +237,10 @@ export function projetarParticipacao(
   }
 
   // ── Pendência principal e próxima ação — a primeira que se aplica ─────────
+  const erroDoCliente = resumirErroParaCliente(sessao?.erro);
   const regras: Array<[boolean, string, string]> = [
     [robo === 'parada_solicitada', 'Parada solicitada — o serviço ainda não confirmou.', 'Acompanhar a confirmação'],
-    [robo === 'erro', sessao?.erro || 'O serviço de execução informou erro.', 'Revisar o erro da sessão'],
+    [robo === 'erro', erroDoCliente.texto, erroDoCliente.acao],
     [robo === 'sinal_desatualizado', `Sem atualização do serviço há mais de ${limite} s.`, 'Verificar a conexão do agente'],
     [robo === 'desconhecido', `Situação "${sessao?.status}" não reconhecida.`, 'Conferir a sessão'],
     [aba === 'encerradas', null as unknown as string, 'Consultar o resultado'],

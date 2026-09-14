@@ -14,6 +14,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import SituacaoDoRoboEmLinha from './cliente/SituacaoDoRoboEmLinha';
 
 /**
  * ─── OS TRÊS EIXOS, E POR QUE ELES NÃO PODEM VIR NA MESMA LISTA ────────────
@@ -61,8 +62,20 @@ type CheckItem = {
  *   visualizador — e essas ações são de administrador. Esconder o botão não é
  *   a trava (a trava é a RLS e a edge function); é não oferecer a quem não
  *   pode, que é o que a tela deve fazer.
+ *
+ * @param modo Para quem o checklist fala (14/09/2026).
+ *   - `plataforma` (padrão): a versão completa, para a operação Praefectus —
+ *     agente, healthcheck, freio, slots, RAM e portais respondendo.
+ *   - `cliente`: só o que é da EMPRESA — acesso aos portais e certificado
+ *     digital —, mais uma linha com a disponibilidade do robô vinda do
+ *     servidor. Infraestrutura não é decisão do cliente, e mostrá-la a ele
+ *     só produzia dúvida ("o que é slot?") e erro técnico cru na tela.
  */
-export default function AtivacaoChecklist({ somenteLeitura = false }: { somenteLeitura?: boolean } = {}) {
+export default function AtivacaoChecklist({
+  somenteLeitura = false,
+  modo = 'plataforma',
+}: { somenteLeitura?: boolean; modo?: 'cliente' | 'plataforma' } = {}) {
+  const cliente = modo === 'cliente';
   const { user } = useAuth();
   const { empresaAtiva } = useEmpresa();
   const [items, setItems] = useState<CheckItem[]>([]);
@@ -130,6 +143,14 @@ export default function AtivacaoChecklist({ somenteLeitura = false }: { somenteL
 
       if ((data as { instalado?: boolean } | null)?.instalado) {
         toast.success('Certificado instalado no robô.');
+      } else if (cliente) {
+        // O motivo do agente é diagnóstico (caminho de arquivo, base NSS,
+        // policy do Chrome). O cliente precisa saber o que fazer, não isso.
+        if (motivo) console.error('[robo-lances] instalar certificado', motivo);
+        toast.error(
+          'Não foi possível instalar o certificado agora. Tente de novo em alguns minutos ou fale com o suporte.',
+          { duration: 15000 },
+        );
       } else {
         toast.error(motivo || 'Não foi possível instalar o certificado no robô.', {
           duration: 15000,
@@ -193,15 +214,29 @@ export default function AtivacaoChecklist({ somenteLeitura = false }: { somenteL
     // Colunas explícitas, sem `api_key_hash`: a chave do agente não tem o que
     // fazer no navegador, e a migration 20260914000003 tira dela o SELECT —
     // um `select('*')` aqui passaria a falhar com "permission denied".
-    const { data: agentes } = await supabase
-      .from('agente_externo_config')
-      .select('id, nome, url_base, status, versao_agente, max_sessoes_paralelas, sessoes_ativas, ram_mb')
-      .eq('user_id', user.id);
+    //
+    // No modo cliente a consulta nem sai, e o item "Agente Externo Configurado"
+    // não existe. Não é só questão de esconder infraestrutura: a empresa que
+    // usa o agente gerenciado pela Praefectus NÃO TEM linha nessa tabela, e o
+    // item leria "pendente" para um robô que funciona. No lugar dele entra a
+    // linha de `situacao-do-robo` (ver `SituacaoDoRoboEmLinha`, mais abaixo).
+    //
+    // Sem agente, os itens de prontidão (sinal de vida, "Testar freio", slots)
+    // também não são montados — o `if (agenteAtivo)` fica falso. Isso importa
+    // desde que `testar-kill-switch` e `configurar-agente` passaram a responder
+    // 403 a quem não é da plataforma: um botão desses na tela do cliente só
+    // produziria erro.
+    const { data: agentes } = cliente
+      ? { data: null }
+      : await supabase
+          .from('agente_externo_config')
+          .select('id, nome, url_base, status, versao_agente, max_sessoes_paralelas, sessoes_ativas, ram_mb')
+          .eq('user_id', user.id);
 
     const agenteAtivo = agentes?.find(a => a.status === 'ativo');
     const agenteConfigurado = agentes && agentes.length > 0;
 
-    newItems.push({
+    if (!cliente) newItems.push({
       id: 'agente',
       eixo: 'prontidao',
       label: 'Agente Externo Configurado',
@@ -340,7 +375,9 @@ export default function AtivacaoChecklist({ somenteLeitura = false }: { somenteL
         descricao: certNoAgente
           ? `Instalado no robô e pronto para ser apresentado aos portais${titulares.length ? ` — ${titulares.join(', ')}` : ''}`
           : certEnviado
-          ? `Arquivo recebido, mas o robô ainda não consegue apresentá-lo${motivoCert ? `: ${motivoCert}` : ''}. Use "Instalar no robô".`
+          ? cliente
+            ? 'Arquivo recebido, mas a instalação no robô ainda não foi concluída. Use "Instalar no robô".'
+            : `Arquivo recebido, mas o robô ainda não consegue apresentá-lo${motivoCert ? `: ${motivoCert}` : ''}. Use "Instalar no robô".`
           : tokenPendente
           ? 'Link de upload enviado — aguardando o envio do certificado'
           : 'Envie o certificado digital A1 (.pfx). O A3, de token ou cartão, não serve: a chave não sai do hardware.',
@@ -378,7 +415,9 @@ export default function AtivacaoChecklist({ somenteLeitura = false }: { somenteL
       eixo: 'autenticacao',
       label: 'Credenciais de Portal',
       descricao: errCredenciais
-        ? `Não foi possível consultar as credenciais: ${errCredenciais.message}`
+        ? cliente
+          ? 'Não foi possível consultar os acessos cadastrados agora. Use "Reverificar".'
+          : `Não foi possível consultar as credenciais: ${errCredenciais.message}`
         : temCredencial
         ? `${credenciais.length} portal(is) configurado(s)`
         : 'Configure credenciais para pelo menos um portal de licitação',
@@ -386,7 +425,10 @@ export default function AtivacaoChecklist({ somenteLeitura = false }: { somenteL
       icon: Key,
     });
 
-    // 6. Verificar healthcheck dos portais
+    // 6. Verificar healthcheck dos portais — só na plataforma. Se o endereço
+    // do portal responde é monitoramento da operação; quando ele cai, o
+    // cliente fica sabendo por um aviso escrito por gente (`robo_avisos_portal`).
+    if (!cliente) {
     const { data: healthchecks } = await supabase
       .from('portal_healthcheck')
       .select('id')
@@ -407,6 +449,7 @@ export default function AtivacaoChecklist({ somenteLeitura = false }: { somenteL
       status: portaisOk > 0 ? 'ok' : 'pendente',
       icon: FileCheck,
     });
+    }
 
     setItems(newItems);
     setChecking(false);
@@ -448,13 +491,17 @@ export default function AtivacaoChecklist({ somenteLeitura = false }: { somenteL
       <div className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <h3 className="text-lg font-semibold flex items-center gap-2">
-            <Rocket className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
-            Checklist de Ativação — Robô de Lances
+            {cliente ? (
+              <Key className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+            ) : (
+              <Rocket className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+            )}
+            {cliente ? 'Acesso da empresa aos portais' : 'Checklist de Ativação — Robô de Lances'}
           </h3>
           <div className="flex flex-wrap items-center gap-2">
             {pronto ? (
               <Badge variant="success">
-                Pronto
+                {cliente ? 'Em dia' : 'Verificações concluídas'}
               </Badge>
             ) : (
               <Badge variant="muted">
@@ -471,6 +518,10 @@ export default function AtivacaoChecklist({ somenteLeitura = false }: { somenteL
             </Button>
           </div>
         </div>
+
+        {/* A disponibilidade do robô, em uma linha, perguntada ao servidor —
+            no lugar dos itens de agente, sinal de vida, freio e slots. */}
+        {cliente && <SituacaoDoRoboEmLinha empresaId={empresaAtiva?.id ?? null} />}
 
         <Progress value={progress} className="h-2" aria-label={`${okCount} de ${total} etapas concluídas`} />
 
@@ -546,12 +597,31 @@ export default function AtivacaoChecklist({ somenteLeitura = false }: { somenteL
           })}
         </div>
 
+        {/* ─── A FRASE QUE AFIRMAVA O QUE NINGUÉM LIBEROU (14/09/2026) ────────
+            Aqui estava "Sistema pronto para disputas reais. O robô pode
+            participar de licitações no Compras.gov e outros portais." —
+            falso: nenhum portal tem o envio de lances liberado, e as
+            verificações acima medem infraestrutura, acesso e certificado, não
+            a capacidade de dar lance. Um verde com essa frase autorizava a
+            empresa a confiar uma disputa real a um robô que só observa. */}
         {pronto && (
-          <div className="bg-success-tint border border-success-line rounded-lg p-4 text-center">
-            <p className="text-sm text-success-ink font-semibold">
-              Sistema pronto para disputas reais. O robô pode participar de licitações no Compras.gov e outros portais.
-            </p>
-          </div>
+          cliente ? (
+            <div className="bg-success-tint border border-success-line rounded-lg p-4 text-center">
+              <p className="text-sm text-success-ink font-semibold">
+                Acesso aos portais e certificado digital conferidos.
+              </p>
+            </div>
+          ) : (
+            <div className="bg-muted border border-border rounded-lg p-4 text-center">
+              <p className="text-sm text-foreground font-semibold">
+                Todas as verificações passaram — isso não libera o envio de lances.
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                As verificações medem agente, acesso e certificado. O envio é liberado portal a
+                portal, depois de validado em sessão real.
+              </p>
+            </div>
+          )
         )}
       </div>
 
