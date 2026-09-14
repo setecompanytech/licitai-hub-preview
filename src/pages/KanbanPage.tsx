@@ -33,6 +33,7 @@ import {
   formatarValor,
   type ProcessoDoQuadro,
 } from '@/components/kanban/colunas';
+import { colunaSobOPonteiro, velocidadeDeRolagem } from '@/components/kanban/arrasto';
 import RegistrarPerdaDialog, { type PerdaAlvo } from '@/components/metas/RegistrarPerdaDialog';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import AbasGestao from '@/components/gestao/AbasGestao';
@@ -121,6 +122,10 @@ export default function KanbanPage() {
   const overColRef = useRef<string | null>(null);
   const itemsRef = useRef<ProcessoDoQuadro[]>([]);
   const columnRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  /** A caixa que rola na horizontal — é ela que rola sozinha junto à borda. */
+  const quadroRef = useRef<HTMLDivElement | null>(null);
+  /** Última posição do ponteiro: a rolagem automática precisa dela entre um `pointermove` e outro. */
+  const ponteiroRef = useRef<{ x: number; y: number } | null>(null);
 
   // Estado React apenas para re-render visual
   const [draggedId, setDraggedId] = useState<string | null>(null);
@@ -246,6 +251,20 @@ export default function KanbanPage() {
   useEffect(() => {
     if (!armando && !isDragging) return;
 
+    // A coluna sob o ponteiro sai da GEOMETRIA das colunas, não de
+    // `elementFromPoint`: o botão flutuante do chat fica sobre a última coluna,
+    // e perguntar "o que está sob o ponteiro" devolvia o botão (14/09/2026).
+    const detectarColuna = (x: number, y: number) => {
+      const colunas = Object.entries(columnRefs.current)
+        .filter((par): par is [string, HTMLDivElement] => Boolean(par[1]))
+        .map(([id, el]) => ({ id, rect: el.getBoundingClientRect() }));
+      const found = colunaSobOPonteiro(x, y, colunas, quadroRef.current?.getBoundingClientRect() ?? null);
+      if (found !== overColRef.current) {
+        overColRef.current = found;
+        setOverColId(found);
+      }
+    };
+
     const onMove = (e: PointerEvent) => {
       const p = pendenteRef.current;
       if (p && !dragStateRef.current) {
@@ -259,24 +278,13 @@ export default function KanbanPage() {
       if (!dragStateRef.current) return;
       e.preventDefault();
       setGhostPos({ x: e.clientX, y: e.clientY });
-
-      // Detecta coluna sob o cursor
-      const el = document.elementFromPoint(e.clientX, e.clientY);
-      let found: string | null = null;
-      for (const [colId, ref] of Object.entries(columnRefs.current)) {
-        if (ref && el && (ref === el || ref.contains(el as Node))) {
-          found = colId;
-          break;
-        }
-      }
-      if (found !== overColRef.current) {
-        overColRef.current = found;
-        setOverColId(found);
-      }
+      ponteiroRef.current = { x: e.clientX, y: e.clientY };
+      detectarColuna(e.clientX, e.clientY);
     };
 
     const onUp = async () => {
       pendenteRef.current = null;
+      ponteiroRef.current = null;
       setArmando(false);
       // Soltou sem passar do limiar: foi clique, e o `onClick` do card cuida.
       if (!dragStateRef.current) return;
@@ -296,10 +304,35 @@ export default function KanbanPage() {
     document.addEventListener('pointerup', onUp);
     document.addEventListener('pointercancel', onUp);
 
+    // Rolagem automática. O quadro rola na horizontal, e com a última coluna
+    // escondida atrás da borda não havia como alcançá-la sem soltar o cartão.
+    // Com o ponteiro parado junto à borda o quadro anda sozinho, e como as
+    // colunas passam por baixo de um ponteiro que não se mexeu, o destino é
+    // recalculado a cada passo — não há `pointermove` para fazer isso.
+    let quadroDeAnimacao = 0;
+    const temAnimacao = typeof window.requestAnimationFrame === 'function';
+    if (isDragging && temAnimacao) {
+      const rolar = () => {
+        const quadro = quadroRef.current;
+        const p = ponteiroRef.current;
+        if (quadro && p) {
+          const passo = velocidadeDeRolagem(p.x, p.y, quadro.getBoundingClientRect());
+          if (passo !== 0) {
+            const antes = quadro.scrollLeft;
+            quadro.scrollLeft = antes + passo;
+            if (quadro.scrollLeft !== antes) detectarColuna(p.x, p.y);
+          }
+        }
+        quadroDeAnimacao = window.requestAnimationFrame(rolar);
+      };
+      quadroDeAnimacao = window.requestAnimationFrame(rolar);
+    }
+
     return () => {
       document.removeEventListener('pointermove', onMove);
       document.removeEventListener('pointerup', onUp);
       document.removeEventListener('pointercancel', onUp);
+      if (temAnimacao) window.cancelAnimationFrame(quadroDeAnimacao);
     };
   }, [armando, isDragging, moverCard]);
 
@@ -589,6 +622,7 @@ export default function KanbanPage() {
                  distância — melhor que oito tiras de 150px onde nem o número do
                  processo cabe. */
               <div
+                ref={quadroRef}
                 className={cn('flex gap-3 overflow-x-auto pb-4', isDragging && 'select-none')}
                 role="list"
                 aria-label="Etapas do processo"
@@ -596,9 +630,12 @@ export default function KanbanPage() {
                 {COLUNAS.map((col) => {
                   const colItems = porEtapa.get(col.id) ?? [];
                   const isOver = overColId === col.id;
-                  // Enquanto se arrasta, tudo abre: esconder o destino seria pior
-                  // que ocupar espaço.
-                  const recolhida = !mostrarVazias && !isDragging && colItems.length === 0;
+                  // Recolhida continua recolhida DURANTE o arrasto. Até 14/09/2026
+                  // tudo abria no início do gesto: cada vazia ganhava 260 px, o
+                  // quadro crescia ~630 px e a última coluna — justamente o
+                  // destino que a pessoa mirava — fugia para fora da tela. A
+                  // faixa estreita continua recebendo o cartão e acende ao passar.
+                  const recolhida = !mostrarVazias && colItems.length === 0;
                   return (
                     <div
                       key={col.id}

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import KanbanPage from './KanbanPage';
@@ -16,7 +16,9 @@ import KanbanPage from './KanbanPage';
  *  2. mover para "Perdida" NÃO grava status: abre o diálogo de perda, porque o
  *     trigger do banco recusa a mudança sem registro em `comercial_perdas`;
  *  3. há alternativa ao arrasto — o comando exige oferecer uma;
- *  4. em tela estreita existe SELETOR DE ETAPA, não o quadro em miniatura.
+ *  4. em tela estreita existe SELETOR DE ETAPA, não o quadro em miniatura;
+ *  5. (14/09) dá para arrastar até a última coluna: as vazias não se abrem no
+ *     meio do gesto e o destino não é roubado pelo que está desenhado por cima.
  */
 
 const { estado } = vi.hoisted(() => ({
@@ -143,6 +145,36 @@ const aguardarQuadro = async (texto: string) => {
   await waitFor(() => expect(screen.getByText(texto)).toBeTruthy());
 };
 
+/**
+ * O jsdom não tem layout: todo retângulo sai zerado. O arrasto acha o destino
+ * pela GEOMETRIA das colunas (`components/kanban/arrasto.ts`), então o teste dá
+ * a cada coluna uma faixa de 270 px, na ordem do quadro, e devolve o ponto no
+ * meio da coluna pedida.
+ */
+const posicionarQuadro = (tituloAlvo: string) => {
+  const retangulo = (left: number, width: number) => () =>
+    ({ left, right: left + width, top: 0, bottom: 800, width, height: 800, x: left, y: 0, toJSON: () => ({}) }) as DOMRect;
+  const quadro = screen.getByRole('list', { name: 'Etapas do processo' });
+  const colunas = within(quadro).getAllByRole('listitem');
+  quadro.getBoundingClientRect = retangulo(0, colunas.length * 270);
+  let alvo = { clientX: -1, clientY: -1 };
+  colunas.forEach((coluna, i) => {
+    coluna.getBoundingClientRect = retangulo(i * 270, 260);
+    if (within(coluna).queryByText(tituloAlvo)) alvo = { clientX: i * 270 + 130, clientY: 400 };
+  });
+  return alvo;
+};
+
+/**
+ * O destino depende das coordenadas do ponteiro. O movimento é despachado como
+ * `MouseEvent` com o nome do evento de ponteiro: é o construtor que carrega
+ * `clientX`/`clientY` em qualquer versão do jsdom.
+ */
+const moverPonteiro = (alvo: { clientX: number; clientY: number }) =>
+  act(() => {
+    document.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, cancelable: true, ...alvo }));
+  });
+
 beforeEach(() => {
   estado.licitacoes = [];
   estado.erroLicitacoes = null;
@@ -207,13 +239,10 @@ describe('Kanban — mover para Perdida', () => {
     await aguardarQuadro('PE nº 33/2026');
 
     const cartao = screen.getByText('PE nº 33/2026').closest('[role="button"]') as HTMLElement;
-    const colunaPerdida = screen.getByText('Perdida').closest('[role="listitem"]') as HTMLElement;
-    // O arrasto encontra a coluna de destino por `elementFromPoint`, que o
-    // jsdom não implementa — o teste entrega a coluna alvo diretamente.
-    document.elementFromPoint = () => colunaPerdida;
+    const alvo = posicionarQuadro('Perdida');
 
     fireEvent.pointerDown(cartao, { button: 0, clientX: 0, clientY: 0 });
-    fireEvent.pointerMove(document, { clientX: 400, clientY: 400 });
+    moverPonteiro(alvo);
     fireEvent.pointerUp(document);
 
     await waitFor(() => expect(screen.getByTestId('dialogo-perda')).toBeTruthy());
@@ -224,6 +253,48 @@ describe('Kanban — mover para Perdida', () => {
     // E o cartão continua na coluna de origem.
     const emDisputa = screen.getByText('Em Disputa').closest('[role="listitem"]') as HTMLElement;
     expect(within(emDisputa).getByText('PE nº 33/2026')).toBeTruthy();
+  });
+});
+
+describe('Kanban — arrastar até a última coluna (relato de 14/09)', () => {
+  it('as colunas vazias continuam recolhidas durante o arrasto e recebem o cartão', async () => {
+    estado.licitacoes = [processo()];
+    montar();
+    await aguardarQuadro('PE nº 33/2026');
+
+    const cartao = screen.getByText('PE nº 33/2026').closest('[role="button"]') as HTMLElement;
+    const alvo = posicionarQuadro('Vencida');
+    const vencida = screen.getByText('Vencida').closest('[role="listitem"]') as HTMLElement;
+
+    fireEvent.pointerDown(cartao, { button: 0, clientX: 0, clientY: 0 });
+    moverPonteiro(alvo);
+    // Abrir as vazias no início do gesto alargava o quadro em ~630 px e
+    // empurrava a última coluna para fora da tela.
+    expect(vencida.getAttribute('title')).toBe('Vencida — vazia. Clique para expandir.');
+    fireEvent.pointerUp(document);
+
+    await waitFor(() => expect(estado.atualizarStatus).toHaveBeenCalledWith('p1', 'Vencida', expect.any(String)));
+  });
+
+  it('o que estiver desenhado sobre a coluna não impede soltar nela', async () => {
+    estado.licitacoes = [processo()];
+    montar();
+    await aguardarQuadro('PE nº 33/2026');
+
+    const cartao = screen.getByText('PE nº 33/2026').closest('[role="button"]') as HTMLElement;
+    const alvo = posicionarQuadro('Arquivada');
+    // O botão flutuante do chat fica sobre a Arquivada. Perguntar ao navegador
+    // "o que está sob o ponteiro" devolvia o botão, e não a coluna.
+    const botaoFlutuante = document.createElement('button');
+    document.body.appendChild(botaoFlutuante);
+    document.elementFromPoint = () => botaoFlutuante;
+
+    fireEvent.pointerDown(cartao, { button: 0, clientX: 0, clientY: 0 });
+    moverPonteiro(alvo);
+    fireEvent.pointerUp(document);
+
+    await waitFor(() => expect(estado.arquivarProcesso).toHaveBeenCalledWith('p1', true));
+    botaoFlutuante.remove();
   });
 });
 
