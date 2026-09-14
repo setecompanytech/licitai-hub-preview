@@ -1134,18 +1134,29 @@ class ComprasGovPortal extends BasePortal {
       }
       console.log('🎯 Compra localizada: ' + card);
 
-      // Abrir: o card tem icones de acao a direita (lista e seta). O que cada
-      // um abre ainda NAO foi visto — clica no primeiro e registra onde caiu.
+      // Abrir: o card tem tres botoes a direita, lidos do DOM gravado na
+      // sessao acb24f55 (14/09/2026), pelo atributo title:
+      //   "Quadro Informativo"          — modal com avisos/impugnacoes/esclarecimentos
+      //   "Acompanhar compra"           — a sala (acompanhamento-compra)
+      //   "Mostrar detalhes da compra"  — expande o card
+      // O primeiro da ordem e o Quadro Informativo — foi o que a versao
+      // anterior abria, achando que era a sala. Agora prefere "Acompanhar" e
+      // so cai no primeiro se o title mudar; o log diz qual foi.
       const clicou = await this.page.evaluate(() => {
         const el = document.querySelector('[data-robo-card="1"]');
-        const acao = el && el.querySelector('button, a, i[class*="list"], i[class*="fa-"]');
-        if (acao) { acao.click(); return true; }
-        return false;
+        if (!el) return null;
+        const botoes = [...el.querySelectorAll('button, a')];
+        const rotulo = (b) => (b.getAttribute('title') || b.getAttribute('aria-label') || b.textContent || '').trim();
+        const acompanhar = botoes.find((b) => /acompanhar/i.test(rotulo(b)));
+        const acao = acompanhar || el.querySelector('button, a, i[class*="list"], i[class*="fa-"]');
+        if (!acao) return null;
+        acao.click();
+        return rotulo(acao) || '(sem title)';
       });
       await new Promise((r) => setTimeout(r, 4000));
       await this.adotarAbaViva('ao abrir a compra');
       await this.screenshot('compra-aberta');
-      console.log((clicou ? '📂 Abri a compra; ' : '📂 Nao achei o icone de abrir; ')
+      console.log((clicou ? '📂 Cliquei em "' + clicou + '"; ' : '📂 Nao achei o icone de abrir; ')
         + 'a tela ficou em ' + this.page.url());
       console.log('📍 A sala de disputa ainda nao foi mapeada — a leitura de lances daqui em diante '
         + 'depende de ver essa tela com um pregao em sessao. Nao estou afirmando estar nela.');
