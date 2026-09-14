@@ -821,10 +821,6 @@ class SessionManager {
       // lugar certo quando ha varias sessoes abertas ao mesmo tempo.
       session.portal.sessaoId = config.sessao_id;
 
-      // O gravador liga ANTES do login: o filme inteiro interessa, inclusive
-      // o gov.br e a busca — e ninguem precisa estar olhando na hora.
-      this._startGravador(session);
-
       // Login no portal
       console.log(\`🔐 [\${config.sessao_id}] Login no portal: \${config.portal_id}\`);
       await session.portal.login();
@@ -834,6 +830,15 @@ class SessionManager {
       if (session.portal.page && session.portal.page !== session.page) {
         session.page = session.portal.page;
       }
+
+      // O gravador liga DEPOIS do login, e nao antes. Ligado antes, a primeira
+      // foto saia com a aba ainda em about:blank e travava ate o limite do
+      // protocolo (180s); como o Puppeteer enfileira as fotos de uma mesma
+      // aba, a foto que o login tira ao abrir o gov.br ficava presa atras
+      // dela, o clique no certificado atrasava 3 minutos, e o hCaptcha
+      // recusava tudo dali em diante (14/09, 02:18). O login ja tem as
+      // proprias fotos; o que interessa gravar e a busca e a sala.
+      this._startGravador(session);
 
       // Navegar para a disputa
       //
@@ -988,6 +993,10 @@ class SessionManager {
 
     const capturar = async () => {
       if (ocupado || !session.portal || !session.browser) return;
+      // Aba sem pagina nenhuma nao tem o que gravar — e e exatamente a foto
+      // que trava (about:blank recem-aberto, sem quadro pintado).
+      const abaAgora = session.portal.page;
+      if (!abaAgora || /^about:blank/.test(abaAgora.url())) return;
       ocupado = true;
       try {
         const raio = await session.portal.inspecionarTela();
