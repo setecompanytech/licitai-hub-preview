@@ -9,7 +9,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
  * a tela do cliente e a da plataforma.
  *
  *  - `cliente`: só o que é da empresa (acesso aos portais e certificado), mais
- *    uma linha de disponibilidade vinda de `situacao-do-robo`. Nada de agente,
+ *    uma linha de disponibilidade vinda do healthcheck reduzido. Nada de agente,
  *    healthcheck, freio, slots, RAM ou "portais respondendo" — mesmo quando o
  *    healthcheck responde com tudo isso.
  *  - `plataforma` (padrão): a versão completa, que o Admin importa sem mudança
@@ -54,7 +54,6 @@ vi.mock('@/integrations/supabase/client', () => {
         invoke: async (nome: string) => {
           dubles.acoesChamadas.push(nome);
           if (nome === 'robo-lances-webhook/healthcheck') return dubles.healthcheck;
-          if (nome === 'robo-lances-webhook/situacao-do-robo') return dubles.situacao;
           return { data: null, error: null };
         },
       },
@@ -80,9 +79,13 @@ import AtivacaoChecklist from '@/components/robo-lances/AtivacaoChecklist';
 function healthcheckCompleto(certificadoCarregado: boolean): Resposta {
   return {
     data: {
+      configurado: true,
+      online: true,
       agentes: [
         {
           online: true,
+          erro: null,
+          portais_suportados: ['comprasgov'],
           versao: '9.9.9',
           capacidade: { ram_total_mb: 4096, max_sessoes: 3, slots_disponiveis: 2 },
           kill_switch: { ok: true, testado_em: '2026-09-14T10:00:00Z' },
@@ -125,10 +128,6 @@ beforeEach(() => {
   dubles.respostas.credenciais_portais_safe = { data: [{ id: 'c-1' }], error: null };
   dubles.respostas.portal_healthcheck = { data: [{ id: 'h-1' }], error: null };
   dubles.healthcheck = healthcheckCompleto(false);
-  dubles.situacao = {
-    data: { disponivel: true, motivo: null, ligado: true, portais_suportados: ['comprasgov'], verificado_em: '2026-09-14T13:05:00Z' },
-    error: null,
-  };
 });
 
 describe('AtivacaoChecklist modo="cliente"', () => {
@@ -156,7 +155,7 @@ describe('AtivacaoChecklist modo="cliente"', () => {
     expect(dubles.acoesChamadas).not.toContain('robo-lances-webhook/configurar-agente');
     // A disponibilidade vem da ação do servidor, uma vez só ao montar.
     await screen.findByText('Disponível');
-    expect(dubles.acoesChamadas.filter((n) => n === 'robo-lances-webhook/situacao-do-robo')).toHaveLength(1);
+    expect(dubles.acoesChamadas.filter((n) => n === 'robo-lances-webhook/healthcheck')).toHaveLength(2);
   });
 
   it('traz a disponibilidade do robô numa linha, vinda do servidor', async () => {
@@ -167,7 +166,7 @@ describe('AtivacaoChecklist modo="cliente"', () => {
   });
 
   it('sem resposta do servidor, diz que a situação está indisponível — nunca "pronto"', async () => {
-    dubles.situacao = { data: null, error: { message: 'Edge Function returned a non-2xx status code' } };
+    dubles.healthcheck = { data: null, error: { message: 'Edge Function returned a non-2xx status code' } };
     renderizar('cliente');
 
     expect(await screen.findByText('Situação do robô indisponível no momento')).toBeInTheDocument();
