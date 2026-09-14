@@ -32,8 +32,10 @@
 -- é pior que atestado invisível — ele entra numa habilitação que não deveria.
 -- Esses casos aparecem na consulta de conferência do fim deste arquivo.
 
+-- `(array_agg(...))[1]` e não `MIN()`: o Postgres não tem min(uuid). Com o
+-- HAVING abaixo o grupo só tem um valor distinto, então o primeiro é o único.
 WITH dono_de_uma_empresa AS (
-  SELECT user_id, MIN(empresa_id) AS empresa_id
+  SELECT user_id, (array_agg(empresa_id))[1] AS empresa_id
     FROM public.empresa_membros
    GROUP BY user_id
   HAVING COUNT(DISTINCT empresa_id) = 1
