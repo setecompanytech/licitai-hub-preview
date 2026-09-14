@@ -117,7 +117,7 @@ export default function DesfechoDaDisputa({
                   <Button variant="outline" onClick={() => irParaAba('proposta')}>
                     <FileText className="w-4 h-4" aria-hidden="true" /> Proposta readequada
                   </Button>
-                  <Button variant="outline" onClick={() => irParaAba('anexos')}>
+                  <Button variant="outline" onClick={() => irParaAba('documentos')}>
                     <FolderCheck className="w-4 h-4" aria-hidden="true" /> Pasta de habilitação
                   </Button>
                 </>

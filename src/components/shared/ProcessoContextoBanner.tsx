@@ -22,12 +22,13 @@ import { FolderOpen, ArrowLeft, ChevronDown, Unlink } from 'lucide-react';
  */
 
 const ETAPAS = [
-  { aba: 'visao', label: 'Visão Geral' },
+  // As mesmas abas da pasta do processo, na mesma ordem (14/09/2026).
+  { aba: 'visao', label: 'Visão geral' },
   { aba: 'documentos', label: 'Documentos' },
-  { aba: 'anexos', label: 'Anexos' },
+  { aba: 'habilitacao', label: 'Habilitação' },
   { aba: 'precificacao', label: 'Precificação' },
   { aba: 'proposta', label: 'Proposta' },
-  { aba: 'modulos', label: 'Módulos' },
+  { aba: 'robo', label: 'Robô de Lances' },
   { aba: 'historico', label: 'Histórico' },
 ];
 

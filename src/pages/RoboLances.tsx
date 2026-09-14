@@ -22,10 +22,10 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-  Bot, Plus, Play, Pause, Settings, Globe, Clock, TrendingDown,
+  Bot, Plus, Hand, Settings, Globe, Clock, TrendingDown,
   AlertTriangle, Trash2, Edit2,
-  Eye, ChevronDown, Search, MessageSquare, ListChecks, Info,
-  Building2, Hash, CalendarDays, FileText, Shield, MoreVertical,
+  ChevronDown, Search, MessageSquare, ListChecks, Info,
+  Building2, Hash, CalendarDays, FileText, Shield,
   Zap, Target, ArrowDown, Trophy, XCircle, History,
 } from 'lucide-react';
 import CredenciaisPortalForm from '@/components/robo-lances/CredenciaisPortalForm';
@@ -52,6 +52,8 @@ import ConferenciaDosItens from '@/components/robo-lances/ConferenciaDosItens';
 import PedidoDoRobo from '@/components/robo-lances/PedidoDoRobo';
 import { usePedidosDoRobo } from '@/components/robo-lances/usePedidosDoRobo';
 import AcessoManualPortal from '@/components/robo-lances/AcessoManualPortal';
+import PainelDeParticipacoes from '@/components/robo-lances/painel/PainelDeParticipacoes';
+import type { ResultadoDoFreio } from '@/components/robo-lances/KillSwitchButton';
 import { ValorIndisponivel } from '@/components/gestao/SeloSituacao';
 import { idDoPortal, nomeDoPortal, agenteOpera } from '@/lib/robo/portais';
 import { useAuditLog } from '@/hooks/useAuditLog';
@@ -136,6 +138,11 @@ export default function RoboLances() {
     [],
   );
   const [searchTerm, setSearchTerm] = useState('');
+  // Contador de gravações nas disputas. O painel de participações tem a
+  // própria leitura; quando esta página grava (salva, marca, encerra, remove),
+  // o contador muda e o painel relê — senão ele mostraria a fase anterior por
+  // até 30 s, contradizendo a coluna ao lado.
+  const [versaoDasDisputas, setVersaoDasDisputas] = useState(0);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [bottomTab, setBottomTab] = useState<'mural' | 'operacoes' | 'simulacao' | 'auditoria'>('mural');
   const [activeMainTab, setActiveMainTab] = useState('disputar');
@@ -326,14 +333,29 @@ export default function RoboLances() {
     toast.success(`Nível ${nivelAutomacao} ativado com sucesso!`);
   };
 
-  const handleParadaEmergencial = () => {
-    setParadaEmergencial(true);
-    // Stop all active disputes
-    setLances(prev => prev.map(l =>
-      l.status === 'ativo' || l.status === 'vencendo' || l.status === 'perdendo'
-        ? { ...l, status: 'encerrado' as const }
-        : l
-    ));
+  /**
+   * Chamada pelo `KillSwitchButton` DEPOIS que o freio de emergência respondeu.
+   *
+   * ─── A PARADA QUE SÓ ACONTECIA NA TELA (corrigido em 14/09/2026) ─────────
+   *
+   * Esta função trocava para "encerrado", só no estado local, toda disputa
+   * ativa da lista. Nada ia ao banco nem ao agente: ao recarregar, as disputas
+   * voltavam — e, enquanto isso, a tela afirmava um encerramento que ninguém
+   * confirmou. "Encerrado" ainda é fase do CERTAME; o freio para o ROBÔ.
+   *
+   * Agora quem pede a parada é o servidor (`kill-switch`), para todas as
+   * sessões que a pessoa opera, e o próprio botão diz sessão por sessão o que
+   * o agente confirmou. Aqui só se relê a lista. O freio continua liberado
+   * enquanto houver sessão sem confirmação — travá-lo com a parada pendente
+   * tiraria da pessoa a chance de insistir.
+   */
+  const handleParadaEmergencial = (resultado?: ResultadoDoFreio) => {
+    // O freio (`KillSwitchButton` → `robo-lances-webhook/kill-switch`) já pediu
+    // a parada de TODAS as sessões que a pessoa opera e já disse, sessão por
+    // sessão, o que o agente confirmou. Pedir de novo aqui por `parar-sessao`
+    // mandava dois comandos ao agente para a mesma sessão. Aqui só se relê.
+    setParadaEmergencial(resultado?.confirmada === true);
+    setVersaoDasDisputas((v) => v + 1);
   };
 
   // Configurações globais persistidas em localStorage
@@ -347,7 +369,12 @@ export default function RoboLances() {
     localStorage.setItem('robo_config_lance_min', configLanceMin);
     localStorage.setItem('robo_config_intervalo', configIntervalo);
     localStorage.setItem('robo_config_max_lances', configMaxLances);
-    toast.success('Regras salvas com sucesso!');
+    // "Salvas com sucesso" dava a entender que a equipe e o agente passavam a
+    // seguir estas regras. Elas moram no localStorage deste navegador e nada
+    // mais no app as lê.
+    toast.success('Regras salvas neste navegador', {
+      description: 'Não são compartilhadas com a equipe nem enviadas ao agente.',
+    });
   };
 
   const selectedLance = useMemo(
@@ -359,6 +386,21 @@ export default function RoboLances() {
     () => selectedLance?.itens ?? [],
     [selectedLance?.itens]
   );
+
+  // O campo "Buscar item..." existia sem `value` nem `onChange`: digitava-se e
+  // a tabela não mudava. Agora filtra de verdade, e zera ao trocar de disputa
+  // para a busca de uma não esconder os itens da outra.
+  const [buscaItem, setBuscaItem] = useState('');
+  useEffect(() => {
+    setBuscaItem('');
+  }, [selectedId]);
+  const itensVisiveis = useMemo(() => {
+    const termo = buscaItem.trim().toLowerCase();
+    if (!termo) return disputeItems;
+    return disputeItems.filter((i) =>
+      [i.numero, i.lote, i.descricao, i.marca, i.modelo].some((v) => String(v ?? '').toLowerCase().includes(termo)),
+    );
+  }, [disputeItems, buscaItem]);
 
   const [operations, setOperations] = useState<Operation[]>([]);
   const [operacoesCarregando, setOperacoesCarregando] = useState(false);
@@ -567,6 +609,9 @@ export default function RoboLances() {
       .upsert(linha as never, { onConflict: 'id' })
       .then(({ error }) => {
         if (error) toast.error(`Disputa não foi salva: ${error.message}`, { duration: 12000 });
+        // Salvar grava a configuração e mais nada: nenhuma sessão é aberta e o
+        // robô não começa. Só o painel de participações relê.
+        else setVersaoDasDisputas((v) => v + 1);
       });
 
     setLances((prev) => {
@@ -602,6 +647,7 @@ export default function RoboLances() {
 
     setLances((prev) => prev.filter((l) => l.id !== id));
     if (selectedId === id) setSelectedId(null);
+    setVersaoDasDisputas((v) => v + 1);
     toast.info('Disputa removida.');
   };
 
@@ -630,7 +676,40 @@ export default function RoboLances() {
       // Desfaz na tela: mostrar um estado que o banco não tem é pior que não mudar.
       setLances((prev) => prev.map((l) => (l.id === id ? { ...l, status: atual.status } : l)));
       toast.error(`Status não foi salvo: ${error.message}`, { duration: 12000 });
+      return;
     }
+
+    // ─── O RÓTULO PROMETIA O QUE O CLIQUE NÃO FAZ (14/09/2026) ────────────
+    // O menu dizia "Iniciar disputa" / "Pausar disputa", e o clique só grava
+    // esta coluna: o robô não é iniciado nem parado (isso é "Enviar ao robô" e
+    // o freio). O menu passou a dizer "Marcar como … (manual)", e o aviso
+    // repete, porque quem clicou esperando o robô precisa saber na hora.
+    setVersaoDasDisputas((v) => v + 1);
+    toast.info(
+      novo === 'ativo'
+        ? 'Disputa marcada como em disputa (manual). O robô não foi iniciado.'
+        : 'Disputa marcada como aguardando (manual). O robô não foi parado.',
+      { duration: 8000 },
+    );
+  };
+
+  /**
+   * Grava o encerramento na própria disputa.
+   *
+   * "Encerrar como Venceu/Perdeu" mudava só o estado local: ao recarregar, a
+   * disputa voltava ao status anterior, e o painel de participações — que lê o
+   * banco — seguia mostrando em disputa algo que a pessoa acabara de encerrar.
+   */
+  const gravarEncerramento = async (id: string) => {
+    const { error } = await supabase
+      .from('robo_lances_disputas' as never)
+      .update({ status: 'encerrado' } as never)
+      .eq('id', id);
+    if (error) {
+      toast.error(`O encerramento não foi gravado na disputa: ${error.message}`, { duration: 12000 });
+      return;
+    }
+    setVersaoDasDisputas((v) => v + 1);
   };
 
   /**
@@ -705,6 +784,23 @@ export default function RoboLances() {
     setActiveMainTab('agente');
     setPedidoDeTelaRemota((n) => n + 1);
   };
+
+  /**
+   * Participação sem processo vinculado, aberta a partir do painel.
+   *
+   * Sem pasta para onde ir, o destino é a configuração que já existe nesta
+   * tela: a disputa fica selecionada nas colunas abaixo, com "Editar
+   * parâmetros" à direita. Seleciona (não alterna) — clicar de novo no painel
+   * não pode desmarcar o que a pessoa pediu para abrir.
+   */
+  const abrirDisputaNaTela = useCallback((id: string) => {
+    setSelectedId(id);
+    window.requestAnimationFrame(() => {
+      document
+        .querySelector('[data-coluna="sessao-selecionada"]')
+        ?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+    });
+  }, []);
 
     const handleEnviarAoRobo = async () => {
     if (!selectedLance) return;
@@ -795,6 +891,10 @@ export default function RoboLances() {
             // disputa é o registro, e a sessão não precisa de coluna nova.
             uasg: selectedLance.uasg ?? null,
             itens: (selectedLance.itens || []).map((i) => ({
+              // Vínculo estável com `licitacao_itens` — o servidor confere se o
+              // item ainda existe antes de gravar. Casar por número ou
+              // descrição é o que a pasta do processo não pode fazer.
+              licitacao_item_id: i.licitacaoItemId ?? null,
               numero: i.numero,
               lote: i.lote,
               descricao: i.descricao,
@@ -887,6 +987,7 @@ export default function RoboLances() {
     setLances(prev => prev.map(l =>
       l.id === selectedLance.id ? { ...l, status: 'encerrado' as const } : l
     ));
+    await gravarEncerramento(selectedLance.id);
 
     // Post to mural
     await postResultToMural(selectedLance, resultado, valorFinal);
@@ -918,6 +1019,7 @@ export default function RoboLances() {
     setLances(prev => prev.map(l =>
       l.id === selectedLance.id ? { ...l, status: 'encerrado' as const } : l
     ));
+    await gravarEncerramento(selectedLance.id);
     await postResultToMural(selectedLance, 'perdeu');
     setBottomTab('mural');
   };
@@ -995,13 +1097,25 @@ export default function RoboLances() {
         <DropdownMenuItem onClick={() => setDetailsOpen(true)}>
           <Info className="w-4 h-4 mr-2" aria-hidden="true" /> Detalhes da licitação
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => handleToggleStatus(selectedLance.id)}>
-          {selectedLance.status === 'aguardando' ? (
-            <><Play className="w-4 h-4 mr-2" aria-hidden="true" /> Iniciar disputa</>
-          ) : (
-            <><Pause className="w-4 h-4 mr-2" aria-hidden="true" /> Pausar disputa</>
-          )}
-        </DropdownMenuItem>
+        {/* Só grava a fase — ver `handleToggleStatus`. Ícone de mão, não de
+            play/pause: play e pause prometiam ligar e desligar o robô. Some
+            quando a disputa está encerrada, porque ali o clique não fazia nada. */}
+        {proximoStatus(selectedLance.status) && (
+          <DropdownMenuItem
+            onClick={() => handleToggleStatus(selectedLance.id)}
+            className="flex-col items-start gap-0.5"
+          >
+            <span className="inline-flex items-center">
+              <Hand className="w-4 h-4 mr-2" aria-hidden="true" />
+              {selectedLance.status === 'aguardando'
+                ? 'Marcar como em disputa (manual)'
+                : 'Marcar como aguardando (manual)'}
+            </span>
+            <span className="pl-6 text-xs text-muted-foreground">
+              Só registra a fase. Não inicia nem para o robô.
+            </span>
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem
           className="text-success-ink focus:text-success-ink"
           onClick={() => handleEndDispute('venceu')}
@@ -1142,10 +1256,32 @@ export default function RoboLances() {
             `items-start` para as colunas não esticarem à altura da mais alta —
             o painel da direita costuma ser o mais alto, e sem isso a lista da
             esquerda ganhava um vazio do tamanho do checklist. */}
-        <TabsContent
-          value="disputar"
-          className="m-0 grid grid-cols-1 items-start gap-4 xl:grid-cols-[18rem_minmax(0,1fr)_var(--g-painel)]"
-        >
+        <TabsContent value="disputar" className="m-0 flex min-w-0 flex-col gap-6">
+          {/* ── PAINEL DE PARTICIPAÇÕES (14/09/2026) ──────────────────────────
+              Primeiro conteúdo da aba: responde "em que fase está cada
+              participação e o que o robô está fazendo nela" antes de qualquer
+              ferramenta. Com processo aberto, mostra só as dele — o mesmo
+              recorte que a lista de disputas abaixo já fazia. */}
+          <PainelDeParticipacoes
+            empresaId={empresaAtiva?.id ?? null}
+            licitacaoId={processoId}
+            aoAbrirDisputaSemProcesso={abrirDisputaNaTela}
+            sinalDeRecarga={versaoDasDisputas}
+          />
+
+          <section
+            aria-labelledby="titulo-ferramentas-da-disputa"
+            className="flex min-w-0 flex-col gap-3 border-t border-border pt-5"
+          >
+            <div>
+              <h2 id="titulo-ferramentas-da-disputa" className="g-titulo-secao text-foreground">
+                Ferramentas da disputa
+              </h2>
+              <p className="g-meta text-muted-foreground">
+                Selecione uma disputa para configurar, enviar ao robô e acompanhar os eventos.
+              </p>
+            </div>
+          <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[18rem_minmax(0,1fr)_var(--g-painel)]">
           {/* ── COLUNA 1 · SESSÕES ─────────────────────────────────────────
               Abaixo de 1280px vira a faixa de cima, com a lista limitada em
               altura para não empurrar a sessão selecionada para fora da tela. */}
@@ -1302,10 +1438,18 @@ export default function RoboLances() {
                       misturava "o que é isto" com "o que faço com isto".
                       Nenhum comportamento mudou — mesmos papéis, mesmos
                       diálogos, mesmos avisos. */}
-                  <div className="relative w-full sm:w-48 shrink-0">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
-                    <Input placeholder="Buscar item..." aria-label="Buscar item" className="pl-9" />
-                  </div>
+                  {disputeItems.length > 0 && (
+                    <div className="relative w-full sm:w-48 shrink-0">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
+                      <Input
+                        placeholder="Buscar item..."
+                        aria-label="Buscar item por número, lote, descrição, marca ou modelo"
+                        value={buscaItem}
+                        onChange={(e) => setBuscaItem(e.target.value)}
+                        className="pl-9"
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {/* ── A conferência dos itens contra o edital do portal ──────
@@ -1333,12 +1477,18 @@ export default function RoboLances() {
                       titulo="Nenhum item cadastrado nesta disputa"
                       descricao="Edite a disputa para adicionar itens e lotes."
                     />
+                  ) : itensVisiveis.length === 0 ? (
+                    <EstadoVazio
+                      icone={<Search />}
+                      titulo="Nenhum item corresponde à busca"
+                      descricao={`Nada com "${buscaItem.trim()}" no número, lote, descrição, marca ou modelo.`}
+                      tamanho="compacto"
+                    />
                   ) : (
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted">
                         <TableHead className="w-12 text-center">Item</TableHead>
-                        <TableHead className="w-12"><span className="sr-only">Ações</span></TableHead>
                         <TableHead>Situação</TableHead>
                         <TableHead className="text-right">Vlr Ref.</TableHead>
                         <TableHead className="text-right">Melhor Lance</TableHead>
@@ -1349,27 +1499,16 @@ export default function RoboLances() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {disputeItems.map((item) => (
+                      {/* A coluna de ações por item saiu (14/09/2026). "Enviar
+                          lance" e "Ver histórico" eram itens de menu sem
+                          `onClick`: fechavam o menu e nada acontecia. Envio de
+                          lance não está liberado em portal nenhum, e o
+                          histórico que existe é da disputa inteira (aba
+                          Operações), não por item — um atalho por item
+                          prometeria um recorte que o dado não tem. */}
+                      {itensVisiveis.map((item) => (
                         <TableRow key={item.numero}>
                           <TableCell className="text-center font-medium tabular-nums">{item.numero}</TableCell>
-                          <TableCell className="text-center">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 w-8 p-0"
-                                  aria-label={`Ações do item ${item.numero}`}
-                                >
-                                  <MoreVertical className="w-4 h-4" aria-hidden="true" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="start">
-                                <DropdownMenuItem><ArrowDown className="w-4 h-4 mr-2" aria-hidden="true" /> Enviar lance</DropdownMenuItem>
-                                <DropdownMenuItem><Eye className="w-4 h-4 mr-2" aria-hidden="true" /> Ver histórico</DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
                           <TableCell>
                             <Badge
                               variant={
@@ -1570,6 +1709,8 @@ export default function RoboLances() {
               <AtivacaoChecklist somenteLeitura={!isAdmin} />
             )}
           </aside>
+          </div>
+          </section>
         </TabsContent>
 
         {/* ── PORTAIS TAB ── */}
@@ -1623,8 +1764,15 @@ export default function RoboLances() {
 
           <div className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-4 max-w-2xl">
             <h3 className="text-lg font-semibold flex items-center gap-2">
-              <Settings className="w-5 h-5 text-muted-foreground" aria-hidden="true" /> Regras de Lance Automático (Padrão Global)
+              <Settings className="w-5 h-5 text-muted-foreground" aria-hidden="true" /> Regras de lance — padrão deste navegador
             </h3>
+            {/* "Padrão Global" era falso: os valores vão para o localStorage e
+                nenhuma outra parte do app os lê — nem o cadastro de disputa,
+                nem o agente. */}
+            <p className="text-sm text-muted-foreground">
+              Ficam guardadas só neste navegador: não valem para a equipe, não chegam ao agente e hoje não
+              são aplicadas a nenhuma disputa.
+            </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="config-decremento">Decremento padrão (%)</Label>
@@ -1644,7 +1792,7 @@ export default function RoboLances() {
               </div>
             </div>
             <Button onClick={handleSaveConfig}>
-              Salvar Regras
+              Salvar neste navegador
             </Button>
           </div>
 

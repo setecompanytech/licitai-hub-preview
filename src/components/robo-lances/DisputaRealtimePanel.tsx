@@ -69,11 +69,14 @@ export default function DisputaRealtimePanel() {
           <Zap className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
           Disputas em Tempo Real
         </h3>
+        {/* O selo diz o que a conexão É: a assinatura de inserções em
+            `audit_log_lances`. Não é a conexão com o agente nem com o portal —
+            "WebSocket Conectado" fazia parecer que o robô estava na sala. */}
         <Badge variant={connected ? 'success' : 'danger'} className="gap-1">
           {connected ? (
-            <><Wifi className="w-3 h-3" aria-hidden="true" /> WebSocket Conectado</>
+            <><Wifi className="w-3 h-3" aria-hidden="true" /> Auditoria em tempo real conectada</>
           ) : (
-            <><WifiOff className="w-3 h-3" aria-hidden="true" /> Desconectado</>
+            <><WifiOff className="w-3 h-3" aria-hidden="true" /> Auditoria em tempo real desconectada</>
           )}
         </Badge>
       </div>

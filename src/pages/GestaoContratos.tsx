@@ -701,7 +701,7 @@ export default function GestaoContratos() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => navigate(`/processo/${c.licitacao_id}?aba=anexos`)}
+                      onClick={() => navigate(`/processo/${c.licitacao_id}?aba=documentos`)}
                       className="flex items-center gap-1 text-primary hover:underline"
                       title="Edital, Termo de Referência e demais anexos do certame"
                     >
@@ -947,7 +947,7 @@ export default function GestaoContratos() {
         processo={l ? {
           numero: l.numero,
           aoAbrir: () => navigate(`/processo/${l.id}`),
-          aoAbrirAnexos: () => navigate(`/processo/${l.id}?aba=anexos`),
+          aoAbrirAnexos: () => navigate(`/processo/${l.id}?aba=documentos`),
         } : null}
       />
     );

@@ -45,6 +45,12 @@ const portaisDisponiveis = PORTAIS_ROBO;
 
 export type DisputeItem = {
   id: string;
+  /**
+   * `licitacao_itens.id` — vínculo ESTÁVEL com o item do processo. Nulo quando
+   * o item não veio do processo (colado, extraído do texto). O `id` acima é só
+   * a chave da linha nesta tela.
+   */
+  licitacaoItemId?: string | null;
   numero: number;
   descricao: string;
   quantidade: number;
@@ -244,6 +250,7 @@ function LinhaDeItem({
 function licitacaoItensToDispute(items: LicitacaoItem[]): DisputeItem[] {
   return items.map((item, idx) => ({
     id: crypto.randomUUID(),
+    licitacaoItemId: (item as { id?: string }).id ?? null,
     numero: item.numero || idx + 1,
     descricao: item.descricao,
     // Marca e modelo são do CADASTRO da proposta, não da disputa (nela só o

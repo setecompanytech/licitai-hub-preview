@@ -95,6 +95,18 @@ describe('abas do painel', () => {
     expect(p.aba).not.toBe('encerradas');
   });
 
+  it('parada de emergência é do robô: o certame não vai para Encerradas', () => {
+    // O callback `sessao-encerrada` grava resultado 'parada_emergencial' quando
+    // uma pessoa interrompe. O pregão continua acontecendo no portal.
+    const p = projetarParticipacao(
+      disputa({ status: 'ativo' }),
+      sessao({ status: 'encerrado', resultado: 'parada_emergencial' }),
+      opcoes,
+    );
+    expect(p.aba).toBe('em_disputa');
+    expect(p.estadoDoRobo).toBe('parado');
+  });
+
   it('Encerradas registra quem informou o encerramento', () => {
     expect(projetarParticipacao(disputa(), sessao({ status: 'encerrado', resultado: 'encerrada' }), opcoes).faseInformadaPor)
       .toBe('agente');

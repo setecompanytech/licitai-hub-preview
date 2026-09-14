@@ -102,6 +102,8 @@ export interface Participacao {
 
 const LIMITE_PADRAO_DO_SINAL = 120;
 const FASE_EM_DISPUTA_MANUAL = new Set(['ativo', 'vencendo', 'perdendo']);
+/** Resultados de sessão que dizem que o ROBÔ parou, não que o certame acabou. */
+const RESULTADOS_DE_PARADA = new Set(['parada_emergencial']);
 
 function normalizarPortal(p: string | null | undefined): string {
   return String(p ?? '')
@@ -167,7 +169,10 @@ export function projetarParticipacao(
   let aba: AbaDoPainel;
   let faseInformadaPor: FonteDaFase | null = null;
 
-  if (sessaoReal && sessao!.status === 'encerrado' && sessao!.resultado) {
+  // `resultado` vem do callback `sessao-encerrada`: 'finalizado' quando a sala
+  // fechou, 'parada_emergencial' quando uma PESSOA interrompeu o robô. Só o
+  // primeiro fala do certame; o segundo fala do robô — o pregão continua.
+  if (sessaoReal && sessao!.status === 'encerrado' && sessao!.resultado && !RESULTADOS_DE_PARADA.has(sessao!.resultado)) {
     aba = 'encerradas';
     faseInformadaPor = 'agente';
   } else if (disputa.status === 'encerrado') {

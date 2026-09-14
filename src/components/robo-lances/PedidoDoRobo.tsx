@@ -201,8 +201,11 @@ export default function PedidoDoRobo({ onAbrirTelaRemota }: Props) {
     if (!limpo) return;
     setEnviando(true);
     try {
-      const { data: resposta, error } = await supabase.functions.invoke('robo-lances-webhook', {
-        body: { action: 'responder-humano', sessao_id: pedido.sessao_id, valor: limpo },
+      // A ação vai na URL, que é onde a função a lê. Mandada no corpo, como
+      // estava, respondia 404 "Ação desconhecida" e o código nunca chegava ao
+      // robô — enquanto o relógio do gov.br corria.
+      const { data: resposta, error } = await supabase.functions.invoke('robo-lances-webhook/responder-humano', {
+        body: { sessao_id: pedido.sessao_id, valor: limpo },
       });
       if (error) {
         // O corpo do erro vem em `context`, não em `message` — sem isto a

@@ -156,7 +156,7 @@ export const paginasPadrao: PaginaPadrao[] = [
   },
   {
     rota: '/robo-lances', grupo: 'Gestão de Processos', titulo: 'Robô de lances', icone: Crosshair,
-    descricao: 'Acompanhe a disputa e deixe o robô lançar dentro do limite que você definir',
+    descricao: 'Cada participação por fase, e o que o robô está fazendo em cada uma',
     acao: 'Nova sessão', padrao: 'abas', abas: ['Disputar', 'Agente', 'Portais', 'Configurações'],
   },
   {

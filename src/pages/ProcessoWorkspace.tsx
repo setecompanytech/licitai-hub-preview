@@ -20,7 +20,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   FolderOpen, FileText, Calculator, Sparkles, Scale, Briefcase,
   ClipboardList, ExternalLink, Building2, Calendar, DollarSign, MapPin, Loader2, Archive,
-  TrendingUp, Clock, Package, AlertTriangle, RefreshCw, Crosshair, Globe,
+  TrendingUp, Clock, Package, AlertTriangle, RefreshCw, Crosshair, Globe, ChevronRight, UserRound,
 } from 'lucide-react';
 import HistoricoProcesso from '@/components/workspace/HistoricoProcesso';
 import ItensEditalPrecificacao from '@/components/workspace/ItensEditalPrecificacao';
@@ -30,6 +30,10 @@ import AnexosManager from '@/components/workspace/AnexosManager';
 import DocumentosManager from '@/components/workspace/DocumentosManager';
 import EditalOriginalCard from '@/components/workspace/EditalOriginalCard';
 import EditalViewer from '@/components/workspace/EditalViewer';
+import AbaRoboDoProcesso from '@/components/workspace/robo/AbaRoboDoProcesso';
+// Aprovação dos limites — a frente da precificação versionada (migration
+// 20260914000002). É dela que o robô tira o "limite autorizado".
+import AprovacaoDePrecificacao from '@/components/workspace/precificacao/AprovacaoDePrecificacao';
 import { useProcessoWorkspace } from '@/hooks/useProcessoWorkspace';
 import { exportarPastaZip } from '@/components/workspace/exportarPasta';
 import AureliaPrecificacaoChat from '@/components/precificacao/AureliaPrecificacaoChat';
@@ -47,6 +51,10 @@ interface Licitacao {
   data_homologacao: string | null; vencedor: boolean | null;
   numero_controle_pncp: string | null; cnpj_orgao: string | null;
   ano_compra: string | null; sequencial_compra: string | null;
+  /** O robô opera por empresa: sem ela, a aba do robô não tem o que mostrar. */
+  empresa_id: string | null;
+  /** Responsável pelo processo — o nome vem de `profiles`, à parte. */
+  operador_id: string | null;
 }
 
 const ATALHOS = [
@@ -87,16 +95,27 @@ type ItemPncpLive = {
   marca?: string | null; marcaFabricante?: string | null;
 };
 
-/** As sete abas do dossiê, na ordem do comando. */
+/** As sete abas do dossiê, na ordem de 14/09.
+ *
+ *  Anexos entrou em Documentos — era a mesma pasta de arquivos vista em dois
+ *  lugares —, o checklist de habilitação ganhou aba própria, os atalhos de
+ *  Módulos desceram para a Visão geral e o Robô de Lances passou a morar na
+ *  pasta: a participação do robô é deste processo, não de uma tela à parte. */
 const ABAS_DO_DOSSIE = [
-  { valor: 'visao', rotulo: 'Visão Geral' },
+  { valor: 'visao', rotulo: 'Visão geral' },
   { valor: 'documentos', rotulo: 'Documentos' },
-  { valor: 'anexos', rotulo: 'Anexos' },
+  { valor: 'habilitacao', rotulo: 'Habilitação' },
   { valor: 'precificacao', rotulo: 'Precificação' },
   { valor: 'proposta', rotulo: 'Proposta' },
-  { valor: 'modulos', rotulo: 'Módulos' },
+  { valor: 'robo', rotulo: 'Robô de Lances' },
   { valor: 'historico', rotulo: 'Histórico' },
 ] as const;
+
+/** Abas que saíram, e para onde os endereços antigos levam. Há links gravados
+ *  em outras telas (`?aba=anexos` em Contratos e na Proposta, o "Ir para
+ *  Módulos" das pastas vazias, o atalho do desfecho) — eles continuam caindo
+ *  no conteúdo que procuravam. */
+const ABA_ANTIGA: Record<string, string> = { anexos: 'documentos', modulos: 'visao' };
 
 /** Trilha da pasta: /processo/:id não é item de menu, então o caminho até ela
  *  é montado aqui — mas os degraus vêm do registro da tela que a contém
@@ -141,7 +160,16 @@ export default function ProcessoWorkspace() {
      clicar numa aba não mudava o endereço, o voltar do navegador não devolvia
      a aba e o F5 jogava todo mundo de volta na Visão Geral. O hook fecha o
      ciclo de leitura e escrita, e é o mesmo que o Kanban usa. */
-  const [aba, definirAba] = useAbaNaUrl('visao');
+  const [abaDaUrl, definirAba] = useAbaNaUrl('visao');
+  /* Endereço antigo é lido já no destino — a primeira pintura não mostra uma
+     aba vazia — e reescrito pelo próprio hook, que usa `replace`: corrigir o
+     endereço não é navegar, então não entra no histórico e o Voltar não
+     devolve a pessoa a `?aba=anexos`. */
+  const aba = ABA_ANTIGA[abaDaUrl] ?? abaDaUrl;
+  useEffect(() => {
+    const destino = ABA_ANTIGA[abaDaUrl];
+    if (destino) definirAba(destino);
+  }, [abaDaUrl, definirAba]);
   // Contagem dos arquivos do PNCP (Edital em tela) — soma no chip da pasta Edital
   const [pncpArquivosCount, setPncpArquivosCount] = useState<number | null>(null);
   // O processo tem coordenadas PNCP? Decide quem materializa os itens: o
@@ -204,7 +232,7 @@ export default function ProcessoWorkspace() {
     setLoading(true);
     setErroCarga(null);
     supabase.from('licitacoes')
-      .select('id, numero, orgao, objeto, modalidade, status, valor_estimado, data_encerramento, uf, municipio, data_abertura, portal, url_edital, observacoes, resultado, valor_adjudicado, data_homologacao, vencedor, numero_controle_pncp, cnpj_orgao, ano_compra, sequencial_compra')
+      .select('id, numero, orgao, objeto, modalidade, status, valor_estimado, data_encerramento, uf, municipio, data_abertura, portal, url_edital, observacoes, resultado, valor_adjudicado, data_homologacao, vencedor, numero_controle_pncp, cnpj_orgao, ano_compra, sequencial_compra, empresa_id, operador_id')
       .eq('id', id).maybeSingle()  // sem user_id: a linha do painel abre processos de colegas (RLS protege)
       .then(({ data, error }) => {
         // `error` aqui é falha de transporte/permissão — não "linha ausente",
@@ -214,6 +242,33 @@ export default function ProcessoWorkspace() {
         setLoading(false);
       });
   }, [id, user, cargaNonce]);
+
+  /* Nome do responsável, para a linha de identificação do cabeçalho. Consulta
+     à parte porque `licitacoes` não tem FK declarada para `profiles` — o mesmo
+     motivo do Kanban. Falhar aqui só omite o nome; não inventa um. */
+  const [responsavel, setResponsavel] = useState<string | null>(null);
+  const operadorId = lic?.operador_id ?? null;
+  useEffect(() => {
+    if (!operadorId) {
+      setResponsavel(null);
+      return;
+    }
+    let cancelado = false;
+    supabase.from('profiles')
+      .select('user_id, nome_completo, username')
+      .eq('user_id', operadorId)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (cancelado) return;
+        if (error) {
+          console.warn('[processo] nome do responsável', error.message);
+          setResponsavel(null);
+          return;
+        }
+        setResponsavel(data ? (data.nome_completo || data.username || null) : null);
+      });
+    return () => { cancelado = true; };
+  }, [operadorId]);
 
   useEffect(() => {
     if (!lic) return;
@@ -349,7 +404,7 @@ export default function ProcessoWorkspace() {
   /* O efeito acoplado: virar para Precificação dispara a carga. Agora ele
      observa a ABA e não só a aba inicial — com a aba morando na URL, os quatro
      caminhos que levam a ela (clique na fila, link `?aba=precificacao`, o
-     "Ver na Precificação" do desfecho e o atalho da pasta vazia em Anexos)
+     "Ver na Precificação" do desfecho e o "Consultar preparação" da aba do robô)
      passam pelo mesmo ponto. Antes, o clique carregava e o link não. */
   useEffect(() => {
     if (aba === 'precificacao') loadPrecificacao();
@@ -456,7 +511,7 @@ export default function ProcessoWorkspace() {
   );
 
   const identidade = identidadeDoProcesso({ numero: lic.numero, modalidade: lic.modalidade });
-  const temContexto = !!(lic.orgao || lic.modalidade || lic.uf || lic.data_encerramento || lic.valor_estimado != null || lic.portal);
+  const temContexto = !!(lic.orgao || lic.modalidade || responsavel || lic.uf || lic.data_encerramento || lic.valor_estimado != null || lic.portal);
 
   return (
     <AppLayout trilhaExtra={[...TRILHA_BASE, { rotulo: identidade }]}>
@@ -490,6 +545,13 @@ export default function ProcessoWorkspace() {
                 </span>
               )}
               {lic.modalidade && <span className="truncate">{lic.modalidade}</span>}
+              {/* Quem responde pelo processo — só quando se sabe quem. */}
+              {responsavel && (
+                <span className="inline-flex min-w-0 items-center gap-1">
+                  <UserRound className="w-4 h-4 shrink-0" aria-hidden="true" />
+                  <span className="truncate">Responsável: {responsavel}</span>
+                </span>
+              )}
               {(lic.municipio || lic.uf) && (
                 <span className="inline-flex items-center gap-1">
                   <MapPin className="w-4 h-4 shrink-0" aria-hidden="true" />
@@ -538,15 +600,13 @@ export default function ProcessoWorkspace() {
         }
         abas={
           /* A contagem é o dado real das duas coleções já carregadas — não um
-             número decorativo: mostra se a pasta tem o que a habilitação pede
-             antes de a pessoa abrir a aba. */
+             número decorativo. Documentos soma as duas porque, desde 14/09,
+             documentos editáveis e anexos moram na mesma aba. */
           <AbasGestao
             abas={ABAS_DO_DOSSIE.map((a) =>
               a.valor === 'documentos'
-                ? { ...a, contagem: documentos.length }
-                : a.valor === 'anexos'
-                  ? { ...a, contagem: anexos.length }
-                  : { ...a },
+                ? { ...a, contagem: documentos.length + anexos.length }
+                : { ...a },
             )}
             valor={aba}
             aoMudar={definirAba}
@@ -696,7 +756,7 @@ export default function ProcessoWorkspace() {
                 era preenchido (o setter não tinha chamador), então a parcela
                 era sempre falsa e o bloco "Arquivos (N)" que dependia dela
                 nunca chegou à tela. Os arquivos do PNCP vivem no EditalViewer,
-                na aba Anexos → pasta Edital, que é onde a Fase 1 os colocou. */}
+                na aba Documentos → pasta Edital, que é onde a Fase 1 os colocou. */}
             {((pncpCarregando && !temEspelho) || pncpDetalhe || itensEspelho.length > 0) && (
               <SecaoGestao titulo="Complementos do PNCP — itens">
                 <Card className="p-6">
@@ -793,6 +853,39 @@ export default function ProcessoWorkspace() {
               </SecaoGestao>
             )}
 
+            {/* Os atalhos da antiga aba Módulos, como lista compacta no pé da
+                ficha: é para onde se vai DEPOIS de ler o processo, e uma aba
+                inteira para oito links escondia a ficha atrás de um clique. */}
+            <SecaoGestao titulo="Abrir nos módulos">
+              <ul className="g-cartao divide-y divide-border">
+                {ATALHOS.map((a) => (
+                  <li key={a.label}>
+                    {/* `?lid=` leva o processo junto: o módulo abre já
+                        apontado para ele, em vez de numa tela em branco. */}
+                    <Link
+                      to={`${a.path}${a.path.includes('?') ? '&' : '?'}lid=${lic.id}`}
+                      className="flex min-h-[44px] items-center gap-3 px-4 py-2 transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                    >
+                      <a.icon className="w-4 h-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                      <span className="flex min-w-0 flex-1 flex-col sm:flex-row sm:items-baseline sm:gap-2">
+                        <span className="g-corpo shrink-0 font-medium text-foreground">{a.label}</span>
+                        <span className="g-meta min-w-0 text-muted-foreground sm:truncate">{a.descricao}</span>
+                      </span>
+                      <ChevronRight className="w-4 h-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </SecaoGestao>
+          </div>
+        )}
+
+        {/* Documentos — a pasta inteira do processo: o edital original, os
+            documentos editáveis e os anexos (que eram aba própria até 14/09).
+            O Edital em tela mora em Anexos → pasta Edital (Fase 1 do
+            prontuário integrado), com os arquivos oficiais do PNCP. */}
+        {aba === 'documentos' && (
+          <div className="flex flex-col gap-4">
             <EditalOriginalCard
               licitacaoId={lic.id}
               urlEdital={lic.url_edital ?? null}
@@ -800,19 +893,6 @@ export default function ProcessoWorkspace() {
               itensProntos={itensMaterializados.length}
               pncpDisponivel={temFontePncp}
             />
-            {/* O Edital em tela mora em Anexos → pasta Edital (Fase 1 do
-                prontuário integrado): a Visão Geral é a ficha, e os arquivos
-                do processo — inclusive os oficiais do PNCP — vivem juntos. */}
-          </div>
-        )}
-
-        {/* Documentos editáveis */}
-        {aba === 'documentos' && (
-          <div className="flex flex-col gap-4">
-            {/* Fase 3: o checklist de habilitação abre a aba — exigências do
-                edital casadas com o cofre da empresa, com validade e aceite.
-                A distinção IA × conferido vive dentro dele e não muda aqui. */}
-            <HabilitacaoChecklist licitacaoId={lic.id} />
             <DocumentosManager
               licitacaoId={lic.id}
               numeroProcesso={lic.numero}
@@ -820,20 +900,27 @@ export default function ProcessoWorkspace() {
               objeto={lic.objeto}
               cidade={lic.municipio}
             />
+            <AnexosManager
+              pncpEditalCount={pncpArquivosCount ?? undefined}
+              licitacaoId={lic.id}
+              editalViewer={<EditalViewer licitacaoId={lic.id} urlEdital={lic.url_edital ?? undefined} onArquivosPncp={setPncpArquivosCount} />}
+            />
           </div>
         )}
 
-        {/* Anexos */}
-        {aba === 'anexos' && (
-          <AnexosManager
-            pncpEditalCount={pncpArquivosCount ?? undefined}
-            licitacaoId={lic.id}
-            editalViewer={<EditalViewer licitacaoId={lic.id} urlEdital={lic.url_edital ?? undefined} onArquivosPncp={setPncpArquivosCount} />}
-          />
-        )}
+        {/* Habilitação — Fase 3: exigências do edital casadas com o cofre da
+            empresa, com validade e aceite. A distinção IA × conferido vive
+            dentro do checklist e não muda aqui. */}
+        {aba === 'habilitacao' && <HabilitacaoChecklist licitacaoId={lic.id} />}
 
         {/* Precificação */}
         {aba === 'precificacao' && (
+          /* Fragmento de propósito: a moldura já empilha os filhos com o
+             respiro padrão. A aprovação dos limites abre a aba — é dela que a
+             aba do robô lê "versão N aprovada em …" —, e as sub-abas de
+             trabalho seguem abaixo, como estavam. */
+          <>
+          <AprovacaoDePrecificacao licitacaoId={lic.id} empresaId={lic.empresa_id} />
           <Tabs defaultValue="prec-historico" className="space-y-4">
             <TabsList>
               <TabsTrigger value="prec-historico" className="gap-2">
@@ -1011,6 +1098,7 @@ export default function ProcessoWorkspace() {
               </div>
             </TabsContent>
           </Tabs>
+          </>
         )}
 
         {/* Proposta — Fase 2: trabalhada dentro do processo */}
@@ -1024,28 +1112,9 @@ export default function ProcessoWorkspace() {
           <PropostaTecnica embedded licitacaoIdEmbed={lic.id} />
         )}
 
-        {/* Módulos */}
-        {aba === 'modulos' && (
-          <SecaoGestao titulo="Abrir em módulos completos">
-            <Card className="p-6">
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {ATALHOS.map(a => (
-                  <Button key={a.label} variant="outline" className="g-controle h-auto justify-start gap-2 py-2 text-left" asChild>
-                    {/* `?lid=` leva o processo junto: o módulo abre já
-                        apontado para ele, em vez de numa tela em branco. */}
-                    <Link to={`${a.path}${a.path.includes('?') ? '&' : '?'}lid=${lic.id}`}>
-                      <a.icon className="w-4 h-4 shrink-0" aria-hidden="true" />
-                      <span className="min-w-0">
-                        <span className="g-corpo block font-medium">{a.label}</span>
-                        <span className="g-meta block text-muted-foreground">{a.descricao}</span>
-                      </span>
-                    </Link>
-                  </Button>
-                ))}
-              </div>
-            </Card>
-          </SecaoGestao>
-        )}
+        {/* Robô de Lances — só a participação deste processo, desta empresa.
+            O painel com todas as disputas continua em /robo-lances. */}
+        {aba === 'robo' && <AbaRoboDoProcesso licitacaoId={lic.id} empresaId={lic.empresa_id} />}
 
         {/* Histórico */}
         {aba === 'historico' && <HistoricoProcesso licitacaoId={lic.id} />}

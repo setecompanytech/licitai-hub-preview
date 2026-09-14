@@ -190,9 +190,12 @@ export default function AtivacaoChecklist({ somenteLeitura = false }: { somenteL
     const newItems: CheckItem[] = [];
 
     // 1. Verificar agente configurado
+    // Colunas explícitas, sem `api_key_hash`: a chave do agente não tem o que
+    // fazer no navegador, e a migration 20260914000003 tira dela o SELECT —
+    // um `select('*')` aqui passaria a falhar com "permission denied".
     const { data: agentes } = await supabase
       .from('agente_externo_config')
-      .select('*')
+      .select('id, nome, url_base, status, versao_agente, max_sessoes_paralelas, sessoes_ativas, ram_mb')
       .eq('user_id', user.id);
 
     const agenteAtivo = agentes?.find(a => a.status === 'ativo');

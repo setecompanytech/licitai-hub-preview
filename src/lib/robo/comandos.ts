@@ -35,8 +35,35 @@ type Invocar = (
   opcoes: { body: Record<string, unknown> },
 ) => Promise<{ data: unknown; error: { message?: string } | null }>;
 
-const invocarPadrao: Invocar = (nome, opcoes) =>
-  supabase.functions.invoke(nome, opcoes) as ReturnType<Invocar>;
+/**
+ * O motivo real de uma recusa da edge function.
+ *
+ * O `supabase-js` põe em `error.message` sempre a mesma frase — "Edge Function
+ * returned a non-2xx status code". O motivo ("Você não pode parar esta
+ * sessão", "Sessão não encontrada") está no CORPO da resposta, em
+ * `error.context`. Sem lê-lo, a pessoa diante de uma parada recusada não sabe
+ * por quê.
+ */
+export async function causaDoErro(error: { message?: string; context?: unknown }): Promise<string> {
+  let detalhe = error?.message || 'O serviço respondeu com erro, sem mensagem.';
+  try {
+    const contexto = error?.context as Response | undefined;
+    if (contexto && typeof contexto.json === 'function') {
+      const leitor = typeof contexto.clone === 'function' ? contexto.clone() : contexto;
+      const corpo = await leitor.json();
+      if (corpo?.error) detalhe = String(corpo.error);
+    }
+  } catch {
+    // Corpo que não é JSON: fica a mensagem que havia.
+  }
+  return detalhe;
+}
+
+const invocarPadrao: Invocar = async (nome, opcoes) => {
+  const { data, error } = await supabase.functions.invoke(nome, opcoes);
+  if (!error) return { data, error: null };
+  return { data, error: { message: await causaDoErro(error as { message?: string; context?: unknown }) } };
+};
 
 function resumirTentativas(tentativas: unknown): string | null {
   if (!Array.isArray(tentativas) || tentativas.length === 0) return null;

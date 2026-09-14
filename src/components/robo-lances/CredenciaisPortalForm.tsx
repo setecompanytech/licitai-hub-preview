@@ -30,6 +30,23 @@ import { PORTAIS_ROBO } from '@/lib/robo/portais';
 // portal no registro do agente — a tradução que faltava para o envio da sessão.
 const PORTAIS = PORTAIS_ROBO;
 
+/**
+ * O que `credenciais-portal?action=list` devolve. Sem `senha_hash`: desde
+ * 14/09/2026 o texto cifrado não sai do servidor, e `tem_senha` diz só se ele
+ * existe.
+ */
+type CredencialListada = {
+  id: string;
+  portal_id: string;
+  portal_nome: string;
+  login: string | null;
+  tem_senha: boolean;
+  certificado_nome: string | null;
+  certificado_tipo: string | null;
+  validade_certificado: string | null;
+  status: string | null;
+};
+
 export default function CredenciaisPortalForm() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -47,12 +64,12 @@ export default function CredenciaisPortalForm() {
   const { data: credenciais = [], isLoading } = useQuery({
     queryKey: ['credenciais-portais', user?.id],
     queryFn: async () => {
-      if (!user) return [];
+      if (!user) return [] as CredencialListada[];
       const { data, error } = await supabase.functions.invoke('credenciais-portal?action=list', {
         method: 'GET',
       });
       if (error) throw error;
-      return data;
+      return (data || []) as CredencialListada[];
     },
     enabled: !!user,
   });
@@ -102,15 +119,15 @@ export default function CredenciaisPortalForm() {
       queryClient.invalidateQueries({ queryKey: ['credenciais-portais'] });
       resetForm();
       setOpen(false);
-    } catch (e: any) {
-      toast.error(e.message || 'Erro ao salvar credencial');
+    } catch (e) {
+      toast.error((e as Error).message || 'Erro ao salvar credencial');
     } finally {
       setSaving(false);
     }
   };
 
   const portalJaCadastrado = (id: string) =>
-    credenciais.some((c: any) => c.portal_id === id);
+    credenciais.some((c) => c.portal_id === id);
 
   return (
     <div className="space-y-4">
@@ -316,7 +333,7 @@ export default function CredenciaisPortalForm() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {credenciais.map((cred: any) => (
+          {credenciais.map((cred) => (
             <div key={cred.id} className="rounded-lg border border-border bg-card p-6 shadow-sm">
               <div className="flex items-center justify-between gap-2 mb-3">
                 <h4 className="font-semibold text-base truncate">{cred.portal_nome}</h4>
@@ -331,7 +348,9 @@ export default function CredenciaisPortalForm() {
                     <span className="font-medium text-foreground">Login:</span> {cred.login}
                   </p>
                 )}
-                {cred.senha_hash && (
+                {/* `tem_senha`, não `senha_hash`: a lista não traz mais o texto
+                    cifrado ao navegador — só diz se ele existe. */}
+                {cred.tem_senha && (
                   <p className="flex items-center gap-1">
                     <span className="font-medium text-foreground">Senha:</span> ••••••••
                     <span title="Criptografada AES-256"><Shield className="w-3 h-3 text-success ml-1" aria-hidden="true" /></span>

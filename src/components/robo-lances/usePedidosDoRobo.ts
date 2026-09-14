@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { causaDoErro, solicitarParada, type EstadoDaParada, type ResultadoDaParada } from '@/lib/robo/comandos';
 
 /**
  * O que o robô está esperando de uma pessoa, e como os últimos pedidos
@@ -97,6 +98,49 @@ export function usePedidosDoRobo() {
 
 
 /**
+ * Hora no fuso de Brasília, com segundos — é o que a pessoa compara com o
+ * relógio do portal, e o navegador pode estar em outro fuso.
+ */
+export function horaDeBrasilia(iso: string | null | undefined, agora: Date = new Date()): string {
+  const d = iso ? new Date(iso) : agora;
+  return (Number.isNaN(d.getTime()) ? agora : d).toLocaleTimeString('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
+}
+
+export type MensagemDaParada = { estado: EstadoDaParada; texto: string };
+
+/**
+ * O que a tela diz depois de pedir a parada. Um texto por estado, num lugar
+ * só, para a lista de sessões e o painel do VNC não divergirem.
+ *
+ * `solicitada` NUNCA vira "parado": o serviço recebeu o pedido, mas nenhum
+ * agente confirmou que encerrou — o robô pode seguir no portal.
+ */
+export function mensagemDaParada(r: ResultadoDaParada, agora: Date = new Date()): MensagemDaParada {
+  if (r.estado === 'confirmada') {
+    return {
+      estado: 'confirmada',
+      texto: `Parada confirmada às ${horaDeBrasilia(r.confirmadaEm, agora)} (horário de Brasília)`,
+    };
+  }
+  if (r.estado === 'solicitada') {
+    return {
+      estado: 'solicitada',
+      texto: `Parada solicitada — aguardando confirmação do serviço${r.motivo ? ` (${r.motivo})` : ''}`,
+    };
+  }
+  return {
+    estado: 'falhou',
+    texto: `Não foi possível pedir a parada: ${r.motivo || 'sem resposta do serviço'}`,
+  };
+}
+
+/**
  * Interrompe UMA sessão do robô.
  *
  * Mora aqui, e não dentro de um componente, porque dois lugares precisam dela:
@@ -105,32 +149,27 @@ export function usePedidosDoRobo() {
  *
  * Diferente do freio de emergência, que encerra todas as sessões de uma vez.
  *
- * @returns `parou` false não é erro: o agente pode já ter encerrado sozinho. A
- *          linha do banco é atualizada de qualquer forma, para a lista não
- *          continuar dizendo "em operação" para algo que acabou.
+ * Até 14/09/2026 esta função mandava a ação no corpo e recebia 404; o erro
+ * voltava como `parou: false`, que as telas liam como "a sessão já não
+ * estava rodando". O freio nunca chegava ao agente e ninguém sabia. Agora o
+ * pedido passa por `solicitarParada` (@/lib/robo/comandos), que usa a rota
+ * certa e distingue confirmada de solicitada.
+ *
+ * @returns `parou` só é true com confirmação do agente. Em qualquer outro
+ *          estado vem `erro` com o texto honesto do que aconteceu — inclusive
+ *          "aguardando confirmação", para quem ainda lê só `parou`/`erro`.
+ *          `resultado` e `mensagem` trazem o detalhe para quem quiser mais.
  */
 export async function pararSessaoDoRobo(sessaoId: string): Promise<{
   parou: boolean;
   erro?: string;
+  resultado: ResultadoDaParada;
+  mensagem: MensagemDaParada;
 }> {
-  const { data, error } = await supabase.functions.invoke('robo-lances-webhook', {
-    body: { action: 'parar-sessao', sessao_id: sessaoId },
-  });
-
-  if (error) {
-    // O corpo do erro vem em `context`, não em `message` — sem isto a pessoa
-    // recebe "non-2xx status code" no lugar da causa.
-    let detalhe = error.message;
-    try {
-      const corpo = await (error as { context?: Response }).context?.json();
-      if (corpo?.error) detalhe = corpo.error;
-    } catch {
-      /* fica a mensagem original */
-    }
-    return { parou: false, erro: detalhe };
-  }
-
-  return { parou: (data as { parou?: boolean })?.parou === true };
+  const resultado = await solicitarParada(sessaoId);
+  const mensagem = mensagemDaParada(resultado);
+  const parou = resultado.estado === 'confirmada';
+  return { parou, erro: parou ? undefined : mensagem.texto, resultado, mensagem };
 }
 
 
@@ -152,21 +191,13 @@ export async function focarSessaoDoRobo(sessaoId: string): Promise<{
   focou: boolean;
   erro?: string;
 }> {
-  const { data, error } = await supabase.functions.invoke('robo-lances-webhook', {
-    body: { action: 'focar-sessao', sessao_id: sessaoId },
+  // A ação vai na URL, que é onde a função a lê. No corpo, respondia 404.
+  const { data, error } = await supabase.functions.invoke('robo-lances-webhook/focar-sessao', {
+    body: { sessao_id: sessaoId },
   });
 
   if (error) {
-    // O corpo do erro vem em `context`, não em `message` — mesmo cuidado do
-    // freio, senão a pessoa recebe "non-2xx status code" no lugar da causa.
-    let detalhe = error.message;
-    try {
-      const corpo = await (error as { context?: Response }).context?.json();
-      if (corpo?.error) detalhe = corpo.error;
-    } catch {
-      /* fica a mensagem original */
-    }
-    return { focou: false, erro: detalhe };
+    return { focou: false, erro: await causaDoErro(error as { message?: string; context?: unknown }) };
   }
 
   const corpo = data as { focou?: boolean; error?: string } | null;

@@ -195,16 +195,20 @@ export default function VncWebViewer({ abrirEm = 0 }: Props) {
     setParando(true);
     try {
       const r = await pararSessaoDoRobo(sessaoViva.sessao_id);
-      if (r.erro) {
-        toast.error(r.erro, { duration: 10000 });
+      // Três desfechos, três avisos. "Solicitada" não é sucesso nem erro: o
+      // pedido chegou e o agente ainda não confirmou — o robô pode seguir. A
+      // versão anterior lia `parou: false` como "já não estava rodando".
+      if (r.resultado.estado === 'confirmada') {
+        toast.success(`Robô interrompido em ${sessaoViva.edital}. ${r.mensagem.texto}.`, { duration: 8000 });
+      } else if (r.resultado.estado === 'solicitada') {
+        toast.warning(
+          `${sessaoViva.edital}: ${r.mensagem.texto}. O robô pode continuar operando no portal.`,
+          { duration: 20000 },
+        );
+      } else {
+        toast.error(r.mensagem.texto, { duration: 12000 });
         return;
       }
-      toast.success(
-        r.parou
-          ? `Robô interrompido em ${sessaoViva.edital}.`
-          : `A sessão de ${sessaoViva.edital} já não estava mais rodando.`,
-        { duration: 8000 },
-      );
       recarregarEstado();
     } finally {
       setParando(false);

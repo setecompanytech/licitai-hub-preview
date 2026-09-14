@@ -3,6 +3,23 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { credencialEmClaro } from "../_shared/credenciais-cifra.ts";
 import { portalDoAgente } from "../_shared/robo-portais.ts";
 import { instalarCertificadoNoAgente } from "../_shared/certificado-agente.ts";
+import {
+  resolverAcao,
+  erroDeColunaAusente,
+  ehAgenteGerenciado,
+  chaveParaOAgente,
+} from "../_shared/robo-acao.ts";
+
+/**
+ * O que da configuração do agente pode sair desta função para o navegador.
+ *
+ * Tudo, MENOS `api_key_hash` — que, apesar do nome, é a chave em claro usada em
+ * `X-Agent-Key` e conferida no `callback`. Devolvê-la ao navegador era entregar
+ * a quem abrisse o DevTools o poder de forjar callbacks de sessão.
+ */
+const COLUNAS_PUBLICAS_DO_AGENTE =
+  "id, user_id, nome, url_base, status, ultimo_heartbeat, versao_agente, capacidades, " +
+  "max_sessoes_paralelas, sessoes_ativas, ram_mb, created_at, updated_at";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -18,14 +35,20 @@ serve(async (req) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabase = createClient(supabaseUrl, serviceKey);
+  // A chave do agente gerenciado mora SÓ aqui, como segredo da edge function.
+  // Ver `configurar-agente` e `chaveParaOAgente` (_shared/robo-acao.ts).
+  const chaveGerenciada = Deno.env.get("AGENTE_API_KEY") || null;
 
   try {
     const url = new URL(req.url);
-    const pathParts = url.pathname.split("/").filter(Boolean);
-    // Path: /robo-lances-webhook/{action}
-    const action = pathParts[pathParts.length - 1] || "";
 
-    const body = req.method !== "GET" ? await req.json() : {};
+    // Corpo vazio ou malformado não pode virar 500 antes de se saber a ação.
+    const body = req.method !== "GET" ? await req.json().catch(() => ({})) : {};
+
+    // Path: /robo-lances-webhook/{action}. O `action` do corpo só vale quando a
+    // URL termina no nome da função — a forma que três telas usavam e que
+    // respondia 404 "Ação desconhecida" (ver _shared/robo-acao.ts).
+    const action = resolverAcao(url.pathname, body);
 
     // ─── ACTIONS FROM THE FRONTEND (authenticated user) ───
 
@@ -43,8 +66,46 @@ serve(async (req) => {
       }
 
       const { url_base, nome, api_key, max_sessoes_paralelas } = body;
-      if (!url_base) {
+      if (!url_base || typeof url_base !== "string") {
         return jsonResponse({ error: "url_base é obrigatório" }, 400);
+      }
+      const urlBase = url_base.trim().replace(/\/+$/, "");
+      try {
+        new URL(urlBase);
+      } catch {
+        return jsonResponse({ error: `"${urlBase}" não é um endereço válido para o agente.` }, 400);
+      }
+
+      // ── A CHAVE DO AGENTE GERENCIADO NÃO PASSA PELO NAVEGADOR ─────────────
+      //
+      // Até 14/09/2026 a tela mandava a chave do Agente Cloud no corpo desta
+      // chamada — escrita como constante em AgenteExternoConfig.tsx, ou seja,
+      // dentro do JavaScript público. É a mesma chave que o `callback` confere:
+      // qualquer pessoa com o bundle podia forjar eventos de sessão.
+      //
+      // Agora, para o agente gerenciado, a chave é o segredo `AGENTE_API_KEY`
+      // desta função, e o que vier em `api_key` é ignorado. Sem o segredo, a
+      // resposta é 503 — inventar uma chave aqui gravaria um agente que nunca
+      // conversaria com a VPS, e a tela mostraria "configurado" para um robô
+      // mudo.
+      //
+      // Agente próprio (outro endereço) segue com a chave que o dono cadastra:
+      // é a chave DELE, para o servidor DELE.
+      let chave: string | null;
+      if (ehAgenteGerenciado(urlBase)) {
+        if (!chaveGerenciada) {
+          return jsonResponse(
+            {
+              error: "O Agente Cloud ainda não pode ser ativado: a chave do serviço não está " +
+                     "configurada no servidor (segredo AGENTE_API_KEY da edge function). " +
+                     "Nada foi gravado. Avise o suporte da plataforma.",
+            },
+            503
+          );
+        }
+        chave = chaveGerenciada;
+      } else {
+        chave = typeof api_key === "string" && api_key ? api_key : null;
       }
 
       const { data, error } = await supabase
@@ -53,23 +114,24 @@ serve(async (req) => {
           {
             user_id: user.id,
             nome: nome || "Agente Principal",
-            url_base,
-            api_key_hash: api_key || null,
+            url_base: urlBase,
+            api_key_hash: chave,
             status: "verificando",
             max_sessoes_paralelas: max_sessoes_paralelas || 3,
           },
           { onConflict: "user_id,nome" }
         )
-        .select()
+        // Colunas explícitas: a resposta volta ao navegador e não leva a chave.
+        .select(COLUNAS_PUBLICAS_DO_AGENTE)
         .single();
 
       if (error) throw error;
 
       // Try to ping the agent
       try {
-        const pingResp = await fetch(`${url_base}/health`, {
+        const pingResp = await fetch(`${urlBase}/health`, {
           method: "GET",
-          headers: { "X-Agent-Key": api_key || "" },
+          headers: { "X-Agent-Key": chave || "" },
           signal: AbortSignal.timeout(5000),
         });
         const agentStatus = pingResp.ok ? "ativo" : "erro";
@@ -264,10 +326,26 @@ serve(async (req) => {
       // `?? null` em vez de `|| 0` em todos: nulo aqui significa "nao sabido",
       // e zero seria uma afirmacao falsa sobre dinheiro — do tipo que ninguem
       // confere justamente porque parece preenchida.
+      // Vínculo estável com o item do processo (`licitacao_itens.id`), quando a
+      // disputa o trouxe. Id que não existe mais — a re-extração do edital apaga
+      // e recria os itens — vira nulo em vez de derrubar a sessão por FK; o
+      // casamento cai para lote + número, que é o que havia antes.
+      const idDoItem = (i: Record<string, unknown>) => {
+        const v = i.licitacao_item_id ?? i.licitacaoItemId;
+        return typeof v === "string" && v.length > 0 ? v : null;
+      };
+      const idsInformados = [...new Set(itens.map(idDoItem).filter(Boolean))] as string[];
+      const idsValidos = new Set<string>();
+      if (idsInformados.length) {
+        const { data: existentes } = await supabase.from("licitacao_itens").select("id").in("id", idsInformados);
+        (existentes || []).forEach((r: { id: string }) => idsValidos.add(r.id));
+      }
+
       const itensDaSessao = itens.map((i: Record<string, unknown>, idx: number) => ({
         sessao_id: sessao.id,
         user_id: user.id,
         empresa_id: body.empresa_id ?? null,
+        licitacao_item_id: idsValidos.has(idDoItem(i) ?? '') ? idDoItem(i) : null,
         numero: Number(i.numero) || idx + 1,
         lote: i.lote ?? null,
         descricao: String(i.descricao || ''),
@@ -319,7 +397,7 @@ serve(async (req) => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "X-Agent-Key": agente.api_key_hash || "",
+            "X-Agent-Key": chaveParaOAgente(agente, chaveGerenciada),
             "X-Callback-URL": `${supabaseUrl}/functions/v1/robo-lances-webhook/callback`,
           },
           body: JSON.stringify({
@@ -413,7 +491,7 @@ serve(async (req) => {
       // Verify session exists
       const { data: sessao } = await supabase
         .from("sessoes_lance_real")
-        .select("*, agente_externo_config!inner(api_key_hash, user_id)")
+        .select("*, agente_externo_config!inner(api_key_hash, user_id, url_base)")
         .eq("id", sessao_id)
         .single();
 
@@ -422,7 +500,10 @@ serve(async (req) => {
       }
 
       // Validate agent key
-      const expectedKey = (sessao as any).agente_externo_config?.api_key_hash;
+      //
+      // Agente gerenciado: vale o segredo AGENTE_API_KEY, não a linha — a
+      // chave antiga gravada no banco estava no bundle público.
+      const expectedKey = chaveParaOAgente((sessao as any).agente_externo_config, chaveGerenciada);
       if (!expectedKey || agentKey !== expectedKey) {
         return jsonResponse({ error: "Chave do agente inválida" }, 403);
       }
@@ -744,57 +825,213 @@ serve(async (req) => {
     // 09/09/2026 uma sessão travada teve que ser encerrada por `curl` na VPS,
     // porque nenhuma tela oferecia isso. Freio que só existe no terminal não é
     // freio para quem opera.
+    //
+    // ── EM DOIS TEMPOS, E SÓ O SEGUNDO É "PARADO" (14/09/2026) ──────────────
+    //
+    // A versão anterior gravava `status: 'encerrado'` mesmo quando NENHUM
+    // agente confirmava — e aceitava o `sessao_id` de qualquer usuário logado.
+    // A lista passava a dizer "Encerrada" para um robô que talvez seguisse no
+    // portal. Agora:
+    //
+    //   1. autoriza: quem iniciou a sessão, ou admin/operador da empresa dela;
+    //   2. grava a LÁPIDE (`parada_solicitada_em/_por`) ANTES de chamar o
+    //      agente — princípio 3: se a função cair no meio, o pedido fica;
+    //   3. `encerrado` + `parada_confirmada_em` só com resposta 2xx de um agente;
+    //   4. sem confirmação, o status fica como está e a sessão ganha a nota das
+    //      tentativas — a tela diz "aguardando confirmação", nunca "parado".
+    //
+    // Parar o robô não cancela lance que o portal já aceitou.
+    //
+    // Sem a migration 20260914000002 as colunas da parada não existem: a função
+    // grava só status/erro, como antes, e avisa em `observacoes`. O freio nunca
+    // espera a contabilidade.
     if (action === "parar-sessao") {
       const authHeader = req.headers.get("authorization");
       if (!authHeader) return jsonResponse({ error: "Não autorizado" }, 401);
-      const { data: { user } } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
-      if (!user) return jsonResponse({ error: "Token inválido" }, 401);
+      const { data: { user }, error: authErr } = await supabase.auth.getUser(
+        authHeader.replace("Bearer ", "")
+      );
+      if (authErr || !user) return jsonResponse({ error: "Token inválido" }, 401);
 
       const { sessao_id } = body;
       if (!sessao_id) return jsonResponse({ error: "sessao_id é obrigatório" }, 400);
 
-      const { data: agentes } = await supabase
+      // `select("*")` de propósito: com ou sem a migration nova a leitura não
+      // falha por coluna ausente — `empresa_id` só vem `undefined`.
+      const { data: sessao, error: erroSessao } = await supabase
+        .from("sessoes_lance_real")
+        .select("*")
+        .eq("id", sessao_id)
+        .maybeSingle();
+      if (erroSessao) {
+        return jsonResponse({ error: `Não foi possível ler a sessão: ${erroSessao.message}` }, 500);
+      }
+      if (!sessao) return jsonResponse({ error: "Sessão não encontrada" }, 404);
+
+      // Processo é da empresa (princípio 2): o colega que opera o processo
+      // precisa conseguir frear o robô que outra pessoa disparou. Sessão sem
+      // `empresa_id` só aceita quem a iniciou — nunca mais aberto que antes.
+      let autorizado = sessao.user_id === user.id;
+      if (!autorizado && sessao.empresa_id) {
+        const { data: membro, error: erroMembro } = await supabase
+          .from("empresa_membros")
+          .select("papel")
+          .eq("empresa_id", sessao.empresa_id)
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (erroMembro) {
+          return jsonResponse(
+            { error: `Não foi possível conferir seu papel na empresa: ${erroMembro.message}` },
+            500
+          );
+        }
+        autorizado = membro?.papel === "admin" || membro?.papel === "operador";
+      }
+      if (!autorizado) {
+        return jsonResponse(
+          {
+            error: "Você não pode parar esta sessão: ela foi iniciada por outra pessoa " +
+                   "e você não é administrador nem operador da empresa dela.",
+          },
+          403
+        );
+      }
+
+      const observacoes: string[] = [];
+      let colunasDaParada = true;
+
+      // 1. A LÁPIDE, antes de qualquer chamada ao agente.
+      const solicitadaEm = new Date().toISOString();
+      const { error: erroLapide } = await supabase
+        .from("sessoes_lance_real")
+        .update({ parada_solicitada_em: solicitadaEm, parada_solicitada_por: user.id })
+        .eq("id", sessao_id);
+      if (erroLapide && erroDeColunaAusente(erroLapide)) {
+        colunasDaParada = false;
+        observacoes.push(
+          "O banco ainda não tem as colunas da parada em dois tempos (migration " +
+          "20260914000002 não aplicada): o pedido não ficou registrado na sessão."
+        );
+      } else if (erroLapide) {
+        observacoes.push(`O pedido de parada não foi registrado na sessão: ${erroLapide.message}`);
+      }
+
+      // 2. Os agentes — os do DONO da sessão, não os de quem clicou: o colega
+      // que freia o robô não tem agente próprio. O agente em que a sessão foi
+      // aberta vai primeiro, porque é onde ela vive.
+      const filtroAgentes = sessao.agente_id
+        ? `user_id.eq.${sessao.user_id},id.eq.${sessao.agente_id}`
+        : `user_id.eq.${sessao.user_id}`;
+      const { data: agentesLidos, error: erroAgentes } = await supabase
         .from("agente_externo_config")
         .select("id, nome, url_base, api_key_hash")
-        .eq("user_id", user.id);
-
-      if (!agentes?.length) return jsonResponse({ error: "Nenhum agente configurado" }, 400);
+        .or(filtroAgentes);
+      const agentes = [...(agentesLidos || [])].sort(
+        (a, b) => Number(b.id === sessao.agente_id) - Number(a.id === sessao.agente_id)
+      );
 
       const tentativas: Array<Record<string, unknown>> = [];
-      let parou = false;
+      if (erroAgentes) {
+        tentativas.push({ agente: null, motivo: `Não foi possível ler os agentes: ${erroAgentes.message}` });
+      } else if (!agentes.length) {
+        tentativas.push({ agente: null, motivo: "Nenhum agente configurado para esta sessão" });
+      }
+
+      let confirmadaEm: string | null = null;
       for (const agente of agentes) {
-        const base = agente.url_base.replace(/\/$/, "");
+        const base = String(agente.url_base || "").replace(/\/$/, "");
         try {
           const resp = await fetch(`${base}/sessao/encerrar`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              "X-Agent-Key": agente.api_key_hash || "",
+              "X-Agent-Key": chaveParaOAgente(agente, chaveGerenciada),
             },
             body: JSON.stringify({ sessao_id }),
             signal: AbortSignal.timeout(15000),
           });
           const corpo = await resp.json().catch(() => ({}));
-          if (resp.ok) { parou = true; break; }
+          if (resp.ok) {
+            confirmadaEm = new Date().toISOString();
+            tentativas.push({ agente: agente.nome, status: resp.status, confirmou: true });
+            break;
+          }
           tentativas.push({ agente: agente.nome, status: resp.status, motivo: corpo?.error ?? null });
         } catch (e) {
           tentativas.push({ agente: agente.nome, motivo: e instanceof Error ? e.message : "sem resposta" });
         }
       }
 
-      // O banco reflete a parada mesmo que o agente já tivesse encerrado por
-      // conta própria: a lista de sessões é o que a pessoa lê depois, e ela não
-      // pode continuar dizendo "em operação" para algo que acabou.
-      await supabase
-        .from("sessoes_lance_real")
-        .update({
+      // 3. O desfecho no banco — "encerrado" SÓ com a confirmação.
+      if (confirmadaEm) {
+        const campos: Record<string, unknown> = {
           status: "encerrado",
           erro: "Interrompida manualmente pelo operador",
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", sessao_id);
+          updated_at: confirmadaEm,
+        };
+        if (colunasDaParada) campos.parada_confirmada_em = confirmadaEm;
 
-      return jsonResponse({ parou, sessao_id, tentativas });
+        let { error: erroFinal } = await supabase
+          .from("sessoes_lance_real")
+          .update(campos)
+          .eq("id", sessao_id);
+        if (erroFinal && erroDeColunaAusente(erroFinal) && "parada_confirmada_em" in campos) {
+          delete campos.parada_confirmada_em;
+          ({ error: erroFinal } = await supabase
+            .from("sessoes_lance_real")
+            .update(campos)
+            .eq("id", sessao_id));
+        }
+        if (erroFinal) {
+          observacoes.push(
+            `O agente confirmou a parada, mas a sessão não foi atualizada no banco: ${erroFinal.message}`
+          );
+        }
+      } else {
+        const resumo = tentativas
+          .map((t) => [t.agente, t.motivo ?? t.status].filter(Boolean).join(": "))
+          .filter(Boolean)
+          .join(" · ");
+        // Sem `updated_at`: na lista ele é o "último sinal" do robô, e um
+        // pedido nosso não é sinal dele.
+        const { error: erroNota } = await supabase
+          .from("sessoes_lance_real")
+          .update({
+            erro: `Parada solicitada sem confirmação do agente${resumo ? ` (${resumo})` : ""}. ` +
+                  `O robô pode continuar operando no portal.`,
+          })
+          .eq("id", sessao_id);
+        if (erroNota) {
+          observacoes.push(`A nota das tentativas não foi gravada na sessão: ${erroNota.message}`);
+        }
+      }
+
+      // Trilha no mesmo lugar em que o kill-switch registra a dele.
+      const { error: erroLog } = await supabase.from("webhook_log").insert({
+        user_id: user.id,
+        direcao: "saida",
+        tipo: "parar-sessao",
+        payload: {
+          sessao_id,
+          dono_da_sessao: sessao.user_id,
+          solicitada_em: solicitadaEm,
+          confirmada_em: confirmadaEm,
+          tentativas,
+        },
+      });
+      if (erroLog) observacoes.push(`O registro de auditoria da parada falhou: ${erroLog.message}`);
+
+      return jsonResponse({
+        // `parou` fica por compatibilidade com telas antigas; significa o mesmo
+        // que `agente_confirmou`.
+        parou: confirmadaEm !== null,
+        agente_confirmou: confirmadaEm !== null,
+        parada_solicitada_em: solicitadaEm,
+        parada_confirmada_em: confirmadaEm,
+        sessao_id,
+        tentativas,
+        ...(observacoes.length ? { observacoes } : {}),
+      });
     }
 
     // ─── focar-sessao ───
@@ -833,7 +1070,7 @@ serve(async (req) => {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              "X-Agent-Key": agente.api_key_hash || "",
+              "X-Agent-Key": chaveParaOAgente(agente, chaveGerenciada),
             },
             body: JSON.stringify({ sessao_id }),
             signal: AbortSignal.timeout(15000),
@@ -869,45 +1106,97 @@ serve(async (req) => {
       if (!user) return jsonResponse({ error: "Token inválido" }, 401);
 
       const { motivo } = body;
+      const motivoTexto = motivo || "Acionada pelo operador";
+      const observacoes: string[] = [];
 
-      // 1. Encerrar todas as sessões ativas do usuário no DB
-      const { data: sessoesAtivas } = await supabase
-        .from("sessoes_lance_real")
-        .select("id, agente_id")
-        .eq("user_id", user.id)
-        .in("status", ["ativo", "enviando"]);
+      // ── EM DOIS TEMPOS, COMO parar-sessao (14/09/2026) ────────────────────
+      //
+      // A versão anterior gravava `encerrado` em todas as sessões ANTES de
+      // chamar qualquer agente, e respondia "N sessões encerradas" mesmo sem
+      // confirmação. Freio de emergência é justamente onde isso não pode
+      // acontecer. E só alcançava as sessões de quem clicou: o colega que opera
+      // o processo da empresa não conseguia frear o robô disparado por outro.
+      //
+      //   1. alvo: sessões ativas iniciadas por quem aciona E as das empresas
+      //      em que é admin/operador;
+      //   2. lápide + marca de emergência ANTES de chamar os agentes;
+      //   3. `encerrado` + `parada_confirmada_em` só na sessão cujo agente
+      //      respondeu 2xx; as demais ficam "aguardando confirmação".
 
-      if (sessoesAtivas && sessoesAtivas.length > 0) {
-        await supabase
-          .from("sessoes_lance_real")
-          .update({
-            status: "encerrado",
-            erro: `Parada emergencial: ${motivo || "Acionada pelo operador"}`,
-          })
-          .eq("user_id", user.id)
-          .in("status", ["ativo", "enviando"]);
+      const { data: papeis } = await supabase
+        .from("empresa_membros")
+        .select("empresa_id, papel")
+        .eq("user_id", user.id);
+      const empresasQueOpera = (papeis || [])
+        .filter((m: { papel: string }) => m.papel === "admin" || m.papel === "operador")
+        .map((m: { empresa_id: string }) => m.empresa_id);
+
+      const lerSessoes = (comEmpresa: boolean) => {
+        const q = supabase.from("sessoes_lance_real").select("*").in("status", ["ativo", "enviando"]);
+        return comEmpresa && empresasQueOpera.length
+          ? q.or(`user_id.eq.${user.id},empresa_id.in.(${empresasQueOpera.join(",")})`)
+          : q.eq("user_id", user.id);
+      };
+      let { data: sessoesLidas, error: erroSessoes } = await lerSessoes(true);
+      if (erroSessoes && erroDeColunaAusente(erroSessoes)) {
+        observacoes.push(
+          "Migration 20260914000002 não aplicada: o freio alcançou só as sessões iniciadas por você."
+        );
+        ({ data: sessoesLidas, error: erroSessoes } = await lerSessoes(false));
+      }
+      if (erroSessoes) {
+        return jsonResponse({ error: `Não foi possível ler as sessões ativas: ${erroSessoes.message}` }, 500);
+      }
+      const sessoesAtivas = sessoesLidas || [];
+      const idsSessao = sessoesAtivas.map((s: { id: string }) => s.id);
+
+      // 2. Lápide e marca de emergência, antes dos agentes.
+      const solicitadaEm = new Date().toISOString();
+      if (idsSessao.length) {
+        const marcas: Record<string, unknown> = {
+          parada_emergencial: true,
+          parada_emergencial_em: solicitadaEm,
+          parada_emergencial_por: user.email ?? user.id,
+          parada_solicitada_em: solicitadaEm,
+          parada_solicitada_por: user.id,
+        };
+        let { error: erroMarca } = await supabase.from("sessoes_lance_real").update(marcas).in("id", idsSessao);
+        if (erroMarca && erroDeColunaAusente(erroMarca)) {
+          delete marcas.parada_solicitada_em;
+          delete marcas.parada_solicitada_por;
+          ({ error: erroMarca } = await supabase.from("sessoes_lance_real").update(marcas).in("id", idsSessao));
+        }
+        if (erroMarca) {
+          observacoes.push(`A marca de parada emergencial não foi gravada nas sessões: ${erroMarca.message}`);
+        }
       }
 
-      // 2. Notify all active agents
-      const { data: agentes } = await supabase
+      // Agentes: os das sessões alvo (onde elas vivem) e os ativos de quem aciona.
+      const idsAgente = [
+        ...new Set(sessoesAtivas.map((s: { agente_id?: string | null }) => s.agente_id).filter(Boolean)),
+      ] as string[];
+      const { data: agentesLidos } = await supabase
         .from("agente_externo_config")
-        .select("*")
-        .eq("user_id", user.id)
-        .eq("status", "ativo");
+        .select("id, nome, url_base, api_key_hash, status, user_id")
+        .or(idsAgente.length ? `user_id.eq.${user.id},id.in.(${idsAgente.join(",")})` : `user_id.eq.${user.id}`);
+      const agentes = (agentesLidos || []).filter(
+        (a: { id: string; status: string }) => a.status === "ativo" || idsAgente.includes(a.id)
+      );
 
-      const agentResults: { agente: string; ok: boolean }[] = [];
-      for (const agente of agentes || []) {
+      const agentResults: Array<{ id: string; agente: string; ok: boolean; http: number; detalhe: string | null }> = [];
+      for (const agente of agentes) {
         try {
           const resp = await fetch(`${agente.url_base}/kill-switch`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              "X-Agent-Key": agente.api_key_hash || "",
+              "X-Agent-Key": chaveParaOAgente(agente, chaveGerenciada),
             },
             body: JSON.stringify({ motivo }),
             signal: AbortSignal.timeout(5000),
           });
           agentResults.push({
+            id: agente.id,
             agente: agente.nome,
             ok: resp.ok,
             http: resp.status,
@@ -917,6 +1206,7 @@ serve(async (req) => {
           });
         } catch (e) {
           agentResults.push({
+            id: agente.id,
             agente: agente.nome,
             ok: false,
             http: 0,
@@ -925,25 +1215,77 @@ serve(async (req) => {
         }
       }
 
-      // 3. Audit log
+      // 3. O desfecho — "encerrado" só na sessão cujo agente confirmou.
+      //
+      // A rota /kill-switch do agente para tudo o que roda NELE. Sessão com
+      // `agente_id` depende da resposta daquele agente; sessão sem vínculo só
+      // conta como confirmada se TODOS os agentes avisados confirmaram — sem
+      // saber onde ela vive, "algum confirmou" não prova nada sobre ela.
+      const okPorAgente = new Map(agentResults.map((r) => [r.id, r.ok]));
+      const todosConfirmaram = agentResults.length > 0 && agentResults.every((r) => r.ok);
+      const idsConfirmados = sessoesAtivas
+        .filter((s: { agente_id?: string | null }) =>
+          s.agente_id ? okPorAgente.get(s.agente_id) === true : todosConfirmaram)
+        .map((s: { id: string }) => s.id);
+      const idsAguardando = idsSessao.filter((id: string) => !idsConfirmados.includes(id));
+
+      if (idsConfirmados.length) {
+        const campos: Record<string, unknown> = {
+          status: "encerrado",
+          erro: `Parada emergencial: ${motivoTexto}`,
+          parada_confirmada_em: new Date().toISOString(),
+        };
+        let { error: erroFinal } = await supabase.from("sessoes_lance_real").update(campos).in("id", idsConfirmados);
+        if (erroFinal && erroDeColunaAusente(erroFinal)) {
+          delete campos.parada_confirmada_em;
+          ({ error: erroFinal } = await supabase.from("sessoes_lance_real").update(campos).in("id", idsConfirmados));
+        }
+        if (erroFinal) {
+          observacoes.push(`O agente confirmou, mas as sessões não foram atualizadas no banco: ${erroFinal.message}`);
+        }
+      }
+      if (idsAguardando.length) {
+        // Sem `updated_at`: ele é o "último sinal" do robô, e um pedido nosso não é sinal dele.
+        const { error: erroNota } = await supabase
+          .from("sessoes_lance_real")
+          .update({
+            erro: `Parada emergencial solicitada sem confirmação do agente (${motivoTexto}). ` +
+                  "O robô pode continuar operando no portal.",
+          })
+          .in("id", idsAguardando);
+        if (erroNota) observacoes.push(`A nota de parada pendente não foi gravada: ${erroNota.message}`);
+      }
+
+      // 4. Trilha
       await supabase.from("webhook_log").insert({
         user_id: user.id,
         direcao: "saida",
         tipo: "kill-switch",
-        payload: { motivo, sessoes_encerradas: sessoesAtivas?.length || 0, agentResults },
+        payload: {
+          motivo: motivoTexto,
+          parada_solicitada_em: solicitadaEm,
+          sessoes_alvo: idsSessao,
+          sessoes_confirmadas: idsConfirmados,
+          agentResults,
+          observacoes,
+        },
       });
 
-      // Falha silenciosa é proibida — ainda mais num freio de emergência. As
-      // sessões SEMPRE são encerradas no sistema (paramos de mandar comandos),
-      // mas se nenhum agente confirmou, quem está no portal precisa saber.
       const confirmaram = agentResults.filter((r) => r.ok).length;
       return jsonResponse({
         success: true,
-        sessoes_encerradas: sessoesAtivas?.length || 0,
+        parada_solicitada_em: solicitadaEm,
+        sessoes_alvo: idsSessao.length,
+        sessoes_confirmadas: idsConfirmados.length,
+        sessoes_aguardando: idsAguardando.length,
+        // Contrato anterior — o bundle já publicado lê este campo. Agora conta
+        // só as sessões CONFIRMADAS, que é o que a palavra "encerradas" promete.
+        sessoes_encerradas: idsConfirmados.length,
         agentes_total: agentResults.length,
         agentes_confirmaram: confirmaram,
         agente_parou: agentResults.length > 0 && confirmaram === agentResults.length,
         agentes_notificados: agentResults,
+        observacoes,
       });
     }
 
@@ -1011,7 +1353,7 @@ serve(async (req) => {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              "X-Agent-Key": agente.api_key_hash || "",
+              "X-Agent-Key": chaveParaOAgente(agente, chaveGerenciada),
             },
             body: JSON.stringify({ sessao_id, valor: String(valor).trim() }),
             signal: AbortSignal.timeout(10000),
@@ -1154,7 +1496,7 @@ serve(async (req) => {
         try {
           const resp = await fetch(`${base}/kill-switch`, {
             method: "POST",
-            headers: { "Content-Type": "application/json", "X-Agent-Key": agente.api_key_hash || "" },
+            headers: { "Content-Type": "application/json", "X-Agent-Key": chaveParaOAgente(agente, chaveGerenciada) },
             body: JSON.stringify({ motivo: "Teste de verificação do freio de emergência (sem sessões ativas)", teste: true }),
             signal: AbortSignal.timeout(8000),
           });
@@ -1205,7 +1547,8 @@ serve(async (req) => {
       const [agenteResp, sessoesResp] = await Promise.all([
         supabase
           .from("agente_externo_config")
-          .select("*")
+          // Esta resposta vai ao navegador: nunca `*`, que levaria a chave.
+          .select(COLUNAS_PUBLICAS_DO_AGENTE)
           .eq("user_id", user.id),
         supabase
           .from("sessoes_lance_real")

@@ -909,7 +909,7 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
               </span>
             )}
             <Button size="sm" variant="ghost" className="ml-auto" asChild>
-              <Link to={`/processo/${processoId}?aba=anexos`}>
+              <Link to={`/processo/${processoId}?aba=documentos`}>
                 Ver pasta Proposta <ArrowRight className="w-4 h-4" />
               </Link>
             </Button>

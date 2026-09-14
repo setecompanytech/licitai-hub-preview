@@ -31,18 +31,18 @@ const ORIGEM_DA_PASTA: Record<string, { texto: string; aba: string; botao: strin
     botao: 'Ir para a aba Proposta',
   },
   recursos: {
-    texto: 'Recursos, impugnações e esclarecimentos são redigidos no Apoio Jurídico (aba Módulos) e arquivados aqui.',
-    aba: 'modulos',
-    botao: 'Ir para Módulos → Apoio Jurídico',
+    texto: 'Recursos, impugnações e esclarecimentos são redigidos no Apoio Jurídico ("Abrir nos módulos", na Visão geral) e arquivados aqui.',
+    aba: 'visao',
+    botao: 'Ir para a Visão geral → Apoio Jurídico',
   },
   declaracoes: {
-    texto: 'As declarações são geradas no Apoio Jurídico (aba Módulos) e arquivadas aqui.',
-    aba: 'modulos',
-    botao: 'Ir para Módulos → Apoio Jurídico',
+    texto: 'As declarações são geradas no Apoio Jurídico ("Abrir nos módulos", na Visão geral) e arquivadas aqui.',
+    aba: 'visao',
+    botao: 'Ir para a Visão geral → Apoio Jurídico',
   },
   habilitacao: {
-    texto: 'O checklist da aba Documentos monta esta pasta com os documentos do cofre.',
-    aba: 'documentos',
+    texto: 'O checklist da aba Habilitação monta esta pasta com os documentos do cofre.',
+    aba: 'habilitacao',
     botao: 'Ir para o checklist de habilitação',
   },
 };

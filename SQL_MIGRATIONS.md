@@ -13319,3 +13319,61 @@ empresa_id.is.null))` — o legado não some no dia da virada; upload novo em
 `empresa/<id>/`; e o aviso de escopo virou condicional, contando quantos ainda
 estão presos à conta. Ele desaparece sozinho quando a conversão termina.
 
+---
+
+## 20260914000002 — robô de lances integrado ao processo (fundação de dados)
+
+Três lacunas levantadas em 14/09 que a tela nova do robô não pode esconder:
+
+1. **A precificação não tinha versão.** "Salvar precificação" apagava e reinseria
+   as linhas; o piso do robô era digitado à parte. Agora há
+   `precificacao_versoes` + `precificacao_versao_itens`: rascunho edita, aprovada
+   é imutável (trigger), e só a função `aprovar_precificacao_versao` aprova —
+   exige **admin** da empresa, confere no servidor item autorizado com preço
+   inicial e limite válido, e troca a vigente anterior para `substituida` na
+   mesma transação. Aprovar **não** toca em disputa nenhuma.
+2. **Parar o robô gravava "encerrado" antes da confirmação.** A sessão ganha
+   `parada_solicitada_em` e `parada_confirmada_em`, que só o retorno do agente
+   preenche.
+3. **A equipe não via o robô do próprio processo.** `sessoes_lance_real` ganha
+   `empresa_id` (preenchido pelo processo) e `disputa_id`; policies de leitura
+   somam-se às antigas para sessões e `lances_historico`.
+
+Também: `is_empresa_operador` (admin ou operador — o `viewer` deixa de escrever
+precificação e de ver custo no banco, não só na tela) e
+`limites_operacionais_do_processo`, que entrega número, lote, preço inicial e
+limite da versão vigente **sem custo** a qualquer membro.
+
+Aditiva: nenhuma coluna removida, nenhum dado apagado. Plano de reversão no
+cabeçalho do arquivo. A tela nova funciona antes e depois desta migration —
+não pede as colunas novas pelo nome.
+
+---
+
+## 20260914000003 — segredos do robô fora do navegador
+
+RLS decide LINHAS; COLUNAS são decididas por privilégio. Dois segredos seguiam
+legíveis pela API REST para o próprio dono da linha, mesmo depois de as telas
+pararem de pedi-los:
+
+- `agente_externo_config.api_key_hash` — apesar do nome, a chave EM CLARO que o
+  servidor manda ao agente e que o `callback` exige de volta. Com ela, dava para
+  forjar eventos de sessão.
+- `credenciais_portais.senha_hash` — a senha do portal, cifrada.
+
+O `SELECT` de tabela sai de `anon`/`authenticated` e volta para `authenticated`
+coluna a coluna, todas menos o segredo (lista lida de `information_schema` na
+hora). `service_role` não muda. A view `credenciais_portais_safe` continua
+funcionando.
+
+⚠️ **Ordem obrigatória: só rode DEPOIS que o front novo estiver publicado.** O
+bundle antigo faz `select('*')` em `agente_externo_config` e passaria a receber
+"permission denied".
+
+⚠️ **Coluna criada depois** nessas duas tabelas nasce sem SELECT para
+`authenticated` — rode o arquivo de novo (idempotente) ou faça o GRANT dela.
+
+Esta migration não troca a chave que vazou no bundle — a rotação é no `.env` da
+VPS (`AGENT_API_KEY`) e no segredo `AGENTE_API_KEY` das edge functions, ao mesmo
+tempo, seguida da atualização das linhas do agente gerenciado.
+

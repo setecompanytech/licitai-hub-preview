@@ -2,7 +2,21 @@ import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { functions: { invoke: vi.fn() } } }));
 
-import { solicitarParada } from './comandos';
+import { causaDoErro, solicitarParada } from './comandos';
+
+describe('causaDoErro', () => {
+  it('lê o motivo no corpo da resposta, não o "non-2xx" genérico', async () => {
+    const contexto = new Response(JSON.stringify({ error: 'Você não pode parar esta sessão' }), { status: 403 });
+    expect(await causaDoErro({ message: 'Edge Function returned a non-2xx status code', context: contexto }))
+      .toBe('Você não pode parar esta sessão');
+  });
+
+  it('corpo que não é JSON mantém a mensagem que havia', async () => {
+    const contexto = new Response('<html>502</html>', { status: 502 });
+    expect(await causaDoErro({ message: 'Edge Function returned a non-2xx status code', context: contexto }))
+      .toBe('Edge Function returned a non-2xx status code');
+  });
+});
 
 /**
  * Parar tem dois tempos, e só o segundo é "parado". Estes casos prendem a

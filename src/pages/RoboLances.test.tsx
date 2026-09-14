@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 
 /**
  * Testes da reestruturação visual do Robô de Lances (13/09/2026).
@@ -18,6 +19,8 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
  *     `excedeLimite` daquele diálogo é sempre falsa, e a trava não travava.
  *  4. Conexão, prontidão e limites como blocos distintos, porque respondem a
  *     perguntas diferentes e o desenho antigo os lia como um semáforo só.
+ *  5. (14/09/2026) O painel de participações abre a aba Disputar, e os
+ *     controles que prometiam o que não faziam foram ligados ou renomeados.
  *
  * NADA aqui abre sessão nem envia lance: supabase, hooks e edge functions são
  * todos dublês. A regra de segurança do módulo é que validação de robô não se
@@ -132,6 +135,19 @@ vi.mock('@/components/robo-lances/usePedidosDoRobo', () => {
     focarSessaoDoRobo: vi.fn(),
   };
 });
+// O painel de participações tem testes próprios; aqui ele só precisa existir.
+vi.mock('@/hooks/useParticipacoesDoRobo', () => {
+  const valor = {
+    participacoes: [] as unknown[],
+    carregando: false,
+    erro: null,
+    semEmpresa: false,
+    lidoEm: null,
+    capacidade: { portaisComLanceLiberado: [] as string[], fonte: 'nao_verificada', verificadaEm: null },
+    recarregar: vi.fn(async () => {}),
+  };
+  return { useParticipacoesDoRobo: () => valor };
+});
 vi.mock('sonner', () => ({
   toast: Object.assign(vi.fn(), {
     success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn(),
@@ -190,6 +206,15 @@ vi.mock('@/components/robo-lances/AutorizacaoLanceDialog', () => ({
 
 import RoboLances from './RoboLances';
 
+/** O painel guarda aba e busca na URL — a página precisa de um roteador. */
+function renderizar() {
+  return render(
+    <MemoryRouter initialEntries={['/robo-lances']}>
+      <RoboLances />
+    </MemoryRouter>,
+  );
+}
+
 /**
  * O diálogo REAL, obtido com `importActual` porque o dublê acima o substitui
  * para o resto do arquivo. `useAuditLog` e `sonner` seguem dublados — só este
@@ -224,7 +249,7 @@ beforeEach(() => {
 
 describe('RoboLances — abas principais e papel', () => {
   it('mostra as quatro abas para o administrador, com os rótulos exatos', async () => {
-    render(<RoboLances />);
+    renderizar();
 
     expect(await screen.findByRole('tab', { name: /Disputar/ })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /Agente/ })).toBeInTheDocument();
@@ -235,7 +260,7 @@ describe('RoboLances — abas principais e papel', () => {
   it('esconde Agente, Portais e Configurações de quem não é administrador', async () => {
     papel.isAdmin = false;
     papel.papel = 'operador';
-    render(<RoboLances />);
+    renderizar();
 
     expect(await screen.findByRole('tab', { name: /Disputar/ })).toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: /Agente/ })).not.toBeInTheDocument();
@@ -248,7 +273,7 @@ describe('RoboLances — abas principais e papel', () => {
     papel.podeOperar = false;
     papel.isViewer = true;
     papel.papel = 'viewer';
-    render(<RoboLances />);
+    renderizar();
     await selecionarDisputa();
 
     expect(screen.queryByRole('button', { name: /Nova sessão/ })).not.toBeInTheDocument();
@@ -261,7 +286,7 @@ describe('RoboLances — abas principais e papel', () => {
 
 describe('RoboLances — as três colunas', () => {
   it('desenha sessões à esquerda, sessão selecionada no centro e controle à direita', async () => {
-    const { container } = render(<RoboLances />);
+    const { container } = renderizar();
     await selecionarDisputa();
 
     expect(container.querySelector('[data-coluna="sessoes"]')).toBeTruthy();
@@ -270,7 +295,7 @@ describe('RoboLances — as três colunas', () => {
   });
 
   it('mantém as três colunas mesmo sem disputa selecionada', async () => {
-    const { container } = render(<RoboLances />);
+    const { container } = renderizar();
     await screen.findByRole('button', { name: /PE 90001\/2026/ });
 
     expect(container.querySelector('[data-coluna="sessoes"]')).toBeTruthy();
@@ -279,7 +304,7 @@ describe('RoboLances — as três colunas', () => {
   });
 
   it('mantém as quatro subabas do painel de eventos', async () => {
-    render(<RoboLances />);
+    renderizar();
     await selecionarDisputa();
 
     expect(screen.getByRole('tab', { name: /Mural/ })).toBeInTheDocument();
@@ -291,7 +316,7 @@ describe('RoboLances — as três colunas', () => {
 
 describe('RoboLances — os seis eixos como blocos distintos', () => {
   it('separa conexão, autenticação, prontidão, limites, estado da sessão e eventos', async () => {
-    render(<RoboLances />);
+    renderizar();
     await selecionarDisputa();
 
     // Os três do checklist — cada um com a pergunta que responde.
@@ -309,7 +334,7 @@ describe('RoboLances — os seis eixos como blocos distintos', () => {
   });
 
   it('não deixa o eixo de conexão sugerir que a automação foi validada', async () => {
-    render(<RoboLances />);
+    renderizar();
     await selecionarDisputa();
 
     expect(
@@ -320,7 +345,7 @@ describe('RoboLances — os seis eixos como blocos distintos', () => {
 
 describe('RoboLances — limite financeiro (o defeito da trava que não travava)', () => {
   it('lê o limite do aceite vigente e o entrega ao diálogo de autorização', async () => {
-    render(<RoboLances />);
+    renderizar();
     await selecionarDisputa();
 
     await waitFor(() => {
@@ -329,7 +354,7 @@ describe('RoboLances — limite financeiro (o defeito da trava que não travava)
   });
 
   it('mostra o limite na coluna da direita em vez de um número inventado', async () => {
-    render(<RoboLances />);
+    renderizar();
     await selecionarDisputa();
 
     expect(await screen.findByText('Limite financeiro autorizado')).toBeInTheDocument();
@@ -338,13 +363,55 @@ describe('RoboLances — limite financeiro (o defeito da trava que não travava)
 
   it('sem aceite vigente não afirma "R$ 0,00" — declara a ausência e a razão', async () => {
     respostas.robo_aceite_termos = { data: [], error: null };
-    render(<RoboLances />);
+    renderizar();
     await selecionarDisputa();
 
     await waitFor(() => {
       expect(screen.getByTestId('autorizacao-dialog')).toHaveAttribute('data-limite', '0');
     });
     expect(screen.getByText(/Nenhum aceite vigente/i)).toBeInTheDocument();
+  });
+});
+
+describe('RoboLances — painel de participações e controles honestos', () => {
+  it('abre a aba Disputar com o painel de participações acima das ferramentas', async () => {
+    const { container } = renderizar();
+
+    expect(await screen.findByRole('heading', { name: 'Participações do robô' })).toBeInTheDocument();
+    const painel = container.querySelector('[data-painel="participacoes"]');
+    const colunas = container.querySelector('[data-coluna="sessoes"]');
+    expect(painel).toBeTruthy();
+    expect(colunas).toBeTruthy();
+    expect(painel!.compareDocumentPosition(colunas!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('a busca de itens filtra a tabela, e não há mais "Enviar lance" por item', async () => {
+    const item = (numero: number, descricao: string) => ({
+      numero, lote: null, descricao, quantidade: 10, unidade: 'UN',
+      valorReferencia: 5, valorMinimo: 4, situacao: 'aguardando', disputando: false,
+    });
+    respostas.robo_lances_disputas = {
+      data: [{ ...DISPUTA, itens: [item(1, 'Caneta esferográfica azul'), item(2, 'Papel A4')] }],
+      error: null,
+    };
+    renderizar();
+    await selecionarDisputa();
+
+    expect(screen.getByText('Caneta esferográfica azul')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(/Buscar item/), { target: { value: 'papel' } });
+    expect(screen.queryByText('Caneta esferográfica azul')).not.toBeInTheDocument();
+    expect(screen.getByText('Papel A4')).toBeInTheDocument();
+    expect(screen.queryByText('Enviar lance')).not.toBeInTheDocument();
+  });
+
+  it('o menu diz que marcar a fase não inicia nem para o robô', async () => {
+    renderizar();
+    await selecionarDisputa();
+
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Ações' }), { key: 'Enter' });
+    expect(await screen.findByText('Marcar como em disputa (manual)')).toBeInTheDocument();
+    expect(screen.getByText(/Não inicia nem para o robô/)).toBeInTheDocument();
+    expect(screen.queryByText(/Iniciar disputa/)).not.toBeInTheDocument();
   });
 });
 

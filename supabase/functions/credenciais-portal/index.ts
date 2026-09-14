@@ -10,7 +10,19 @@ const corsHeaders = {
 // A cifra mora em _shared: o robo-lances-webhook tambem precisa decifrar a senha
 // para entregar ao agente, e duas copias de codigo de cripto divergem em
 // silencio — basta alguem mudar o salt ou as iteracoes de um lado.
-import { encrypt, decrypt, deriveKey } from "../_shared/credenciais-cifra.ts";
+//
+// Esta função só CIFRA. Decifrar mora exclusivamente em `credencialEmClaro`,
+// chamada por dentro do servidor no envio da sessão — nunca devolvida ao
+// navegador (ver a ação `decrypt`, desativada, mais abaixo).
+import { encrypt, deriveKey } from "../_shared/credenciais-cifra.ts";
+
+/**
+ * O que a lista devolve. Tudo da credencial MENOS o texto cifrado da senha —
+ * a tela só precisa saber SE há senha, para desenhar "••••••••".
+ */
+const COLUNAS_DA_LISTA =
+  "id, user_id, portal_id, portal_nome, login, certificado_path, certificado_tipo, " +
+  "certificado_nome, validade_certificado, status, created_at, updated_at";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -46,21 +58,29 @@ Deno.serve(async (req) => {
     // Admin client for DB operations
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
-    // A chave é derivada só onde a cifra é usada (save e decrypt). Assim, segredo
-    // ausente não derruba listar nem apagar — que é justamente como se sai do buraco.
+    // A chave é derivada só onde a cifra é usada (save). Assim, segredo ausente
+    // não derruba listar nem apagar — que é justamente como se sai do buraco.
 
     const url = new URL(req.url);
     const action = url.searchParams.get("action");
 
-    // GET: List credentials (decrypt passwords for display masking is done client-side)
+    // GET: lista as credenciais — SEM o texto cifrado da senha.
+    //
+    // O `select("*")` anterior mandava `senha_hash` ao navegador em toda
+    // abertura da aba Portais. `senha_hash` entra na consulta só para virar o
+    // booleano `tem_senha`, e sai do objeto antes da resposta.
     if (req.method === "GET" && action === "list") {
       const { data, error } = await adminClient
         .from("credenciais_portais")
-        .select("*")
+        .select(`${COLUNAS_DA_LISTA}, senha_hash`)
         .eq("user_id", user.id)
         .order("portal_nome");
       if (error) throw error;
-      return new Response(JSON.stringify(data), {
+      const lista = (data || []).map(({ senha_hash, ...resto }) => ({
+        ...resto,
+        tem_senha: !!senha_hash,
+      }));
+      return new Response(JSON.stringify(lista), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -102,46 +122,24 @@ Deno.serve(async (req) => {
       );
     }
 
-    // POST: Decrypt password (for agent use only)
-    if (req.method === "POST" && action === "decrypt") {
-      const body = await req.json();
-      const { credential_id } = body;
-
-      if (!credential_id) {
-        return new Response(
-          JSON.stringify({ error: "credential_id é obrigatório" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      const { data, error } = await adminClient
-        .from("credenciais_portais")
-        .select("senha_hash, login, portal_id")
-        .eq("id", credential_id)
-        .eq("user_id", user.id)
-        .single();
-
-      if (error || !data) {
-        return new Response(
-          JSON.stringify({ error: "Credencial não encontrada" }),
-          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      // Sem rede de segurança que "adivinha" o formato: a antiga caía para
-      // atob(senha_hash), devolvendo texto qualquer como se fosse a senha. Falhar
-      // aqui é o comportamento certo — o chamador precisa saber que não decifrou.
-      const decryptedPassword = data.senha_hash
-        ? await decrypt(data.senha_hash, await deriveKey())
-        : null;
-
+    // DECIFRAR PARA O NAVEGADOR: RETIRADO em 14/09/2026.
+    //
+    // Esta ação devolvia a senha do portal EM CLARO a qualquer sessão logada do
+    // dono — um token de navegador roubado virava a senha do Compras.gov da
+    // empresa. E nenhuma tela a chamava (conferido por busca em `src/`): quem
+    // precisa da senha é o agente, e ela chega a ele por dentro do servidor,
+    // via `credencialEmClaro` no `robo-lances-webhook/enviar-sessao`.
+    //
+    // 410 e não 404: o endereço existiu e saiu de propósito. Quem ainda o
+    // chamar precisa ler o motivo, não procurar um erro de digitação.
+    if (action === "decrypt") {
       return new Response(
         JSON.stringify({
-          login: data.login,
-          portal_id: data.portal_id,
-          senha: decryptedPassword,
+          error:
+            "A leitura da senha em claro foi desativada. A senha do portal só é " +
+            "decifrada dentro do servidor, no envio da sessão ao robô.",
         }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 410, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 

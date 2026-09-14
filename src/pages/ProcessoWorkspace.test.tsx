@@ -1,20 +1,25 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation, useNavigationType } from 'react-router-dom';
 import type { ReactNode } from 'react';
 
 /**
- * O dossiê do processo — o que a reestruturação de 13/09 não pode perder.
+ * O dossiê do processo — o que as reestruturações de 13/09 e 14/09 não podem
+ * perder.
  *
  * Estes casos existem porque a verificação visual não chega aqui: a tela pede
  * sessão, empresa ativa e um processo de verdade no banco, e na captura
  * automatizada ela para antes de montar. O que travamos:
  *
- *  - as SETE abas do comando, com os rótulos exatos;
- *  - trocar de aba ESCREVE na URL. Este é o defeito que a reestruturação veio
- *    corrigir: a URL era lida (`?aba=`) e nunca escrita, então clicar numa aba
- *    não mudava o endereço, o voltar do navegador não devolvia a aba e o F5
- *    jogava todo mundo de volta na Visão Geral;
+ *  - as SETE abas, com os rótulos exatos e na ordem de 14/09: Visão geral,
+ *    Documentos, Habilitação, Precificação, Proposta, Robô de Lances, Histórico;
+ *  - os endereços antigos (`?aba=anexos`, `?aba=modulos`) continuam levando ao
+ *    conteúdo que procuravam, corrigidos com `replace` — sem entrada nova no
+ *    histórico;
+ *  - trocar de aba ESCREVE na URL. Este é o defeito que a reestruturação de
+ *    13/09 veio corrigir: a URL era lida (`?aba=`) e nunca escrita, então
+ *    clicar numa aba não mudava o endereço, o voltar do navegador não devolvia
+ *    a aba e o F5 jogava todo mundo de volta na Visão geral;
  *  - o objeto extenso NÃO fica no cabeçalho — ele desce para o Resumo;
  *  - "não conseguimos carregar" e "não existe" são telas diferentes. Antes o
  *    `error` da consulta era descartado e a queda do banco mandava a pessoa
@@ -91,6 +96,14 @@ vi.mock('@/components/workspace/AnexosManager', () => ({ default: () => <div dat
 vi.mock('@/components/workspace/DocumentosManager', () => ({ default: () => <div data-testid="documentos" /> }));
 vi.mock('@/components/workspace/EditalOriginalCard', () => ({ default: () => <div data-testid="edital-original" /> }));
 vi.mock('@/components/workspace/EditalViewer', () => ({ default: () => <div data-testid="edital-viewer" /> }));
+vi.mock('@/components/workspace/precificacao/AprovacaoDePrecificacao', () => ({
+  default: () => <div data-testid="aprovacao-precificacao" />,
+}));
+vi.mock('@/components/workspace/robo/AbaRoboDoProcesso', () => ({
+  default: ({ licitacaoId, empresaId }: { licitacaoId: string; empresaId: string | null }) => (
+    <div data-testid="robo" data-licitacao={licitacaoId} data-empresa={empresaId ?? ''} />
+  ),
+}));
 vi.mock('@/pages/PropostaTecnica', () => ({ default: () => <div data-testid="proposta" /> }));
 vi.mock('@/components/precificacao/AureliaPrecificacaoChat', () => ({ default: () => <div data-testid="aurelia" /> }));
 vi.mock('@/components/workspace/exportarPasta', () => ({ exportarPastaZip: vi.fn() }));
@@ -126,20 +139,24 @@ const PROCESSO = {
   data_homologacao: null, vencedor: null,
   numero_controle_pncp: null, cnpj_orgao: null,
   ano_compra: null, sequencial_compra: null,
+  empresa_id: 'emp-1',
+  operador_id: 'user-9',
 };
 
 const ROTULOS_DAS_ABAS = [
-  'Visão Geral', 'Documentos', 'Anexos',
-  'Precificação', 'Proposta', 'Módulos', 'Histórico',
+  'Visão geral', 'Documentos', 'Habilitação',
+  'Precificação', 'Proposta', 'Robô de Lances', 'Histórico',
 ];
 
 // ── Montagem ──────────────────────────────────────────────────────────────
 
 let buscaAtual = '';
+let tipoDeNavegacao = '';
 
 function EspiaDaUrl() {
   const { search } = useLocation();
   buscaAtual = search;
+  tipoDeNavegacao = useNavigationType();
   return null;
 }
 
@@ -150,6 +167,7 @@ const clicarNaAba = (rotulo: RegExp) =>
 
 const montar = (entrada = '/processo/lic-1') => {
   buscaAtual = '';
+  tipoDeNavegacao = '';
   return render(
     <MemoryRouter initialEntries={[entrada]}>
       <EspiaDaUrl />
@@ -163,35 +181,41 @@ const montar = (entrada = '/processo/lic-1') => {
 beforeEach(() => {
   for (const chave of Object.keys(respostas)) delete respostas[chave];
   respostas.licitacoes = { data: PROCESSO, error: null };
+  respostas.profiles = { data: { user_id: 'user-9', nome_completo: 'Ana Souza', username: 'ana' }, error: null };
 });
 
 // ── Casos ─────────────────────────────────────────────────────────────────
 
 describe('ProcessoWorkspace — o dossiê do processo', () => {
-  it('tem as sete abas do comando, com os rótulos exatos', async () => {
+  it('tem as sete abas, com os rótulos exatos e na ordem', async () => {
     montar();
-    await screen.findByRole('tab', { name: /Visão Geral/ });
-    for (const rotulo of ROTULOS_DAS_ABAS) {
-      expect(screen.getByRole('tab', { name: new RegExp(rotulo) })).toBeTruthy();
-    }
-    expect(screen.getAllByRole('tab')).toHaveLength(7);
+    await screen.findByRole('tab', { name: /Visão geral/ });
+    const abas = screen.getAllByRole('tab').map((t) => t.textContent ?? '');
+    expect(abas).toHaveLength(7);
+    // `startsWith` porque Documentos carrega a contagem ao lado do rótulo.
+    ROTULOS_DAS_ABAS.forEach((rotulo, i) => expect(abas[i].startsWith(rotulo)).toBe(true));
+    expect(screen.queryByRole('tab', { name: /Anexos/ })).toBeNull();
+    expect(screen.queryByRole('tab', { name: /Módulos/ })).toBeNull();
   });
 
   it('leva a aba para a URL ao clicar — o defeito que a reestruturação corrige', async () => {
     montar();
-    await screen.findByRole('tab', { name: /Visão Geral/ });
-    // A Visão Geral é o padrão e por isso é OMITIDA da URL: `?aba=visao` e a
+    await screen.findByRole('tab', { name: /Visão geral/ });
+    // A Visão geral é o padrão e por isso é OMITIDA da URL: `?aba=visao` e a
     // URL limpa significam a mesma coisa, e duas escritas sujariam o histórico.
     expect(buscaAtual).toBe('');
 
     clicarNaAba(/Documentos/);
     await waitFor(() => expect(buscaAtual).toContain('aba=documentos'));
 
+    clicarNaAba(/Robô de Lances/);
+    await waitFor(() => expect(buscaAtual).toContain('aba=robo'));
+
     clicarNaAba(/Histórico/);
     await waitFor(() => expect(buscaAtual).toContain('aba=historico'));
 
     // E o caminho de volta: ao padrão, o parâmetro sai da URL.
-    clicarNaAba(/Visão Geral/);
+    clicarNaAba(/Visão geral/);
     await waitFor(() => expect(buscaAtual).not.toContain('aba='));
   });
 
@@ -201,35 +225,62 @@ describe('ProcessoWorkspace — o dossiê do processo', () => {
     expect(screen.queryByTestId('habilitacao')).toBeNull();
   });
 
+  it('?aba=anexos (links antigos) abre Documentos e corrige a URL sem entrada no histórico', async () => {
+    montar('/processo/lic-1?aba=anexos');
+    // O conteúdo de Anexos aparece já na primeira pintura, dentro de Documentos.
+    expect(await screen.findByTestId('anexos')).toBeTruthy();
+    expect(screen.getByTestId('documentos')).toBeTruthy();
+    await waitFor(() => expect(buscaAtual).toContain('aba=documentos'));
+    expect(tipoDeNavegacao).toBe('REPLACE');
+    expect(screen.getByRole('tab', { name: /Documentos/ }).getAttribute('aria-selected')).toBe('true');
+  });
+
+  it('?aba=modulos (links antigos) abre a Visão geral, onde os atalhos passaram a morar', async () => {
+    montar('/processo/lic-1?aba=modulos');
+    expect(await screen.findByText('Abrir nos módulos')).toBeTruthy();
+    await waitFor(() => expect(buscaAtual).not.toContain('aba='));
+    expect(tipoDeNavegacao).toBe('REPLACE');
+    expect(screen.getByRole('tab', { name: /Visão geral/ }).getAttribute('aria-selected')).toBe('true');
+  });
+
   it('cada uma das sete abas entrega o conteúdo que promete', async () => {
     montar();
-    await screen.findByRole('tab', { name: /Visão Geral/ });
+    await screen.findByRole('tab', { name: /Visão geral/ });
 
-    // Visão Geral: desfecho, ficha e a linha da preparação automática.
-    expect(screen.getByTestId('edital-original')).toBeTruthy();
+    // Visão geral: desfecho, ficha e os atalhos da antiga aba Módulos.
+    expect(screen.getByTestId('desfecho')).toBeTruthy();
+    expect(screen.getByText('Abrir nos módulos')).toBeTruthy();
+    // Os oito atalhos, todos levando o processo junto em `?lid=`.
+    const atalhos = screen.getAllByRole('link').filter((a) =>
+      (a.getAttribute('href') ?? '').includes('lid=lic-1'));
+    expect(atalhos).toHaveLength(8);
 
     clicarNaAba(/Documentos/);
-    // O checklist de habilitação abre a aba, o gerenciador vem abaixo.
-    expect(await screen.findByTestId('habilitacao')).toBeTruthy();
+    // Edital original, documentos editáveis e o antigo conteúdo de Anexos.
+    expect(await screen.findByTestId('edital-original')).toBeTruthy();
     expect(screen.getByTestId('documentos')).toBeTruthy();
+    expect(screen.getByTestId('anexos')).toBeTruthy();
+    // O checklist saiu daqui: tem aba própria.
+    expect(screen.queryByTestId('habilitacao')).toBeNull();
 
-    clicarNaAba(/Anexos/);
-    expect(await screen.findByTestId('anexos')).toBeTruthy();
+    clicarNaAba(/Habilitação/);
+    expect(await screen.findByTestId('habilitacao')).toBeTruthy();
 
     clicarNaAba(/Precificação/);
-    expect(await screen.findByTestId('itens-precificacao')).toBeTruthy();
-    // As duas subabas continuam de pé.
+    const aprovacao = await screen.findByTestId('aprovacao-precificacao');
+    const itens = screen.getByTestId('itens-precificacao');
+    // A aprovação abre a aba; as sub-abas de trabalho vêm abaixo.
+    expect(aprovacao.compareDocumentPosition(itens) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getByRole('tab', { name: /Nova Precificação/ })).toBeTruthy();
 
     clicarNaAba(/^Proposta$/);
     expect(await screen.findByTestId('proposta')).toBeTruthy();
 
-    clicarNaAba(/Módulos/);
-    expect(await screen.findByText('Abrir em módulos completos')).toBeTruthy();
-    // Os oito atalhos, todos levando o processo junto em `?lid=`.
-    const atalhos = screen.getAllByRole('link').filter((a) =>
-      (a.getAttribute('href') ?? '').includes('lid=lic-1'));
-    expect(atalhos).toHaveLength(8);
+    clicarNaAba(/Robô de Lances/);
+    const robo = await screen.findByTestId('robo');
+    // Só este processo, desta empresa.
+    expect(robo.getAttribute('data-licitacao')).toBe('lic-1');
+    expect(robo.getAttribute('data-empresa')).toBe('emp-1');
 
     clicarNaAba(/Histórico/);
     expect(await screen.findByTestId('historico')).toBeTruthy();
@@ -237,17 +288,21 @@ describe('ProcessoWorkspace — o dossiê do processo', () => {
 
   it('não repete o objeto extenso no cabeçalho — ele desce para o Resumo', async () => {
     const { container } = montar();
-    await screen.findByRole('tab', { name: /Visão Geral/ });
+    await screen.findByRole('tab', { name: /Visão geral/ });
 
     const cabecalho = container.querySelector('header');
     expect(cabecalho).toBeTruthy();
     // Um pedaço distintivo do objeto basta: se ele estiver no cabeçalho, a
     // primeira tela perde as abas para sete linhas de texto de edital.
     expect(cabecalho!.textContent).not.toContain('limpeza, asseio e conservação');
-    // O cabeçalho é compacto: identificador, situação e origem.
+    // O cabeçalho é compacto: identificador, situação, órgão, modalidade,
+    // responsável e origem.
     expect(screen.getByRole('heading', { level: 1 }).textContent).toContain('90014/2025');
     expect(cabecalho!.textContent).toContain('Em análise');
+    expect(cabecalho!.textContent).toContain('Prefeitura Municipal de Exemplo');
+    expect(cabecalho!.textContent).toContain('Pregão Eletrônico');
     expect(cabecalho!.textContent).toContain('PNCP');
+    await waitFor(() => expect(cabecalho!.textContent).toContain('Ana Souza'));
 
     // E o objeto continua legível — no Resumo, com expansão de verdade.
     expect(screen.getByText('Resumo')).toBeTruthy();
@@ -278,7 +333,7 @@ describe('ProcessoWorkspace — o dossiê do processo', () => {
 
   it('põe o identificador do processo na trilha da faixa superior', async () => {
     montar();
-    await screen.findByRole('tab', { name: /Visão Geral/ });
+    await screen.findByRole('tab', { name: /Visão geral/ });
     const trilha = screen.getByTestId('trilha').textContent ?? '';
     expect(trilha).toContain('Gestão de licitações');
     expect(trilha).toContain('90014/2025');

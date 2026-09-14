@@ -33,7 +33,14 @@ const PLAN_SESSION_LIMITS: Record<string, { sessions: number; label: string }> =
 };
 
 const MANAGED_AGENT_URL = 'https://agente.praefectus.com.br';
-const MANAGED_AGENT_KEY = 'praefectus_agente_2026_secreto';
+// A chave do agente gerenciado NÃO mora mais aqui. Até 14/09/2026 ela era uma
+// constante deste arquivo — ou seja, ia no JavaScript público servido a
+// qualquer visitante, e é a mesma chave que o servidor confere nos callbacks
+// do agente. Agora ela é o segredo `AGENTE_API_KEY` da edge function
+// `robo-lances-webhook`, e o navegador nunca a vê: nem manda, nem recebe.
+//
+// A chave antiga ficou no histórico do git e deve ser tratada como vazada:
+// trocá-la exige o `.env` da VPS e o segredo da função, fora do app.
 
 type BadgeVariant = 'success' | 'warning' | 'danger' | 'info' | 'muted';
 
@@ -54,9 +61,14 @@ export default function AgenteExternoConfig() {
     if (!user) return;
     supabase
       .from('agente_externo_config')
-      .select('*')
+      // Colunas explícitas, sem `api_key_hash`: a migration 20260914000003 tira
+      // o SELECT dessa coluna do navegador, e `*` passaria a falhar.
+      .select('id, nome, url_base, status, ultimo_heartbeat, versao_agente, capacidades, max_sessoes_paralelas, sessoes_ativas, ram_mb')
       .eq('user_id', user.id)
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        // Falha de leitura não pode parecer "nenhum agente": a tela ofereceria
+        // ativar de novo algo que já existe.
+        if (error) toast.error(`Não foi possível ler a configuração do agente: ${error.message}`);
         setAgentes((data || []) as unknown as AgenteConfig[]);
         setLoading(false);
       });
@@ -75,12 +87,24 @@ export default function AgenteExternoConfig() {
         body: {
           url_base: MANAGED_AGENT_URL,
           nome: `Agente Cloud — ${planConfig.label}`,
-          api_key: MANAGED_AGENT_KEY,
+          // Sem `api_key`: para o agente gerenciado, o servidor usa o próprio
+          // segredo e ignora qualquer chave vinda daqui.
           max_sessoes_paralelas: planConfig.sessions,
         },
       });
 
-      if (resp.error) throw resp.error;
+      if (resp.error) {
+        // A causa vem no corpo (`context`) — inclusive o 503 de "chave do
+        // serviço não configurada", que precisa chegar à pessoa como está.
+        let detalhe = resp.error.message;
+        try {
+          const corpo = await (resp.error as { context?: Response }).context?.json();
+          if (corpo?.error) detalhe = corpo.error;
+        } catch {
+          /* fica a mensagem original */
+        }
+        throw new Error(detalhe);
+      }
       const result = resp.data as { success: boolean; agente: AgenteConfig; error?: string };
       if (!result.success) throw new Error(result.error || 'Erro ao provisionar');
 
@@ -95,8 +119,8 @@ export default function AgenteExternoConfig() {
       if (empresaAtiva?.id) {
         await handleGerarLinkCertificado();
       }
-    } catch (e: any) {
-      toast.error(e.message || 'Erro ao provisionar agente');
+    } catch (e) {
+      toast.error((e as Error).message || 'Erro ao provisionar agente');
     } finally {
       setProvisioning(false);
     }
@@ -117,8 +141,8 @@ export default function AgenteExternoConfig() {
         setCertUploadUrl(data.upload_url);
         toast.success('Link de upload gerado! Você receberá por e-mail e WhatsApp.');
       }
-    } catch (err: any) {
-      toast.error(err.message || 'Erro ao gerar link de upload');
+    } catch (err) {
+      toast.error((err as Error).message || 'Erro ao gerar link de upload');
     } finally {
       setCertLinkLoading(false);
     }

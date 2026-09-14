@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import EstadoVazio from '@/components/shared/EstadoVazio';
+import { pararSessaoDoRobo, type MensagemDaParada } from './usePedidosDoRobo';
 import { toast } from 'sonner';
 import {
   Activity, CheckCircle2, XCircle, Loader2, RefreshCw, Clock, AlertTriangle, Square,
@@ -91,6 +92,9 @@ export default function SessoesDoRobo() {
   const [expandida, setExpandida] = useState<string | null>(null);
 
   const [parando, setParando] = useState<string | null>(null);
+  // O desfecho do último pedido de parada, por sessão. Fica na linha — não só
+  // num toast que some — porque "aguardando confirmação" é um estado que dura.
+  const [paradas, setParadas] = useState<Record<string, MensagemDaParada>>({});
 
   const { data, isLoading, refetch, isFetching } = useQuery({
     queryKey: ['sessoes-do-robo', user?.id],
@@ -161,33 +165,31 @@ export default function SessoesDoRobo() {
    *
    * Diferente do kill switch, que mata tudo. Em 09/09/2026 uma sessão travada
    * teve que ser encerrada por `curl` na VPS porque nenhuma tela oferecia isso.
+   *
+   * Até 14/09/2026 este botão mandava a ação no corpo, recebia 404 e mostrava
+   * "já não estava mais rodando" — o pedido nunca chegava ao agente. Agora
+   * passa por `solicitarParada` e diz exatamente um de três desfechos:
+   * confirmada (com a hora), solicitada (aguardando o serviço) ou falhou
+   * (com o motivo e o botão para tentar de novo). "Solicitada" nunca é
+   * anunciada como parada.
    */
   const pararSessao = async (id: string, edital: string) => {
     setParando(id);
     try {
-      const { data: r, error } = await supabase.functions.invoke('robo-lances-webhook', {
-        body: { action: 'parar-sessao', sessao_id: id },
-      });
-      if (error) {
-        let detalhe = error.message;
-        try {
-          const corpo = await (error as { context?: Response }).context?.json();
-          if (corpo?.error) detalhe = corpo.error;
-        } catch { /* fica a mensagem original */ }
-        toast.error(detalhe, { duration: 10000 });
-        return;
+      const { resultado, mensagem } = await pararSessaoDoRobo(id);
+      setParadas((antes) => ({ ...antes, [id]: mensagem }));
+      if (resultado.estado === 'confirmada') {
+        toast.success(`${edital}: ${mensagem.texto}.`, { duration: 8000 });
+      } else if (resultado.estado === 'solicitada') {
+        toast.warning(`${edital}: ${mensagem.texto}.`, { duration: 15000 });
+      } else {
+        toast.error(`${edital}: ${mensagem.texto}`, { duration: 15000 });
       }
-      // `parou: false` não é erro: o agente pode já ter encerrado sozinho. A
-      // linha do banco foi atualizada de qualquer forma.
-      toast.success(
-        (r as { parou?: boolean })?.parou
-          ? `Robô interrompido em ${edital}.`
-          : `A sessão de ${edital} já não estava mais rodando.`,
-        { duration: 8000 },
-      );
       refetch();
     } catch (err) {
-      toast.error((err as Error).message, { duration: 10000 });
+      const texto = `Não foi possível pedir a parada: ${(err as Error).message}`;
+      setParadas((antes) => ({ ...antes, [id]: { estado: 'falhou', texto } }));
+      toast.error(texto, { duration: 15000 });
     } finally {
       setParando(null);
     }
@@ -241,6 +243,7 @@ export default function SessoesDoRobo() {
             };
             const aberta = expandida === s.id;
             const viva = s.status === 'ativo' || s.status === 'enviando';
+            const parada = paradas[s.id];
 
             return (
               <div key={s.id} className="px-6 py-3">
@@ -290,22 +293,49 @@ export default function SessoesDoRobo() {
 
                 {/* O freio fica NA LINHA da sessão que ele para — e só existe
                     enquanto ela está viva. Botão de parar em sessão encerrada
-                    seria ruído, e pior: sugeriria que ainda há o que parar. */}
-                {viva && (
-                  <div className="pl-7 pt-2">
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      disabled={parando === s.id}
-                      onClick={() => pararSessao(s.id, s.edital)}
-                    >
-                      {parando === s.id ? (
-                        <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-                      ) : (
-                        <Square className="w-4 h-4" aria-hidden="true" />
-                      )}
-                      Parar robô nesta disputa
-                    </Button>
+                    seria ruído, e pior: sugeriria que ainda há o que parar.
+                    O desfecho do pedido fica visível mesmo depois que a sessão
+                    encerra — é a resposta a "parou mesmo?". */}
+                {(viva || parada) && (
+                  <div className="pl-7 pt-2 space-y-1">
+                    {viva && (
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          disabled={parando === s.id}
+                          onClick={() => pararSessao(s.id, s.edital)}
+                        >
+                          {parando === s.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                          ) : (
+                            <Square className="w-4 h-4" aria-hidden="true" />
+                          )}
+                          {parada?.estado === 'falhou'
+                            ? 'Tentar novamente'
+                            : parada?.estado === 'solicitada'
+                            ? 'Pedir a parada de novo'
+                            : 'Parar robô nesta disputa'}
+                        </Button>
+                        <span className="text-xs text-muted-foreground">
+                          Parar não cancela lances já aceitos pelo portal.
+                        </span>
+                      </div>
+                    )}
+                    {parada && (
+                      <p
+                        role={parada.estado === 'falhou' ? 'alert' : 'status'}
+                        className={`text-sm ${
+                          parada.estado === 'confirmada'
+                            ? 'text-success-ink'
+                            : parada.estado === 'solicitada'
+                            ? 'text-warning-ink'
+                            : 'text-destructive'
+                        }`}
+                      >
+                        {parada.texto}
+                      </p>
+                    )}
                   </div>
                 )}
 
