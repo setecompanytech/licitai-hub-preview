@@ -41,7 +41,11 @@ const NOMES = {
   meEpp: 'Declaração ME/EPP (se aplicável)',
 };
 
-const dados = vi.hoisted(() => ({ linhas: [] as Record<string, unknown>[] }));
+const dados = vi.hoisted(() => ({
+  linhas: [] as Record<string, unknown>[],
+  /** Quando preenchido, a consulta falha — como o banco falhando de verdade. */
+  erro: null as { message: string } | null,
+}));
 
 function linha(nome: string, validade: string | null) {
   return {
@@ -66,7 +70,7 @@ vi.mock('@/integrations/supabase/client', () => {
     ['select', 'or', 'eq', 'order', 'limit', 'abortSignal', 'insert', 'update', 'delete']
       .forEach((m) => { elo[m] = () => elo; });
     elo.then = (ok: (v: unknown) => unknown) =>
-      Promise.resolve({ data: dados.linhas, error: null }).then(ok);
+      Promise.resolve({ data: dados.erro ? null : dados.linhas, error: dados.erro }).then(ok);
     return elo;
   };
   const canal: Record<string, unknown> = {};
@@ -193,6 +197,9 @@ const oPainel = (nome: string) =>
 
 describe('Controle de Documentos — abas, indicadores e tabela', () => {
   beforeEach(() => {
+    // O erro é opt-in por teste: sem isto, plantá-lo num caso contaminaria os
+    // seguintes, e a suíte passaria a medir a ordem em que foi escrita.
+    dados.erro = null;
     janelaLarga();
     sessao.autorizacao.isCompanyAdmin = true;
     dados.linhas = [
@@ -402,5 +409,24 @@ describe('Controle de Documentos — modo "Todas as empresas"', () => {
     } finally {
       Object.assign(sessao.empresa, anterior);
     }
+  });
+});
+
+describe('falha de carga não vira afirmação sobre o cofre', () => {
+  it('com erro, os indicadores dizem que não apuraram — não "18 ausentes"', async () => {
+    /* Defeito visto na CAPTURA, não no código: as 18 vagas são constantes e
+       continuam na tela quando a consulta falha, mas quais delas têm arquivo
+       veio do banco — e não veio. "Ausentes: 18" ali afirma sobre dado que não
+       foi lido. Afirmar ausência é tão falso quanto inventar presença, e o
+       comando proíbe substituir erro por dado. */
+    dados.erro = { message: 'No suitable key or wrong key type' };
+    montar();
+
+    await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
+    // A mensagem real do banco aparece, com caminho de volta.
+    expect(screen.getByText(/No suitable key/)).toBeTruthy();
+    // E os números não afirmam nada.
+    expect(screen.queryByText('18 vagas sem arquivo')).toBeNull();
+    expect(screen.getAllByText(/não foi possível ler o cofre/i).length).toBeGreaterThan(0);
   });
 });

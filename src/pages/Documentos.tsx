@@ -163,9 +163,22 @@ export default function Documentos() {
    * Então a tela não adivinha: declara que não apurou e oferece a escolha.
    */
   const modoTodasEmpresas = todasSelecionadas && empresas.length > 0;
+  /**
+   * Por que não há número a mostrar. Dois casos, e o segundo só apareceu na
+   * captura:
+   *
+   *  - modo "Todas as empresas": o cofre é de uma empresa por vez;
+   *  - FALHA DE CARGA: as 18 vagas são constantes e continuam na tela, mas
+   *    quais delas têm arquivo veio do banco — e não veio. Dizer "Ausentes: 18"
+   *    ali é afirmar sobre dado que não foi lido, e afirmar ausência é tão
+   *    falso quanto inventar presença. O comando proíbe substituir erro por
+   *    dado; isto é a mesma família.
+   */
   const razaoSemApuracao = modoTodasEmpresas
     ? 'Escolha uma empresa — o cofre é de uma empresa por vez'
-    : undefined;
+    : erro
+      ? 'Não foi possível ler o cofre — os números voltam quando a carga funcionar'
+      : undefined;
 
   /** Identidade da carga atual: muda quando a empresa muda. */
   const chaveDaEmpresa = modoTodasEmpresas ? 'todas' : (empresaAtiva?.id ?? 'pessoal');
