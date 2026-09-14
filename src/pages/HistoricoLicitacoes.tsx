@@ -389,14 +389,29 @@ export default function HistoricoLicitacoes() {
    */
   const metrics = useMemo(() => {
     const total = filtered.length;
-    const vencidas = filtered.filter(l => l.vencedor === true).length;
-    const perdidas = filtered.filter(l => l.resultado === RESULTADO_PERDA_DO_HISTORICO).length;
+    /* Ganho e perda passaram a sair da MESMA autoridade do painel e do Kanban
+       (`normalizarStatus`), em 14/09/2026. Havia três definições de "ganhou"
+       no app, e as duas daqui eram as mais estreitas:
+
+         - "Vencidas" contava só `vencedor === true`, ignorando quem tem
+           `status = 'Homologada'` sem a coluna marcada — e homologação é o
+           desfecho que fecha o processo;
+         - "Perdidas" procurava `resultado = 'Perdida'`, mas o fluxo oficial
+           (`registrarPerda`) grava `'Perdedor'`. Perda registrada pelo caminho
+           certo ficava fora da conta.
+
+       `normalizarStatus` cobre as duas colunas: recebe `status`, e o
+       `resultado` entra quando o status ainda não foi movido. */
+    const desfecho = (l: { status?: string | null; resultado?: string | null }) =>
+      normalizarStatus(l.status || l.resultado);
+    const vencidas = filtered.filter(l => l.vencedor === true || ['Vencida', 'Homologada'].includes(desfecho(l))).length;
+    const perdidas = filtered.filter(l => desfecho(l) === 'Perdida').length;
     // Conta pelo desfecho real (status OU resultado) — a lista masculina antiga nunca casava com o que o app grava
     const finalizados = filtered.filter(l => ehDecidido(l.status, l.resultado)).length;
     const emAndamento = total - finalizados;
     const taxaSucesso = finalizados > 0 ? ((vencidas / finalizados) * 100).toFixed(1) : null;
     const valorGanho = filtered
-      .filter(l => l.vencedor === true)
+      .filter(l => l.vencedor === true || ['Vencida', 'Homologada'].includes(desfecho(l)))
       .reduce((s, l) => s + (l.valor_adjudicado || l.valor_estimado || 0), 0);
     const arquivados = filtered.filter(l => l.arquivado_em).length;
     return { total, vencidas, perdidas, finalizados, emAndamento, taxaSucesso, valorGanho, arquivados };

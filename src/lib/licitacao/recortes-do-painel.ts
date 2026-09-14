@@ -1,3 +1,5 @@
+import { normalizarStatus, ehDecidido } from './status';
+
 /**
  * Recortes de processos do painel — o vocabulário de agregação que o painel
  * usa HOJE, num lugar só.
@@ -70,7 +72,15 @@
  * decisão for tomada.
  */
 
-/** Grafias que o painel conta como ganho. Ver o aviso do topo. */
+/**
+ * ⚠️ DEPRECIADO em 14/09/2026 — mantido só para quem ainda importa o nome.
+ *
+ * Os recortes deixaram de comparar grafias literais e passaram a usar
+ * `normalizarStatus`, a autoridade de `lib/licitacao/status.ts`. A lista
+ * abaixo subcontava: `'Homologado'` (masculino, gravado pelo cleanup),
+ * `'adjudicada'`, `'Vencedor'`, `'ata_registro'` e `'contrato assinado'`
+ * ficavam de fora, e cada um deles É um processo ganho.
+ */
 export const STATUS_GANHO = ['Vencida', 'vencida', 'Homologada'];
 
 /** Grafias que o painel conta como perda. Ver o aviso do topo. */
@@ -132,19 +142,23 @@ export const RECORTES: RecorteDeProcessos[] = [
     id: 'andamento',
     rotulo: 'Em andamento',
     descricaoDoFiltro: 'Processos em andamento',
-    aceita: (s) => STATUS_ANDAMENTO.includes(s ?? ''),
+    aceita: (s) => !ehDecidido(normalizarStatus(s), null) && normalizarStatus(s) !== 'Arquivada',
   },
   {
     id: 'ganhas',
     rotulo: 'Ganhas',
     descricaoDoFiltro: 'Processos ganhos',
-    aceita: (s) => STATUS_GANHO.includes(s ?? ''),
+    // `normalizarStatus` traduz toda grafia já gravada: 'Homologado',
+    // 'adjudicada', 'Vencedor', 'ata_registro', 'contrato assinado'.
+    aceita: (s) => ['Vencida', 'Homologada'].includes(normalizarStatus(s)),
   },
   {
     id: 'perdidas',
     rotulo: 'Perdidas',
     descricaoDoFiltro: 'Processos perdidos',
-    aceita: (s) => STATUS_PERDIDO.includes(s ?? ''),
+    // Inclui 'Perdedor', que é o que o fluxo oficial de perda grava — e que a
+    // lista literal não pegava, deixando a derrota registrada fora da conta.
+    aceita: (s) => normalizarStatus(s) === 'Perdida',
   },
 ];
 

@@ -87,9 +87,26 @@ checar "subtela do financeiro no caminho"    "/financeiro/lancamentos"
 checar "forma de fornecimento no contrato"   "Entrega única (integral)"
 
 # Identidade 12/09 — literais que só existem na reformulação visual.
-checar "hero da prancha (identidade nova)"    "Sua próxima oportunidade"
+#
+# "Sua próxima oportunidade" SAIU em 14/09: a assinatura acusava falta de um
+# texto que o próprio produto removeu, e o verificador virou alarme que ninguém
+# lê — o pior estado possível para uma checagem.
+#
+# "Você está em" também saiu: era o rótulo da trilha que `CabecalhoPagina`
+# desenhava, e a trilha subiu para o layout. Pior: a assinatura continuava
+# dando POSITIVO, casando com "Você está em dia." do centro de notificações.
+# Assinatura curta demais casa com o vizinho errado e afirma o que não foi
+# verificado.
 checar "marca em SVG (BrandLogo)"             "M4 60 A44 44 0 0 1 90 49"
-checar "cabeçalho de página padrão"           "Você está em"
+
+# Navegação 13–14/09 — o cabeçalho horizontal e o diretório de ferramentas.
+checar "trilha na faixa do conteúdo"          "Trilha de navegação"
+checar "diretório de ferramentas"             "Todas as ferramentas (Ctrl+Shift+K)"
+checar "registro único de navegação"          "Buscar ferramenta por nome ou categoria"
+
+# Módulo Documentos 14/09 — as cinco abas e a régua de situação.
+checar "cofre com cinco abas"                 "Validade não informada"
+checar "união de PDF que une de verdade"      "Converta para PDF antes de anexar"
 
 # Checagem invertida. Identificador que o código NÃO declara não pode ser
 # renomeado pelo minificador — sobra literal no bundle. Foi assim que a aba

@@ -146,8 +146,19 @@ describe('Histórico — prazo de retenção', () => {
   });
 });
 
-describe('Histórico — divergência Perdida × Perdedor', () => {
-  it('declara as perdas do fluxo oficial que ficam fora do indicador', async () => {
+describe('Histórico — o vocabulário de desfecho é um só', () => {
+  it('conta as perdas do fluxo oficial, que gravava "Perdedor"', async () => {
+    /* Este caso MUDOU DE SENTIDO em 14/09/2026, por decisão do dono do produto.
+     *
+     * Antes ele travava o oposto: o indicador contava só `resultado='Perdida'`
+     * e a tela DECLARAVA quantas perdas ficavam de fora — porque mudar a
+     * agregação era decisão de produto, não de implementação.
+     *
+     * A decisão veio ("adeque na proporção exata"), e a proporção exata é a
+     * autoridade que já existia: `normalizarStatus`, que traduz 'Perdedor'
+     * (o que `registrarPerda` grava de verdade) para 'Perdida'. As três
+     * linhas abaixo são a mesma coisa e agora contam como a mesma coisa.
+     */
     estado.data = [
       processo({ id: '1', status: 'Perdida', resultado: 'Perdida' }),
       // Como `useLicitacaoIntegration.registrarPerda` grava de verdade:
@@ -155,14 +166,22 @@ describe('Histórico — divergência Perdida × Perdedor', () => {
       processo({ id: '3', status: 'Perdida', resultado: 'Perdedor' }),
     ];
     montar();
-    await screen.findByText(/Divergência de vocabulário a revisar/);
+    await screen.findByText('Perdidas');
+    expect(valorDoIndicador('Perdidas')).toBe('3');
+  });
 
-    // O indicador continua contando o que sempre contou — a regra de negócio
-    // não foi alterada.
-    expect(valorDoIndicador('Perdidas')).toBe('1');
-    // …e a tela diz, com número, o que ficou de fora.
-    expect(screen.getByText(/não entram no indicador/)).toBeTruthy();
-    expect(screen.getByText(/2 processo\(s\) com resultado/)).toBeTruthy();
+  it('conta como ganho a homologação, mesmo sem a coluna `vencedor` marcada', async () => {
+    // "Ganhas" contava só `vencedor === true`. Homologação é o desfecho que
+    // fecha o processo, e ficava de fora — assim como 'adjudicada',
+    // 'Vencedor' e 'ata_registro', que `normalizarStatus` traduz.
+    estado.data = [
+      processo({ id: '1', status: 'Vencida', vencedor: true }),
+      processo({ id: '2', status: 'Homologada', vencedor: null }),
+      processo({ id: '3', status: 'Homologado', vencedor: null }),
+    ];
+    montar();
+    await screen.findByText('Vencidas');
+    expect(valorDoIndicador('Vencidas')).toBe('3');
   });
 
   it('fica em silêncio quando não há registro com a grafia divergente', async () => {
