@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type DependencyList, type ReactNode } from 'react';
 import { ChevronDown, ChevronRight, ChevronUp, ChevronsUpDown } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
@@ -64,6 +64,50 @@ interface TabelaGestaoProps<T> {
   className?: string;
 }
 
+/**
+ * Há conteúdo escondido à esquerda ou à direita da tabela?
+ *
+ * A rolagem horizontal fica presa ao contêiner (a página nunca rola de lado),
+ * e a barra de rolagem mora no FIM da tabela — numa lista longa, fora da tela.
+ * Sem um sinal na borda, coluna escondida parece coluna cortada: foi assim que
+ * "Valor" e "Pendência principal" sumiram de duas telas em 14/09/2026 sem que
+ * nada indicasse que bastava rolar.
+ *
+ * `dependencias` existe porque a tabela só monta depois de carregar: sem reler
+ * quando ela aparece, o observador ficaria preso a um contêiner que não existia.
+ */
+function useSombraDeRolagem(dependencias: DependencyList) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [sombra, setSombra] = useState({ esquerda: false, direita: false });
+
+  const medir = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    const esquerda = el.scrollLeft > 1;
+    const direita = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+    setSombra((s) => (s.esquerda === esquerda && s.direita === direita ? s : { esquerda, direita }));
+  }, []);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    medir();
+    el.addEventListener('scroll', medir, { passive: true });
+    window.addEventListener('resize', medir);
+    const observador = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(medir) : null;
+    observador?.observe(el);
+    if (el.firstElementChild) observador?.observe(el.firstElementChild);
+    return () => {
+      el.removeEventListener('scroll', medir);
+      window.removeEventListener('resize', medir);
+      observador?.disconnect();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [medir, ...dependencias]);
+
+  return { ref, sombra };
+}
+
 const ALINHAMENTO = {
   esquerda: 'text-left',
   direita: 'text-right tabular-nums',
@@ -85,6 +129,7 @@ export default function TabelaGestao<T>({
   className,
 }: TabelaGestaoProps<T>) {
   const noCelular = useIsMobile();
+  const { ref: caixaDeRolagem, sombra } = useSombraDeRolagem([carregando, noCelular, itens.length, colunas.length]);
 
   if (carregando) {
     return (
@@ -152,7 +197,8 @@ export default function TabelaGestao<T>({
 
   return (
     <div className={cn('g-cartao overflow-hidden', className)}>
-      <div className="overflow-x-auto">
+      <div className="relative">
+      <div ref={caixaDeRolagem} className="overflow-x-auto">
         <table className="w-full border-collapse">
           <caption className="sr-only">{descricao}</caption>
           <thead>
@@ -165,7 +211,7 @@ export default function TabelaGestao<T>({
                     scope="col"
                     style={coluna.largura ? { width: coluna.largura } : undefined}
                     className={cn(
-                      'g-meta px-4 py-3 font-semibold uppercase tracking-wide text-muted-foreground',
+                      'g-meta px-3 py-3 font-semibold uppercase tracking-wide text-muted-foreground',
                       ALINHAMENTO[coluna.alinhamento ?? 'esquerda'],
                     )}
                     aria-sort={
@@ -232,7 +278,7 @@ export default function TabelaGestao<T>({
                     <td
                       key={coluna.chave}
                       className={cn(
-                        'g-corpo h-[var(--g-linha)] px-4 py-2.5 align-middle text-foreground',
+                        'g-corpo h-[var(--g-linha)] px-3 py-2.5 align-middle text-foreground',
                         ALINHAMENTO[coluna.alinhamento ?? 'esquerda'],
                       )}
                     >
@@ -244,6 +290,14 @@ export default function TabelaGestao<T>({
             })}
           </tbody>
         </table>
+      </div>
+      {/* A sombra diz "tem mais para este lado". Só aparece quando tem. */}
+      {sombra.esquerda && (
+        <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-card to-transparent" />
+      )}
+      {sombra.direita && (
+        <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-card via-card/70 to-transparent" />
+      )}
       </div>
       {rodape && (
         <div className="g-corpo flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3 text-muted-foreground">

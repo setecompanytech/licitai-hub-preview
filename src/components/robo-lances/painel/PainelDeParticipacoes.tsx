@@ -169,6 +169,11 @@ export default function PainelDeParticipacoes({
   };
 
   // ── Colunas ───────────────────────────────────────────────────────────────
+  // Seis colunas, e não oito (14/09/2026). Com oito, a tabela media 1.621 px
+  // numa caixa de 1.374 — "Pendência" e "Próxima ação" ficavam atrás de uma
+  // rolagem cuja barra mora no fim da lista, e a tela parecia quebrada.
+  // Proposta desce para linha de apoio (ela repetia "Não rastreada" em toda
+  // linha) e próxima ação fica sob a pendência, que é de onde ela nasce.
   const colunas: ColunaGestao<ParticipacaoCarregada>[] = [
     {
       chave: 'processo',
@@ -176,7 +181,7 @@ export default function PainelDeParticipacoes({
       tituloCurto: 'Processo',
       prioridade: 'sempre',
       render: (p) => (
-        <div className="flex min-w-0 max-w-[24rem] flex-col gap-0.5">
+        <div className="flex min-w-[11rem] max-w-[18rem] flex-col gap-0.5">
           <span className="font-semibold text-foreground">{p.processo?.numero || p.disputa.edital}</span>
           {p.processo ? (
             <>
@@ -207,7 +212,8 @@ export default function PainelDeParticipacoes({
       prioridade: 'desktop',
       render: (p) =>
         String(p.disputa.portal ?? '').trim() ? (
-          <span className="whitespace-nowrap">{p.disputa.portal}</span>
+          // Quebra linha: "Portal de Compras Públicas" numa linha só tomava 215 px.
+          <span className="block min-w-[6rem] max-w-[9rem]">{p.disputa.portal}</span>
         ) : (
           <ValorIndisponivel razao="Portal não informado" />
         ),
@@ -237,31 +243,31 @@ export default function PainelDeParticipacoes({
             </span>
           );
         }
-        return <ValorIndisponivel razao="Sem data de abertura" />;
+        return <ValorIndisponivel razao="Sem data" />;
       },
     },
     {
-      chave: 'proposta',
-      titulo: 'Situação da proposta',
-      tituloCurto: 'Proposta',
-      prioridade: 'desktop',
-      render: () => (
-        <SeloSituacao tom="indisponivel" explicacao="O sistema ainda não registra a situação da proposta ligada à disputa.">
-          Não rastreada
-        </SeloSituacao>
-      ),
-    },
-    {
       chave: 'preparacao',
-      titulo: 'Preparação da estratégia',
+      titulo: 'Estratégia e proposta',
       tituloCurto: 'Estratégia',
       prioridade: 'desktop',
       render: (p) => {
         const prep = preparacaoDaEstrategia(p);
         return (
-          <SeloSituacao tom={prep === 'configurada' ? 'sucesso' : prep === 'rascunho' ? 'atencao' : 'neutro'}>
-            {ROTULO_DA_PREPARACAO[prep]}
-          </SeloSituacao>
+          <span className="flex flex-col items-start gap-1">
+            <SeloSituacao
+              tom={prep === 'configurada' ? 'sucesso' : prep === 'rascunho' ? 'atencao' : 'neutro'}
+              explicacao={prep === 'rascunho' ? 'Sem versão aprovada da precificação.' : undefined}
+            >
+              {ROTULO_DA_PREPARACAO[prep]}
+            </SeloSituacao>
+            <span
+              className="g-meta whitespace-nowrap text-muted-foreground"
+              title="O sistema ainda não registra a situação da proposta ligada à disputa."
+            >
+              Proposta: <span>Não rastreada</span>
+            </span>
+          </span>
         );
       },
     },
@@ -277,28 +283,22 @@ export default function PainelDeParticipacoes({
     },
     {
       chave: 'pendencia',
-      titulo: 'Pendência principal',
+      titulo: 'Pendência e próxima ação',
       tituloCurto: 'Pendência',
       prioridade: 'sempre',
-      render: (p) =>
-        p.projecao.pendenciaPrincipal ? (
-          <span className="block min-w-[12rem] max-w-[20rem]">{p.projecao.pendenciaPrincipal}</span>
-        ) : (
-          <span className="text-muted-foreground">Nenhuma</span>
-        ),
-    },
-    {
-      chave: 'acao',
-      titulo: 'Próxima ação',
-      tituloCurto: 'Próxima ação',
-      prioridade: 'sempre',
       render: (p) => (
-        <span className="flex min-w-[10rem] flex-col">
-          <span>{p.projecao.proximaAcao || <span className="text-muted-foreground">Nenhuma</span>}</span>
-          {/* Diz para onde o clique na linha leva: pasta do processo ou a
+        <span className="flex min-w-[12rem] max-w-[18rem] flex-col gap-0.5">
+          {p.projecao.pendenciaPrincipal ? (
+            <span>{p.projecao.pendenciaPrincipal}</span>
+          ) : (
+            <span className="text-muted-foreground">Nenhuma pendência</span>
+          )}
+          {/* A próxima ação e para onde o clique leva: pasta do processo ou a
               configuração logo abaixo, nesta mesma tela. */}
           <span className="g-meta text-muted-foreground">
-            {p.disputa.licitacao_id ? 'Abre a pasta do processo' : 'Abre a configuração nesta tela'}
+            Próxima ação: <span className="font-medium text-foreground">{p.projecao.proximaAcao || 'nenhuma'}</span>
+            {' · '}
+            {p.disputa.licitacao_id ? 'abre a pasta do processo' : 'abre a configuração nesta tela'}
           </span>
         </span>
       ),

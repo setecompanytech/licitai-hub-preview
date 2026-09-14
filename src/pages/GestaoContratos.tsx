@@ -1037,16 +1037,21 @@ export default function GestaoContratos() {
       prioridade: 'sempre',
       render: (linha) => (noCelular
         ? <span className="line-clamp-2">{linha.registro.objeto}</span>
-        : <TextoExpansivel texto={linha.registro.objeto} linhas={2} className="max-w-[46ch]" />),
+        : <TextoExpansivel texto={linha.registro.objeto} linhas={2} className="min-w-[13rem] max-w-[46ch]" />),
     },
     {
       chave: 'orgao',
       titulo: 'Órgão',
       prioridade: 'desktop',
       render: (linha) => (
-        <span className="flex items-center gap-1.5">
-          <Building2 aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-          <span className="truncate" title={nomeDoOrgao(linha.registro.orgao_contratante)}>
+        // `truncate` numa tabela de largura automática não limita nada: o nome
+        // fica inteiro numa linha e a coluna toma a largura das outras. Em
+        // 14/09/2026 o Órgão chegou a 562 px e empurrou Valor e Saldo para fora
+        // da tela. Duas linhas no máximo, com teto de largura; o nome inteiro
+        // continua no `title`.
+        <span className="flex min-w-[9rem] max-w-[13rem] items-start gap-1.5">
+          <Building2 aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          <span className="line-clamp-2" title={nomeDoOrgao(linha.registro.orgao_contratante)}>
             {nomeDoOrgao(linha.registro.orgao_contratante)}
           </span>
         </span>
@@ -1160,7 +1165,7 @@ export default function GestaoContratos() {
       titulo: <span className="sr-only">Ações</span>,
       alinhamento: 'direita',
       prioridade: 'desktop',
-      largura: '5rem',
+      largura: '3rem',
       render: (linha) => (podeExcluir(linha.registro) ? (
         <Button
           size="sm"

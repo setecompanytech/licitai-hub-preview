@@ -45,7 +45,9 @@ export type PreparacaoDaEstrategia = 'configurada' | 'rascunho' | 'pendente';
 
 export const ROTULO_DA_PREPARACAO: Record<PreparacaoDaEstrategia, string> = {
   configurada: 'Configurada',
-  rascunho: 'Rascunho — sem versão aprovada',
+  // Curto de propósito: selo não quebra linha, e o rótulo longo fazia a coluna
+  // medir 272 px. "Sem versão aprovada" vai na explicação do selo.
+  rascunho: 'Rascunho',
   pendente: 'Pendente',
 };
 
