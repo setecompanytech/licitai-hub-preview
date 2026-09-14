@@ -53,6 +53,19 @@ type LancamentoRow = Lancamento & {
   pessoa?: { id: string; nome: string } | null;
 };
 
+/**
+ * A coluna de ações fica presa à direita quando a tabela rola na horizontal.
+ * Em 14/09/2026 ela saía cortada na borda do cartão — "Receber" à vista, os
+ * botões de vincular e editar escondidos, e nada indicando que havia rolagem.
+ * No celular não prende: 200 px fixos numa tela de 360 px não deixariam espaço
+ * para o resto da linha.
+ *
+ * O divisor é sombra interna, não `border-l`: a tabela usa `border-collapse`, e
+ * nesse modo a borda pertence à grade — ela fica parada no lugar original
+ * enquanto a célula presa desliza por cima dela.
+ */
+const COLUNA_DE_ACOES = "md:sticky md:right-0 md:bg-card md:shadow-[inset_1px_0_0_0_hsl(var(--border))]";
+
 type SortKey = "data_vencimento" | "descricao" | "pessoa" | "valor" | "status";
 
 type VarianteBadge = "success" | "warning" | "danger" | "info" | "muted";
@@ -342,44 +355,51 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
       {/* Tabela */}
       <Card>
         <CardContent className="p-0">
-          <Table>
+          {/* 12 px de respiro lateral em vez de 16: são oito colunas, e os 64 px
+              devolvidos são parte do que faz a tabela caber a 1.280 px sem rolar. */}
+          <Table className="[&_td]:px-3 [&_th]:px-3">
             <TableHeader>
               <TableRow>
-                <TableHead aria-sort={ariaOrdem("data_vencimento")}>
+                <TableHead className="whitespace-nowrap" aria-sort={ariaOrdem("data_vencimento")}>
                   <button type="button" onClick={() => toggleSort("data_vencimento")} className="inline-flex items-center gap-1 transition-colors hover:text-primary">
                     Vencimento <IconeOrdem ativa={sortKey === "data_vencimento"} dir={sortDir} />
                   </button>
                 </TableHead>
-                <TableHead aria-sort={ariaOrdem("descricao")}>
+                <TableHead className="whitespace-nowrap" aria-sort={ariaOrdem("descricao")}>
                   <button type="button" onClick={() => toggleSort("descricao")} className="inline-flex items-center gap-1 transition-colors hover:text-primary">
                     Descrição <IconeOrdem ativa={sortKey === "descricao"} dir={sortDir} />
                   </button>
                 </TableHead>
-                <TableHead aria-sort={ariaOrdem("pessoa")}>
+                <TableHead className="whitespace-nowrap" aria-sort={ariaOrdem("pessoa")}>
                   <button type="button" onClick={() => toggleSort("pessoa")} className="inline-flex items-center gap-1 transition-colors hover:text-primary">
                     {tipo === "a_pagar" ? "Fornecedor" : "Cliente"} <IconeOrdem ativa={sortKey === "pessoa"} dir={sortDir} />
                   </button>
                 </TableHead>
+                {/* Parcela mora embaixo do documento, não numa coluna própria: a
+                    coluna de ~90 px para um "2/3" empurrava Ações para fora do
+                    cartão e, espremida, quebrava o título letra por letra (14/09). */}
                 <TableHead className="whitespace-nowrap">Documento</TableHead>
-                <TableHead>Parcela</TableHead>
-                <TableHead className="whitespace-nowrap">Responsável</TableHead>
-                <TableHead aria-sort={ariaOrdem("status")}>
+                {/* Responsável só a partir de 1.400 px. Abaixo disso a tabela
+                    não cabia, e a coluna que sobrava era Valor, escondida sob as
+                    ações. O responsável continua no filtro acima e na edição. */}
+                <TableHead className="hidden whitespace-nowrap min-[1400px]:table-cell">Responsável</TableHead>
+                <TableHead className="whitespace-nowrap" aria-sort={ariaOrdem("status")}>
                   <button type="button" onClick={() => toggleSort("status")} className="inline-flex items-center gap-1 transition-colors hover:text-primary">
                     Status <IconeOrdem ativa={sortKey === "status"} dir={sortDir} />
                   </button>
                 </TableHead>
-                <TableHead className="text-right" aria-sort={ariaOrdem("valor")}>
+                <TableHead className="whitespace-nowrap text-right" aria-sort={ariaOrdem("valor")}>
                   <button type="button" onClick={() => toggleSort("valor")} className="ml-auto inline-flex items-center gap-1 transition-colors hover:text-primary">
                     Valor <IconeOrdem ativa={sortKey === "valor"} dir={sortDir} />
                   </button>
                 </TableHead>
-                <TableHead className="text-right">Ações</TableHead>
+                <TableHead className={cn("whitespace-nowrap text-right", COLUNA_DE_ACOES)}>Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtrados.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={9} className="p-0">
+                  <TableCell colSpan={8} className="p-0">
                     <EstadoVazio
                       icone={<FileText />}
                       titulo="Nenhum lançamento encontrado"
@@ -458,25 +478,27 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
                           <p className="text-xs text-muted-foreground">{l.categoria.nome}</p>
                         )}
                       </TableCell>
-                      <TableCell className="max-w-[200px] truncate" title={l.pessoa?.nome ?? undefined}>
+                      <TableCell className="max-w-[160px] truncate" title={l.pessoa?.nome ?? undefined}>
                         {l.pessoa?.nome ?? <span className="text-muted-foreground">—</span>}
                       </TableCell>
                       <TableCell className="text-sm">
-                        {l.numero_documento ? (
-                          <>
-                            {l.numero_documento}
-                            {l.serie_documento ? ` / ${l.serie_documento}` : ""}
-                          </>
-                        ) : <span className="text-muted-foreground">—</span>}
+                        <div className="flex flex-col items-start gap-1">
+                          <span className="whitespace-nowrap tabular-nums">
+                            {l.numero_documento ? (
+                              <>
+                                {l.numero_documento}
+                                {l.serie_documento ? ` / ${l.serie_documento}` : ""}
+                              </>
+                            ) : <span className="text-muted-foreground">—</span>}
+                          </span>
+                          {total > 1 && (
+                            <Badge variant="muted" className="gap-1 whitespace-nowrap" title={`Parcela ${num} de ${total}`}>
+                              <Layers className="w-3 h-3" aria-hidden="true" />Parcela {num}/{total}
+                            </Badge>
+                          )}
+                        </div>
                       </TableCell>
-                      <TableCell>
-                        {total > 1 ? (
-                          <Badge variant="muted" className="gap-1">
-                            <Layers className="w-3 h-3" aria-hidden="true" />{num}/{total}
-                          </Badge>
-                        ) : <span className="text-sm text-muted-foreground">—</span>}
-                      </TableCell>
-                      <TableCell className="max-w-[140px] truncate text-sm" title={vendedor ?? undefined}>
+                      <TableCell className="hidden max-w-[120px] truncate text-sm min-[1400px]:table-cell" title={vendedor ?? undefined}>
                         {vendedor ?? <span className="text-muted-foreground">—</span>}
                       </TableCell>
                       <TableCell>
@@ -487,7 +509,7 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
                       <TableCell className="text-right tabular-nums font-semibold whitespace-nowrap">
                         {Number(l.valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className={cn("text-right", COLUNA_DE_ACOES)}>
                         <div className="flex items-center justify-end gap-1">
                           {podePagar && (
                             <Button
