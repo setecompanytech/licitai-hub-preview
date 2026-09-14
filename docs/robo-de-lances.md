@@ -1,6 +1,6 @@
 # Robô de Lances — o que existe, o que trava, e o que falta
 
-> **Data desta foto:** 11/09/2026. O que está aqui foi verificado, não deduzido —
+> **Data desta foto:** 14/09/2026, madrugada do pregão 7/2026 SEDUC/PA. O que está aqui foi verificado, não deduzido —
 > cada afirmação tem como conferir. Onde não deu para verificar, está escrito que
 > não deu.
 
@@ -41,9 +41,9 @@ com uma exceção — o último elo, o lance, que está travado de propósito (�
 | Interface dispara sessão | ✅ | botão "Enviar ao robô", carimbo `2026-09-09.10` no ar |
 | Edge function traduz e grava | ✅ | linha em `sessoes_lance_real`, com recusa antes de gravar quando o portal não existe |
 | Agente aceita e abre o Chrome | ✅ | `/health` mostra as sessões; 8 registradas hoje |
-| Login real em portal | ✅ | Portal de Compras Públicas, 08/09 à noite; **Compras.gov (gov.br + certificado A1), 10/09 às 16:31** |
+| Login real em portal | ✅ | Portal de Compras Públicas, 08/09 à noite; **Compras.gov (gov.br + certificado A1), 10/09 às 16:31 e cinco vezes seguidas em 14/09, ~40 s cada** |
 | VNC mostra a tela ao vivo | ✅ | janela ocupa 100% de 1920×1080 desde 09/09 |
-| Navegar até a disputa | ✅ | processo **002/2026** achado em "Seus Processos" e aberto, 08/09 — falta só repetir com um edital em sessão |
+| Navegar até a disputa | ✅ | processo **002/2026** achado em "Seus Processos" e aberto, 08/09; **Compras.gov: compra 7/2026 UASG 925315 achada entre dez homônimas e a sala (`acompanhamento-compra`) aberta pelo botão certo, 14/09 03:27, 77 s do envio** |
 | Ler a tela de lances | ⬜ | depende de pregão ao vivo |
 | Dar lance | 🔒 | travado — ver §2 |
 
@@ -106,7 +106,7 @@ Os 23 portais da interface, agrupados pelo que realmente impede cada um.
 | Grupo | Portais | O que falta |
 | --- | --- | --- |
 | **Entra e navega hoje** | Portal de Compras Públicas | edital em sessão; plano renovado para disputar |
-| **Entra; a busca está mapeada, a sala não** | Compras.gov | número real de compra (número/ano) e um pregão em sessão para ver a sala — §4.2 |
+| **Entra, acha a compra e abre a sala** | Compras.gov | ler a sala com pregão em sessão (`lerMelhorLance`/`souLider` ainda são palpite) — §4.2, 14/09 |
 | **Falta um dado do cliente** | BLL, BNC | senha numérica |
 | **Muro técnico do portal** | Licitações-e, LicitaNet | decisão de arquitetura |
 | **Não tem o que operar** | PNCP | é mural, não pregão — ver §4.6 |
@@ -549,7 +549,7 @@ se descobre qual célula é o melhor lance e qual é o nosso), e as tabelas com
 cabeçalho e primeiras linhas. Só leitura; frame que não responde entra
 vazio. Testado na `intro.htm` real: 116 campos, 34 KB, 10 ms.
 
-**Gravador da sessão.** Liga antes do login e grava em
+**Gravador da sessão.** Liga depois do login (antes ligava antes — ver 14/09) e grava em
 `logs/sessoes/<id>/HHMMSS.png` + `HHMMSS.json` a cada
 `GRAVADOR_INTERVALO_S` (10; 0 desliga), horário local para casar com o log.
 Raio-X idêntico ao anterior não vira arquivo — no primeiro teste o horário
@@ -613,6 +613,66 @@ guarda o original; um `apt upgrade` do novnc desfaz isto — anotado). De 45
 requisições para **5**. E o véu ganhou prazo de 6s, independente do `onLoad`.
 O empacotamento vale em produção na hora — é a VPS que serve o noVNC, não o
 Lovable; o véu vai no Publish.
+
+#### 14/09, madrugada — o ensaio para o pregão real: seis sessões, cinco defeitos, a sala
+
+A Izabelle (operadora da Santa Rosa) indicou o pregão de teste: **PE SRP
+7/2026 SEDUC/PA, UASG 925315, sessão pública 14/09 às 09:00**, modo aberto
+(10 min + prorrogações de 2), menor preço por item, orçamento sigiloso. A
+disputa foi cadastrada pela tela nova ("Nova sessão"): edital `07/2026`,
+Compras.gov.br, UASG `925315`, intervalo 30 s, **máx. lances 500** (contorno
+do laço que encerra a sessão em `max_lances` rodadas — ver "Aberto" abaixo),
+modo automático desligado, 1 item manual. Às 02:18 o Ian enviou ao robô para
+provar o caminho antes das 9h. Foram **seis sessões** até chegar à sala; cada
+uma revelou um defeito que a sessão anterior escondia. Todos corrigidos no
+template e instalados na VPS com md5 conferido (`index.js` `fc9536e7…`,
+`session-manager.js` `e99ad667…`, `comprasgov.js` `c512fafc…`; backups
+`*.bak-20260914-*`).
+
+| Sessão | O que travou | Causa, verificada | Conserto |
+| --- | --- | --- | --- |
+| `a15ba3ba` 02:18 | 3 min entre "Iniciando login" e o clique no certificado; o hCaptcha recusou toda resposta ("Please try again", "Captcha inválido ERL0033800"), inclusive as certas | O **gravador ligava antes do login** e a primeira foto saía com a aba em `about:blank` — travou até o `protocolTimeout` (180 s). O Puppeteer enfileira as fotos de uma mesma aba: a foto que o login tira ao abrir o gov.br ficou presa atrás dela. A página envelheceu 3 min, o primeiro clique voltou "Captcha inválido" e recarregou **sem o `authorization_id`** — daí em diante nada passava. Prova: JSON da captura 021850 sem PNG; captura seguinte só às 02:22:00 (190 s, não 10) | gravador liga **depois** do login; pula captura em `about:blank` |
+| `903d686e` 02:42 | login em 37 s ✅; busca voltou "Nenhuma compra encontrada" | O campo "Número da compra" é um **`p-inputmask`** (PrimeNG): intercepta cada tecla e reposiciona o cursor pelo próprio buffer. `page.type('72026')` virou **`20267`** na tela. E o robô não reconhecia "nenhuma compra" (só "nenhum registro/resultado") — ficou "esperando o captcha" com a resposta na frente | `digitarConferindo()`: digita, **lê o valor de volta** (ignorando os `_` da máscara), e se não bater entrega o texto inteiro via `keyboard.sendCharacter` (colar); o log passa a dizer `na tela: …`. Regex de "nenhum" cobre "nenhuma compra" |
+| `61362858` 02:48 | `keyboard.insertText is not a function` | Nome de método do Playwright; no Puppeteer é `sendCharacter` | corrigido |
+| `dab1837b` 02:51 | `na tela: 72026` ✅, resultados na tela — e o robô "esperando o captcha da pesquisa" por 600 s | `lerDesfechoDaBusca` olhava o captcha **antes** dos resultados, e o iframe do hCaptcha continua no DOM com tamanho depois de resolvido | ordem: resultados → nenhum → captcha; captcha só conta se visível (computed style da cadeia) |
+| — | `uasg: null` no `/health` em todas as sessões, com `925315` digitado no formulário | Front, edge function (v30) e session-manager estavam certos. O **`index.js` desestrutura uma lista fixa** de campos do corpo e repassa um a um — `uasg` não estava nela. O próprio comentário da rota avisa que "o que não estiver nomeado aqui é descartado silenciosamente"; foi a segunda vez (a primeira foram os itens) | `uasg` na lista e no `createSession` |
+| `acb24f55` 03:21 | tudo ✅ até `🎯 Compra localizada: … 925315 - SECRETARIA DE ESTADO DE EDUCACAO - PA` em **49 s**; o clique no ícone abriu o **"Quadro informativo"** (avisos/impugnações/esclarecimentos), não a sala | O card tem três botões, lidos do DOM gravado pelo `title`: "Quadro Informativo", **"Acompanhar compra"**, "Mostrar detalhes da compra". A versão anterior clicava no primeiro | prefere o botão cujo `title` casa `/acompanhar/`; o log diz qual clicou |
+| `171b0dc5` 03:26 | **`📂 Cliquei em "Acompanhar compra"; a tela ficou em …/acompanhamento-compra?compra=92531505000072026`** — a sala, em 77 s | — | — |
+
+Sem UASG a busca por `72026` devolve **dez "7/2026" de outros órgãos só na
+primeira página** (ordenados por UASG; a SEDUC, 925315, nem aparece nela).
+O UASG não é refinamento: sem ele o robô abriria a compra errada.
+
+**O que ficou provado, com este edital:** login gov.br + certificado A1 em
+~40 s com um clique humano (o hCaptcha aceitou de primeira nas cinco sessões
+depois do conserto do gravador — o "bloqueio" da primeira era o atraso, não
+detecção); número e UASG digitados e **conferidos** na tela; card certo entre
+dez homônimos; sala aberta pelo botão certo; gravador ligado na sala; trava
+de lance respondendo a cada rodada ("Rodada 5 sem lance: Portal comprasgov
+não está liberado"). A busca com UASG nem pediu captcha.
+
+**A sala, na fase de proposta** (`acompanhamento-compra`, página pública):
+"Acompanhar Contratação — Pregão Eletrônico N° 7/2026 (SRP) — UASG 925315 —
+Critério: Menor Preço / Maior Desconto — Modo disputa: Aberto —
+**Contratação em período de cadastramento de proposta**"; aba **Itens**, um
+card por item com número, descrição, benefício ME/EPP, **"Aguardando abertura
+da sessão pública"** (o estado por item), quantidade e **"Valor estimado
+(unitário): Sigiloso"**. É esse texto que muda às 9h, e é o que o gravador vai
+registrar a cada 10 s. Dois fatos que valem para a estratégia: com orçamento
+sigiloso a referência **nunca** vem do portal (só da nossa precificação), e
+o acompanhamento público mostra a disputa sem login — o lance, quando for a
+hora, é na área logada.
+
+**Visto de passagem:** no Quadro informativo há **1 impugnação (MICROSENS
+S.A., 11/09 18:06) sem resposta** e 7 esclarecimentos — impugnação pendente
+pode adiar a sessão; a operadora confere de manhã.
+
+**Aberto, para depois do pregão:** o laço encerra a sessão em `max_lances`
+rodadas **antes** da trava (sessão de observação morre em 20 × 30 s = 10 min
+sem o contorno do 500); ir direto ao `acompanhamento-compra?compra=<UASG>05<nº
+5 dígitos><ano>` quando houver UASG, e só pesquisar sem ela; `lerMelhorLance`
+e `souLider` do Compras.gov continuam sendo palpite — o mapeamento é sobre a
+pasta `logs/sessoes/<id>` de hoje.
 
 ### 4.3 Licitações-e (BB) — o muro caro
 
