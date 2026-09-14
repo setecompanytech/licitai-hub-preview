@@ -13286,3 +13286,36 @@ dançar sob os olhos de quem procura nela.
 
 RLS `FOR ALL USING (auth.uid() = user_id) WITH CHECK (...)` nas duas tabelas.
 Gatilho de `updated_at` em `aurelia_conversas`.
+
+---
+
+## 20260914000001 — atestados de capacidade técnica passam a ser da empresa
+
+Atestado estava preso a quem subiu o arquivo: `documentos.empresa_id` nulo e
+arquivo na pasta `<user_id>/` do storage. O efeito era duplo — colega da mesma
+empresa não via a linha, e a montagem automática da pasta de habilitação falhava
+ao baixar o arquivo alheio, porque as policies de storage só liberam a pasta do
+próprio dono.
+
+O escopo certo é o da empresa, e a razão não é técnica: o atestado é emitido por
+órgão público ou empresa privada, assinado por representante, e integra a
+documentação exigida na fase de habilitação. É da empresa que se habilita, não
+de quem digitalizou o papel.
+
+A migration converte só quem não tem ambiguidade — `nome LIKE 'ACT %'`,
+`empresa_id IS NULL`, dono membro de UMA empresa só. Quem é membro de várias
+fica de fora de propósito: atestado atribuído à empresa errada entra numa
+habilitação que não deveria, e isso é pior que atestado invisível. O bloco `DO`
+no fim conta convertidos, órfãos e ambíguos.
+
+⚠️ **Ordem importa.** Esta migration move o VÍNCULO. O ARQUIVO é movido pela
+edge function `normalizar-arquivos-documentos`, que já existe e já faz isso para
+o resto do cofre — rode-a **depois**. Sem `empresa_id` na linha, ela não sabe
+para onde mover. Entre uma e outra, o atestado aparece para a equipe mas o
+download falha para quem não é o dono.
+
+A tela acompanha: leitura por `.or(empresa_id.eq.<ativa>, and(user_id.eq.<eu>,
+empresa_id.is.null))` — o legado não some no dia da virada; upload novo em
+`empresa/<id>/`; e o aviso de escopo virou condicional, contando quantos ainda
+estão presos à conta. Ele desaparece sozinho quando a conversão termina.
+

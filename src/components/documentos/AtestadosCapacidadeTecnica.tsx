@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ElementType, type MouseEvent } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEmpresa } from '@/contexts/EmpresaContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -49,9 +50,12 @@ import {
  *     ano, PERÍODO, valor, CNPJ). O período sempre foi gravado e nunca exibido:
  *     agora aparece na coluna Ano/período, no painel, no formulário de envio e
  *     ainda alimenta o filtro de ano quando o campo "ano" veio vazio.
- *  3. Os registros são PESSOAIS (user_id, pasta `${user.id}/` no storage) —
- *     ver o aviso de escopo mais abaixo. A leitura fica como está de propósito;
- *     convertê-los para a empresa é migration, não decisão desta tela.
+ *  3. O atestado é da EMPRESA, não de quem o digitalizou: é emitido por órgão
+ *     público ou empresa privada, assinado por representante, e integra a
+ *     documentação da fase de habilitação. Grava com `empresa_id` e na pasta
+ *     `empresa/<id>/` do storage. O legado — gravado antes disso, com
+ *     `empresa_id` nulo — continua aparecendo para o próprio dono até a
+ *     migration `20260914000001` rodar; é o que o `.or()` da leitura sustenta.
  */
 
 /** ⚠️ Travessão U+2013, não hífen. É a chave de leitura de tudo o que já existe. */
@@ -112,6 +116,8 @@ type ACTDoc = {
   arquivo_path?: string | null;
   tamanho_bytes?: number | null;
   user_id?: string | null;
+  /** Nulo no legado gravado antes de 14/09/2026 — ver o cabeçalho, item 3. */
+  empresa_id?: string | null;
   dados_extraidos?: DadosAtestado;
 };
 
@@ -198,6 +204,13 @@ const NOTA_SEM_ANALISE =
 
 export default function AtestadosCapacidadeTecnica() {
   const { user } = useAuth();
+  const { empresaAtiva, empresas } = useEmpresa();
+  /* O id, e não o objeto: o contexto devolve referência nova a cada render, e é
+     o id que decide o que a consulta lê. Passar o objeto na lista de
+     dependências do `carregar` recarregaria a tela a cada render. */
+  const idEmpresa = empresaAtiva?.id ?? null;
+  /* Papel na empresa ATIVA — é o que a policy de delete exige. */
+  const ehAdmin = empresas.some((m) => m.empresa_id === idEmpresa && m.papel === 'admin');
   const [docs, setDocs] = useState<ACTDoc[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erroCarga, setErroCarga] = useState<string | null>(null);
@@ -228,7 +241,7 @@ export default function AtestadosCapacidadeTecnica() {
   const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
 
   /**
-   * A leitura continua POR USUÁRIO — ver o aviso de escopo na tela.
+   * Lê o acervo da EMPRESA mais o legado pessoal ainda não migrado.
    * `.like('nome', 'ACT –%')` é o que separa atestado do resto do cofre.
    *
    * A dependência é o `user.id`, não o objeto `user`: o contexto entrega um
@@ -243,12 +256,27 @@ export default function AtestadosCapacidadeTecnica() {
     }
     setCarregando(true);
     setErroCarga(null);
-    const { data, error } = await supabase
-      .from('documentos')
-      .select('id, nome, segmento, validade, arquivo_path, tamanho_bytes, dados_extraidos, user_id')
-      .eq('user_id', userId)
+    /* O atestado é da EMPRESA desde 14/09/2026, por decisão do dono do produto:
+       ele é emitido por órgão ou contratante, assinado por representante, e
+       integra a habilitação do certame — é da empresa que se habilita, não de
+       quem digitalizou o papel.
+       O `.or(...)` é a MESMA régua da aba Documentos: a linha da empresa vem
+       para todo mundo, e o legado pessoal continua aparecendo para o dono
+       enquanto a migração de vínculo não alcançar todos. Trocar por
+       `eq('empresa_id')` puro esconderia hoje o que ainda não foi convertido. */
+    /* `as never` na tabela: o `types.ts` gerado está congelado em 16/08 e não
+       conhece `documentos.empresa_id`, que existe desde 03/09 — sem o escape o
+       TypeScript recusa a coluna que o banco tem. É o mesmo escape que o resto
+       do módulo usa, e sai quando os tipos forem regerados. */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let consulta: any = (supabase.from('documentos' as never) as any)
+      .select('id, nome, segmento, validade, arquivo_path, tamanho_bytes, dados_extraidos, user_id, empresa_id')
       .like('nome', FILTRO_NOME_ACT)
       .order('created_at', { ascending: false });
+    consulta = idEmpresa
+      ? consulta.or(`empresa_id.eq.${idEmpresa},and(user_id.eq.${userId},empresa_id.is.null)`)
+      : consulta.eq('user_id', userId);
+    const { data, error } = await consulta;
 
     // Falha silenciosa é proibida (princípio 3): o `error` era descartado e a
     // tela dizia "nenhum atestado cadastrado" quando o banco tinha recusado.
@@ -266,7 +294,9 @@ export default function AtestadosCapacidadeTecnica() {
       })),
     );
     setCarregando(false);
-  }, [userId]);
+    /* Sem `idEmpresa` na lista, trocar de empresa deixava na tela os atestados
+       da anterior — a consulta só rodava de novo ao recarregar a página. */
+  }, [userId, idEmpresa]);
 
   useEffect(() => { carregar(); }, [carregar]);
 
@@ -276,6 +306,10 @@ export default function AtestadosCapacidadeTecnica() {
     for (const doc of docs) mapa.set(doc.segmento, (mapa.get(doc.segmento) ?? 0) + 1);
     return mapa;
   }, [docs]);
+
+  /* Quantos ainda são do legado pessoal. Derivado dos dados, nunca fixo: é o
+     que faz o aviso desaparecer no instante em que a migração roda. */
+  const legadoPessoal = useMemo(() => docs.filter((d) => !d.empresa_id).length, [docs]);
 
   const segmentosComAtestado = useMemo(
     () => SEGMENTOS_ACT.filter((s) => (contagemPorSegmento.get(s.value) ?? 0) > 0).length,
@@ -436,10 +470,13 @@ export default function AtestadosCapacidadeTecnica() {
     try {
       const segLabel = segmentoDe(selectedSegmento).label;
       const ext = pendingFile.name.split('.').pop();
-      // ⚠️ Pasta PESSOAL. É o que a policy antiga do bucket permite para estes
-      // arquivos; mudar para `empresa/<id>/` sem migrar os que já existem
-      // partiria o acervo em dois. Ver o aviso de escopo na tela.
-      const path = `${user.id}/act-${selectedSegmento}-${Date.now()}.${ext}`;
+      /* Atestado novo nasce na pasta da EMPRESA — é lá que as policies de
+         storage liberam a leitura para a equipe e para a montagem automática
+         da pasta de habilitação. Sem empresa ativa cai na pasta pessoal, que é
+         o único lugar em que o upload é permitido. */
+      const path = idEmpresa
+        ? `empresa/${idEmpresa}/act-${selectedSegmento}-${Date.now()}.${ext}`
+        : `${user.id}/act-${selectedSegmento}-${Date.now()}.${ext}`;
 
       const { error: uploadError } = await supabase.storage
         .from(BUCKET)
@@ -448,6 +485,7 @@ export default function AtestadosCapacidadeTecnica() {
 
       const { error: dbError } = await supabase.from('documentos').insert({
         user_id: user.id,
+        empresa_id: idEmpresa,
         nome: nomeDoAtestado(selectedSegmento),
         tipo: 'Qualificação Técnica',
         descricao: extractedData?.objeto || `Atestado de Capacidade Técnica - ${segLabel}`,
@@ -475,12 +513,22 @@ export default function AtestadosCapacidadeTecnica() {
 
   // ── Edição do cadastro ────────────────────────────────────────────────────
   /**
-   * Editar é suportado pelo banco (`documentos_update_empresa` aceita o dono da
-   * linha), mas só para o dono: como o atestado nasce pessoal, ninguém mais
-   * sequer enxerga a linha. O botão aparece com essa régua, não com uma
-   * suposição de papel.
+   * As duas réguas são o espelho exato das policies de `documentos` — e elas
+   * NÃO são a mesma:
+   *
+   *   `documentos_update_empresa`  dono OU qualquer membro da empresa
+   *   `documentos_delete_empresa`  dono OU **admin** da empresa
+   *
+   * Corrigir o CNPJ de um contratante é rotina de equipe; apagar o atestado
+   * tira da empresa uma prova de capacidade técnica que ela talvez não consiga
+   * emitir de novo. Desenhar o botão com régua mais frouxa que a do banco só
+   * troca a recusa clara por um erro no meio da ação.
    */
-  const podeEditar = (doc: ACTDoc) => Boolean(user && doc.user_id === user.id);
+  const ehMembroDesteAtestado = (doc: ACTDoc) =>
+    Boolean(doc.empresa_id && idEmpresa && doc.empresa_id === idEmpresa);
+  const ehDono = (doc: ACTDoc) => Boolean(user && doc.user_id === user.id);
+  const podeEditar = (doc: ACTDoc) => ehDono(doc) || ehMembroDesteAtestado(doc);
+  const podeExcluir = (doc: ACTDoc) => ehDono(doc) || (ehMembroDesteAtestado(doc) && ehAdmin);
 
   const abrirEdicao = (doc: ACTDoc) => {
     setEmEdicao(doc);
@@ -683,6 +731,7 @@ export default function AtestadosCapacidadeTecnica() {
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onSelect={() => setAExcluir(doc)}
+                disabled={!podeExcluir(doc)}
                 className="text-destructive-ink focus:text-destructive-ink"
               >
                 <Trash2 aria-hidden="true" className="mr-2 h-4 w-4" /> Excluir
@@ -727,21 +776,27 @@ export default function AtestadosCapacidadeTecnica() {
           {NOTA_SEM_ANALISE} A conferência do que cada edital exige continua sendo leitura humana.
         </p>
         {/*
-          ACHADO, não decoração: o atestado é gravado com `user_id` e sem
-          `empresa_id`, e o arquivo vai para a pasta pessoal do storage. Com
-          isso o colega da mesma empresa não vê a linha, e a montagem
-          automática da pasta de habilitação falha ao baixar o arquivo alheio.
-          Dizer isso aqui é o mínimo enquanto a migração não é decidida — o
-          silêncio é que fazia a pessoa acreditar que a equipe estava coberta.
+          O aviso é CONDICIONAL, e some sozinho: aparece só enquanto houver
+          atestado gravado antes de 14/09/2026, quando a tela ainda os prendia
+          à conta de quem subiu o arquivo. Enquanto ele estiver na tela, há
+          atestado que o colega não vê e que a montagem automática da pasta de
+          habilitação não consegue baixar. Aviso fixo dizendo "são pessoais"
+          seria mentira depois da migração — e ninguém confere um aviso que
+          está sempre lá.
         */}
-        <p role="note" className="g-meta flex items-start gap-2 rounded-[var(--g-raio)] border border-border bg-muted px-3 py-2 text-muted-foreground">
-          <Lock aria-hidden="true" className="mt-px h-3.5 w-3.5 shrink-0" />
-          <span>
-            Estes atestados são <strong>pessoais</strong>: ficam ligados à sua conta, não à empresa.
-            Colegas da mesma empresa não veem estes registros, e a montagem automática da pasta de
-            habilitação não consegue baixar o arquivo em nome de outro usuário.
-          </span>
-        </p>
+        {legadoPessoal > 0 && (
+          <p role="note" className="g-meta flex items-start gap-2 rounded-[var(--g-raio)] border border-border bg-muted px-3 py-2 text-muted-foreground">
+            <Lock aria-hidden="true" className="mt-px h-3.5 w-3.5 shrink-0" />
+            <span>
+              {legadoPessoal === 1
+                ? '1 atestado ainda está ligado à sua conta'
+                : `${legadoPessoal} atestados ainda estão ligados à sua conta`}
+              , e não à empresa — são de antes de os atestados passarem a ser do acervo da
+              empresa. Colegas não os veem, e a montagem automática da pasta de habilitação não
+              consegue baixar o arquivo. Os novos já nascem da empresa.
+            </span>
+          </p>
+        )}
       </div>
 
       {erroCarga && (
@@ -830,6 +885,7 @@ export default function AtestadosCapacidadeTecnica() {
               key={selecionado.id}
               doc={selecionado}
               podeEditar={podeEditar(selecionado)}
+              podeExcluir={podeExcluir(selecionado)}
               aoVisualizar={() => visualizar(selecionado)}
               aoBaixar={() => baixar(selecionado)}
               aoEditar={() => abrirEdicao(selecionado)}
@@ -1224,6 +1280,7 @@ function CamposDoAtestado({
 function PainelAtestado({
   doc,
   podeEditar,
+  podeExcluir,
   aoVisualizar,
   aoBaixar,
   aoEditar,
@@ -1231,6 +1288,7 @@ function PainelAtestado({
 }: {
   doc: ACTDoc;
   podeEditar: boolean;
+  podeExcluir: boolean;
   aoVisualizar: () => void;
   aoBaixar: () => void;
   aoEditar: () => void;
@@ -1337,7 +1395,7 @@ function PainelAtestado({
           variant="outline"
           onClick={aoEditar}
           disabled={!podeEditar}
-          title={podeEditar ? undefined : 'Só quem cadastrou o atestado pode editá-lo.'}
+          title={podeEditar ? undefined : 'Este atestado pertence a outra empresa.'}
           className="g-controle rounded-[var(--g-raio)]"
         >
           <Pencil aria-hidden="true" className="h-4 w-4" /> Editar cadastro
@@ -1345,6 +1403,8 @@ function PainelAtestado({
         <Button
           variant="outline"
           onClick={aoExcluir}
+          disabled={!podeExcluir}
+          title={podeExcluir ? undefined : 'Excluir atestado da empresa é ação de administrador.'}
           className="g-controle rounded-[var(--g-raio)] text-destructive-ink hover:bg-destructive-tint hover:text-destructive-ink"
         >
           <Trash2 aria-hidden="true" className="h-4 w-4" /> Excluir

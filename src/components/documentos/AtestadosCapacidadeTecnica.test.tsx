@@ -15,8 +15,11 @@ import AtestadosCapacidadeTecnica from './AtestadosCapacidadeTecnica';
  *  3. "Anexado" é afirmação sobre o ARQUIVO: linha sem `arquivo_path` não
  *     pode dizer isso (antes o selo era fixo em "Cadastrado", para todas);
  *  4. o objeto completo está no painel, não só o resumo de duas linhas;
- *  5. o aviso de escopo pessoal aparece — os atestados são gravados por
- *     `user_id`, sem `empresa_id`, e a equipe não os vê.
+ *  5. o escopo é da EMPRESA (14/09): o atestado é emitido por órgão ou empresa,
+ *     assinado por representante, e integra a habilitação — a equipe precisa
+ *     vê-lo. A leitura tem de trazer o acervo da empresa MAIS o legado pessoal
+ *     ainda não migrado, e o aviso sobre esse legado só pode aparecer enquanto
+ *     ele existir.
  */
 
 type Linha = Record<string, unknown>;
@@ -30,6 +33,7 @@ const { dados, chamadas } = vi.hoisted(() => ({
     select: [] as string[],
     filtros: [] as Array<[string, unknown]>,
     like: [] as Array<[string, string]>,
+    or: [] as string[],
   },
 }));
 
@@ -39,6 +43,7 @@ function consulta() {
   builder.select = (colunas: string) => { chamadas.select.push(colunas); return builder; };
   builder.eq = (coluna: string, valor: unknown) => { chamadas.filtros.push([coluna, valor]); return builder; };
   builder.like = (coluna: string, padrao: string) => { chamadas.like.push([coluna, padrao]); return builder; };
+  builder.or = (expressao: string) => { chamadas.or.push(expressao); return builder; };
   builder.order = () => builder;
   builder.insert = () => Promise.resolve({ data: null, error: null });
   builder.update = () => builder;
@@ -70,6 +75,15 @@ vi.mock('@/integrations/supabase/client', () => ({
 // efeito de carga se reagendar sozinho, e o teste mediria um laço.
 const SESSAO = { user: { id: 'u-1', email: 'teste@exemplo.test' } };
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => SESSAO }));
+
+// Empresa também estável, e pelo mesmo motivo. `papel` importa: a régua de
+// exclusão espelha `documentos_delete_empresa`, que exige admin.
+const EMPRESA = { id: 'e-1' };
+const CONTEXTO_EMPRESA = {
+  empresaAtiva: EMPRESA,
+  empresas: [{ empresa_id: 'e-1', papel: 'operador', empresa: EMPRESA }],
+};
+vi.mock('@/contexts/EmpresaContext', () => ({ useEmpresa: () => CONTEXTO_EMPRESA }));
 
 /** Nenhum órgão, objeto ou CNPJ aqui é real — são valores de teste. */
 const OBJETO_LONGO =
@@ -208,14 +222,39 @@ describe('Aba Atestados — taxonomia, contagem e arquivo', () => {
     expect(within(painel).getByText('1.250.000,00')).toBeInTheDocument();
   });
 
-  it('avisa que os atestados são pessoais e não chegam à equipe', async () => {
+  it('lê o acervo da empresa junto com o legado pessoal ainda não migrado', async () => {
+    /* Trocar isto por `eq('empresa_id')` puro esconderia, no dia da virada,
+       todo atestado que a migração ainda não converteu — o cofre pareceria
+       vazio para quem tem dezenas gravados. */
     dados.atestados = [atestado()];
     montar();
 
     await waitFor(() => expect(screen.getByRole('table')).toBeInTheDocument());
+    expect(chamadas.or.join(' ')).toContain('empresa_id.eq.e-1');
+    expect(chamadas.or.join(' ')).toContain('user_id.eq.u-1');
+    expect(chamadas.or.join(' ')).toContain('empresa_id.is.null');
+  });
+
+  it('o aviso de legado pessoal some quando não há legado', async () => {
+    dados.atestados = [atestado({ empresa_id: 'e-1' })];
+    montar();
+
+    await waitFor(() => expect(screen.getByRole('table')).toBeInTheDocument());
+    // Aviso fixo dizendo "são pessoais" viraria mentira depois da migração.
+    expect(screen.queryByRole('note')).toBeNull();
+  });
+
+  it('e aparece, contando, enquanto houver atestado preso à conta', async () => {
+    dados.atestados = [
+      atestado({ id: 'a-1', empresa_id: null }),
+      atestado({ id: 'a-2', empresa_id: null }),
+      atestado({ id: 'a-3', empresa_id: 'e-1' }),
+    ];
+    montar();
+
+    await waitFor(() => expect(screen.getByRole('table')).toBeInTheDocument());
     const aviso = screen.getByRole('note');
-    expect(aviso.textContent).toMatch(/pessoais/i);
-    expect(aviso.textContent).toMatch(/Colegas da mesma empresa não veem/i);
+    expect(aviso.textContent).toMatch(/2 atestados ainda estão ligados à sua conta/i);
   });
 
   it('diz que cadastrar não é analisar compatibilidade com edital', async () => {
