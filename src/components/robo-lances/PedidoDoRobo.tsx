@@ -45,6 +45,12 @@ type Props = {
    * quem recebe o código do portal, e só ela pode respondê-lo.
    */
   permitirTelaRemota?: boolean;
+  /**
+   * Só os pedidos (e desfechos) destas sessões. Ausente: todos — é a lista do
+   * robô. A página de uma disputa passa as sessões dela: lá, um pedido de outra
+   * disputa apareceria como se fosse desta.
+   */
+  sessaoIds?: readonly string[];
 };
 
 /** Leva o foco ao campo do código, na própria tela — sem trocar de aba. */
@@ -54,12 +60,12 @@ function irParaOCampo() {
   (campo as HTMLInputElement | null)?.focus?.({ preventScroll: true });
 }
 
-export default function PedidoDoRobo({ onAbrirTelaRemota, permitirTelaRemota = false }: Props) {
+export default function PedidoDoRobo({ onAbrirTelaRemota, permitirTelaRemota = false, sessaoIds }: Props) {
   const [valor, setValor] = useState('');
   const [enviando, setEnviando] = useState(false);
 
   const { data, refetch } = usePedidosDoRobo();
-  const pedidos = data?.pedidos ?? [];
+  const pedidos = (data?.pedidos ?? []).filter((p) => !sessaoIds || sessaoIds.includes(p.sessao_id));
 
   const pedido = pedidos[0] || null;
   const chave = pedido ? `${pedido.sessao_id}:${pedido.tipo}` : null;
@@ -111,6 +117,8 @@ export default function PedidoDoRobo({ onAbrirTelaRemota, permitirTelaRemota = f
       const id = `${d.sessao_id}:${d.em}`;
       if (desfechosVistos.current.has(id)) continue;
       desfechosVistos.current.add(id);
+      // De outra disputa: visto, mas não avisado nesta tela.
+      if (sessaoIds && !sessaoIds.includes(d.sessao_id)) continue;
       if (d.desfecho === 'atendido') {
         toast.success('Recebido — o robô seguiu adiante.', { duration: 8000 });
       } else {
@@ -120,7 +128,7 @@ export default function PedidoDoRobo({ onAbrirTelaRemota, permitirTelaRemota = f
         );
       }
     }
-  }, [data?.desfechos]);
+  }, [data?.desfechos, sessaoIds]);
 
   /**
    * O aviso que atravessa a aba.

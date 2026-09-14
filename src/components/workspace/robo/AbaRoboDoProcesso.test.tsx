@@ -293,4 +293,15 @@ describe('AbaRoboDoProcesso', () => {
     expect(screen.getByText('Envio de lances indisponível — somente monitoramento')).toBeTruthy();
     expect(screen.getByText('Não rastreada — sem confirmação do portal')).toBeTruthy();
   });
+
+  it('leva à página da disputa no robô de lances, sem repetir a disputa aqui', async () => {
+    definirHook([participacao()]);
+    montar();
+    await screen.findByText('Item 1');
+
+    const link = screen.getByRole('link', { name: /Abrir no robô de lances/ });
+    expect(link.getAttribute('href')).toBe('/robo-lances/disputa/disputa-1');
+    // Nada foi pedido ao serviço só por abrir a aba.
+    expect(solicitarParada).not.toHaveBeenCalled();
+  });
 });

@@ -111,10 +111,33 @@ export const ROUTE_SECTOR_MAP: Record<string, Setor[]> = {
   '/suporte': ['geral', 'comercial', 'financeiro', 'juridico', 'contabil', 'licitacoes', 'logistica', 'documentos'],
 };
 
+/**
+ * Páginas de DETALHE que herdam o portão da lista de onde saem.
+ *
+ * Os mapas de acesso (setor, aqui; plano, em `data/plan-features.ts`) procuram
+ * a rota EXATA. Uma página nova como `/robo-lances/disputa/<id>` não está em
+ * nenhum deles — e rota não listada é rota livre. Seria a segunda porta para a
+ * mesma sala sem a fechadura da primeira, o defeito que `/produtos` já teve.
+ *
+ * A lista é explícita, e não "todo prefixo herda": `/equipe/permissoes`, por
+ * exemplo, tem regra própria e não pode mudar de portão sem decisão de alguém.
+ */
+const ROTAS_DE_DETALHE: ReadonlyArray<readonly [string, string]> = [
+  // [prefixo do detalhe, rota da lista]
+  ['/robo-lances/disputa/', '/robo-lances'],
+];
+
+/** A rota cujas regras de acesso valem para `path`: ela mesma, ou a lista de onde o detalhe sai. */
+export function rotaQueDecideOAcesso(path: string): string {
+  const semBusca = path.split('?')[0];
+  const detalhe = ROTAS_DE_DETALHE.find(([prefixo]) => semBusca.startsWith(prefixo));
+  return detalhe ? detalhe[1] : path;
+}
+
 export function isSectorAllowedForRoute(setor: Setor, path: string): boolean {
   // Rotas /admin/** são exclusivas de admin global do sistema (validado fora deste util).
   if (path.startsWith('/admin/')) return false;
-  const allowed = ROUTE_SECTOR_MAP[path];
+  const allowed = ROUTE_SECTOR_MAP[rotaQueDecideOAcesso(path)];
   // Rotas não mapeadas: liberar (não há bloqueio explícito).
   if (!allowed) return true;
   return allowed.includes(setor);

@@ -789,14 +789,20 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
     }
   };
 
+  // Editando, "limpar" é voltar ao que está gravado — não esvaziar. Até
+  // 14/09/2026 fechar o diálogo de edição (salvando ou cancelando) zerava
+  // edital, portal e itens, e reabrir "Editar parâmetros" mostrava um
+  // formulário vazio: o estado inicial vem do `editingLance` só na montagem.
+  // Com a disputa em página própria, editar virou o caminho principal.
   const resetForm = () => {
-    setEdital(''); setPortal('');
-    setDecrementoMin(''); setDecrementoPercentual('1.5');
-    setIntervaloSegundos('30'); setMaxLances('20'); setModoAutomatico(true); setHorario('');
-    setItens([]); setTipoDisputa('item'); setStep(editingLance ? 1 : 0);
-    setSelectedLicId(null); setSearchLic(''); setStatusFilter('todos'); setLicitacaoIdRef(undefined);
+    setEdital(editingLance?.edital || ''); setPortal(editingLance?.portal || ''); setUasg(editingLance?.uasg || '');
+    setDecrementoMin(editingLance?.decrementoMin?.toString() || ''); setDecrementoPercentual(editingLance?.decrementoPercentual?.toString() || '1.5');
+    setIntervaloSegundos(editingLance?.intervaloSegundos?.toString() || '30'); setMaxLances(editingLance?.maxLances?.toString() || '20');
+    setModoAutomatico(editingLance?.modoAutomatico ?? true); setHorario(editingLance?.horario || '');
+    setItens(editingLance?.itens || []); setTipoDisputa(editingLance?.tipoDisputa || 'item'); setStep(editingLance ? 1 : 0);
+    setSelectedLicId(null); setSearchLic(''); setStatusFilter('todos'); setLicitacaoIdRef(editingLance?.licitacaoId);
     setTrocarProcesso(false);
-    setValorInicialInput(''); setValorMinimoInput('');
+    setValorInicialInput(editingLance ? String(editingLance.valorInicial) : ''); setValorMinimoInput(editingLance ? String(editingLance.valorMinimo) : '');
     setEditalFile(null); setShowEditalUpload(false); setAutoExtractTriggered(false);
     resetItemForm();
   };

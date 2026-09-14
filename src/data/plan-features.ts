@@ -2,6 +2,7 @@
  * Mapeamento de rotas por plano.
  * Rotas não listadas aqui são acessíveis a todos os planos (incluindo sem assinatura).
  */
+import { rotaQueDecideOAcesso } from '@/lib/route-permissions';
 
 export type PlanSlug = 'basico' | 'profissional' | 'enterprise';
 
@@ -17,6 +18,9 @@ export const planDisplayNames: Record<PlanSlug, string> = {
 /**
  * Plano mínimo requerido para cada rota protegida.
  * Se a rota não está aqui, qualquer plano (ou sem plano) pode acessar.
+ *
+ * Páginas de detalhe (`/robo-lances/disputa/<id>`) herdam o plano da lista de
+ * onde saem — ver `rotaQueDecideOAcesso`.
  */
 export const routeMinPlan: Record<string, PlanSlug> = {
   // Profissional+
@@ -56,7 +60,7 @@ export const routeMinPlan: Record<string, PlanSlug> = {
  * Verifica se o plano do usuário tem acesso a uma rota.
  */
 export function hasAccessToRoute(userPlan: PlanSlug | null, route: string): boolean {
-  const requiredPlan = routeMinPlan[route];
+  const requiredPlan = routeMinPlan[rotaQueDecideOAcesso(route)];
   if (!requiredPlan) return true; // rota livre
   if (!userPlan) return false; // sem plano, rota requer plano
 
@@ -69,5 +73,5 @@ export function hasAccessToRoute(userPlan: PlanSlug | null, route: string): bool
  * Retorna o plano mínimo exigido para uma rota, ou null se livre.
  */
 export function getRequiredPlan(route: string): PlanSlug | null {
-  return routeMinPlan[route] || null;
+  return routeMinPlan[rotaQueDecideOAcesso(route)] || null;
 }

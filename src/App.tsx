@@ -34,6 +34,7 @@ const KanbanPage = lazyPage(() => import("./pages/KanbanPage"));
 const MetasComercial = lazyPage(() => import("./pages/MetasComercial"));
 const DefinirMetas = lazyPage(() => import("./pages/DefinirMetas"));
 const RoboLances = lazyPage(() => import("./pages/RoboLances"));
+const RoboLancesDisputa = lazyPage(() => import("./pages/RoboLancesDisputa"));
 const Concorrentes = lazyPage(() => import("./pages/Concorrentes"));
 const Documentos = lazyPage(() => import("./pages/Documentos"));
 const ApoioJuridico = lazyPage(() => import("./pages/ApoioJuridico"));
@@ -164,6 +165,9 @@ const App = () => (
               <Route path="/metas-comercial" element={<ProtectedPages><MetasComercial /></ProtectedPages>} />
               <Route path="/definir-metas" element={<ProtectedPages><DefinirMetas /></ProtectedPages>} />
               <Route path="/robo-lances" element={<PlanPages><RoboLances /></PlanPages>} />
+              {/* Uma disputa em página própria. Mesma fechadura da lista: o plano e o setor
+                  de `/robo-lances` valem aqui por `rotaQueDecideOAcesso` (route-permissions.ts). */}
+              <Route path="/robo-lances/disputa/:id" element={<PlanPages><RoboLancesDisputa /></PlanPages>} />
               <Route path="/concorrentes" element={<PlanPages><Concorrentes /></PlanPages>} />
               <Route path="/documentos" element={<ProtectedPages><Documentos /></ProtectedPages>} />
               <Route path="/apoio-juridico" element={<PlanPages><ApoioJuridico /></PlanPages>} />

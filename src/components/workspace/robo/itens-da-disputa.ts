@@ -47,6 +47,13 @@ export interface LinhaDoItem {
   /** Limite autorizado na configuração da disputa. `null` = ninguém definiu. */
   limite: number | null;
   licitacaoItemId: string | null;
+  /** Quantidade do cadastro. `null` = não informada. */
+  quantidade: number | null;
+  unidade: string | null;
+  /** Valor de referência do item no cadastro. `null` = não informado (zero também). */
+  valorReferencia: number | null;
+  /** Se o item entra na disputa. `null` = o cadastro não diz. */
+  disputando: boolean | null;
   /** O que o agente registrou para este item, quando o casamento é inequívoco. */
   daSessao: ItemDaSessao | null;
 }
@@ -109,6 +116,8 @@ export function linhasDaDisputa(
       daSessao = unico(candidatos);
     }
 
+    const referencia = numeroOuNulo(item.valorReferencia ?? item.valor_referencia);
+
     return {
       // O índice entra só aqui, para dois itens repetidos não colidirem na
       // chave do React. Ele nunca participa do casamento acima.
@@ -116,10 +125,15 @@ export function linhasDaDisputa(
       numero,
       lote: textoOuNulo(item.lote),
       descricao: textoOuNulo(item.descricao) ?? '',
-      // Piso 0 nunca foi decisão de ninguém (ver RoboLances.linhaParaLance):
+      // Piso 0 nunca foi decisão de ninguém (ver `disputa-do-robo.linhaParaLance`):
       // lido como "sem limite", não como "pode descer até zero".
       limite: limite !== null && limite > 0 ? limite : null,
       licitacaoItemId,
+      quantidade: numeroOuNulo(item.quantidade),
+      unidade: textoOuNulo(item.unidade),
+      // Referência zero é "não informada", não "vale R$ 0,00".
+      valorReferencia: referencia !== null && referencia > 0 ? referencia : null,
+      disputando: typeof item.disputando === 'boolean' ? item.disputando : null,
       daSessao,
     };
   });

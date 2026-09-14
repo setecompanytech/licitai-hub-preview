@@ -1,31 +1,31 @@
-import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 /**
- * Testes da tela do Robô de Lances — a tela do CLIENTE.
+ * Testes da LISTA do Robô de Lances — a tela do cliente.
  *
  * ─── O QUE ESTES TESTES GUARDAM, E POR QUE ────────────────────────────────
  *
  *  1. (14/09/2026) A separação entre cliente e plataforma. As abas Agente,
  *     Portais e Configurações mostravam ao administrador da empresa o que é
- *     da operação Praefectus — agente, healthcheck, freio, tela remota,
- *     simulação, auditoria encadeada, fornecedor de IA —, e uma frase falsa
- *     ("Sistema pronto para disputas reais"). Nada disso pode voltar a esta
- *     tela, nem para o administrador da empresa.
+ *     da operação Praefectus, e uma frase falsa ("Sistema pronto para
+ *     disputas reais"). Nada disso pode voltar.
  *  2. Ligar/desligar o robô visível a todos e travado para quem só visualiza.
  *  3. Os avisos da operação: o geral aparece; o de portal sem disputa, não.
- *  4. As três colunas da composição aprovada — `data-coluna` sobrevive a CSS.
- *  5. O limite financeiro. Existe por causa de um defeito real: a página
- *     declarava `limiteFinanceiro` sem setter, e a trava do diálogo de
- *     autorização recebia zero para sempre.
- *  6. O painel de participações acima das ferramentas, e os controles que
- *     prometiam o que não faziam, ligados ou renomeados.
+ *  4. (14/09/2026) A lista é SÓ lista. O bloco "Ferramentas da disputa" —
+ *     sessões, disputa selecionada, coluna de controle e o Painel de Risco —
+ *     era igual embaixo de qualquer aba e espremia a tabela de itens até uma
+ *     letra por linha. Nada dele volta: cada linha abre a disputa em página
+ *     própria, e "Nova sessão" leva à disputa recém-gravada.
+ *
+ * Envio ao robô, limite financeiro e o menu "Ações" moram na página da
+ * disputa, e os testes deles em `RoboLancesDisputa.test.tsx`.
  *
  * NADA aqui abre sessão nem envia lance: supabase, hooks e edge functions são
- * todos dublês. A regra de segurança do módulo é que validação de robô não se
- * faz contra portal.
+ * dublês. A regra de segurança do módulo é que validação de robô não se faz
+ * contra portal.
  */
 
 /* ── Papel na empresa: trocado por teste ────────────────────────────────── */
@@ -63,12 +63,9 @@ const DISPUTA = {
 /**
  * Cadeia encadeável do supabase-js: qualquer método devolve a própria cadeia,
  * e a cadeia é "thenable" — resolve com a resposta configurada para a tabela.
- * Cobre `.select().eq().is().order().limit()`, `.maybeSingle()`, `.single()` e
- * `.then()` sem precisar saber a ordem em que cada tela chama.
  */
 function cadeiaDa(tabela: string) {
-  const resolver = () =>
-    Promise.resolve(respostas[tabela] ?? { data: [], error: null });
+  const resolver = () => Promise.resolve(respostas[tabela] ?? { data: [], error: null });
 
   const cadeia: Record<string | symbol, unknown> = new Proxy(
     {},
@@ -101,9 +98,7 @@ vi.mock('@/integrations/supabase/client', () => ({
 /* ── Contextos e hooks ──────────────────────────────────────────────────
    CADA UM DEVOLVE O MESMO OBJETO SEMPRE. Um hook dublado que devolve um
    literal novo a cada chamada quebra qualquer `useEffect` que o tenha na
-   lista de dependências: `AtivacaoChecklist` observa `[user, empresaAtiva]`,
-   e com identidade nova a cada render o efeito redispara, chama `setItems`,
-   renderiza de novo — laço infinito, teste que nunca termina. */
+   lista de dependências — laço infinito, teste que nunca termina. */
 vi.mock('@/contexts/AuthContext', () => {
   const valor = { user: { id: 'user-1', email: 'operador@exemplo.com' } };
   return { useAuth: () => valor };
@@ -123,13 +118,6 @@ vi.mock('@/hooks/useAuditLog', () => {
   const valor = { registrar: vi.fn(), buscarHistorico: vi.fn(async () => []) };
   return { useAuditLog: () => valor };
 });
-vi.mock('@/hooks/useLicitacaoIntegration', () => {
-  const valor = {
-    registrarResultadoDisputa: vi.fn(),
-    registrarPerda: vi.fn(async () => true),
-  };
-  return { useLicitacaoIntegration: () => valor };
-});
 vi.mock('@/components/robo-lances/usePedidosDoRobo', () => {
   const valor = { data: { pedidos: [], desfechos: [], sessoesVivas: [] } };
   return {
@@ -138,19 +126,20 @@ vi.mock('@/components/robo-lances/usePedidosDoRobo', () => {
     focarSessaoDoRobo: vi.fn(),
   };
 });
-// O painel de participações tem testes próprios; aqui ele só precisa existir.
-vi.mock('@/hooks/useParticipacoesDoRobo', () => {
-  const valor = {
-    participacoes: [] as unknown[],
-    carregando: false,
-    erro: null,
-    semEmpresa: false,
-    lidoEm: null,
-    capacidade: { portaisComLanceLiberado: [] as string[], fonte: 'nao_verificada', verificadaEm: null },
-    recarregar: vi.fn(async () => {}),
-  };
-  return { useParticipacoesDoRobo: () => valor };
-});
+
+/* O painel de participações é o REAL (ele é o corpo da lista); só o
+   carregamento é dublado, com o mesmo objeto em todos os renders. */
+const participacoesDoHook = vi.hoisted(() => ({
+  participacoes: [] as unknown[],
+  carregando: false,
+  erro: null as string | null,
+  semEmpresa: false,
+  lidoEm: new Date('2026-09-14T15:04:05Z') as Date | null,
+  capacidade: { portaisComLanceLiberado: [] as string[], fonte: 'nao_verificada', verificadaEm: null as string | null },
+  recarregar: async () => {},
+}));
+vi.mock('@/hooks/useParticipacoesDoRobo', () => ({ useParticipacoesDoRobo: () => participacoesDoHook }));
+
 vi.mock('sonner', () => ({
   toast: Object.assign(vi.fn(), {
     success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn(),
@@ -159,14 +148,9 @@ vi.mock('sonner', () => ({
 
 /* ── Dublês de peças pesadas ou que falam com a rede ─────────────────────
    As fábricas de `vi.mock` são içadas para o topo do arquivo: nada de
-   variável declarada aqui fora pode ser CHAMADA dentro delas.
-
-   `EstrategiaIAPanel` NÃO é dublado: é o componente real que tem de chegar
-   sem o selo do fornecedor de IA. */
+   variável declarada aqui fora pode ser CHAMADA dentro delas. */
 vi.mock('@/components/layout/AppLayout', () => ({
-  default: ({ children }: { children?: React.ReactNode }) => (
-    <div data-testid="app-layout">{children}</div>
-  ),
+  default: ({ children }: { children?: React.ReactNode }) => <div data-testid="app-layout">{children}</div>,
 }));
 vi.mock('@/components/shared/ProcessoContextoBanner', () => ({ default: () => null }));
 vi.mock('@/components/shared/CabecalhoPagina', () => ({
@@ -174,70 +158,100 @@ vi.mock('@/components/shared/CabecalhoPagina', () => ({
     <header>{acoes}{children}</header>
   ),
 }));
+/** O diálogo de cadastro vira um botão que "salva" uma disputa pronta. */
 vi.mock('@/components/robo-lances/ConfigurarLanceDialog', () => ({
-  default: ({ trigger }: { trigger?: React.ReactNode }) => <>{trigger}</>,
+  default: ({ trigger, onSave }: { trigger?: React.ReactNode; onSave: (l: unknown) => void }) => (
+    <>
+      {trigger}
+      <button
+        type="button"
+        onClick={() =>
+          onSave({
+            id: 'nova-1', edital: 'PE 555/2026', portal: 'Compras.gov', valorReferencia: 0, valorInicial: 0,
+            valorMinimo: 0, decrementoMin: 0, decrementoPercentual: 1.5, intervaloSegundos: 30, maxLances: 20,
+            modoAutomatico: false, status: 'aguardando', horario: '', meuLance: 0, valorAtual: 0, itens: [],
+            tipoDisputa: 'item',
+          })
+        }
+      >
+        Salvar dublê
+      </button>
+    </>
+  ),
 }));
-vi.mock('@/components/licitacoes/LicitacaoChat', () => ({ default: () => null }));
-vi.mock('@/components/robo-lances/DisputasResumo', () => ({ default: () => null }));
 vi.mock('@/components/robo-lances/ExportarResultados', () => ({
   default: () => <button type="button">Exportar</button>,
 }));
 vi.mock('@/components/robo-lances/NivelAutomacaoSelector', () => ({ default: () => null }));
 vi.mock('@/components/robo-lances/AceiteTermosDialog', () => ({ default: () => null }));
-vi.mock('@/components/robo-lances/PainelRisco', () => ({ default: () => null }));
-vi.mock('@/components/robo-lances/ConferenciaDosItens', () => ({ default: () => null }));
 vi.mock('@/components/robo-lances/PedidoDoRobo', () => ({ default: () => null }));
 vi.mock('@/components/robo-lances/CredenciaisPortalForm', () => ({ default: () => null }));
-vi.mock('@/components/robo-lances/KillSwitchButton', () => ({ default: () => null }));
-vi.mock('@/components/metas/RegistrarPerdaDialog', () => ({ default: () => null }));
-
-/**
- * O diálogo de autorização entra como dublê que EXPÕE o limite recebido.
- * É o ponto exato do defeito: o valor chegava aqui e chegava zerado.
- */
-vi.mock('@/components/robo-lances/AutorizacaoLanceDialog', () => ({
-  default: ({ limiteFinanceiro }: { limiteFinanceiro: number }) => (
-    <div data-testid="autorizacao-dialog" data-limite={String(limiteFinanceiro)} />
-  ),
-}));
 
 import RoboLances from './RoboLances';
 import { toast } from 'sonner';
 
+/** Onde a navegação caiu, e o que a lista entregou para a volta. */
+function LocalAtual() {
+  const local = useLocation();
+  const daLista = (local.state as { daLista?: string } | null)?.daLista ?? '';
+  return (
+    <p data-testid="local" data-lista={daLista}>
+      {local.pathname}
+    </p>
+  );
+}
+
 /**
  * O painel guarda aba e busca na URL — a página precisa de um roteador. E a
- * situação do robô e os avisos vêm pelo react-query — precisa de um cliente,
- * novo a cada teste para um não herdar o cache do outro.
+ * situação do robô e os avisos vêm pelo react-query — um cliente novo por teste.
  */
-function renderizar() {
+function renderizar(url = '/robo-lances') {
   const cliente = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={cliente}>
-      <MemoryRouter initialEntries={['/robo-lances']}>
-        <RoboLances />
+      <MemoryRouter initialEntries={[url]}>
+        <Routes>
+          <Route path="/robo-lances" element={<RoboLances />} />
+          <Route path="/robo-lances/disputa/:id" element={<LocalAtual />} />
+        </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
   );
 }
 
-/**
- * O diálogo REAL, obtido com `importActual` porque o dublê acima o substitui
- * para o resto do arquivo. `useAuditLog` e `sonner` seguem dublados — só este
- * módulo volta a ser o de verdade, que é onde `excedeLimite` mora.
- */
-type ModuloAutorizacao = typeof import('@/components/robo-lances/AutorizacaoLanceDialog');
-let AutorizacaoLanceDialog: ModuloAutorizacao['default'];
-beforeAll(async () => {
-  const mod = await vi.importActual<ModuloAutorizacao>(
-    '@/components/robo-lances/AutorizacaoLanceDialog',
-  );
-  AutorizacaoLanceDialog = mod.default;
-});
-
-/** Abre a disputa da coluna da esquerda — é o que revela centro e direita. */
-async function selecionarDisputa() {
-  const alvo = await screen.findByRole('button', { name: /PE 90001\/2026/ });
-  fireEvent.click(alvo);
+/** Uma participação "em disputa" com processo vinculado. */
+function participacao() {
+  return {
+    disputa: {
+      ...DISPUTA,
+      empresa_id: 'empresa-1',
+      licitacao_id: 'lic-9',
+      status: 'ativo',
+      created_at: '2026-09-01T12:00:00Z',
+      updated_at: '2026-09-01T12:00:00Z',
+    },
+    processo: {
+      id: 'lic-9',
+      numero: 'PE 90001/2026',
+      orgao: 'Prefeitura de Exemplo',
+      objeto: 'Material de expediente',
+      data_abertura: null,
+      operador_id: 'user-1',
+      status: 'Em Disputa',
+    },
+    sessao: null,
+    ultimoLanceProprio: null,
+    melhorLanceInformado: null,
+    projecao: {
+      aba: 'em_disputa',
+      faseInformadaPor: 'marcacao_manual',
+      estadoDoRobo: 'sem_sessao',
+      lanceLiberadoNoPortal: false,
+      itensSemLimite: 0,
+      pendenciaPrincipal: null,
+      proximaAcao: null,
+    },
+  };
 }
 
 beforeEach(() => {
@@ -245,9 +259,8 @@ beforeEach(() => {
   localStorage.clear();
   for (const k of Object.keys(respostas)) delete respostas[k];
   respostas.robo_lances_disputas = { data: [DISPUTA], error: null };
-  respostas.robo_aceite_termos = { data: [{ limite_financeiro: 5000 }], error: null };
-  // `clearAllMocks` não desfaz implementação trocada por um teste.
   invoke.mockImplementation(async () => ({ data: null, error: null }));
+  participacoesDoHook.participacoes = [];
   papel.isAdmin = true;
   papel.podeOperar = true;
   papel.isViewer = false;
@@ -257,7 +270,7 @@ beforeEach(() => {
 describe('RoboLances — a tela do cliente não mostra o que é da plataforma', () => {
   it('não tem as abas Agente, Portais e Configurações — nem para o administrador da empresa', async () => {
     renderizar();
-    await screen.findByRole('button', { name: /PE 90001\/2026/ });
+    await screen.findByRole('heading', { name: 'Participações do robô' });
 
     expect(screen.queryByRole('tab', { name: /^Agente/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: /^Portais/ })).not.toBeInTheDocument();
@@ -267,28 +280,23 @@ describe('RoboLances — a tela do cliente não mostra o que é da plataforma', 
 
   it('não afirma "Sistema pronto", não tem "Regras de lance" nem o nome do fornecedor de IA', async () => {
     renderizar();
-    await selecionarDisputa();
+    await screen.findByRole('heading', { name: 'Participações do robô' });
 
-    // O painel de estratégia REAL está na tela — a ausência do selo vale.
-    expect(await screen.findByText('Estratégia Preditiva IA')).toBeInTheDocument();
     expect(screen.queryByText(/Gemini/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Sistema pronto/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Regras de lance/i)).not.toBeInTheDocument();
   });
 
-  it('o checklist do cliente não traz conexão, prontidão do agente, freio nem slots', async () => {
+  it('o checklist de acesso mora em "Gerenciar portais", sem conexão, prontidão do agente, freio nem slots', async () => {
     renderizar();
-    await selecionarDisputa();
+    fireEvent.click(await screen.findByRole('button', { name: /Gerenciar portais/ }));
 
     expect(await screen.findByText('Autenticação')).toBeInTheDocument();
     expect(screen.queryByText('Conexão')).not.toBeInTheDocument();
     expect(screen.queryByText('Prontidão do robô')).not.toBeInTheDocument();
-    expect(screen.queryByText(/Sinal de vida|Slots Disponíveis|Freio de emergência verificado|Portais respondendo/)).not.toBeInTheDocument();
-
-    // Os três blocos do painel da direita continuam.
-    expect(screen.getByText('Limites')).toBeInTheDocument();
-    expect(screen.getByText('Estado da sessão')).toBeInTheDocument();
-    expect(screen.getAllByText('Eventos').length).toBeGreaterThan(0);
+    expect(
+      screen.queryByText(/Sinal de vida|Slots Disponíveis|Freio de emergência verificado|Portais respondendo/),
+    ).not.toBeInTheDocument();
   });
 
   it('sem resposta da situação do robô, diz "indisponível no momento" — nunca "pronto"', async () => {
@@ -341,53 +349,6 @@ describe('RoboLances — ligar e desligar o robô', () => {
   });
 });
 
-describe('RoboLances — recusa do envio ao robô', () => {
-  /** A resposta não-2xx do supabase-js: frase genérica em `message`, corpo em `context`. */
-  function recusa(status: number, corpo: unknown) {
-    return {
-      data: null,
-      error: {
-        message: 'Edge Function returned a non-2xx status code',
-        context: { status, json: async () => corpo },
-      },
-    };
-  }
-
-  async function enviar() {
-    respostas.robo_lances_disputas = { data: [{ ...DISPUTA, portal: 'Compras.gov.br' }], error: null };
-    renderizar();
-    await selecionarDisputa();
-    fireEvent.click(screen.getByRole('button', { name: /Enviar ao robô/ }));
-  }
-
-  it('409 (robô desligado): mostra a frase do servidor e relê o liga/desliga', async () => {
-    invoke.mockImplementation((async (nome: string) =>
-      nome === 'robo-lances-webhook/enviar-sessao'
-        ? recusa(409, { success: false, error: 'O robô de lances desta empresa está desligado.' })
-        : { data: null, error: null }) as never);
-    await enviar();
-
-    await waitFor(() =>
-      expect(toast.error).toHaveBeenCalledWith('O robô de lances desta empresa está desligado.', expect.anything()),
-    );
-    expect(toast.error).not.toHaveBeenCalledWith(expect.stringMatching(/non-2xx/), expect.anything());
-  });
-
-  it('502 sem corpo legível: frase para o cliente, nunca "non-2xx status code"', async () => {
-    invoke.mockImplementation((async (nome: string) =>
-      nome === 'robo-lances-webhook/enviar-sessao' ? recusa(502, null) : { data: null, error: null }) as never);
-    await enviar();
-
-    await waitFor(() =>
-      expect(toast.error).toHaveBeenCalledWith(
-        expect.stringMatching(/não aceitou a sessão/),
-        expect.anything(),
-      ),
-    );
-    expect(toast.error).not.toHaveBeenCalledWith(expect.stringMatching(/non-2xx/), expect.anything());
-  });
-});
-
 describe('RoboLances — avisos da operação', () => {
   it('mostra o aviso geral e esconde o de um portal em que a empresa não disputa', async () => {
     respostas.robo_avisos_portal = {
@@ -411,7 +372,6 @@ describe('RoboLances — avisos da operação', () => {
 
     expect(await screen.findByText('Instabilidade na comunicação com os portais')).toBeInTheDocument();
     expect(screen.queryByText('LicitaNet fora do ar')).not.toBeInTheDocument();
-    // O contador do botão conta os dois: a lista completa mora nele.
     expect(screen.getByRole('button', { name: /Avisos/ })).toHaveTextContent('2');
 
     // Acima do painel de participações.
@@ -423,205 +383,68 @@ describe('RoboLances — avisos da operação', () => {
   });
 });
 
-describe('RoboLances — papel na disputa', () => {
-  it('esconde "Nova sessão" e "Enviar ao robô" de quem só visualiza, dizendo por quê', async () => {
+describe('RoboLances — papel', () => {
+  it('esconde "Nova sessão" de quem só visualiza, dizendo por quê', async () => {
     papel.isAdmin = false;
     papel.podeOperar = false;
     papel.isViewer = true;
     papel.papel = 'viewer';
     renderizar();
-    await selecionarDisputa();
+    await screen.findByRole('heading', { name: 'Participações do robô' });
 
     expect(screen.queryByRole('button', { name: /Nova sessão/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Enviar ao robô/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Assistir ao vivo/ })).not.toBeInTheDocument();
     // Ausência sem explicação é indistinguível de defeito.
     expect(screen.getAllByText(/modo leitura/i).length).toBeGreaterThan(0);
   });
-
-  it('o operador envia ao robô, mas não tem "Assistir ao vivo" nem trilha de auditoria', async () => {
-    renderizar();
-    await selecionarDisputa();
-
-    expect(screen.getByRole('button', { name: /Enviar ao robô/ })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Assistir ao vivo/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /trilha de auditoria/i })).not.toBeInTheDocument();
-  });
 });
 
-describe('RoboLances — as três colunas', () => {
-  it('desenha sessões à esquerda, sessão selecionada no centro e controle à direita', async () => {
+describe('RoboLances — a lista é só lista', () => {
+  it('não desenha ferramentas da disputa, coluna de sessões nem Painel de Risco embaixo das abas', async () => {
+    participacoesDoHook.participacoes = [participacao()];
     const { container } = renderizar();
-    await selecionarDisputa();
+    await screen.findByRole('heading', { name: 'Participações do robô' });
 
-    expect(container.querySelector('[data-coluna="sessoes"]')).toBeTruthy();
-    expect(container.querySelector('[data-coluna="sessao-selecionada"]')).toBeTruthy();
-    expect(container.querySelector('[data-coluna="controle"]')).toBeTruthy();
+    expect(screen.queryByText('Ferramentas da disputa')).not.toBeInTheDocument();
+    expect(container.querySelector('[data-coluna]')).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Sessões' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Painel de Risco|Faixa ideal/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Estado da sessão')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Limite financeiro autorizado/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Selecione ou crie uma disputa')).not.toBeInTheDocument();
   });
 
-  it('mantém as três colunas mesmo sem disputa selecionada', async () => {
-    const { container } = renderizar();
-    await screen.findByRole('button', { name: /PE 90001\/2026/ });
+  it('a linha abre a página da disputa — mesmo com processo vinculado — levando aba e busca da lista', async () => {
+    participacoesDoHook.participacoes = [participacao()];
+    renderizar('/robo-lances?painel=em_disputa&q=90001');
 
-    expect(container.querySelector('[data-coluna="sessoes"]')).toBeTruthy();
-    expect(container.querySelector('[data-coluna="sessao-selecionada"]')).toBeTruthy();
-    expect(container.querySelector('[data-coluna="controle"]')).toBeTruthy();
+    fireEvent.click(await screen.findByRole('button', { name: /PE 90001\/2026/ }));
+
+    const local = await screen.findByTestId('local');
+    expect(local).toHaveTextContent('/robo-lances/disputa/disputa-1');
+    expect(local).toHaveAttribute('data-lista', '?painel=em_disputa&q=90001');
   });
 
-  it('o painel de eventos tem só Mural e Operações — Simulação e Auditoria são da plataforma', async () => {
+  it('"Nova sessão" grava e só então abre a página da disputa nova', async () => {
     renderizar();
-    await selecionarDisputa();
+    fireEvent.click(await screen.findByRole('button', { name: 'Salvar dublê' }));
 
-    expect(screen.getByRole('tab', { name: /Mural/ })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: /Operações/ })).toBeInTheDocument();
-    expect(screen.queryByRole('tab', { name: /Simulação/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole('tab', { name: /Auditoria/ })).not.toBeInTheDocument();
+    expect(await screen.findByTestId('local')).toHaveTextContent('/robo-lances/disputa/nova-1');
+    expect(toast.success).toHaveBeenCalledWith('Nova disputa adicionada!');
   });
-});
 
-describe('RoboLances — limite financeiro (o defeito da trava que não travava)', () => {
-  it('lê o limite do aceite vigente e o entrega ao diálogo de autorização', async () => {
+  it('"Nova sessão" que o banco recusa diz o motivo e não abre página nenhuma', async () => {
     renderizar();
-    await selecionarDisputa();
+    const salvar = await screen.findByRole('button', { name: 'Salvar dublê' });
+    respostas.robo_lances_disputas = { data: null, error: { message: 'permission denied for table robo_lances_disputas' } };
+    fireEvent.click(salvar);
 
-    await waitFor(() => {
-      expect(screen.getByTestId('autorizacao-dialog')).toHaveAttribute('data-limite', '5000');
-    });
-  });
-
-  it('mostra o limite na coluna da direita em vez de um número inventado', async () => {
-    renderizar();
-    await selecionarDisputa();
-
-    expect(await screen.findByText('Limite financeiro autorizado')).toBeInTheDocument();
-    expect(screen.getByText(/R\$\s*5\.000,00/)).toBeInTheDocument();
-  });
-
-  it('sem aceite vigente não afirma "R$ 0,00" — declara a ausência e a razão', async () => {
-    respostas.robo_aceite_termos = { data: [], error: null };
-    renderizar();
-    await selecionarDisputa();
-
-    await waitFor(() => {
-      expect(screen.getByTestId('autorizacao-dialog')).toHaveAttribute('data-limite', '0');
-    });
-    expect(screen.getByText(/Nenhum aceite vigente/i)).toBeInTheDocument();
-  });
-});
-
-describe('RoboLances — painel de participações e controles honestos', () => {
-  it('abre com o painel de participações acima das ferramentas', async () => {
-    const { container } = renderizar();
-
-    expect(await screen.findByRole('heading', { name: 'Participações do robô' })).toBeInTheDocument();
-    const painel = container.querySelector('[data-painel="participacoes"]');
-    const colunas = container.querySelector('[data-coluna="sessoes"]');
-    expect(painel).toBeTruthy();
-    expect(colunas).toBeTruthy();
-    expect(painel!.compareDocumentPosition(colunas!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  });
-
-  it('a busca de itens filtra a tabela, e não há mais "Enviar lance" por item', async () => {
-    const item = (numero: number, descricao: string) => ({
-      numero, lote: null, descricao, quantidade: 10, unidade: 'UN',
-      valorReferencia: 5, valorMinimo: 4, situacao: 'aguardando', disputando: false,
-    });
-    respostas.robo_lances_disputas = {
-      data: [{ ...DISPUTA, itens: [item(1, 'Caneta esferográfica azul'), item(2, 'Papel A4')] }],
-      error: null,
-    };
-    renderizar();
-    await selecionarDisputa();
-
-    expect(screen.getByText('Caneta esferográfica azul')).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText(/Buscar item/), { target: { value: 'papel' } });
-    expect(screen.queryByText('Caneta esferográfica azul')).not.toBeInTheDocument();
-    expect(screen.getByText('Papel A4')).toBeInTheDocument();
-    expect(screen.queryByText('Enviar lance')).not.toBeInTheDocument();
-  });
-
-  it('o menu diz que marcar a fase não inicia nem para o robô', async () => {
-    renderizar();
-    await selecionarDisputa();
-
-    fireEvent.keyDown(screen.getByRole('button', { name: 'Ações' }), { key: 'Enter' });
-    expect(await screen.findByText('Marcar como em disputa (manual)')).toBeInTheDocument();
-    expect(screen.getByText(/Não inicia nem para o robô/)).toBeInTheDocument();
-    expect(screen.queryByText(/Iniciar disputa/)).not.toBeInTheDocument();
-  });
-});
-
-/**
- * A outra metade do defeito: com o limite chegando, a trava do diálogo tem
- * que voltar a agir. Aqui o diálogo é o componente REAL — é o único lugar
- * onde `excedeLimite` existe.
- */
-describe('AutorizacaoLanceDialog — excedeLimite volta a funcionar', () => {
-  const estrategia = {
-    valorInicial: 9000,
-    valorMinimo: 7000,
-    decrementoMin: 50,
-    decrementoPercentual: 1.5,
-    maxLances: 20,
-    intervaloSegundos: 30,
-  };
-
-  it('bloqueia a autorização quando o valor inicial passa do limite', async () => {
-    const { unmount } = render(
-      <AutorizacaoLanceDialog
-        open
-        onOpenChange={() => {}}
-        estrategia={estrategia}
-        limiteFinanceiro={5000}
-        edital="PE 90001/2026"
-        onAutorizar={() => {}}
-      />,
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
+        'Disputa não foi salva: permission denied for table robo_lances_disputas',
+        expect.anything(),
+      ),
     );
-
-    expect(await screen.findByText(/excede o limite financeiro/i)).toBeInTheDocument();
-
-    const campo = screen.getByLabelText(/AUTORIZO/i);
-    fireEvent.change(campo, { target: { value: 'AUTORIZO' } });
-
-    // Mesmo com a confirmação literal digitada, o botão continua travado.
-    expect(screen.getByRole('button', { name: /Autorizar Estratégia/ })).toBeDisabled();
-    unmount();
-  });
-
-  it('libera quando o valor inicial cabe no limite', async () => {
-    render(
-      <AutorizacaoLanceDialog
-        open
-        onOpenChange={() => {}}
-        estrategia={estrategia}
-        limiteFinanceiro={20000}
-        edital="PE 90001/2026"
-        onAutorizar={() => {}}
-      />,
-    );
-
-    expect(await screen.findByText(/Dentro do limite financeiro/i)).toBeInTheDocument();
-
-    fireEvent.change(screen.getByLabelText(/AUTORIZO/i), { target: { value: 'AUTORIZO' } });
-    expect(screen.getByRole('button', { name: /Autorizar Estratégia/ })).toBeEnabled();
-  });
-
-  it('com limite zerado — o estado do defeito — nem afirma nem nega o teto', async () => {
-    render(
-      <AutorizacaoLanceDialog
-        open
-        onOpenChange={() => {}}
-        estrategia={estrategia}
-        limiteFinanceiro={0}
-        edital="PE 90001/2026"
-        onAutorizar={() => {}}
-      />,
-    );
-
-    await screen.findByText(/Revise a estratégia antes de autorizar/i);
-    // Era exatamente isto que a tela mostrava antes do conserto: nenhuma das
-    // duas faixas. Nada denunciava que a conferência estava desligada.
-    expect(screen.queryByText(/excede o limite financeiro/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Dentro do limite financeiro/i)).not.toBeInTheDocument();
+    expect(screen.queryByTestId('local')).not.toBeInTheDocument();
+    expect(toast.success).not.toHaveBeenCalled();
   });
 });

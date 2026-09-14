@@ -94,19 +94,23 @@ function participacao(
   };
 }
 
+/** Onde a navegação caiu, e a busca da lista que ela levou no estado. */
 function LocalAtual() {
   const local = useLocation();
-  return <p data-testid="local">{`${local.pathname}${local.search}`}</p>;
+  const daLista = (local.state as { daLista?: string } | null)?.daLista ?? '';
+  return (
+    <p data-testid="local" data-lista={daLista}>
+      {`${local.pathname}${local.search}`}
+    </p>
+  );
 }
 
 function montar(url = '/robo-lances', props: Partial<Parameters<typeof PainelDeParticipacoes>[0]> = {}) {
   return render(
     <MemoryRouter initialEntries={[url]}>
       <Routes>
-        <Route
-          path="/robo-lances"
-          element={<PainelDeParticipacoes empresaId="empresa-1" {...props} />}
-        />
+        <Route path="/robo-lances" element={<PainelDeParticipacoes empresaId="empresa-1" {...props} />} />
+        <Route path="/robo-lances/disputa/:id" element={<LocalAtual />} />
         <Route path="/processo/:id" element={<LocalAtual />} />
       </Routes>
     </MemoryRouter>,
@@ -216,22 +220,24 @@ describe('PainelDeParticipacoes — o que a tela afirma', () => {
 });
 
 describe('PainelDeParticipacoes — abrir a participação', () => {
-  it('com processo vinculado, leva à aba do robô na pasta do processo', () => {
+  it('com processo vinculado, abre a página da disputa — não a pasta do processo — levando a busca da lista', () => {
     estado.participacoes = [participacao({ aba: 'em_disputa' }, { licitacaoId: 'lic-42', numero: 'PE 042/2026' })];
-    montar();
+    montar('/robo-lances?q=042');
 
     fireEvent.click(screen.getByRole('button', { name: /PE 042\/2026/ }));
-    expect(screen.getByTestId('local')).toHaveTextContent('/processo/lic-42?aba=robo');
+    const local = screen.getByTestId('local');
+    expect(local).toHaveTextContent('/robo-lances/disputa/disputa-1');
+    expect(local).not.toHaveTextContent('/processo/');
+    // A volta cai na mesma aba e com a mesma busca.
+    expect(local).toHaveAttribute('data-lista', '?q=042');
   });
 
-  it('sem processo vinculado, entrega a disputa para a configuração da página', () => {
-    const aoAbrir = vi.fn();
-    const p = participacao({ aba: 'em_disputa' }, { licitacaoId: null, numero: 'PE 900/2026' });
-    estado.participacoes = [p];
-    montar('/robo-lances', { aoAbrirDisputaSemProcesso: aoAbrir });
+  it('sem processo vinculado, abre a mesma página da disputa', () => {
+    estado.participacoes = [participacao({ aba: 'em_disputa' }, { licitacaoId: null, numero: 'PE 900/2026' })];
+    montar();
 
     fireEvent.click(screen.getByRole('button', { name: /PE 900\/2026/ }));
-    expect(aoAbrir).toHaveBeenCalledWith(p.disputa.id);
+    expect(screen.getByTestId('local')).toHaveTextContent('/robo-lances/disputa/disputa-1');
   });
 });
 
@@ -242,18 +248,27 @@ describe('PainelDeParticipacoes — estados', () => {
     montar();
 
     expect(screen.getByRole('alert')).toHaveTextContent('permission denied for table robo_lances_disputas');
-    // Sem leitura anterior, não afirma "nenhuma participação".
-    expect(screen.queryByText('Nenhuma participação em disputa')).not.toBeInTheDocument();
+    // Sem leitura anterior, não afirma "nenhuma disputa".
+    expect(screen.queryByText('Nenhuma disputa acontecendo agora.')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Tentar novamente/ }));
     expect(recarregar).toHaveBeenCalled();
   });
 
-  it('aba vazia orienta e aponta a aba que tem registros', () => {
+  it('aba vazia diz o que falta em uma linha e aponta a aba que tem registros', () => {
     estado.participacoes = [participacao({ aba: 'configuradas' })];
     montar();
 
-    expect(screen.getByText('Nenhuma participação em disputa')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Ver Configuradas \(1\)/ })).toBeInTheDocument();
+    expect(screen.getByText('Nenhuma disputa acontecendo agora.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Ver Configuradas \(1\)/ }));
+    expect(screen.getByRole('tab', { name: /Configuradas/ })).toHaveAttribute('data-state', 'active');
+  });
+
+  it('cada aba vazia diz uma coisa diferente — e sem registros em lugar nenhum, não oferece atalho', () => {
+    montar('/robo-lances?painel=encerradas');
+
+    expect(screen.getByText('Nenhuma disputa encerrada ainda.')).toBeInTheDocument();
+    expect(screen.queryByText('Nenhuma disputa acontecendo agora.')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Ver / })).not.toBeInTheDocument();
   });
 
   it('sem empresa ativa, diz o que falta', () => {

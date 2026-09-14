@@ -31,7 +31,9 @@ export default function AbasGestao({
     <Tabs value={valor} onValueChange={aoMudar} className={cn('w-full', className)}>
       <TabsList
         className={cn(
-          'h-auto w-full justify-start gap-1 overflow-x-auto rounded-none border-b border-border bg-transparent p-0',
+          // `flex-nowrap` vence o `flex-wrap` da base: abas quebradas em duas
+          // linhas deixavam a segunda fila sem o filete e com o sublinhado solto.
+          'h-auto w-full flex-nowrap justify-start gap-1 overflow-x-auto rounded-none border-b border-border bg-transparent p-0',
           '[scrollbar-width:thin]',
         )}
       >

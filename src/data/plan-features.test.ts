@@ -1,5 +1,34 @@
 import { describe, expect, it } from 'vitest';
-import { hasAccessToRoute, routeMinPlan } from './plan-features';
+import { getRequiredPlan, hasAccessToRoute, routeMinPlan } from './plan-features';
+import { isSectorAllowedForRoute } from '@/lib/route-permissions';
+
+/**
+ * A página de uma disputa (`/robo-lances/disputa/<id>`, 14/09/2026) é a mesma
+ * sala da lista do robô. Os mapas de acesso procuram a rota exata, e rota não
+ * listada é livre — sem herança, a página nova abriria sem plano e para
+ * qualquer setor.
+ */
+describe('portões da página de detalhe do robô', () => {
+  it('pede o mesmo plano da lista', () => {
+    expect(getRequiredPlan('/robo-lances/disputa/abc-123')).toBe(routeMinPlan['/robo-lances']);
+    expect(hasAccessToRoute(null, '/robo-lances/disputa/abc-123')).toBe(false);
+    expect(hasAccessToRoute('basico', '/robo-lances/disputa/abc-123')).toBe(false);
+    expect(hasAccessToRoute('profissional', '/robo-lances/disputa/abc-123?aba=estrategia')).toBe(true);
+  });
+
+  it('pede o mesmo setor da lista', () => {
+    expect(isSectorAllowedForRoute('financeiro', '/robo-lances/disputa/abc-123')).toBe(
+      isSectorAllowedForRoute('financeiro', '/robo-lances'),
+    );
+    expect(isSectorAllowedForRoute('financeiro', '/robo-lances/disputa/abc-123')).toBe(false);
+    expect(isSectorAllowedForRoute('licitacoes', '/robo-lances/disputa/abc-123')).toBe(true);
+  });
+
+  it('não muda o portão de rota que não é detalhe listado', () => {
+    // `/equipe/permissoes` tem regra própria; herança por prefixo genérico a mudaria.
+    expect(getRequiredPlan('/equipe/permissoes')).toBeNull();
+  });
+});
 
 /**
  * Duas portas para a mesma sala não podem ter fechaduras diferentes.

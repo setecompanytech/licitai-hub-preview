@@ -1,5 +1,11 @@
 /**
- * Painel de participações do robô — a primeira coisa da aba "Disputar".
+ * Painel de participações do robô — o corpo da lista do robô (`/robo-lances`).
+ *
+ * Cada linha abre a disputa em página própria (`/robo-lances/disputa/:id`),
+ * com ou sem processo vinculado. Até 14/09/2026 a linha com processo ia para a
+ * pasta do processo e a sem processo "abria a configuração nesta tela" — um
+ * bloco de três colunas embaixo do painel, igual em qualquer aba. A aba e a
+ * busca da lista viajam no estado da navegação, para a volta cair no mesmo lugar.
  *
  * ── Por que existe ─────────────────────────────────────────────────────────
  *
@@ -19,8 +25,11 @@
  *    declaração, o aviso de monitoramento fica no topo — nunca simulamos.
  */
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Bot, ChevronDown, Hand, RefreshCw, SlidersHorizontal, X } from 'lucide-react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import {
+  Activity, Bot, ChevronDown, FilePlus2, Flag, Hand, ListChecks, RefreshCw, SlidersHorizontal, X,
+  type LucideIcon,
+} from 'lucide-react';
 import AbasGestao from '@/components/gestao/AbasGestao';
 import BarraFiltros from '@/components/gestao/BarraFiltros';
 import TabelaGestao, { type ColunaGestao } from '@/components/gestao/TabelaGestao';
@@ -61,47 +70,32 @@ import {
 /** Relê a cada 30 s: o horário da leitura fica visível, então dado velho se denuncia. */
 const INTERVALO_DE_LEITURA = 30;
 
-const VAZIO_POR_ABA: Record<AbaDoPainel, { titulo: string; descricao: string }> = {
-  cadastradas: {
-    titulo: 'Nenhuma participação cadastrada',
-    descricao: 'Use "Nova sessão", no topo da tela, para cadastrar a disputa de um processo.',
-  },
-  configuradas: {
-    titulo: 'Nenhuma participação configurada',
-    descricao:
-      'Chega aqui a participação com portal, preço inicial, limite em todos os itens e versão aprovada da precificação.',
-  },
-  em_disputa: {
-    titulo: 'Nenhuma participação em disputa',
-    descricao:
-      'Aparece aqui quando o agente confirma a sessão na sala do portal, ou quando alguém marca a disputa manualmente.',
-  },
-  encerradas: {
-    titulo: 'Nenhuma participação encerrada',
-    descricao: 'Aparece quando o agente informa o resultado ou quando alguém encerra a disputa.',
-  },
+/**
+ * O vazio de cada aba — uma linha e, no máximo, um atalho.
+ *
+ * Até 14/09/2026 cada aba vazia desenhava o mesmo bloco grande (ícone num
+ * círculo, título, parágrafo e botão), e trocar Configuradas por Em disputa
+ * parecia não mudar nada na tela. Agora cada aba diz, numa frase e com o
+ * próprio ícone, o que ela mostraria — e aponta a aba que tem registros.
+ */
+const VAZIO_POR_ABA: Record<AbaDoPainel, { icone: LucideIcon; texto: string }> = {
+  cadastradas: { icone: FilePlus2, texto: 'Nenhuma disputa cadastrada. Cadastre com “Nova sessão”, no topo.' },
+  configuradas: { icone: ListChecks, texto: 'Nenhuma disputa com portal, preço inicial, limites e versão aprovada.' },
+  em_disputa: { icone: Activity, texto: 'Nenhuma disputa acontecendo agora.' },
+  encerradas: { icone: Flag, texto: 'Nenhuma disputa encerrada ainda.' },
 };
 
 interface Props {
   empresaId: string | null;
   /** Processo aberto na pasta: presente, o painel mostra só as participações dele. */
   licitacaoId?: string | null;
-  /**
-   * Participação sem processo vinculado não tem pasta para onde ir. A página
-   * recebe o id e abre a configuração que já existe para ela.
-   */
-  aoAbrirDisputaSemProcesso?: (disputaId: string) => void;
   /** Muda quando a página grava algo nas disputas — o painel relê na hora. */
   sinalDeRecarga?: number;
 }
 
-export default function PainelDeParticipacoes({
-  empresaId,
-  licitacaoId = null,
-  aoAbrirDisputaSemProcesso,
-  sinalDeRecarga = 0,
-}: Props) {
+export default function PainelDeParticipacoes({ empresaId, licitacaoId = null, sinalDeRecarga = 0 }: Props) {
   const navigate = useNavigate();
+  const { search } = useLocation();
   const { user } = useAuth();
   const noCelular = useIsMobile();
   const idBase = useId();
@@ -163,9 +157,11 @@ export default function PainelDeParticipacoes({
   const contagemSemFiltro = useMemo(() => contarPorAba(participacoes), [participacoes]);
   const daAba = useMemo(() => filtradas.filter((p) => p.projecao.aba === aba), [filtradas, aba]);
 
+  // Toda linha abre a página da disputa. A busca da lista (aba e `q`) vai no
+  // estado da navegação: o caminho de volta da página cai no mesmo lugar, e o
+  // "voltar" do navegador já cai, porque a lista guarda os dois na URL.
   const abrir = (p: ParticipacaoCarregada) => {
-    if (p.disputa.licitacao_id) navigate(`/processo/${p.disputa.licitacao_id}?aba=robo`);
-    else aoAbrirDisputaSemProcesso?.(p.disputa.id);
+    navigate(`/robo-lances/disputa/${p.disputa.id}`, { state: { daLista: search } });
   };
 
   // ── Colunas ───────────────────────────────────────────────────────────────
@@ -293,12 +289,10 @@ export default function PainelDeParticipacoes({
           ) : (
             <span className="text-muted-foreground">Nenhuma pendência</span>
           )}
-          {/* A próxima ação e para onde o clique leva: pasta do processo ou a
-              configuração logo abaixo, nesta mesma tela. */}
+          {/* O clique leva sempre à página da disputa — não há mais destino a
+              explicar linha a linha. */}
           <span className="g-meta text-muted-foreground">
             Próxima ação: <span className="font-medium text-foreground">{p.projecao.proximaAcao || 'nenhuma'}</span>
-            {' · '}
-            {p.disputa.licitacao_id ? 'abre a pasta do processo' : 'abre a configuração nesta tela'}
           </span>
         </span>
       ),
@@ -462,32 +456,31 @@ export default function PainelDeParticipacoes({
   const primeiraAbaComItens = ABAS_DO_PAINEL.find((a) => a !== aba && contagem[a] > 0);
   const vazioPorFiltro = aplicados > 0 && contagemSemFiltro[aba] > 0;
 
+  // Uma linha, com o ícone da própria aba e no máximo um atalho — ver `VAZIO_POR_ABA`.
+  const IconeDoVazio = VAZIO_POR_ABA[aba].icone;
+  const classeDoAtalho =
+    'g-corpo inline-flex min-h-[44px] items-center gap-1 rounded font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+
   const vazio = vazioPorFiltro ? (
-    <EstadoVazio
-      icone={<SlidersHorizontal />}
-      titulo="Nenhuma participação com esses filtros"
-      descricao={`Há ${contagemSemFiltro[aba]} em ${ROTULO_DA_ABA[aba]} sem os filtros aplicados.`}
-      tamanho="compacto"
-      acao={
-        <Button type="button" variant="outline" onClick={limparFiltros} className="g-controle">
-          <X aria-hidden="true" className="mr-1.5 h-4 w-4" /> Limpar filtros
-        </Button>
-      }
-    />
+    <div role="status" data-vazio="filtros" className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2">
+      <SlidersHorizontal aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground" />
+      <p className="g-corpo min-w-0 text-foreground">
+        Nenhuma participação com esses filtros — há {contagemSemFiltro[aba]} em {ROTULO_DA_ABA[aba]} sem eles.
+      </p>
+      <button type="button" onClick={limparFiltros} className={classeDoAtalho}>
+        <X aria-hidden="true" className="h-4 w-4" /> Limpar filtros
+      </button>
+    </div>
   ) : (
-    <EstadoVazio
-      icone={<Bot />}
-      titulo={VAZIO_POR_ABA[aba].titulo}
-      descricao={VAZIO_POR_ABA[aba].descricao}
-      tamanho="compacto"
-      acao={
-        primeiraAbaComItens ? (
-          <Button type="button" variant="outline" onClick={() => definirAba(primeiraAbaComItens)} className="g-controle">
-            Ver {ROTULO_DA_ABA[primeiraAbaComItens]} ({contagem[primeiraAbaComItens]})
-          </Button>
-        ) : undefined
-      }
-    />
+    <div role="status" data-vazio={aba} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2">
+      <IconeDoVazio aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground" />
+      <p className="g-corpo min-w-0 text-foreground">{VAZIO_POR_ABA[aba].texto}</p>
+      {primeiraAbaComItens && (
+        <button type="button" onClick={() => definirAba(primeiraAbaComItens)} className={classeDoAtalho}>
+          Ver {ROTULO_DA_ABA[primeiraAbaComItens]} ({contagem[primeiraAbaComItens]})
+        </button>
+      )}
+    </div>
   );
 
   return (

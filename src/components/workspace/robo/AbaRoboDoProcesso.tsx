@@ -7,20 +7,16 @@ import EstadoVazio from '@/components/shared/EstadoVazio';
 import { SecaoGestao } from '@/components/gestao/TelaGestao';
 import TabelaGestao, { type ColunaGestao } from '@/components/gestao/TabelaGestao';
 import AreaComPainel from '@/components/gestao/AreaComPainel';
-import SeloSituacao, { AvisoDeContexto, AvisoDeFalha, type TomSituacao } from '@/components/gestao/SeloSituacao';
+import SeloSituacao, { AvisoDeContexto, AvisoDeFalha } from '@/components/gestao/SeloSituacao';
+import FonteDaFaseTexto from '@/components/robo-lances/disputa/FonteDaFase';
+import { TOM_DA_ABA, descreverVersao, pendenciaVisivel } from '@/components/robo-lances/disputa/leitura-da-participacao';
 import { useParticipacoesDoRobo } from '@/hooks/useParticipacoesDoRobo';
-import {
-  ROTULO_DA_ABA,
-  ROTULO_DO_ESTADO_DO_ROBO,
-  type AbaDoPainel,
-  type FonteDaFase,
-  type Participacao,
-} from '@/lib/robo/situacao-da-participacao';
+import { ROTULO_DA_ABA, ROTULO_DO_ESTADO_DO_ROBO } from '@/lib/robo/situacao-da-participacao';
 import { normalizarStatus } from '@/lib/licitacao/status';
 import { cn } from '@/lib/utils';
 import ControleDoRobo from './ControleDoRobo';
 import PainelDoItem from './PainelDoItem';
-import { useItensDaSessao, useRelogio, useVersaoVinculada, type Leitura, type VersaoVinculada } from './consultas';
+import { useItensDaSessao, useRelogio, useVersaoVinculada } from './consultas';
 import { linhasDaDisputa, situacaoDoItem, type LinhaDoItem } from './itens-da-disputa';
 import { LimiteDoItem, NaoInformado } from './ValoresDoItem';
 import { dataHoraDeBrasilia, formatarMoeda, horaDeBrasilia } from './formatos';
@@ -58,74 +54,12 @@ interface AbaRoboDoProcessoProps {
 /** Leitura sem renovar há mais de três ciclos de 15 s é leitura parada. */
 const LEITURA_ATRASADA_MS = 45_000;
 
-const TOM_DA_ABA: Record<AbaDoPainel, TomSituacao> = {
-  cadastradas: 'neutro',
-  configuradas: 'sucesso',
-  em_disputa: 'ativo',
-  encerradas: 'neutro',
-};
+// `TOM_DA_ABA`, `FonteDaFaseTexto`, `descreverVersao` e `pendenciaVisivel`
+// moravam aqui e foram para `robo-lances/disputa/` (14/09/2026): a página da
+// disputa diz as mesmas coisas sobre a mesma participação, com as mesmas frases.
 
 const CLASSE_LINK =
   'g-corpo inline-flex min-h-[44px] items-center gap-1 rounded-[var(--g-raio)] font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
-
-function FonteDaFaseTexto({ fonte }: { fonte: FonteDaFase | null }) {
-  if (fonte === 'agente') return <span className="g-meta text-muted-foreground">informada pelo agente</span>;
-  if (fonte === 'marcacao_manual') {
-    return (
-      <span className="g-meta inline-flex items-center gap-1 text-warning-ink">
-        <AlertTriangle aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
-        <span>marcada manualmente — o portal não confirmou</span>
-      </span>
-    );
-  }
-  return <span className="g-meta text-muted-foreground">sem sinal do portal</span>;
-}
-
-/** A versão da precificação em uma frase — sem transformar ausência em aprovação. */
-function descreverVersao(
-  versaoId: string | null | undefined,
-  leitura: Leitura<VersaoVinculada>,
-): { texto: string; atencao: boolean; podeTentar: boolean } {
-  if (!versaoId) return { texto: 'Nenhuma versão aprovada', atencao: true, podeTentar: false };
-  switch (leitura.estado) {
-    case 'migracao_pendente':
-      return {
-        texto: 'Migração pendente — as versões da precificação ainda não existem no banco',
-        atencao: true,
-        podeTentar: false,
-      };
-    case 'erro':
-      return { texto: `Não foi possível ler a versão vinculada: ${leitura.erro}`, atencao: true, podeTentar: true };
-    case 'pronta':
-      break;
-    default:
-      return { texto: 'Lendo a versão vinculada…', atencao: false, podeTentar: false };
-  }
-  const v = leitura.dados;
-  // A policy só mostra versão a quem opera: vazio sem erro é falta de acesso.
-  if (!v) return { texto: 'Versão vinculada não visível para esta conta', atencao: true, podeTentar: false };
-  const quando = dataHoraDeBrasilia(v.aprovada_em);
-  const aprovadaEm = quando ? ` em ${quando} • horário de Brasília` : '';
-  if (v.situacao === 'aprovada') return { texto: `Versão ${v.numero} aprovada${aprovadaEm}`, atencao: false, podeTentar: false };
-  if (v.situacao === 'substituida') {
-    return {
-      texto: `Versão ${v.numero} aprovada${aprovadaEm} — já substituída por uma aprovação mais recente`,
-      atencao: true,
-      podeTentar: false,
-    };
-  }
-  return { texto: `Versão ${v.numero} — ${v.situacao ?? 'situação não informada'}, sem aprovação`, atencao: true, podeTentar: false };
-}
-
-/** A pendência da projeção, exceto as que já têm lugar próprio na aba. */
-function pendenciaVisivel(p: Participacao, envioIndisponivel: boolean): string | null {
-  const texto = p.pendenciaPrincipal;
-  if (!texto) return null;
-  if (envioIndisponivel && texto.startsWith('Envio de lances indisponível')) return null;
-  if (texto.startsWith('Fase marcada manualmente')) return null;
-  if (texto.startsWith('Parada solicitada')) return null;
-  return texto;
-}
 
 export default function AbaRoboDoProcesso({ licitacaoId, empresaId }: AbaRoboDoProcessoProps) {
   const { participacoes, carregando, erro, semEmpresa, lidoEm, capacidade, recarregar } = useParticipacoesDoRobo({
@@ -369,6 +303,16 @@ export default function AbaRoboDoProcesso({ licitacaoId, empresaId }: AbaRoboDoP
               Ver todas as disputas
               <ArrowRight aria-hidden="true" className="h-4 w-4" />
             </Link>
+            {/* A disputa inteira — itens, estratégia, envio e acompanhamento —
+                mora na página dela (`/robo-lances/disputa/:id`). A pasta mostra o
+                resumo desta participação e o caminho; repetir a disputa aqui
+                daria duas telas para decidir a mesma coisa. */}
+            <Button asChild variant="outline" className="g-controle">
+              <Link to={`/robo-lances/disputa/${disputa.id}`}>
+                Abrir no robô de lances
+                <ArrowRight aria-hidden="true" className="h-4 w-4" />
+              </Link>
+            </Button>
           </div>
         </div>
         {(pendencia || projecao.proximaAcao) && (
@@ -491,10 +435,10 @@ export default function AbaRoboDoProcesso({ licitacaoId, empresaId }: AbaRoboDoP
                 tamanho="compacto"
                 icone={<Package />}
                 titulo="Nenhum item cadastrado nesta disputa"
-                descricao="Os itens e seus limites são definidos no Robô de Lances."
+                descricao="Os itens e seus limites são definidos na disputa, no robô de lances."
                 acao={
                   <Button asChild variant="outline" className="g-controle">
-                    <Link to={`/robo-lances?lid=${licitacaoId}`}>Abrir no Robô de Lances</Link>
+                    <Link to={`/robo-lances/disputa/${disputa.id}`}>Cadastrar itens na disputa</Link>
                   </Button>
                 }
               />
