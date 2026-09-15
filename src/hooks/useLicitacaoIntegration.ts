@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { normalizarModalidade } from '@/lib/metas/modalidades';
 import { useActivityLog } from '@/hooks/useActivityLog';
 
-type EditalData = {
+export type EditalData = {
   numero: string;
   orgao: string;
   objeto: string;
@@ -16,6 +16,8 @@ type EditalData = {
   valor_estimado?: number | null;
   uf?: string | null;
   municipio?: string | null;
+  /** Sessão pública. O monitoramento não traz; a pasta manual traz. */
+  data_abertura?: string | null;
   data_encerramento?: string | null;
   portal?: string | null;
   url?: string | null;
@@ -24,6 +26,22 @@ type EditalData = {
   cnpjOrgao?: string | null;
   anoCompra?: number | string | null;
   sequencialCompra?: number | string | null;
+};
+
+/**
+ * De onde o processo nasce, e se a preparação da pasta dispara na hora.
+ *
+ * O padrão reproduz o comportamento de sempre (monitoramento + preparação
+ * imediata), para que os chamadores que não passam opções não mudem. A pasta
+ * manual passa `prepararAutomaticamente: false` porque o edital ainda não
+ * existe no instante da criação: ele sobe logo depois, e disparar antes faria
+ * a extração rodar sobre uma pasta vazia.
+ */
+export type OpcoesIniciarProcesso = {
+  origem?: 'monitoramento' | 'manual';
+  prepararAutomaticamente?: boolean;
+  /** Recebe a mensagem real do banco quando a criação falha. */
+  aoFalhar?: (mensagem: string) => void;
 };
 
 export function useLicitacaoIntegration() {
@@ -36,7 +54,15 @@ export function useLicitacaoIntegration() {
   const { registrar } = useActivityLog();
 
   /** Create a licitação from edital data and optionally navigate */
-  const iniciarProcesso = useCallback(async (edital: EditalData, navigateTo?: string) => {
+  const iniciarProcesso = useCallback(async (
+    edital: EditalData,
+    navigateTo?: string,
+    opcoes?: OpcoesIniciarProcesso,
+  ) => {
+    const manual = (opcoes?.origem ?? 'monitoramento') === 'manual';
+    const prepararAgora = opcoes?.prepararAutomaticamente ?? true;
+    const doSistema = edital.portal ? ` (sistema de origem: ${edital.portal})` : '';
+
     if (!user) {
       toast.error('Faça login para iniciar um processo.');
       return null;
@@ -83,6 +109,9 @@ export function useLicitacaoIntegration() {
           uf: edital.uf,
           municipio: edital.municipio,
           data_encerramento: edital.data_encerramento,
+          // Só quando vem: o monitoramento nunca mandou, e gravar null por
+          // cima do padrão da coluna mudaria o que os chamadores de sempre gravam.
+          ...(edital.data_abertura ? { data_abertura: edital.data_abertura } : {}),
           portal: edital.portal,
           url_edital: edital.url,
           numero_controle_pncp: edital.pncpNumero || null,
@@ -98,10 +127,16 @@ export function useLicitacaoIntegration() {
       await registrar({
         acao: 'processo_iniciado',
         modulo: 'licitacoes',
-        descricao: `Processo ${edital.numero} — ${edital.orgao} iniciado a partir do monitoramento.`,
+        descricao: manual
+          ? `Processo ${edital.numero} — ${edital.orgao} criado manualmente${doSistema}.`
+          : `Processo ${edital.numero} — ${edital.orgao} iniciado a partir do monitoramento.`,
         licitacaoId: data.id,
         para: edital.status || 'Monitorando',
-        metadata: { portal: edital.portal ?? null, modalidade: edital.modalidade ?? null },
+        metadata: {
+          portal: edital.portal ?? null,
+          modalidade: edital.modalidade ?? null,
+          ...(manual ? { origem: 'manual' } : {}),
+        },
       });
 
       // Create notification
@@ -110,7 +145,9 @@ export function useLicitacaoIntegration() {
       // exatamente à tela de onde ele veio.
       await criarNotificacao(
         'Novo processo iniciado',
-        `Licitação ${edital.numero} — ${edital.orgao} foi adicionada à gestão.`,
+        manual
+          ? `Licitação ${edital.numero} — ${edital.orgao} foi criada manualmente${doSistema} e adicionada à gestão.`
+          : `Licitação ${edital.numero} — ${edital.orgao} foi adicionada à gestão.`,
         `/processo/${data.id}`,
         'info'
       );
@@ -120,13 +157,16 @@ export function useLicitacaoIntegration() {
         await supabase.from('licitacao_mensagens').insert({
           licitacao_id: data.id,
           user_id: user.id,
-          conteudo: `📋 Processo iniciado a partir do monitoramento de editais.\n**${edital.numero}** — ${edital.orgao}\nObjeto: ${edital.objeto}`,
+          conteudo: manual
+            ? `📋 Processo criado manualmente${doSistema} — não veio do monitoramento de editais.\n**${edital.numero}** — ${edital.orgao}\nObjeto: ${edital.objeto}`
+            : `📋 Processo iniciado a partir do monitoramento de editais.\n**${edital.numero}** — ${edital.orgao}\nObjeto: ${edital.objeto}`,
           tipo: 'sistema',
         });
       }
 
-      // 🔄 Gatilho: prepara automaticamente a Pasta do Processo
-      if (data?.id) {
+      // 🔄 Gatilho: prepara automaticamente a Pasta do Processo — salvo quando
+      // quem chama vai anexar o edital depois e dispara a preparação ele mesmo.
+      if (data?.id && prepararAgora) {
         supabase.functions
           .invoke('processo-auto-prepare', { body: { licitacao_id: data.id } })
           .then(({ error: prepErr }) => {
@@ -134,12 +174,16 @@ export function useLicitacaoIntegration() {
           });
       }
 
-      toast.success('✅ Processo adicionado à Gestão de Licitações!');
+      // A pasta manual dá o próprio retorno quando termina de enviar os anexos;
+      // dois avisos de sucesso para a mesma ação é ruído.
+      if (!manual) toast.success('✅ Processo adicionado à Gestão de Licitações!');
       if (navigateTo) navigate(navigateTo);
       return data?.id;
     } catch (err) {
       console.error(err);
-      toast.error('Erro ao iniciar processo.');
+      const mensagem = (err as { message?: string } | null)?.message || String(err);
+      if (opcoes?.aoFalhar) opcoes.aoFalhar(mensagem);
+      else toast.error('Erro ao iniciar processo.');
       return null;
     }
   }, [user, navigate, empresaAtiva, registrar]);
@@ -178,7 +222,8 @@ export function useLicitacaoIntegration() {
           valor_estimado: edital.valor_estimado,
           uf: edital.uf,
           municipio: edital.municipio,
-          data_abertura: edital.data_encerramento,
+          // A sessão, quando quem criou informou; senão o prazo, como sempre foi.
+          data_abertura: edital.data_abertura ?? edital.data_encerramento,
           data_encerramento: edital.data_encerramento,
           portal: edital.portal,
           url: edital.url,

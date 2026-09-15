@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import ArquivarProcessoDialog, { type DesfechoArquivamento } from '@/components/gestao/ArquivarProcessoDialog';
 import RegistrarPerdaDialog, { type PerdaAlvo } from '@/components/metas/RegistrarPerdaDialog';
+import NovaPastaManualDialog, { BotaoNovaPastaManual } from '@/components/gestao/NovaPastaManualDialog';
 
 type Item = {
   id: string;
@@ -71,7 +72,13 @@ function lerVista(): Vista {
  * Lista compacta de compromissos (processos_interesse) embarcada na aba
  * Compromissos da Gestão. Mostra prazos, score IA e atalho para a página completa.
  */
-export default function CompromissosResumo() {
+function ListaDeCompromissos({
+  aoNovaPasta,
+  sinalDeRecarga,
+}: {
+  aoNovaPasta: () => void;
+  sinalDeRecarga: number;
+}) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { iniciarProcesso, arquivarProcesso, registrarPerda } = useLicitacaoIntegration();
@@ -196,7 +203,7 @@ export default function CompromissosResumo() {
     if (alvo) await alternarArquivo(alvo);
   }, [perdaAlvo, empresaAtiva, registrarPerda, items, alternarArquivo]);
 
-  useEffect(() => { carregar(); }, [carregar]);
+  useEffect(() => { carregar(); }, [carregar, sinalDeRecarga]);
 
   useEffect(() => {
     if (!user) return;
@@ -237,12 +244,16 @@ export default function CompromissosResumo() {
           descricao={
             <>
               Inicie um processo no <strong>Monitoramento de Editais</strong> para gerar prazos e alertas automáticos.
+              Processo que não passa pelo PNCP (como dispensas em sistemas estaduais) entra por uma pasta manual.
             </>
           }
           acao={
-            <Button asChild variant="outline">
-              <Link to="/monitoramento-editais">Ir para Monitoramento</Link>
-            </Button>
+            <>
+              <Button asChild variant="outline">
+                <Link to="/monitoramento-editais">Ir para Monitoramento</Link>
+              </Button>
+              <BotaoNovaPastaManual rotulo="Criar pasta manual" aoAbrir={aoNovaPasta} />
+            </>
           }
         />
       </Card>
@@ -315,6 +326,7 @@ export default function CompromissosResumo() {
               {verArquivados ? 'Ver ativos' : `Arquivados (${arquivados.length})`}
             </Button>
           )}
+          <BotaoNovaPastaManual aoAbrir={aoNovaPasta} />
           <Button asChild variant="ghost">
             <Link to="/meus-compromissos">
               Abrir página completa <ArrowRight aria-hidden="true" />
@@ -501,6 +513,31 @@ export default function CompromissosResumo() {
         onCancelar={() => setPerdaAlvo(null)}
         onConfirmar={confirmarPerda}
         salvando={salvandoPerda}
+      />
+    </>
+  );
+}
+
+/**
+ * Lista compacta de compromissos (processos_interesse) embarcada na aba
+ * Compromissos da Gestão, com a entrada da pasta manual.
+ *
+ * O diálogo mora aqui, FORA da lista, de propósito: a lista troca de árvore
+ * inteira entre carregando, vazia e preenchida — e o compromisso que o próprio
+ * diálogo cria dispara essa troca (realtime e recarga) no meio do envio dos
+ * anexos. Com o diálogo dentro dela, ele desmontaria levando o progresso e a
+ * lista de falhas junto.
+ */
+export default function CompromissosResumo() {
+  const [novaPasta, setNovaPasta] = useState(false);
+  const [recarga, setRecarga] = useState(0);
+  return (
+    <>
+      <ListaDeCompromissos aoNovaPasta={() => setNovaPasta(true)} sinalDeRecarga={recarga} />
+      <NovaPastaManualDialog
+        aberto={novaPasta}
+        aoFechar={() => setNovaPasta(false)}
+        aoCriar={() => setRecarga((n) => n + 1)}
       />
     </>
   );

@@ -30,6 +30,7 @@ import {
   Archive, ArchiveRestore, FolderOpen,
 } from 'lucide-react';
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
+import NovaPastaManualDialog, { BotaoNovaPastaManual } from '@/components/gestao/NovaPastaManualDialog';
 import { identidadeDoEdital } from '@/lib/licitacao/identidade-edital';
 import { padraoDaRota } from '@/lib/navegacao/paginas';
 import { useAbaNaUrl } from '@/lib/navegacao/aba-na-url';
@@ -229,6 +230,9 @@ export default function MeusCompromissos() {
   const [arquivarJunto, setArquivarJunto] = useState(true);
   const [motivoTexto, setMotivoTexto] = useState('');
   const [executandoAcao, setExecutandoAcao] = useState(false);
+  // Pasta manual: processo que não passa pelo Monitoramento (dispensa em
+  // sistema estadual). O diálogo fica no nível da página, fora da tabela.
+  const [novaPasta, setNovaPasta] = useState(false);
 
   const carregarRemovidos = useCallback(async () => {
     if (!user) return;
@@ -884,6 +888,7 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
             <RefreshCw aria-hidden="true" /> Atualizar
           </Button>
         }
+        acaoPrincipal={<BotaoNovaPastaManual variant="default" aoAbrir={() => setNovaPasta(true)} />}
         abas={<AbasGestao abas={ABAS} valor={filtroStatus} aoMudar={trocarAba} />}
       >
         <div className="flex flex-col gap-2">
@@ -956,7 +961,15 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
                 <EstadoVazio
                   icone={<ListChecks />}
                   titulo="Nenhum processo na lista"
-                  descricao="Marque interesse em editais no Monitoramento para adicioná-los aqui."
+                  descricao="Marque interesse em editais no Monitoramento para adicioná-los aqui. Processo que não passa pelo PNCP (como dispensas em sistemas estaduais) entra por uma pasta manual."
+                  acao={
+                    <>
+                      <Button asChild variant="outline">
+                        <Link to="/monitoramento-editais">Ir para Monitoramento</Link>
+                      </Button>
+                      <BotaoNovaPastaManual rotulo="Criar pasta manual" aoAbrir={() => setNovaPasta(true)} />
+                    </>
+                  }
                 />
               }
               rodape={
@@ -979,6 +992,12 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
         )}
 
         {/* Dialog de motivo para Rejeitar/Remover */}
+        <NovaPastaManualDialog
+          aberto={novaPasta}
+          aoFechar={() => setNovaPasta(false)}
+          aoCriar={() => { carregarProcessos(); }}
+        />
+
         <Dialog open={!!acaoDialog} onOpenChange={(open) => { if (!open) fecharDialog(); }}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>

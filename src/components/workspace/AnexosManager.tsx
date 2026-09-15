@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useProcessoWorkspace, type CategoriaAnexo, type ProcessoAnexo } from '@/hooks/useProcessoWorkspace';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -10,8 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Upload, Download, Trash2, FileText, Folder, Search, Eye, ExternalLink, Loader2, ArrowRight, ChevronDown } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ARTIGO_POR_GRUPO, LABEL_SEGMENTO, classificarTipo } from '@/lib/habilitacao/tipos';
+import { ROTULO_TIPO_EDITAL, avisarAnexosAlterados, tipoPeloNome, type TipoDocumentoEdital } from '@/lib/processo/edital-anexado';
 
 /** Estrutura da pasta Habilitação — mesma ordem e rótulos do Jurídico → Documentos. */
 const GRUPOS_HABILITACAO: { key: string; label: string }[] = [
@@ -83,7 +84,16 @@ export default function AnexosManager({ licitacaoId, editalViewer, pncpEditalCou
     if (url) setVisualizando({ anexo, url });
   };
   const fileRef = useRef<HTMLInputElement>(null);
-  const [categoria, setCategoria] = useState<CategoriaAnexo>('outros');
+  // Processo sem PNCP e sem edital anexado: a primeira coisa que a pasta
+  // precisa é o edital, então o envio já nasce apontado para ele. A escolha
+  // explícita da pessoa (ou a pasta do último envio) prevalece.
+  const [categoriaEscolhida, setCategoriaEscolhida] = useState<CategoriaAnexo | null>(null);
+  const temAnexoEdital = anexos.some((a) => a.categoria === 'edital');
+  const semPncp = !((pncpEditalCount ?? 0) > 0);
+  const categoria: CategoriaAnexo = categoriaEscolhida ?? (!loading && semPncp && !temAnexoEdital ? 'edital' : 'outros');
+  const setCategoria = (c: CategoriaAnexo) => setCategoriaEscolhida(c);
+  // Arquivos da pasta Edital aguardando a pessoa dizer o tipo de cada um.
+  const [pendentesEdital, setPendentesEdital] = useState<{ file: File; tipo: TipoDocumentoEdital }[] | null>(null);
   // Upload para Habilitação pergunta o grupo da Lei; 'auto' classifica pelo
   // nome do arquivo com a mesma taxonomia do checklist.
   const [grupoHab, setGrupoHab] = useState<string>('auto');
@@ -102,25 +112,66 @@ export default function AnexosManager({ licitacaoId, editalViewer, pncpEditalCou
   // mundos de arquivo (a pasta dizia "0 arquivos" com o edital renderizando
   // em outra aba).
   const [filtroCat, setFiltroCat] = useState<string>('todas');
-  const [, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const raizRef = useRef<HTMLDivElement>(null);
+  // `?pasta=edital`: o card da preparação manda para cá quando falta o edital.
+  const pastaDaUrl = searchParams.get('pasta');
+  useEffect(() => {
+    if (!pastaDaUrl) return;
+    const pasta = CATEGORIAS.find((c) => c.value === pastaDaUrl)?.value;
+    if (pasta) {
+      setFiltroCat(pasta);
+      setCategoriaEscolhida(pasta);
+      raizRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+    }
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete('pasta');
+      return next;
+    }, { replace: true });
+  }, [pastaDaUrl, setSearchParams]);
   const [busca, setBusca] = useState('');
   const [uploading, setUploading] = useState(false);
 
+  /** Envia na pasta indicada e fixa essa pasta: enviar o primeiro edital não
+   *  pode trocar a pasta padrão debaixo da pessoa no meio do trabalho. */
+  const enviarArquivos = async (itens: { file: File; metadata?: Record<string, unknown> }[], cat: CategoriaAnexo) => {
+    setUploading(true);
+    try {
+      for (const { file, metadata } of itens) await uploadAnexo(file, cat, undefined, metadata);
+    } finally {
+      setUploading(false);
+    }
+    setCategoriaEscolhida(cat);
+    avisarAnexosAlterados(licitacaoId);
+  };
+
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    if (!files.length) return;
-    setUploading(true);
-    for (const f of files) {
-      let metadata: Record<string, unknown> | undefined;
-      if (categoria === 'habilitacao') {
-        const taxo = classificarTipo(f.name);
-        const grupo = grupoHab === 'auto' ? (taxo?.grupo ?? 'outros') : grupoHab;
-        metadata = { grupo, tipo: taxo?.id ?? null };
-      }
-      await uploadAnexo(f, categoria, undefined, metadata);
-    }
-    setUploading(false);
     if (fileRef.current) fileRef.current.value = '';
+    if (!files.length) return;
+    if (categoria === 'edital') {
+      // A pasta Edital pergunta o tipo: é ele que põe o edital antes do TR e
+      // dos anexos na leitura do checklist, da proposta e do robô.
+      setPendentesEdital(files.map((file, i) => ({
+        file,
+        tipo: tipoPeloNome(file.name) ?? (!temAnexoEdital && i === 0 ? 'edital' : 'anexo_edital'),
+      })));
+      return;
+    }
+    await enviarArquivos(files.map((f) => {
+      if (categoria !== 'habilitacao') return { file: f };
+      const taxo = classificarTipo(f.name);
+      const grupo = grupoHab === 'auto' ? (taxo?.grupo ?? 'outros') : grupoHab;
+      return { file: f, metadata: { grupo, tipo: taxo?.id ?? null } };
+    }), categoria);
+  };
+
+  const confirmarEdital = async () => {
+    if (!pendentesEdital) return;
+    const itens = pendentesEdital.map(({ file, tipo }) => ({ file, metadata: { tipo } }));
+    setPendentesEdital(null);
+    await enviarArquivos(itens, 'edital');
   };
 
   const filtrados = anexos.filter(a =>
@@ -146,6 +197,9 @@ export default function AnexosManager({ licitacaoId, editalViewer, pncpEditalCou
             {meta?.tipo === 'atestado_tecnico' && meta?.segmento && (
               <Badge variant="outline">{LABEL_SEGMENTO[meta.segmento] || meta.segmento}</Badge>
             )}
+            {a.categoria === 'edital' && meta?.tipo && meta.tipo in ROTULO_TIPO_EDITAL && (
+              <Badge variant="outline">{ROTULO_TIPO_EDITAL[meta.tipo as TipoDocumentoEdital]}</Badge>
+            )}
             <span>{formatBytes(a.tamanho_bytes)}</span>
             <span aria-hidden="true">·</span>
             <span>{new Date(a.created_at).toLocaleDateString('pt-BR')}</span>
@@ -164,7 +218,11 @@ export default function AnexosManager({ licitacaoId, editalViewer, pncpEditalCou
         </Button>
         <Button
           variant="ghost" size="sm" title="Excluir" aria-label={`Excluir ${a.nome_arquivo}`}
-          onClick={() => { if (confirm(`Excluir "${a.nome_arquivo}"?`)) deleteAnexo(a); }}
+          onClick={async () => {
+            if (!confirm(`Excluir "${a.nome_arquivo}"?`)) return;
+            await deleteAnexo(a);
+            avisarAnexosAlterados(licitacaoId);
+          }}
           className="w-9 px-0 text-destructive"
         >
           <Trash2 className="w-4 h-4" aria-hidden="true" />
@@ -174,7 +232,7 @@ export default function AnexosManager({ licitacaoId, editalViewer, pncpEditalCou
   };
 
   return (
-    <div className="space-y-4">
+    <div ref={raizRef} className="space-y-4">
       {/* Toolbar */}
       <Card className="p-4">
         <div className="flex flex-wrap items-end gap-3">
@@ -241,10 +299,10 @@ export default function AnexosManager({ licitacaoId, editalViewer, pncpEditalCou
             <Folder className="w-4 h-4 text-primary" aria-hidden="true" />
             <span className="text-sm font-semibold">{g.label}</span>
             <span className="text-xs font-normal text-muted-foreground">
-              {g.value === 'edital' && editalViewer
-                ? pncpEditalCount != null
-                  ? `${g.count + pncpEditalCount} arquivo(s)${pncpEditalCount > 0 ? ` · ${pncpEditalCount} do PNCP` : ''}`
-                  : `${g.count} arquivo(s) + PNCP`
+              {/* O PNCP só entra na conta quando trouxe arquivo: processo fora
+                  do portal não pode exibir "+ PNCP". */}
+              {g.value === 'edital' && (pncpEditalCount ?? 0) > 0
+                ? `${g.count + (pncpEditalCount ?? 0)} arquivo(s) · ${pncpEditalCount} do PNCP`
                 : `${g.count} arquivos`}
             </span>
           </Button>
@@ -278,7 +336,9 @@ export default function AnexosManager({ licitacaoId, editalViewer, pncpEditalCou
           <EstadoVazio
             icone={<Folder />}
             titulo="Nenhum arquivo nesta pasta"
-            descricao={ORIGEM_DA_PASTA[filtroCat]?.texto ?? 'Envie o primeiro arquivo pela barra acima.'}
+            descricao={ORIGEM_DA_PASTA[filtroCat]?.texto ?? (filtroCat === 'edital'
+              ? 'Envie aqui o edital, o Termo de Referência e os anexos — é deles que o checklist, a proposta e o robô leem quando o processo não está no PNCP.'
+              : 'Envie o primeiro arquivo pela barra acima.')}
             acao={
               ORIGEM_DA_PASTA[filtroCat] ? (
                 <Button variant="outline" onClick={() => setSearchParams((prev) => {
@@ -289,7 +349,15 @@ export default function AnexosManager({ licitacaoId, editalViewer, pncpEditalCou
                   {ORIGEM_DA_PASTA[filtroCat].botao} <ArrowRight className="w-4 h-4" aria-hidden="true" />
                 </Button>
               ) : (
-                <Button variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading}>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    // Enviar a partir de uma pasta vazia envia PARA essa pasta.
+                    if (filtroCat !== 'todas') setCategoriaEscolhida(filtroCat as CategoriaAnexo);
+                    fileRef.current?.click();
+                  }}
+                  disabled={uploading}
+                >
                   <Upload className="w-4 h-4" aria-hidden="true" /> {uploading ? 'Enviando...' : 'Enviar Arquivo(s)'}
                 </Button>
               )
@@ -337,6 +405,44 @@ export default function AnexosManager({ licitacaoId, editalViewer, pncpEditalCou
           );
         })}
       </Card>
+
+      {/* Tipo do documento da pasta Edital — gravado em metadata.tipo. */}
+      <Dialog open={!!pendentesEdital} onOpenChange={(o) => { if (!o) setPendentesEdital(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Que documento é este?</DialogTitle>
+            <DialogDescription>
+              O tipo orienta a leitura do checklist, da proposta e do robô: o edital é lido primeiro,
+              depois o Termo de Referência e os anexos.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            {pendentesEdital?.map((p, i) => (
+              <div key={`${p.file.name}-${i}`} className="flex flex-col gap-1">
+                <Label htmlFor={`tipo-edital-${i}`} className="block truncate">{p.file.name}</Label>
+                <Select
+                  value={p.tipo}
+                  onValueChange={(v) => setPendentesEdital((atual) =>
+                    atual?.map((x, j) => (j === i ? { ...x, tipo: v as TipoDocumentoEdital } : x)) ?? null)}
+                >
+                  <SelectTrigger id={`tipo-edital-${i}`}><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(ROTULO_TIPO_EDITAL) as TipoDocumentoEdital[]).map((t) => (
+                      <SelectItem key={t} value={t}>{ROTULO_TIPO_EDITAL[t]}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPendentesEdital(null)}>Cancelar</Button>
+            <Button onClick={confirmarEdital} disabled={uploading}>
+              <Upload className="w-4 h-4" aria-hidden="true" /> Enviar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Visualizador — PDF e imagem renderizam inline; formatos que o
           navegador não exibe (Word, Excel) oferecem abrir/baixar. */}

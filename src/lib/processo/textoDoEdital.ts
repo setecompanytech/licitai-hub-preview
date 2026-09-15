@@ -1,8 +1,9 @@
 import { supabase } from '@/integrations/supabase/client';
 import { extractTextFromBlob } from '@/lib/pdf-text-extractor';
+import { lerEditalAnexado } from '@/lib/processo/edital-anexado';
 
 /**
- * Lê o edital e os anexos do processo, direto do PNCP, e devolve o texto.
+ * Lê o edital e os anexos do processo e devolve o texto.
  *
  * Extraído de `gerarChecklist`, que já fazia isso, porque a Proposta precisa da
  * mesma leitura: prazo de entrega, local, condições de liquidação e garantia
@@ -10,11 +11,21 @@ import { extractTextFromBlob } from '@/lib/pdf-text-extractor';
  * pedia upload manual de um documento que o sistema já tem em Anexos — e caía
  * nos valores padrão quando ninguém subia nada.
  *
+ * Duas fontes, nesta ordem: o PNCP (espelho oficial) e, quando ele não tem
+ * fonte, falha ou não devolve texto, o edital anexado à pasta — o único que
+ * existe para processo fora do portal (dispensa no Paradigma, por exemplo).
+ *
  * O edital vem primeiro na ordem: quando o conteúdo precisa ser cortado por
  * limite de tamanho, o que fica é o que mais pesa.
  */
 
 export type ProgressoLeitura = (fase: string) => void;
+
+export const MENSAGEM_SEM_EDITAL =
+  'Nenhum edital localizado no PNCP nem anexado à pasta. Envie o edital em Anexos › Edital.';
+
+export const MENSAGEM_EDITAL_ILEGIVEL =
+  'O edital foi localizado, mas nenhum documento pôde ser lido (PDF digitalizado sem OCR?). Envie uma versão pesquisável em Anexos › Edital.';
 
 /** Extrai a mensagem real de um FunctionsHttpError (o corpo JSON da resposta). */
 async function mensagemReal(error: unknown, fallback: string): Promise<string> {
@@ -45,21 +56,18 @@ export type LeituraDoEdital = {
   lidos: string[];
 };
 
-export async function lerTextoDoEdital(
+/** Leitura pelo PNCP. Lança quando o processo não tem fonte no portal. */
+async function lerDoPncp(
   licitacaoId: string,
-  opts: { limitePorArquivo?: number; aoProgredir?: ProgressoLeitura } = {},
-): Promise<LeituraDoEdital> {
-  const { limitePorArquivo = 60_000, aoProgredir } = opts;
-
+  limitePorArquivo: number,
+  aoProgredir?: ProgressoLeitura,
+): Promise<LeituraDoEdital & { encontrados: number }> {
   aoProgredir?.('Localizando o edital no PNCP…');
   const { data: lista, error: listaErr } = await supabase.functions.invoke('pncp-arquivos-edital', {
     body: { licitacao_id: licitacaoId, action: 'listar' },
   });
   if (listaErr || !lista?.success || !lista?.arquivos?.length) {
-    throw new Error(await mensagemReal(
-      listaErr,
-      'Edital não localizado no PNCP — confira o "Edital em tela" em Anexos.',
-    ));
+    throw new Error(await mensagemReal(listaErr, 'Edital não localizado no PNCP.'));
   }
 
   const arquivos = ordenar(lista.arquivos as ArquivoPncp[]);
@@ -93,5 +101,29 @@ export async function lerTextoDoEdital(
     }
   }
 
-  return { texto: partes.join('\n\n'), lidos };
+  return { texto: partes.join('\n\n'), lidos, encontrados: arquivos.length };
+}
+
+export async function lerTextoDoEdital(
+  licitacaoId: string,
+  opts: { limitePorArquivo?: number; aoProgredir?: ProgressoLeitura } = {},
+): Promise<LeituraDoEdital> {
+  const { limitePorArquivo = 60_000, aoProgredir } = opts;
+
+  let noPncp = 0;
+  try {
+    const pncp = await lerDoPncp(licitacaoId, limitePorArquivo, aoProgredir);
+    if (pncp.texto.trim()) return { texto: pncp.texto, lidos: pncp.lidos };
+    noPncp = pncp.encontrados;
+  } catch (e) {
+    // Sem fonte no PNCP não é erro para processo fora do portal: a leitura
+    // segue para a pasta. O motivo fica no console para quem investigar.
+    console.warn('[textoDoEdital] PNCP sem texto, tentando o edital anexado:', e instanceof Error ? e.message : e);
+  }
+
+  const anexado = await lerEditalAnexado(licitacaoId, { limitePorArquivo, aoProgredir });
+  if (anexado.texto.trim()) return { texto: anexado.texto, lidos: anexado.lidos };
+
+  // Achar arquivo e não conseguir ler é outro problema, com outra saída.
+  throw new Error(noPncp + anexado.encontrados > 0 ? MENSAGEM_EDITAL_ILEGIVEL : MENSAGEM_SEM_EDITAL);
 }

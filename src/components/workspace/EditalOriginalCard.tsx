@@ -1,9 +1,12 @@
+import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, RefreshCw, Calculator, ExternalLink } from 'lucide-react';
+import { Loader2, RefreshCw, Calculator, ExternalLink, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { useProcessoAutoPrepare } from '@/hooks/useProcessoAutoPrepare';
+import { aoAlterarAnexos, temEditalAnexado } from '@/lib/processo/edital-anexado';
 
 interface Props {
   licitacaoId: string;
@@ -29,21 +32,71 @@ interface Props {
  * O que restou aqui é o valor que o viewer NÃO cobre: o pipeline de preparação
  * (baixar edital na fonte + extrair itens para a Precificação) — com status
  * honesto e retry.
+ *
+ * Processo fora do PNCP (criado à mão): a única fonte é o edital anexado à
+ * pasta. Sem ele, a preparação não tem o que ler — o card pede o envio em vez
+ * de disparar o pipeline a cada abertura só para falhar de novo.
  */
 export default function EditalOriginalCard({ licitacaoId, urlEdital, onVerItens, itensProntos, pncpDisponivel }: Props) {
   const temItens = (itensProntos ?? 0) > 0;
+  const [, setSearchParams] = useSearchParams();
+
+  // null = ainda não se sabe (carregando ou a consulta falhou)
+  const [anexado, setAnexado] = useState<boolean | null>(null);
+  const [erroVerificacao, setErroVerificacao] = useState<string | null>(null);
+
+  const verificarAnexo = useCallback(async (): Promise<boolean | null> => {
+    try {
+      const tem = await temEditalAnexado(licitacaoId);
+      setAnexado(tem);
+      setErroVerificacao(null);
+      return tem;
+    } catch (e) {
+      setErroVerificacao(e instanceof Error ? e.message : 'Não foi possível verificar o edital anexado.');
+      return null;
+    }
+  }, [licitacaoId]);
+
+  useEffect(() => {
+    setAnexado(null);
+    verificarAnexo();
+    // O edital enviado em Anexos, na mesma página, atualiza o card.
+    return aoAlterarAnexos(licitacaoId, () => { verificarAnexo(); });
+  }, [licitacaoId, verificarAnexo]);
+
   const { prepared, running, totalItens, trigger } = useProcessoAutoPrepare(
     licitacaoId,
     // Fallback, não protagonista: só auto-dispara quando o processo não tem
     // fonte PNCP (fora do portal) — com fonte, o espelho materializa os itens.
-    { autoRun: !pncpDisponivel && !temItens },
+    // E só com edital anexado: sem nenhuma fonte, cada abertura da pasta
+    // disparava o pipeline para gravar mais uma falha.
+    { autoRun: !pncpDisponivel && !temItens && anexado === true },
   );
 
+  const semEdital = !pncpDisponivel && anexado === false;
+
+  const irParaAnexos = () => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('aba', 'documentos');
+      next.set('pasta', 'edital');
+      return next;
+    }, { replace: true });
+  };
+
   const handleReprocess = async () => {
+    if (!pncpDisponivel) {
+      const tem = await verificarAnexo();
+      if (tem === false) {
+        toast.warning('Não há edital para preparar: envie o edital em Anexos › Edital.');
+        return;
+      }
+    }
     toast.info('Refazendo preparação automática…');
     const ok = await trigger(true);
     if (ok) toast.success('Preparação concluída.');
-    else toast.warning('Não foi possível concluir a preparação automática. O edital continua acessível no card "Edital em tela".');
+    else if (pncpDisponivel) toast.warning('Não foi possível concluir a preparação automática. O edital continua acessível no card "Edital em tela".');
+    else toast.warning('Não foi possível concluir a preparação automática com o edital anexado. O arquivo continua em Anexos › Edital.');
   };
 
   const unavailable = !prepared && !running && !temItens;
@@ -54,7 +107,16 @@ export default function EditalOriginalCard({ licitacaoId, urlEdital, onVerItens,
         <h2 className="text-lg font-semibold">Preparação automática</h2>
 
         {temItens && (
-          <Badge variant="success">{itensProntos} itens prontos · espelho PNCP</Badge>
+          <Badge variant="success">{itensProntos} itens prontos{pncpDisponivel ? ' · espelho PNCP' : ''}</Badge>
+        )}
+        {!pncpDisponivel && anexado === true && (
+          <Badge variant="outline">Edital anexado</Badge>
+        )}
+        {semEdital && (
+          <Badge variant="warning">Sem edital: envie o edital em Anexos</Badge>
+        )}
+        {!pncpDisponivel && erroVerificacao && (
+          <Badge variant="warning" title={erroVerificacao}>Não foi possível verificar o edital anexado</Badge>
         )}
         {!temItens && running && (
           <Badge variant="info" className="gap-1">
@@ -66,7 +128,7 @@ export default function EditalOriginalCard({ licitacaoId, urlEdital, onVerItens,
             {totalItens != null && totalItens > 0 ? `${totalItens} itens extraídos` : 'Pronto'}
           </Badge>
         )}
-        {unavailable && (
+        {unavailable && !semEdital && (
           <Badge variant="warning">Itens não extraídos</Badge>
         )}
 
@@ -74,6 +136,11 @@ export default function EditalOriginalCard({ licitacaoId, urlEdital, onVerItens,
           {(temItens || (prepared && totalItens != null && totalItens > 0)) && onVerItens && (
             <Button size="sm" variant="outline" onClick={onVerItens}>
               <Calculator className="w-4 h-4" aria-hidden="true" /> Ver na Precificação
+            </Button>
+          )}
+          {semEdital && (
+            <Button size="sm" variant="outline" onClick={irParaAnexos}>
+              <Upload className="w-4 h-4" aria-hidden="true" /> Enviar o edital
             </Button>
           )}
           {unavailable && urlEdital && (

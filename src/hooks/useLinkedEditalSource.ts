@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { extractTextFromBlob } from '@/lib/pdf-text-extractor';
+import { lerEditalAnexado } from '@/lib/processo/edital-anexado';
 
 type LinkedLicitacao = {
   id: string;
@@ -133,6 +134,18 @@ export function useLinkedEditalSource() {
       } catch (error) {
         console.error('Erro ao ler documento vinculado do processo:', error);
       }
+    }
+
+    // Edital anexado à pasta do processo (Anexos › Edital): a única fonte de
+    // um processo criado à mão, fora do PNCP — vem antes das tentativas por
+    // link e portal, que para ele não têm o que achar.
+    try {
+      const { texto } = await lerEditalAnexado(licitacaoId);
+      if (texto.trim().length >= 50) {
+        return { licitacao, cacheMatch: null, text: texto, source: 'anexo_da_pasta' };
+      }
+    } catch (error) {
+      console.error('Erro ao ler o edital anexado à pasta do processo:', error);
     }
 
     const cacheMatch = await findPncpCacheMatch(licitacao);

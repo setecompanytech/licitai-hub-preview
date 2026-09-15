@@ -2,8 +2,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { BUCKET_PROCESSO, enviarAnexoDoProcesso, type CategoriaAnexo } from '@/lib/processo/anexos';
 
-export type CategoriaAnexo = 'edital' | 'habilitacao' | 'proposta' | 'recursos' | 'contrato' | 'declaracoes' | 'outros';
+// A categoria mora com o envio (`lib/processo/anexos.ts`); o re-export mantém
+// os importadores de sempre funcionando.
+export type { CategoriaAnexo };
 
 export interface ProcessoAnexo {
   id: string;
@@ -35,7 +38,7 @@ export interface ProcessoDocumento {
   updated_at: string;
 }
 
-const BUCKET = 'processo-arquivos';
+const BUCKET = BUCKET_PROCESSO;
 
 export function useProcessoWorkspace(licitacaoId: string | null) {
   const { user } = useAuth();
@@ -59,19 +62,14 @@ export function useProcessoWorkspace(licitacaoId: string | null) {
 
   const uploadAnexo = useCallback(async (file: File, categoria: CategoriaAnexo, descricao?: string, metadata?: Record<string, unknown>) => {
     if (!licitacaoId || !user) return null;
-    const safeName = file.name.replace(/[^\w.\-]/g, '_');
-    const path = `${user.id}/${licitacaoId}/${categoria}/${Date.now()}_${safeName}`;
-    const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: false });
-    if (upErr) { toast.error('Erro ao enviar arquivo: ' + upErr.message); return null; }
-    const { data, error } = await supabase.from('processo_anexos').insert({
-      licitacao_id: licitacaoId, user_id: user.id, categoria, nome_arquivo: file.name,
-      storage_path: path, mime_type: file.type, tamanho_bytes: file.size, origem: 'upload', descricao: descricao || null,
-      metadata: (metadata ?? {}) as never,
-    }).select().single();
-    if (error) { toast.error('Erro ao registrar anexo'); return null; }
+    const r = await enviarAnexoDoProcesso({ licitacaoId, userId: user.id, arquivo: file, categoria, descricao, metadata });
+    if (!r.ok) {
+      toast.error(r.etapa === 'registro' ? 'Erro ao registrar anexo' : 'Erro ao enviar arquivo: ' + r.erro);
+      return null;
+    }
     toast.success('Arquivo enviado');
     fetchAll();
-    return data;
+    return r.anexo;
   }, [licitacaoId, user, fetchAll]);
 
   const downloadAnexo = useCallback(async (anexo: ProcessoAnexo) => {
