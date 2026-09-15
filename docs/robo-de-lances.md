@@ -185,7 +185,7 @@ Agente do `RoboLances.tsx:1599`. A regra está escrita no próprio arquivo:
 ela que fez a apresentação de 14/09 à noite não ter tela para mostrar: a tela
 estava em **menu Admin › Robô de Lances**, visível só para quem tem o papel.
 
-#### O conflito que a decisão cria — e que ainda não tem dono
+#### O clique humano do gov.br, com a tela remota na área admin — e a direção dada em 15/09
 
 O login do Compras.gov **exige um clique humano** (hCaptcha na página do
 gov.br — provado seis vezes em 14/09, §4.2). Até 13/09 esse clique era dado
@@ -194,7 +194,7 @@ admin da Praefectus** alcança a tela remota. A operadora do cliente não
 consegue mais dar o clique — e o `PedidoDoRobo` da tela do cliente não
 oferece a tela remota (`permitirTelaRemota` só na admin).
 
-Três saídas possíveis, nenhuma escolhida ainda:
+Três saídas possíveis, levantadas em 15/09:
 
 1. **Operação assistida** — um operador da Praefectus de plantão dá o clique
    quando o robô pede (o pedido já existe: `interacao.pedir`, aba Diagnóstico).
@@ -205,6 +205,13 @@ Três saídas possíveis, nenhuma escolhida ainda:
 3. **Um Chrome por empresa** (display próprio) — aí a tela remota pode voltar
    ao cliente, só com a sessão dele. É arquitetura, não ajuste.
 
+**Direção em 15/09** (seção seguinte): o robô do Compras.gov tem de rodar "por
+trás, sem precisar que o usuário veja" e "sem muita intervenção humana". O
+caminho escolhido é a **saída 2** — sessão persistente e login antes da hora —
+com a **saída 1 como exceção**: se o captcha ainda aparecer, o admin da
+Praefectus é avisado com o link da tela remota. A tela remota fica onde o
+Rafael a colocou, para auditoria e exceção.
+
 #### O que este registro não afirma
 
 - Que as telas novas funcionem — não foram testadas por nós; o que está aqui é
@@ -212,6 +219,184 @@ Três saídas possíveis, nenhuma escolhida ainda:
 - Que a migration 000001 esteja aplicada — a sonda não confirmou.
 - Que alguém tenha rodado deploy fora do CLI — o `functions list` é a
   autoridade, e diz v30/v17/v3.
+
+### 15/09 — o que foi decidido para o Compras.gov, e o caminho até lá
+
+> Registro de 15/09/2026 com base em: a reunião de **14/09, das 20:28 às
+> 21:38** (Giovanny Valente e Ian Lima, gravada em quatro vídeos e transcrita);
+> o checklist enviado no grupo em **14/09 às 20:10**; e a divisão de frentes
+> combinada em **15/09, das 13:03 às 14:06**. As falas entre aspas são da
+> transcrição. Esta seção é a lista de trabalho do robô do Compras.gov a partir
+> de agora — cada item fecha com uma entrada neste documento.
+
+#### A técnica, em uma frase
+
+O robô é **automação de navegador** (RPA — *Robotic Process Automation*): um
+Chrome de verdade no servidor, controlado pelo Puppeteer, que lê a página e
+digita e clica como uma pessoa faria. A conversa entre a tela do Praefectus, a
+edge function e o agente na VPS é **API REST comum** (HTTP/JSON). Não é RPC, e
+não há API do portal por trás — ver abaixo.
+
+#### O que foi apurado na reunião
+
+| Vídeo | O que se viu |
+| --- | --- |
+| 1 (20:28–20:38) | Tela do robô do **ConLicitação** (referência usada pelo Rafael para o módulo) e as regras de negócio: valor unitário, marca, modelo, limite de lances, piso, estratégias e modos de disputa |
+| 2 (20:39–20:50) | Na conta da Santa Rosa no **Licitanet**, a tentativa de gerar chave de integração com um CNPJ de parceiro devolveu **"Parceiro não encontrado, verifique!"** — a API de fornecedor dos portais privados exige cadastro de parceiro (software house) e plano. "A gente vai ter que comprar também um plano… eles vão cadastrar a gente no CNPJ do parceiro." Pesquisa de "API Compras.gov robô de lances" no Google e no YouTube, e o Swagger de `dadosabertos.compras.gov.br` |
+| 3 (21:05–21:18) | Consulta a um assistente de IA com o link do Swagger, perguntando "qual o endpoint para cadastro de proposta e lances do robô de lances?". Resposta: a API do Compras.gov é **de dados abertos** (consulta de compras, atas, itens) e **não tem endpoint de proposta nem de lance**; plataformas comerciais (Effecti, Licitei) usam automação de navegador em nuvem ou extensão. "Automação de tela, que o RPA, né?" (Giovanny) |
+| 4 (21:23–21:38) | Decisão e divisão das frentes (tabela abaixo). "No Compras tem que ser o máximo automatizado possível, sem interferência do usuário." Sobre a tela: "Aquela solução com a tela, ela ainda vai continuar sendo usada para esse propósito, né?" (Ian) — "Só Compras." (Giovanny). Sobre risco de lance: "Ele tá com uma trava, né?" — "Sim, tá com uma trava." |
+
+Extensão de navegador × servidor: a extensão usa a sessão já logada no
+computador do operador e depende dele ligado; o servidor não depende. O robô
+continua no servidor.
+
+#### As decisões
+
+| # | Decisão | Quem / quando |
+| --- | --- | --- |
+| D1 | O Compras.gov **não tem API de lance nem de proposta**; segue por **automação de navegador (RPA)** | reunião, vídeos 3 e 4 |
+| D2 | "No Compras tem que ser **o máximo automatizado possível, sem interferência do usuário**." "Vai pelo caminho que for melhor, desde que a experiência fique boa e fluida, sem muita intervenção humana. Isso pro Compras.gov só; os demais vamos via API." | Giovanny — reunião; WhatsApp 15/09 13:59 |
+| D3 | **Divisão das frentes.** Giovanny: integração com o **Licitanet via API**, ajuste do **design system para um modelo mais clássico**, e frentes do financeiro. Ian: **robô do Compras.gov** e os itens do checklist do grupo ("além daquele 2 ou 3 que mandei lá no grupo") | Giovanny — WhatsApp 15/09 13:03–13:04 |
+| D4 | O robô "deve funcionar como já deixou — mas com ele **rodando por trás sem precisar necessariamente que o usuário veja**, via RPA / browser automation" | Giovanny — WhatsApp 15/09 13:03 |
+| D5 | **Autorização para dar lance:** "pode testar fazer lances sem problemas, pra validar se ele tá conseguindo dar lance". A retirada da trava foi autorizada por **Giovanny e Rubens** | Giovanny — WhatsApp 15/09 13:03; Giovanny e Rubens |
+| D6 | A esteira do robô: **"1. cadastrar a proposta → 2. fazer o lance no dia do pregão"** | Giovanny — WhatsApp 15/09 13:03 |
+| D7 | **Pré-configurado no próprio Praefectus:** no dia e hora da sessão o robô **entra sozinho na sala**, sem esperar permissão do usuário — no modelo do ConLicitação | alinhamento 14–15/09 |
+| D8 | Regras de disputa que a estratégia tem de seguir: iminência no modo aberto, lance final no aberto e fechado, limite de lances ou disputa contínua até o piso (ver "As regras de disputa") | Giovanny — reunião, vídeo 1 |
+| D9 | O checklist do grupo (literal, abaixo) | Giovanny — grupo, 14/09 20:10 |
+| D10 | A tela remota **sai do caminho do usuário** e fica para **auditoria e exceção** (captcha) — é onde o Rafael a colocou em 14/09 (`/admin/robo-lances`) | alinhamento 14–15/09 |
+| D11 | Demonstrações passam a ser **ao vivo, em call**: "quando for assim, acione eles em uma call pra demonstrar, fica melhor" | Giovanny — WhatsApp 15/09 14:01 |
+
+Decisões do Ian sobre o caminho (15/09): o checklist do grupo **fica na nossa
+lista por ora** (sai se algum item for do Giovanny); o mapeamento e o primeiro
+lance acontecem **em pregão real** da Santa Rosa, e não no ambiente de
+treinamento; o captcha é tratado com **sessão persistente + aviso ao admin**.
+
+#### A referência: o robô do ConLicitação
+
+Mostrado no vídeo 1. O modelo que o Rafael usou para o módulo — e o que o
+Praefectus precisa oferecer para o Compras.gov:
+
+- **Configuração com antecedência**, dias ou horas antes; na hora da sessão
+  pública o robô entra sozinho. Não há botão "enviar ao robô": o controle é
+  **ligar/desligar** (o Ian vai trazer a tela para confirmar os detalhes). O
+  interruptor já existe no Praefectus: `robo_empresa_config.ligado`, migration
+  `20260914000004`, e o envio novo recusa quando a empresa está desligada.
+- **Grade por item:** quantidade, valor de referência do órgão, valor unitário
+  inicial com total calculado, **marca**, **modelo**, **piso** ("valor
+  limite", até onde se aceita descer) e **estratégia** — "Desempatar em 1º
+  lugar", "Melhor posição possível", "Iminência".
+- O ConLicitação usa a API do Licitanet para esse portal — frente do Giovanny.
+
+#### As regras de disputa que a estratégia precisa seguir
+
+Nas palavras do Giovanny (vídeo 1):
+
+> "O robô envia lances apenas nos dois minutos finais da etapa de Aberto. Por
+> exemplo, Aberto: tu tem 10 minutos mais 2 minutos para cada lance… o Aberto e
+> Fechado é 15 minutos, entrou 15 minutos aí encerramento aleatório."
+
+> "Se for no fechado e aberto, o sistema ele vai reconhecer os três menores
+> lances… Eu tenho lá 1 milhão, 2 milhões, 3 milhões… o sistema vai somar mais
+> 10%… Se a minha empresa for a quarta colocada, ela vai entrar no modo de
+> lance."
+
+> "Lembra que a gente tem um limite de lances? Aí eu quero cadastrar 30 ou
+> infinitamente até chegar no meu limite."
+
+A regra oficial (Lei 14.133/2021 e IN SEGES/ME 73/2022, conforme o
+[TCU — Licitações e Contratos, 3.5 Modos de disputa](https://licitacoesecontratos.tcu.gov.br/3-5-modos-de-disputa/)):
+
+| Modo | Como corre | O que o robô tem de fazer |
+| --- | --- | --- |
+| **Aberto** | 10 minutos; prorrogação automática de 2 minutos sempre que houver lance nos 2 minutos finais, sucessivamente; encerra quando uma prorrogação passa sem lance | **Iminência**: esperar os 2 minutos finais (e cada prorrogação) em vez de queimar lance no início |
+| **Aberto e fechado** | 15 minutos abertos; depois do aviso, encerramento em **até 10 minutos, em tempo aleatório**; o autor da melhor oferta e os das ofertas **até 10% acima** podem dar **um lance final fechado** em até 5 minutos; se forem menos de três, entram os melhores subsequentes **até completar três** | Na fase aberta, a mesma lógica; ao fechar, saber se a empresa está entre os elegíveis e dar o lance final único |
+| **Fechado e aberto** | Propostas em sigilo; vão para a fase aberta a de menor preço e as **até 10% acima** (ou as **três melhores**, se forem menos de três); depois segue como o aberto | Saber se a proposta entrou na fase aberta; daí em diante, como o aberto |
+
+Em todos: o edital fixa o **intervalo mínimo de diferença** entre lances (em
+reais ou percentual) — é o campo "decremento mínimo" da disputa, e um lance
+abaixo dele é recusado pelo portal. O limite pode ser **um teto de lances**
+(ex.: 30) **ou nenhum**, disputando até o piso.
+
+#### O checklist do grupo, literal (14/09, 20:10)
+
+1. "Extrair no PNCP os itens do edital no lançamento manual no cadastro de nova sessão"
+2. "Coluna de marca e modelo, se houver no anexo — do termo de referência"
+3. "Retornar dados da licitação pra complementar as informações"
+
+#### Onde o robô está, diante das decisões (conferido em 15/09)
+
+| Fato | Onde |
+| --- | --- |
+| A trava de lance é `PORTAIS_COM_LANCE_LIBERADO = []`. O id que ela confere é **`comprasgov`** — o id do portal **no agente**. `compras-gov` é o id da tela; colocar esse na lista deixa a trava fechada sem aviso | `src/lib/agent-template/estrategia.ts:39` e VPS `src/estrategia.js` |
+| **`souLider` ainda não existe no módulo do Compras.gov**, e sem ele a regra de proteção responde "o portal não informou quem lidera" em toda rodada. Abrir a trava sozinho **não produz lance** — o `souLider` sai da leitura da sala real | classe `ComprasGovPortal` em `src/lib/agent-template/portals.ts` |
+| A leitura do melhor lance e o envio do lance do Compras.gov são listas de seletores genéricos, escritas antes de se ver a sala | idem |
+| A decisão de lance (`decidirLance`) sabe **cobrir o melhor lance com o decremento**, sem ultrapassar o piso e sem cobrir a si mesma. Ainda não sabe **modo, fase, tempo restante, posição, os 10% e a estratégia** | `estrategia.ts` |
+| O limite de lances é contado por **rodada de leitura**, não por lance enviado, e encerra a sessão antes de qualquer decisão | `_startBiddingLoop` em `agente-template-generator.ts` |
+| O cadastro de proposta no portal (`enviarProposta`) ainda não existe; a validação dos dados da proposta existe | `src/lib/robo/proposta.ts`; rota `POST /api/proposta/enviar` |
+| A disputa guarda a **hora** (`horario`), não a **data** — hoje nada consegue agendar a entrada; o processo tem `data_abertura` | `robo_lances_disputas`; `licitacoes` |
+| Não há agendamento em nenhuma camada ainda | front, functions e migrations |
+| O Chrome **não guarda a sessão** entre uma disputa e outra — todo envio é um login novo | `browser.js` |
+| hCaptcha nos logins do Compras.gov de 10 a 14/09: **16 logins, 2 entraram sem clique, 10 pediram clique** (os demais eram falhas já corrigidas) | log do agente |
+| **14/09, 20:07** — sessão enviada; o gov.br pediu o clique no certificado; a espera de 10 minutos terminou às 20:17 sem o clique. A tela remota fica na área admin desde a tarde de 14/09 | log do agente |
+| **Pregão 7/2026 SEDUC/PA (14/09, 9h)** — nenhuma sessão foi enviada entre 07:38 e 15:47; a sala em disputa **ainda não foi gravada** | `logs/sessoes/` na VPS |
+| **14/09, 15:47** — sessão da compra **90029/2026** (Fundação Santa Casa de Misericórdia do Pará, UASG 925448, propostas até 17/09): login **sem clique** em 9 s e página da compra aberta em 21 s | log do agente |
+| Existe um ambiente de treinamento oficial para fornecedor (`treinamento.comprasnet.gov.br`), com proposta e lance simulados — não é o caminho escolhido | manuais do Comprasnet |
+| A leitura dos itens de uma compra no PNCP já existe (`/orgaos/{cnpj}/compras/{ano}/{seq}/itens`); falta chegar a ela a partir de **UASG + número/ano** | `detalhe-licitacao-pncp`, `_shared/pncp-coords.ts` |
+| As três edge functions das telas novas ainda não estão no ar | ver "14–15/09" acima |
+
+Dois esclarecimentos para não perder no caminho:
+
+- **"Por trás" não é "headless".** No gov.br o Chrome sem janela cai no
+  hCaptcha até na página pública (visto em 11/09). O robô continua com janela,
+  na tela virtual do servidor — o usuário simplesmente não precisa olhar.
+- **Proposta e lance em pregão real são compromisso da empresa.** Por isso o
+  primeiro lance do robô sai num item em que a Santa Rosa quer vender, com o
+  piso vindo da precificação aprovada.
+
+#### O caminho — lista de trabalho
+
+**Fase 0 — base**
+- [x] Registrar a reestruturação de 14–15/09 e as decisões de 15/09 (este documento)
+- [ ] Trazer o remoto para o local (`git pull --rebase`) — as telas novas são a base do front daqui em diante
+- [ ] Publicar as três edge functions das telas novas e conferir a versão no ar
+
+**Fase 1 — ver a sala e a tela de proposta, em pregão real**
+- [ ] Agenda: próximos pregões do Compras.gov com proposta da Santa Rosa, itens e piso aprovado (candidato: 90029/2026, Santa Casa do Pará)
+- [ ] Pregão A — robô entra com a trava fechada e o gravador a cada 10 s; a operadora disputa como sempre; pela tela remota do admin, levar o robô até a **sala logada do fornecedor** e à tela de cadastro de proposta
+- [ ] Escrever, a partir do que foi gravado: a leitura da sala (modo, fase, tempo restante, item, melhor lance, nosso lance, posição, `souLider`, elegibilidade no fechado), o caminho até a sala logada, o envio do lance e a conferência do resultado — com testes
+
+**Fase 2 — estratégia**
+- [ ] A decisão de lance passa a considerar modo, fase, tempo restante, posição, os 10%, a estratégia do item (iminência, melhor posição, desempatar em 1º) e o intervalo mínimo do edital — mantendo piso, nunca cobrir a si e nunca lance sem leitura
+- [ ] Limite de lances opcional e contado por lance enviado; sem limite, disputa até o piso
+- [ ] Ritmo de leitura mais lento fora da iminência e mais rápido dentro
+
+**Fase 3 — proposta (etapa 1 da esteira)**
+- [ ] Cadastro da proposta no Compras.gov pelo robô: valor, marca, fabricante, modelo e descrição por item; declarações do portal só quando o cadastro disser
+- [ ] Ação "cadastrar proposta no portal" na página da disputa, com o resultado voltando ao processo
+
+**Fase 4 — autonomia**
+- [ ] Data e hora da sessão na disputa, pré-preenchidas do PNCP ou do processo
+- [ ] Agendamento: a cada minuto, disputas que começam em até 15 minutos, com a empresa ligada, são enviadas ao robô sem clique
+- [ ] Sessão persistente do Chrome por empresa e login antes da hora — medir quanto o login dura
+- [ ] Captcha que ainda aparecer: aviso ao admin da Praefectus com o link da tela remota
+
+**Fase 5 — liberar o lance**
+- [ ] Com a sala lida e a estratégia testada, antes do pregão B: `PORTAIS_COM_LANCE_LIBERADO = ['comprasgov']`, com o registro "autorizado por Giovanny Valente e Rubens, 14–15/09/2026"
+- [ ] Pregão B — primeiro lance do robô, num item com piso real, acompanhado pela tela remota do admin; lance recusado ou leitura errada devolve a trava a `[]` na hora
+
+**Fase 6 — checklist do grupo** (na nossa lista por ora)
+- [ ] Buscar os itens do edital no PNCP a partir de UASG + número/ano, no cadastro manual da nova sessão
+- [ ] Marca e modelo como colunas editáveis na grade, pré-preenchidas do termo de referência quando houver
+- [ ] Painel da disputa com órgão, objeto, SRP, modo de disputa, critério e data da sessão vindos do PNCP
+
+#### O que depende de alguém
+
+| O quê | De quem |
+| --- | --- |
+| A tela do robô do ConLicitação (ligar/desligar e grade) | Ian |
+| Próximos pregões do Compras.gov com proposta da Santa Rosa, itens e piso aprovado | Izabelle / Rafael |
+| Confirmar se algum item do checklist do grupo é do Giovanny | Giovanny |
+| OK para trazer o remoto e publicar as três edge functions | Ian |
 
 ---
 
@@ -991,7 +1176,7 @@ publicada do Portal de Compras Públicas é de **consulta**, somente leitura.
 > | # | O que | De quem depende | Destrava |
 > | --- | --- | --- | --- |
 > | 0a | **Deploy das três edge functions** do remoto — `robo-lances-webhook` (v30 → nova), `credenciais-portal` (v17 → nova), `normalizar-arquivos-documentos` (v3 → nova) — depois do `pull`, conferindo a versão no `functions list` | nós, com OK do Ian | o front publicado em `2026-09-15.1` conversar com o backend; os dois consertos de segurança entrarem no ar |
-> | 0b | **Quem dá o clique humano do gov.br** agora que a tela remota é só admin: operação assistida, sessão logada persistente, ou um Chrome por empresa | Ian + Giovanny + Rafael | o Compras.gov voltar a ser operável por alguém que não seja admin da Praefectus |
+> | 0b | **O clique humano do gov.br** — direção dada em 15/09: sessão persistente do Chrome e login antes da hora, com aviso ao admin quando o captcha ainda aparecer. A lista de trabalho completa está em §1, "15/09 — o que foi decidido para o Compras.gov" | Ian | o robô do Compras.gov rodar sem ninguém na tela |
 
 | # | O que | De quem depende | Destrava |
 | --- | --- | --- | --- |
