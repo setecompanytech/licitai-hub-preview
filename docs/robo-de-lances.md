@@ -1,6 +1,6 @@
 # Robô de Lances — o que existe, o que trava, e o que falta
 
-> **Data desta foto:** 14/09/2026, madrugada do pregão 7/2026 SEDUC/PA. O que está aqui foi verificado, não deduzido —
+> **Data desta foto:** 15/09/2026 — depois da reestruturação do front pelo XFIN (§1, "14–15/09"). O que está aqui foi verificado, não deduzido —
 > cada afirmação tem como conferir. Onde não deu para verificar, está escrito que
 > não deu.
 
@@ -38,11 +38,11 @@ com uma exceção — o último elo, o lance, que está travado de propósito (�
 
 | Elo | Estado | Prova |
 | --- | --- | --- |
-| Interface dispara sessão | ✅ | botão "Enviar ao robô", carimbo `2026-09-09.10` no ar |
+| Interface dispara sessão | ✅ | botão "Enviar ao robô", carimbo `2026-09-09.10` no ar; **desde 14/09 na página própria da disputa (`/robo-lances/disputa/:id`) e na aba Robô do processo — front novo publicado (`2026-09-15.1`), function nova não deployada** |
 | Edge function traduz e grava | ✅ | linha em `sessoes_lance_real`, com recusa antes de gravar quando o portal não existe |
 | Agente aceita e abre o Chrome | ✅ | `/health` mostra as sessões; 8 registradas hoje |
 | Login real em portal | ✅ | Portal de Compras Públicas, 08/09 à noite; **Compras.gov (gov.br + certificado A1), 10/09 às 16:31 e cinco vezes seguidas em 14/09, ~40 s cada** |
-| VNC mostra a tela ao vivo | ✅ | janela ocupa 100% de 1920×1080 desde 09/09 |
+| VNC mostra a tela ao vivo | ✅ | janela ocupa 100% de 1920×1080 desde 09/09; **desde 14/09 só em Admin › Robô de Lances (`/admin/robo-lances`), papel `admin`** — ver "14–15/09" abaixo |
 | Navegar até a disputa | ✅ | processo **002/2026** achado em "Seus Processos" e aberto, 08/09; **Compras.gov: compra 7/2026 UASG 925315 achada entre dez homônimas e a sala (`acompanhamento-compra`) aberta pelo botão certo, 14/09 03:27, 77 s do envio** |
 | Ler a tela de lances | ⬜ | depende de pregão ao vivo |
 | Dar lance | 🔒 | travado — ver §2 |
@@ -75,6 +75,143 @@ portais_com_lance_liberado []
 Isso é a pendência 24, e é invisível em qualquer tela — por isso o envio pergunta
 ao `/health` antes de disparar, e diz **o que o agente tem** quando não tem o
 módulo pedido.
+
+### 14–15/09 — a reestruturação do front pelo XFIN, e o que ficou desencontrado
+
+> Registro feito em 15/09/2026, lendo o remoto (`origin/feature/rebrand-ui-ux`,
+> `220497ad`) contra o local (`ec834bac`, o nosso push da madrugada de 14/09),
+> **sem `pull`** — para que o que está escrito aqui seja o que estava lá, e não
+> o que sobrou depois de um merge. Serve de respaldo: quem mudou o quê, quando,
+> e em que estado a produção ficou.
+
+Na noite de 14/09 a apresentação para o cliente — ver o robô entrando no
+portal pela tela remota — não aconteceu: **a tela remota não estava mais na
+tela do Robô de Lances**. Não foi apagada. Foi movida, junto com uma
+reestruturação inteira do módulo feita no mesmo dia pelo XFIN (a conta do
+Rafael, cliente e dono do produto), em 19 commits entre 08:13 de 14/09 e
+10:15 de 15/09, dos quais **4 são do robô**.
+
+#### Os 19 commits, na ordem em que entraram
+
+| Hash | Data/hora | Autor | Título |
+| --- | --- | --- | --- |
+| `9019fc18` | 14/09 08:13 | XFIN Consultoria Empresarial | feat(navegacao): cabecalho horizontal, diretorio de ferramentas e painel novo |
+| `6ffe3269` | 14/09 10:09 | XFIN Consultoria Empresarial | feat(documentos): cinco abas, regua unica de situacao e uniao de PDF que une |
+| `167146ee` | 14/09 10:14 | XFIN Consultoria Empresarial | fix(documentos): falha de carga nao vira afirmacao sobre o cofre |
+| `3d9e9573` | 14/09 11:14 | XFIN Consultoria Empresarial | fix(licitacao): painel e historico passam a usar o vocabulario unico de status |
+| `0c3effa1` | 14/09 11:14 | XFIN Consultoria Empresarial | feat(documentos): atestados de capacidade tecnica passam a ser da empresa |
+| `4d02752b` | 14/09 11:16 | XFIN Consultoria Empresarial | fix(documentos): normalizar-arquivos-documentos exige CRON_SECRET |
+| `27121989` | 14/09 11:21 | XFIN Consultoria Empresarial | fix(documentos): migration de atestados sem min(uuid), que o Postgres nao tem |
+| **`63d985bf`** | **14/09 11:47** | XFIN Consultoria Empresarial | **feat(robo-lances): fundacao da integracao do robo ao processo** |
+| **`a72ab9b4`** | **14/09 12:25** | XFIN Consultoria Empresarial | **feat(robo-lances): robo integrado ao processo, precificacao aprovada e parada honesta** |
+| `33abad15` | 14/09 12:45 | XFIN Consultoria Empresarial | fix(precificacao): rodape e cartoes no celular, motivo de aprovacao com versao vigente |
+| `7815db49` | 14/09 13:00 | XFIN Consultoria Empresarial | fix(gestao): tabelas de contratos e do robo cabem na tela |
+| **`83d05869`** | **14/09 13:57** | XFIN Consultoria Empresarial | **feat(robo-lances): separa o que e da empresa do que e da operacao Praefectus** |
+| **`7f73f5c9`** | **14/09 15:14** | XFIN Consultoria Empresarial | **feat(robo-lances): lista so de participacoes e pagina propria por disputa** |
+| `d7acbc05` | 14/09 18:05 | XFIN Consultoria Empresarial | fix(kanban): arrastar ate a ultima coluna do quadro de licitacoes |
+| `546dd1f7` | 14/09 18:28 | XFIN Consultoria Empresarial | fix(financeiro): tabela de lancamentos cabe na tela sem cortar acoes |
+| `7f2b3a60` | 14/09 19:02 | gpt-engineer-app[bot] (Lovable) | Changes |
+| `75040ad7` | 14/09 19:03 | gpt-engineer-app[bot] (Lovable) | Changes |
+| `8fcd8e05` | 14/09 19:03 | gpt-engineer-app[bot] (Lovable) | Corrigiu a rota de verificação |
+| `220497ad` | 15/09 10:15 | XFIN Consultoria Empresarial | feat(compromissos): pasta manual para processos fora do PNCP |
+
+Carimbo de versão (`src/lib/versao.ts`) ao longo do dia: `2026-09-14.4`
+(`a72ab9b4`) → `.6` (`83d05869`) → `.7` (`7f73f5c9`) → **`2026-09-15.1`**
+(`220497ad`) — e é este último que o domínio serve em 15/09. O front novo
+**está publicado**.
+
+#### O que cada commit do robô muda
+
+| Commit | Cria | Apaga / reescreve |
+| --- | --- | --- |
+| `63d985bf` fundação | `src/lib/robo/comandos.ts`, `src/lib/robo/situacao-da-participacao.ts`, `src/lib/precificacao/versao.ts` (+ testes); migration `20260914000002` (425 linhas) | — |
+| `a72ab9b4` robô no processo | **aba Robô dentro da pasta do processo** (`src/components/workspace/robo/`: `AbaRoboDoProcesso`, `ControleDoRobo`, `PainelDoItem`, `ValoresDoItem`, `consultas`, `itens-da-disputa`); aprovação de precificação (`src/components/workspace/precificacao/`, 12 arquivos; `hooks/usePrecificacaoVersoes`); `painel/PainelDeParticipacoes`; `functions/_shared/robo-acao.ts`; migration `20260914000003` **segredos fora do navegador** | `robo-lances-webhook` +477 linhas; `credenciais-portal`; `KillSwitchButton`, `SessoesDoRobo`, `SimulacaoDisputa`, `AceiteTermosDialog`, `VncWebViewer` (avisos do "parar": confirmada / solicitada / falha), `RoboLances.tsx` (+246) |
+| `83d05869` empresa × Praefectus | **página `/admin/robo-lances`** (`src/pages/AdminRoboLances.tsx`, só papel `admin`, abas: Agente e infraestrutura · **Sessões e tela remota** · Diagnóstico · Avisos aos clientes · Auditoria); `src/components/admin-robo/` (diagnóstico entre empresas, registro de chamadas, gestor de avisos); a tela do cliente vira **ligar/desligar o robô da empresa** (`src/components/robo-lances/cliente/`: `LigarDesligarRobo`, `CabecalhoDoRobo`, `FaixaDaEmpresa`, `SituacaoDoRoboEmLinha`, `AvisosDosPortais`, `DialogoModoDeOperacao`); `functions/_shared/robo-plataforma.ts` (624 linhas); migration `20260914000004` | `robo-lances-webhook` +1.188 linhas; `RoboLances.tsx` (597 linhas mexidas); `PainelDeControle`, `AtivacaoChecklist`, `PedidoDoRobo`, `EstrategiaIAPanel` |
+| `7f73f5c9` uma página por disputa | `src/pages/RoboLancesDisputa.tsx` (rota `/robo-lances/disputa/:id`); `src/components/robo-lances/disputa/` (16 arquivos: `AcoesDaDisputa`, `AcompanhamentoDaDisputa`, `CabecalhoDaDisputa`, `ContextoDaDisputa`, `EstrategiaDaDisputa`, `EventosDaDisputa`, `ItensDaDisputa`, `ParadaDaSessao`, hooks `useDisputaDoRobo`, `useEnviarAoRobo`, `useOperacoesDaDisputa`, `useParadaDaSessao`, `useSalvarDisputa`); `cliente/useModoDeOperacao` | **apagados:** `DisputasResumo.tsx`, `PainelDeControle.tsx`, `PainelRisco.tsx`; `RoboLances.tsx` **−1.779 linhas** (vira a lista de participações) |
+
+**O que não foi tocado:** `src/lib/agent-template/` e
+`src/lib/agente-template-generator.ts` — **zero commits**. O agente na VPS roda
+os nossos cinco consertos de 14/09 (§4.2), e a function nova continua mandando
+ao `/sessao/iniciar` o mesmo contrato: `portal_id`, `credenciais_portal`,
+`uasg`, `itens`, `tipo_disputa`, `max_lances`. O `docs/robo-de-lances.md` também
+não foi tocado (idêntico nas duas pontas) — esta seção não conflita com o
+`pull`.
+
+#### Migrations — quatro novas, três do robô, e as três do robô **já estão aplicadas**
+
+Conferido em 15/09 com sonda REST usando a chave pública
+(`/rest/v1/<tabela>?select=*&limit=0`): tabela existe → 200; não existe → 404;
+SELECT revogado → "permission denied for table".
+
+| Migration | O que faz | Aplicada? |
+| --- | --- | --- |
+| `20260914000001_atestados_da_empresa` (commit `0c3effa1` 11:14, corrigida em `27121989` 11:21) | atestados de capacidade técnica passam a ser da empresa — documentos, não robô | não confirmado (a sonda não achou tabela com esse nome; pode ser `ALTER`) |
+| `20260914000002_robo_integrado_ao_processo` (`63d985bf` 11:47) | `precificacao_versoes`, `precificacao_versao_itens` (+ triggers `_proteger`, `_conferir_empresa`); policies "Membros da empresa veem as sessões do robô / os lances das sessões"; função `limites_operacionais_do_processo` | **✅** — as duas tabelas respondem 200 |
+| `20260914000003_robo_segredos_fora_do_navegador` (`a72ab9b4` 12:25) | **`REVOKE SELECT`** de `agente_externo_config` e `credenciais_portais` para `anon` e `authenticated`; devolve a `authenticated` só as colunas **sem** segredo (`api_key_hash` e `senha_hash` ficam fora). O navegador deixa de conseguir ler cifra | **✅** — a sonda com a chave pública recebe "permission denied for table" nas duas |
+| `20260914000004_robo_separacao_plataforma` (`83d05869` 13:57) | `robo_empresa_config` (ligar/desligar por empresa, trigger `_carimbar`), `robo_avisos_portal` (+ índice de vigentes), função `is_empresa_operador`, `nomes_de_empresas_para_plataforma`; policies "Plataforma lê sessões / registro de chamadas / configuração dos agentes", "Operadores ligam e desligam o robô", "Clientes leem avisos vigentes" | **✅** — as duas tabelas respondem 200 |
+
+As quatro têm seção em `SQL_MIGRATIONS.md` (+116 linhas no remoto).
+
+#### Edge functions — seis arquivos, +2.135 linhas, e **nenhuma foi deployada**
+
+`npx supabase functions list --project-ref uwtyuwktxalnpgrcbbgk`, 15/09:
+
+| Function | No remoto (commits de 14/09) | No ar | Consequência de não estar no ar |
+| --- | --- | --- | --- |
+| `robo-lances-webhook` | **2.319 linhas** (a v30 tem 1.236): `_shared/robo-plataforma.ts` (624), `_shared/robo-acao.ts` (117), ação nova `situacao-do-robo`, registro de chamadas (`ler-agente`, `ler-credencial`, `gravar-sessao`, `gravar-itens`…), resposta do `parar-sessao` com `resultado.estado` (`confirmada` / `solicitada` / falha) | **v30 — 11/09 12:40** (a nossa, do UASG) | o front publicado pergunta `situacao-do-robo`, lê `resultado.estado`, espera o registro de chamadas — a v30 não conhece nada disso. Ligar/desligar, situação e diagnóstico devem estar respondendo erro ou vazio |
+| `credenciais-portal` | a lista devolve `tem_senha` em vez de `senha_hash` (o navegador nunca vê a cifra); cifra com `_shared/credenciais-cifra.ts` | **v17 — 08/09 21:56** | a function velha roda com service role e continua devolvendo `senha_hash` ao navegador — a intenção da migration 000003 só se cumpre com o deploy |
+| `normalizar-arquivos-documentos` | passa a exigir `CRON_SECRET` (hoje, `verify_jwt = false` + service role: qualquer um na internet dispara e recebe nomes de documentos de todas as empresas) | **v3 — 03/09 15:26** | a correção de segurança não está no ar |
+| `_shared/certificado-agente.ts` | 19 linhas | (entra com o webhook) | — |
+
+Ou seja: dos três caminhos de publicação (front pelo Lovable, SQL colado no
+editor, function pelo CLI), **dois foram feitos e o terceiro não** — e o
+Publish do Lovable não sobe function. Em 15/09 a produção está com front
+novo + banco novo + functions velhas.
+
+#### Onde a tela remota mora agora
+
+`VncWebViewer.tsx` continua existindo. Quem o renderiza no remoto é **só**
+`src/pages/AdminRoboLances.tsx` (aba "Sessões e tela remota"), atrás de
+`<AdminGuard>` na rota (`App.tsx:190`) e, no banco, de
+`has_role(auth.uid(), 'admin')`. No local (`ec834bac`) ele ainda está na aba
+Agente do `RoboLances.tsx:1599`. A regra está escrita no próprio arquivo:
+
+> A tela remota é compartilhada entre todas as empresas. O navegador remoto
+> roda no mesmo servidor para todos os clientes: quem abre vê qualquer sessão
+> em operação naquele momento. **Nunca mostre esta tela, nem o endereço dela,
+> a um cliente.**
+
+É uma decisão de produto coerente (um Chrome só para todas as empresas) — e é
+ela que fez a apresentação de 14/09 à noite não ter tela para mostrar: a tela
+estava em **menu Admin › Robô de Lances**, visível só para quem tem o papel.
+
+#### O conflito que a decisão cria — e que ainda não tem dono
+
+O login do Compras.gov **exige um clique humano** (hCaptcha na página do
+gov.br — provado seis vezes em 14/09, §4.2). Até 13/09 esse clique era dado
+pela pessoa na frente da tela do Robô de Lances; a partir de 14/09 **só um
+admin da Praefectus** alcança a tela remota. A operadora do cliente não
+consegue mais dar o clique — e o `PedidoDoRobo` da tela do cliente não
+oferece a tela remota (`permitirTelaRemota` só na admin).
+
+Três saídas possíveis, nenhuma escolhida ainda:
+
+1. **Operação assistida** — um operador da Praefectus de plantão dá o clique
+   quando o robô pede (o pedido já existe: `interacao.pedir`, aba Diagnóstico).
+2. **Sessão logada persistente** — perfil de usuário do Chrome (`userDataDir`)
+   guardando os cookies do gov.br/Comprasnet entre sessões: um clique por dia
+   ou por expiração, não por disputa. Não foi testado; depende de quanto dura a
+   sessão do SSO.
+3. **Um Chrome por empresa** (display próprio) — aí a tela remota pode voltar
+   ao cliente, só com a sessão dele. É arquitetura, não ajuste.
+
+#### O que este registro não afirma
+
+- Que as telas novas funcionem — não foram testadas por nós; o que está aqui é
+  o que o código diz e o que a sonda do banco e o `functions list` devolvem.
+- Que a migration 000001 esteja aplicada — a sonda não confirmou.
+- Que alguém tenha rodado deploy fora do CLI — o `functions list` é a
+  autoridade, e diz v30/v17/v3.
 
 ---
 
@@ -848,6 +985,14 @@ publicada do Portal de Compras Públicas é de **consulta**, somente leitura.
 
 ## 6. O que falta, por ordem de custo
 
+> **Antes de tudo, desde 15/09** — dois itens que não estavam na lista e passam
+> na frente dela (ver §1, "14–15/09 — a reestruturação do front pelo XFIN"):
+>
+> | # | O que | De quem depende | Destrava |
+> | --- | --- | --- | --- |
+> | 0a | **Deploy das três edge functions** do remoto — `robo-lances-webhook` (v30 → nova), `credenciais-portal` (v17 → nova), `normalizar-arquivos-documentos` (v3 → nova) — depois do `pull`, conferindo a versão no `functions list` | nós, com OK do Ian | o front publicado em `2026-09-15.1` conversar com o backend; os dois consertos de segurança entrarem no ar |
+> | 0b | **Quem dá o clique humano do gov.br** agora que a tela remota é só admin: operação assistida, sessão logada persistente, ou um Chrome por empresa | Ian + Giovanny + Rafael | o Compras.gov voltar a ser operável por alguém que não seja admin da Praefectus |
+
 | # | O que | De quem depende | Destrava |
 | --- | --- | --- | --- |
 | 1 | **Edital real** onde a empresa esteja inscrita | cliente | o teste de navegação de ponta a ponta — funciona já, sem depender do plano |
@@ -1382,7 +1527,30 @@ npx vitest run src/test/robo-estrategia.test.ts
 
 # As fotos que o robô tirou
 ls capturas-robo/
+
+# O que o remoto tem que o local não tem — sem pull (fetch só atualiza a referência)
+git fetch origin
+git log --format='%h %ad %an — %s' --date=format:'%d/%m %H:%M' HEAD..origin/feature/rebrand-ui-ux
+
+# Onde a tela remota é renderizada, no remoto e no local
+git grep -n "VncWebViewer" origin/feature/rebrand-ui-ux -- src
+git grep -n "VncWebViewer" HEAD -- src
+
+# Quais migrations e functions o remoto trouxe
+git diff --stat HEAD..origin/feature/rebrand-ui-ux -- supabase/migrations supabase/functions
+
+# Que versão de cada function está no ar, e de quando (a autoridade é esta, não o repositório)
+npx supabase functions list --project-ref uwtyuwktxalnpgrcbbgk
+
+# Uma migration foi aplicada? Sonda com a chave PÚBLICA (a do vite.config.ts), só leitura:
+#   200 = tabela existe · 404 = não existe · "permission denied for table" = SELECT revogado
+curl -s "https://uwtyuwktxalnpgrcbbgk.supabase.co/rest/v1/robo_empresa_config?select=*&limit=0" \
+  -H "apikey: <chave pública>" -H "Authorization: Bearer <chave pública>"
 ```
+
+> ⚠️ O `.env` aponta para outro projeto (`sbnlovigyifvrkgsoalj`); o app usa o
+> que o `vite.config.ts` injeta (`uwtyuwktxalnpgrcbbgk`). Sondar pelo `.env`
+> devolve 401/521 e parece que nada existe.
 
 E na VPS:
 
