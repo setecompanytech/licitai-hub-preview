@@ -1305,33 +1305,59 @@ class ComprasGovPortal extends BasePortal {
       { timeout: 30000 },
     ).catch(() => {});
 
-    const texto = await this.textoDaTela();
-    const inicio = texto.indexOf('Propostas');
-    const corpo = inicio >= 0 ? texto.slice(inicio) : texto;
+    const propostas = ComprasGovPortal.propostasNoTexto(await this.textoDaTela());
+    const validas = propostas.filter((p) => !p.desclassificada);
+    if (validas.length) {
+      console.log('📊 Item ' + numero + ': ' + propostas.length + ' proposta(s)'
+        + (propostas.length !== validas.length ? ', ' + (propostas.length - validas.length) + ' desclassificada(s)' : '')
+        + '; melhor valida R$ ' + this.formatarMoeda(validas[0].valor) + ' (' + validas[0].cnpj + ')');
+    } else if (propostas.length) {
+      console.warn('⚠️ Item ' + numero + ': ' + propostas.length + ' proposta(s), todas desclassificadas');
+    } else {
+      console.warn('⚠️ Item ' + numero + ': nenhuma proposta legivel na pagina publica');
+    }
+    this._ultimaLeitura = { url, em: Date.now(), propostas };
+    return propostas;
+  }
+
+  /**
+   * AS PROPOSTAS DE UM ITEM, a partir do texto da pagina publica.
+   *
+   * Funcao pura (static), testada com o texto real capturado em 16/09/2026.
+   *
+   * DESCLASSIFICADAS CONTAM A PARTE. A lista vem em ordem crescente de valor
+   * e inclui propostas que o pregoeiro ja desclassificou — no item 5 do
+   * 7/2026, 6 de 13, tres delas no topo. Contar a primeira da lista como
+   * melhor lance faria o robo cobrir o preco de quem ja esta fora da disputa
+   * (R$ 2.000,00 ali, contra R$ 2.785,00 da melhor proposta valida). A
+   * posicao (posicao) e contada so entre as validas; a desclassificada fica
+   * com posicao null e desclassificada: true.
+   */
+  static propostasNoTexto(texto) {
+    const bruto = String(texto || '');
+    const inicio = bruto.indexOf('Propostas');
+    const corpo = inicio >= 0 ? bruto.slice(inicio) : bruto;
 
     const blocos = corpo.split(/(?=\\d{2}\\.\\d{3}\\.\\d{3}\\/\\d{4}-\\d{2})/).slice(1);
     const propostas = [];
+    let posicao = 0;
     for (const bloco of blocos) {
       const cnpj = (bloco.match(/\\d{2}\\.\\d{3}\\.\\d{3}\\/\\d{4}-\\d{2}/) || [])[0];
-      const bruto = (bloco.match(/R\\$\\s*([\\d.]+),(\\d+)/) || []);
-      if (!cnpj || !bruto.length) continue;
-      const valor = Number(bruto[1].replace(/\\./g, '') + '.' + bruto[2]);
+      const numero = (bloco.match(/R\\$\\s*([\\d.]+),(\\d+)/) || []);
+      if (!cnpj || !numero.length) continue;
+      const valor = Number(numero[1].replace(/\\./g, '') + '.' + numero[2]);
       if (!Number.isFinite(valor)) continue;
+      const desclassificada = /desclassificad/i.test(bloco);
+      if (!desclassificada) posicao += 1;
       propostas.push({
         cnpj,
         valor,
         uf: (bloco.match(/\\b([A-Z]{2})\\b\\s+Valor ofertado/) || [])[1] || null,
         me_epp: /ME\\/EPP/.test(bloco),
-        posicao: propostas.length + 1,
+        desclassificada,
+        posicao: desclassificada ? null : posicao,
       });
     }
-    if (propostas.length) {
-      console.log('📊 Item ' + numero + ': ' + propostas.length + ' proposta(s); melhor R$ '
-        + this.formatarMoeda(propostas[0].valor) + ' (' + propostas[0].cnpj + ')');
-    } else {
-      console.warn('⚠️ Item ' + numero + ': nenhuma proposta legivel na pagina publica');
-    }
-    this._ultimaLeitura = { url, em: Date.now(), propostas };
     return propostas;
   }
 
@@ -1342,8 +1368,8 @@ class ComprasGovPortal extends BasePortal {
    * qualquer foi o defeito que a versao antiga cometia com seletores chutados.
    */
   async melhorLanceDoItem(numero) {
-    const propostas = await this.lerPropostasDoItem(numero);
-    return propostas.length ? propostas[0].valor : null;
+    const validas = (await this.lerPropostasDoItem(numero)).filter((p) => !p.desclassificada);
+    return validas.length ? validas[0].valor : null;
   }
 
   /**
@@ -1362,6 +1388,12 @@ class ComprasGovPortal extends BasePortal {
     if (!propostas.length) return null;
     const minha = propostas.find((p) => p.cnpj.replace(/\\D/g, '') === meu);
     if (!minha) return null;
+    // Proposta nossa desclassificada nao disputa: "nao sou lider" faria o robo
+    // tentar cobrir um lance que o portal nao aceita. null manda aguardar.
+    if (minha.desclassificada) {
+      console.warn('⚠️ Item ' + numero + ': a proposta da empresa esta DESCLASSIFICADA — o robo nao disputa');
+      return null;
+    }
     return minha.posicao === 1;
   }
 
@@ -1407,7 +1439,7 @@ class ComprasGovPortal extends BasePortal {
     const meu = String(this.cnpjEmpresa).replace(/\\D/g, '');
     const propostas = await this.lerPropostasDoItem(this.itemAlvo);
     const minha = propostas.find((p) => p.cnpj.replace(/\\D/g, '') === meu);
-    return minha ? minha.valor : null;
+    return minha && !minha.desclassificada ? minha.valor : null;
   }
 
   /** "Aberto", "Aberto e Fechado", "Fechado e Aberto" → id usado pela estrategia. */

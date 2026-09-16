@@ -388,3 +388,89 @@ describe('Compras.gov: modo de disputa e intervalo mínimo, pelo texto da compra
     expect(Portal.modoDeDisputa('')).toBeNull();
   });
 });
+
+/**
+ * A lista de propostas de um item, lida pelo texto da página pública.
+ *
+ * Fixture: `fixtures/propostas-7-2026.json`, texto real capturado pelo robô em
+ * 16/09/2026 no pregão 7/2026 (razões sociais de terceiros trocadas por
+ * FORNECEDOR). No item 5, 6 das 13 propostas estavam "Desclassificada", três
+ * delas no topo da lista — e o leitor antigo tomava a primeira como melhor
+ * lance. A BAQPLAST (22.920.524/0001-33) tem proposta nos dois itens.
+ */
+describe('Compras.gov: propostas do item e desclassificadas', () => {
+  const BAQPLAST = '22.920.524/0001-33';
+  type Proposta = { cnpj: string; valor: number; desclassificada: boolean; posicao: number | null; me_epp: boolean; uf: string | null };
+  let Portal: {
+    new (page: unknown, cred: unknown): {
+      itemAlvo: number; compraId: string; cnpjEmpresa: string; credenciais: Record<string, unknown>;
+      lerPropostasDoItem: (n: number) => Promise<Proposta[]>;
+      melhorLanceDoItem: (n: number) => Promise<number | null>;
+      souLiderNoItem: (n: number, cnpj: string) => Promise<boolean | null>;
+      nossoLance: () => Promise<number | null>;
+    };
+    propostasNoTexto: (t: string) => Proposta[];
+  };
+  let item1: string;
+  let item5: string;
+
+  beforeAll(() => {
+    const mod = { exports: {} as Record<string, unknown> };
+    const ctx = vm.createContext({
+      require: (n: string) => (n === './base-portal' ? { BasePortal: class { constructor(public page: unknown, public credenciais: unknown) {} } } : {}),
+      module: mod, exports: mod.exports, process: { env: {} }, console: { log: () => {}, warn: () => {} },
+    });
+    new vm.Script(ler('src/portals/comprasgov.js')).runInContext(ctx);
+    Portal = mod.exports.ComprasGovPortal as typeof Portal;
+    const fx = JSON.parse(readFileSync(path.resolve(__dirname, 'fixtures/propostas-7-2026.json'), 'utf8'));
+    item1 = fx.item_1_1104.join('\n');
+    item5 = fx.item_5_1315.join('\n');
+  });
+
+  function portalCom(texto: string) {
+    const p = new Portal({}, {});
+    p.itemAlvo = 1;
+    p.compraId = '92531505000072026';
+    p.cnpjEmpresa = BAQPLAST;
+    p.lerPropostasDoItem = async () => Portal.propostasNoTexto(texto);
+    return p;
+  }
+
+  it('lê as 13 propostas do item 5 e marca as 6 desclassificadas', () => {
+    const ps = Portal.propostasNoTexto(item5);
+    expect(ps).toHaveLength(13);
+    expect(ps.filter((p) => p.desclassificada)).toHaveLength(6);
+    expect(ps.slice(0, 3).every((p) => p.desclassificada)).toBe(true);
+  });
+
+  it('a posição conta só as válidas — desclassificada fica sem posição', () => {
+    const ps = Portal.propostasNoTexto(item5);
+    const validas = ps.filter((p) => !p.desclassificada);
+    expect(validas.map((p) => p.posicao)).toEqual([1, 2, 3, 4, 5, 6, 7]);
+    expect(validas[0]).toMatchObject({ cnpj: '40.557.194/0001-45', valor: 2785 });
+    expect(ps.find((p) => p.cnpj === BAQPLAST)).toMatchObject({ desclassificada: true, posicao: null, valor: 3598.8 });
+  });
+
+  it('o melhor lance é o da melhor proposta VÁLIDA, não o topo da lista', async () => {
+    expect(await portalCom(item5).melhorLanceDoItem(5)).toBe(2785); // e não 2000
+    expect(await portalCom(item1).melhorLanceDoItem(1)).toBe(3100);
+  });
+
+  it('empresa com proposta válida fora do 1º: não é líder, e o valor dela é lido', async () => {
+    const p = portalCom(item1);
+    expect(Portal.propostasNoTexto(item1).find((x) => x.cnpj === BAQPLAST)).toMatchObject({ posicao: 8, valor: 4999.7 });
+    expect(await p.souLiderNoItem(1, BAQPLAST)).toBe(false);
+    expect(await p.nossoLance()).toBe(4999.7);
+  });
+
+  it('proposta da empresa desclassificada: nem "líder" nem "não líder" — o robô aguarda', async () => {
+    const p = portalCom(item5);
+    expect(await p.souLiderNoItem(5, BAQPLAST)).toBeNull();
+    expect(await p.nossoLance()).toBeNull();
+  });
+
+  it('empresa que é a melhor válida é líder, mesmo com desclassificadas acima', async () => {
+    const p = portalCom(item5);
+    expect(await p.souLiderNoItem(5, '40.557.194/0001-45')).toBe(true);
+  });
+});
