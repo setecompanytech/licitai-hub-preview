@@ -18,6 +18,7 @@ import { useModoDeOperacao } from '@/components/robo-lances/cliente/useModoDeOpe
 import AcoesDaDisputa from '@/components/robo-lances/disputa/AcoesDaDisputa';
 import AcompanhamentoDaDisputa from '@/components/robo-lances/disputa/AcompanhamentoDaDisputa';
 import CabecalhoDaDisputa from '@/components/robo-lances/disputa/CabecalhoDaDisputa';
+import CompraDaDisputa from '@/components/robo-lances/disputa/CompraDaDisputa';
 import ContextoDaDisputa from '@/components/robo-lances/disputa/ContextoDaDisputa';
 import EstrategiaDaDisputa from '@/components/robo-lances/disputa/EstrategiaDaDisputa';
 import ItensDaDisputa from '@/components/robo-lances/disputa/ItensDaDisputa';
@@ -268,6 +269,8 @@ function TelaDaDisputa() {
         capacidade={disputa.capacidade}
         participacao={participacao}
       />
+
+      <CompraDaDisputa lance={lance} />
 
       <SituacaoDaParada leitura={leituraDaParada} parada={parada} />
 
