@@ -5,6 +5,8 @@ import { portalDoAgente, idDeArmazenamento } from "../_shared/robo-portais.ts";
 import { autorizadoComoCron } from "../_shared/cron-auth.ts";
 import { anteriorDoItem, eventosDoEstado, mesclarEstadoDoItem, motivoParaPessoas, situacaoDoItem, type EstadoDaSala, type EstadoGravado, type EventoDaSala } from "../_shared/robo-estado-da-sala.ts";
 import {
+  deveDespacharAgora,
+  entradaFalhouPorFaltaDeClique,
   horaEmBrasilia,
   pendenciasDaDisputa,
   perfilDoComprasGov,
@@ -12,7 +14,9 @@ import {
   sessaoDoPerfil,
   sessoesVencidasParaAvisar,
   textoDaSessaoVencida,
+  tentaEntrarDeNovo,
   textoDoLembrete,
+  MINUTOS_DA_ENTRADA_ANTECIPADA,
   MINUTOS_DA_VESPERA,
   MINUTOS_DO_DESPACHO,
   type SessaoGovBr,
@@ -684,8 +688,9 @@ serve(async (req) => {
       const agora = Date.now();
       // Adianta o login: entrar 15 minutos antes dá margem para o captcha do
       // gov.br pedir um clique humano e ainda assim a sessão estar de pé
-      // quando o pregão abrir.
-      const ate = new Date(agora + 15 * 60_000).toISOString();
+      // quando o pregão abrir. Com a sessão do gov.br já vencida, 1 hora antes
+      // (entrada antecipada, abaixo) — por isso a janela lê até 60 minutos.
+      const ate = new Date(agora + MINUTOS_DA_ENTRADA_ANTECIPADA * 60_000).toISOString();
       // Atrasada demais não vira sessão: uma disputa de ontem que ninguém
       // despachou não deve abrir Chrome hoje.
       const desde = new Date(agora - 30 * 60_000).toISOString();
@@ -716,9 +721,22 @@ serve(async (req) => {
       }
 
       const relatorio: Array<Record<string, unknown>> = [];
+      const saudes = new Map<string, Record<string, any> | null>();
 
       for (const d of (pendentes || []) as Array<Record<string, any>>) {
         const donoId = d.user_id as string;
+
+        // ENTRADA ANTECIPADA (16/09/2026): a disputa que ainda está a mais de
+        // 15 minutos só sai agora se o vigia já sabe que a sessão do gov.br
+        // venceu — o robô entra 1 hora antes, e o pedido do clique chega com
+        // folga. Senão, espera a hora de sempre (`_shared/robo-prontidao.ts`).
+        const inicioDaSessao = new Date(d.inicio_sessao);
+        let antecipada = false;
+        if (inicioDaSessao.getTime() - agora > MINUTOS_DO_DESPACHO * 60_000) {
+          const govBr = await sessaoGovBrDoDono(supabase, ambiente, donoId, idDeArmazenamento(d.portal), saudes);
+          if (!deveDespacharAgora(inicioDaSessao, new Date(agora), govBr.estado)) continue;
+          antecipada = true;
+        }
         const avisar = async (titulo: string, mensagem: string) => {
           await supabase.from("notificacoes").insert({
             user_id: donoId,
@@ -773,6 +791,9 @@ serve(async (req) => {
         if (!reservada || reservada.length === 0) {
           relatorio.push({ disputa: d.id, resultado: "ja-despachada" });
           continue;
+        }
+        if (antecipada) {
+          await registrarNoLog(supabase, donoId, "entrada-antecipada", { disputa_id: d.id, inicio_sessao: d.inicio_sessao, motivo: "sessao-gov-br-vencida" });
         }
 
         // QUEM CADASTROU AINDA É DA EMPRESA? (16/09/2026) O envio pelo botão
@@ -960,13 +981,13 @@ serve(async (req) => {
             // trava de sessão viva do agendador a enxerga, e não há novo
             // despacho da mesma disputa. `sessao-ativa` marca ativa depois.
             await supabase.from("sessoes_lance_real").update({ updated_at: new Date().toISOString() }).eq("id", sessao.id);
-            relatorio.push({ disputa: d.id, resultado: "entrando", sessao: sessao.id });
+            relatorio.push({ disputa: d.id, resultado: "entrando", sessao: sessao.id, antecipada });
           } else if (resp.ok) {
             await supabase.from("sessoes_lance_real").update({ status: "ativo" }).eq("id", sessao.id);
             // Sem notificação de sucesso aqui: quem avisa que o robô chegou é
             // o próprio agente, pelo callback `sessao-ativa`, e dois avisos
             // para o mesmo fato treinam a pessoa a ignorar os dois.
-            relatorio.push({ disputa: d.id, resultado: "despachada", sessao: sessao.id });
+            relatorio.push({ disputa: d.id, resultado: "despachada", sessao: sessao.id, antecipada });
           } else if (passageira) {
             const erroCru = corpo?.error || `O agente respondeu HTTP ${resp.status}`;
             await supabase.from("sessoes_lance_real").update({ status: "erro", erro: erroCru }).eq("id", sessao.id);
@@ -1493,6 +1514,25 @@ serve(async (req) => {
 
         case "erro": {
           const mensagemDoErro = payload.mensagem || "Erro desconhecido";
+          // A ENTRADA QUE FALHOU POR FALTA DE CLIQUE VOLTA À AGENDA (16/09/2026).
+          // Lido ANTES de gravar "erro": a regra olha se a sessão ainda estava
+          // entrando. Até aqui, captcha expirado sem ninguém custava o pregão.
+          let disputaDaSessao: Record<string, any> | null = null;
+          if ((sessao as any).lance_config_id && entradaFalhouPorFaltaDeClique(mensagemDoErro)) {
+            const { data } = await supabase
+              .from("robo_lances_disputas")
+              .select("*")
+              .eq("id", (sessao as any).lance_config_id)
+              .maybeSingle();
+            disputaDaSessao = data ?? null;
+          }
+          const voltaAAgenda = !!disputaDaSessao && tentaEntrarDeNovo({
+            mensagem: mensagemDoErro,
+            statusDaSessao: (sessao as any).status,
+            disputaEnviadaEm: disputaDaSessao.enviada_em,
+            inicioSessao: disputaDaSessao.inicio_sessao ? new Date(disputaDaSessao.inicio_sessao) : null,
+            agora: new Date(),
+          });
           await supabase
             .from("sessoes_lance_real")
             .update({
@@ -1500,6 +1540,31 @@ serve(async (req) => {
               erro: mensagemDoErro,
             })
             .eq("id", sessao_id);
+          if (voltaAAgenda && disputaDaSessao) {
+            const avisarDono = async (titulo: string, mensagem: string) => {
+              await supabase.from("notificacoes").insert({ user_id: userId, tipo: "urgente", titulo, mensagem, link: linkDaDisputa(sessao) });
+            };
+            const r = await tentarDeNovoOuDesistir(
+              supabase,
+              disputaDaSessao,
+              avisarDono,
+              "Ninguém confirmou o acesso do gov.br (o clique em \"Seu certificado digital\") a tempo.",
+              {
+                comoTenta: `O agendador pede a entrada de novo no minuto seguinte, até ${MAX_TENTATIVAS_ENVIO} vezes, e cada entrada chama a equipe Praefectus para o clique.`,
+                comoTentou: `Foram ${MAX_TENTATIVAS_ENVIO} entradas, e em nenhuma o clique veio a tempo. Envie ao robô pela página da disputa quando alguém puder confirmar o acesso.`,
+              },
+            );
+            await registrarEventos(supabase, sessao, userId, [{
+              tipo: "erro",
+              mensagem: r === "desistiu"
+                ? "O robô não entrou: o clique no captcha do gov.br não veio a tempo, e as novas tentativas acabaram"
+                : "O robô não entrou: o clique no captcha do gov.br não veio a tempo — o agendador tenta de novo",
+              item: null,
+              dados: { resultado: r },
+            }]);
+            await registrarNoLog(supabase, userId, "entrada-sem-clique", { sessao_id, disputa_id: disputaDaSessao.id, resultado: r });
+            break;
+          }
           // O robô que não conseguiu operar é o caso mais caro de ficar
           // calado: a disputa acontece do mesmo jeito, só que sem ninguém
           // sabendo que ela está sem robô. A sessão já registrava o erro na
@@ -2846,6 +2911,9 @@ async function tentarDeNovoOuDesistir(
   d: Record<string, any>,
   avisar: (titulo: string, mensagem: string) => Promise<void>,
   motivo: string,
+  // O texto padrão fala de nova tentativa a cada minuto; a entrada sem clique
+  // espera 10 minutos por vez e diz isso do seu jeito.
+  opcoes: { comoTenta?: string; comoTentou?: string } = {},
 ): Promise<string> {
   const temColuna = Object.prototype.hasOwnProperty.call(d, "tentativas_envio");
   const tentativas = (Number(d.tentativas_envio) || 0) + 1;
@@ -2869,14 +2937,14 @@ async function tentarDeNovoOuDesistir(
     if (tentativas === 1) {
       await avisar(
         `🔁 Robô não entrou, tentando de novo — ${d.edital}`,
-        `${motivo} O agendador tenta de novo a cada minuto, até ${MAX_TENTATIVAS_ENVIO} vezes.`,
+        `${motivo} ${opcoes.comoTenta ?? `O agendador tenta de novo a cada minuto, até ${MAX_TENTATIVAS_ENVIO} vezes.`}`,
       );
     }
     return `nova-tentativa-${tentativas}`;
   }
   await avisar(
     `🤖 Robô não entrou — ${d.edital}`,
-    `${motivo} Foram ${MAX_TENTATIVAS_ENVIO} tentativas, uma por minuto, e o agendador desistiu. Envie ao robô pela página da disputa.`,
+    `${motivo} ${opcoes.comoTentou ?? `Foram ${MAX_TENTATIVAS_ENVIO} tentativas, uma por minuto, e o agendador desistiu. Envie ao robô pela página da disputa.`}`,
   );
   return "desistiu";
 }
@@ -2932,6 +3000,68 @@ async function registrarNoLog(
 }
 
 /**
+ * A sessão do gov.br da conta de quem cadastrou a disputa, pelo vigia do robô
+ * (`/health` → `vigia_sessao`, no perfil da credencial), junto com o que foi
+ * lido para chegar nela: o agente, o login da credencial (só a existência e o
+ * login — a senha não sai do cofre) e a saúde do robô. Usada pelo lembrete de
+ * prontidão e pela entrada antecipada do agendador; `saudes` evita ler o mesmo
+ * `/health` uma vez por disputa.
+ */
+async function sessaoGovBrDoDono(
+  supabase: any,
+  ambiente: { AGENTE_URL_BASE: string | null },
+  donoId: string,
+  portalId: string | null,
+  saudes: Map<string, Record<string, any> | null>,
+): Promise<{
+  estado: SessaoGovBr;
+  em: Date | null;
+  agente: Record<string, any> | null;
+  login: string | null;
+  saude: Record<string, any> | null;
+}> {
+  const { data: agentesAtivos } = await supabase
+    .from("agente_externo_config")
+    .select("*")
+    .eq("user_id", donoId)
+    .eq("status", "ativo")
+    .order("updated_at", { ascending: false });
+  const agente = agentesParaUsuario(agentesAtivos, ambiente)[0] ?? null;
+
+  let login: string | null = null;
+  if (portalId) {
+    const { data: cred } = await supabase
+      .from("credenciais_portais")
+      .select("login, senha_hash, status")
+      .eq("user_id", donoId)
+      .eq("portal_id", portalId)
+      .maybeSingle();
+    if (cred && (!cred.status || cred.status === "ativo") && cred.login && cred.senha_hash) login = String(cred.login);
+  }
+
+  let saude: Record<string, any> | null = null;
+  if (agente?.url_base) {
+    const url = String(agente.url_base);
+    if (!saudes.has(url)) {
+      try {
+        const r = await fetch(`${url.replace(/\/+$/, "")}/health`, { signal: AbortSignal.timeout(8000) });
+        saudes.set(url, r.ok ? await r.json() : null);
+      } catch {
+        saudes.set(url, null);
+      }
+    }
+    saude = saudes.get(url) ?? null;
+  }
+
+  if (portalDoAgente(portalId) !== "comprasgov" || !agente || !login) {
+    return { estado: "nao-se-aplica", em: null, agente, login, saude };
+  }
+  if (!saude) return { estado: "robo-sem-resposta", em: null, agente, login, saude };
+  const lido = sessaoDoPerfil(saude.vigia_sessao, await perfilDoComprasGov(login));
+  return { estado: lido.estado, em: lido.em, agente, login, saude };
+}
+
+/**
  * Lembretes de prontidão das disputas agendadas (Fase 8, 16/09/2026).
  *
  * Roda no mesmo minuto do agendador. Para cada disputa ainda não enviada que
@@ -2965,17 +3095,6 @@ async function enviarLembretesDeProntidao(
   }
 
   const saudes = new Map<string, Record<string, any> | null>();
-  const saudeDoAgente = async (url: string) => {
-    if (!saudes.has(url)) {
-      try {
-        const r = await fetch(`${url.replace(/\/+$/, "")}/health`, { signal: AbortSignal.timeout(8000) });
-        saudes.set(url, r.ok ? await r.json() : null);
-      } catch {
-        saudes.set(url, null);
-      }
-    }
-    return saudes.get(url) ?? null;
-  };
 
   const feitos: Array<Record<string, unknown>> = [];
   for (const d of (candidatas || []) as Array<Record<string, any>>) {
@@ -3000,41 +3119,13 @@ async function enviarLembretesDeProntidao(
 
     const roboDaEmpresa = d.empresa_id ? (await lerLigadoDaEmpresa(supabase, d.empresa_id)).estado : "indeterminado";
 
-    const { data: agentesAtivos } = await supabase
-      .from("agente_externo_config")
-      .select("*")
-      .eq("user_id", donoId)
-      .eq("status", "ativo")
-      .order("updated_at", { ascending: false });
-    const agente = agentesParaUsuario(agentesAtivos, ambiente)[0];
-
-    // Só a existência e o login: a senha não precisa sair do cofre para isto.
-    let login: string | null = null;
-    if (portalId) {
-      const { data: cred } = await supabase
-        .from("credenciais_portais")
-        .select("login, senha_hash, status")
-        .eq("user_id", donoId)
-        .eq("portal_id", portalId)
-        .maybeSingle();
-      if (cred && (!cred.status || cred.status === "ativo") && cred.login && cred.senha_hash) login = String(cred.login);
-    }
-
-    let sessaoGovBr: SessaoGovBr = "nao-se-aplica";
-    let sessaoConferidaAs: string | null = null;
+    const govBr = await sessaoGovBrDoDono(supabase, ambiente, donoId, portalId, saudes);
+    const { agente, login, saude } = govBr;
+    const sessaoGovBr: SessaoGovBr = govBr.estado;
+    const sessaoConferidaAs = govBr.em ? horaEmBrasilia(govBr.em) : null;
     let lanceLiberado: boolean | null = null;
-    const saude = agente?.url_base ? await saudeDoAgente(String(agente.url_base)) : null;
     if (saude && Array.isArray(saude.portais_com_lance_liberado) && portalAgente) {
       lanceLiberado = saude.portais_com_lance_liberado.includes(portalAgente);
-    }
-    if (ehComprasGov && agente && login) {
-      if (!saude) {
-        sessaoGovBr = "robo-sem-resposta";
-      } else {
-        const lido = sessaoDoPerfil(saude.vigia_sessao, await perfilDoComprasGov(login));
-        sessaoGovBr = lido.estado;
-        sessaoConferidaAs = lido.em ? horaEmBrasilia(lido.em) : null;
-      }
     }
 
     const itens = Array.isArray(d.itens) ? d.itens : [];

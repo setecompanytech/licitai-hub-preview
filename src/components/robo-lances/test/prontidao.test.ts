@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { createHash } from 'node:crypto';
 import {
+  deveDespacharAgora,
+  entradaFalhouPorFaltaDeClique,
+  horaDaEntrada,
   pendenciasDaDisputa,
   perfilDoComprasGov,
   qualLembrete,
@@ -8,6 +11,7 @@ import {
   sessaoDoPerfil,
   sessoesVencidasParaAvisar,
   textoDaSessaoVencida,
+  tentaEntrarDeNovo,
   textoDoLembrete,
   type EntradaDaProntidao,
 } from '../../../../supabase/functions/_shared/robo-prontidao';
@@ -189,8 +193,65 @@ describe('sessão do gov.br vencida, avisada assim que o vigia vê', () => {
     });
     expect(t.titulo).toBe('🔐 Sessão do gov.br venceu — Compras.gov.br');
     expect(t.mensagem).toBe(
-      'O vigia do robô encontrou a sessão do gov.br vencida na conferência das 16:00. Na próxima entrada, o robô vai pedir a confirmação do acesso pela tela remota (clique em "Seu certificado digital"). Próxima disputa: 07/2026, amanhã às 09:00 — o robô entra às 08:45. Fique de olho nesse horário.',
+      'O vigia do robô encontrou a sessão do gov.br vencida na conferência das 16:00. Na próxima entrada, o robô vai pedir a confirmação do acesso pela tela remota (clique em "Seu certificado digital"). Próxima disputa: 07/2026, amanhã às 09:00 — o robô entra às 08:00, 1 hora antes, para dar tempo ao clique. Fique de olho nesse horário.',
     );
     expect(textoDaSessaoVencida({ conferidaEm: new Date('2026-09-16T19:00:00Z'), agora: new Date('2026-09-16T19:05:00Z') }).mensagem).toContain('Nenhuma disputa agendada');
+  });
+});
+
+describe('entrada antecipada quando a sessão do gov.br venceu', () => {
+  // Sessão às 09:00 de 17/09 em Brasília (12:00 UTC).
+  const inicio = new Date('2026-09-17T12:00:00Z');
+  const as = (hhmm: string) => new Date(`2026-09-17T${hhmm}:00-03:00`);
+
+  it('logado ou sem conferência: 15 minutos antes, como sempre', () => {
+    expect(horaDaEntrada(inicio, 'logado').toISOString()).toBe('2026-09-17T11:45:00.000Z');
+    expect(horaDaEntrada(inicio, 'sem-conferencia').toISOString()).toBe('2026-09-17T11:45:00.000Z');
+    expect(deveDespacharAgora(inicio, as('08:30'), 'logado')).toBe(false);
+    expect(deveDespacharAgora(inicio, as('08:45'), 'logado')).toBe(true);
+  });
+
+  it('vencida: 1 hora antes, para o clique ter folga', () => {
+    expect(horaDaEntrada(inicio, 'vencida').toISOString()).toBe('2026-09-17T11:00:00.000Z');
+    expect(deveDespacharAgora(inicio, as('07:59'), 'vencida')).toBe(false);
+    expect(deveDespacharAgora(inicio, as('08:00'), 'vencida')).toBe(true);
+  });
+
+  it('reconhece a falha por falta de clique pela mensagem do agente', () => {
+    expect(entradaFalhouPorFaltaDeClique(
+      'O login do gov.br nao foi concluido. O certificado esta instalado e valido — o que falta e o clique em "Seu certificado digital"',
+    )).toBe(true);
+    expect(entradaFalhouPorFaltaDeClique('Compra 7/2026 não encontrada')).toBe(false);
+  });
+
+  it('volta à agenda só a entrada do agendador que ainda estava entrando e ainda alcança o pregão', () => {
+    const base = {
+      mensagem: 'O login do gov.br nao foi concluido.',
+      statusDaSessao: 'enviando',
+      disputaEnviadaEm: '2026-09-17T11:00:00Z',
+      inicioSessao: inicio,
+      agora: as('08:11'),
+    };
+    expect(tentaEntrarDeNovo(base)).toBe(true);
+    expect(tentaEntrarDeNovo({ ...base, agora: as('09:19') })).toBe(true);
+    expect(tentaEntrarDeNovo({ ...base, agora: as('09:21') })).toBe(false);
+    // Pelo botão (sem enviada_em): quem enviou decide se envia de novo.
+    expect(tentaEntrarDeNovo({ ...base, disputaEnviadaEm: null })).toBe(false);
+    // Já esteve na sala: não é falha de entrada.
+    expect(tentaEntrarDeNovo({ ...base, statusDaSessao: 'ativo' })).toBe(false);
+    expect(tentaEntrarDeNovo({ ...base, mensagem: 'Compra não encontrada' })).toBe(false);
+  });
+
+  it('os textos dizem a hora certa da entrada', () => {
+    const t = textoDoLembrete({
+      qual: 'vespera',
+      edital: '07/2026',
+      portalNome: 'Compras.gov.br',
+      inicioSessao: inicio,
+      agora: new Date('2026-09-16T13:00:00Z'),
+      pendencias: [],
+      sessaoGovBr: 'vencida',
+    });
+    expect(t.mensagem).toContain('O robô entra sozinho às 08:00.');
   });
 });

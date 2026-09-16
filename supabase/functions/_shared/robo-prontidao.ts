@@ -40,6 +40,66 @@ export function qualLembrete(
   return null;
 }
 
+/**
+ * ENTRADA ANTECIPADA (16/09/2026) — o "login antecipado" da Fase 4.
+ *
+ * A sessão do gov.br guardada no perfil valeu quase 4 horas sem clique (13:31 →
+ * 17:26 em 16/09), mas não se sabe se atravessa a noite. Vencida, o captcha
+ * aparece na entrada do robô — 15 minutos antes do pregão —, e o pedido espera
+ * 10: se ninguém estiver olhando naquele quarto de hora, o pregão vai sem robô.
+ *
+ * Quando o vigia JÁ SABE que a sessão venceu, o robô entra 1 hora antes: o
+ * pedido do clique chega com uma hora de folga, e se expirar sem resposta o
+ * agendador pede de novo (`tentaEntrarDeNovo`). Com a sessão logada, ou sem
+ * conferência, segue entrando 15 minutos antes — entrar cedo ocupa uma vaga do
+ * servidor à toa.
+ */
+export const MINUTOS_DA_ENTRADA_ANTECIPADA = 60;
+
+export function minutosDeAntecedencia(sessaoGovBr?: SessaoGovBr | null): number {
+  return sessaoGovBr === "vencida" ? MINUTOS_DA_ENTRADA_ANTECIPADA : MINUTOS_DO_DESPACHO;
+}
+
+export function horaDaEntrada(inicioSessao: Date, sessaoGovBr?: SessaoGovBr | null): Date {
+  return new Date(inicioSessao.getTime() - minutosDeAntecedencia(sessaoGovBr) * 60_000);
+}
+
+export function deveDespacharAgora(inicioSessao: Date, agora: Date, sessaoGovBr?: SessaoGovBr | null): boolean {
+  return agora.getTime() >= horaDaEntrada(inicioSessao, sessaoGovBr).getTime();
+}
+
+/**
+ * Depois do início da sessão ainda vale tentar entrar: a etapa aberta dura 10
+ * minutos mais as prorrogações. Passado isso, o agendador não abre Chrome
+ * (a janela dele também para em 30 minutos depois do início).
+ */
+export const MINUTOS_DE_TOLERANCIA_DEPOIS_DO_INICIO = 20;
+
+/** O erro que o agente manda quando a espera do clique no captcha acaba sem ninguém. */
+export function entradaFalhouPorFaltaDeClique(mensagem: unknown): boolean {
+  return /login do gov\.?br n[aã]o foi conclu[ií]do/i.test(String(mensagem ?? ""));
+}
+
+/**
+ * A entrada que falhou por falta de clique volta para a agenda?
+ *
+ * Só a do AGENDADOR (a disputa tem `enviada_em`; o botão não marca), só se a
+ * sessão ainda estava entrando (`enviando` — nunca chegou à sala) e só enquanto
+ * o pregão ainda pode ser alcançado. O limite de vezes é o das outras falhas
+ * passageiras (`tentativas_envio`).
+ */
+export function tentaEntrarDeNovo(e: {
+  mensagem: unknown;
+  statusDaSessao: string | null | undefined;
+  disputaEnviadaEm: string | null | undefined;
+  inicioSessao: Date | null;
+  agora: Date;
+}): boolean {
+  if (!entradaFalhouPorFaltaDeClique(e.mensagem)) return false;
+  if (e.statusDaSessao !== "enviando" || !e.disputaEnviadaEm || !e.inicioSessao) return false;
+  return e.inicioSessao.getTime() > e.agora.getTime() - MINUTOS_DE_TOLERANCIA_DEPOIS_DO_INICIO * 60_000;
+}
+
 export type Pendencia = {
   chave: string;
   /** Grave: o robô não entra, ou entra e alguém da equipe vai precisar agir. */
@@ -87,7 +147,7 @@ export function pendenciasDaDisputa(e: EntradaDaProntidao): Pendencia[] {
     add(
       "gov-br-vencida",
       true,
-      `a sessão do gov.br venceu${e.sessaoConferidaAs ? ` (conferida às ${e.sessaoConferidaAs})` : ""} — a equipe Praefectus vai confirmar o acesso quando o robô entrar`,
+      `a sessão do gov.br venceu${e.sessaoConferidaAs ? ` (conferida às ${e.sessaoConferidaAs})` : ""} — o robô entra 1 hora antes, e a equipe Praefectus confirma o acesso quando ele pedir`,
     );
   }
   if (e.sessaoGovBr === "robo-sem-resposta") add("robo-sem-resposta", true, "o robô não respondeu à conferência agora — a equipe Praefectus foi avisada");
@@ -132,7 +192,7 @@ export function textoDoLembrete(entrada: {
 }): { titulo: string; mensagem: string; tipo: "alerta" | "lembrete" } {
   const quando = quandoEmBrasilia(entrada.inicioSessao, entrada.agora);
   const hora = horaEmBrasilia(entrada.inicioSessao);
-  const entra = horaEmBrasilia(new Date(entrada.inicioSessao.getTime() - MINUTOS_DO_DESPACHO * 60_000));
+  const entra = horaEmBrasilia(horaDaEntrada(entrada.inicioSessao, entrada.sessaoGovBr));
   const graves = entrada.pendencias.filter((p) => p.grave);
   const avisos = entrada.pendencias.filter((p) => !p.grave);
 
@@ -217,9 +277,9 @@ export function textoDaSessaoVencida(entrada: {
   ];
   if (entrada.proxima) {
     const inicio = entrada.proxima.inicioSessao;
-    const entra = new Date(inicio.getTime() - MINUTOS_DO_DESPACHO * 60_000);
+    const entra = horaDaEntrada(inicio, "vencida");
     partes.push(
-      `Próxima disputa: ${entrada.proxima.edital}, ${quandoEmBrasilia(inicio, entrada.agora)} às ${horaEmBrasilia(inicio)} — o robô entra às ${horaEmBrasilia(entra)}. Fique de olho nesse horário.`,
+      `Próxima disputa: ${entrada.proxima.edital}, ${quandoEmBrasilia(inicio, entrada.agora)} às ${horaEmBrasilia(inicio)} — o robô entra às ${horaEmBrasilia(entra)}, 1 hora antes, para dar tempo ao clique. Fique de olho nesse horário.`,
     );
   } else {
     partes.push("Nenhuma disputa agendada nos próximos 7 dias para esta conta.");
