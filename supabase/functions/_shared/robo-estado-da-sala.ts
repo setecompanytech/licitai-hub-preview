@@ -183,3 +183,40 @@ export function eventosDoEstado(
 
   return eventos;
 }
+
+/**
+ * VÁRIOS ITENS NA MESMA SESSÃO (Fase 7, 16/09/2026).
+ *
+ * O robô passou a acompanhar todos os itens do pregão e manda um estado por
+ * item. `sessoes_lance_real.estado_sala` guarda o último estado recebido (o
+ * formato de antes, lido pela tela) e, em `por_item`, o último de CADA item.
+ * Sem isso a linha do tempo compararia o item 2 com o item 1 e registraria
+ * "a empresa passou do 8º para o 3º lugar" a cada troca de item.
+ */
+export type EstadoGravado = EstadoDaSala & { por_item?: Record<string, EstadoDaSala> };
+
+const chaveDoItem = (item: number | null | undefined) => String(item ?? "-");
+
+function semPorItem(estado: EstadoGravado): EstadoDaSala {
+  const { por_item: _ignorado, ...resto } = estado;
+  return resto;
+}
+
+/** O estado anterior DO MESMO item; o formato antigo (sem `por_item`) vale como o do item que ele traz. */
+export function anteriorDoItem(gravado: EstadoGravado | null | undefined, item: number | null | undefined): EstadoDaSala | null {
+  if (!gravado) return null;
+  const chave = chaveDoItem(item);
+  if (gravado.por_item) return gravado.por_item[chave] ?? null;
+  return chaveDoItem(gravado.item) === chave ? semPorItem(gravado) : null;
+}
+
+/** O que gravar: o estado novo por cima, com o último de cada item em `por_item`. */
+export function mesclarEstadoDoItem(gravado: EstadoGravado | null | undefined, novo: EstadoDaSala): EstadoGravado {
+  const base: Record<string, EstadoDaSala> = gravado
+    ? gravado.por_item
+      ? { ...gravado.por_item }
+      : { [chaveDoItem(gravado.item)]: semPorItem(gravado) }
+    : {};
+  base[chaveDoItem(novo.item)] = novo;
+  return { ...novo, por_item: base };
+}

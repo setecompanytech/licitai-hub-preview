@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { credencialEmClaro } from "../_shared/credenciais-cifra.ts";
 import { portalDoAgente, idDeArmazenamento } from "../_shared/robo-portais.ts";
 import { autorizadoComoCron } from "../_shared/cron-auth.ts";
-import { eventosDoEstado, motivoParaPessoas, situacaoDoItem, type EstadoDaSala, type EventoDaSala } from "../_shared/robo-estado-da-sala.ts";
+import { anteriorDoItem, eventosDoEstado, mesclarEstadoDoItem, motivoParaPessoas, situacaoDoItem, type EstadoDaSala, type EstadoGravado, type EventoDaSala } from "../_shared/robo-estado-da-sala.ts";
 import {
   horaEmBrasilia,
   pendenciasDaDisputa,
@@ -1185,21 +1185,25 @@ serve(async (req) => {
         // (sessao_lance_itens) e a linha do tempo (robo_eventos_sessao) — para
         // acompanhar sem a tela remota. Substitui o `rodada-sem-lance`.
         case "estado-da-sala": {
-          const novo = (payload || {}) as EstadoDaSala;
-          const anterior = ((sessao as any).estado_sala ?? null) as EstadoDaSala | null;
-          const estadoGravado: EstadoDaSala = {
+          const novo = (payload || {}) as EstadoDaSala & { total_itens?: number };
+          // Com vários itens, a comparação é com o último estado DO MESMO item
+          // (Fase 7) — senão a troca de item viraria "mudou de posição".
+          const gravadoAntes = ((sessao as any).estado_sala ?? null) as EstadoGravado | null;
+          const anterior = anteriorDoItem(gravadoAntes, novo.item);
+          const estadoDoItem: EstadoDaSala = {
             ...novo,
             decisao: { ...(novo.decisao || {}), motivo_legivel: motivoParaPessoas(novo) },
           };
           const agoraIso = new Date().toISOString();
           const atualizacao: Record<string, unknown> = {
-            estado_sala: estadoGravado,
+            estado_sala: mesclarEstadoDoItem(gravadoAntes, estadoDoItem),
             estado_sala_em: agoraIso,
             updated_at: agoraIso,
             rodada_atual: novo.rodada ?? null,
           };
-          // O nosso valor publicado no portal é o valor atual da sessão.
-          if (Number.isFinite(novo.nosso_lance as number)) atualizacao.valor_atual = novo.nosso_lance;
+          // O nosso valor publicado no portal é o valor atual da sessão — com
+          // um item só; com vários, cada item tem o seu na coluna do item.
+          if (Number.isFinite(novo.nosso_lance as number) && !(Number(novo.total_itens) > 1)) atualizacao.valor_atual = novo.nosso_lance;
 
           const { error: erroSessao } = await supabase.from("sessoes_lance_real").update(atualizacao).eq("id", sessao_id);
           if (erroSessao && erroDeColunaAusente(erroSessao)) {
@@ -1222,7 +1226,7 @@ serve(async (req) => {
           }
 
           if (!erroSessao) {
-            await registrarEventos(supabase, sessao, userId, eventosDoEstado(anterior, estadoGravado, formatarReais));
+            await registrarEventos(supabase, sessao, userId, eventosDoEstado(anterior, estadoDoItem, formatarReais));
           }
           break;
         }

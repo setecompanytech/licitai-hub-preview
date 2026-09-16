@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
+  anteriorDoItem,
   eventosDoEstado,
+  mesclarEstadoDoItem,
   motivoParaPessoas,
   situacaoDoItem,
   type EstadoDaSala,
@@ -106,5 +108,33 @@ describe('situacaoDoItem', () => {
     expect(situacaoDoItem('aberta')).toBe('disputando');
     expect(situacaoDoItem('desempate_me_epp')).toBe('disputando');
     expect(situacaoDoItem('encerrada')).toBe('encerrado');
+  });
+});
+
+describe('vários itens na mesma sessão (Fase 7)', () => {
+  const item2: EstadoDaSala = { ...BAQPLAST, item: 2, posicao: 3, nosso_lance: 4247.7, melhor_lance: 4100 };
+
+  it('grava o último de cada item e compara cada um com o seu', () => {
+    const depoisDo1 = mesclarEstadoDoItem(null, BAQPLAST);
+    const depoisDo2 = mesclarEstadoDoItem(depoisDo1, item2);
+    expect(Object.keys(depoisDo2.por_item!)).toEqual(['1', '2']);
+    expect(depoisDo2.item).toBe(2); // o formato de antes continua com o último recebido
+    expect(anteriorDoItem(depoisDo2, 1)?.posicao).toBe(8);
+    expect(anteriorDoItem(depoisDo2, 2)?.posicao).toBe(3);
+    expect(anteriorDoItem(depoisDo1, 2)).toBeNull();
+  });
+
+  it('a troca de item não vira mudança de posição na linha do tempo', () => {
+    const gravado = mesclarEstadoDoItem(mesclarEstadoDoItem(null, BAQPLAST), item2);
+    // chega de novo o item 1, igual: nada a registrar
+    expect(eventosDoEstado(anteriorDoItem(gravado, 1), BAQPLAST, brl)).toEqual([]);
+    // primeira vez do item 3: retrato inicial dele
+    expect(eventosDoEstado(anteriorDoItem(gravado, 3), { ...BAQPLAST, item: 3 }, brl).map((e) => e.tipo)).toEqual(['acompanhando', 'aguardando']);
+  });
+
+  it('o formato antigo (um item, sem por_item) é lido como o estado daquele item', () => {
+    expect(anteriorDoItem(BAQPLAST, 1)?.posicao).toBe(8);
+    expect(anteriorDoItem(BAQPLAST, 2)).toBeNull();
+    expect(Object.keys(mesclarEstadoDoItem(BAQPLAST, item2).por_item!)).toEqual(['1', '2']);
   });
 });
