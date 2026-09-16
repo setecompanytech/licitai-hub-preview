@@ -248,7 +248,11 @@ class BasePortal {
     console.log('🧯 A aba em uso morreu' + rotulo + ' — alvos no navegador agora: '
       + (alvos.length ? alvos.join(' | ') : 'nenhum'));
 
-    const vivas = (await browser.pages()).filter((p) => p !== this.page && !this.abaMorta(p));
+    // Com uma aba por pregao no mesmo Chrome (Fase 7), a aba de OUTRA disputa
+    // esta viva e nunca pode ser adotada: esta sessao passaria a ler e dar
+    // lance no pregao errado.
+    const proibidas = typeof this.abasDeOutrasSessoes === 'function' ? this.abasDeOutrasSessoes() : null;
+    const vivas = (await browser.pages()).filter((p) => p !== this.page && !this.abaMorta(p) && !(proibidas && proibidas.has(p)));
     let nova = vivas.filter((p) => !ehAvisoOuVazia(p)).pop() || vivas.pop() || null;
     let como;
     if (nova) {

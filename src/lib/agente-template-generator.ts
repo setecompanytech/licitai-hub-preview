@@ -461,6 +461,9 @@ app.post('/sessao/focar', authMiddleware, (req, res) => {
     // responda por esse protocolo. raise chama XRaiseWindow direto no servidor
     // X e nao depende de WM, que e exatamente o caso aqui.
     execSync(\`xdotool windowraise \${janela}\`, ambiente);
+    // Com o Chrome dividido entre pregoes da mesma conta (uma aba por pregao),
+    // a janela e a mesma: a ABA desta sessao tambem vem para a frente.
+    Promise.resolve((sessao.portal && sessao.portal.page || sessao.page)?.bringToFront?.()).catch(() => {});
 
     // O foco de teclado e um extra: quem digita o codigo de verificacao e o
     // robo, e quem clica no captcha e a pessoa pelo VNC, que envia o evento
@@ -752,6 +755,12 @@ class SessionManager {
     this.perfisEmUso = new Set();
     // Pastas que o vigia da sessao esta conferindo agora (src/vigia-sessao.js).
     this.perfisDoVigia = new Set();
+    // UM CHROME POR CONTA, UMA ABA POR PREGAO (Fase 7, 16/09/2026). Chave: a
+    // pasta do perfil; valor: { browser, perfil, sessoes }. A segunda disputa
+    // da mesma conta abre uma ABA no Chrome ja logado, em vez de um Chrome com
+    // perfil temporario — que fazia login do zero (captcha) e podia derrubar a
+    // sessao da primeira. UMA_ABA_POR_PREGAO=false volta ao comportamento antigo.
+    this.navegadores = new Map();
 
     // O ROBO PAROU ESPERANDO UMA PESSOA — captcha, codigo de verificacao.
     // O pedido vira callback, e o webhook avisa os administradores da
@@ -796,14 +805,74 @@ class SessionManager {
     return !this.perfisDoVigia.has(pasta);
   }
 
-  perfilDaSessao(config) {
+  /** A pasta do perfil desta identidade, esteja ou nao em uso (null fora dos portais com perfil). */
+  pastaDaIdentidade(config) {
     const PORTAIS_COM_PERFIL_PERSISTENTE = ['comprasgov'];
     if (String(process.env.PERFIL_PERSISTENTE ?? 'true') === 'false') return null;
     if (!PORTAIS_COM_PERFIL_PERSISTENTE.includes(config.portal_id)) return null;
     const cred = config.credenciais_portal || {};
     const quem = String(cred.cpf || cred.login || cred.usuario || config.cnpj_empresa || 'padrao');
     const chave = crypto.createHash('sha256').update(config.portal_id + ':' + quem).digest('hex').slice(0, 16);
-    const pasta = path.join(process.env.PERFIS_DIR || './perfis', config.portal_id + '-' + chave);
+    return path.join(process.env.PERFIS_DIR || './perfis', config.portal_id + '-' + chave);
+  }
+
+  /**
+   * O Chrome ja aberto por outra disputa da MESMA conta, para esta entrar numa
+   * aba nova dele — ou null. So com perfil persistente: e ele que carrega o
+   * login do gov.br que as abas dividem.
+   */
+  navegadorParaCompartilhar(config) {
+    if (String(process.env.UMA_ABA_POR_PREGAO ?? 'true') === 'false') return null;
+    const pasta = this.pastaDaIdentidade(config);
+    if (!pasta) return null;
+    const entrada = this.navegadores.get(pasta);
+    if (!entrada || !entrada.browser) return null;
+    try {
+      if (typeof entrada.browser.isConnected === 'function' && !entrada.browser.isConnected()) return null;
+    } catch (e) {
+      return null;
+    }
+    return entrada;
+  }
+
+  /** As abas das OUTRAS disputas que dividem o Chrome desta — o portal nunca as adota. */
+  abasDeOutrasSessoes(session) {
+    const abas = new Set();
+    for (const outra of this.sessions.values()) {
+      if (outra === session || outra.browser !== session.browser) continue;
+      if (outra.page) abas.add(outra.page);
+      if (outra.portal && outra.portal.page) abas.add(outra.portal.page);
+    }
+    return abas;
+  }
+
+  /**
+   * Fecha o navegador DESTA disputa. Com o Chrome dividido com outras disputas
+   * da mesma conta, fecha so as abas desta; o Chrome fecha com a ultima.
+   */
+  _fecharNavegador(session) {
+    if (!session.browser) return;
+    const entrada = session.navegadorCompartilhado ? this.navegadores.get(session.navegadorCompartilhado) : null;
+    if (entrada && entrada.browser === session.browser) {
+      entrada.sessoes.delete(session.sessao_id);
+      if (entrada.sessoes.size > 0) {
+        const abas = new Set([session.page, session.portal && session.portal.page].filter(Boolean));
+        for (const aba of abas) {
+          try {
+            if (!aba.isClosed || !aba.isClosed()) Promise.resolve(aba.close()).catch(() => {});
+          } catch (e) { /* aba ja fechada */ }
+        }
+        console.log(\`🗂️  [\${session.sessao_id}] Aba fechada; o Chrome segue com \${entrada.sessoes.size} outra(s) disputa(s) da mesma conta\`);
+        return;
+      }
+      this.navegadores.delete(session.navegadorCompartilhado);
+    }
+    Promise.resolve(session.browser.close()).catch(() => {});
+  }
+
+  perfilDaSessao(config) {
+    const pasta = this.pastaDaIdentidade(config);
+    if (!pasta) return null;
     if (this.perfisEmUso.has(pasta)) {
       console.log(\`🗂️  [\${config.sessao_id}] O perfil desta identidade esta em uso por outra sessao — esta entra com perfil temporario\`);
       return null;
@@ -870,44 +939,69 @@ class SessionManager {
 
     let pastaReservada = null;
     try {
-      // Cada sessão recebe seu próprio browser (instância Chromium isolada)
-      console.log(\`🚀 Abrindo sessão \${config.sessao_id} (browser #\${this.getActiveSessions().length})\`);
-      // O perfil e RESERVADO antes de abrir, para o vigia da sessao nao
-      // comecar a confere-lo no meio; e, se o vigia ja estiver nele, a sessao
-      // espera ele terminar.
-      pastaReservada = this.perfilDaSessao(config);
-      if (pastaReservada) {
-        this.perfisEmUso.add(pastaReservada);
-        if (!(await this.esperarVigiaSoltar(pastaReservada))) {
-          console.log(\`🗂️  [\${config.sessao_id}] O vigia nao soltou o perfil a tempo — esta sessao entra com perfil temporario\`);
+      const compartilhado = this.navegadorParaCompartilhar(config);
+      let browser;
+      let page;
+      let perfil;
+      if (compartilhado) {
+        // Outra disputa da mesma conta ja esta com o Chrome logado: esta entra
+        // numa ABA nova dele. Os cookies do gov.br sao do navegador, nao da
+        // aba, entao o login aqui so confirma a sessao, sem certificado nem
+        // captcha.
+        console.log(\`🗂️  [\${config.sessao_id}] Mesma conta de outra disputa aberta — nova aba no Chrome ja logado (\${compartilhado.sessoes.size + 1} pregoes nele)\`);
+        browser = compartilhado.browser;
+        page = await browser.newPage();
+        perfil = compartilhado.perfil;
+        compartilhado.sessoes.add(config.sessao_id);
+        session.navegadorCompartilhado = compartilhado.perfil;
+      } else {
+        // Cada conta recebe seu proprio browser (instancia Chromium isolada)
+        console.log(\`🚀 Abrindo sessão \${config.sessao_id} (browser #\${this.getActiveSessions().length})\`);
+        // O perfil e RESERVADO antes de abrir, para o vigia da sessao nao
+        // comecar a confere-lo no meio; e, se o vigia ja estiver nele, a sessao
+        // espera ele terminar.
+        pastaReservada = this.perfilDaSessao(config);
+        if (pastaReservada) {
+          this.perfisEmUso.add(pastaReservada);
+          if (!(await this.esperarVigiaSoltar(pastaReservada))) {
+            console.log(\`🗂️  [\${config.sessao_id}] O vigia nao soltou o perfil a tempo — esta sessao entra com perfil temporario\`);
+            this.perfisEmUso.delete(pastaReservada);
+            pastaReservada = null;
+          }
+        }
+        ({ browser, page, perfil } = await launchBrowser(null, { perfil: pastaReservada }));
+        if (perfil) {
+          // Liberar quando o Chrome fechar, por qualquer caminho — fim, erro,
+          // kill switch ou queda. Amarrar a cada um deles esqueceria algum.
+          browser.on('disconnected', () => {
+            this.perfisEmUso.delete(perfil);
+            const entrada = this.navegadores.get(perfil);
+            if (entrada && entrada.browser === browser) this.navegadores.delete(perfil);
+          });
+          this.navegadores.set(perfil, { browser, perfil, sessoes: new Set([config.sessao_id]) });
+          session.navegadorCompartilhado = perfil;
+        } else if (pastaReservada) {
+          // O Chrome nao abriu com o perfil e caiu para o temporario: a reserva
+          // nao serve mais.
           this.perfisEmUso.delete(pastaReservada);
           pastaReservada = null;
         }
+
+        // Toda aba que nasce ou morre vai para o log, com URL. Foi a falta disto
+        // que deixou "Session closed" sem explicacao em 10/09/2026: o Chrome
+        // trocou de aba na volta do gov.br e ninguem viu. Um registro por
+        // Chrome: com abas divididas, o log leva o nome do perfil.
+        const rotuloDoChrome = perfil ? path.basename(perfil) : config.sessao_id;
+        browser.on('targetcreated', (t) => {
+          if (t.type() === 'page') console.log(\`🆕 [\${rotuloDoChrome}] aba aberta: \${t.url() || '(vazia)'}\`);
+        });
+        browser.on('targetdestroyed', (t) => {
+          if (t.type() === 'page') console.log(\`🧯 [\${rotuloDoChrome}] aba fechada: \${t.url() || '(vazia)'}\`);
+        });
       }
-      const { browser, page, perfil } = await launchBrowser(null, { perfil: pastaReservada });
       session.browser = browser;
       session.page = page;
       session.perfil = perfil || null;
-      if (perfil) {
-        // Liberar quando o Chrome fechar, por qualquer caminho — fim, erro,
-        // kill switch ou queda. Amarrar a cada um deles esqueceria algum.
-        browser.on('disconnected', () => this.perfisEmUso.delete(perfil));
-      } else if (pastaReservada) {
-        // O Chrome nao abriu com o perfil e caiu para o temporario: a reserva
-        // nao serve mais.
-        this.perfisEmUso.delete(pastaReservada);
-        pastaReservada = null;
-      }
-
-      // Toda aba que nasce ou morre vai para o log, com URL. Foi a falta disto
-      // que deixou "Session closed" sem explicacao em 10/09/2026: o Chrome
-      // trocou de aba na volta do gov.br e ninguem viu.
-      browser.on('targetcreated', (t) => {
-        if (t.type() === 'page') console.log(\`🆕 [\${config.sessao_id}] aba aberta: \${t.url() || '(vazia)'}\`);
-      });
-      browser.on('targetdestroyed', (t) => {
-        if (t.type() === 'page') console.log(\`🧯 [\${config.sessao_id}] aba fechada: \${t.url() || '(vazia)'}\`);
-      });
 
       // O PID do Chrome DESTA sessão, guardado agora e não procurado depois.
       //
@@ -923,6 +1017,10 @@ class SessionManager {
 
       // Instanciar o módulo do portal correto
       session.portal = getPortal(config.portal_id, page, config.credenciais_portal || {});
+
+      // Com o Chrome dividido, a aba de outra disputa nunca e adotada por esta
+      // (adotarAbaViva, quando a aba desta morre).
+      session.portal.abasDeOutrasSessoes = () => this.abasDeOutrasSessoes(session);
 
       // O portal precisa saber QUAL sessao ele e para pedir algo a uma pessoa —
       // um codigo de verificacao, por exemplo — e para a resposta voltar ao
@@ -1116,12 +1214,12 @@ class SessionManager {
         console.log(\`🔎 Janela mantida aberta por \${segundos}s para observacao no VNC — sessao \${config.sessao_id}\`);
         setTimeout(() => {
           this._stopGravador(session);
-          if (session.browser) session.browser.close().catch(() => {});
+          this._fecharNavegador(session);
           console.log(\`🔒 Janela de observacao encerrada — sessao \${config.sessao_id}\`);
         }, segundos * 1000);
       } else {
         this._stopGravador(session);
-        if (session.browser) session.browser.close().catch(() => {});
+        this._fecharNavegador(session);
       }
     }
 
@@ -1570,7 +1668,7 @@ class SessionManager {
     if (session.interval) clearTimeout(session.interval);
     if (session.heartbeatInterval) clearInterval(session.heartbeatInterval);
     this._stopGravador(session);
-    if (session.browser) session.browser.close().catch(() => {});
+    this._fecharNavegador(session);
 
     sendCallback(session, 'sessao-encerrada', {
       resultado: 'finalizado',
@@ -1601,7 +1699,7 @@ class SessionManager {
       // (Era \`config.sessao_id\` — variavel que nao existe neste escopo; o
       // try engolia o ReferenceError e o pedido humano sobrevivia ao kill.)
       try { require('./interacao-humana').encerrar(session.sessao_id); } catch (e) {}
-      if (session.browser) session.browser.close().catch(() => {});
+      this._fecharNavegador(session);
 
       sendCallback(session, 'sessao-encerrada', {
         resultado: 'parada_emergencial',
