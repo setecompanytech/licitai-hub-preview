@@ -400,7 +400,9 @@ serve(async (req) => {
         decremento_min: body.decremento_min,
         decremento_percentual: body.decremento_percentual,
         intervalo_segundos: body.intervalo_segundos || 30,
-        max_lances: body.max_lances || 20,
+        // Vazio ou zero = sem teto: o robô disputa até o piso de cada item. O
+        // `|| 20` de antes transformava essa escolha num teto que ninguém pôs.
+        max_lances: Number(body.max_lances) > 0 ? Number(body.max_lances) : null,
         modo: "real",
         status: "enviando",
         // Nulo no agente gerenciado, que não tem linha.
@@ -553,7 +555,7 @@ serve(async (req) => {
             // nao sao coluna da sessao — moram em `sessao_lance_itens`. Sem
             // eles o agente sabe entrar no processo e nao sabe o que disputar
             // la dentro.
-            itens: itensDaSessao.map((i) => ({
+            itens: itensDaSessao.map((i, idx) => ({
               numero: i.numero,
               lote: i.lote,
               descricao: i.descricao,
@@ -565,6 +567,9 @@ serve(async (req) => {
               custo_unitario: i.custo_unitario,
               valor_estimado_orgao: i.valor_estimado_orgao,
               valor_minimo: i.valor_minimo,
+              // Não é coluna de `sessao_lance_itens`: vai só ao agente, lida do
+              // item como veio da tela. Vazio = melhor preço.
+              estrategia: (itens[idx] as Record<string, unknown>)?.estrategia ?? null,
             })),
           }),
           // 10s era MENOS que o trabalho pedido. O agente so responde depois
@@ -825,7 +830,7 @@ serve(async (req) => {
           decremento_min: d.decremento_min,
           decremento_percentual: d.decremento_percentual,
           intervalo_segundos: d.intervalo_segundos || 30,
-          max_lances: d.max_lances || 20,
+          max_lances: Number(d.max_lances) > 0 ? Number(d.max_lances) : null,
           modo: "real",
           status: "enviando",
           agente_id: agente.id,
@@ -850,7 +855,7 @@ serve(async (req) => {
           continue;
         }
 
-        await supabase.from("sessao_lance_itens").insert(
+        const { error: itensErr } = await supabase.from("sessao_lance_itens").insert(
           itensParaSessao.map((i) => ({
             ...i,
             sessao_id: sessao.id,
@@ -859,6 +864,11 @@ serve(async (req) => {
             situacao: "aguardando",
           })),
         );
+        // O robô recebe os itens pelo corpo do envio e segue sem esta cópia;
+        // o que não pode é a falha passar calada (princípio 3).
+        if (itensErr) {
+          await registrarNoLog(supabase, donoId, "itens-da-sessao-nao-gravados", { sessao_id: sessao.id, origem: "agendador" }, { erro: itensErr.message });
+        }
 
         try {
           const resp = await fetch(`${agente.url_base}/sessao/iniciar`, {
@@ -875,7 +885,8 @@ serve(async (req) => {
               credenciais_portal: credenciais,
               uasg: d.uasg ?? null,
               cnpj_empresa: cnpjDaEmpresa,
-              itens: itensParaSessao,
+              // A estratégia não é coluna de `sessao_lance_itens`: entra só aqui.
+              itens: itensParaSessao.map((i, idx) => ({ ...i, estrategia: itensCadastrados[idx]?.estrategia ?? null })),
             }),
             signal: AbortSignal.timeout(60000),
           });
@@ -1101,6 +1112,13 @@ serve(async (req) => {
           if (sessao.licitacao_id) {
             const emergencia = payload.resultado === "parada_emergencial";
             const rodadas = payload.total_rodadas ?? 0;
+            // O agente diz por que saiu (teto, piso, item encerrado, limite de
+            // horas, pedido pelo painel) e quantos lances o portal aceitou.
+            // Agente anterior a 16/09 não manda os dois — aí a frase não os cita.
+            const motivoDoFim = typeof payload.motivo === "string" && payload.motivo ? ` Motivo: ${payload.motivo}.` : "";
+            const lancesDoRobo = typeof payload.lances_enviados === "number"
+              ? ` ${payload.lances_enviados} lance(s) enviado(s) pelo robô.`
+              : "";
 
             await supabase.from("licitacao_mensagens").insert({
               licitacao_id: sessao.licitacao_id,
@@ -1111,8 +1129,8 @@ serve(async (req) => {
                   `(${sessao.portal_nome}) após ${rodadas} rodada(s). ` +
                   `A parada foi acionada por uma pessoa. O resultado da disputa ainda precisa ser registrado.`
                 : `🏁 **Sessão do robô encerrada** em ${sessao.edital} ` +
-                  `(${sessao.portal_nome}) após ${rodadas} rodada(s). ` +
-                  `O robô acompanha e não envia lance — o resultado da disputa ainda precisa ser registrado.`,
+                  `(${sessao.portal_nome}) após ${rodadas} rodada(s).${lancesDoRobo}${motivoDoFim} ` +
+                  `O resultado da disputa ainda precisa ser registrado.`,
             });
 
             // O aviso vai para quem disparou. `notificacoes` é a mesma tabela
@@ -1125,7 +1143,7 @@ serve(async (req) => {
                 ? `🛑 Robô interrompido — ${sessao.edital}`
                 : `🏁 Robô encerrou — ${sessao.edital}`,
               mensagem:
-                `A sessão em ${sessao.portal_nome} terminou após ${rodadas} rodada(s). ` +
+                `A sessão em ${sessao.portal_nome} terminou após ${rodadas} rodada(s).${lancesDoRobo}${motivoDoFim} ` +
                 `Abra o processo para registrar como a disputa terminou.`,
               link: `/processo/${sessao.licitacao_id}`,
             });
