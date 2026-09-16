@@ -436,7 +436,8 @@ Dois esclarecimentos para não perder no caminho:
 - [ ] Ação "cadastrar proposta no portal" na página da disputa, com o resultado voltando ao processo
 
 **Fase 4 — autonomia: o robô entra sozinho e avisa** (D7)
-- [ ] Data e hora da sessão na disputa, pré-preenchidas do PNCP ou do processo — hoje só existe a hora, e sem data nada pode ser agendado
+- [x] Data e hora da sessão na disputa — escrito em 16/09: migration `20260916000001` (`inicio_sessao` e `enviada_em`, com índice parcial) e o campo "Data da Sessão" no formulário, ao lado do horário. Os dois viram um instante só; sem a data, a disputa continua sendo enviada por clique, como antes. O pré-preenchimento vindo do PNCP fica na Fase 6
+- [ ] **Aplicar o SQL** da `20260916000001` no editor do Supabase (está em `SQL_MIGRATIONS.md`) — enquanto a coluna não existir, salvar a disputa falha
 - [ ] Agendamento: a cada minuto, disputas que começam em até 15 minutos, com a empresa ligada, são enviadas ao robô **sem clique de ninguém**
 - [ ] Sessão persistente do Chrome por empresa e login antes da hora — medir quanto o login dura
 - [ ] Captcha que ainda aparecer: aviso ao admin da Praefectus com o link da tela remota
