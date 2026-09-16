@@ -10,6 +10,7 @@ import type { ParticipacaoCarregada } from '@/hooks/useParticipacoesDoRobo';
 import ControleDoRobo from '@/components/workspace/robo/ControleDoRobo';
 import { dataHoraDeBrasilia } from '@/components/workspace/robo/formatos';
 import EventosDaDisputa, { type AbaDosEventos } from './EventosDaDisputa';
+import QuadroDaSala from './QuadroDaSala';
 import type { ParadaDaSessao } from './useParadaDaSessao';
 
 /**
@@ -62,6 +63,10 @@ export default function AcompanhamentoDaDisputa({
 
   return (
     <div className="flex min-w-0 flex-col gap-4">
+      {/* O que o robô está vendo na sala agora (D13) — primeiro, porque é a
+          pergunta de quem abre a disputa durante o pregão. */}
+      <QuadroDaSala sessao={participacao?.sessao ?? null} />
+
       {participacao ? (
         <ControleDoRobo participacao={participacao} recarregar={recarregar} parada={parada} controlesDeParada={false} />
       ) : erroDaSituacao ? (

@@ -30,6 +30,27 @@ export type OperacaoDaDisputa = {
 const moeda = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 /**
+ * A linha do tempo do robô (`robo_eventos_sessao`, D13, 16/09/2026): o que ele
+ * viu e decidiu na sala. Lance enviado e recusado ficam de fora daqui porque já
+ * aparecem pelo histórico de lances, logo abaixo — duas linhas para o mesmo
+ * lance confundem.
+ */
+const EVENTO_DO_ROBO: Record<string, { acao: string; resultado: OperacaoDaDisputa['resultado'] }> = {
+  entrou: { acao: 'Robô entrou', resultado: 'sucesso' },
+  acompanhando: { acao: 'Robô na sala', resultado: 'info' },
+  aguardando: { acao: 'Aguardando', resultado: 'info' },
+  'lideranca-assumida': { acao: 'Assumiu o 1º lugar', resultado: 'sucesso' },
+  'lideranca-perdida': { acao: 'Perdeu o 1º lugar', resultado: 'erro' },
+  posicao: { acao: 'Posição', resultado: 'info' },
+  desclassificada: { acao: 'Proposta desclassificada', resultado: 'erro' },
+  fase: { acao: 'Fase da disputa', resultado: 'info' },
+  verificacao: { acao: 'Verificação do gov.br', resultado: 'info' },
+  erro: { acao: 'Robô parou', resultado: 'erro' },
+  encerrou: { acao: 'Sessão encerrada', resultado: 'info' },
+};
+const EVENTOS_QUE_JA_APARECEM_COMO_LANCE = new Set(['lance-enviado', 'lance-recusado']);
+
+/**
  * Duas leituras, nesta ordem obrigatória: as sessões desta disputa e, só então,
  * os lances daquelas sessões — `lances_historico` não tem `lance_config_id`, o
  * vínculo é pelo `sessao_id`. Sem sessão, a segunda consulta é pulada.
@@ -144,6 +165,44 @@ export function useOperacoesDaDisputa(disputaId: string | null, gatilho = 0) {
                   ? 'erro'
                   : 'sucesso',
               detalhes: `${moeda(Number(l.valor) || 0)} · rodada ${l.rodada} · origem ${l.origem}`,
+            });
+          }
+        }
+      }
+
+      if (linhasSessao.length > 0) {
+        // A tabela não está nos tipos gerados do banco (migration 20260916000005).
+        const { data: doRobo, error: erroDoRobo } = await (supabase as unknown as {
+          from: (t: string) => {
+            select: (c: string) => {
+              in: (c: string, v: string[]) => {
+                order: (c: string, o: { ascending: boolean }) => {
+                  limit: (n: number) => Promise<{ data: unknown[] | null; error: { message: string } | null }>;
+                };
+              };
+            };
+          };
+        })
+          .from('robo_eventos_sessao')
+          .select('id, tipo, item, mensagem, created_at')
+          .in('sessao_id', linhasSessao.map((s) => s.id))
+          .order('created_at', { ascending: false })
+          .limit(200);
+
+        if (cancelado) return;
+        if (erroDoRobo) {
+          // A linha do tempo é complemento: sem ela, sessões e lances seguem.
+          console.error('[robo-lances] carregar a linha do tempo do robô', erroDoRobo.message);
+        } else {
+          for (const e of (doRobo || []) as Array<{ id: string; tipo: string; item: number | null; mensagem: string; created_at: string }>) {
+            if (EVENTOS_QUE_JA_APARECEM_COMO_LANCE.has(e.tipo)) continue;
+            const rotulo = EVENTO_DO_ROBO[e.tipo] ?? { acao: 'Robô', resultado: 'info' as const };
+            eventos.push({
+              id: `evento-${e.id}`,
+              timestamp: new Date(e.created_at),
+              acao: rotulo.acao,
+              resultado: rotulo.resultado,
+              detalhes: e.mensagem,
             });
           }
         }
