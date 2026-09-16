@@ -11,7 +11,9 @@ import {
 vi.mock('@/integrations/supabase/client', () => ({ supabase: {} }));
 
 import {
+  aplicarMarcaModeloDoTermo,
   divergenciaDaSessao,
+  textoDoResultadoDoTermo,
   itensDaCompraParaDisputa,
   podeBuscarCompra,
   resumoDaCompra,
@@ -69,6 +71,7 @@ describe('a compra lida', () => {
     expect(c.ano).toBe(2026);
     expect(c.encerramentoPropostas).toBe('2026-09-14T08:59:00-03:00');
     expect(c.urlPncp).toBe('https://pncp.gov.br/app/editais/05054937000163/2026/56');
+    expect([c.cnpjOrgao, c.anoPncp, c.sequencialPncp]).toEqual(['05054937000163', 2026, 56]);
   });
 
   it('itens em ordem, orçamento sigiloso sem valor inventado', () => {
@@ -147,5 +150,32 @@ describe('a disputa confere com a compra publicada', () => {
     expect(podeBuscarCompra('92531', '07/2026')).toBe(false);
     expect(podeBuscarCompra('925315', 'PE-007')).toBe(false);
     expect(podeBuscarCompra('925315', '123456/2026')).toBe(false);
+  });
+});
+
+describe('marca e modelo do termo de referência na grade', () => {
+  const itens = () => itensDaCompraParaDisputa(compra().itens);
+
+  it('preenche só campo vazio de item sem processo', () => {
+    const base = itens();
+    base[1] = { ...base[1], marca: 'Já escolhida' };
+    base[3] = { ...base[3], licitacaoItemId: 'item-do-processo' };
+    const r = aplicarMarcaModeloDoTermo(base, [
+      { numero: 1, marca: 'Dell', modelo: 'Latitude 3440', trecho: 'notebook Dell Latitude 3440 ou similar' },
+      { numero: 4, marca: 'AOC', modelo: '24B2', trecho: 'monitor AOC 24B2' },
+      { numero: 6, marca: 'LG', modelo: null, trecho: 'televisor LG' },
+    ]);
+    expect(r.preenchidos).toBe(2);
+    expect(r.itens.find((i) => i.numero === 1)).toMatchObject({ marca: 'Dell', modelo: 'Latitude 3440' });
+    expect(r.itens.find((i) => i.numero === 4)).toMatchObject({ marca: 'Já escolhida', modelo: '24B2' });
+    expect(r.itens.find((i) => i.numero === 6)!.marca).toBeUndefined();
+  });
+
+  it('o texto diz o normal — o termo não indicar marca — sem parecer falha', () => {
+    expect(textoDoResultadoDoTermo({ ok: true, arquivo: '3. ANEXO B - TR AQUISIÇÃO EQUIPAMENTOS.pdf', paginas: 112, itens: [] }, 0)).toBe(
+      'Lido: 3. ANEXO B - TR AQUISIÇÃO EQUIPAMENTOS.pdf, 112 páginas. O órgão não indica marca nem modelo nos itens — o normal na Lei 14.133. Preencha com o produto que a empresa oferta.',
+    );
+    expect(textoDoResultadoDoTermo({ ok: true, arquivo: 'TR.pdf', itens: [{ numero: 1, marca: 'Dell', modelo: null, trecho: 'Dell' }] }, 1)).toMatch(/1 item preenchido/);
+    expect(textoDoResultadoDoTermo({ ok: false, motivo: 'PNCP fora do ar' }, 0)).toBe('PNCP fora do ar');
   });
 });

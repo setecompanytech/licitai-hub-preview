@@ -31,11 +31,14 @@ import { PORTAIS_ROBO, idDoPortal } from '@/lib/robo/portais';
 import { ESTRATEGIAS_DO_ITEM, type EstrategiaDoItem } from '@/lib/robo/estrategia-do-item';
 import { agendamentoDaDisputa, sessaoDoProcesso, HORA_MINIMA_ESPERADA, type SessaoDoProcesso } from '@/lib/robo/agendamento';
 import {
+  aplicarMarcaModeloDoTermo,
   buscarCompraDoComprasGov,
+  buscarMarcaModeloNoTermo,
   itensDaCompraParaDisputa,
   podeBuscarCompra,
   resumoDaCompra,
   sessaoDaCompra,
+  textoDoResultadoDoTermo,
   type CompraDoComprasGov,
 } from '@/lib/robo/compra-comprasgov';
 import { lerValorDigitado, valorParaDigitar } from '@/lib/robo/valor-digitado';
@@ -485,6 +488,9 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
   const [compraEscolhida, setCompraEscolhida] = useState<CompraDoComprasGov | null>(null);
   // De qual compra vieram os itens da grade — para oferecer a troca só quando não vieram dela.
   const [itensDaCompraDe, setItensDaCompraDe] = useState<string | null>(null);
+  // Marca e modelo lidos do termo de referência (sob demanda, com IA).
+  const [lendoTermo, setLendoTermo] = useState(false);
+  const [resultadoDoTermo, setResultadoDoTermo] = useState<{ ok: boolean; texto: string } | null>(null);
 
   // Step 2 fields
   const [tipoDisputa, setTipoDisputa] = useState<'item' | 'lote'>(editingLance?.tipoDisputa || 'item');
@@ -964,6 +970,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
     setDataSessao(editingLance?.dataSessao || '');
     setSessaoPuxada(null);
     setBuscandoCompra(false); setErroDaCompra(null); setComprasAchadas([]); setCompraEscolhida(null); setItensDaCompraDe(null);
+    setLendoTermo(false); setResultadoDoTermo(null);
     setItens(editingLance?.itens || []); setTipoDisputa(editingLance?.tipoDisputa || 'item'); setStep(editingLance ? 1 : 0);
     setSelectedLicId(null); setSearchLic(''); setStatusFilter('todos'); setLicitacaoIdRef(editingLance?.licitacaoId);
     setTrocarProcesso(false);
@@ -1073,6 +1080,26 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
     const compras = r.compras ?? [];
     if (compras.length === 1) aplicarCompra(compras[0]);
     else setComprasAchadas(compras);
+  };
+
+  /**
+   * "Coluna de marca e modelo, se houver no anexo — do termo de referência"
+   * (checklist do grupo). Sob demanda: a leitura usa IA paga, e o normal na Lei
+   * 14.133 é o órgão não indicar marca. Só preenche campo vazio.
+   */
+  const handleMarcaModeloDoTermo = async () => {
+    if (!compraEscolhida) return;
+    setLendoTermo(true);
+    setResultadoDoTermo(null);
+    const r = await buscarMarcaModeloNoTermo(compraEscolhida, itens);
+    let preenchidos = 0;
+    if (r.ok && r.itens?.length) {
+      const aplicado = aplicarMarcaModeloDoTermo(itens, r.itens);
+      preenchidos = aplicado.preenchidos;
+      setItens(aplicado.itens);
+    }
+    setLendoTermo(false);
+    setResultadoDoTermo({ ok: r.ok, texto: textoDoResultadoDoTermo(r, preenchidos) });
   };
 
   /** Margem vazia grava `null`: sem ela a estratégia de desempate aguarda. */
@@ -1814,6 +1841,26 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                     </Badge>
                   )}
                 </div>
+
+                {compraEscolhida && (
+                  <div className="flex flex-col gap-1.5 rounded-lg border border-border bg-muted px-3 py-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button type="button" variant="outline" size="sm" onClick={handleMarcaModeloDoTermo} disabled={lendoTermo}>
+                        {lendoTermo
+                          ? <><Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Lendo o termo de referência...</>
+                          : <><FileSearch className="w-4 h-4" aria-hidden="true" /> Procurar marca e modelo no termo de referência</>}
+                      </Button>
+                      <span className="text-xs text-muted-foreground">
+                        Lê o termo publicado no PNCP com IA e preenche só campo vazio. Pode levar até 1 minuto.
+                      </span>
+                    </div>
+                    {resultadoDoTermo && (
+                      <p className={cn('text-xs', resultadoDoTermo.ok ? 'text-muted-foreground' : 'text-destructive-ink')} role={resultadoDoTermo.ok ? 'status' : 'alert'}>
+                        {resultadoDoTermo.texto}
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 {tipoDisputa === 'lote' && lotes.length > 0 ? (
                   /* Grouped by lote view */

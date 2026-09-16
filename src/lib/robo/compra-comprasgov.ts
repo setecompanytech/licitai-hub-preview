@@ -47,6 +47,9 @@ export interface CompraDoComprasGov {
   encerramentoPropostas: string | null;
   numeroControlePncp: string | null;
   urlPncp: string | null;
+  cnpjOrgao: string | null;
+  anoPncp: number | null;
+  sequencialPncp: number | null;
   itens: ItemDaCompra[];
 }
 
@@ -76,6 +79,85 @@ export async function buscarCompraDoComprasGov(uasg: string, edital: string): Pr
   } catch (e) {
     return { ok: false, motivo: `Não foi possível consultar o Compras.gov: ${e instanceof Error ? e.message : String(e)}` };
   }
+}
+
+// ── Marca e modelo indicados no termo de referência (função `marca-modelo-do-termo`) ──
+
+export interface MarcaModeloDoTermo {
+  numero: number;
+  marca: string | null;
+  modelo: string | null;
+  trecho: string;
+}
+
+/** Interface simples, e não união: o tsconfig do app não estreita uniões. */
+export interface ResultadoDoTermo {
+  ok: boolean;
+  arquivo?: string;
+  paginas?: number;
+  itens?: MarcaModeloDoTermo[];
+  motivo?: string;
+}
+
+/** Lê o termo de referência da compra (sob demanda: usa IA paga). Nunca lança. */
+export async function buscarMarcaModeloNoTermo(
+  compra: CompraDoComprasGov,
+  itens: ReadonlyArray<{ numero: number; descricao: string }>,
+): Promise<ResultadoDoTermo> {
+  if (!compra.cnpjOrgao || !compra.anoPncp || !compra.sequencialPncp) {
+    return { ok: false, motivo: 'A compra não tem as coordenadas do PNCP, onde ficam os arquivos publicados.' };
+  }
+  try {
+    const { data, error } = await supabase.functions.invoke('marca-modelo-do-termo', {
+      body: {
+        cnpj: compra.cnpjOrgao,
+        ano: compra.anoPncp,
+        sequencial: compra.sequencialPncp,
+        itens: itens.map((i) => ({ numero: i.numero, descricao: i.descricao })),
+      },
+    });
+    if (error) return { ok: false, motivo: `Não foi possível ler o termo de referência: ${error.message}` };
+    if (!data?.success) return { ok: false, motivo: String(data?.error || 'O termo de referência não pôde ser lido.') };
+    return { ok: true, arquivo: data.arquivo, paginas: data.paginas, itens: (data.itens ?? []) as MarcaModeloDoTermo[] };
+  } catch (e) {
+    return { ok: false, motivo: `Não foi possível ler o termo de referência: ${e instanceof Error ? e.message : String(e)}` };
+  }
+}
+
+/**
+ * Preenche marca e modelo com o que o termo indica — só em campo vazio e só em
+ * item sem processo (no item do processo, marca e modelo são da Proposta).
+ */
+export function aplicarMarcaModeloDoTermo(
+  itens: DisputeItem[],
+  achados: ReadonlyArray<MarcaModeloDoTermo>,
+): { itens: DisputeItem[]; preenchidos: number } {
+  const porNumero = new Map(achados.map((a) => [a.numero, a]));
+  let preenchidos = 0;
+  const novos = itens.map((item) => {
+    const achado = porNumero.get(item.numero);
+    if (!achado || item.licitacaoItemId) return item;
+    const marca = item.marca || achado.marca || undefined;
+    const modelo = item.modelo || achado.modelo || undefined;
+    if (marca === item.marca && modelo === item.modelo) return item;
+    preenchidos += 1;
+    return { ...item, marca, modelo };
+  });
+  return { itens: novos, preenchidos };
+}
+
+/** O que a tela diz depois da leitura — inclusive quando o termo não indica nada, que é o normal. */
+export function textoDoResultadoDoTermo(r: ResultadoDoTermo, preenchidos: number): string {
+  if (!r.ok) return r.motivo ?? 'O termo de referência não pôde ser lido.';
+  const fonte = `${r.arquivo ?? 'termo de referência'}${r.paginas ? `, ${r.paginas} páginas` : ''}`;
+  const achados = r.itens?.length ?? 0;
+  if (achados === 0) {
+    return `Lido: ${fonte}. O órgão não indica marca nem modelo nos itens — o normal na Lei 14.133. Preencha com o produto que a empresa oferta.`;
+  }
+  if (preenchidos === 0) {
+    return `Lido: ${fonte}. ${achados} ${achados === 1 ? 'item tem' : 'itens têm'} marca ou modelo indicado, mas os campos já estavam preenchidos e não foram mudados.`;
+  }
+  return `Lido: ${fonte}. ${preenchidos} ${preenchidos === 1 ? 'item preenchido' : 'itens preenchidos'} com a marca ou o modelo que o órgão indica — confira antes de usar.`;
 }
 
 /** Benefícios que mudam quem pode disputar o item — vão para a descrição. */
