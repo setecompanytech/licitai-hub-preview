@@ -135,6 +135,10 @@ export interface CompraDoComprasGov {
   encerramentoPropostas: string | null;
   numeroControlePncp: string | null;
   urlPncp: string | null;
+  /** Coordenadas da compra no PNCP — é por elas que se acham os arquivos publicados. */
+  cnpjOrgao: string | null;
+  anoPncp: number | null;
+  sequencialPncp: number | null;
   itens: ItemDaCompra[];
 }
 
@@ -172,6 +176,9 @@ export function compraDoComprasGov(
     encerramentoPropostas: instanteDeBrasilia(bruta.dataEncerramentoPropostaPncp),
     numeroControlePncp: texto(bruta.numeroControlePNCP),
     urlPncp: cnpj && ano && seq ? `https://pncp.gov.br/app/editais/${cnpj}/${ano}/${seq}` : null,
+    cnpjOrgao: cnpj,
+    anoPncp: ano,
+    sequencialPncp: seq,
     itens,
   };
 }
