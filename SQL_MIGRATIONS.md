@@ -13506,3 +13506,42 @@ linha nova em `sessoes_lance_real`, não o status do job.
 
 Reversão: `SELECT cron.unschedule('robo-disparar-agendadas');`
 
+
+---
+
+## 20260916000003 — o limite de lances da disputa passa a ser opcional
+
+**Aplicar ANTES de publicar a tela** que deixa "Máx. lances por sessão" vazio:
+com a coluna ainda `NOT NULL`, salvar uma disputa sem limite falharia com erro
+de banco.
+
+**Por quê:** na reunião de 14/09 o limite ficou definido como escolha — "30 ou
+infinitamente até chegar no meu limite". A coluna era `NOT NULL DEFAULT 20` e a
+tela gravava 20 quando o campo ficava vazio: um teto que ninguém pôs. Agora
+`NULL` é "sem teto", e o robô disputa até o piso de cada item. O teto também
+passou a contar lances **enviados**, e não rodadas de leitura.
+
+Disputas existentes não mudam (continuam com o número que têm). O padrão 20
+segue valendo para insert que não informe a coluna.
+
+```sql
+ALTER TABLE public.robo_lances_disputas ALTER COLUMN max_lances DROP NOT NULL;
+
+COMMENT ON COLUMN public.robo_lances_disputas.max_lances IS
+  'Teto de lances ENVIADOS pelo robô nesta disputa. NULL = sem teto: disputa até o piso de cada item.';
+```
+
+Conferir:
+
+```sql
+SELECT is_nullable, column_default FROM information_schema.columns
+ WHERE table_schema = 'public' AND table_name = 'robo_lances_disputas' AND column_name = 'max_lances';
+-- esperado: is_nullable = YES, column_default = 20
+```
+
+Reversão (só se nenhuma disputa tiver sido salva sem limite):
+
+```sql
+UPDATE public.robo_lances_disputas SET max_lances = 20 WHERE max_lances IS NULL;
+ALTER TABLE public.robo_lances_disputas ALTER COLUMN max_lances SET NOT NULL;
+```
