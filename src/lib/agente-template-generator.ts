@@ -1932,7 +1932,11 @@ function criarVigia(sessionManager, opcoes = {}) {
       return false;
     }
     timer = setInterval(() => { rodada().catch(() => {}); }, minutos * 60000);
-    console.log('👁️  Vigia da sessao do Compras.gov: confere os perfis a cada ' + minutos + ' min');
+    // Primeira conferencia 2 minutos depois de subir, e nao so depois do
+    // primeiro intervalo: todo pm2 restart passa a confirmar logo se a sessao
+    // guardada continua valendo — e quem acabou de instalar ve o resultado.
+    setTimeout(() => { rodada().catch(() => {}); }, 2 * 60000);
+    console.log('👁️  Vigia da sessao do Compras.gov: confere os perfis a cada ' + minutos + ' min (a primeira em 2 min)');
     return true;
   }
 
