@@ -13452,3 +13452,57 @@ Reversão: `DROP INDEX IF EXISTS public.idx_robo_lances_disputas_agendadas;` e
 `ALTER TABLE public.robo_lances_disputas DROP COLUMN IF EXISTS enviada_em;`
 seguido de `DROP COLUMN IF EXISTS inicio_sessao;`.
 
+---
+
+## 20260916000002 — o job que manda o robô entrar sozinho
+
+> **Aplicar depois de publicar** a edge function com a ação
+> `disparar-agendadas`. Antes disso o job existiria batendo numa rota que
+> responde 400 a cada minuto.
+
+A cada minuto o job acorda a função, que despacha as disputas que começam nos
+próximos minutos e ainda não foram despachadas (`inicio_sessao` preenchido,
+`enviada_em` nulo, robô da empresa ligado). A regra de negócio fica na função;
+o SQL só a chama.
+
+**Condição de parada (princípio 5):** este job é comportamento de produto —
+vive enquanto existir agendamento de disputa. Ele só age sobre disputa com
+data marcada e empresa com o robô ligado, então desligar o robô da empresa já
+o neutraliza para aquele cliente. Para desligar de vez, `cron.unschedule`.
+
+**Por que a cada minuto:** a sessão pública abre em hora cheia e o robô precisa
+estar logado antes; um job de 5 em 5 minutos poderia perder o começo.
+
+```sql
+SELECT cron.unschedule('robo-disparar-agendadas')
+ WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'robo-disparar-agendadas');
+
+SELECT cron.schedule(
+  'robo-disparar-agendadas',
+  '* * * * *',
+  $$
+  SELECT net.http_post(
+    url := public.supabase_project_url() || '/functions/v1/robo-lances-webhook/disparar-agendadas',
+    headers := public.cron_auth_header(),
+    body := '{}'::jsonb
+  );
+  $$
+);
+```
+
+Conferir:
+
+```sql
+SELECT jobname, schedule, active FROM cron.job WHERE jobname = 'robo-disparar-agendadas';
+SELECT status, return_message, start_time FROM cron.job_run_details
+ WHERE jobid = (SELECT jobid FROM cron.job WHERE jobname = 'robo-disparar-agendadas')
+ ORDER BY start_time DESC LIMIT 5;
+```
+
+`net.http_post` é assíncrono e o job aparece como `succeeded` mesmo quando a
+função devolve erro — foi assim que rotinas ficaram meses quebradas aqui. A
+prova de que o despacho aconteceu é a disputa com `enviada_em` preenchido e a
+linha nova em `sessoes_lance_real`, não o status do job.
+
+Reversão: `SELECT cron.unschedule('robo-disparar-agendadas');`
+
