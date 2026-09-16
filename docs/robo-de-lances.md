@@ -439,7 +439,8 @@ Dois esclarecimentos para não perder no caminho:
 **Fase 1 — ver a sala e a tela de proposta, em pregão real**
 - [ ] Agenda: próximos pregões do Compras.gov com proposta da Santa Rosa, itens e piso aprovado (candidato: 90029/2026, Santa Casa do Pará)
 - [ ] Pregão A — robô entra com a trava fechada e o gravador a cada 10 s; a operadora disputa como sempre; pela tela remota do admin, levar o robô até a **sala logada do fornecedor** e à tela de cadastro de proposta
-- [ ] Escrever, a partir do que foi gravado: a leitura da sala (modo, fase, tempo restante, item, melhor lance, nosso lance, posição, `souLider`, elegibilidade no fechado), o caminho até a sala logada, o envio do lance e a conferência do resultado — com testes
+- [x] **Melhor lance, posição e `souLider`** — escritos e no ar em 16/09, a partir da página pública de propostas do item (não da sala logada). O laço de lances passou a perguntar essa classificação a cada rodada, recarregando a página, em vez dos seletores chutados; o CNPJ da empresa atravessa webhook (v36) → `index.js` → `session-manager` → módulo. Provado contra o texto real das capturas; VPS com md5 igual ao template
+- [ ] O que a leitura pública ainda não dá: **fase e tempo restante** (iminência), **elegibilidade no fechado**, o **caminho até a sala logada**, o **envio do lance** e a **conferência do resultado** — e confirmar que a página de propostas se atualiza durante a disputa ao vivo
 
 **Fase 2 — estratégia**
 - [ ] A decisão de lance passa a considerar modo, fase, tempo restante, posição, os 10%, a estratégia do item (iminência, melhor posição, desempatar em 1º) e o intervalo mínimo do edital — mantendo piso, nunca cobrir a si e nunca lance sem leitura
