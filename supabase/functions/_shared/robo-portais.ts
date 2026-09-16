@@ -10,7 +10,7 @@
  *
  * POR QUE DOIS ARQUIVOS: edge function roda em Deno e não importa de `src/`.
  * É o mesmo arranjo de `_shared/licitacao-status.ts`, e a mesma proteção:
- * `src/test/agente-template.test.ts` falha se este mapa divergir da lista do app
+ * `src/components/robo-lances/test/agente-template.test.ts` falha se este mapa divergir da lista do app
  * ou do registro real do agente.
  *
  * O que este mapa conserta, concretamente: a tela chama `compras-gov` e o agente

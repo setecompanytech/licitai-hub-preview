@@ -954,7 +954,7 @@ que deveria ter.
 em código seria uma verdade com prazo de validade, que envelhece em silêncio a
 cada deploy. Quem sabe é o agente, e é a ele que se pergunta.
 
-Dois testes em `src/test/agente-template.test.ts` trancam a volta do defeito:
+Dois testes em `src/components/robo-lances/test/agente-template.test.ts` trancam a volta do defeito:
 todo `agente:` tem que existir no registro do template, e o espelho Deno tem que
 ser idêntico ao mapa do app.
 
@@ -1034,7 +1034,7 @@ remover o certificado de teste com `certutil -D`, o estado continuou dizendo
 
 Duas correções: `estado()` passou a cruzar `-L` (certificados) com `-K`
 (chaves), e a substituição usa `-F`, que remove os dois. Quatro testes em
-`src/test/agente-template.test.ts` trancam isso, carregando o módulo com o
+`src/components/robo-lances/test/agente-template.test.ts` trancam isso, carregando o módulo com o
 `child_process` trocado.
 
 ### O que existe agora

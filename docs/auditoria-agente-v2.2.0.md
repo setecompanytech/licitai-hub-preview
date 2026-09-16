@@ -36,7 +36,7 @@ registrado (C3, C4, C6, D1, D2).
 >
 > A decisão de preço saiu de dentro do `_startBiddingLoop`, onde estava
 > duplicada e sem teste, e virou **`src/estrategia.js` — arquivo único, função
-> pura, 12 testes**. Os testes em `src/test/robo-estrategia.test.ts` extraem e
+> pura, 12 testes**. Os testes em `src/components/robo-lances/test/estrategia.test.ts` extraem e
 > executam **o mesmo texto que vai para o ZIP do agente**, não uma reescrita:
 > testar uma cópia provaria apenas que a cópia funciona.
 >

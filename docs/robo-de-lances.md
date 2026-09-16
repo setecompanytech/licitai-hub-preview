@@ -443,7 +443,7 @@ Dois esclarecimentos para não perder no caminho:
 - [ ] O que a leitura pública ainda não dá: **fase e tempo restante** (iminência), **elegibilidade no fechado**, o **caminho até a sala logada**, o **envio do lance** e a **conferência do resultado** — e confirmar que a página de propostas se atualiza durante a disputa ao vivo
 
 **Fase 2 — estratégia**
-- [x] **A decisão de lance por estratégia** — escrita em 16/09 em `src/lib/agent-template/estrategia.ts`, com 54 testes em `src/test/robo-estrategia.test.ts` (eram 13). As guardas de antes continuam na mesma ordem de prioridade — trava do portal primeiro, nunca cobrir o próprio lance, nunca lance sem leitura, nunca abaixo do piso — e a função passou a saber:
+- [x] **A decisão de lance por estratégia** — escrita em 16/09 em `src/lib/agent-template/estrategia.ts`, com 54 testes em `src/components/robo-lances/test/estrategia.test.ts` (eram 13). As guardas de antes continuam na mesma ordem de prioridade — trava do portal primeiro, nunca cobrir o próprio lance, nunca lance sem leitura, nunca abaixo do piso — e a função passou a saber:
 
   | O que | Como decide |
   | --- | --- |
@@ -682,7 +682,7 @@ em silêncio — sem erro, sem log. A edge function mandava os itens, o
 session-manager sabia usá-los, o módulo do portal sabia registrá-los, e essa
 linha no meio jogava tudo fora. O `tsc` não vê (o agente é string dentro de
 template literal), o lint não vê, o build passa. Corrigido, e agora há teste em
-`src/test/agente-template.test.ts` que lê o texto gerado e falha se voltar.
+`src/components/robo-lances/test/agente-template.test.ts` que lê o texto gerado e falha se voltar.
 
 Uma correção saiu da sonda. O módulo detectava plano inativo lendo o banner
 amarelo — **depois** de abrir o processo. Quando o processo não é encontrado,
@@ -1616,7 +1616,7 @@ parece "nenhuma mensagem". Preferimos o vazio honesto ao vazio que mente.
 #### Cadastro da proposta no portal — 10/09/2026
 
 **O que foi feito.** `validarProposta` e `formatarItens` saíram de dentro de
-`src/test/envio-proposta-validacao.test.ts` e viraram `src/lib/robo/proposta.ts`.
+`src/components/robo-lances/test/envio-proposta-validacao.test.ts` e viraram `src/lib/robo/proposta.ts`.
 
 Isto merece registro porque era pior do que parecia: o teste **declarava as duas
 funções no próprio topo** e testava cópias de si mesmo. Cento e setenta e seis
@@ -1946,11 +1946,17 @@ curl -s https://agente.praefectus.com.br/health \
 # A interface publicada é a do repositório?
 bash scripts/verificar-publicacao.sh
 
-# Os testes que trancam a lista de portais e o estado do certificado
-npx vitest run src/test/agente-template.test.ts
+# A bateria do robô inteira — desde 16/09 numa pasta só, src/components/robo-lances/test/
+npx vitest run src/components/robo-lances/test
 
-# A decisão de preço (16 testes)
-npx vitest run src/test/robo-estrategia.test.ts
+# Só a lista de portais, o certificado e o leitor da página da compra
+npx vitest run src/components/robo-lances/test/agente-template.test.ts
+
+# Só a decisão de preço e a estratégia (54 testes)
+npx vitest run src/components/robo-lances/test/estrategia.test.ts
+
+# Só o laço de lances, com portal falso e relógio simulado (9 testes)
+npx vitest run src/components/robo-lances/test/laco-de-lances.test.ts
 
 # As fotos que o robô tirou
 ls capturas-robo/

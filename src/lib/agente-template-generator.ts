@@ -1204,7 +1204,7 @@ class SessionManager {
 
         const detalhes = session.detalhesDoItem || {};
 
-        // 2. Decidir — função pura, testada em src/test/robo-estrategia.test.ts.
+        // 2. Decidir — função pura, testada em src/components/robo-lances/test/estrategia.test.ts.
         // A conta vivia aqui dentro e cobria o proprio lance quando liderava,
         // descendo o preco ate o piso sem concorrente nenhum.
         const decisao = decidirLance({
@@ -2059,7 +2059,7 @@ export async function generateAgentTemplate(): Promise<Blob> {
     root.file(path, content);
   }
 
-  // A decisão de preço — fonte única, testada em src/test/robo-estrategia.test.ts
+  // A decisão de preço — fonte única, testada em src/components/robo-lances/test/estrategia.test.ts
   for (const [path, content] of Object.entries(ESTRATEGIA_FILES)) {
     root.file(path, content);
   }

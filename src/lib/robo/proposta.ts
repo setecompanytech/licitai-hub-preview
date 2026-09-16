@@ -3,7 +3,7 @@
  *
  * ─── POR QUE ESTE ARQUIVO NASCEU ───────────────────────────────────────────
  *
- * Estas funções já existiam — dentro de `src/test/envio-proposta-validacao.test.ts`,
+ * Estas funções já existiam — dentro de `src/components/robo-lances/test/envio-proposta-validacao.test.ts`,
  * declaradas no topo do próprio arquivo de teste. Eram 176 linhas testando
  * cópias locais de si mesmas: nenhum `import`, nenhuma linha de produção
  * coberta. O contrato estava escrito e acordado (marca, modelo e fabricante já

@@ -116,7 +116,7 @@ describe('template do agente de lances', () => {
     // Duas cópias de um mapa só se mantêm iguais se algo quebrar quando não
     // estiverem. É o mesmo arranjo de `_shared/licitacao-status.ts`.
     const espelho = readFileSync(
-      path.resolve(__dirname, '../../supabase/functions/_shared/robo-portais.ts'),
+      path.resolve(__dirname, '../../../../supabase/functions/_shared/robo-portais.ts'),
       'utf8',
     );
 

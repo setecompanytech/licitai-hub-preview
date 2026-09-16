@@ -6,7 +6,7 @@ import { generateAgentTemplate } from '@/lib/agente-template-generator';
 /**
  * O laço de lances do agente, rodado a partir do MESMO texto que vai para a VPS.
  *
- * `robo-estrategia.test.ts` prova a decisão; este prova que o laço a usa do
+ * `estrategia.test.ts` prova a decisão; este prova que o laço a usa do
  * jeito certo — que é onde moravam os dois defeitos de 16/09/2026: o laço
  * encerrava a sessão em `max_lances` RODADAS antes de decidir qualquer coisa
  * (20 rodadas a 30 s = o robô saía da sala em 10 minutos), e usava o piso e o

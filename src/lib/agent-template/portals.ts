@@ -1349,7 +1349,7 @@ class ComprasGovPortal extends BasePortal {
    * O QUE A PAGINA DA COMPRA DIZ DE UM ITEM, a partir do texto da tela.
    *
    * Funcao pura (static), testada com o texto real capturado em 16/09/2026 no
-   * pregao 7/2026 da SEDUC/PA — ver src/test/agente-template.test.ts.
+   * pregao 7/2026 da SEDUC/PA — ver src/components/robo-lances/test/agente-template.test.ts.
    *
    * O formato visto: o cabecalho traz "Modo disputa: Aberto"; cada item comeca
    * numa linha "NUMERO DESCRICAO" seguida da linha de tratamento ("Sem

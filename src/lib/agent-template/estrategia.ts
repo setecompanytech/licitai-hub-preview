@@ -8,7 +8,7 @@
 //
 // Decisão que move dinheiro não pode existir em duas cópias que ninguém
 // compara. Este arquivo é a fonte única — o mesmo texto vai para o ZIP do
-// agente e é exercitado pelos testes em src/test/robo-estrategia.test.ts, que
+// agente e é exercitado pelos testes em src/components/robo-lances/test/estrategia.test.ts, que
 // extraem e executam ESTE código, não uma reescrita dele.
 
 export const ESTRATEGIA_FILES: Record<string, string> = {
