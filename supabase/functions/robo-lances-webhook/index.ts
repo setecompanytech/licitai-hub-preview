@@ -22,7 +22,7 @@ import {
   type SessaoGovBr,
 } from "../_shared/robo-prontidao.ts";
 import { instalarCertificadoNoAgente } from "../_shared/certificado-agente.ts";
-import { buscarComprasNosDadosAbertos, lerNumeroEAno, uasgValida } from "../_shared/compra-comprasgov.ts";
+import { buscarComprasNosDadosAbertos, lerNumeroEAno, uasgDoEspelho, uasgValida } from "../_shared/compra-comprasgov.ts";
 import { processoViraHomologada, resultadoDaDisputa, textoDoResultado, STATUS_HOMOLOGADA, STATUS_QUE_VIRAM_HOMOLOGADA } from "../_shared/robo-resultado.ts";
 import { posicoesFinais, processoEntraEmDisputa, textoDoProcessoEmDisputa, STATUS_EM_DISPUTA, STATUS_QUE_ENTRAM_EM_DISPUTA } from "../_shared/robo-kanban.ts";
 import {
@@ -981,7 +981,7 @@ serve(async (req) => {
               ...sessaoData,
               portal_id: portalAgente,
               credenciais_portal: credenciais,
-              uasg: d.uasg ?? null,
+              uasg: portalAgente === "comprasgov" ? await uasgDaDisputa(supabase, d) : (d.uasg ?? null),
               cnpj_empresa: cnpjDaEmpresa,
               // Com o lance liberado, o interruptor da disputa decide (16/09/2026).
               modo_automatico: d.modo_automatico === true,
@@ -3332,7 +3332,7 @@ async function enviarLembretesDeProntidao(
       temCredencial: !!login,
       portalConhecido: !!portalAgente,
       precisaUasg: ehComprasGov,
-      uasg: d.uasg,
+      uasg: ehComprasGov ? await uasgDaDisputa(supabase, d) : d.uasg,
       sessaoGovBr,
       sessaoConferidaAs,
       lanceLiberado,
@@ -3385,6 +3385,51 @@ async function enviarLembretesDeProntidao(
     feitos.push({ disputa: d.id, qual, pendencias: pendencias.map((p) => p.chave), avisados: destinatarios.size, emails: email, chamou_equipe: chamaEquipe });
   }
   return feitos;
+}
+
+/**
+ * A UASG da disputa — e, sem ela, a do processo pelo espelho do PNCP, que a
+ * disputa passa a guardar (16/09/2026). A disputa importada do Kanban nascia
+ * sem UASG (o processo não tem a coluna), e o robô não achava a compra: o
+ * número se repete entre órgãos. Leitura que falha devolve nulo, como antes.
+ */
+async function uasgDaDisputa(supabase: any, d: Record<string, any>): Promise<string | null> {
+  const propria = uasgValida(d.uasg);
+  if (propria) return propria;
+  if (!d.licitacao_id) return null;
+  try {
+    const { data: proc } = await supabase
+      .from("licitacoes")
+      .select("numero_controle_pncp, cnpj_orgao, ano_compra, sequencial_compra")
+      .eq("id", d.licitacao_id)
+      .maybeSingle();
+    if (!proc) return null;
+    const colunas = "link_sistema_origem, link_comprasnet, uasg_codigo, codigo_unidade";
+    let linha: Record<string, string | null> | null = null;
+    if (proc.numero_controle_pncp) {
+      const { data } = await supabase.from("pncp_editais_cache").select(colunas).eq("numero_controle_pncp", proc.numero_controle_pncp).limit(1);
+      linha = data?.[0] ?? null;
+    }
+    const cnpj = String(proc.cnpj_orgao ?? "").replace(/\D/g, "");
+    if (!uasgDoEspelho(linha) && cnpj.length === 14 && proc.ano_compra && proc.sequencial_compra) {
+      const { data } = await supabase
+        .from("pncp_editais_cache")
+        .select(colunas)
+        .eq("cnpj_orgao", cnpj)
+        .eq("ano_compra", String(proc.ano_compra))
+        .eq("sequencial_compra", String(Number(proc.sequencial_compra)))
+        .limit(1);
+      linha = data?.[0] ?? linha;
+    }
+    const uasg = uasgDoEspelho(linha);
+    if (uasg) {
+      await supabase.from("robo_lances_disputas").update({ uasg }).eq("id", d.id).is("uasg", null);
+      d.uasg = uasg;
+    }
+    return uasg;
+  } catch {
+    return null;
+  }
 }
 
 /**

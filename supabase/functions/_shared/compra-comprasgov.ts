@@ -55,6 +55,26 @@ export function uasgValida(uasg: string | null | undefined): string | null {
   return limpa.length === 6 ? limpa : null;
 }
 
+/**
+ * A UASG pelo espelho do PNCP (`pncp_editais_cache`), para disputa sem UASG
+ * ligada a processo: o link do Compras.gov traz o id da compra (UASG são os 6
+ * primeiros dígitos), senão `uasg_codigo`, senão `codigo_unidade`.
+ * ESPELHO: `src/lib/robo/uasg-do-processo.ts` (o front não importa Deno).
+ */
+export function uasgDoEspelho(linha: {
+  link_sistema_origem?: string | null;
+  link_comprasnet?: string | null;
+  uasg_codigo?: string | null;
+  codigo_unidade?: string | null;
+} | null | undefined): string | null {
+  if (!linha) return null;
+  for (const link of [linha.link_comprasnet, linha.link_sistema_origem]) {
+    const m = String(link ?? "").match(/compra=(\d{17})\b/);
+    if (m) return m[1].slice(0, 6);
+  }
+  return uasgValida(linha.uasg_codigo) ?? uasgValida(linha.codigo_unidade);
+}
+
 export function idDaCompra(uasg: string, modalidade: string, numero: number, ano: number): string {
   return `${uasg}${modalidade}${String(numero).padStart(5, "0")}${ano}`;
 }

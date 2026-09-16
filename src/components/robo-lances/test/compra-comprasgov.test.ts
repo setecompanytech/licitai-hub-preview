@@ -5,6 +5,7 @@ import {
   idDaCompra,
   instanteDeBrasilia,
   lerNumeroEAno,
+  uasgDoEspelho,
   uasgValida,
 } from '../../../../supabase/functions/_shared/compra-comprasgov';
 
@@ -177,5 +178,14 @@ describe('marca e modelo do termo de referência na grade', () => {
     );
     expect(textoDoResultadoDoTermo({ ok: true, arquivo: 'TR.pdf', itens: [{ numero: 1, marca: 'Dell', modelo: null, trecho: 'Dell' }] }, 1)).toMatch(/1 item preenchido/);
     expect(textoDoResultadoDoTermo({ ok: false, motivo: 'PNCP fora do ar' }, 0)).toBe('PNCP fora do ar');
+  });
+});
+
+describe('UASG pelo espelho do PNCP no agendador (espelho da regra do front)', () => {
+  it('link do Compras.gov primeiro, depois uasg_codigo, depois codigo_unidade', () => {
+    expect(uasgDoEspelho({ link_comprasnet: 'https://x/acompanhamento-compra?compra=92531505000072026', uasg_codigo: '170162' })).toBe('925315');
+    expect(uasgDoEspelho({ uasg_codigo: '170162', codigo_unidade: '925315' })).toBe('170162');
+    expect(uasgDoEspelho({ codigo_unidade: '925315' })).toBe('925315');
+    expect(uasgDoEspelho({ codigo_unidade: '12' })).toBeNull();
   });
 });

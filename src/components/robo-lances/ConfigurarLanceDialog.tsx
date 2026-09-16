@@ -42,6 +42,7 @@ import {
   type CompraDoComprasGov,
 } from '@/lib/robo/compra-comprasgov';
 import { lerValorDigitado, valorParaDigitar } from '@/lib/robo/valor-digitado';
+import { buscarUasgDoProcesso } from '@/lib/robo/uasg-do-processo';
 import { cn } from '@/lib/utils';
 
 // A lista mora em `src/lib/robo/portais.ts`, autoridade unica compartilhada com
@@ -161,6 +162,10 @@ type LicitacaoRow = {
   portal: string | null;
   data_encerramento: string | null;
   data_abertura: string | null;
+  numero_controle_pncp?: string | null;
+  cnpj_orgao?: string | null;
+  ano_compra?: string | null;
+  sequencial_compra?: string | null;
 };
 
 /**
@@ -470,6 +475,11 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
   const [edital, setEdital] = useState(editingLance?.edital || '');
   const [portal, setPortal] = useState(editingLance?.portal || '');
   const [uasg, setUasg] = useState(editingLance?.uasg || '');
+  // A UASG veio do espelho do PNCP, pelo processo importado — só para a tela dizer.
+  const [uasgPuxada, setUasgPuxada] = useState(false);
+  // O valor atual, para a busca assíncrona não sobrescrever o que a pessoa já digitou.
+  const uasgAtual = useRef(uasg);
+  uasgAtual.current = uasg;
   // O Compras.gov busca por "número+ano" e por UASG; os outros portais, não.
   const ehComprasGov = idDoPortal(portal) === 'compras-gov';
   const [decrementoMin, setDecrementoMin] = useState(editingLance?.decrementoMin?.toString() || '');
@@ -741,7 +751,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
     try {
       let q = supabase
         .from('licitacoes')
-        .select('id, numero, orgao, objeto, modalidade, status, valor_estimado, portal, data_encerramento, data_abertura');
+        .select('id, numero, orgao, objeto, modalidade, status, valor_estimado, portal, data_encerramento, data_abertura, numero_controle_pncp, cnpj_orgao, ano_compra, sequencial_compra');
       if (empresaAtiva) q = q.eq('empresa_id', empresaAtiva.id);
       const { data, error } = await q.order('created_at', { ascending: false });
       if (error) throw error;
@@ -870,6 +880,19 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
       if (sessao.horario) setHorario(sessao.horario);
     }
 
+    // A UASG não é coluna do processo: vem do espelho do PNCP pelas
+    // coordenadas dele (16/09/2026). Sem ela o robô não acha a compra no
+    // Compras.gov. Não espera: os itens carregam em paralelo.
+    // Outro processo, outra UASG: a do processo anterior não pode ficar.
+    setUasg('');
+    uasgAtual.current = '';
+    setUasgPuxada(false);
+    void buscarUasgDoProcesso(lic).then((achada) => {
+      if (!achada || uasgAtual.current) return;
+      setUasg(achada);
+      setUasgPuxada(true);
+    });
+
     try {
       // 1) Tenta carregar itens já centralizados (compartilhados com Proposta/Precificação)
       const centralItens = await fetchItens(lic.id);
@@ -969,6 +992,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
     setModoAutomatico(editingLance?.modoAutomatico ?? true); setHorario(editingLance?.horario || '');
     setDataSessao(editingLance?.dataSessao || '');
     setSessaoPuxada(null);
+    setUasgPuxada(false);
     setBuscandoCompra(false); setErroDaCompra(null); setComprasAchadas([]); setCompraEscolhida(null); setItensDaCompraDe(null);
     setLendoTermo(false); setResultadoDoTermo(null);
     setItens(editingLance?.itens || []); setTipoDisputa(editingLance?.tipoDisputa || 'item'); setStep(editingLance ? 1 : 0);
@@ -1562,11 +1586,16 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                   <Input
                     id="disputa-uasg"
                     value={uasg}
-                    onChange={(e) => setUasg(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    onChange={(e) => { setUasg(e.target.value.replace(/\D/g, '').slice(0, 6)); setUasgPuxada(false); }}
                     inputMode="numeric"
                     placeholder="170162"
                     className="mt-1 w-full sm:w-40"
                   />
+                  {uasgPuxada && (
+                    <p className="text-xs text-muted-foreground mt-1" role="status">
+                      UASG puxada do processo (espelho do PNCP). Confira no edital.
+                    </p>
+                  )}
                   <p className="text-xs text-muted-foreground mt-1">
                     O número da compra se repete entre órgãos; a UASG é o que torna a busca exata. Está no edital e na lista do portal (ex.: <b>170162</b> - MINISTERIO DA FAZENDA).
                   </p>
