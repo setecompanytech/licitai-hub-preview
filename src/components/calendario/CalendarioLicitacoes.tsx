@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import EstadoVazio from '@/components/shared/EstadoVazio';
 import {
   CalendarDays, FileText, AlertTriangle, Clock, CheckCircle2,
-  ChevronRight, Shield, Building2, Database, Trophy, FileWarning, RefreshCw,
+  ChevronRight, Shield, Building2, Database, Trophy, FileWarning, RefreshCw, Bot,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 // Autoridade única do vocabulário de status (CLAUDE.md, princípio 1).
@@ -41,6 +41,7 @@ import { ptBR } from 'date-fns/locale';
 import SyncCalendarButton from './SyncCalendarButton';
 import { identidadeDoProcesso } from '@/lib/licitacao/identidade-do-processo';
 import { CalendarEvent } from '@/lib/calendar-sync';
+import { agendaDoRobo, horaDeEntradaDoRobo, type DisputaNoCalendario } from '@/lib/robo/robo-no-calendario';
 
 interface LicitacaoEvento {
   id: string;
@@ -127,6 +128,36 @@ export default function CalendarioLicitacoes() {
     enabled: !!user,
   });
 
+  /* O robô agendado (Fase 8, 16/09/2026): as disputas com data de sessão,
+     para o selo "Robô entra às 08:45" no processo e o marcador no dia. Da
+     véspera em diante — disputa passada não é agenda. RLS limita à empresa. */
+  const {
+    data: disputasDoRobo = [],
+    error: erroRobo,
+    refetch: recarregarRobo,
+  } = useQuery({
+    queryKey: ['calendario-disputas-robo', user?.id, empresaAtiva?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      // `robo_lances_disputas` ainda não está no types.ts gerado — o mesmo
+      // acesso sem tipo que `useParticipacoesDoRobo` usa.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any)
+        .from('robo_lances_disputas')
+        .select('id, edital, inicio_sessao, licitacao_id')
+        .not('inicio_sessao', 'is', null)
+        .gte('inicio_sessao', new Date(Date.now() - 86_400_000).toISOString())
+        .order('inicio_sessao', { ascending: true });
+      if (error) throw error;
+      return (data || []) as DisputaNoCalendario[];
+    },
+    enabled: !!user,
+  });
+  const agendaRobo = useMemo(
+    () => agendaDoRobo(disputasDoRobo, (d) => format(d, 'yyyy-MM-dd')),
+    [disputasDoRobo]
+  );
+
   /* Os vencimentos vêm do hook compartilhado com o painel — mesma consulta,
      mesmo cache, mesma classificação de situação. */
   const {
@@ -204,10 +235,10 @@ export default function CalendarioLicitacoes() {
 
   // Build calendar markers
   const eventDates = useMemo(() => {
-    const map = new Map<string, { licitacoes: LicitacaoEvento[]; docs: DocValidade[]; backups: boolean }>();
+    const map = new Map<string, { licitacoes: LicitacaoEvento[]; docs: DocValidade[]; backups: boolean; robo: DisputaNoCalendario[] }>();
 
     const getEntry = (key: string) => {
-      if (!map.has(key)) map.set(key, { licitacoes: [], docs: [], backups: false });
+      if (!map.has(key)) map.set(key, { licitacoes: [], docs: [], backups: false, robo: [] });
       return map.get(key)!;
     };
 
@@ -230,14 +261,18 @@ export default function CalendarioLicitacoes() {
       getEntry(key).backups = true;
     });
 
+    agendaRobo.porDia.forEach((disputas, key) => {
+      getEntry(key).robo.push(...disputas);
+    });
+
     return map;
-  }, [licitacoes, docsValidade, backupDates]);
+  }, [licitacoes, docsValidade, backupDates, agendaRobo]);
 
   // Events for selected date
   const selectedEvents = useMemo(() => {
-    if (!selectedDate) return { licitacoes: [], docs: [], backups: false };
+    if (!selectedDate) return { licitacoes: [], docs: [], backups: false, robo: [] };
     const key = format(selectedDate, 'yyyy-MM-dd');
-    return eventDates.get(key) || { licitacoes: [], docs: [], backups: false };
+    return eventDates.get(key) || { licitacoes: [], docs: [], backups: false, robo: [] };
   }, [selectedDate, eventDates]);
 
   // Upcoming licitações (next 30 days)
@@ -298,7 +333,7 @@ export default function CalendarioLicitacoes() {
 
     eventDates.forEach((val, key) => {
       const d = new Date(key + 'T12:00:00');
-      if (val.licitacoes.length > 0) licitDates.push(d);
+      if (val.licitacoes.length > 0 || val.robo.length > 0) licitDates.push(d);
       if (val.docs.length > 0) docDates.push(d);
       if (val.backups) bkpDates.push(d);
       if (
@@ -405,6 +440,13 @@ export default function CalendarioLicitacoes() {
       rotulo: 'Validade de documentos',
       mensagem: (erroDocs as Error).message,
       recarregar: () => void recarregarDocs(),
+    });
+  }
+  if (erroRobo) {
+    fontesComErro.push({
+      rotulo: 'Disputas agendadas do robô',
+      mensagem: (erroRobo as Error).message,
+      recarregar: () => void recarregarRobo(),
     });
   }
   if (erroBackup) {
@@ -711,7 +753,7 @@ export default function CalendarioLicitacoes() {
 
             {/* Tab: selected day */}
             <TabsContent value="todos" className="mt-0">
-              {selectedEvents.licitacoes.length === 0 && selectedEvents.docs.length === 0 && !selectedEvents.backups ? (
+              {selectedEvents.licitacoes.length === 0 && selectedEvents.docs.length === 0 && !selectedEvents.backups && selectedEvents.robo.length === 0 ? (
                 <EstadoVazio
                   tamanho="compacto"
                   icone={<CalendarDays />}
@@ -750,12 +792,34 @@ export default function CalendarioLicitacoes() {
                           coisas ficavam truncadas. */}
                       <span className="flex flex-wrap items-center gap-2 pl-4">
                         <span className={badgeVariants({ variant: 'muted' })}>{l.status}</span>
+                        <SeloDoRobo disputas={agendaRobo.porProcesso.get(l.id)} />
                         {l.valor_estimado && (
                           <span className="text-sm font-medium tabular-nums text-foreground">
                             {formatCurrency(l.valor_estimado)}
                           </span>
                         )}
                       </span>
+                    </button>
+                  ))}
+                  {/* Disputa agendada que não está ligada a processo nenhum: sem
+                      ela aqui, o dia em que o robô entra ficaria vazio na agenda. */}
+                  {selectedEvents.robo.filter((d) => !d.licitacao_id).map((d) => (
+                    <button
+                      key={`robo-${d.id}`}
+                      type="button"
+                      onClick={() => navigate(`/robo-lances/disputa/${d.id}`)}
+                      className="group flex w-full flex-wrap items-center justify-between gap-2 p-3 text-left rounded-lg border border-border bg-card hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    >
+                      <span className="flex items-center gap-2 min-w-0">
+                        <Bot className="w-4 h-4 text-primary" aria-hidden="true" />
+                        <span className="min-w-0 block">
+                          <span className="block text-sm font-medium truncate group-hover:underline">Disputa {d.edital}</span>
+                          <span className="block text-sm text-muted-foreground">
+                            Robô agendado{d.inicio_sessao && horaDeEntradaDoRobo(d.inicio_sessao) ? ` · entra às ${horaDeEntradaDoRobo(d.inicio_sessao)}` : ''}
+                          </span>
+                        </span>
+                      </span>
+                      <ChevronRight className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
                     </button>
                   ))}
                   {selectedEvents.docs.map((doc) => (
@@ -851,6 +915,7 @@ export default function CalendarioLicitacoes() {
                             </span>
                           )}
                           <span className={badgeVariants({ variant: 'muted' })}>{l.modalidade}</span>
+                          <SeloDoRobo disputas={agendaRobo.porProcesso.get(l.id)} />
                         </span>
                       </button>
                     );
@@ -965,5 +1030,19 @@ export default function CalendarioLicitacoes() {
         })()}
       </div>
     </div>
+  );
+}
+
+/** "Robô entra às 08:45" no card do processo com disputa agendada (Fase 8). */
+function SeloDoRobo({ disputas }: { disputas?: DisputaNoCalendario[] }) {
+  const proxima = disputas?.find((d) => d.inicio_sessao);
+  if (!proxima?.inicio_sessao) return null;
+  const hora = horaDeEntradaDoRobo(proxima.inicio_sessao);
+  const dia = format(new Date(proxima.inicio_sessao), 'dd/MM');
+  return (
+    <span className={cn(badgeVariants({ variant: 'info' }), 'gap-1')} title={`Disputa ${proxima.edital ?? ''} agendada no Robô de Lances`}>
+      <Bot className="h-3 w-3" aria-hidden="true" />
+      Robô entra {dia} às {hora}
+    </span>
   );
 }
