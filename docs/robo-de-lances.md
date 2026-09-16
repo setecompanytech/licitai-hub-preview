@@ -479,8 +479,8 @@ Dois esclarecimentos para não perder no caminho:
   - migration `20260916000003`: `max_lances` deixa de ser obrigatória. Disputas existentes continuam com o número que têm
 - **Pôr no ar, nesta ordem** (cada passo com o OK do Ian). Webhook e agente novos convivem com a tela antiga: estratégia ausente é melhor preço, limite 20 continua 20
   - [x] **1.** SQL `20260916000003` aplicado em 16/09 no editor do projeto `uwtyuwktxalnpgrcbbgk` — `ALTER COLUMN max_lances DROP NOT NULL` respondeu "Success", e o comentário da coluna também foi gravado. Conferido em `information_schema.columns`: `is_nullable = YES`, `column_default = 20` — vazio é aceito, e quem não informa a coluna continua recebendo 20. Veio antes da tela de propósito: com a coluna obrigatória, salvar disputa sem limite daria erro de banco
-  - [ ] **2.** publicar o `robo-lances-webhook`
-  - [ ] **3.** instalar `estrategia.js`, `session-manager.js` e `portals/comprasgov.js` na VPS, com md5 igual ao template e nenhuma sessão ativa
+  - [x] **2.** `robo-lances-webhook` **v37** publicado em 16/09 às 12:16. A ação do agendador, chamada sem o segredo do cron, responde 401 — o bloco de autorização da versão nova respondendo
+  - [x] **3.** agente instalado na VPS em 16/09 às 12:18. Antes, conferido que os três arquivos da VPS eram exatamente os que o template gerava antes das mudanças do dia (`estrategia.js` de 10/09 = `f900e672…`; `session-manager.js` = `2d4775c7…` e `portals/comprasgov.js` = `4da507bf…`, os instalados às 11:29) — nada de terceiros foi sobrescrito. Com 0 sessões ativas: backups `.bak-20260916-1218`, `node --check` nos três, cópia, md5 **igual ao template** (`estrategia.js 9a090cbd…`, `session-manager.js 14e7488a…`, `portals/comprasgov.js 7f1f53d7…`), `pm2 restart`. Depois: online, 14 rotas, 8 portais carregados, 0 sessões, `portais_com_lance_liberado: []` — pelo servidor e pelo domínio
   - [ ] **4.** push e publicação da tela (versão `2026-09-16.2`)
 - [ ] Mostrar a estratégia de cada item também na página da disputa, sem alargar a tabela (sob o piso, como texto pequeno)
 
