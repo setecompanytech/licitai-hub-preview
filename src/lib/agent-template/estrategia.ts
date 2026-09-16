@@ -49,16 +49,73 @@ const ENCERRAR = (motivo) => ({ acao: 'encerrar', valor: null, motivo });
 const LANCE = (valor, motivo) => ({ acao: 'lance', valor, motivo });
 
 /**
+ * As estrategias que um item pode ter (16/09/2026, modelo do ConLicitacao).
+ *
+ * - melhor_preco: cobre o melhor lance sempre que nao estivermos em 1o, ate o
+ *   piso. E o comportamento que o robo ja tinha, e por isso e o que vale para
+ *   item sem estrategia escolhida — disputa cadastrada antes desta versao
+ *   continua fazendo o que fazia.
+ * - iminencia: a mesma conta, mas so nos 2 minutos finais da etapa aberta (e
+ *   no encerramento aleatorio do modo aberto e fechado). Lance dado no inicio
+ *   so ensina o preco ao concorrente e gasta margem antes da hora.
+ *
+ * Estrategia escrita que nao esta aqui NAO vira melhor_preco: o robo aguarda e
+ * diz por que. Nome desconhecido e sinal de tela e agente em versoes
+ * diferentes, e adivinhar a intencao seria decidir preco no chute.
+ */
+const ESTRATEGIAS = ['melhor_preco', 'iminencia'];
+
+/**
+ * Modo aberto: 10 minutos, e cada lance nos 2 minutos finais prorroga mais 2
+ * (Lei 14.133/2021; IN SEGES/ME 73/2022). E essa a janela da iminencia.
+ */
+const SEGUNDOS_DE_IMINENCIA = 120;
+
+/**
+ * As fases que a leitura da sala pode informar. Nenhum portal as le ainda —
+ * sai do mapeamento da sala em pregao real. Ate la chega null, e null quer
+ * dizer "nao sei": nunca "esta aberta".
+ *
+ * - aguardando: a disputa do item ainda nao abriu
+ * - aberta: etapa de lances corrida (com ou sem prorrogacao)
+ * - encerramento_aleatorio: aberto e fechado, depois dos 15 minutos — pode
+ *   fechar a qualquer segundo, entao ja e iminencia
+ * - fechada: o lance final e fechado do aberto e fechado
+ * - suspensa: o pregoeiro suspendeu
+ * - encerrada: acabou para este item
+ */
+const FASES = ['aguardando', 'aberta', 'encerramento_aleatorio', 'fechada', 'suspensa', 'encerrada'];
+
+const CENTAVOS = (valor) => Number(valor.toFixed(2));
+const CENTAVOS_PARA_BAIXO = (valor) => Math.floor(valor * 100 + 1e-6) / 100;
+const REAIS = (valor) => 'R$ ' + Number(valor).toFixed(2);
+
+/** Estamos na janela em que a estrategia de iminencia age? */
+function emIminencia(fase, segundosRestantes) {
+  if (fase === 'encerramento_aleatorio') return true;
+  if (fase !== null && fase !== undefined && fase !== 'aberta') return false;
+  return Number.isFinite(segundosRestantes) && segundosRestantes <= SEGUNDOS_DE_IMINENCIA;
+}
+
+/**
  * @param {object} estado
  * @param {string}      estado.portalId          id do portal, para a trava de liberacao
- * @param {number}      estado.valorAtual        nosso último lance
- * @param {number}      estado.valorMinimo       piso: o robô nunca ultrapassa
+ * @param {number|null} estado.valorAtual        nosso ultimo lance NESTE item (null = ainda nao demos)
+ * @param {number}      estado.valorMinimo       piso: obrigatorio; o robo nunca ultrapassa
  * @param {number|null} estado.melhorLance       melhor lance lido no portal
- * @param {boolean|null} estado.souLider         se o melhor lance é NOSSO
- * @param {number}      [estado.decrementoMin]   decremento absoluto, em reais
+ * @param {boolean|null} estado.souLider         se o melhor lance e NOSSO
+ * @param {number}      [estado.decrementoMin]   passo configurado, em reais
  * @param {number}      [estado.decrementoPercentual] alternativa, em % (0-100)
- * @param {number}      estado.rodada            rodada atual
- * @param {number}      estado.maxLances         teto de rodadas
+ * @param {number}      [estado.intervaloMinimo] intervalo minimo entre lances do edital, em reais
+ * @param {number}      [estado.intervaloMinimoPercentual] o mesmo, quando o edital o da em %
+ * @param {string}      [estado.estrategia]      uma de ESTRATEGIAS; vazio = melhor_preco
+ * @param {string|null} [estado.fase]            uma de FASES; null = nao lida
+ * @param {number|null} [estado.segundosRestantes] da etapa aberta; null = nao lido
+ * @param {boolean|null} [estado.elegivel]       fase fechada: estamos entre os que podem dar o lance final?
+ * @param {number}      [estado.lanceFinalFechado] valor do lance final fechado, escolhido pela empresa
+ * @param {boolean}     [estado.lanceFechadoEnviado] o lance final ja foi dado
+ * @param {number}      [estado.lancesEnviados]  lances aceitos ate aqui
+ * @param {number|null} [estado.maxLances]       teto de lances; vazio ou 0 = sem teto, disputa ate o piso
  * @returns {{acao: 'lance'|'aguardar'|'encerrar', valor: number|null, motivo: string}}
  */
 function decidirLance(estado) {
@@ -70,7 +127,15 @@ function decidirLance(estado) {
     souLider,
     decrementoMin,
     decrementoPercentual,
-    rodada,
+    intervaloMinimo,
+    intervaloMinimoPercentual,
+    estrategia,
+    fase,
+    segundosRestantes,
+    elegivel,
+    lanceFinalFechado,
+    lanceFechadoEnviado,
+    lancesEnviados,
     maxLances,
   } = estado;
 
@@ -83,8 +148,54 @@ function decidirLance(estado) {
     );
   }
 
-  if (typeof maxLances === 'number' && rodada >= maxLances) {
+  // O teto conta LANCES ENVIADOS, e e opcional. Antes contava rodadas de
+  // leitura: com o padrao de 20 rodadas a 30 s, o robo saia da sala em 10
+  // minutos sem ter dado lance nenhum. Sem teto, a disputa vai ate o piso
+  // ("30 ou infinitamente ate chegar no meu limite" — reuniao de 14/09).
+  const enviados = Number.isFinite(lancesEnviados) ? lancesEnviados : 0;
+  if (Number.isFinite(maxLances) && maxLances > 0 && enviados >= maxLances) {
     return ENCERRAR(\`Teto de \${maxLances} lances atingido\`);
+  }
+
+  // O piso e obrigatorio. Sem ele a comparacao com o proximo lance virava
+  // comparacao com zero, e o robo podia descer ate um centavo.
+  if (!Number.isFinite(valorMinimo) || valorMinimo <= 0) {
+    return AGUARDAR('Sem valor minimo (piso) definido para o item — o robo nao disputa sem piso');
+  }
+
+  const qual = estrategia === null || estrategia === undefined || estrategia === '' ? 'melhor_preco' : estrategia;
+  if (!ESTRATEGIAS.includes(qual)) {
+    return AGUARDAR(\`Estrategia "\${qual}" nao e conhecida por esta versao do robo\`);
+  }
+
+  const faseLida = fase === null || fase === undefined || fase === '' ? null : fase;
+  if (faseLida !== null && !FASES.includes(faseLida)) {
+    return AGUARDAR(\`Fase "\${faseLida}" nao reconhecida\`);
+  }
+  if (faseLida === 'encerrada') return ENCERRAR('O portal encerrou a disputa deste item');
+  if (faseLida === 'suspensa') return AGUARDAR('Disputa suspensa pelo pregoeiro');
+  if (faseLida === 'aguardando') return AGUARDAR('A disputa deste item ainda nao abriu');
+
+  // LANCE FINAL FECHADO (modo aberto e fechado). Um lance so, as cegas, e so
+  // para quem o portal deixar. O valor e decisao da empresa: o robo nao
+  // escolhe sozinho o numero de um lance que nao da para corrigir depois.
+  if (faseLida === 'fechada') {
+    if (elegivel === false) return AGUARDAR('Fora dos elegiveis para o lance final fechado');
+    if (elegivel !== true) return AGUARDAR('Nao foi possivel saber se estamos entre os elegiveis do lance final fechado');
+    if (lanceFechadoEnviado) return AGUARDAR('O lance final fechado ja foi dado — o portal aceita um so');
+    if (!Number.isFinite(lanceFinalFechado) || lanceFinalFechado <= 0) {
+      return AGUARDAR('O lance final fechado precisa de valor definido pela empresa; o robo nao escolhe esse numero');
+    }
+    if (lanceFinalFechado < valorMinimo) {
+      return AGUARDAR(\`O lance final configurado (\${REAIS(lanceFinalFechado)}) fica abaixo do piso de \${REAIS(valorMinimo)}\`);
+    }
+    return LANCE(CENTAVOS(lanceFinalFechado), \`Lance final fechado configurado: \${REAIS(lanceFinalFechado)}\`);
+  }
+
+  // Modo fechado e aberto: so passam para a etapa aberta a melhor proposta e
+  // as ate 10% acima (ou as tres melhores). Fora delas, nao ha lance a dar.
+  if (faseLida === 'aberta' && elegivel === false) {
+    return ENCERRAR('Nossa proposta nao foi classificada para a etapa aberta');
   }
 
   // Sem leitura confiável não há estratégia. O código antigo caía em
@@ -108,8 +219,20 @@ function decidirLance(estado) {
     return AGUARDAR('O portal não informou quem está liderando');
   }
 
-  if (melhorLance >= valorAtual) {
+  // Valor IGUAL ao melhor e fora do 1o lugar e empate perdido: o portal da o
+  // lugar a quem registrou primeiro. Ai ha o que cobrir. So o valor MAIOR que
+  // o nosso, com o portal dizendo que nao lideramos, e leitura que nao fecha.
+  if (Number.isFinite(valorAtual) && melhorLance > valorAtual) {
     return AGUARDAR('O melhor lance não é melhor que o nosso — nada a cobrir');
+  }
+
+  // Iminencia: a leitura acima ja rodou, para que um defeito de leitura
+  // apareca durante a etapa inteira, e nao so nos dois minutos que importam.
+  if (qual === 'iminencia' && !emIminencia(faseLida, segundosRestantes)) {
+    if (!Number.isFinite(segundosRestantes) && faseLida !== 'encerramento_aleatorio') {
+      return AGUARDAR('Estrategia de iminencia: o tempo restante nao foi lido, e sem ele o robo nao sabe quando agir');
+    }
+    return AGUARDAR(\`Estrategia de iminencia: faltam \${Math.round(segundosRestantes)} s; o robo age nos \${SEGUNDOS_DE_IMINENCIA / 60} minutos finais\`);
   }
 
   // O código antigo fazia \`decrementoPercentual || 1\`: quem configurasse 0%
@@ -123,21 +246,73 @@ function decidirLance(estado) {
     decremento = melhorLance * (decrementoPercentual / 100);
   }
 
-  if (decremento === null || !Number.isFinite(decremento) || decremento <= 0) {
-    return AGUARDAR('Nenhum decremento válido configurado (nem em reais, nem em %)');
+  // O INTERVALO MINIMO DO EDITAL nao e padrao inventado: e regra publicada pelo
+  // orgao e lida no portal (R$ 0,0100 no 7/2026 da SEDUC/PA), e lance com
+  // diferenca menor e recusado. Por isso ele vale como passo quando a empresa
+  // nao configurou um, e sobe o passo configurado quando este e menor.
+  let intervalo = null;
+  if (Number.isFinite(intervaloMinimo) && intervaloMinimo > 0) {
+    intervalo = intervaloMinimo;
+  } else if (Number.isFinite(intervaloMinimoPercentual) && intervaloMinimoPercentual > 0) {
+    intervalo = melhorLance * (intervaloMinimoPercentual / 100);
   }
 
-  const novoValor = Number((melhorLance - decremento).toFixed(2));
+  let passo = decremento;
+  let origemDoPasso = 'decremento';
+  if (intervalo !== null && (passo === null || !Number.isFinite(passo) || passo < intervalo)) {
+    passo = intervalo;
+    origemDoPasso = decremento === null ? 'intervalo minimo do edital' : 'intervalo minimo do edital, maior que o decremento configurado';
+  }
+
+  if (passo === null || !Number.isFinite(passo) || passo <= 0) {
+    return AGUARDAR('Nenhum decremento válido configurado (nem em reais, nem em %), e o intervalo minimo do edital nao foi lido');
+  }
+
+  // Centavos: portal recusa fracao. Arredondar para cima encolheria o passo
+  // abaixo do intervalo do edital (e o lance seria recusado), entao nesse
+  // caso o arredondamento vai para baixo.
+  const bruto = melhorLance - passo;
+  let novoValor = CENTAVOS(bruto);
+  if (intervalo !== null && melhorLance - novoValor < intervalo - 1e-9) {
+    novoValor = CENTAVOS_PARA_BAIXO(bruto);
+  }
 
   // O piso é intransponível, e chegar nele encerra em vez de dar lance nele:
   // igualar o mínimo é entregar a margem inteira sem garantia de vitória.
   if (novoValor <= valorMinimo) {
     return ENCERRAR(
-      \`Próximo lance (R$ \${novoValor.toFixed(2)}) alcançaria o piso de R$ \${Number(valorMinimo).toFixed(2)}\`
+      \`Próximo lance (\${REAIS(novoValor)}) alcançaria o piso de \${REAIS(valorMinimo)}\`
     );
   }
 
-  return LANCE(novoValor, \`Cobrindo R$ \${melhorLance.toFixed(2)} com decremento de R$ \${decremento.toFixed(2)}\`);
+  const nomeDaEstrategia = qual === 'iminencia' ? 'iminencia' : 'melhor preco';
+  return LANCE(
+    novoValor,
+    \`Cobrindo \${REAIS(melhorLance)} com passo de \${REAIS(passo)} (\${origemDoPasso}; estrategia: \${nomeDaEstrategia})\`
+  );
+}
+
+/**
+ * Quando ler a sala de novo.
+ *
+ * Fora da iminencia, no ritmo configurado na disputa. Dentro dela (e no lance
+ * final fechado, que dura 5 minutos), a cada poucos segundos: cada lance
+ * alheio nos 2 minutos finais prorroga a etapa, e responder 30 s depois e
+ * chegar atrasado. Faltando menos que um intervalo para a iminencia, a
+ * proxima leitura cai no inicio dela, e nao depois.
+ */
+const SEGUNDOS_DE_LEITURA_RAPIDA = 3;
+function proximaLeituraMs({ intervaloSegundos, fase, segundosRestantes } = {}) {
+  const base = Number.isFinite(intervaloSegundos) && intervaloSegundos > 0 ? intervaloSegundos : 30;
+  if (emIminencia(fase, segundosRestantes) || fase === 'fechada') {
+    return Math.min(base, SEGUNDOS_DE_LEITURA_RAPIDA) * 1000;
+  }
+  const corrida = fase === null || fase === undefined || fase === 'aberta';
+  if (corrida && Number.isFinite(segundosRestantes) && segundosRestantes > SEGUNDOS_DE_IMINENCIA &&
+      segundosRestantes - SEGUNDOS_DE_IMINENCIA < base) {
+    return Math.max(1, segundosRestantes - SEGUNDOS_DE_IMINENCIA) * 1000;
+  }
+  return base * 1000;
 }
 
 /**
@@ -225,6 +400,15 @@ function conferirItens(nossos, doPortal) {
   };
 }
 
-module.exports = { decidirLance, podeEnviarLance, conferirItens, PORTAIS_COM_LANCE_LIBERADO };
+module.exports = {
+  decidirLance,
+  podeEnviarLance,
+  conferirItens,
+  proximaLeituraMs,
+  emIminencia,
+  ESTRATEGIAS,
+  FASES,
+  PORTAIS_COM_LANCE_LIBERADO,
+};
 `,
 };

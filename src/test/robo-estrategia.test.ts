@@ -122,10 +122,24 @@ describe('decidirLance', () => {
     }
   });
 
-  it('encerra ao atingir o teto de lances', () => {
-    const d = decidirLance(cenario({ rodada: 20, maxLances: 20 }));
+  it('encerra ao atingir o teto de lances ENVIADOS', () => {
+    const d = decidirLance(cenario({ lancesEnviados: 20, maxLances: 20 }));
     expect(d.acao).toBe('encerrar');
     expect(d.motivo).toMatch(/teto/i);
+  });
+
+  it('rodada de leitura não conta como lance', () => {
+    // O laço contava rodadas: 20 leituras a 30 s e o robô saía da sala em 10
+    // minutos sem ter dado lance nenhum.
+    const d = decidirLance(cenario({ rodada: 500, lancesEnviados: 3, maxLances: 20 }));
+    expect(d.acao).toBe('lance');
+  });
+
+  it('sem teto, disputa até o piso', () => {
+    for (const teto of [null, undefined, 0]) {
+      const d = decidirLance(cenario({ lancesEnviados: 999, maxLances: teto }));
+      expect(d.acao).toBe('lance');
+    }
   });
 
   it('aguarda quando o melhor lance não é melhor que o nosso', () => {
@@ -169,12 +183,218 @@ describe('decidirLance', () => {
       cenario(),
       cenario({ souLider: true }),
       cenario({ melhorLance: null }),
-      cenario({ rodada: 99 }),
+      cenario({ lancesEnviados: 99 }),
       cenario({ melhorLance: 51, valorMinimo: 50 }),
+      cenario({ estrategia: 'iminencia' }),
+      cenario({ fase: 'fechada', elegivel: true }),
+      cenario({ valorMinimo: null }),
     ];
     for (const c of casos) {
       const d = decidirLance(c);
       expect(d.motivo.length).toBeGreaterThan(10);
+    }
+  });
+
+  it('não disputa sem piso — o piso é obrigatório', () => {
+    // Sem esta guarda, `novoValor <= null` virava comparação com zero e o
+    // robô podia descer até um centavo.
+    for (const piso of [null, undefined, 0, -1, NaN]) {
+      const d = decidirLance(cenario({ valorMinimo: piso }));
+      expect(d.acao).toBe('aguardar');
+      expect(d.valor).toBeNull();
+      expect(d.motivo).toMatch(/piso/i);
+    }
+  });
+
+  it('empate perdido (mesmo valor, fora do 1º) é coberto', () => {
+    // O portal dá o 1º lugar a quem registrou primeiro o mesmo valor.
+    const d = decidirLance(cenario({ valorAtual: 90, melhorLance: 90, souLider: false }));
+    expect(d.acao).toBe('lance');
+    expect(d.valor).toBe(85);
+  });
+
+  it('sem lance nosso ainda (valorAtual vazio) cobre normalmente', () => {
+    const d = decidirLance(cenario({ valorAtual: null }));
+    expect(d.acao).toBe('lance');
+    expect(d.valor).toBe(85);
+  });
+});
+
+describe('estratégia por item', () => {
+  beforeAll(() => {
+    if (!liberados.includes('__teste__')) liberados.push('__teste__');
+  });
+
+  it('item sem estratégia escolhida segue como melhor preço — o comportamento de antes', () => {
+    for (const estrategia of [undefined, null, '']) {
+      const d = decidirLance(cenario({ estrategia }));
+      expect(d.acao).toBe('lance');
+      expect(d.valor).toBe(85);
+    }
+  });
+
+  it('estratégia desconhecida aguarda, e não vira melhor preço por conta própria', () => {
+    const d = decidirLance(cenario({ estrategia: 'desempatar_1o' }));
+    expect(d.acao).toBe('aguardar');
+    expect(d.motivo).toMatch(/desempatar_1o/);
+  });
+
+  it('iminência: fora dos 2 minutos finais, aguarda', () => {
+    const d = decidirLance(cenario({ estrategia: 'iminencia', fase: 'aberta', segundosRestantes: 300 }));
+    expect(d.acao).toBe('aguardar');
+    expect(d.motivo).toMatch(/iminencia/i);
+    expect(d.motivo).toContain('300');
+  });
+
+  it('iminência: nos 2 minutos finais, cobre', () => {
+    for (const s of [120, 60, 1]) {
+      const d = decidirLance(cenario({ estrategia: 'iminencia', fase: 'aberta', segundosRestantes: s }));
+      expect(d.acao).toBe('lance');
+      expect(d.valor).toBe(85);
+    }
+  });
+
+  it('iminência: sem o tempo restante lido, NÃO chuta — aguarda', () => {
+    const d = decidirLance(cenario({ estrategia: 'iminencia', fase: null, segundosRestantes: null }));
+    expect(d.acao).toBe('aguardar');
+    expect(d.motivo).toMatch(/tempo restante/i);
+  });
+
+  it('iminência: o encerramento aleatório do aberto e fechado já é iminência', () => {
+    const d = decidirLance(cenario({ estrategia: 'iminencia', fase: 'encerramento_aleatorio', segundosRestantes: null }));
+    expect(d.acao).toBe('lance');
+  });
+
+  it('iminência não passa por cima da liderança nem da leitura', () => {
+    expect(decidirLance(cenario({ estrategia: 'iminencia', segundosRestantes: 30, souLider: true })).acao).toBe('aguardar');
+    expect(decidirLance(cenario({ estrategia: 'iminencia', segundosRestantes: 30, melhorLance: null })).acao).toBe('aguardar');
+    expect(decidirLance(cenario({ estrategia: 'iminencia', segundosRestantes: 30, melhorLance: 54 })).acao).toBe('encerrar');
+  });
+});
+
+describe('intervalo mínimo do edital', () => {
+  beforeAll(() => {
+    if (!liberados.includes('__teste__')) liberados.push('__teste__');
+  });
+
+  it('sem decremento configurado, usa o intervalo do edital como passo', () => {
+    const d = decidirLance(cenario({ decrementoMin: 0, decrementoPercentual: 0, intervaloMinimo: 0.01 }));
+    expect(d.acao).toBe('lance');
+    expect(d.valor).toBe(89.99);
+    expect(d.motivo).toMatch(/intervalo minimo do edital/);
+  });
+
+  it('decremento menor que o intervalo do edital sobe para o intervalo — senão o portal recusa', () => {
+    const d = decidirLance(cenario({ decrementoMin: 0.5, intervaloMinimo: 2 }));
+    expect(d.valor).toBe(88);
+  });
+
+  it('decremento maior que o intervalo é respeitado', () => {
+    const d = decidirLance(cenario({ decrementoMin: 5, intervaloMinimo: 0.01 }));
+    expect(d.valor).toBe(85);
+  });
+
+  it('intervalo em percentual incide sobre o melhor lance', () => {
+    const d = decidirLance(cenario({ decrementoMin: 0, decrementoPercentual: 0, intervaloMinimoPercentual: 1 }));
+    expect(d.valor).toBe(89.1); // 90 − 1% de 90
+  });
+
+  it('o arredondamento nunca encolhe o passo abaixo do intervalo', () => {
+    // 100 − 0,3333 = 99,6667 → arredondado daria 99,67 (passo de 0,33, abaixo
+    // do intervalo); tem de ir para 99,66.
+    const d = decidirLance(cenario({ valorAtual: 120, melhorLance: 100, decrementoMin: 0, decrementoPercentual: 0, intervaloMinimo: 0.3333 }));
+    expect(d.valor).toBe(99.66);
+    expect(100 - d.valor!).toBeGreaterThanOrEqual(0.3333);
+  });
+
+  it('o intervalo do edital não fura o piso', () => {
+    const d = decidirLance(cenario({ melhorLance: 52, valorMinimo: 50, decrementoMin: 0, intervaloMinimo: 3 }));
+    expect(d.acao).toBe('encerrar');
+    expect(d.motivo).toMatch(/piso/i);
+  });
+});
+
+describe('fases da disputa', () => {
+  beforeAll(() => {
+    if (!liberados.includes('__teste__')) liberados.push('__teste__');
+  });
+
+  it('fase não lida (null) não bloqueia melhor preço — é a situação de hoje', () => {
+    expect(decidirLance(cenario({ fase: null })).acao).toBe('lance');
+  });
+
+  it('encerrada encerra; suspensa e aguardando esperam', () => {
+    expect(decidirLance(cenario({ fase: 'encerrada' })).acao).toBe('encerrar');
+    expect(decidirLance(cenario({ fase: 'suspensa' })).acao).toBe('aguardar');
+    expect(decidirLance(cenario({ fase: 'aguardando' })).acao).toBe('aguardar');
+  });
+
+  it('fase com nome desconhecido aguarda', () => {
+    const d = decidirLance(cenario({ fase: 'intervalo' }));
+    expect(d.acao).toBe('aguardar');
+    expect(d.motivo).toContain('intervalo');
+  });
+
+  it('fechado e aberto: fora dos classificados para a etapa aberta, encerra', () => {
+    const d = decidirLance(cenario({ fase: 'aberta', elegivel: false }));
+    expect(d.acao).toBe('encerrar');
+  });
+
+  it('lance final fechado: só com elegibilidade confirmada', () => {
+    expect(decidirLance(cenario({ fase: 'fechada', elegivel: null, lanceFinalFechado: 70 })).acao).toBe('aguardar');
+    expect(decidirLance(cenario({ fase: 'fechada', elegivel: false, lanceFinalFechado: 70 })).acao).toBe('aguardar');
+  });
+
+  it('lance final fechado: sem valor escolhido pela empresa, o robô não inventa', () => {
+    const d = decidirLance(cenario({ fase: 'fechada', elegivel: true }));
+    expect(d.acao).toBe('aguardar');
+    expect(d.motivo).toMatch(/empresa/);
+  });
+
+  it('lance final fechado: dá o valor configurado, uma vez só, nunca abaixo do piso', () => {
+    const d = decidirLance(cenario({ fase: 'fechada', elegivel: true, lanceFinalFechado: 70 }));
+    expect(d.acao).toBe('lance');
+    expect(d.valor).toBe(70);
+    expect(decidirLance(cenario({ fase: 'fechada', elegivel: true, lanceFinalFechado: 70, lanceFechadoEnviado: true })).acao).toBe('aguardar');
+    expect(decidirLance(cenario({ fase: 'fechada', elegivel: true, lanceFinalFechado: 40 })).acao).toBe('aguardar');
+  });
+
+  it('lance final fechado não depende de estarmos atrás — o líder também dá o seu', () => {
+    const d = decidirLance(cenario({ fase: 'fechada', elegivel: true, lanceFinalFechado: 70, souLider: true }));
+    expect(d.acao).toBe('lance');
+  });
+});
+
+describe('proximaLeituraMs — ritmo da leitura', () => {
+  let proximaLeituraMs: (e: Record<string, unknown>) => number;
+  beforeAll(() => {
+    const module = { exports: {} as { proximaLeituraMs: typeof proximaLeituraMs } };
+    new vm.Script(ESTRATEGIA_FILES['src/estrategia.js'], { filename: 'estrategia.js' }).runInNewContext({ module, exports: module.exports });
+    proximaLeituraMs = module.exports.proximaLeituraMs;
+  });
+
+  it('fora da iminência, o intervalo configurado', () => {
+    expect(proximaLeituraMs({ intervaloSegundos: 30, fase: 'aberta', segundosRestantes: 500 })).toBe(30000);
+    expect(proximaLeituraMs({ intervaloSegundos: 30 })).toBe(30000);
+  });
+
+  it('na iminência e no lance final fechado, a cada 3 s', () => {
+    expect(proximaLeituraMs({ intervaloSegundos: 30, fase: 'aberta', segundosRestantes: 90 })).toBe(3000);
+    expect(proximaLeituraMs({ intervaloSegundos: 30, fase: 'encerramento_aleatorio' })).toBe(3000);
+    expect(proximaLeituraMs({ intervaloSegundos: 30, fase: 'fechada' })).toBe(3000);
+  });
+
+  it('chegando na iminência, a próxima leitura cai no começo dela', () => {
+    expect(proximaLeituraMs({ intervaloSegundos: 30, fase: 'aberta', segundosRestantes: 130 })).toBe(10000);
+  });
+
+  it('suspensa não acelera a leitura', () => {
+    expect(proximaLeituraMs({ intervaloSegundos: 30, fase: 'suspensa', segundosRestantes: 60 })).toBe(30000);
+  });
+
+  it('intervalo inválido cai em 30 s, nunca em zero', () => {
+    for (const i of [0, -5, null, undefined, NaN]) {
+      expect(proximaLeituraMs({ intervaloSegundos: i })).toBe(30000);
     }
   });
 });
