@@ -478,7 +478,7 @@ Dois esclarecimentos para não perder no caminho:
   - o aviso de sessão encerrada, no sino e no mural do processo, cita **o motivo e quantos lances o robô enviou**, e deixou de afirmar "o robô acompanha e não envia lance", que vai deixar de ser verdade quando a trava abrir;
   - migration `20260916000003`: `max_lances` deixa de ser obrigatória. Disputas existentes continuam com o número que têm
 - **Pôr no ar, nesta ordem** (cada passo com o OK do Ian). Webhook e agente novos convivem com a tela antiga: estratégia ausente é melhor preço, limite 20 continua 20
-  - [x] **1.** SQL `20260916000003` aplicado em 16/09 no editor do projeto `uwtyuwktxalnpgrcbbgk` — `ALTER COLUMN max_lances DROP NOT NULL` respondeu "Success". Veio antes da tela de propósito: com a coluna obrigatória, salvar disputa sem limite daria erro de banco
+  - [x] **1.** SQL `20260916000003` aplicado em 16/09 no editor do projeto `uwtyuwktxalnpgrcbbgk` — `ALTER COLUMN max_lances DROP NOT NULL` respondeu "Success", e o comentário da coluna também foi gravado. Conferido em `information_schema.columns`: `is_nullable = YES`, `column_default = 20` — vazio é aceito, e quem não informa a coluna continua recebendo 20. Veio antes da tela de propósito: com a coluna obrigatória, salvar disputa sem limite daria erro de banco
   - [ ] **2.** publicar o `robo-lances-webhook`
   - [ ] **3.** instalar `estrategia.js`, `session-manager.js` e `portals/comprasgov.js` na VPS, com md5 igual ao template e nenhuma sessão ativa
   - [ ] **4.** push e publicação da tela (versão `2026-09-16.2`)
