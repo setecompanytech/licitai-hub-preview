@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { credencialEmClaro } from "../_shared/credenciais-cifra.ts";
-import { portalDoAgente } from "../_shared/robo-portais.ts";
+import { portalDoAgente, idDeArmazenamento } from "../_shared/robo-portais.ts";
 import { autorizadoComoCron } from "../_shared/cron-auth.ts";
 import { instalarCertificadoNoAgente } from "../_shared/certificado-agente.ts";
 import {
@@ -718,7 +718,13 @@ serve(async (req) => {
           continue;
         }
 
-        const portalAgente = portalDoAgente(d.portal);
+        // A disputa grava o NOME do portal ("Compras.gov.br"); o agente e a
+        // credencial falam por id ("compras-gov"). Quem traduz no envio manual
+        // é o navegador; aqui não há navegador nenhum, e mandar o nome cru foi
+        // o que fez o primeiro despacho agendado morrer como "portal
+        // desconhecido" (16/09/2026).
+        const portalId = idDeArmazenamento(d.portal);
+        const portalAgente = portalDoAgente(portalId);
         if (!portalAgente) {
           await avisar(
             `🤖 Robô não entrou — ${d.edital}`,
@@ -753,7 +759,7 @@ serve(async (req) => {
 
         let credenciais;
         try {
-          credenciais = await credencialEmClaro(supabase, donoId, d.portal);
+          credenciais = await credencialEmClaro(supabase, donoId, portalId as string);
         } catch (e) {
           await avisar(`🤖 Robô não entrou — ${d.edital}`, `A credencial do portal não pôde ser lida: ${textoDoErro(e)}`);
           relatorio.push({ disputa: d.id, resultado: "credencial-ilegivel" });
@@ -791,7 +797,9 @@ serve(async (req) => {
           lance_config_id: d.id,
           licitacao_id: d.licitacao_id ?? null,
           tipo_disputa: d.tipo_disputa ?? null,
-          portal_id: d.portal,
+          // `portal_id` é o id de armazenamento, que casa com a credencial e
+          // fica na sessão; o nome continua sendo o que a pessoa lê.
+          portal_id: portalId,
           portal_nome: d.portal,
           edital: d.edital,
           valor_referencia: d.valor_referencia,
