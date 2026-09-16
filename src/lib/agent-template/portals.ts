@@ -631,27 +631,34 @@ class ComprasGovPortal extends BasePortal {
   }
 
   /**
-   * ESPERA A AREA LOGADA APARECER, em vez de conferir uma vez so.
+   * PARA ONDE O SSO LEVOU: 'login' (o gov.br mostra a tela de identificacao),
+   * 'logado' (voltou ja logado a Area de Trabalho do Fornecedor) ou 'fora'
+   * (saiu do gov.br para uma pagina que nao e a area logada).
    *
-   * Medido em 16/09/2026, rodada 4 do teste da sessao guardada (13:34): o
-   * gov.br lembrou do login e devolveu o robo direto a Area de Trabalho do
-   * Fornecedor — mas a conferencia rodou 1 s depois, com o frameset do
-   * intro.htm ainda sem texto, e respondeu "nao logado". O robo foi atras de
-   * um botao de certificado que nao existia e a sessao caiu, com a tela logada
-   * aberta na frente de quem olhava.
-   *
-   * So espera fora do gov.br: dentro do acesso.gov.br a tela de login e
-   * esperada, e esperar ali so atrasaria o caminho de sempre.
+   * Decidir num instante so errou duas vezes em 16/09/2026, no teste da sessao
+   * guardada. Rodada 4 (13:34): o gov.br lembrou do login, mas a conferencia
+   * leu o frameset do intro.htm ainda sem texto. Rodada 5 (13:40): pior — no
+   * instante da conferencia a aba ainda passava pelo acesso.gov.br a caminho do
+   * Compras.gov; o robo concluiu "precisa logar", procurou o botao de
+   * certificado por 16 s e caiu, com a foto das 13:40:04 ja mostrando a area
+   * logada. Aqui a pergunta e repetida a cada segundo ate a tela se decidir: o
+   * botao de certificado aparecer, ou a area do fornecedor.
    */
-  async esperarAreaLogada(ms = 20000) {
+  async destinoDoSso(ms = 20000) {
     const limite = Date.now() + ms;
     while (Date.now() < limite) {
-      await this.adotarAbaViva('esperando a area logada', { urlDeRetorno: this.portaLogin });
-      if (this.page.url().includes('acesso.gov.br')) return false;
-      if (ComprasGovPortal.pareceAreaLogada(await this.textoDaTela())) return true;
+      await this.adotarAbaViva('decidindo para onde o SSO levou', { urlDeRetorno: this.portaLogin });
+      if (this.page.url().includes('acesso.gov.br')) {
+        const telaDeLogin = await this.page
+          .evaluate(() => !!document.querySelector('#login-certificate, #accountId'))
+          .catch(() => false);
+        if (telaDeLogin) return 'login';
+      } else if (ComprasGovPortal.pareceAreaLogada(await this.textoDaTela())) {
+        return 'logado';
+      }
       await new Promise((r) => setTimeout(r, 1000));
     }
-    return false;
+    return this.page.url().includes('acesso.gov.br') ? 'login' : 'fora';
   }
 
   /**
@@ -715,7 +722,7 @@ class ComprasGovPortal extends BasePortal {
       // area do fornecedor — sem certificado e sem captcha. Sem esta checagem o
       // codigo abaixo leria a volta como "o SSO nao respondeu", iria a porta do
       // portal e procuraria um botao de certificado que nao aparece mais.
-      if (!this.page.url().includes('acesso.gov.br') && await this.esperarAreaLogada()) {
+      if (await this.destinoDoSso() === 'logado') {
         console.log('♻️  O gov.br lembrou do login — entrei sem certificado e sem captcha');
         this._comoEntrou = 'sessao-reaproveitada';
         return;
@@ -734,7 +741,7 @@ class ComprasGovPortal extends BasePortal {
         });
         await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 }).catch(() => {});
         // Pela porta do portal a sessao guardada tambem pode devolver direto.
-        if (!this.page.url().includes('acesso.gov.br') && await this.esperarAreaLogada()) {
+        if (await this.destinoDoSso() === 'logado') {
           console.log('♻️  O gov.br lembrou do login (pela porta do portal) — sem certificado e sem captcha');
           this._comoEntrou = 'sessao-reaproveitada';
           return;

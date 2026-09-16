@@ -253,38 +253,46 @@ describe('Compras.gov: sessão guardada e medição do login', () => {
     expect(ComprasGovPortal.pareceAreaLogada('Compras.gov.br\nAcesse sua Conta\nSelecione o perfil')).toBe(false);
   });
 
-  it('volta logada do gov.br: espera a área do fornecedor carregar antes de concluir', async () => {
-    // Rodada 4 do teste (16/09, 13:34): logado de verdade, mas conferido com o
-    // frameset ainda vazio — o robô concluiu "não logado" e caiu.
+  type ComSso = Portal & {
+    destinoDoSso: (ms?: number) => Promise<'login' | 'logado' | 'fora'>;
+    adotarAbaViva: () => Promise<void>;
+    textoDaTela: () => Promise<string>;
+    page: { url: () => string; evaluate: () => Promise<boolean> };
+  };
+
+  it('volta logada do gov.br: espera a aba sair do acesso.gov.br e a área carregar', async () => {
+    // Rodadas 4 e 5 do teste (16/09, 13:34 e 13:40): o gov.br lembrou do login,
+    // mas a conferência pegou a aba ainda no acesso.gov.br (e o frameset ainda
+    // vazio), e o robô foi procurar o botão de certificado.
     const { ComprasGovPortal } = portal();
-    const p = new ComprasGovPortal({ url: () => 'https://www.comprasnet.gov.br/intro.htm' }, {}) as Portal & {
-      esperarAreaLogada: (ms?: number) => Promise<boolean>;
-      adotarAbaViva: () => Promise<void>;
-      textoDaTela: () => Promise<string>;
-      page: { url: () => string };
-    };
+    const p = new ComprasGovPortal({}, {}) as ComSso;
+    const urls = ['https://sso.acesso.gov.br/authorize', 'https://sso.acesso.gov.br/login', 'https://www.comprasnet.gov.br/intro.htm'];
+    let i = 0;
     let leituras = 0;
-    p.page = { url: () => 'https://www.comprasnet.gov.br/intro.htm' };
-    p.adotarAbaViva = async () => {};
-    p.textoDaTela = async () => (++leituras < 3 ? '' : 'Área de Trabalho do Fornecedor Brasileiro');
-    expect(await p.esperarAreaLogada(10000)).toBe(true);
-    expect(leituras).toBe(3);
+    p.page = { url: () => urls[Math.min(i, urls.length - 1)], evaluate: async () => false };
+    p.adotarAbaViva = async () => { i += 1; };
+    p.textoDaTela = async () => (++leituras < 2 ? '' : 'Área de Trabalho do Fornecedor Brasileiro');
+    expect(await p.destinoDoSso(10000)).toBe('logado');
   }, 15000);
 
-  it('ainda no gov.br, não espera: a tela de login é o caminho de sempre', async () => {
+  it('tela de login do gov.br: decide na hora, sem esperar', async () => {
     const { ComprasGovPortal } = portal();
-    const p = new ComprasGovPortal({}, {}) as Portal & {
-      esperarAreaLogada: (ms?: number) => Promise<boolean>;
-      adotarAbaViva: () => Promise<void>;
-      textoDaTela: () => Promise<string>;
-      page: { url: () => string };
-    };
-    p.page = { url: () => 'https://sso.acesso.gov.br/login' };
+    const p = new ComprasGovPortal({}, {}) as ComSso;
+    p.page = { url: () => 'https://sso.acesso.gov.br/login', evaluate: async () => true };
     p.adotarAbaViva = async () => {};
     p.textoDaTela = async () => '';
     const inicio = Date.now();
-    expect(await p.esperarAreaLogada(10000)).toBe(false);
+    expect(await p.destinoDoSso(10000)).toBe('login');
     expect(Date.now() - inicio).toBeLessThan(500);
+  });
+
+  it('saiu do gov.br para uma página que não é a área logada: "fora"', async () => {
+    const { ComprasGovPortal } = portal();
+    const p = new ComprasGovPortal({}, {}) as ComSso;
+    p.page = { url: () => 'https://www.comprasnet.gov.br/seguro/loginPortalFornecedor.asp', evaluate: async () => false };
+    p.adotarAbaViva = async () => {};
+    p.textoDaTela = async () => 'Acesse sua Conta';
+    expect(await p.destinoDoSso(1500)).toBe('fora');
   });
 
   it('cada login vira uma linha em logs/logins.jsonl, com o jeito que entrou', async () => {
