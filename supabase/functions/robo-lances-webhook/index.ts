@@ -719,6 +719,25 @@ serve(async (req) => {
           }
         }
 
+        // SESSÃO VIVA DESTA DISPUTA? (16/09/2026) Uma disputa remarcada volta
+        // à agenda (gatilho da migration 20260916000004), e uma enviada pelo
+        // botão não marca `enviada_em`. Nos dois casos o robô pode já estar na
+        // sala — e duas sessões com o mesmo CPF e o mesmo certificado derrubam
+        // uma à outra. "Viva" = deu sinal nos últimos 15 minutos: a espera do
+        // captcha dura até 10, e sessão que morreu sem avisar não pode travar
+        // a agenda para sempre.
+        const { data: vivas } = await supabase
+          .from("sessoes_lance_real")
+          .select("id")
+          .eq("lance_config_id", d.id)
+          .in("status", ["enviando", "ativo", "pausado"])
+          .gte("updated_at", new Date(agora - 15 * 60_000).toISOString())
+          .limit(1);
+        if (vivas && vivas.length) {
+          relatorio.push({ disputa: d.id, resultado: "sessao-ja-ativa", sessao: vivas[0].id });
+          continue;
+        }
+
         // RESERVA ANTES DE TRABALHAR. Duas execuções do job podem se cruzar
         // (a anterior ainda esperando o agente), e duas sessões no mesmo
         // portal, com o mesmo CPF e o mesmo certificado, derrubam uma à
@@ -896,12 +915,21 @@ serve(async (req) => {
             signal: AbortSignal.timeout(60000),
           });
           const corpo = await resp.json().catch(() => ({}));
+          // 5xx e 429 são do lado do robô (reiniciando, sem vaga, sobrecarga):
+          // vale tentar de novo. 4xx é configuração, e repetir não resolve.
+          const passageira = resp.status >= 500 || resp.status === 429;
           if (resp.ok) {
             await supabase.from("sessoes_lance_real").update({ status: "ativo" }).eq("id", sessao.id);
             // Sem notificação de sucesso aqui: quem avisa que o robô chegou é
             // o próprio agente, pelo callback `sessao-ativa`, e dois avisos
             // para o mesmo fato treinam a pessoa a ignorar os dois.
             relatorio.push({ disputa: d.id, resultado: "despachada", sessao: sessao.id });
+          } else if (passageira) {
+            const erroCru = corpo?.error || `O agente respondeu HTTP ${resp.status}`;
+            await supabase.from("sessoes_lance_real").update({ status: "erro", erro: erroCru }).eq("id", sessao.id);
+            await registrarNoLog(supabase, donoId, "enviar-sessao-falha", { disputa_id: d.id, sessao_id: sessao.id, etapa: "agente-falha-passageira", origem: "agendador" }, { erro: erroCru });
+            const r = await tentarDeNovoOuDesistir(supabase, d, avisar, motivoDeNegocio(corpo?.error, FRASES_AO_CLIENTE.sessaoNaoIniciada));
+            relatorio.push({ disputa: d.id, resultado: r });
           } else {
             const erroCru = corpo?.error || `O agente respondeu HTTP ${resp.status}`;
             await supabase.from("sessoes_lance_real").update({ status: "erro", erro: erroCru }).eq("id", sessao.id);
@@ -910,14 +938,18 @@ serve(async (req) => {
             relatorio.push({ disputa: d.id, resultado: "agente-recusou" });
           }
         } catch (e) {
+          // Sem resposta, tempo estourado, robô fora do ar: passageira por
+          // natureza — a VPS reiniciando por um minuto não pode custar o pregão.
           const erroCru = textoDoErro(e);
           await supabase.from("sessoes_lance_real").update({ status: "erro", erro: erroCru }).eq("id", sessao.id);
-          await avisar(
-            `🤖 Robô não entrou — ${d.edital}`,
+          await registrarNoLog(supabase, donoId, "enviar-sessao-falha", { disputa_id: d.id, sessao_id: sessao.id, etapa: "agente-sem-resposta", origem: "agendador" }, { erro: erroCru });
+          const r = await tentarDeNovoOuDesistir(
+            supabase,
+            d,
+            avisar,
             ehEstouroDeTempo(e) ? FRASES_AO_CLIENTE.semRespostaATempo : FRASES_AO_CLIENTE.roboForaDoAr,
           );
-          await registrarNoLog(supabase, donoId, "enviar-sessao-falha", { disputa_id: d.id, sessao_id: sessao.id, etapa: "agente-sem-resposta", origem: "agendador" }, { erro: erroCru });
-          relatorio.push({ disputa: d.id, resultado: "agente-sem-resposta" });
+          relatorio.push({ disputa: d.id, resultado: r });
         }
       }
 
@@ -2585,6 +2617,62 @@ function linkDaDisputa(
   if (sessao?.lance_config_id) return `/robo-lances/disputa/${sessao.lance_config_id}`;
   if (sessao?.licitacao_id) return `/processo/${sessao.licitacao_id}`;
   return "/robo-lances";
+}
+
+/**
+ * FALHA PASSAGEIRA NO DESPACHO AGENDADO (16/09/2026): tenta de novo no minuto
+ * seguinte, até `MAX_TENTATIVAS_ENVIO`.
+ *
+ * Antes, o robô sem resposta naquele minuto (VPS reiniciando, tempo estourado)
+ * custava o pregão: `enviada_em` ficava marcado e o agendador nunca mais olhava
+ * a disputa. Agora a conta sobe em `tentativas_envio` (migration
+ * 20260916000004) e a marca é limpa para o próximo minuto pegar de novo.
+ *
+ * Avisa na PRIMEIRA falha ("tentando de novo") e quando desiste — as do meio só
+ * vão ao log: um aviso por minuto treinaria a pessoa a ignorar o que importa.
+ * Sem a coluna (migration não aplicada), segue o comportamento antigo: avisa e
+ * não tenta de novo.
+ */
+const MAX_TENTATIVAS_ENVIO = 5;
+
+async function tentarDeNovoOuDesistir(
+  supabase: any,
+  d: Record<string, any>,
+  avisar: (titulo: string, mensagem: string) => Promise<void>,
+  motivo: string,
+): Promise<string> {
+  const temColuna = Object.prototype.hasOwnProperty.call(d, "tentativas_envio");
+  const tentativas = (Number(d.tentativas_envio) || 0) + 1;
+
+  if (!temColuna) {
+    await avisar(`🤖 Robô não entrou — ${d.edital}`, motivo);
+    return "falha-sem-nova-tentativa";
+  }
+
+  const vaiTentar = tentativas < MAX_TENTATIVAS_ENVIO;
+  const { error } = await supabase
+    .from("robo_lances_disputas")
+    .update(vaiTentar ? { tentativas_envio: tentativas, enviada_em: null } : { tentativas_envio: tentativas })
+    .eq("id", d.id);
+
+  if (error) {
+    await avisar(`🤖 Robô não entrou — ${d.edital}`, motivo);
+    return "falha-sem-nova-tentativa";
+  }
+  if (vaiTentar) {
+    if (tentativas === 1) {
+      await avisar(
+        `🔁 Robô não entrou, tentando de novo — ${d.edital}`,
+        `${motivo} O agendador tenta de novo a cada minuto, até ${MAX_TENTATIVAS_ENVIO} vezes.`,
+      );
+    }
+    return `nova-tentativa-${tentativas}`;
+  }
+  await avisar(
+    `🤖 Robô não entrou — ${d.edital}`,
+    `${motivo} Foram ${MAX_TENTATIVAS_ENVIO} tentativas, uma por minuto, e o agendador desistiu. Envie ao robô pela página da disputa.`,
+  );
+  return "desistiu";
 }
 
 function jsonResponse(data: any, status = 200) {
