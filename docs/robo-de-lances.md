@@ -492,7 +492,8 @@ Dois esclarecimentos para não perder no caminho:
   - [x] **3.** agente instalado na VPS em 16/09 às 12:18. Antes, conferido que os três arquivos da VPS eram exatamente os que o template gerava antes das mudanças do dia (`estrategia.js` de 10/09 = `f900e672…`; `session-manager.js` = `2d4775c7…` e `portals/comprasgov.js` = `4da507bf…`, os instalados às 11:29) — nada de terceiros foi sobrescrito. Com 0 sessões ativas: backups `.bak-20260916-1218`, `node --check` nos três, cópia, md5 **igual ao template** (`estrategia.js 9a090cbd…`, `session-manager.js 14e7488a…`, `portals/comprasgov.js 7f1f53d7…`), `pm2 restart`. Depois: online, 14 rotas, 8 portais carregados, 0 sessões, `portais_com_lance_liberado: []` — pelo servidor e pelo domínio
   - [ ] **2b.** publicar o `robo-lances-webhook` de novo, com a margem de desempate de cada item (a v37 leva só a estratégia)
   - [ ] **3b.** instalar de novo `estrategia.js` e `session-manager.js` na VPS, com a estratégia "Desempatar no 1º lugar" e a fase de desempate de ME/EPP
-  - [ ] **4.** push e publicação da tela (versão `2026-09-16.2`)
+  - [x] **4a.** push em 16/09: `0bcf5cfd..10812e69` para `origin` e `sete` (os três em `10812e69`), com o remoto conferido parado antes. Seguro mesmo antes do 2b e do 3b: a v37 e o agente das 12:18 ignoram a margem, e um item com "Desempatar no 1º lugar" aguarda com o motivo "estratégia não conhecida por esta versão do robô" em vez de dar lance
+  - [ ] **4b.** publicação da tela no Lovable, conferida com `bash scripts/verificar-publicacao.sh` (versão `2026-09-16.2`)
 - [ ] Mostrar a estratégia de cada item também na página da disputa, sem alargar a tabela (sob o piso, como texto pequeno)
 
 **Fase 3 — proposta (etapa 1 da esteira)**
