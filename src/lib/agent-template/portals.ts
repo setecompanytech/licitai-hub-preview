@@ -1319,6 +1319,168 @@ class ComprasGovPortal extends BasePortal {
     return this.souLiderNoItem(this.itemAlvo, this.cnpjEmpresa);
   }
 
+  /**
+   * NOSSO VALOR NESTE ITEM, na mesma classificacao publica.
+   *
+   * Existe porque o valor atual da sessao nasce do valor inicial da DISPUTA
+   * inteira — num pregao por itens, pode ser o numero de outro item. O que o
+   * portal publica para o nosso CNPJ e o que vale. null quando o CNPJ nao esta
+   * na lista: nao ha lance nosso a comparar, e decidirLance trata isso sem
+   * inventar numero.
+   */
+  async nossoLance() {
+    if (!this.itemAlvo || !this.compraId || !this.cnpjEmpresa) return null;
+    const meu = String(this.cnpjEmpresa).replace(/\\D/g, '');
+    const propostas = await this.lerPropostasDoItem(this.itemAlvo);
+    const minha = propostas.find((p) => p.cnpj.replace(/\\D/g, '') === meu);
+    return minha ? minha.valor : null;
+  }
+
+  /** "Aberto", "Aberto e Fechado", "Fechado e Aberto" → id usado pela estrategia. */
+  static modoDeDisputa(texto) {
+    const t = String(texto || '').toLowerCase();
+    if (/aberto\\s+e\\s+fechado/.test(t)) return 'aberto_fechado';
+    if (/fechado\\s+e\\s+aberto/.test(t)) return 'fechado_aberto';
+    if (/aberto/.test(t)) return 'aberto';
+    return null;
+  }
+
+  /**
+   * O QUE A PAGINA DA COMPRA DIZ DE UM ITEM, a partir do texto da tela.
+   *
+   * Funcao pura (static), testada com o texto real capturado em 16/09/2026 no
+   * pregao 7/2026 da SEDUC/PA — ver src/test/agente-template.test.ts.
+   *
+   * O formato visto: o cabecalho traz "Modo disputa: Aberto"; cada item comeca
+   * numa linha "NUMERO DESCRICAO" seguida da linha de tratamento ("Sem
+   * beneficios ME/EPP", "Exclusividade ME/EPP", "Cota reservada ME/EPP do item
+   * 4", "Item de participacao aberta") e da situacao ("Aguardando
+   * julgamento"). Com o item expandido, os detalhes vem em pares rotulo/valor
+   * — entre eles "Intervalo minimo entre Lances" / "R$ 0,0100".
+   *
+   * O cabecalho do item so vale com a linha de tratamento logo abaixo: uma
+   * descricao detalhada que comece por numero ("2 unidades...") nao pode ser
+   * confundida com o item 2.
+   */
+  static detalhesDoItemNoTexto(texto, numero) {
+    const bruto = String(texto || '');
+    const linhas = bruto.split('\\n').map((l) => l.trim());
+    const modoTexto = ((bruto.match(/Modo disputa:\\s*([^\\n]+)/i) || [])[1] || '').trim() || null;
+    const resultado = {
+      encontrado: false,
+      modo: ComprasGovPortal.modoDeDisputa(modoTexto),
+      modo_texto: modoTexto,
+      tratamento: null,
+      situacao: null,
+      intervalo_minimo: null,
+      intervalo_minimo_percentual: null,
+    };
+
+    const ehTratamento = (l) => /ME\\/EPP|participa..o aberta/i.test(l || '');
+    const ehCabecalho = (i) => /^\\d+\\s+\\S/.test(linhas[i] || '') && ehTratamento(linhas[i + 1]);
+    const alvo = String(Number(numero));
+
+    let inicio = -1;
+    for (let i = 0; i < linhas.length; i++) {
+      if (ehCabecalho(i) && linhas[i].split(/\\s+/)[0] === alvo) { inicio = i; break; }
+    }
+    if (inicio < 0) return resultado;
+    let fim = linhas.length;
+    for (let i = inicio + 1; i < linhas.length; i++) {
+      if (ehCabecalho(i)) { fim = i; break; }
+    }
+
+    const trecho = linhas.slice(inicio, fim);
+    resultado.encontrado = true;
+    resultado.tratamento = trecho[1] || null;
+    resultado.situacao = trecho[2] || null;
+
+    const k = trecho.findIndex((l) => /^Intervalo m.nimo entre lances$/i.test(l));
+    const valorTexto = k >= 0 ? trecho[k + 1] || '' : '';
+    const partes = valorTexto.match(/(\\d[\\d.]*)(?:,(\\d+))?/);
+    if (partes) {
+      const valor = Number(partes[1].replace(/\\./g, '') + (partes[2] ? '.' + partes[2] : ''));
+      if (Number.isFinite(valor) && valor > 0) {
+        if (/%/.test(valorTexto)) resultado.intervalo_minimo_percentual = valor;
+        else if (/R\\$/.test(valorTexto)) resultado.intervalo_minimo = valor;
+      }
+    }
+    return resultado;
+  }
+
+  /**
+   * MODO DE DISPUTA E INTERVALO MINIMO DO ITEM, lidos na pagina da compra.
+   *
+   * O intervalo so aparece com o item expandido ("Mostrar detalhes do item"),
+   * e a lista de itens e paginada (10 por pagina no 7/2026). O botao certo e
+   * achado pelo cartao do item — o maior bloco em volta do botao que so tem
+   * ELE de botao de expandir —, cujo texto comeca pelo numero do item.
+   *
+   * E regra do edital: nao muda durante a sessao, e o laco le uma vez. Falhar
+   * aqui devolve os campos vazios, e a estrategia segue com o decremento
+   * configurado.
+   */
+  async lerDetalhesDoItem(numero) {
+    const n = Number(numero || this.itemAlvo);
+    if (!this.compraId || !n) return null;
+    const url = this.publicUrl + '/acompanhamento-compra?compra=' + String(this.compraId);
+    if (this.page.url() !== url) {
+      await this.page.goto(url, { waitUntil: 'networkidle2', timeout: 45000 });
+    }
+    await this.page.waitForFunction(
+      () => document.querySelectorAll('app-botao-expandir-item button').length > 0,
+      { timeout: 30000 },
+    ).catch(() => {});
+
+    let situacao = 'nao-achei';
+    for (let pagina = 1; pagina <= 30; pagina++) {
+      situacao = await this.page.evaluate((alvo) => {
+        const botoes = Array.from(document.querySelectorAll('app-botao-expandir-item button'));
+        for (const b of botoes) {
+          let cartao = b.parentElement;
+          while (cartao && cartao.parentElement &&
+                 cartao.parentElement.querySelectorAll('app-botao-expandir-item').length === 1) {
+            cartao = cartao.parentElement;
+          }
+          const primeiras = ((cartao && cartao.innerText) || '').trim().split('\\n').slice(0, 3);
+          const eoItem = primeiras.some((l) => /^\\d+\\s+\\S/.test(l.trim()) && l.trim().split(/\\s+/)[0] === String(alvo));
+          if (!eoItem) continue;
+          if (/mostrar/i.test(b.getAttribute('aria-label') || '')) { b.click(); return 'expandi'; }
+          return 'ja-aberto';
+        }
+        const proxima = document.querySelector('button.p-paginator-next');
+        if (proxima && !proxima.disabled && !proxima.classList.contains('p-disabled')) {
+          proxima.click();
+          return 'proxima-pagina';
+        }
+        return 'nao-achei';
+      }, n).catch(() => 'nao-achei');
+      if (situacao !== 'proxima-pagina') break;
+      await new Promise((r) => setTimeout(r, 1500));
+    }
+
+    if (situacao === 'expandi') {
+      await this.page.waitForFunction(
+        () => /Intervalo m.nimo entre Lances/i.test(document.body.innerText || ''),
+        { timeout: 15000 },
+      ).catch(() => {});
+    }
+
+    const detalhes = ComprasGovPortal.detalhesDoItemNoTexto(await this.textoDaTela(), n);
+    if (situacao === 'nao-achei' || !detalhes.encontrado) {
+      console.warn('⚠️ Item ' + n + ': nao achei o item na pagina da compra para ler modo e intervalo');
+    } else {
+      const intervalo = detalhes.intervalo_minimo !== null
+        ? 'R$ ' + this.formatarMoeda(detalhes.intervalo_minimo)
+        : detalhes.intervalo_minimo_percentual !== null
+          ? detalhes.intervalo_minimo_percentual + '%'
+          : 'nao publicado';
+      console.log('📐 Item ' + n + ': modo ' + (detalhes.modo_texto || '?') + ', intervalo minimo entre lances '
+        + intervalo + ', ' + (detalhes.tratamento || 'tratamento ?') + ', ' + (detalhes.situacao || 'situacao ?'));
+    }
+    return detalhes;
+  }
+
   async enviarLance(valor) {
     console.log(\`📤 Enviando lance: R$ \${this.formatarMoeda(valor)}\`);
     const valorStr = this.formatarMoeda(valor);

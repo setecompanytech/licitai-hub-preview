@@ -247,3 +247,144 @@ describe('template do agente de lances', () => {
     expect(ler('src/session-manager.js')).toMatch(/itens_sem_piso/);
   });
 });
+
+/**
+ * A página da compra no Compras.gov, lida pelo texto.
+ *
+ * O texto abaixo é o que o gravador capturou em 16/09/2026, 11:00:55, na
+ * compra 7/2026 da SEDUC/PA (UASG 925315), com o item 1 expandido — cortado
+ * para caber, sem mudar uma linha do que sobrou. É a prova de que o leitor
+ * acha o modo de disputa e o intervalo mínimo na tela real, e não num formato
+ * imaginado.
+ */
+describe('Compras.gov: modo de disputa e intervalo mínimo, pelo texto da compra', () => {
+  const CAPTURA_7_2026 = [
+    'Compras eletrônicas',
+    'Acompanhar Contratação',
+    '',
+    'Pregão Eletrônico N° 7/2026 (SRP) (Lei 14.133/2021)',
+    '',
+    'UASG 925315 - SECRETARIA DE ESTADO DE EDUCACAO - PA',
+    '',
+    'Critério julgamento: Menor Preço / Maior Desconto',
+    'Modo disputa: Aberto',
+    'Contratação na etapa de seleção de fornecedores ',
+    'Itens',
+    '1 NOTEBOOK',
+    'Sem benefícios ME/EPP',
+    'Aguardando julgamento',
+    'Qtde solicitada',
+    'Valor estimado (unitário)',
+    '34207',
+    'Sigiloso',
+    'Descrição detalhada',
+    'alimentação: bivolt automática, armazenamento hdd: sem disco hdd, tela: até 14',
+    'Quantidade mínima',
+    '34207',
+    'Critério de julgamento',
+    'Menor Preço',
+    'Orçamento sigiloso',
+    'Sim',
+    'Intervalo mínimo entre Lances',
+    'R$ 0,0100',
+    'Tratamento diferenciado',
+    'Sem benefícios ME/EPP (Art. 4º, lei 14.133/2021)',
+    'Aplicabilidade margem de preferência',
+    'Não',
+    '2 NOTEBOOK',
+    'Sem benefícios ME/EPP',
+    'Aguardando julgamento',
+    'Qtde solicitada',
+    'Valor estimado (unitário)',
+    '64390',
+    'Sigiloso',
+    '4 MONITOR COMPUTADOR',
+    'Item de participação aberta',
+    'Aguardando julgamento',
+    '5 MONITOR COMPUTADOR',
+    'Cota reservada ME/EPP do item 4',
+    'Aguardando julgamento',
+    '1',
+    '2',
+    '3',
+    'Voltar para pesquisa',
+    'Ocultar detalhes do item',
+  ].join('\n');
+
+  type Detalhes = {
+    encontrado: boolean;
+    modo: string | null;
+    modo_texto: string | null;
+    tratamento: string | null;
+    situacao: string | null;
+    intervalo_minimo: number | null;
+    intervalo_minimo_percentual: number | null;
+  };
+  let Portal: {
+    detalhesDoItemNoTexto: (texto: string, numero: number) => Detalhes;
+    modoDeDisputa: (texto: string) => string | null;
+  };
+
+  beforeAll(() => {
+    const mod = { exports: {} as Record<string, unknown> };
+    const falso: Record<string, unknown> = {
+      './base-portal': { BasePortal: class {} },
+      '../interacao-humana': {},
+    };
+    const ctx = vm.createContext({ require: (n: string) => falso[n] ?? {}, module: mod, exports: mod.exports, console });
+    new vm.Script(ler('src/portals/comprasgov.js')).runInContext(ctx);
+    Portal = mod.exports.ComprasGovPortal as typeof Portal;
+  });
+
+  it('lê o modo e o intervalo do item expandido, como estavam na tela', () => {
+    const d = Portal.detalhesDoItemNoTexto(CAPTURA_7_2026, 1);
+    expect(d.encontrado).toBe(true);
+    expect(d.modo).toBe('aberto');
+    expect(d.modo_texto).toBe('Aberto');
+    expect(d.intervalo_minimo).toBe(0.01);
+    expect(d.intervalo_minimo_percentual).toBeNull();
+    expect(d.tratamento).toBe('Sem benefícios ME/EPP');
+    expect(d.situacao).toBe('Aguardando julgamento');
+  });
+
+  it('não empresta o intervalo de um item para outro', () => {
+    // O item 2 não estava expandido: o intervalo do item 1 está logo acima
+    // dele no texto, e não pode ser atribuído a ele.
+    const d = Portal.detalhesDoItemNoTexto(CAPTURA_7_2026, 2);
+    expect(d.encontrado).toBe(true);
+    expect(d.intervalo_minimo).toBeNull();
+  });
+
+  it('reconhece os outros tratamentos como cabeçalho de item', () => {
+    expect(Portal.detalhesDoItemNoTexto(CAPTURA_7_2026, 4).tratamento).toBe('Item de participação aberta');
+    expect(Portal.detalhesDoItemNoTexto(CAPTURA_7_2026, 5).tratamento).toBe('Cota reservada ME/EPP do item 4');
+  });
+
+  it('número de paginação não é item', () => {
+    // "1", "2", "3" soltos no fim são os botões de página.
+    expect(Portal.detalhesDoItemNoTexto(CAPTURA_7_2026, 3).encontrado).toBe(false);
+  });
+
+  it('descrição que começa por número não vira cabeçalho de outro item', () => {
+    const texto = CAPTURA_7_2026.replace(
+      'alimentação: bivolt automática, armazenamento hdd: sem disco hdd, tela: até 14',
+      '2 unidades por caixa',
+    );
+    const d = Portal.detalhesDoItemNoTexto(texto, 1);
+    expect(d.intervalo_minimo).toBe(0.01);
+  });
+
+  it('intervalo em percentual e valores com milhar', () => {
+    const pct = CAPTURA_7_2026.replace('R$ 0,0100', '0,50 %');
+    expect(Portal.detalhesDoItemNoTexto(pct, 1).intervalo_minimo_percentual).toBe(0.5);
+    const milhar = CAPTURA_7_2026.replace('R$ 0,0100', 'R$ 1.250,00');
+    expect(Portal.detalhesDoItemNoTexto(milhar, 1).intervalo_minimo).toBe(1250);
+  });
+
+  it('os três modos da lei', () => {
+    expect(Portal.modoDeDisputa('Aberto')).toBe('aberto');
+    expect(Portal.modoDeDisputa('Aberto e Fechado')).toBe('aberto_fechado');
+    expect(Portal.modoDeDisputa('Fechado e Aberto')).toBe('fechado_aberto');
+    expect(Portal.modoDeDisputa('')).toBeNull();
+  });
+});
