@@ -419,7 +419,7 @@ Dois esclarecimentos para não perder no caminho:
 **Fase 0 — base**
 - [x] Registrar a reestruturação de 14–15/09 e as decisões de 15/09 (este documento)
 - [x] Trazer o remoto para o local — feito em 16/09: os 19 commits de 14–15/09 entraram e a documentação ficou por cima deles. Tipos sem erro e 94 testes do robô passando depois do rebase. (A branch segue o remoto `sete`, então o comando é `git fetch origin && git rebase origin/feature/rebrand-ui-ux`; a forma `git pull --rebase origin <branch>` é recusada por apontar para dois destinos.)
-- [ ] Publicar as três edge functions das telas novas e conferir a versão no ar
+- [x] Publicar as três edge functions das telas novas — feito em 16/09 às 09:57: `robo-lances-webhook` **v31**, `credenciais-portal` **v18**, `normalizar-arquivos-documentos` **v4**. Com isso a produção volta a ficar inteira: banco novo, front novo e functions novas. O `CRON_SECRET` que a terceira passou a exigir já estava cadastrado no projeto, então o job de documentos segue rodando
 
 **Fase 1 — ver a sala e a tela de proposta, em pregão real**
 - [ ] Agenda: próximos pregões do Compras.gov com proposta da Santa Rosa, itens e piso aprovado (candidato: 90029/2026, Santa Casa do Pará)
