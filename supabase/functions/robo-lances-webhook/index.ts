@@ -4,6 +4,17 @@ import { credencialEmClaro } from "../_shared/credenciais-cifra.ts";
 import { portalDoAgente, idDeArmazenamento } from "../_shared/robo-portais.ts";
 import { autorizadoComoCron } from "../_shared/cron-auth.ts";
 import { eventosDoEstado, motivoParaPessoas, situacaoDoItem, type EstadoDaSala, type EventoDaSala } from "../_shared/robo-estado-da-sala.ts";
+import {
+  horaEmBrasilia,
+  pendenciasDaDisputa,
+  perfilDoComprasGov,
+  qualLembrete,
+  sessaoDoPerfil,
+  textoDoLembrete,
+  MINUTOS_DA_VESPERA,
+  MINUTOS_DO_DESPACHO,
+  type SessaoGovBr,
+} from "../_shared/robo-prontidao.ts";
 import { instalarCertificadoNoAgente } from "../_shared/certificado-agente.ts";
 import {
   resolverAcao,
@@ -954,7 +965,18 @@ serve(async (req) => {
         }
       }
 
-      return jsonResponse({ ok: true, janela: { desde, ate }, encontradas: (pendentes || []).length, relatorio });
+      // LEMBRETE DE PRONTIDÃO (Fase 8, 16/09/2026): véspera e 1 hora antes,
+      // com a checagem do que faria o robô não entrar. Depois do despacho, e
+      // blindado: lembrete que falha não pode custar a entrada de ninguém.
+      let lembretes: Array<Record<string, unknown>> = [];
+      try {
+        lembretes = await enviarLembretesDeProntidao(supabase, ambiente, agora);
+      } catch (e) {
+        lembretes = [{ erro: textoDoErro(e) }];
+        console.error("robo-lances-webhook: lembretes de prontidão falharam:", textoDoErro(e));
+      }
+
+      return jsonResponse({ ok: true, janela: { desde, ate }, encontradas: (pendentes || []).length, relatorio, lembretes });
     }
 
     // ─── CALLBACKS FROM THE EXTERNAL AGENT ───
@@ -2845,6 +2867,166 @@ async function registrarNoLog(
   } catch (e) {
     console.error(`robo-lances-webhook: webhook_log (${tipo}) não gravado:`, textoDoErro(e));
   }
+}
+
+/**
+ * Lembretes de prontidão das disputas agendadas (Fase 8, 16/09/2026).
+ *
+ * Roda no mesmo minuto do agendador. Para cada disputa ainda não enviada que
+ * começa nas próximas 24 horas: decide se cabe o lembrete da véspera ou o de
+ * 1 hora antes (`qualLembrete`), RESERVA a marca na disputa antes de avisar
+ * (duas execuções que se cruzam não mandam dois lembretes), confere o que
+ * faria o robô não entrar e avisa quem cadastrou e quem opera a empresa.
+ *
+ * A sessão do gov.br vem do vigia do robô (`/health` → `vigia_sessao`), pelo
+ * perfil da credencial. Sessão vencida ou robô sem resposta também avisam os
+ * administradores da Praefectus, que são quem resolve.
+ */
+async function enviarLembretesDeProntidao(
+  supabase: any,
+  ambiente: { AGENTE_URL_BASE: string | null },
+  agoraMs: number,
+): Promise<Array<Record<string, unknown>>> {
+  const agora = new Date(agoraMs);
+  const { data: candidatas, error } = await supabase
+    .from("robo_lances_disputas")
+    .select("*")
+    .is("enviada_em", null)
+    .gt("inicio_sessao", new Date(agoraMs + MINUTOS_DO_DESPACHO * 60_000).toISOString())
+    .lte("inicio_sessao", new Date(agoraMs + MINUTOS_DA_VESPERA * 60_000).toISOString())
+    .or("lembrete_vespera_em.is.null,lembrete_1h_em.is.null")
+    .order("inicio_sessao", { ascending: true })
+    .limit(50);
+  if (error) {
+    // Coluna ausente = migration 20260916000006 não aplicada: sem lembrete, sem ruído.
+    return [{ lembretes: erroDeColunaAusente(error) ? "indisponivel-falta-migration-20260916000006" : error.message }];
+  }
+
+  const saudes = new Map<string, Record<string, any> | null>();
+  const saudeDoAgente = async (url: string) => {
+    if (!saudes.has(url)) {
+      try {
+        const r = await fetch(`${url.replace(/\/+$/, "")}/health`, { signal: AbortSignal.timeout(8000) });
+        saudes.set(url, r.ok ? await r.json() : null);
+      } catch {
+        saudes.set(url, null);
+      }
+    }
+    return saudes.get(url) ?? null;
+  };
+
+  const feitos: Array<Record<string, unknown>> = [];
+  for (const d of (candidatas || []) as Array<Record<string, any>>) {
+    const inicio = new Date(d.inicio_sessao);
+    const qual = qualLembrete(inicio, agora, { vespera: d.lembrete_vespera_em, umaHora: d.lembrete_1h_em });
+    if (!qual) continue;
+
+    const coluna = qual === "vespera" ? "lembrete_vespera_em" : "lembrete_1h_em";
+    const { data: reservada } = await supabase
+      .from("robo_lances_disputas")
+      .update({ [coluna]: agora.toISOString() })
+      .eq("id", d.id)
+      .is(coluna, null)
+      .is("enviada_em", null)
+      .select("id");
+    if (!reservada || reservada.length === 0) continue;
+
+    const donoId = d.user_id as string;
+    const portalId = idDeArmazenamento(d.portal);
+    const portalAgente = portalDoAgente(portalId);
+    const ehComprasGov = portalAgente === "comprasgov";
+
+    const roboDaEmpresa = d.empresa_id ? (await lerLigadoDaEmpresa(supabase, d.empresa_id)).estado : "indeterminado";
+
+    const { data: agentesAtivos } = await supabase
+      .from("agente_externo_config")
+      .select("*")
+      .eq("user_id", donoId)
+      .eq("status", "ativo")
+      .order("updated_at", { ascending: false });
+    const agente = agentesParaUsuario(agentesAtivos, ambiente)[0];
+
+    // Só a existência e o login: a senha não precisa sair do cofre para isto.
+    let login: string | null = null;
+    if (portalId) {
+      const { data: cred } = await supabase
+        .from("credenciais_portais")
+        .select("login, senha_hash, status")
+        .eq("user_id", donoId)
+        .eq("portal_id", portalId)
+        .maybeSingle();
+      if (cred && (!cred.status || cred.status === "ativo") && cred.login && cred.senha_hash) login = String(cred.login);
+    }
+
+    let sessaoGovBr: SessaoGovBr = "nao-se-aplica";
+    let sessaoConferidaAs: string | null = null;
+    let lanceLiberado: boolean | null = null;
+    const saude = agente?.url_base ? await saudeDoAgente(String(agente.url_base)) : null;
+    if (saude && Array.isArray(saude.portais_com_lance_liberado) && portalAgente) {
+      lanceLiberado = saude.portais_com_lance_liberado.includes(portalAgente);
+    }
+    if (ehComprasGov && agente && login) {
+      if (!saude) {
+        sessaoGovBr = "robo-sem-resposta";
+      } else {
+        const lido = sessaoDoPerfil(saude.vigia_sessao, await perfilDoComprasGov(login));
+        sessaoGovBr = lido.estado;
+        sessaoConferidaAs = lido.em ? horaEmBrasilia(lido.em) : null;
+      }
+    }
+
+    const itens = Array.isArray(d.itens) ? d.itens : [];
+    const pendencias = pendenciasDaDisputa({
+      itens,
+      valorMinimoGeral: d.valor_minimo,
+      roboDaEmpresa,
+      temAgente: !!agente,
+      temCredencial: !!login,
+      portalConhecido: !!portalAgente,
+      precisaUasg: ehComprasGov,
+      uasg: d.uasg,
+      sessaoGovBr,
+      sessaoConferidaAs,
+      lanceLiberado,
+    });
+    const texto = textoDoLembrete({ qual, edital: d.edital, portalNome: d.portal, inicioSessao: inicio, agora, pendencias });
+    const link = `/robo-lances/disputa/${d.id}`;
+
+    // Processo é da empresa (princípio 2): quem opera a empresa também é lembrado.
+    const destinatarios = new Set<string>([donoId]);
+    if (d.empresa_id) {
+      const { data: membros } = await supabase
+        .from("empresa_membros")
+        .select("user_id, papel")
+        .eq("empresa_id", d.empresa_id)
+        .in("papel", ["admin", "operador"]);
+      for (const m of membros || []) if (m.user_id) destinatarios.add(m.user_id);
+    }
+    const { error: erroAviso } = await supabase.from("notificacoes").insert(
+      [...destinatarios].map((uid) => ({ user_id: uid, tipo: texto.tipo, titulo: texto.titulo, mensagem: texto.mensagem, link })),
+    );
+
+    const chamaEquipe = pendencias.some((p) => p.chave === "gov-br-vencida" || p.chave === "robo-sem-resposta");
+    if (chamaEquipe) {
+      const { data: admins } = await supabase.from("user_roles").select("user_id").eq("role", "admin");
+      const idsAdmin = [...new Set((admins || []).map((a: { user_id: string }) => a.user_id))].filter((id) => !destinatarios.has(id as string));
+      if (idsAdmin.length) {
+        await supabase.from("notificacoes").insert(
+          idsAdmin.map((uid) => ({
+            user_id: uid,
+            tipo: "alerta",
+            titulo: `🔐 Robô vai precisar da equipe — ${d.edital}`,
+            mensagem: `${texto.mensagem}`,
+            link: "/admin/robo-lances",
+          })),
+        );
+      }
+    }
+
+    await registrarNoLog(supabase, donoId, "lembrete-prontidao", { disputa_id: d.id, qual, pendencias: pendencias.map((p) => p.chave) }, erroAviso ? { erro: erroAviso.message } : {});
+    feitos.push({ disputa: d.id, qual, pendencias: pendencias.map((p) => p.chave), avisados: destinatarios.size, chamou_equipe: chamaEquipe });
+  }
+  return feitos;
 }
 
 /** `robo_empresa_config` → ligado / desligado / indeterminado (ver `estadoDoLigado`). */
