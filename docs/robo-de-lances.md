@@ -271,21 +271,71 @@ lista por ora** (sai se algum item for do Giovanny); o mapeamento e o primeiro
 lance acontecem **em pregão real** da Santa Rosa, e não no ambiente de
 treinamento; o captcha é tratado com **sessão persistente + aviso ao admin**.
 
-#### A referência: o robô do ConLicitação
+#### A referência: o robô do ConLicitação — as telas, como foram vistas
 
-Mostrado no vídeo 1. O modelo que o Rafael usou para o módulo — e o que o
-Praefectus precisa oferecer para o Compras.gov:
+Módulo "Robô de Lance Inteligente" (BETA v.112), navegado na reunião e revisto
+nas telas trazidas pelo Ian em 15/09. Cabeçalho com CNPJ e razão social da
+empresa, botão "Gerenciar Portais" e um botão de energia que abre o painel
+**"Conexão de robôs"**.
 
-- **Configuração com antecedência**, dias ou horas antes; na hora da sessão
-  pública o robô entra sozinho. Não há botão "enviar ao robô": o controle é
-  **ligar/desligar** (o Ian vai trazer a tela para confirmar os detalhes). O
-  interruptor já existe no Praefectus: `robo_empresa_config.ligado`, migration
-  `20260914000004`, e o envio novo recusa quando a empresa está desligada.
-- **Grade por item:** quantidade, valor de referência do órgão, valor unitário
-  inicial com total calculado, **marca**, **modelo**, **piso** ("valor
-  limite", até onde se aceita descer) e **estratégia** — "Desempatar em 1º
-  lugar", "Melhor posição possível", "Iminência".
-- O ConLicitação usa a API do Licitanet para esse portal — frente do Giovanny.
+- **Ligar/desligar é do robô, não da disputa.** O painel mostra "Robô web —
+  Não conectado", botão verde **"Ligar"**, e passa por "Conectando… /
+  Iniciando…". Enquanto está desligado, qualquer ação responde **"Robô
+  desligado — Ligue o robô Web para continuar"**. Os portais que esse robô
+  cobre estão escritos ali: **BLL, BNC, Licitanet e Compras Públicas** —
+  **o Compras.gov não está na lista**. No produto de referência, esse portal
+  não é atendido pelo robô web.
+- **Quatro abas de estado, com contador:** Cadastradas · Configuradas · Em
+  disputa · Encerradas. Cada linha traz o portal (selo "Licitanet"), o
+  processo (34/2026), órgão e cidade, modalidade, a **abertura de lances com
+  data e hora** (23/09/2026, 08:30:00), a situação ("Aguardando") e três
+  ações: configurar, editar e excluir.
+- **A esteira em dois passos, na ordem que o Giovanny descreveu:** tela de
+  itens ("Passo 2 de 2") com descrição, quantidade, valor unitário estimado,
+  total, **marca** e **modelo** → botão **"Enviar proposta"** → "Enviando sua
+  proposta…" → **"Sucesso! Sua proposta foi enviada ao portal"** → botão
+  **"Configurar lances"**.
+- **Estratégia por item**, preenchida ao vivo na demonstração: **Proposta
+  inicial**, **Intervalo entre lances (R$)** (o decremento) e **Valor mínimo
+  (R$)**, este marcado como **campo obrigatório**. Ao lado, três opções em
+  caixa de seleção, com a explicação do próprio produto:
+  - **Melhor preço pelo portal** — "o robô disputa o melhor preço possível
+    pelo portal, sem ultrapassar seu limite";
+  - **Iminência** — "o robô envia lances apenas nos 2 minutos finais da etapa
+    aberta";
+  - **Desempatar no 1º lugar** — com a margem em reais no campo ao lado.
+
+  Os valores usados na demonstração: piso R$ 0,01 no item 1 e R$ 0,02 no item
+  2, iminência R$ 350,00 e desempate R$ 10,00. Ao salvar: **"Configuração
+  salva! Os lances agora serão aplicados…"**.
+- **Limite de lances**, debatido na mesma tela: teto fixo (por exemplo, 30)
+  ou disputa contínua enquanto estiver acima do piso — "roda a madrugada".
+- **Duas travas de estado** que valem copiar: ao editar, **"Editar essa
+  proposta resetará sua configuração de lances!"**; ao cadastrar de novo,
+  **"Proposta já cadastrada — identificamos que você já possui uma proposta
+  ativa para esta licitação. Deseja editar sua proposta?"**.
+- **"Encontrar licitações"** é a busca própria do ConLicitação (270.996
+  licitações no momento da consulta), com filtros de objeto, estado, cidade,
+  nº do edital, modalidade e datas, e ações por resultado: ver itens, baixar
+  edital, resumo por IA, perguntar ao edital, gerenciar licitação. No
+  Praefectus esse papel é do **Monitoramento** (PNCP), que já alimenta o
+  Kanban.
+
+**O que vale reaproveitar — sem refazer o front**, que o Rafael já
+reestruturou:
+
+1. o interruptor **ligar/desligar** do robô — já existe no Praefectus
+   (`robo_empresa_config.ligado`, migration `20260914000004`; o envio novo
+   recusa quando a empresa está desligada);
+2. as **três estratégias por item** com piso obrigatório;
+3. a **esteira proposta → configurar lances**, com as duas travas de estado;
+4. **data e hora** de abertura na lista — hoje a disputa guarda só a hora;
+5. o **teto de lances opcional**, com a alternativa de disputar até o piso.
+
+O que não entra na nossa frente: a tela de integrações por API (Licitanet,
+BLL, BNC, Compras Públicas) — é a frente do Giovanny. A nossa é o Compras.gov
+por automação de navegador, que no próprio ConLicitação não é coberto pelo
+robô web.
 
 #### As regras de disputa que a estratégia precisa seguir
 
@@ -343,6 +393,7 @@ abaixo dele é recusado pelo portal. O limite pode ser **um teto de lances**
 | Existe um ambiente de treinamento oficial para fornecedor (`treinamento.comprasnet.gov.br`), com proposta e lance simulados — não é o caminho escolhido | manuais do Comprasnet |
 | A leitura dos itens de uma compra no PNCP já existe (`/orgaos/{cnpj}/compras/{ano}/{seq}/itens`); falta chegar a ela a partir de **UASG + número/ano** | `detalhe-licitacao-pncp`, `_shared/pncp-coords.ts` |
 | As três edge functions das telas novas ainda não estão no ar | ver "14–15/09" acima |
+| **Conferido em 16/09:** nenhum commit novo no remoto desde `220497ad` (15/09, 10:15). No período de 14 a 16/09 os commits são da conta XFIN (16), do Ian (5) e do bot do Lovable (3) — **nada do Giovanny**. O que o remoto tem a mais no robô é front, `src/lib/robo/` e a edge function; **o template do agente (`src/lib/agent-template/`, `agente-template-generator.ts`) segue sem nenhum commit de terceiros**, e a integração com o Licitanet ainda não existe no código | `git fetch` + `git log`/`git diff` contra `origin/feature/rebrand-ui-ux` |
 
 Dois esclarecimentos para não perder no caminho:
 
