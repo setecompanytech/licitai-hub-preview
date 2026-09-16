@@ -22,6 +22,8 @@ import {
   type SessaoGovBr,
 } from "../_shared/robo-prontidao.ts";
 import { instalarCertificadoNoAgente } from "../_shared/certificado-agente.ts";
+import { buscarComprasNosDadosAbertos, lerNumeroEAno, uasgValida } from "../_shared/compra-comprasgov.ts";
+import { processoViraHomologada, resultadoDaDisputa, textoDoResultado, STATUS_HOMOLOGADA, STATUS_QUE_VIRAM_HOMOLOGADA } from "../_shared/robo-resultado.ts";
 import { posicoesFinais, processoEntraEmDisputa, textoDoProcessoEmDisputa, STATUS_EM_DISPUTA, STATUS_QUE_ENTRAM_EM_DISPUTA } from "../_shared/robo-kanban.ts";
 import {
   resolverAcao,
@@ -1061,7 +1063,20 @@ serve(async (req) => {
         }
       }
 
-      return jsonResponse({ ok: true, janela: { desde, ate }, encontradas: (pendentes || []).length, relatorio, lembretes, vigia });
+      // RESULTADO DA COMPRA (16/09/2026): de hora em hora, em segundo plano —
+      // são consultas aos dados abertos, e o agendador não pode esperar por elas.
+      let resultados = "fora-da-hora";
+      if (new Date(agora).getUTCMinutes() === 23) {
+        resultados = "em-segundo-plano";
+        emSegundoPlano(
+          conferirResultadosNoComprasGov(supabase, agora).then(
+            (feitos) => { if (feitos.length) console.log("robo-lances-webhook: resultados conferidos", JSON.stringify(feitos)); },
+            (e) => console.error("robo-lances-webhook: conferência de resultados falhou:", textoDoErro(e)),
+          ),
+        );
+      }
+
+      return jsonResponse({ ok: true, janela: { desde, ate }, encontradas: (pendentes || []).length, relatorio, lembretes, vigia, resultados });
     }
 
     // ─── CALLBACKS FROM THE EXTERNAL AGENT ───
@@ -3368,6 +3383,139 @@ async function enviarLembretesDeProntidao(
 
     await registrarNoLog(supabase, donoId, "lembrete-prontidao", { disputa_id: d.id, qual, pendencias: pendencias.map((p) => p.chave) }, erroAviso ? { erro: erroAviso.message } : {});
     feitos.push({ disputa: d.id, qual, pendencias: pendencias.map((p) => p.chave), avisados: destinatarios.size, emails: email, chamou_equipe: chamaEquipe });
+  }
+  return feitos;
+}
+
+/**
+ * O RESULTADO DA COMPRA VOLTA AO PROCESSO (16/09/2026) — a outra ponta do
+ * "do cadastramento à homologação" que o Rafael cobrava.
+ *
+ * Para as disputas do Compras.gov ligadas a um processo que ainda está em
+ * Proposta Enviada, Em Disputa ou Vencida (sessão já passada, até 120 dias),
+ * lê a compra nos dados abertos e, com todos os itens da disputa decididos:
+ * vitória → processo em Homologada; homologada para outros → aviso pedindo o
+ * motivo da perda (Perdida exige motivo); sem vencedor → aviso. Cada desfecho
+ * vira aviso uma vez só (marca `resultado-comprasgov` no `webhook_log`). Regra
+ * e textos em `_shared/robo-resultado.ts`. No máximo 15 compras por rodada.
+ */
+async function conferirResultadosNoComprasGov(supabase: any, agoraMs: number): Promise<Array<Record<string, unknown>>> {
+  const { data: disputas, error } = await supabase
+    .from("robo_lances_disputas")
+    .select("id, user_id, empresa_id, licitacao_id, edital, portal, uasg, itens, inicio_sessao")
+    .not("licitacao_id", "is", null)
+    .not("uasg", "is", null)
+    .lt("inicio_sessao", new Date(agoraMs - 60 * 60_000).toISOString())
+    .gte("inicio_sessao", new Date(agoraMs - 120 * 86_400_000).toISOString())
+    .order("inicio_sessao", { ascending: false })
+    .limit(60);
+  if (error) return [{ erro: error.message }];
+  const candidatas = ((disputas || []) as Array<Record<string, any>>)
+    .filter((d) => portalDoAgente(idDeArmazenamento(d.portal)) === "comprasgov");
+  if (candidatas.length === 0) return [];
+
+  const ids = [...new Set(candidatas.map((d) => d.licitacao_id as string))];
+  const { data: processos } = await supabase.from("licitacoes").select("id, status").in("id", ids);
+  const statusDoProcesso = new Map<string, string>(((processos || []) as Array<{ id: string; status: string }>).map((p) => [p.id, p.status]));
+
+  const { data: conferidas } = await supabase
+    .from("webhook_log")
+    .select("payload")
+    .eq("tipo", "resultado-comprasgov")
+    .gte("created_at", new Date(agoraMs - 180 * 86_400_000).toISOString());
+  const jaAvisados = new Set<string>(
+    ((conferidas || []) as Array<{ payload?: { chave?: string } }>).map((l) => l.payload?.chave).filter(Boolean) as string[],
+  );
+
+  const feitos: Array<Record<string, unknown>> = [];
+  const processosVistos = new Set<string>();
+  let consultas = 0;
+  for (const d of candidatas) {
+    const status = statusDoProcesso.get(d.licitacao_id);
+    if (!(STATUS_QUE_VIRAM_HOMOLOGADA as readonly string[]).includes(String(status))) continue;
+    if (processosVistos.has(d.licitacao_id)) continue;
+    processosVistos.add(d.licitacao_id);
+    const numeroEAno = lerNumeroEAno(d.edital);
+    const uasg = uasgValida(d.uasg);
+    if (!numeroEAno || !uasg) continue;
+    if (consultas >= 15) break;
+    consultas += 1;
+
+    let compras;
+    try {
+      ({ compras } = await buscarComprasNosDadosAbertos(uasg, numeroEAno.numero, numeroEAno.ano));
+    } catch (e) {
+      feitos.push({ disputa: d.id, erro: textoDoErro(e) });
+      continue;
+    }
+    if (compras.length !== 1) {
+      feitos.push({ disputa: d.id, resultado: compras.length ? "mais-de-uma-compra-com-esse-numero" : "compra-nao-encontrada" });
+      continue;
+    }
+
+    let cnpj: string | null = null;
+    if (d.empresa_id) {
+      const { data: emp } = await supabase.from("empresas").select("cnpj").eq("id", d.empresa_id).maybeSingle();
+      cnpj = emp?.cnpj ?? null;
+    }
+    const numeros = (Array.isArray(d.itens) ? d.itens : []).map((i: Record<string, unknown>) => Number(i?.numero)).filter((n: number) => Number.isFinite(n));
+    const r = resultadoDaDisputa(numeros, compras[0].itens, cnpj);
+    if (!r || r.estado === "pendente") continue;
+    const chave = `${d.licitacao_id}:${r.estado}`;
+    if (jaAvisados.has(chave)) continue;
+
+    let movido = false;
+    if (processoViraHomologada(status, r)) {
+      const { data: m, error: erroStatus } = await supabase
+        .from("licitacoes")
+        .update({ status: STATUS_HOMOLOGADA })
+        .eq("id", d.licitacao_id)
+        .in("status", [...STATUS_QUE_VIRAM_HOMOLOGADA])
+        .select("id");
+      movido = !erroStatus && !!(m && m.length);
+      if (erroStatus) feitos.push({ disputa: d.id, erro_status: erroStatus.message });
+    }
+
+    const texto = textoDoResultado(d.edital, r, formatarReais, movido);
+    const link = `/processo/${d.licitacao_id}`;
+    await supabase.from("licitacao_mensagens").insert({
+      licitacao_id: d.licitacao_id,
+      user_id: d.user_id,
+      tipo: texto.tipo === "sucesso" ? "sucesso" : "alerta",
+      conteudo: `**${texto.titulo}**\n\n${texto.mensagem}`,
+    });
+
+    // Processo é da empresa: quem cadastrou e quem opera ficam sabendo.
+    const destinatarios = new Set<string>([d.user_id]);
+    if (d.empresa_id) {
+      const { data: membros } = await supabase
+        .from("empresa_membros")
+        .select("user_id, papel")
+        .eq("empresa_id", d.empresa_id)
+        .in("papel", ["admin", "operador"]);
+      for (const m of membros || []) if (m.user_id) destinatarios.add(m.user_id);
+    }
+    await supabase.from("notificacoes").insert(
+      [...destinatarios].map((uid) => ({
+        user_id: uid,
+        tipo: texto.tipo === "alerta" ? "alerta" : "info",
+        titulo: texto.titulo,
+        mensagem: texto.mensagem,
+        link,
+      })),
+    );
+    await avisarPorEmail(supabase, [...destinatarios], { titulo: texto.titulo, mensagem: texto.mensagem, link }, `resultado:${chave}`);
+    await registrarNoLog(supabase, d.user_id, "resultado-comprasgov", {
+      chave,
+      disputa_id: d.id,
+      licitacao_id: d.licitacao_id,
+      estado: r.estado,
+      movido,
+      ganhos: r.ganhos.map((g) => g.numero),
+      perdidos: r.perdidos.map((p) => p.numero),
+    });
+    jaAvisados.add(chave);
+    feitos.push({ disputa: d.id, estado: r.estado, movido });
   }
   return feitos;
 }

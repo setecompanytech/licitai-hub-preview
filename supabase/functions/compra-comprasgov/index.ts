@@ -13,15 +13,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { requireAuth } from "../_shared/auth-rate-limit.ts";
-import {
-  MODALIDADES_COM_DISPUTA,
-  compraDoComprasGov,
-  idDaCompra,
-  lerNumeroEAno,
-  uasgValida,
-  urlDaCompra,
-  urlDosItens,
-} from "../_shared/compra-comprasgov.ts";
+import { buscarComprasNosDadosAbertos, lerNumeroEAno, uasgValida } from "../_shared/compra-comprasgov.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -29,36 +21,10 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const MAX_PAGINAS_DE_ITENS = 20;
-
 function responder(corpo: Record<string, unknown>) {
   return new Response(JSON.stringify(corpo), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
-}
-
-async function lerJson(url: string, timeoutMs = 15000): Promise<Record<string, unknown>> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const resp = await fetch(url, { headers: { Accept: "application/json" }, signal: controller.signal });
-    if (!resp.ok) throw new Error(`dados abertos ${resp.status}`);
-    return await resp.json();
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-async function lerItens(idCompra: string): Promise<Record<string, unknown>[]> {
-  const itens: Record<string, unknown>[] = [];
-  for (let pagina = 1; pagina <= MAX_PAGINAS_DE_ITENS; pagina++) {
-    const dados = await lerJson(urlDosItens(idCompra, pagina));
-    const lote = Array.isArray(dados.resultado) ? dados.resultado as Record<string, unknown>[] : [];
-    itens.push(...lote);
-    const total = Number(dados.totalPaginas) || 0;
-    if (lote.length === 0 || pagina >= total) break;
-  }
-  return itens;
 }
 
 serve(async (req) => {
@@ -89,24 +55,21 @@ serve(async (req) => {
   }
   const { numero, ano } = numeroEAno;
 
-  // As três modalidades com fase de lances, em paralelo: a API responde em
-  // menos de 1 s e o mesmo número pode existir em mais de uma.
-  const tentativas = await Promise.allSettled(
-    MODALIDADES_COM_DISPUTA.map(async (m) => {
-      const id = idDaCompra(uasg, m.codigo, numero, ano);
-      const dados = await lerJson(urlDaCompra(id));
-      const achadas = Array.isArray(dados.resultado) ? dados.resultado as Record<string, unknown>[] : [];
-      return achadas.filter((c) => c.contratacaoExcluida !== true);
-    }),
-  );
+  let compras;
+  let falhas = 0;
+  try {
+    ({ compras, falhas } = await buscarComprasNosDadosAbertos(uasg, numero, ano));
+  } catch (e) {
+    console.error(`compra-comprasgov ${uasg} ${numero}/${ano}: itens`, e);
+    return responder({
+      success: false,
+      error: "A compra foi encontrada, mas a leitura dos itens falhou. Tente de novo em instantes.",
+    });
+  }
 
-  const falhas = tentativas.filter((t) => t.status === "rejected");
-  const achadas = tentativas.flatMap((t) => (t.status === "fulfilled" ? t.value : []));
-
-  if (achadas.length === 0) {
-    if (falhas.length > 0) {
-      console.warn(`compra-comprasgov ${uasg} ${numero}/${ano}: ${falhas.length} consulta(s) falharam`,
-        falhas.map((f) => (f as PromiseRejectedResult).reason?.message));
+  if (compras.length === 0) {
+    if (falhas > 0) {
+      console.warn(`compra-comprasgov ${uasg} ${numero}/${ano}: ${falhas} consulta(s) falharam`);
       return responder({
         success: false,
         error: "Não foi possível consultar os dados abertos do Compras.gov agora. Tente de novo em instantes.",
@@ -118,17 +81,6 @@ serve(async (req) => {
     });
   }
 
-  try {
-    const compras = await Promise.all(
-      achadas.map(async (bruta) => compraDoComprasGov(bruta, await lerItens(String(bruta.idCompra)))),
-    );
-    console.log(`compra-comprasgov ${uasg} ${numero}/${ano}: ${compras.map((c) => `${c.idCompra} (${c.itens.length} itens)`).join(", ")}`);
-    return responder({ success: true, compras, consultado_em: new Date().toISOString() });
-  } catch (e) {
-    console.error(`compra-comprasgov ${uasg} ${numero}/${ano}: itens`, e);
-    return responder({
-      success: false,
-      error: "A compra foi encontrada, mas a leitura dos itens falhou. Tente de novo em instantes.",
-    });
-  }
+  console.log(`compra-comprasgov ${uasg} ${numero}/${ano}: ${compras.map((c) => `${c.idCompra} (${c.itens.length} itens)`).join(", ")}`);
+  return responder({ success: true, compras, consultado_em: new Date().toISOString() });
 });

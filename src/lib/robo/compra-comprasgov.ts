@@ -25,6 +25,13 @@ export interface ItemDaCompra {
   situacao: string | null;
   criterio: string | null;
   materialOuServico: string | null;
+  resultado: {
+    cnpj: string | null;
+    fornecedor: string | null;
+    valorUnitario: number | null;
+    quantidade: number | null;
+    data: string | null;
+  } | null;
 }
 
 export interface CompraDoComprasGov {

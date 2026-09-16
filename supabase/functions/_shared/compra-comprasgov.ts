@@ -91,6 +91,29 @@ export interface ItemDaCompra {
   situacao: string | null;
   criterio: string | null;
   materialOuServico: string | null;
+  /** O vencedor publicado (homologação), quando já há; nulo antes do resultado. */
+  resultado: ResultadoDoItem | null;
+}
+
+export interface ResultadoDoItem {
+  /** CNPJ do fornecedor vencedor, só dígitos. */
+  cnpj: string | null;
+  fornecedor: string | null;
+  valorUnitario: number | null;
+  quantidade: number | null;
+  data: string | null;
+}
+
+function resultadoDaLinha(bruto: Record<string, unknown>): ResultadoDoItem | null {
+  if (bruto.temResultado !== true) return null;
+  const cnpj = texto(bruto.codFornecedor);
+  return {
+    cnpj: cnpj ? cnpj.replace(/\D/g, "") : null,
+    fornecedor: texto(bruto.nomeFornecedor),
+    valorUnitario: numero(bruto.valorUnitarioResultado),
+    quantidade: numero(bruto.quantidadeResultado),
+    data: texto(bruto.dataResultado),
+  };
 }
 
 export function itemDaCompra(bruto: Record<string, unknown>): ItemDaCompra | null {
@@ -111,7 +134,28 @@ export function itemDaCompra(bruto: Record<string, unknown>): ItemDaCompra | nul
     situacao: texto(bruto.situacaoCompraItemNome),
     criterio: texto(bruto.criterioJulgamentoNome),
     materialOuServico: texto(bruto.materialOuServicoNome),
+    resultado: resultadoDaLinha(bruto),
   };
+}
+
+/**
+ * O MESMO ITEM EM DUAS LINHAS (conferido em 16/09 na compra 38924005900012026):
+ * depois do resultado, os dados abertos trazem uma linha "Em andamento" e outra
+ * "Homologado", com o mesmo `idCompraItem`. Sem juntar, o cadastro da disputa
+ * mostraria o item duas vezes. Fica uma por número, com o resultado e a
+ * situação da linha que tem resultado.
+ */
+export function juntarLinhasDoItem(itens: ItemDaCompra[]): ItemDaCompra[] {
+  const porNumero = new Map<number, ItemDaCompra>();
+  for (const item of itens) {
+    const ja = porNumero.get(item.numero);
+    if (!ja) {
+      porNumero.set(item.numero, item);
+    } else if (item.resultado && !ja.resultado) {
+      porNumero.set(item.numero, { ...ja, resultado: item.resultado, situacao: item.situacao ?? ja.situacao });
+    }
+  }
+  return [...porNumero.values()].sort((a, b) => a.numero - b.numero);
 }
 
 export interface CompraDoComprasGov {
@@ -146,10 +190,9 @@ export function compraDoComprasGov(
   bruta: Record<string, unknown>,
   itensBrutos: Record<string, unknown>[],
 ): CompraDoComprasGov {
-  const itens = itensBrutos
-    .map(itemDaCompra)
-    .filter((i): i is ItemDaCompra => i !== null)
-    .sort((a, b) => a.numero - b.numero);
+  const itens = juntarLinhasDoItem(
+    itensBrutos.map(itemDaCompra).filter((i): i is ItemDaCompra => i !== null),
+  );
   // O critério é por item na API; quando todos concordam, vira o da compra.
   const criterios = [...new Set(itens.map((i) => i.criterio).filter(Boolean))];
   const cnpj = texto(bruta.orgaoEntidadeCnpj);
@@ -181,4 +224,57 @@ export function compraDoComprasGov(
     sequencialPncp: seq,
     itens,
   };
+}
+
+// ── Busca (rede) — usada pela função `compra-comprasgov` e pelo agendador do robô ──
+
+const MAX_PAGINAS_DE_ITENS = 20;
+
+async function lerJson(url: string, timeoutMs = 15000): Promise<Record<string, unknown>> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const resp = await fetch(url, { headers: { Accept: "application/json" }, signal: controller.signal });
+    if (!resp.ok) throw new Error(`dados abertos ${resp.status}`);
+    return await resp.json();
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function lerItensBrutos(idCompra: string): Promise<Record<string, unknown>[]> {
+  const itens: Record<string, unknown>[] = [];
+  for (let pagina = 1; pagina <= MAX_PAGINAS_DE_ITENS; pagina++) {
+    const dados = await lerJson(urlDosItens(idCompra, pagina));
+    const lote = Array.isArray(dados.resultado) ? dados.resultado as Record<string, unknown>[] : [];
+    itens.push(...lote);
+    const total = Number(dados.totalPaginas) || 0;
+    if (lote.length === 0 || pagina >= total) break;
+  }
+  return itens;
+}
+
+/**
+ * A compra pela UASG + número/ano, nas três modalidades com lance, em paralelo.
+ * `falhas` conta as consultas que não responderam — sem compra e com falha, o
+ * certo é dizer "não consegui consultar", e não "não existe".
+ */
+export async function buscarComprasNosDadosAbertos(
+  uasg: string,
+  numero: number,
+  ano: number,
+): Promise<{ compras: CompraDoComprasGov[]; falhas: number }> {
+  const tentativas = await Promise.allSettled(
+    MODALIDADES_COM_DISPUTA.map(async (m) => {
+      const dados = await lerJson(urlDaCompra(idDaCompra(uasg, m.codigo, numero, ano)));
+      const achadas = Array.isArray(dados.resultado) ? dados.resultado as Record<string, unknown>[] : [];
+      return achadas.filter((c) => c.contratacaoExcluida !== true);
+    }),
+  );
+  const falhas = tentativas.filter((t) => t.status === "rejected").length;
+  const achadas = tentativas.flatMap((t) => (t.status === "fulfilled" ? t.value : []));
+  const compras = await Promise.all(
+    achadas.map(async (bruta) => compraDoComprasGov(bruta, await lerItensBrutos(String(bruta.idCompra)))),
+  );
+  return { compras, falhas };
 }
