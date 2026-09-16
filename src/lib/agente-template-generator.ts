@@ -925,6 +925,28 @@ class SessionManager {
         }
       }
 
+      // ─── "CHEGUEI NA SALA" ────────────────────────────────────────────
+      //
+      // O robo passa a entrar sozinho no horario da sessao, e quem cadastrou
+      // a disputa nao fica olhando tela remota nenhuma. Sem este aviso,
+      // "entrou" e "nao entrou" tem a mesma cara do lado de ca — foi o que
+      // aconteceu em 14/09 as 20:07, quando o login parou no captcha e
+      // ninguem soube a tempo.
+      //
+      // Vai dentro do proprio try/catch: avisar e informacao adicional, e
+      // falhar aqui nao pode derrubar uma sessao que ja esta de pe.
+      try {
+        await sendCallback(session, 'sessao-ativa', {
+          itens: session.itens.length,
+          tipo_disputa: session.tipo_disputa,
+          url: session.portal.page && typeof session.portal.page.url === 'function'
+            ? session.portal.page.url()
+            : null,
+        });
+      } catch (e) {
+        console.error(\`[\${config.sessao_id}] Falha ao avisar que entrou na sala: \${e.message}\`);
+      }
+
       // Iniciar loop de lances
       this._startBiddingLoop(session);
 
