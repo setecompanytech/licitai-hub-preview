@@ -332,7 +332,10 @@ describe('vigia da sessão', () => {
   };
   type Gerente = { perfisEmUso: Set<string>; perfisDoVigia: Set<string> };
 
-  function montar(destino: 'logado' | 'login' | 'fora', over: { cookiesMtime?: number; minutos?: number; perfilAbre?: boolean } = {}) {
+  function montar(
+    destino: 'logado' | 'login' | 'fora',
+    over: { cookiesMtime?: number; minutos?: number; perfilAbre?: boolean; page?: Record<string, unknown> } = {},
+  ) {
     const linhas: string[] = [];
     const aberturas: string[] = [];
     let fechou = 0;
@@ -361,7 +364,7 @@ describe('vigia da sessão', () => {
       getPortal: () => ({
         aplicarAntiDeteccao: async () => {},
         loginUrl: 'https://sso.acesso.gov.br/authorize',
-        page: { goto: async () => {} },
+        page: { goto: async () => {}, ...over.page },
         destinoDoSso: async () => destino,
       }),
     });
@@ -384,6 +387,27 @@ describe('vigia da sessão', () => {
     expect(JSON.parse(m.linhas[0])).toMatchObject({
       portal: 'comprasgov', sessao_id: null, perfil: 'comprasgov-aaaa', perfil_persistente: true, desfecho: 'vigia-logado',
     });
+  });
+
+  it('indefinido grava em que tela parou — sem os parâmetros do endereço, que podem levar token', async () => {
+    const m = montar('fora', {
+      page: {
+        url: () => 'https://www.comprasnet.gov.br/seguro/loginPortal.asp?token=NAO-GRAVAR',
+        title: async () => 'Compras.gov.br',
+        evaluate: async () => true,
+      },
+    });
+    expect(await m.vigia.conferir('perfis/comprasgov-aaaa')).toBe('indefinido');
+    const linha = JSON.parse(m.linhas[0]);
+    expect(linha.desfecho).toBe('vigia-indefinido');
+    expect(linha.detalhe).toBe('tela: www.comprasnet.gov.br/seguro/loginPortal.asp ("Compras.gov.br") · com captcha');
+    expect(m.linhas[0]).not.toContain('NAO-GRAVAR');
+  });
+
+  it('indefinido com a página sem leitura ainda grava a linha', async () => {
+    const m = montar('fora', { page: { url: () => { throw new Error('Target closed'); } } });
+    expect(await m.vigia.conferir('perfis/comprasgov-aaaa')).toBe('indefinido');
+    expect(JSON.parse(m.linhas[0]).detalhe).toBe('tela: endereco ilegivel');
   });
 
   it('perfil em uso por uma disputa não é tocado', async () => {

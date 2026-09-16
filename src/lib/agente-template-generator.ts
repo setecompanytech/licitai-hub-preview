@@ -2177,6 +2177,20 @@ function criarVigia(sessionManager, opcoes = {}) {
     }
   }
 
+  async function telaOndeParou(page) {
+    let endereco = 'endereco ilegivel';
+    try {
+      const semParametros = String(page.url()).split('?')[0].split('#')[0];
+      const i = semParametros.indexOf('://');
+      endereco = (i >= 0 ? semParametros.slice(i + 3) : semParametros) || endereco;
+    } catch (e) {}
+    const titulo = await Promise.resolve(page.title ? page.title() : '').catch(() => '');
+    const captcha = await Promise.resolve(page.evaluate
+      ? page.evaluate(() => !!document.querySelector('iframe[src*="hcaptcha"], .h-captcha, [data-hcaptcha-widget-id]'))
+      : false).catch(() => false);
+    return ('tela: ' + endereco + (titulo ? ' ("' + String(titulo).slice(0, 60) + '")' : '') + (captcha ? ' · com captcha' : '')).slice(0, 200);
+  }
+
   async function conferir(pasta) {
     const anterior = estado.get(pasta);
     if (anterior && anterior.resultado === 'vencida' && !usadaDepoisDe(pasta, anterior.em)) {
@@ -2200,6 +2214,11 @@ function criarVigia(sessionManager, opcoes = {}) {
         await portal.page.goto(portal.loginUrl, { waitUntil: 'networkidle2', timeout: 45000 });
         const destino = await portal.destinoDoSso();
         resultado = destino === 'logado' ? 'logado' : destino === 'login' ? 'vencida' : 'indefinido';
+        // INDEFINIDO SEM PISTA NAO SERVE (16/09/2026, 17:21): a conferencia
+        // nao chegou nem ao login nem a area logada, e a linha nao dizia em
+        // que tela parou. Endereco sem a parte de parametros (pode levar
+        // token), titulo e se havia captcha.
+        if (resultado === 'indefinido') detalhe = await telaOndeParou(portal.page);
       }
     } catch (e) {
       detalhe = String((e && e.message) || e).slice(0, 200);
