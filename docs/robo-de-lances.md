@@ -477,7 +477,11 @@ Dois esclarecimentos para não perder no caminho:
   - o webhook leva a estratégia de cada item ao agente, no envio manual e no agendador, e o limite vazio segue vazio (os dois faziam `|| 20`). O agendador passou a registrar no log quando os itens da sessão não são gravados — antes a falha passava calada;
   - o aviso de sessão encerrada, no sino e no mural do processo, cita **o motivo e quantos lances o robô enviou**, e deixou de afirmar "o robô acompanha e não envia lance", que vai deixar de ser verdade quando a trava abrir;
   - migration `20260916000003`: `max_lances` deixa de ser obrigatória. Disputas existentes continuam com o número que têm
-- [ ] **Pôr no ar, nesta ordem** (cada passo com o OK do Ian): **1.** aplicar o SQL `20260916000003` — antes da tela, senão salvar disputa sem limite dá erro de banco; **2.** publicar o `robo-lances-webhook`; **3.** instalar `estrategia.js`, `session-manager.js` e `portals/comprasgov.js` na VPS, com md5 igual ao template e nenhuma sessão ativa; **4.** push e publicação da tela (versão `2026-09-16.2`). Webhook e agente novos convivem com a tela antiga: estratégia ausente é melhor preço, limite 20 continua 20
+- **Pôr no ar, nesta ordem** (cada passo com o OK do Ian). Webhook e agente novos convivem com a tela antiga: estratégia ausente é melhor preço, limite 20 continua 20
+  - [x] **1.** SQL `20260916000003` aplicado em 16/09 no editor do projeto `uwtyuwktxalnpgrcbbgk` — `ALTER COLUMN max_lances DROP NOT NULL` respondeu "Success". Veio antes da tela de propósito: com a coluna obrigatória, salvar disputa sem limite daria erro de banco
+  - [ ] **2.** publicar o `robo-lances-webhook`
+  - [ ] **3.** instalar `estrategia.js`, `session-manager.js` e `portals/comprasgov.js` na VPS, com md5 igual ao template e nenhuma sessão ativa
+  - [ ] **4.** push e publicação da tela (versão `2026-09-16.2`)
 - [ ] Mostrar a estratégia de cada item também na página da disputa, sem alargar a tabela (sob o piso, como texto pequeno)
 
 **Fase 3 — proposta (etapa 1 da esteira)**
