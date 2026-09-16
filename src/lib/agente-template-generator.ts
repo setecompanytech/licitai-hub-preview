@@ -392,7 +392,7 @@ app.post('/sessao/pausar', authMiddleware, (req, res) => {
 // ─── POST /sessao/encerrar ───
 app.post('/sessao/encerrar', authMiddleware, (req, res) => {
   const { sessao_id } = req.body;
-  const result = sessionManager.endSession(sessao_id);
+  const result = sessionManager.endSession(sessao_id, 'Encerrada a pedido, pelo painel');
   if (!result) return res.status(404).json({ error: 'Sessão não encontrada' });
   res.json({ success: true, status: 'encerrado' });
 });
@@ -720,7 +720,7 @@ app.listen(PORT, BIND_HOST, () => {
   'src/session-manager.js': `const { launchBrowser } = require('./browser');
 const { sendCallback } = require('./callback');
 const { getPortal } = require('./portals');
-const { decidirLance, conferirItens } = require('./estrategia');
+const { decidirLance, conferirItens, proximaLeituraMs } = require('./estrategia');
 const os = require('os');
 const fs = require('fs');
 const path = require('path');
@@ -931,6 +931,21 @@ class SessionManager {
         }
       }
 
+      // ── A REGRA DO EDITAL PARA O ITEM ACOMPANHADO ─────────────────────────
+      //
+      // Modo de disputa e intervalo minimo entre lances: o portal publica os
+      // dois, e a estrategia precisa deles (um lance com diferenca menor que o
+      // intervalo e recusado). Lidos uma vez — nao mudam durante a sessao.
+      // Portal que nao sabe ler segue como antes, com o decremento configurado.
+      session.detalhesDoItem = null;
+      if (typeof session.portal.lerDetalhesDoItem === 'function' && session.itens.length) {
+        try {
+          session.detalhesDoItem = await session.portal.lerDetalhesDoItem(session.itens[0].numero);
+        } catch (e) {
+          console.error(\`[\${config.sessao_id}] Falha ao ler modo e intervalo do item: \${e.message}\`);
+        }
+      }
+
       // ─── "CHEGUEI NA SALA" ────────────────────────────────────────────
       //
       // O robo passa a entrar sozinho no horario da sessao, e quem cadastrou
@@ -945,6 +960,8 @@ class SessionManager {
         await sendCallback(session, 'sessao-ativa', {
           itens: session.itens.length,
           tipo_disputa: session.tipo_disputa,
+          modo_disputa: session.detalhesDoItem ? session.detalhesDoItem.modo_texto : null,
+          intervalo_minimo: session.detalhesDoItem ? session.detalhesDoItem.intervalo_minimo : null,
           url: session.portal.page && typeof session.portal.page.url === 'function'
             ? session.portal.page.url()
             : null,
@@ -1073,13 +1090,53 @@ class SessionManager {
     }
   }
 
+  /**
+   * O LACO DE LANCES.
+   *
+   * Cada rodada: le o chat, le a sala, decide (decidirLance, funcao pura e
+   * testada) e, se for o caso, envia e confere. A proxima rodada e agendada
+   * so DEPOIS que esta termina, no ritmo que proximaLeituraMs escolhe — o
+   * intervalo da disputa fora da iminencia, poucos segundos dentro dela. Com
+   * setInterval fixo, uma leitura lenta (a pagina publica demora) encavalava
+   * com a seguinte.
+   *
+   * O TETO NAO MORA MAIS AQUI. Ate 16/09/2026 o laco encerrava a sessao em
+   * max_lances RODADAS, antes de qualquer decisao: o padrao de 20 rodadas a
+   * 30 s tirava o robo da sala em 10 minutos, com ou sem lance. Agora o teto
+   * conta lances enviados, e quem decide e decidirLance.
+   *
+   * O que encerra uma sessao que so observa (trava fechada, ou item sem
+   * lance possivel) e o limite de seguranca HORAS_MAXIMAS_SESSAO (padrao 10),
+   * alem do botao de parar: um Chrome esquecido ocupa uma das poucas vagas
+   * do servidor.
+   */
   _startBiddingLoop(session) {
-    const intervalMs = (session.intervalo_segundos || 30) * 1000;
+    // Uma geracao por laco. Pausar e retomar depressa, com uma rodada ainda em
+    // curso, deixaria dois lacos vivos decidindo pela mesma sessao; o que nao
+    // e da geracao atual para sozinho.
+    session.lacoGeracao = (session.lacoGeracao || 0) + 1;
+    const geracao = session.lacoGeracao;
+    if (!Number.isFinite(session.lances_enviados)) session.lances_enviados = 0;
+    if (session.ultimo_lance_aceito === undefined) session.ultimo_lance_aceito = null;
 
-    session.interval = setInterval(async () => {
-      if (session.status !== 'ativo') return;
-      if (session.rodada >= session.max_lances) {
-        this.endSession(session.sessao_id);
+    const horasMaximas = Number(process.env.HORAS_MAXIMAS_SESSAO ?? 10);
+    const vivo = () => session.status === 'ativo' && session.lacoGeracao === geracao;
+
+    const agendar = (ms) => {
+      if (!vivo()) return;
+      session.interval = setTimeout(rodada, ms);
+    };
+
+    const rodada = async () => {
+      if (!vivo()) return;
+      let proxima = proximaLeituraMs({ intervaloSegundos: session.intervalo_segundos });
+
+      const aberta = Date.now() - new Date(session.created_at).getTime();
+      if (Number.isFinite(horasMaximas) && horasMaximas > 0 && aberta > horasMaximas * 3600 * 1000) {
+        this.endSession(
+          session.sessao_id,
+          \`Sessao aberta ha mais de \${horasMaximas} h — limite de seguranca (HORAS_MAXIMAS_SESSAO)\`
+        );
         return;
       }
 
@@ -1118,6 +1175,11 @@ class SessionManager {
         // 1. Ler o estado da disputa no portal
         const melhorLance = await session.portal.lerMelhorLance();
         const souLider = await session.portal.souLider?.() ?? null;
+        // Fase, tempo restante e elegibilidade saem da sala logada, que ainda
+        // nao foi mapeada: nenhum portal implementa lerSala hoje, e o vazio
+        // chega a decidirLance como "nao sei".
+        const sala = (await session.portal.lerSala?.()) || {};
+        const nossoNoPortal = await session.portal.nossoLance?.() ?? null;
 
         if (melhorLance !== null && melhorLance < session.valor_atual) {
           await sendCallback(session, 'lance-concorrente', {
@@ -1127,35 +1189,74 @@ class SessionManager {
           });
         }
 
+        // O item que o robo acompanha. A estrategia e o piso sao DELE; o piso
+        // da disputa inteira so vale para item que nao tem o proprio.
+        const item = session.itens[0] || {};
+        const pisoDoItem = Number(item.valor_minimo);
+        const piso = Number.isFinite(pisoDoItem) && pisoDoItem > 0 ? pisoDoItem : Number(session.valor_minimo);
+
+        // Nosso ultimo valor: o que o portal publica para o nosso CNPJ, ou o
+        // ultimo lance que o portal aceitou nesta sessao, se for menor (a
+        // pagina publica pode estar atrasada). So sem nenhum dos dois cai no
+        // valor inicial da disputa.
+        const conhecidos = [nossoNoPortal, session.ultimo_lance_aceito].filter((v) => Number.isFinite(v));
+        const valorAtual = conhecidos.length ? Math.min(...conhecidos) : session.valor_atual;
+
+        const detalhes = session.detalhesDoItem || {};
+
         // 2. Decidir — função pura, testada em src/test/robo-estrategia.test.ts.
         // A conta vivia aqui dentro e cobria o proprio lance quando liderava,
         // descendo o preco ate o piso sem concorrente nenhum.
         const decisao = decidirLance({
           portalId: session.portal_id,
-          valorAtual: session.valor_atual,
-          valorMinimo: session.valor_minimo,
+          valorAtual,
+          valorMinimo: piso,
           melhorLance,
           souLider,
           decrementoMin: session.decremento_min,
           decrementoPercentual: session.decremento_percentual,
-          rodada: session.rodada,
+          intervaloMinimo: detalhes.intervalo_minimo,
+          intervaloMinimoPercentual: detalhes.intervalo_minimo_percentual,
+          estrategia: item.estrategia,
+          fase: sala.fase,
+          segundosRestantes: sala.segundosRestantes,
+          elegivel: sala.elegivel,
+          lanceFinalFechado: Number(item.lance_final_fechado),
+          lanceFechadoEnviado: session.lance_fechado_enviado === true,
+          lancesEnviados: session.lances_enviados,
           maxLances: session.max_lances,
+          rodada: session.rodada,
+        });
+
+        proxima = proximaLeituraMs({
+          intervaloSegundos: session.intervalo_segundos,
+          fase: sala.fase,
+          segundosRestantes: sala.segundosRestantes,
         });
 
         if (decisao.acao === 'encerrar') {
           console.log(\`[\${session.sessao_id}] \${decisao.motivo}\`);
-          this.endSession(session.sessao_id);
+          this.endSession(session.sessao_id, decisao.motivo);
           return;
         }
 
         if (decisao.acao === 'aguardar') {
           console.log(\`[\${session.sessao_id}] Rodada \${session.rodada} sem lance: \${decisao.motivo}\`);
-          await sendCallback(session, 'rodada-sem-lance', {
-            rodada: session.rodada,
-            motivo: decisao.motivo,
-            melhor_lance: melhorLance,
-            sou_lider: souLider,
-          });
+          // Na iminencia o laco roda a cada poucos segundos. O aviso de rodada
+          // sem lance so sai quando o motivo muda, ou a cada 30 s — e isso que
+          // diz "a sessao esta viva", e repetir o mesmo motivo nao diz mais.
+          const agora = Date.now();
+          if (decisao.motivo !== session.ultimoMotivoAvisado || agora - (session.ultimoAvisoEm || 0) >= 30000) {
+            session.ultimoMotivoAvisado = decisao.motivo;
+            session.ultimoAvisoEm = agora;
+            await sendCallback(session, 'rodada-sem-lance', {
+              rodada: session.rodada,
+              motivo: decisao.motivo,
+              melhor_lance: melhorLance,
+              sou_lider: souLider,
+              estrategia: item.estrategia || 'melhor_preco',
+            });
+          }
           return;
         }
 
@@ -1182,6 +1283,9 @@ class SessionManager {
         }
 
         session.valor_atual = novoValor;
+        session.ultimo_lance_aceito = novoValor;
+        session.lances_enviados += 1;
+        if (sala.fase === 'fechada') session.lance_fechado_enviado = true;
 
         await sendCallback(session, 'lance-enviado', {
           rodada: session.rodada,
@@ -1189,25 +1293,30 @@ class SessionManager {
           tipo_lance: 'meu',
           resultado,
           motivo: decisao.motivo,
-          metadata: { timestamp: new Date().toISOString() },
+          lances_enviados: session.lances_enviados,
+          metadata: { timestamp: new Date().toISOString(), estrategia: item.estrategia || 'melhor_preco' },
         });
 
         console.log(
-          \`[\${session.sessao_id}] Rodada \${session.rodada} | R$ \${novoValor.toFixed(2)} | \${resultado}\`
+          \`[\${session.sessao_id}] Rodada \${session.rodada} | lance \${session.lances_enviados} | R$ \${novoValor.toFixed(2)} | \${resultado}\`
         );
       } catch (err) {
         console.error(\`[\${session.sessao_id}] Erro rodada \${session.rodada}:\`, err);
         await session.portal.screenshot?.('erro-rodada-' + session.rodada).catch(() => {});
         await sendCallback(session, 'erro', { mensagem: err.message, rodada: session.rodada });
+      } finally {
+        agendar(proxima);
       }
-    }, intervalMs);
+    };
+
+    agendar(proximaLeituraMs({ intervaloSegundos: session.intervalo_segundos }));
   }
 
   pauseSession(sessaoId) {
     const session = this.sessions.get(sessaoId);
     if (!session) return null;
     session.status = 'pausado';
-    if (session.interval) clearInterval(session.interval);
+    if (session.interval) clearTimeout(session.interval);
     // O heartbeat segue: sessao pausada continua existindo e o painel precisa
     // saber. O que NAO pode e o Chromium sumir da contabilidade — ver
     // getCapacity, que passou a contar pausadas.
@@ -1224,11 +1333,17 @@ class SessionManager {
     return session;
   }
 
-  endSession(sessaoId) {
+  /**
+   * @param {string} sessaoId
+   * @param {string} [motivo] por que acabou — vai no callback e no log, para
+   *        que "o robo saiu da sala" venha sempre com a razao (piso, teto,
+   *        item encerrado no portal, limite de horas, pedido de alguem).
+   */
+  endSession(sessaoId, motivo) {
     const session = this.sessions.get(sessaoId);
     if (!session) return null;
     session.status = 'encerrado';
-    if (session.interval) clearInterval(session.interval);
+    if (session.interval) clearTimeout(session.interval);
     if (session.heartbeatInterval) clearInterval(session.heartbeatInterval);
     this._stopGravador(session);
     if (session.browser) session.browser.close().catch(() => {});
@@ -1237,9 +1352,11 @@ class SessionManager {
       resultado: 'finalizado',
       valor_final: session.valor_atual,
       total_rodadas: session.rodada,
+      lances_enviados: session.lances_enviados || 0,
+      motivo: motivo || null,
     });
 
-    console.log(\`🏁 Sessão \${sessaoId} encerrada. Ativas: \${this.getActiveSessions().length}\`);
+    console.log(\`🏁 Sessão \${sessaoId} encerrada\${motivo ? ' — ' + motivo : ''}. Ativas: \${this.getActiveSessions().length}\`);
     return session;
   }
 
@@ -1253,7 +1370,7 @@ class SessionManager {
     
     for (const session of ativas) {
       session.status = 'encerrado';
-      if (session.interval) clearInterval(session.interval);
+      if (session.interval) clearTimeout(session.interval);
       if (session.heartbeatInterval) clearInterval(session.heartbeatInterval);
       this._stopGravador(session);
       // Pedido sem tela e pedido zumbi: some com ele junto da sessao.
