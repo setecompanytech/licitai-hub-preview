@@ -1278,6 +1278,20 @@ serve(async (req) => {
                 link: "/admin/robo-lances",
               })),
             );
+            // Canal fora do sistema (Fase 8): o captcha espera minutos, e quem
+            // resolve pode não estar com o Praefectus aberto. Em segundo plano:
+            // o robô espera esta resposta só 10 s e reenvia o callback — e-mail
+            // lento aqui duplicaria o aviso.
+            emSegundoPlano(avisarPorEmail(
+              supabase,
+              idsAdmin as string[],
+              {
+                titulo: `🧑 Robô esperando uma pessoa — ${sessao.edital}`,
+                mensagem: `O robô parou em ${sessao.portal_nome} esperando ${oQue}${ate ? `, até as ${ate}` : ""}. Abra a tela remota na área admin do Robô de Lances.`,
+                link: "/admin/robo-lances",
+              },
+              `pedido-humano:${sessao_id}:${String(payload?.expira_em || tipoPedido)}`,
+            ));
           }
 
           if (!idsAdmin.includes(userId)) {
@@ -3021,6 +3035,9 @@ async function enviarLembretesDeProntidao(
       [...destinatarios].map((uid) => ({ user_id: uid, tipo: texto.tipo, titulo: texto.titulo, mensagem: texto.mensagem, link })),
     );
 
+    const chaveDoEmail = `lembrete:${d.id}:${qual}:${d.inicio_sessao}`;
+    const email = await avisarPorEmail(supabase, [...destinatarios], { titulo: texto.titulo, mensagem: texto.mensagem, link }, chaveDoEmail);
+
     const chamaEquipe = pendencias.some((p) => p.chave === "gov-br-vencida" || p.chave === "robo-sem-resposta");
     if (chamaEquipe) {
       const { data: admins } = await supabase.from("user_roles").select("user_id").eq("role", "admin");
@@ -3035,11 +3052,17 @@ async function enviarLembretesDeProntidao(
             link: "/admin/robo-lances",
           })),
         );
+        await avisarPorEmail(
+          supabase,
+          idsAdmin as string[],
+          { titulo: `🔐 Robô vai precisar da equipe — ${d.edital}`, mensagem: texto.mensagem, link: "/admin/robo-lances" },
+          `${chaveDoEmail}:equipe`,
+        );
       }
     }
 
     await registrarNoLog(supabase, donoId, "lembrete-prontidao", { disputa_id: d.id, qual, pendencias: pendencias.map((p) => p.chave) }, erroAviso ? { erro: erroAviso.message } : {});
-    feitos.push({ disputa: d.id, qual, pendencias: pendencias.map((p) => p.chave), avisados: destinatarios.size, chamou_equipe: chamaEquipe });
+    feitos.push({ disputa: d.id, qual, pendencias: pendencias.map((p) => p.chave), avisados: destinatarios.size, emails: email, chamou_equipe: chamaEquipe });
   }
   return feitos;
 }
@@ -3128,6 +3151,7 @@ async function avisarSessoesVencidas(
         await supabase.from("notificacoes").insert(
           destinatarios.map((uid) => ({ user_id: uid, tipo: "alerta", titulo: texto.titulo, mensagem: texto.mensagem, link: "/admin/robo-lances" })),
         );
+        await avisarPorEmail(supabase, destinatarios, { titulo: texto.titulo, mensagem: texto.mensagem, link: "/admin/robo-lances" }, `vigia:${vencida.chave}`);
       }
       const quemRegistra = dono ?? destinatarios[0] ?? null;
       if (quemRegistra) {
@@ -3140,6 +3164,74 @@ async function avisarSessoesVencidas(
     }
   }
   return feitos;
+}
+
+/** Trabalho que continua depois da resposta (`EdgeRuntime.waitUntil`); sem ele, espera. */
+function emSegundoPlano(tarefa: Promise<unknown>): void {
+  const runtime = (globalThis as { EdgeRuntime?: { waitUntil?: (p: Promise<unknown>) => void } }).EdgeRuntime;
+  if (runtime?.waitUntil) runtime.waitUntil(tarefa.catch(() => {}));
+  else void tarefa.catch(() => {});
+}
+
+/**
+ * O aviso do robô também por e-mail (Fase 8, 16/09/2026) — canal fora do
+ * sistema, para quem não está com o Praefectus aberto.
+ *
+ * Usa a fila de e-mail que o sistema já tem (`send-transactional-email`, modelo
+ * `notificacao-sistema`, com lista de supressão e descadastro). O e-mail vem da
+ * conta de cada destinatário. `chave` + usuário é a idempotência: o mesmo aviso
+ * não sai duas vezes para a mesma pessoa. Falha de e-mail nunca derruba o
+ * aviso do sininho, que já foi gravado antes — só entra na contagem.
+ *
+ * WhatsApp fica de fora de propósito: `whatsapp-envio` hoje só SIMULA o envio
+ * (não há provedor contratado).
+ */
+async function avisarPorEmail(
+  supabase: any,
+  destinatarios: ReadonlyArray<string>,
+  aviso: { titulo: string; mensagem: string; link: string },
+  chave: string,
+): Promise<{ enviados: number; falhas: number }> {
+  const url = Deno.env.get("SUPABASE_URL");
+  const chaveDeServico = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const resultado = { enviados: 0, falhas: 0 };
+  if (!url || !chaveDeServico) return { enviados: 0, falhas: destinatarios.length };
+
+  for (const uid of new Set(destinatarios)) {
+    try {
+      const { data } = await supabase.auth.admin.getUserById(uid);
+      const email = data?.user?.email;
+      if (!email) {
+        resultado.falhas++;
+        continue;
+      }
+      const r = await fetch(`${url}/functions/v1/send-transactional-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${chaveDeServico}`, apikey: chaveDeServico },
+        body: JSON.stringify({
+          templateName: "notificacao-sistema",
+          recipientEmail: email,
+          idempotencyKey: `robo:${chave}:${uid}`,
+          templateData: {
+            titulo: aviso.titulo,
+            mensagem: aviso.mensagem,
+            ctaText: "Abrir no Praefectus",
+            ctaUrl: `https://praefectus.com.br${aviso.link}`,
+          },
+        }),
+        signal: AbortSignal.timeout(10000),
+      });
+      if (r.ok) resultado.enviados++;
+      else {
+        resultado.falhas++;
+        console.error(`robo-lances-webhook: e-mail do aviso (${chave}) recusado: HTTP ${r.status}`);
+      }
+    } catch (e) {
+      resultado.falhas++;
+      console.error(`robo-lances-webhook: e-mail do aviso (${chave}) falhou:`, textoDoErro(e));
+    }
+  }
+  return resultado;
 }
 
 /** `robo_empresa_config` → ligado / desligado / indeterminado (ver `estadoDoLigado`). */
