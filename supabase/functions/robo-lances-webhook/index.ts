@@ -570,6 +570,7 @@ serve(async (req) => {
               // Não é coluna de `sessao_lance_itens`: vai só ao agente, lida do
               // item como veio da tela. Vazio = melhor preço.
               estrategia: (itens[idx] as Record<string, unknown>)?.estrategia ?? null,
+              margem_desempate: (itens[idx] as Record<string, unknown>)?.margem_desempate ?? null,
             })),
           }),
           // 10s era MENOS que o trabalho pedido. O agente so responde depois
@@ -885,8 +886,12 @@ serve(async (req) => {
               credenciais_portal: credenciais,
               uasg: d.uasg ?? null,
               cnpj_empresa: cnpjDaEmpresa,
-              // A estratégia não é coluna de `sessao_lance_itens`: entra só aqui.
-              itens: itensParaSessao.map((i, idx) => ({ ...i, estrategia: itensCadastrados[idx]?.estrategia ?? null })),
+              // Estratégia e margem não são colunas de `sessao_lance_itens`: entram só aqui.
+              itens: itensParaSessao.map((i, idx) => ({
+                ...i,
+                estrategia: itensCadastrados[idx]?.estrategia ?? null,
+                margem_desempate: itensCadastrados[idx]?.margemDesempate ?? null,
+              })),
             }),
             signal: AbortSignal.timeout(60000),
           });
