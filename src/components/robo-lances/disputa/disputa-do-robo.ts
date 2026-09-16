@@ -45,6 +45,7 @@ export function linhaParaLance(r: Record<string, unknown>): LanceConfig {
     modoAutomatico: !!r.modo_automatico,
     status: (r.status as LanceConfig['status']) || 'aguardando',
     horario: String(r.horario || ''),
+    dataSessao: dataLocalDoTimestamp(r.inicio_sessao),
     meuLance: Number(r.meu_lance) || 0,
     valorAtual: Number(r.valor_atual) || 0,
     // Piso `0` gravado ANTES de 13/09 nunca foi decisão de ninguém: era o valor
@@ -113,6 +114,7 @@ export async function gravarDisputa(lance: LanceConfig, ctx: ContextoDaGravacao)
     max_lances: lance.maxLances,
     modo_automatico: lance.modoAutomatico,
     horario: lance.horario || null,
+    inicio_sessao: inicioDaSessao(lance.dataSessao, lance.horario),
     status: lance.status,
     meu_lance: lance.meuLance,
     valor_atual: lance.valorAtual,
@@ -201,4 +203,33 @@ export async function postarResultadoNoMural(
   } catch (err) {
     console.error('Erro ao postar no mural:', err);
   }
+}
+
+/**
+ * Data e hora da sessão viram UM instante, que é o que o agendador lê.
+ *
+ * Declarações de função sobem no módulo, então estas duas podem ser usadas
+ * acima. A conversão é pelo relógio de quem cadastra: o operador digita
+ * "09:00" pensando no horário de Brasília, e é assim que o navegador monta a
+ * data — gravar o texto cru deixaria "09:00" sem dia, que é o problema que
+ * esta coluna existe para resolver.
+ */
+function inicioDaSessao(data?: string, hora?: string): string | null {
+  if (!data) return null;
+  const instante = new Date(`${data}T${(hora && hora.length >= 4 ? hora : '00:00').slice(0, 5)}:00`);
+  return Number.isNaN(instante.getTime()) ? null : instante.toISOString();
+}
+
+/**
+ * O caminho de volta: instante gravado → "AAAA-MM-DD" no fuso de quem lê.
+ *
+ * Fatiar o ISO (que é UTC) mostraria o dia seguinte numa sessão da noite.
+ */
+function dataLocalDoTimestamp(valor: unknown): string {
+  if (!valor) return '';
+  const d = new Date(String(valor));
+  if (Number.isNaN(d.getTime())) return '';
+  const mes = String(d.getMonth() + 1).padStart(2, '0');
+  const dia = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${mes}-${dia}`;
 }

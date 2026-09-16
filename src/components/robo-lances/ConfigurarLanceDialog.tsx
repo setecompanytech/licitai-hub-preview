@@ -103,6 +103,11 @@ export type LanceConfig = {
   modoAutomatico: boolean;
   status: 'aguardando' | 'ativo' | 'vencendo' | 'perdendo' | 'encerrado';
   horario: string;
+  /**
+   * Data da sessão pública (AAAA-MM-DD). Com ela e o horário, o robô entra
+   * sozinho no dia; sem ela, a disputa continua sendo enviada por clique.
+   */
+  dataSessao?: string;
   meuLance: number;
   valorAtual: number;
   itens: DisputeItem[];
@@ -318,6 +323,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
   const [maxLances, setMaxLances] = useState(editingLance?.maxLances?.toString() || '20');
   const [modoAutomatico, setModoAutomatico] = useState(editingLance?.modoAutomatico ?? true);
   const [horario, setHorario] = useState(editingLance?.horario || '');
+  const [dataSessao, setDataSessao] = useState(editingLance?.dataSessao || '');
 
   // Step 2 fields
   const [tipoDisputa, setTipoDisputa] = useState<'item' | 'lote'>(editingLance?.tipoDisputa || 'item');
@@ -799,6 +805,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
     setDecrementoMin(editingLance?.decrementoMin?.toString() || ''); setDecrementoPercentual(editingLance?.decrementoPercentual?.toString() || '1.5');
     setIntervaloSegundos(editingLance?.intervaloSegundos?.toString() || '30'); setMaxLances(editingLance?.maxLances?.toString() || '20');
     setModoAutomatico(editingLance?.modoAutomatico ?? true); setHorario(editingLance?.horario || '');
+    setDataSessao(editingLance?.dataSessao || '');
     setItens(editingLance?.itens || []); setTipoDisputa(editingLance?.tipoDisputa || 'item'); setStep(editingLance ? 1 : 0);
     setSelectedLicId(null); setSearchLic(''); setStatusFilter('todos'); setLicitacaoIdRef(editingLance?.licitacaoId);
     setTrocarProcesso(false);
@@ -867,6 +874,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
       intervaloSegundos: parseInt(intervaloSegundos) || 30,
       maxLances: parseInt(maxLances) || 20,
       modoAutomatico, status: 'aguardando', horario,
+      dataSessao: dataSessao || undefined,
       meuLance: editingLance?.meuLance || 0,
       valorAtual: somaReferencia,
       itens, tipoDisputa,
@@ -1313,6 +1321,20 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                   </p>
                 </div>
               )}
+              <div>
+                <Label htmlFor="disputa-data">Data da Sessão</Label>
+                <Input
+                  id="disputa-data"
+                  type="date"
+                  value={dataSessao}
+                  onChange={(e) => setDataSessao(e.target.value)}
+                  className="mt-1 w-full"
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Com data e horário preenchidos, o robô entra sozinho na sala quando a
+                  sessão abrir. Sem a data, a disputa só é enviada por clique.
+                </p>
+              </div>
               <div>
                 <Label htmlFor="disputa-horario">Horário da Sessão</Label>
                 <Input id="disputa-horario" type="time" value={horario} onChange={(e) => setHorario(e.target.value)} className="mt-1 w-full sm:w-40" />
