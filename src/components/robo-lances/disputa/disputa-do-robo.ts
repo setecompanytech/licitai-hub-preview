@@ -41,7 +41,9 @@ export function linhaParaLance(r: Record<string, unknown>): LanceConfig {
     decrementoMin: Number(r.decremento_min) || 0,
     decrementoPercentual: Number(r.decremento_percentual) || 0,
     intervaloSegundos: Number(r.intervalo_segundos) || 30,
-    maxLances: Number(r.max_lances) || 20,
+    // Nulo é "sem limite" (migration 20260916000003), e não 20: o `|| 20` de
+    // antes transformava a escolha de disputar até o piso num teto de 20.
+    maxLances: Number(r.max_lances) > 0 ? Number(r.max_lances) : null,
     modoAutomatico: !!r.modo_automatico,
     status: (r.status as LanceConfig['status']) || 'aguardando',
     horario: String(r.horario || ''),

@@ -18,6 +18,7 @@ import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
 import { supabase } from '@/integrations/supabase/client';
 import { gravarFase, postarResultadoNoMural, proximoStatus, removerDisputa } from './disputa-do-robo';
+import { textoDoLimiteDeLances } from '@/lib/robo/estrategia-do-item';
 
 const moeda = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -259,7 +260,7 @@ export default function AcoesDaDisputa({ lance, nivel, aoAlterar, aoEncerrar, ao
               { icon: ArrowDown, label: 'Decremento Mínimo', value: moeda(lance.decrementoMin) },
               { icon: ArrowDown, label: 'Decremento Percentual', value: `${lance.decrementoPercentual}%` },
               { icon: Clock, label: 'Intervalo entre lances', value: `${lance.intervaloSegundos}s` },
-              { icon: ListChecks, label: 'Máx. Lances', value: String(lance.maxLances) },
+              { icon: ListChecks, label: 'Máx. Lances', value: textoDoLimiteDeLances(lance.maxLances) },
               { icon: Bot, label: 'Modo', value: lance.modoAutomatico ? 'Automático' : 'Manual' },
               { icon: Shield, label: 'Nível de Automação', value: `Nível ${nivel} — ${ROTULO_DO_NIVEL[nivel]}` },
             ].map((item) => (

@@ -28,6 +28,7 @@ import { useEditalExtraction, type LicitacaoItem } from '@/hooks/useEditalExtrac
 import { useLinkedEditalSource } from '@/hooks/useLinkedEditalSource';
 import LimparItensExtraidosButton from '@/components/licitacoes/LimparItensExtraidosButton';
 import { PORTAIS_ROBO, idDoPortal } from '@/lib/robo/portais';
+import { ESTRATEGIAS_DO_ITEM, type EstrategiaDoItem } from '@/lib/robo/estrategia-do-item';
 import { cn } from '@/lib/utils';
 
 // A lista mora em `src/lib/robo/portais.ts`, autoridade unica compartilhada com
@@ -66,6 +67,11 @@ export type DisputeItem = {
    * porque parece que alguém já preencheu.
    */
   valorMinimo: number | null;
+  /**
+   * Vazio = melhor preço, que é o que o robô fazia antes de a escolha existir:
+   * disputa cadastrada antes de 16/09 segue igual.
+   */
+  estrategia?: EstrategiaDoItem;
   lote: string;
   disputando: boolean;
   situacao: 'aguardando' | 'disputando' | 'encerrado';
@@ -99,7 +105,11 @@ export type LanceConfig = {
   decrementoMin: number;
   decrementoPercentual: number;
   intervaloSegundos: number;
-  maxLances: number;
+  /**
+   * Teto de lances ENVIADOS. `null` = sem teto: o robô disputa até o piso de
+   * cada item ("30 ou infinitamente até chegar no meu limite", reunião de 14/09).
+   */
+  maxLances: number | null;
   modoAutomatico: boolean;
   status: 'aguardando' | 'ativo' | 'vencendo' | 'perdendo' | 'encerrado';
   horario: string;
@@ -179,11 +189,13 @@ function LinhaDeItem({
   item,
   larguraDescricao,
   aoMudarPiso,
+  aoMudarEstrategia,
   aoRemover,
 }: {
   item: DisputeItem;
   larguraDescricao: string;
   aoMudarPiso: (id: string, texto: string) => void;
+  aoMudarEstrategia: (id: string, estrategia: EstrategiaDoItem) => void;
   aoRemover: (id: string) => void;
 }) {
   // `null` e `0` são estados diferentes e a tela precisa mostrar essa
@@ -235,6 +247,23 @@ function LinhaDeItem({
             semPiso ? 'border-warning-line placeholder:text-warning-ink' : ''
           }`}
         />
+      </TableCell>
+      <TableCell>
+        <Select
+          value={item.estrategia ?? 'melhor_preco'}
+          onValueChange={(v) => aoMudarEstrategia(item.id, v as EstrategiaDoItem)}
+        >
+          <SelectTrigger className="h-9 w-32 text-sm" aria-label={`Estratégia do item ${item.numero}`}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {ESTRATEGIAS_DO_ITEM.map((e) => (
+              <SelectItem key={e.id} value={e.id} title={e.explicacao}>
+                {e.nome}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </TableCell>
       <TableCell className="text-center">
         <Button
@@ -318,9 +347,9 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
   // O Compras.gov busca por "número+ano" e por UASG; os outros portais, não.
   const ehComprasGov = idDoPortal(portal) === 'compras-gov';
   const [decrementoMin, setDecrementoMin] = useState(editingLance?.decrementoMin?.toString() || '');
-  const [decrementoPercentual, setDecrementoPercentual] = useState(editingLance?.decrementoPercentual?.toString() || '1.5');
+  const [decrementoPercentual, setDecrementoPercentual] = useState(editingLance ? (editingLance.decrementoPercentual ? String(editingLance.decrementoPercentual) : '') : '1.5');
   const [intervaloSegundos, setIntervaloSegundos] = useState(editingLance?.intervaloSegundos?.toString() || '30');
-  const [maxLances, setMaxLances] = useState(editingLance?.maxLances?.toString() || '20');
+  const [maxLances, setMaxLances] = useState(editingLance ? (editingLance.maxLances ? String(editingLance.maxLances) : '') : '20');
   const [modoAutomatico, setModoAutomatico] = useState(editingLance?.modoAutomatico ?? true);
   const [horario, setHorario] = useState(editingLance?.horario || '');
   const [dataSessao, setDataSessao] = useState(editingLance?.dataSessao || '');
@@ -802,8 +831,8 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
   // Com a disputa em página própria, editar virou o caminho principal.
   const resetForm = () => {
     setEdital(editingLance?.edital || ''); setPortal(editingLance?.portal || ''); setUasg(editingLance?.uasg || '');
-    setDecrementoMin(editingLance?.decrementoMin?.toString() || ''); setDecrementoPercentual(editingLance?.decrementoPercentual?.toString() || '1.5');
-    setIntervaloSegundos(editingLance?.intervaloSegundos?.toString() || '30'); setMaxLances(editingLance?.maxLances?.toString() || '20');
+    setDecrementoMin(editingLance?.decrementoMin?.toString() || ''); setDecrementoPercentual(editingLance ? (editingLance.decrementoPercentual ? String(editingLance.decrementoPercentual) : '') : '1.5');
+    setIntervaloSegundos(editingLance?.intervaloSegundos?.toString() || '30'); setMaxLances(editingLance ? (editingLance.maxLances ? String(editingLance.maxLances) : '') : '20');
     setModoAutomatico(editingLance?.modoAutomatico ?? true); setHorario(editingLance?.horario || '');
     setDataSessao(editingLance?.dataSessao || '');
     setItens(editingLance?.itens || []); setTipoDisputa(editingLance?.tipoDisputa || 'item'); setStep(editingLance ? 1 : 0);
@@ -862,6 +891,10 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
     ));
   };
 
+  const handleEstrategiaItem = (id: string, estrategia: EstrategiaDoItem) => {
+    setItens(prev => prev.map(i => (i.id === id ? { ...i, estrategia } : i)));
+  };
+
   const handleSave = () => {
     const lance: LanceConfig = {
       id: editingLance?.id || crypto.randomUUID(),
@@ -870,9 +903,14 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
       valorInicial,
       valorMinimo,
       decrementoMin: parseFloat(decrementoMin) || 0,
-      decrementoPercentual: parseFloat(decrementoPercentual) || 1.5,
+      // Campo apagado é "sem decremento percentual", e não 1,5%: sem
+      // decremento nenhum, o robô usa o intervalo mínimo que o edital publica
+      // (R$ 0,0100 no 7/2026). O `|| 1.5` de antes gravava 1,5% mesmo com o
+      // campo vazio — um passo que ninguém escolheu.
+      decrementoPercentual: parseFloat(decrementoPercentual) > 0 ? parseFloat(decrementoPercentual) : 0,
       intervaloSegundos: parseInt(intervaloSegundos) || 30,
-      maxLances: parseInt(maxLances) || 20,
+      // Vazio ou zero = sem teto: o robô disputa até o piso de cada item.
+      maxLances: parseInt(maxLances) > 0 ? parseInt(maxLances) : null,
       modoAutomatico, status: 'aguardando', horario,
       dataSessao: dataSessao || undefined,
       meuLance: editingLance?.meuLance || 0,
@@ -1350,9 +1388,12 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                 </div>
                 <div>
                   <Label htmlFor="disputa-decremento-pct">Decremento Percentual (%)</Label>
-                  <Input id="disputa-decremento-pct" type="number" step="0.1" value={decrementoPercentual} onChange={(e) => setDecrementoPercentual(e.target.value)} placeholder="1.5" className="mt-1" />
+                  <Input id="disputa-decremento-pct" type="number" step="0.1" value={decrementoPercentual} onChange={(e) => setDecrementoPercentual(e.target.value)} placeholder="nenhum" className="mt-1" />
                 </div>
               </div>
+              <p className="text-sm text-muted-foreground">
+                Com os dois decrementos vazios, o robô usa o intervalo mínimo entre lances publicado no edital. Um decremento menor que esse intervalo sobe para ele, porque o portal recusaria o lance.
+              </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="disputa-intervalo">Intervalo entre lances (seg)</Label>
@@ -1360,7 +1401,8 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                 </div>
                 <div>
                   <Label htmlFor="disputa-max-lances">Máx. lances por sessão</Label>
-                  <Input id="disputa-max-lances" type="number" value={maxLances} onChange={(e) => setMaxLances(e.target.value)} placeholder="20" className="mt-1" />
+                  <Input id="disputa-max-lances" type="number" min={0} value={maxLances} onChange={(e) => setMaxLances(e.target.value)} placeholder="sem limite" className="mt-1" />
+                  <p className="text-sm text-muted-foreground mt-1">Conta os lances enviados. Vazio: disputa até o piso de cada item.</p>
                 </div>
               </div>
             </div>
@@ -1510,6 +1552,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                                 <TableHead className="text-right">Vlr Unit.</TableHead>
                                 <TableHead className="text-right">Vlr Total</TableHead>
                                 <TableHead className="text-right" title="Piso deste item — o robô não desce abaixo dele">Piso</TableHead>
+                                <TableHead title="Melhor preço: cobre o 1º lugar sempre. Iminência: só nos 2 minutos finais da etapa aberta.">Estratégia</TableHead>
                                 <TableHead className="w-10"><span className="sr-only">Ações</span></TableHead>
                               </TableRow>
                             </TableHeader>
@@ -1520,6 +1563,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                                   item={item}
                                   larguraDescricao="max-w-[180px]"
                                   aoMudarPiso={handlePisoItem}
+                                  aoMudarEstrategia={handleEstrategiaItem}
                                   aoRemover={handleRemoveItem}
                                 />
                               ))}
@@ -1542,6 +1586,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                           <TableHead className="text-right">Vlr Unit.</TableHead>
                           <TableHead className="text-right">Vlr Total</TableHead>
                           <TableHead className="text-right" title="Piso deste item — o robô não desce abaixo dele">Piso</TableHead>
+                                <TableHead title="Melhor preço: cobre o 1º lugar sempre. Iminência: só nos 2 minutos finais da etapa aberta.">Estratégia</TableHead>
                           <TableHead className="w-10"><span className="sr-only">Ações</span></TableHead>
                         </TableRow>
                       </TableHeader>
@@ -1552,6 +1597,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                             item={item}
                             larguraDescricao="max-w-[160px]"
                             aoMudarPiso={handlePisoItem}
+                            aoMudarEstrategia={handleEstrategiaItem}
                             aoRemover={handleRemoveItem}
                           />
                         ))}

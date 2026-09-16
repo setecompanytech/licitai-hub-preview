@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import * as vm from 'node:vm';
 import { ESTRATEGIA_FILES } from '@/lib/agent-template/estrategia';
+import { ESTRATEGIAS_DO_ITEM } from '@/lib/robo/estrategia-do-item';
 
 /**
  * A decisão de preço do robô, exercitada a partir do MESMO texto que vai para o
@@ -269,6 +270,16 @@ describe('estratégia por item', () => {
     expect(decidirLance(cenario({ estrategia: 'iminencia', segundosRestantes: 30, souLider: true })).acao).toBe('aguardar');
     expect(decidirLance(cenario({ estrategia: 'iminencia', segundosRestantes: 30, melhorLance: null })).acao).toBe('aguardar');
     expect(decidirLance(cenario({ estrategia: 'iminencia', segundosRestantes: 30, melhorLance: 54 })).acao).toBe('encerrar');
+  });
+});
+
+describe('a tela e o agente falam as mesmas estratégias', () => {
+  it('todo id que a tela oferece o agente conhece, e vice-versa', () => {
+    // Um id que só a tela conhece faria o robô aguardar em toda rodada, com a
+    // pessoa achando que escolheu uma estratégia válida.
+    const module = { exports: {} as { ESTRATEGIAS: string[] } };
+    new vm.Script(ESTRATEGIA_FILES['src/estrategia.js']).runInNewContext({ module, exports: module.exports });
+    expect(ESTRATEGIAS_DO_ITEM.map((e) => e.id).sort()).toEqual([...module.exports.ESTRATEGIAS].sort());
   });
 });
 

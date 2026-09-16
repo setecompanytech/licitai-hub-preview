@@ -106,6 +106,8 @@ export function useEnviarAoRobo({ empresaId, estadoDoRobo, relerLigado, portaisS
             // `null` viaja como `null`: piso ausente é decisão que ninguém tomou,
             // e o agente precisa distinguir isso de zero.
             valor_minimo: i.valorMinimo ?? null,
+            // Vazio viaja vazio: o agente trata como melhor preço.
+            estrategia: i.estrategia ?? null,
             origem: i.origem ?? null,
             disputando: i.disputando,
           })),

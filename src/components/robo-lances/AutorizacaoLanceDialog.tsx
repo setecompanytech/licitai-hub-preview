@@ -9,13 +9,14 @@ import { Badge } from '@/components/ui/badge';
 import { ShieldCheck, ArrowDown, DollarSign, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { toast } from 'sonner';
+import { textoDoLimiteDeLances } from '@/lib/robo/estrategia-do-item';
 
 type EstrategiaLance = {
   valorInicial: number;
   valorMinimo: number;
   decrementoMin: number;
   decrementoPercentual: number;
-  maxLances: number;
+  maxLances: number | null;
   intervaloSegundos: number;
 };
 
@@ -100,7 +101,7 @@ export default function AutorizacaoLanceDialog({
                 { label: 'Valor Mínimo (Piso)', value: formatCurrency(estrategia.valorMinimo), icon: ArrowDown },
                 { label: 'Decremento Mínimo', value: formatCurrency(estrategia.decrementoMin), icon: ArrowDown },
                 { label: 'Decremento %', value: `${estrategia.decrementoPercentual}%`, icon: ArrowDown },
-                { label: 'Máx. Lances', value: String(estrategia.maxLances), icon: CheckCircle2 },
+                { label: 'Máx. Lances', value: textoDoLimiteDeLances(estrategia.maxLances), icon: CheckCircle2 },
                 { label: 'Intervalo', value: `${estrategia.intervaloSegundos}s`, icon: CheckCircle2 },
               ].map((item) => (
                 <div key={item.label} className="bg-muted rounded-md p-3 flex items-center gap-2">

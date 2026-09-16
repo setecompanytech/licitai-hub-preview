@@ -6,6 +6,7 @@ import {
   Play, Pause, RotateCcw, TrendingDown, Clock, Hash, DollarSign, Info,
 } from 'lucide-react';
 import type { LanceConfig } from './ConfigurarLanceDialog';
+import { textoDoLimiteDeLances } from '@/lib/robo/estrategia-do-item';
 
 type LanceHistorico = {
   rodada: number;
@@ -87,7 +88,8 @@ export default function SimulacaoDisputa({ lance }: Props) {
   const executarLance = useCallback(() => {
     const novaRodada = rodadaRef.current + 1;
 
-    if (novaRodada > lance.maxLances) {
+    // Sem limite, a simulação segue até o piso — que encerra mais abaixo.
+    if (lance.maxLances && novaRodada > lance.maxLances) {
       pararSimulacao();
       registrar(`Simulação encerrada — limite de ${lance.maxLances} lances atingido.`, 'fim');
       return;
@@ -146,7 +148,7 @@ export default function SimulacaoDisputa({ lance }: Props) {
     registrar(
       `Simulação iniciada — ${lance.edital} (${lance.portal}) · referência ` +
       `${formatCurrency(lance.valorReferencia)} · inicial ${formatCurrency(lance.valorInicial)} · ` +
-      `piso ${formatCurrency(lance.valorMinimo)} · a cada ${lance.intervaloSegundos}s, até ${lance.maxLances} lances`,
+      `piso ${formatCurrency(lance.valorMinimo)} · a cada ${lance.intervaloSegundos}s, ${lance.maxLances ? `até ${lance.maxLances} lances` : 'sem limite de lances'}`,
     );
 
     // Os relógios nascem ANTES do primeiro lance: se ele já bater no piso,
@@ -206,7 +208,7 @@ export default function SimulacaoDisputa({ lance }: Props) {
         </div>
         <div className="flex flex-wrap gap-2">
           {!running ? (
-            <Button variant="outline" onClick={iniciarSimulacao} disabled={rodada >= lance.maxLances}>
+            <Button variant="outline" onClick={iniciarSimulacao} disabled={!!lance.maxLances && rodada >= lance.maxLances}>
               <Play className="w-4 h-4" aria-hidden="true" /> {rodada > 0 ? 'Retomar' : 'Iniciar'}
             </Button>
           ) : (
@@ -249,7 +251,7 @@ export default function SimulacaoDisputa({ lance }: Props) {
         <div className="bg-muted rounded-lg p-3 text-center">
           <Hash className="w-4 h-4 mx-auto text-muted-foreground mb-1" aria-hidden="true" />
           <p className="text-xs text-muted-foreground">Rodada</p>
-          <p className="text-base font-bold tabular-nums">{rodada} / {lance.maxLances}</p>
+          <p className="text-base font-bold tabular-nums">{rodada} / {textoDoLimiteDeLances(lance.maxLances)}</p>
         </div>
         <div className="bg-muted rounded-lg p-3 text-center">
           <Clock className="w-4 h-4 mx-auto text-muted-foreground mb-1" aria-hidden="true" />

@@ -12,6 +12,7 @@ import DialogoModoDeOperacao from '@/components/robo-lances/cliente/DialogoModoD
 import type { ModoDeOperacao } from '@/components/robo-lances/cliente/useModoDeOperacao';
 import type { LanceConfig } from '@/components/robo-lances/ConfigurarLanceDialog';
 import { formatarMoeda, formatarPercentual } from '@/components/workspace/robo/formatos';
+import { textoDoLimiteDeLances } from '@/lib/robo/estrategia-do-item';
 import { cn } from '@/lib/utils';
 
 /**
@@ -75,7 +76,7 @@ export default function EstrategiaDaDisputa({
                   numerico: lance.decrementoPercentual > 0,
                 },
                 { rotulo: 'Intervalo entre lances', valor: `${lance.intervaloSegundos} s`, numerico: true },
-                { rotulo: 'Máx. lances por sessão', valor: String(lance.maxLances), numerico: true },
+                { rotulo: 'Máx. lances por sessão', valor: textoDoLimiteDeLances(lance.maxLances), numerico: !!lance.maxLances },
                 { rotulo: 'Modo dos lances', valor: lance.modoAutomatico ? 'Automático' : 'Manual' },
                 { rotulo: 'Disputa', valor: lance.tipoDisputa === 'lote' ? 'Por lote' : 'Por item' },
                 {
