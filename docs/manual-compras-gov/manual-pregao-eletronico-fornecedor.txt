@@ -1,0 +1,870 @@
+ MINISTÉRIO DO PLANEJAMENTO, ORÇAMENTO E GESTÃO
+SECRETARIA DE LOGÍSTICA E TECNOLOGIA DA INFORMAÇÃO
+   DEPARTAMENTO DE LOGÍSTICA E SERVIÇOS GERAIS
+
+
+
+
+          PREGÃO ELETRÔNICO
+             Manual do Fornecedor
+
+
+
+
+                     Brasília
+                    Julho/2005
+MINISTRO DO PLANEJAMENTO, ORÇAMENTO E GESTÃO
+Paulo Bernardo Silva
+
+SECRETÁRIO EXECUTIVO
+Nelson Machado
+
+SECRETARIO DE LOGÍSTICA E TECNOLOGIA DA INFORMAÇÃO
+Rogério Santana dos Santos
+
+DIRETORA DO DEPARTAMENTO DE LOGÍSTICA E SERVIÇOS GERAIS
+Loreni Fracasso Foresti
+
+
+
+
+MP/SLTI/DLSG                                              2
+MINISTÉRIO DO PLANEJAMENTO, ORÇAMENTO E GESTÃO
+
+SECRETARIA DE LOGÍSTICA E TECNOLOGIA DA INFORMAÇÃO
+
+ESPLANADA DOS MINISTÉRIOS
+
+CEP - 70046-900 – BRASÍLIA - DF
+
+FONE: 0800782323
+
+E-MAIL: comprasnet@planejamento.gov.br
+
+Manual Elaborado pela Divisão de Sustentação Operacional do Departamento de Logística e
+Serviços Gerais.
+Gerente de Projetos: Carlos Henrique de Azevedo Moreira.
+Equipe: José Antonio de Aguiar Neto, Cléber Bueno.
+Colaboração: SERPRO
+
+
+
+
+NORMALIZAÇÃO : DIBIB/CODIN/CGAIN/SPOA/SE
+
+
+               Brasil. Ministério do Planejamento, Orçamento e Gestão.
+                   Secretaria de Logística e Tecnologia da Informação.
+                  Pregão eletrônico: manual do fornecedor / Secretaria de
+                   Logística e Tecnologia da Informação. - Brasília: MP, 2005.
+                  27p.
+
+
+                  1. Licitação. 2. Pregão. 3. Fornecedor. 4. Pregão Eletrônico.
+                  I. Brasil. Ministério do Planejamento, Orçamento e Gestão.
+                  II. Título.
+
+
+                                                            CDU –658.715(81)
+
+
+
+
+MP/SLTI/DLSG                                                                              3
+                                                                  SUMÁRIO
+
+
+1 APRESENTAÇÃO .......................................................................................................................................5
+
+
+2 ROTINAS DO PREGÃO ELETRÔNICO PARA LICITANTES .......................................................................6
+
+ACESSO SEGURO – SERVIÇOS DO PREGÃO ELETRÔNICO..............................................................6
+
+3 PROCEDIMENTOS PARA PARTICIPAÇÃO DA SESSÃO PÚBLICA DO PREGÃO ELETRÔNICO ................8
+
+3.1 CADASTRO DE FORNECEDOR...............................................................................................................8
+
+3.2 ACESSO SEGURO – SERVIÇOS DO PREGÃO ELETRÔNICO ................................................................ 10
+
+3.3 IDENTIFICA PREGÕES ................................ ................................ ................................ .......................... 10
+
+3.3 IDENTIFICA PREGÕES ................................ ................................ ................................ .......................... 11
+
+3.4 ENVIO DE PROPOSTAS ........................................................................................................................ 12
+
+3.5 ENVIO DE PREÇOS PROPOSTOS, MODELO E DESCRIÇÃO PARA FORMULAÇÃO DE PROPOSTA ....13
+
+3.6 CONSULTA DE PROPOSTAS ENVIADAS .............................................................................................. 15
+
+3.7 ENVIO DE LANCES ............................................................................................................................... 16
+
+3.8 ENVIA ANEXO – PLANILHA ATUALIZADA ............................................................................................ 18
+
+3.9 REGISTRO DA INTENÇÃO DE RECURSO ............................................................................................. 19
+
+3.10 ACOMPANHA A ACEITAÇÃO, HABILITAÇÃO E ADMISSIBILIDADE DA INTENÇÃO DE RECURSO ....20
+
+3.11 REGISTRO DA RAZÃO E DA CONTRA-RAZÃO DO RECURSO............................................................ 21
+
+3.12 ACOMPANHA A RAZÃO E A CONTRA-RAZÃO DO RECURSO ............................................................ 24
+
+3.13 VISUALIZA QUESTIONAMENTOS, IMPUGNAÇÕES E AVISOS ............................................................ 25
+
+3.14 CONSULTA ATA DO PREGÃO............................................................................................................. 26
+
+
+4 LEGISLAÇÃO........................................................................................................................................... 27
+
+
+
+
+MP/SLTI/DLSG                                                                                                                                            4
+                                  1 APRESENTAÇÃO
+
+
+                                    É preciso revestir as licitações e contratos públicos de total transparência,
+                                    mediante a universalização das tecnologias da informação e comunicação e
+                                    possibilitar à sociedade o acesso a todos os atos dos procedimentos
+                                    licitatórios.”
+
+                                                                                        Luis Inácio Lula da Silva
+                                                                                         Presidente da República
+
+         O presente manual tem por finalidade orientar os fornecedores devidamente
+ cadastrados no SICAF/COMPRASNET, a participarem de licitações na modalidade de
+ Pregão Eletrônico. Contempla os procedimentos para operacionalização do Pregão
+ Eletrônico por SISPP – Sistema de Preços Praticados e por SRP – Sistema de Registro
+ de Preços, “passo a passo” com todas as func ionalidades do Sistema e a legislação
+ vigente.
+
+         As licitações efetuadas pela Administração Pública visam garantir a observância do
+ princípio constitucional da legalidade, da isonomia, da impessoalidade e seleciona a
+ proposta mais vantajosa para a administração. A Lei n.º 10.520, de 17 de julho de 2002 e
+ o Decreto n.º 5.450, de 30 de junho de 2005, busca efetivar o cumprimento de tal princípio
+ e estabelece normas e procedimentos para a realização de licitações na modalidade de
+ pregão, por meio da utilização de recursos de tecnologia da informação, denominado
+ pregão eletrônico.
+
+         O pregão eletrônico destina-se à aquisição de bens e serviços comuns, estando
+ assim conceituados aqueles cujos padrões de desempenho e qualidade possam ser
+ objetivamente definidos em edital, por meio de especificações usuais de mercado.
+
+        É realizado em sessão pública, utilizando tecnologia da informação que promove a
+ comunicação pela internet. É um procedimento que permite aos licitantes, estando aberta
+ a etapa competitiva, encaminhar lances exclusivamente por meio do sistema eletrônico.
+ Durante o transcurso da sessão pública, os licitantes são informados, em tempo real, do
+ valor do menor lance oferecido até o momento, podendo oferecer outro de menor valor,
+ recuperando a vantagem sobre os demais licitantes.
+
+         Todas as etapas de realização do pregão eletrônico serão disponibilizadas para
+ operação e visualização no site www.comprasnet.gov.br.
+
+
+
+
+MP/SLTI/DLSG                                                                                                        5
+           2 ROTINAS DO PREGÃO ELETRÔNICO PARA LICITANTES
+ CADASTRO DE FORNCEDOR NO SICAF
+  ü O fornecedor tem a opção de realizar o PRÉ-CADASTRAMENTO através do Portal de
+     Compras do Governo Federal – Comprasnet, Link Acesso Livre > SICAFweb > Sistem a de
+     Cadastramentos > Pré-cadastramento de Fornecedores;
+  ü Após confirmar o pré-cadastramento, o fornecedor deve encaminhar-se à uma Unidade
+     Cadastradora, para a efetivação do cadastramento no SICAF ;
+  ü O cadastramento parcial do fornecedor no SICAF , pode ser efetivado nos órgãos/entidades
+     da Administração Pública Federal, no âmbito do Sistema de Serviços Gerais - SISG, ou
+     naqueles que, eventualmente, venham a aderir ao Sistema, por intermédio de Unidades
+     Cadastradoras - UASGs.
+
+
+ CADASTRO DE FORNECEDOR NO COMPRASNET
+    ü Acessar: www.comprasnet.gov.br > Cadastro.
+    ü O fornecedor para cadastrar-se no Comprasnet, deve estar inicialmente cadastrado no
+      SICAF – Sistema de Cadastramento Unificado de Fornecedores.
+
+
+ ACESSO SEGURO – SERVIÇOS DO PREGÃO ELETRÔNICO
+  ü Acessar: www.comprasnet.gov.br > Acesso Seguro > Login e Senha > Serviços aos
+     Fornecedores.
+  ü O acesso seguro disponibiliza diversos serviços do sistema, a saber: alteração de dados
+     cadastrais e senha, consultas ao SICAF, serviços de Download de editais, aviso de
+     licitações, entre outros.
+
+
+ ENVIO DE PROPOSTAS
+    ü Acessar: Acesso Seguro > Login e Senha > Serviço aos Fornecedores > Pregão
+       Eletrônico > Propostas – Cadastrar/incluir.
+    ü Consiste em encaminhar proposta de preços por meio do Sistema Eletrônico Comprasnet,
+       a partir da data de liberação do edital até o horário limite de abertura da Sessão Pública,
+       após a visualização do pregão e obtenção dos editais da licitação.
+
+
+CONSULTA HORÁRIO DE ABERTURA E ENCERRAMENTO DE ITENS PARA LANCES
+    ü Acessar: Acesso Livre > Pregões > em andamento.
+    ü Consiste em observar no Comprasnet ou em edital, o horário de abertura para envio de
+      lances para determinado pregão, bem como seu encerramento.
+
+
+ ENVIO DE LANCES
+    ü Acessar: Acesso Seguro > Login e Senha > Serviços aos fornecedores > Pregão
+       Eletrônico > Lances.
+    ü Considerando o disposto no § 3.º do art. 24, do decreto n.º 5.450/2005, “o licitante somente
+       poderá oferecer lance inferior ao último por ele ofertado e registrado pelo sistema”, o
+       sistema de pregão eletrônico, durante a etapa de lances registrará em ata, lance acima do
+       menor lance ofertado, desde que este seja inferior ao último lance encaminhado pelo
+       respectivo fornecedor. Essa possibilidade prevista na Legislação permitira a disputa do 2.º,
+       3.º, 4.º... lugares. Caso o fornecedor classificado em primeiro lugar não honre o preço
+       ofertado, o pregoeiro poderá contratar fornecedores que participaram da fase competitiva,
+       mas que não obtiveram a primeira colocação, observado o valor obtido em relação ao
+       valor de referência. O objetivo final é ampliar a disputa entre os fornecedores.
+
+
+MP/SLTI/DLSG                                                                                          6
+ ENVIA ANEXO – PLANILHA ATUALIZADA
+   ü Acessar: Acesso Seguro > Login e Senha > Serviços aos Fornecedores > Pregão
+       Eletrônico > Enviar Anexo/ Planilha Atualizada.
+   ü Este dispositivo permite que o fornecedor, após o encerramento da etapa de lances, envie
+       planilha da proposta atualizada.
+
+
+ ACOMPANHA DA ACEITAÇÃO, HABILITAÇÃO, ADMISSIBILIDADE E REGISTRO DE
+ INTENÇÃO DE RECURSO
+     ü Acessar: Acesso Seguro > Login e Senha > Serviços aos Fornecedores > Pregão
+       Eletrônico > Acompanhar Aceitação/Habilitação/Admissibilidade.
+     ü O licitante acompanha em tempo real os procedimentos do pregoeiro, relativamente às
+       fases de aceitação, habilitação e admissibilidade do pregão eletrônico.
+
+
+ REGISTRO DA RAZÃO DO RECURSO E DA CONTRA-RAZÃO
+    ü Acessar: Acesso Seguro > Login e Senha > Serviços aos Fornecedores > Pregão
+       Eletrônico > Registrar Recurso.
+    ü O pregoeiro informa os prazos legais para o registro da razão do recurso para aquele
+       licitante com intenção de recursos aceita e para que os demais licitantes registrem a
+       contra-razão do recurso.
+
+
+ ADJUDICAÇÃO DO PREGÃO
+    ü Acessar: Acesso Livre > Pregão > Consulta Ata > Adjudicação e Termo de
+       Julgamento.
+    ü Constatado o atendimento das exigências fixadas no edital, o licitante é declarado
+       vencedor, sendo lhe adjudicado o objeto do certame.
+
+
+ HOMOLOGAÇÃO DO PREGÃO
+  ü Acessar: Acesso Livre > Pregão > Consulta Ata > Termo de Homologação.
+  ü É um procedimento do ordenador de despesas que equivale à decisão final e/ou à retificação
+    dos atos do pregoeiro.
+
+
+ VISUALIZA QUESTIONAMENTOS, IMPUGNAÇÕES E AVISOS
+   ü Acessar: Acesso seguro > Login e senha > Serviços aos fornecedores > Pregão
+     Eletrônico > Visualizar Questionamentos/impugnações/Avisos.
+   ü Permite ao fornecedor consultar, em qualquer fase do pregão eletrônico, mensagem
+     referente a um determinado pregão.
+
+
+ CONSULTA ATAS
+    ü Acessar: Acesso Livre > Consulta > Atas de Pregões ou Acesso Livre > Pregão >
+      Consulta Ata.
+    ü As informações relativas à Sessão Pública do pregão constam de ata divulgada no
+      Sistema Eletrônico Comprasnet.
+
+
+
+
+MP/SLTI/DLSG                                                                                     7
+   3 PROCEDIMENTOS PARA PARTICIPAÇÃO DA SESSÃO PÚBLICA DO
+                     PREGÃO ELETRÔNICO
+ 3.1 CADASTRO DE FORNECEDOR
+
+ Passos:
+  • Cadastro no Comprasnet
+     Acessar: www.comprasnet.gov.br > Cadastro > Criar Login e Senha.
+
+ Importante Saber:
+   • Para participar de Pregão Eletrônico, o fornecedor deve estar devidamente cadastrado no
+     SICAF – Sistema de Cadastramento Unificado de Fornecedores e no Comprasnet.
+
+ Informações sobre o Cadastramento:
+   • Via internet, no endereço: www.comprasnet.gov.br;
+   • Mediante consulta a setores responsáveis pelas atividades de compras (licitações), nos
+      órgãos/entidades da Administração Pública Federal;
+   • Centrais de atendimento: COMPRASNET – 0800-782323 ou SIASG – 0800-9782329.
+
+
+
+
+                                        Cadastro de
+                                       Fornecedores
+
+
+
+
+MP/SLTI/DLSG                                                                                   8
+               Dados cadastrais
+               da empresa e do
+                administrador
+
+
+
+
+                                  Dados do
+                                  Forncedor
+
+
+
+
+MP/SLTI/DLSG                                  9
+ 3.2 ACESSO SEGURO – SERVIÇOS DO PREGÃO ELETRÔNICO
+
+   Passos:
+    • Acessar: www.comprasnet.gov.br > Acesso Seguro > Login e Senha > Serviços aos
+       Fornecedores.
+
+   Importante Saber:
+     • O acesso seguro disponibiliza diversos serviços do sistema, a saber:
+           1. Dados Cadastrais: altera dados cadastrais, altera senha e controle de usuários e
+              opções de serviços;
+           2. Consulta situação no SICAF ;
+           3. Consulta Lista Classificada de Materiais;
+           4. Serviços de Download: Editais e catálogos de materiais;
+           5. Pregão Eletrônico: Participa de todas as etapas do Pregão Eletrônico;
+           6. Atualiza dados cadastrais no SICAF;
+           7. Aviso de Licitações.
+
+
+
+
+                                                     Serviços aos
+                                                     Fornecedores
+
+
+
+
+MP/SLTI/DLSG                                                                                 10
+ 3.3 IDENTIFICA PREGÕES
+
+ Passo:
+   • Acesso Livre > Pregões > Agendados.
+
+ Importante Saber:
+   • Para consultar somente avisos de licitações: Acesso Livre > Consulta > Avisos de
+      Licitação;
+   • Na tela de acompanhamento de pregões consta a relação dos pregões agendados, com a
+      indicação do órgão promotor do pregão, a data e horário de início de recebimento de
+      propostas e a data e horário de início de envio de lances;
+   • Ao clicar sobre o Código do órgão promotor do pregão é apresentada uma janela com
+      informações referentes ao objeto da licitação;
+   • O acesso ao edital completo é restrito aos fornecedores cadastrados no Comprasnet. Na
+      opção Acesso Seguro > Serviços do Governo > Serviços de Download > Editais, o
+      fornecedor pode obter os editais de licitação.
+
+
+
+
+                                           Localizar Pregões
+
+
+
+
+MP/SLTI/DLSG                                                                             11
+ 3.4 ENVIO DE PROPOSTAS
+
+ Passos:
+   • Acesso Seguro > Login e Senha > Serviço aos Fornecedores > Pregão Eletrônico >
+      Propostas – Cadastrar.
+   • Selecionar nº da licitação e clicar em Cadastrar Proposta.
+
+ Importante Saber:
+    • O envio de proposta pode ocorrer a partir da data da liberação do edital no Comprasnet, até
+       o horário limite de inicio da Sessão Pública. Durante este período o fornecedor pode incluir
+       ou excluir proposta;
+    • Em alguns casos, o edital exige o envio de arquivo anexo à proposta;
+   • Assim, deve-se incorporar o arquivo solicitado em campo fornecido pelo sistema, indicando o
+      nome do arquivo a ser anexado. Para tanto clicar em procurar e escolher o arquivo dentre
+      os gravados no computador. Recomenda-se compactá-lo para que o envio seja mais rápido.
+   • É apresentado formulário de envio de propostas.
+   • Para consultar horário para envio de proposta: Acesso Livre > Pregões > Agendados.
+
+
+
+
+                                                         Menu principal
+                                                         do fornecedor
+
+
+
+
+MP/SLTI/DLSG                                                                                      12
+ 3.5 ENVIO DE PREÇOS PROPOSTOS, MODELO E DESCRIÇÃO PARA FORMULAÇÃO
+ DE PROPOSTA
+
+   Passos:
+    • Selecionar o item para o qual deseja enviar uma proposta. Para ver a descrição detalhada
+       do item, basta pousar o cursor sobre a descrição;
+    • Indicar o valor unitário proposto para o produto ou serviço;
+    • Indicar o valor total proposto para o produto ou serviço;
+    • O valor deve ser digitado separando com vírgula os centavos e deve ser representado com
+       4 (quatro) casas decimais;
+    • Para evitar possíveis erros de digitação, considerando a quantidade estabelecida e o preço
+       unitário proposto, o sistema efetua o cálculo do valor total e faz a comparação com o valor
+       total informado. Caso não seja coincidente, é solicitado o acerto do valor unitário e / ou do
+       valor total;
+    • No caso de pregão de material, o fornecedor deve, obrigatoriamente, informar a marca do
+       produto ofertado;
+    • O fornecedor pode registrar no campo descrição informações complementares referente
+       ao seu produto;
+    • Antes do envio da proposta, deve ser marcado campo de declaração de concordância com
+       os termos e condições do pregão. Observe que é possível formular proposta de preços
+       para um ou mais itens num único envio;
+    • Após preenchimento dos dados requeridos, o fornecedor deve clicar no botão incluir para
+       efetivar o envio da proposta.
+
+   Importante Saber:
+     • Na fase de propostas do pregão eletrônico por SISPP – Sistema de Preços Praticados
+       deve-se lançar o valor total de cada item e no pregão eletrônico por SRP – Sistema de
+       Registro de Preços – SRP deve-se lançar o valor unitário de cada item;
+     • Após o envio da proposta, é apresentada uma mensagem informativa sobre a entrega da
+       proposta;
+     • Caso o valor total proposto não coincida com o valor total calculado ou se o valor total
+       proposto for superior ao valor de referência estabelecido pelo pregoeiro, a proposta relativa
+       ao referido item é aceita. Em qualquer caso, o fornecedor recebe informação sobre a
+       inclusão da proposta;
+     • Caso o Pregão possua mais de 10 itens, a primeira tela apresenta os 10 primeiros, para
+       acessar os seguintes, clicar em ir para.
+
+
+
+
+MP/SLTI/DLSG                                                                                       13
+                         Cadastrar
+                         Proposta
+
+
+
+
+        Confirma envio
+         da proposta
+
+
+
+
+MP/SLTI/DLSG                         14
+ 3.6 CONSULTA DE PROPOSTAS ENVIADAS
+
+   Passos:
+    • Acesso Seguro > Login e Senha > Serviço aos Fornecedores > Pregão Eletrônico >
+       Propostas > Consultar.
+
+   Importante Saber:
+     • Quando da abertura das propostas, caso o pregoeiro entenda que a proposta referente a
+       algum item não atenda aos requisitos estabelecidos em edital, a proposta pode ser
+       desclassificada do processo antes da abertura do item para lances, sendo que o
+       fornecedor que teve sua proposta desclassificada, não pode competir com lances para o
+       item no qual teve proposta desclassificada;
+     • O sistema disponibiliza dispositivo automático de envio de e-mail aos fornecedores
+       participantes, quando da suspensão da sessão pública do pregão;
+     • O “Quadro de Avisos” é utilizado pelo pregoeiro para informações gerais a respeito de um
+       determinado pregão;
+     • O sistema possui chat para transmissão de mensagens durante a Sessão Pública.
+
+
+
+
+                                                                Seleciona
+                                                               pregão para
+                                                               consulta de
+                                                                proposta
+
+
+
+
+MP/SLTI/DLSG                                                                                  15
+ 3.7 ENVIO DE LANCES
+
+   Passos:
+    • Acesso Seguro > Login e Senha > Serviço aos Fornecedores > Pregão Eletrônico >
+       Lances.
+
+ Importante Saber:
+    • Após análise das propostas, o pregoeiro abre o item para lances. A partir desse instante,
+       os licitantes podem competir com os demais participantes. Ao acessar o sistema, o licitante
+       tem a visibilidade dos pregões para os quais tenha encaminhado alguma proposta e que se
+       encontram abertos para lance;
+    • A exclusão de lances é possível somente durante a fase de envio de lances, conforme
+       estabelece a legislação vigente, ou seja, antes do encerramento do item;
+    • O fornecedor que encaminhar lance com valor inexeqüível durante o período de
+       encerramento aleatório do lance e, não havendo tempo hábil para a exclusão e/ou
+       reformulação do lance, caso o mesmo não honre a oferta encaminhada, terá sua proposta
+       rejeitada;
+    • Na fase de lances, se o pregão eletrônico for por SISPP – Sistema de Preços Praticados o
+       sistema solicita a inclusão de valor total de cada item e para pregão eletrônico por SRP –
+       Sistema de Registro de Preços deve-se informar o valor unitário do item;
+
+   Para enviar Lances:
+    • Deve-se escolher o pregão e clicar em lances. É aberta uma tela com todas as
+        informações relativas ao pregão, onde podem ser observadas as seguintes informações:
+        1. Indicador da proposta: O indicador verde mostra que o lance ofertado é menor para
+            aquele item, sendo o vencedor até o momento, o indicador vermelho mostra que
+            houve um lance de valor inferior ao apresentado e o indicador amarelo mostra que a
+            proposta está empatada;
+        2. Número do item: Mostra o número seqüencial do item. Ao clicar nesse número é
+            aberta uma janela com a indicação do valor de todas as propostas recebidas para
+            aquele item;
+        3. Descrição: Apresenta a descrição resumida do item. Ao pousar o cursor sobre a
+            informação é apresentada a descrição detalhada do item;
+        4. Lance mínimo: Indica o valor do melhor lance recebido para o item até aquele
+            momento;
+        5. Seu último lance: Indica o valor do melhor lance recebido para o item até aquele
+            momento;
+        6. Horário oficial da sessão: Indica o horário que está sendo considerado pelo
+            pregoeiro, sempre horário oficial de Brasília;
+        7. Lance: Espaço para o fornecedor digitar os lances que deseja formular. Fica a critério
+            do pregoeiro excluir um lance cujo valor foi considerado inexe qüível durante a fase de
+            lances. Quando o lance for excluído, o fornecedor pode incluir outros lances;
+        8. Enviar: Comando para envio de lance. Ao efetuar o envio, é solicitada confirmação do
+            valor digitado. Caso seja confirmado o lance é encaminhado;
+        9. Situação: Indica a situação em que o item se encontra:
+
+               ü   Fechado: o item ainda não foi aberto para lances;
+               ü   Aberto: o item está recebendo lances naquele momento;
+               ü   Suspenso: o recebimento de lance está suspenso;
+               ü   Cancelado: o item está cancelado e não será contratado neste pregão;
+               ü   Encerrado: término da fase de lances para este item.
+
+
+
+MP/SLTI/DLSG                                                                                      16
+                                    Seleciona
+                                      pregão
+                                    para envio
+                                     de lances
+
+
+
+
+                                                 Registra
+                                                 e envia
+                                                  lance
+
+
+
+
+               Indicador do Lance
+
+
+
+
+MP/SLTI/DLSG                                                17
+ 3.8 ENVIA ANEXO – PLANILHA ATUALIZADA
+
+   Passos:
+    • Acesso Seguro > Login e Senha > Serviço aos Fornecedores > Pregão Eletrônico >
+       Enviar Anexo/ Planilha Atualizada.
+
+   Importante Saber:
+     • Disponível para que, na etapa de “aceitação de propostas”, os fornecedores classificados
+       possam reenviar suas planilhas de custos reformuladas em função dos lances
+       apresentados. Excepcionalmente, o pregoeiro poderá solicitar novas atualizações e reenvio
+       das planilhas, até a etapa de adjudicação;
+     • O sistema permite que o fornecedor reenvie o arquivo “planilha atualizada”, nesse caso, o
+       sistema vai sobrepor o arquivo enviado anteriormente;
+     • Tanto o anexo original (enviado com o formulário eletrônico de proposta) quanto o anexo
+       de planilha, são disponibilizados na opção “visualizar propostas”, nas etapas de
+       aceitação e adjudicação;
+     • Não dever constar do anexo de planilha atualizada, a identificação do fornecedor.
+
+
+
+
+                                                                              Enviar planilha
+                                                                                atualizada
+
+
+
+
+MP/SLTI/DLSG                                                                                    18
+ 3.9 REGISTRO DA INTENÇÃO DE RECURSO
+
+ Passos:
+  • Acesso Seguro > Login e Senha > Serviços aos Fornecedores > Pregão Eletrônico >
+     Intenção de Recurso > Item.
+
+ Importante Saber:
+   • O pregoeiro informa o prazo em que sistema ficará disponível para registro da intenção de
+     recursos.
+
+
+
+
+                                                              Seleciona
+                                                            pregão para
+                                                             registro de
+                                                            intenção de
+                                                               recurso
+
+
+
+
+                                                                               Motivo da
+                                                                              Intenção do
+                                                                                Recurso
+
+
+
+
+MP/SLTI/DLSG                                                                                     19
+ 3.10 ACOMPANHA A ACEITAÇÃO,                   HABILITAÇÃO        E   ADMISSIBILIDADE         DA
+ INTENÇÃO DE RECURSO
+
+ Passos:
+  • Acesso Seguro > Login e Senha > Serviços aos Fornecedores > Pregão Eletrônico >
+     Acompanhar Aceitação/Habilitação/Admissibilidade.
+
+ Importante Saber:
+   • Após o encerramento de todos os itens do Pregão, o pregoeiro inicia a fase de aceitação das
+     propostas, onde o fornecedor pode consultar se sua proposta foi aceita ou rejeitada. Após a
+     fase de habilitação, o fornecedor pode consultar se foi habilitado ou inabilitado e após o
+     término da fase de admissibilidade, pode consultar se sua intenção de recursos foi aceita ou
+     recusada.
+
+
+
+
+                                                               Selecionar
+                                                                pregão
+
+
+
+
+MP/SLTI/DLSG                                                                                    20
+ 3.11 REGISTRO DA RAZÃO E DA CONTRA-RAZÃO DO RECURSO
+
+ Passos:
+  • Acesso Seguro > Login e Senha > Serviço aos Fornecedores > Pregão Eletrônico >
+     Registrar Recurso.
+
+ Importante Saber:
+   • Ao final da Sessão Pública, o pregoeiro informa os prazos legais para registro da razão do
+     recurso para aquele licitante com intenção de recurso aceita e para os demais licitantes
+     registrarem a contra-razão;
+   • O sistema disponibiliza para o licitante campo específico para o registro do recurso.
+   • O sistema envia e-mail automaticamente para os demais licitantes avisando-os do recurso
+     interposto, para que estes possam registrar a contra-razão;
+   • O encaminhamento do registro de recurso, bem como da contra-razão de recurso, são
+     possíveis somente por meio eletrônico (Comprasnet), conforme estabelece o Art. 26.º do
+     Decreto n.º 5.450/2005.
+
+
+
+
+                       Seleciona
+                      pregão para
+                       o registro
+                      do recurso
+
+
+
+
+MP/SLTI/DLSG                                                                                  21
+               Seleciona
+                 Item
+
+
+
+
+                       Formaliza
+                       o Recurso
+
+
+
+
+MP/SLTI/DLSG                       22
+                Seleciona item
+               para registro da
+               contra-razão de
+                   recurso
+
+
+
+
+                Formaliza
+                o registro
+                da contra-
+                razão do
+                 recurso
+
+
+
+
+MP/SLTI/DLSG                      23
+ 3.12 ACOMPANHA A RAZÃO E A CONTRA-RAZÃO DO RECURSO
+
+ Passos:
+  • Acesso Seguro > Login e Senha > Serviço aos Fornecedores > Pregão Eletrônico >
+     Acompanhar Recurso.
+
+
+
+
+                                                 Seleciona
+                                                  Pregão
+
+
+
+
+                                                   Visualiza
+                                                   recursos
+
+
+
+
+MP/SLTI/DLSG                                                                         24
+ 3.13 VISUALIZA QUESTIONAMENTOS, IMPUGNAÇÕES E AVISOS
+
+ Passos:
+  • Acesso Seguro > Login e Senha > Serviços aos Fornecedores > Pregão Eletrônico >
+     Visualizar Questionamentos/Impugnações/Avisos.
+
+ Importante Saber:
+   • Conforme estabelece o Artigo n.º 19 do Decreto n.º 5.450/2005, “os pedidos de
+      esclarecimentos referentes ao processo licitatório deverão ser enviados ao pregoeiro, até
+      três dias úteis anteriores à data fixada para abertura da sessão pública, exclusivamente por
+      meio eletrônico via internet, no endereço indicado no edital”. Assim, o fornecedor deverá
+      encaminhar o seu pedido de esclarecimento utilizando recursos da internet, inclusive e-mail
+      institucionais informados em edital dos órgãos licitantes. Os pedidos de impugnações e
+      esclarecimentos, bem como as respectivas respostas serão divulgadas pelos pregoeiros no
+      Comprasnet, no Link: Acesso Livre > Pregões > Agendados, no prazo de vinte e quatro
+      horas. O fornecedor, além do acesso livre, poderá visualizar no menu principal, no Link:
+      visualizar impugnações/esclarecimentos/avisos.
+
+
+
+
+                                                                           Seleciona
+                                                                            Pregão
+
+
+
+
+                                Aviso
+                                 do
+                               pregão
+
+
+
+
+MP/SLTI/DLSG                                                                                     25
+ 3.14 CONSULTA ATA DO PREGÃO
+
+ Passos:
+    • Acessar: Acesso Livre > Consulta > Atas de Pregões ou
+              Acesso Livre > Pregão > Consulta Ata.
+
+ Importante Saber:
+    • A pesquisa à ata pode ser feita de quatro formas:
+       1. fornecendo a UF e o nome do órgão;
+       2. fornecendo o código da UASG;
+       3. fornecendo o nome da UASG;
+       4. fornecendo o período de realização da sessão pública.
+    • Nos três primeiros casos, são mostrados todos os órgãos (UASG) que atendam ao critério
+       definido, em seguida, deve ser escolhido o órgão e informado o número do pregão.
+    • Na última opção de pesquisa basta informar o período desejado (mês e ano inicial e mês e
+       ano final) e serão mostrados todos os pregões que ocorreram naquele intervalo de tempo,
+       sendo possível escolher algum para visualizar a ata.
+    • Para consultar adjudicação, acessar menu: Acesso Livre > Pregão > Consulta Ata >
+       botão Adjudicação e Termo de Julgamento.
+    • Para visualizar termo de homologação, acessar menu: Acesso Livre > Pregão > Consulta
+       Ata > botão Termo de Homologação.
+
+         PARA MAIORES INFORMAÇÕES SOBRE OPERACIONALIZAÇÃO DO PREGÃO
+            ELETRÔNICO, CONTATAR A CENTRAL DE ATENDIMENTO SERPRO
+                                  0800782323
+
+
+
+
+MP/SLTI/DLSG                                                                                 26
+                                        4 LEGISLAÇÃO
+
+     ü LEI N.º 8.666, DE 21 DE JUNHO DE 1993.
+       Regulamenta o art. 37, inciso XXI, da Constituição Federal, institui normas para licitações e
+       contratos da Administração Pública e dá outras providências.
+
+
+     ü LEI N.º 10.520, DE 17 DE JUNHO DE 2002.
+       Institui, no âmbito da União, Estados, Distrito Federal e Municípios, nos termos do art. 37,
+       inciso XXI, da Constituição Federal, modalidade de licitação denominada pregão, para
+       aquisição de bens e serviços comuns, e dá outras providências.
+
+
+     ü DECRETO N.º 3.555 DE 08 DE AGOSTO DE 2000.
+       Aprova o regulamento para a modalidade de licitação denominada pregão, para aquisição
+       de bens e serviços comuns.
+
+
+     ü DECRETO N.º 3.697, DE 21 DE DEZEMBRO DE 2000.
+       Regulamenta o parágrafo único do art. 2.º da Medida Provisória n.º 2.026-7, de 23 de
+       novembro de 2000, que trata do pregão por meio da utilização de recursos de tecnologia
+       da informação.
+
+
+     ü DECRETO N.º 3.722, DE 09 DE JANEIRO DE 2001.
+       Regulamenta sobre o Sistema de Cadastramento Unificado de Fornecedores – SICAF.
+
+
+     ü DECRETO N.º 3.784, DE 06 DE ABRIL DE 2001.
+       Promove a inclusão de itens de bens de consumo e de serviços comuns na classificação a
+       que se refere o Anexo II do Decreto n.º 3.555, de 08 de agosto de 2000.
+
+
+     ü DECRETO N.º 3.931, DE 19 DE SETEMBRO DE 2001.
+       Regulamenta o Sistema de Registro de Preços previsto no art. 15 da Lei n.º 8.666, de 21
+       de junho de 1993, e dá outras providências.
+
+
+     ü DECRETO N.º 4.342, DE 23 DE AGOSTO DE 2002.
+       Altera dispositivos do Decreto n. 3931, de 19 de setembro de 2001, que regulamenta o
+       Sistema de Registro de Preços previsto no art. 15 da Lei n.º 8.666, de 21 de junho de 1993,
+       e dá outras providências.
+
+
+     ü DECRETO N.º 4.485, DE 25 DE NOVEMBRO DE 2002.
+       Dá nova redação a dispositivos do Decreto n.º 3.722, de 09 de janeiro de 2001, que
+       regulamenta o art. N.º 34 da Lei n.º 8.666, de 21 de junho de 1993, e dispõe sobre o
+       Sistema de Cadastramento Unificado de Fornecedores – SICAF.
+
+
+
+MP/SLTI/DLSG                                                                                          27
+     ü DECRETO N.º 5.450, DE 31 DE MAIO DE 2005.
+       Regulamenta o pregão, na forma eletrônica, para aquisição de bens e serviços comuns, e
+       dá outras providências.
+
+
+     ü INST RUÇÃO NORMATIVA N.º 01, DE 08 DE AGOSTO DE 2002.
+       Estabelece procedimentos destinados à operacionalização dos módulos que menciona,
+       para o Sistema Integrado de Administração de Serviços Gerais – SIASG.
+
+
+     ü PORTARIA N.º 306, DE 31 DE DEZEMBRO DE 2001.
+       Aprova implantação do Sistema de Cotação Eletrônica de Preços, fornece instruções para
+       utilização do sistema e estabelece condições gerais de contratação.
+
+
+     ü PORTARIA NORMATIVA N.º 04, DE 29 DE JANEIRO DE 2001.
+       Dispõe sobre a divulgação no Portal de Compras do Governo Federal – COMPRASNET,
+       dos editais de licitação nas modalidades de tomada de preços e concorrência.
+
+
+     ü PORTARIA NORMATIVA N.º 57, DE 09 DE MAIO DE 2003.
+       Atualização de dados no Sistema de Administração de Serviços Gerais – SIASG, pelos
+       órgãos e entidades integrantes do Sistema de Serviços Gerais – SISG, no âmbito da
+       Administração Pública Federal, para efeito de subsidiar políticas de contratações de
+       serviços.
+
+
+
+
+MP/SLTI/DLSG                                                                                    28
+

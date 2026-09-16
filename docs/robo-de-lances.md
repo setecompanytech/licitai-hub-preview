@@ -1128,6 +1128,40 @@ classes `cp-label` e `cp-valor-item` dentro de `div.col-sm-4.pt-2`
 **pelo texto do rótulo** e pegar o valor ao lado — classe de CSS muda a cada
 atualização do portal, o rótulo não.
 
+#### 16/09 — a lista de propostas de um item, por URL pública
+
+Navegando a sessão pelo VNC, o Ian abriu o ícone de propostas de um item, e o
+portal mostrou o que pode ser o caminho mais curto para a leitura da disputa:
+
+```
+https://cnetmobile.estaleiro.serpro.gov.br/comprasnet-web/public/compras/acompanhamento-compra/item/<numero>?compra=<UASG><05><numero 5 dígitos><ano>
+```
+
+A aba **Propostas** lista, para cada fornecedor: **CNPJ**, razão social, **UF**,
+**"Valor ofertado (unitário)"**, **"Valor negociado (unitário)"** e os selos
+(ME/EPP, "Equidade de gênero (Ouro)", "Programa de integridade"), em **ordem
+crescente de valor**. Cada linha expande ("Mostrar proposta do item") com
+proposta, anexo e chat.
+
+O raio-X, tirado com a tela aberta (item 3 do 7/2026), leu **11 valores de uma
+vez**, todos no mesmo caminho:
+
+```
+div.cp-valor-item.cp-label > div.mb-half-half.ng-star-inserted > span > span
+```
+
+**Por que isto importa:** é o par que falta para o robô. O menor valor da lista
+é o melhor lance do item, e a **posição do nosso CNPJ nessa lista** responde
+"somos o líder?" — que é a pergunta que hoje trava o lance (§2). E vem de uma
+página **pública**, sem login, por URL previsível a partir do que a disputa já
+guarda (UASG + número + ano + número do item).
+
+**O que ainda falta confirmar:** se esta mesma página se atualiza **durante** a
+sessão de disputa, com os lances chegando. O que foi visto é a etapa "seleção
+de fornecedores", depois do pregão. Se atualizar, a leitura da disputa deixa de
+depender da área logada; se não, ela vale como conferência e como fonte do
+histórico. É a primeira coisa a olhar no próximo pregão ao vivo.
+
 **O que isto não é:** prova. O manual descreve a tela do Comprasnet anterior à
 reformulação de 2021, e o que está no ar é o Compras.gov novo (`cnetmobile`,
 Angular/PrimeNG). Os nomes tendem a sobreviver — o portal reaproveita o mesmo

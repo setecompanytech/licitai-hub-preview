@@ -1,0 +1,1354 @@
+Sala de Disputa
+
+
+    Manual
+
+
+     Versão 1.0
+     Abril/2021
+Ministério da Economia
+                                                               Departamento de Normas e Sistemas de Logística – DELOG
+Ministro                                                       Everton Batista dos Santos
+Paulo Roberto Nunes Guedes
+                                                               Coordenação-Geral dos Sistemas de Compras Governamentais
+Secretaria Especial de Desburocratização, Gestão e             – CGSCG
+Governo Digital                                                Diego César Santana Mendes
+
+
+Secretário Especial                                            Equipe Técnica
+Caio Mario Paes de Andrade                                     Mateus Silva Teixeira
+                                                               Helena Soares e Silva
+Secretário Especial Adjunto                                    Marta Daniele Ponte
+Gleisson Cardoso Rubin                                         Marcos Pires Namekata
+                                                               Vanessa Moreira Ventura
+Secretaria de Gestão – SEGES
+                                                               Edição e Arte
+Secretário                                                     Fernanda Correia de Castro (CGSES)
+Cristiano Rocha Heckert
+
+Secretário Adjunto
+Renato Ribeiro Fenili
+
+                                       Nova Sala de Disputa: Visão Governo                                         2
+                                              Apresentação
+
+
+
+
+         Essa é mais uma entrega do Governo que faz parte do ecossistema Comprasnet 4.0: a nova
+Sala de Disputa – Visão Governo, que vem totalmente reestruturada com um design mais moderno
+e um sistema mais intuitivo, muito mais simples e fácil de se utilizar no momento da condução da
+sessão pública de compras. Além de otimizar as funções já existentes traz inovações que
+proporcionam maior valor agregado para o usuário.
+         Dentre as novas funcionalidades estão a configuração da compra antes da abertura do
+certame, a possibilidade de atribuir apelidos aos itens cadastrados, a opção de escolher se o pregão
+deverá ter análise manual de propostas ou se ele deve ocorrer de forma automatizada, e muitas
+outras.
+          Para facilitar a vida do Agente de Contratação disponibilizamos um manual com a descrição
+das principais funcionalidades da nova Sala de Disputa – Visão Governo.
+
+Observação: Todos os processos utilizados neste manual foram realizados no ambiente de
+homologação do Comprasnet. Não são processos reais de compra.
+
+
+
+                                       Nova Sala de Disputa: Visão Governo                             3
+                                               Sumário
+
+
+
+
+•   VINCULAR EQUIPE DO PREGÃO
+
+•   CONFIGURAR SESSÃO PÚBLICA
+
+•   ALTERAR ABERTURA DA SESSÃO PÚBLICA
+
+•   ANÁLISE DE PROPOSTAS MANUAL
+
+•   SESSÃO PÚBLICA – ACOMPANHAR DISPUTA
+
+•   INFORMAÇÕES
+
+
+
+
+                                    Nova Sala de Disputa: Visão Governo   4
+Tela de Acesso ao Comprasnet e aos Módulos do Sistema
+
+
+
+
+             Nova Sala de Disputa: Visão Governo        5
+      Tela de Acesso
+
+
+              Acesse o perfil Governo informando o seu CPF e senha.
+
+
+
+
+Nova Sala de Disputa: Visão Governo                                   6
+    Área de Trabalho
+
+
+
+
+                                      Clique aqui para acessar o
+                                      Pregão Eletrônico.
+                                      Obs.:      Para      melhor
+                                      experiência, clique com o
+                                      mouse no local indicado.
+
+
+
+
+Nova Sala de Disputa: Visão Governo                   7
+   Área de Trabalho
+
+
+
+
+Clique aqui para acessar o
+“Pregão”.
+
+
+
+
+Nova Sala de Disputa: Visão Governo   8
+                                                             Acesso Rápido
+
+
+
+
+Clique aqui para
+acessar o “Pregão”.
+
+
+
+
+                      O Acesso Rápido é para todos os sistemas, módulos e painéis que o usuário possui permissão para acesso.
+
+
+                                                       Nova Sala de Disputa: Visão Governo                                      9
+      Acesso Rápido
+
+
+
+
+          O sistema direcionará o usuário
+          automaticamente para a sessão do
+          Pregão localizada no Comprasnet.
+
+
+          Clique em “Pregão Eletrônico”.
+
+
+
+
+Nova Sala de Disputa: Visão Governo          10
+VINCULAR
+EQUIPE DO
+ PREGÃO
+  Vincular Equipe do Pregão
+
+
+
+
+       Na nova sala de Disputa o Agente de Contratação vai ter alteração em
+       duas funcionalidades:
+       • Operar (Acompanhar Disputa)
+       • Configurar Sessão Pública (nova funcionalidade)
+
+
+
+
+Nova Sala de Disputa: Visão Governo                                           12
+                                            Vincular Equipe do Pregão
+
+
+
+
+                                A primeira ação do Agente de Contratação deverá ser a de vincular a equipe de
+                                Pregão eletrônico. Selecione o número do Pregão Eletrônico.
+
+Clique aqui para selecionar o
+“Pregão”.
+
+
+
+
+                                            Nova Sala de Disputa: Visão Governo                                 13
+Vincular Equipe do Pregão
+
+
+
+
+     Selecione o nome do Agente de Contratação e sua
+     equipe de apoio.
+
+
+
+               O que mudou nesta tela?
+               Não é possível mais fazer a alteração do critério de valor total (R$).
+               Essa alteração passa a ser na tela nova de “Configuração da
+               Compra”.
+
+
+
+
+Nova Sala de Disputa: Visão Governo                                                     14
+                                                          Vincular Equipe do Pregão
+
+
+
+ATENÇÃO: Faz-se necessário a indicação do Agente de Contratação e da equipe antes da data prevista para abertura da sessão pública do Pregão.
+Na tela de vinculação da equipe do Pregão temos: a data e hora prevista para abertura da sessão pública e o início da abertura dos itens para
+lances. Para que a abertura ocorra conforme o previsto, a equipe deve ser vinculada antes da data de abertura da sessão pública do pregão.
+
+
+
+
+                                                           Nova Sala de Disputa: Visão Governo                                                  15
+                                                        Vincular Equipe do Pregão
+
+
+
+
+Uma vez informada a equipe, o sistema apresentará para o Agente de Contratação a nova opção “Configurar
+Sessão Pública”.
+
+
+
+
+                                             Somente o Agente de Contratação vinculado ao Pregão poderá fazer a “Configuração da Compra”.
+                                             Condições dos pregões para possibilitar a configuração da sessão pública:
+
+                                             •   Ter Agente de Contratação e equipe vinculados ao Pregão;
+                                             •   Pertencer à UASG do usuário logado;
+                                             •   Após a data/hora de início da entrega de proposta;
+                                             •   A sessão pública não pode ter sido aberta;
+                                             •   Não podem estar revogados, anulados, abandonados ou homologados.
+
+
+                                                         Nova Sala de Disputa: Visão Governo                                            16
+ Vincular Equipe do Pregão
+
+
+
+
+                                               ATENÇÃO!
+                      Somente é possível realizar a configuração da compra, após a
+                      vinculação       de          equipe        do         Pregão.
+                      Ao tentar acessar esta funcionalidade antes de vincular a
+                      equipe de Pregão Eletrônico, o sistema apresentará a seguinte
+                      mensagem:
+
+
+
+
+Nova Sala de Disputa: Visão Governo                                                   17
+  Vincular Equipe do Pregão
+
+
+
+
+Caso o Agente de Contratação não faça a vinculação da equipe ao Pregão dentro
+do prazo inicial previsto no edital, o sistema concederá 10 minutos de tolerância
+para a vinculação e configuração da compra.
+
+
+
+
+    Nova Sala de Disputa: Visão Governo                                             18
+Vincular Equipe do Pregão
+
+
+
+
+                                                   ATENÇÃO!!
+                 Após 10 (dez) minutos de tolerância para a abertura da sessão pública, o
+                 Pregão será suspenso administrativamente pelo sistema, independentemente
+                 de ação do agente de contratação. Sendo assim, ficará “Sem prazo definido” de
+                 data/horário para o início da sessão pública.
+                 Somente após a indicação do Agente de Contratação e equipe de apoio,
+                 poderá ser marcada nova data e horário na opção “Configurar Compra” com
+                 antecedência mínima de 24 (vinte e quatro) horas do horário em que está
+                 ocorrendo o reagendamento e mediante justificativa a ser informada pelo
+                 Agente de Contratação.
+
+
+
+
+                                                                          Retornar para
+                                                                          abertura da
+                                                                          sessão pública
+
+
+ Nova Sala de Disputa: Visão Governo                                                 19
+CONFIGURAR
+  SESSÃO
+  PÚBLICA
+ Configurar Sessão Pública
+
+
+
+
+                                      Novo! Acesse a nova tela: “configuração de
+                                      compra” para definir as características da
+                                      disputa do seu Pregão Eletrônico.
+
+
+
+
+Nova Sala de Disputa: Visão Governo                                                21
+Configurar Sessão Pública
+
+
+                     Após a vinculação do pregão o Agente de
+                     Contratação poderá realizar a configuração da
+                     compra.
+                     O sistema apresenta nos dados da compra:
+                     • Número/ano do Pregão Eletrônico;
+                     • Número da UASG;
+                     • Nome da UASG da compra;
+                     • Modo de disputa;
+                     • Previsão de abertura (data/hora) e
+                     • Se esta compra possui ou não propostas
+                         cadastradas.
+                            Configurar Sessão Pública
+
+
+
+
+Primeiro indicar a forma
+que ocorrerá a Análise de
+propostas.
+
+
+
+
+                            Nova Sala de Disputa: Visão Governo   23
+Configurar Sessão Pública
+
+
+
+
+                                                  ANÁLISE DE PROPOSTA
+                                      O Agente de Contratação poderá indicar uma das
+                                      duas formas de análise da proposta:
+
+                                      •   Automática - onde todas as propostas estarão
+                                          aptas a prosseguir na fase de disputa.
+
+                                      •   Manual - onde o Agente de Contratação
+                                          poderá fazer análise de todas as propostas de
+                                          todos os itens do Pregão.
+
+
+
+
+Nova Sala de Disputa: Visão Governo                                               24
+Configurar Sessão Pública
+
+
+
+
+                                                           ATENÇÃO!
+                                      Se o Agente de Contratação indicar, quando da
+                                      configuração da compra, que a análise das propostas
+                                      será automática, TODAS as propostas registradas para os
+                                      itens/grupos da compra estarão aptas a participar da
+                                      disputa. Uma vez que a equipe de apoio esteja
+                                      vinculada, o Pregão terá início no dia e hora marcados
+                                      independentemente de ação do Agente de Contratação.
+
+
+
+
+Nova Sala de Disputa: Visão Governo                                                  25
+Configurar Sessão Pública
+
+
+
+
+                                            ANÁLISE DE PROPOSTA MANUAL
+                             Se o Agente de Contratação indicar, quando da configuração da
+                             compra, que a análise das propostas será MANUAL, as propostas
+                             registradas para os itens/grupos da compra estarão disponíveis
+                             para serem analisadas pelo Agente de Contratação pelo tempo
+                             definido no campo “Tempo para análise de propostas". Passado o
+                             período indicado para a análise das propostas, o Pregão terá início
+                             no dia e hora marcados independentemente de ação do agente de
+                             contratação.
+
+
+
+
+Nova Sala de Disputa: Visão Governo                                                   26
+Configurar Sessão Pública
+
+
+
+
+                                                    ATENÇÃO!
+                              O prazo informado no campo “Tempo para análise de propostas"
+                              não poderá ser reduzido caso a análise do Agente de Contratação
+                              termine antes do período estimado. Sendo necessário aguardar o
+                              período proposto.
+                              Caso o período informado não seja suficiente, o Agente de
+                              Contratação poderá adiar o tempo de análise da propostas no
+                              momento que estiver operando a sessão pública por quantas
+                              vezes achar necessário e pelo tempo que precisar.
+
+
+
+Nova Sala de Disputa: Visão Governo                                                 27
+              Configurar Sessão Pública
+
+
+
+
+Para alterar a abertura da sessão pública,
+uma das formas é clicando aqui.
+
+
+
+
+                                              A outra é clicando aqui. As duas formas
+                                              de alteração abrirão uma tela para a
+                                              definição da nova data de abertura, na
+                                              qual deverá aguardar no mínimo 24
+                                              (vinte e quatro) horas de antecedência
+                                              do momento da remarcação, para a
+                                              notificação aos fornecedores que
+                                              cadastraram propostas no Pregão.
+
+                                              Clique em            para alterar abertura
+                                              da sessão pública.
+
+
+
+
+              Nova Sala de Disputa: Visão Governo                                          28
+Configurar Sessão Pública
+
+
+
+
+                                      Tela para a definição da nova data de abertura,
+                                      na qual deverá obedecer o prazo mínimo de 24
+                                      (vinte e quatro) horas para a nova data e hora
+                                      de abertura do certame, contados            do
+                                      momento da remarcação.
+
+
+
+
+Nova Sala de Disputa: Visão Governo                                                     29
+                                                 Configurar Sessão Pública
+
+
+
+
+Quantidade de itens para abrir disputa – neste
+campo o Agente de Contratação poderá indicar
+até 20 (vinte) itens para abertura da disputa
+simultaneamente.
+
+
+
+
+                                                 Nova Sala de Disputa: Visão Governo   30
+Configurar Sessão Pública
+
+                 Aviso prévio de abertura - Valor padrão de 0 (zero) minutos, mas
+                 neste campo o Agente de Contratação poderá indicar um tempo de
+                 até 10 (dez) minutos para o início da abertura dos itens na Sessão
+                 Pública, onde um aviso prévio será encaminhado aos fornecedores,
+                 sobre a hora exata de abertura dos itens para lance. Caso o Agente
+                 de Contratação informe tempo superior a 120 (cento e vinte)
+                 minutos o sistema vai emitir alerta, porém não impede que seja
+                 definido tempo igual ou superior a 120 (cento e vinte) minutos.
+
+
+
+
+Nova Sala de Disputa: Visão Governo                                                   31
+Configurar Sessão Pública
+
+
+
+
+                   Período de abertura de itens horário padrão de 08:00h às
+                   18:00h (horário de Brasília), com possibilidade de intervalo,
+                   neste campo o Agente de Contratação poderá indicar intervalo,
+                   como por exemplo pausa para almoço. Se não for indicado
+                   intervalo, o sistema vai realizar a abertura automática dos itens
+                   dentro do horário padrão.
+
+
+
+
+Nova Sala de Disputa: Visão Governo                                                    32
+Configurar Sessão Pública
+
+
+
+
+                              Uma vez configurada a abertura da sessão pública, o
+                              sistema na data/hora definida abrirá automaticamente
+                              os itens para disputa. Devendo ao Agente de
+                              Contratação “Acompanhar a Disputa”.
+
+
+
+
+Nova Sala de Disputa: Visão Governo                                                  33
+    Configurações de Itens
+
+
+
+              Ao clicar na aba “Configuração de itens”, o Agente de
+              Contratação tem acesso a todos os grupos e itens
+              cadastrados para aquele Pregão.
+
+
+
+
+                                                                      Clique      aqui para
+                                                                      alterar o valor do item.
+
+
+
+
+                                                                      Clicando aqui será
+                                                                      possível acessar as
+                                                                      descrições detalhadas
+                                                                      do item.
+
+
+
+
+Nova Sala de Disputa: Visão Governo                                               34
+    Configurações de Itens
+
+
+
+
+                                      Alterar, justificadamente, as opções de valor
+                                      estimado, de referência ou máximo
+                                      aceitável do item, antes da disputa, tão
+                                      somente para correção de ERRO MATERIAL
+                                      quando do cadastramento da compra.
+
+
+
+
+Nova Sala de Disputa: Visão Governo                                     35
+   Configurações de Itens
+
+
+
+
+                               Expandir detalhes do item
+             Tais como descrição detalhada, quantidade, unidade de
+             fornecimento, critério de julgamento, indicação de: tratamento
+             diferenciado, aplicabilidade do decreto 7174/2010, margem de
+             preferência, orçamento sigilo, intervalo mínimo entre lances, ou
+             seja, todas as características originais do item informadas no Edital.
+
+
+
+
+                                                           Clicando aqui será
+                                                           possível acessar as
+                                                           descrições detalhadas
+                                                           do item.
+
+
+
+
+Nova Sala de Disputa: Visão Governo                                                   36
+Configurações de Itens
+
+
+
+
+Nova Sala de Disputa: Visão Governo   37
+   Configurações de Itens
+
+
+
+
+                               Via de Regra o sistema abrirá os
+                               itens em ordem numérica.
+
+
+
+
+                                                                  Uma das ações possíveis ao
+                                                                  Agente de Contratação trata-
+                                                                  se da ordenação dos itens
+                                                                  para abertura.
+                                                                  O sistema abrirá em ordem
+                                                                  crescente os itens priorizados.
+                                                                  Primeiramente grupos e em
+                                                                  seguida os itens priorizados,
+                                                                  depois grupos e em seguida
+                                                                  demais itens sem priorização.
+
+
+
+
+Nova Sala de Disputa: Visão Governo                                                    38
+                                                 Configurações de Itens
+
+
+                                                                            Caso não seja definida ordem de priorização, o sistema abrirá em
+        Para priorizar um item clique aqui.
+                                                                            ordem numérica crescente os grupos e/ou itens do Pregão.
+
+
+
+
+Os itens priorizados ficarão
+marcados em azul.
+
+
+                                              Nova Sala de Disputa: Visão Governo                                                  39
+ Configurações de Itens
+
+
+
+
+                                                            Apelido do item
+                                                    Indicação de apelido para facilitar a
+                                                    identificação do item. Vale tão somente
+                                                    aqui dentro da sala de disputa na visão
+                                                    do Agente de Contratação. E
+                                                    semelhante ferramenta também é
+                                                    disponibilizada na visão de cada
+                                                    fornecedor que somente ele vai
+                                                    identificar o apelido dado na sua tela.
+                                                    Ao término da disputa, o sistema
+                                                    carregará a descrição completa da
+                                                    proposta pelo fornecedor e do edital.
+
+
+                                Basta clicar em "apelido" que um
+                                campo editável aparece. Depois é só
+                                salvar aqui.
+
+
+
+
+Nova Sala de Disputa: Visão Governo                                                40
+   ALTERAR
+ ABERTURA DA
+SESSÃO PÚBLICA
+                                                  Alterar abertura da Sessão Pública
+
+
+
+
+Motivos de alteração (Medida Administrativa, Cautelar e Judicial).
+Motivo da Alteração, nova data/hora prevista para abertura da Sessão Pública e
+justificativa. Ou ainda alteração sem data definida, mas justificadamente. Nesta
+ação de configurar a compra o Agente de Contratação poderá saber se esta
+compra possui proposta cadastrada, sem identificar quantas e quais.
+
+
+
+
+                                     Clique aqui para alterar a abertura da
+                                     Sessão Pública.
+
+
+
+
+O usuário poderá informar nova data de abertura da sessão pública em dois locais distintos: via o link constante “<sem prazo definido>” do
+campo “Previsão de abertura” ou ainda no ícone superior direito da tela      Em ambos locais indicarão para o local de definição da nova
+data de abertura, na qual deverá aguardar no mínimo 24 (vinte e quatro) horas para a notificação aos fornecedores que cadastraram
+propostas no Pregão.
+
+                                                        Nova Sala de Disputa: Visão Governo                                                  42
+     Alterar abertura da Sessão Pública
+
+
+
+
+Preencha os campos e confirme
+ao final.
+
+
+
+
+          Nova Sala de Disputa: Visão Governo   43
+Alterar abertura da Sessão Pública
+
+
+
+                    Conforme mencionado em tolerância de tempo, transcorridos 10 (dez)
+                    minutos de tolerância para a abertura da sessão publica, o Pregão
+                    será suspenso administrativamente pelo sistema, independentemente
+                    de ação do Agente de Contratação. Sendo assim, ficará “Sem prazo
+                    definido” de data/horário para o início da sessão pública.
+                    O Agente de Contratação deverá vincular a equipe do Pregão e marcar
+                    novas data e horário.
+
+
+
+
+                                                    ATENÇÃO!!!
+                        O sistema exigirá antecedência mínima de 24 (vinte e quatro)
+                        horas. Essa antecedência não é em relação à data e horário
+                        previsto para a realização do certame, e sim da data e horário em
+                        que       está      sendo       feito     o      reagendamento.
+                        Deverá ter justificativa a ser informada pelo Agente de
+                        Contratação .
+
+
+
+
+Nova Sala de Disputa: Visão Governo                                                  44
+                                    Alterar abertura da Sessão Pública
+
+
+
+Uma vez que o Pregão foi alterado a data de abertura da sessão pública, e caso o Agente de Contratação tente
+acessar ou operar Pregão, o sistema vai apresentar as orientações da nova data e horário, tendo neste
+momento somente a opção de realizar nova configuração da compra. Veja a seguinte mensagem:
+
+
+
+
+                                       Nova Sala de Disputa: Visão Governo                                     45
+ Informações adicionais da compra
+
+
+
+
+                   Ao detalhar esta tela o Agente de Contratação poderá
+                   visualizar algumas informações da compra, como: Modo de
+                   disputa, data (início e fim da entrega de proposta e data
+                   prevista da abertura da sessão pública, se a compra é
+                   Emergencial e ainda o objeto do Pregão.
+
+
+
+
+Nova Sala de Disputa: Visão Governo                                            46
+       Online/Offline
+
+
+
+
+            Online - Caso perceba que não houve
+            atualização em sua tela o Agente de Contratação
+            deverá clicar para realizar a atualização.
+
+
+
+            Para reconectar, o usuário deverá
+            sair do sistema e fazer novo login.
+                                                              Uma vez configurada a
+                                                              abertura     da    sessão
+                                                              pública, o sistema na
+                                                              data/hora definida abrirá
+    Ao terminar com todas as ações da                         automaticamente os itens
+    “Configuração da Sessão Pública” o Agente de              para disputa. Devendo ao
+    Contratação não pode esquecer de confirmar no             Agente de Contratação
+    sistema.                                                  “Acompanhar a Disputa”.
+
+
+Nova Sala de Disputa: Visão Governo                                                 47
+ANÁLISE DE
+PROPOSTAS
+ MANUAL
+                        Análise de Propostas Manual
+
+
+
+
+Na tela de análise de
+propostas aparecerá
+um     relógio    em
+contagem regressiva,
+indicando o tempo
+restante.
+
+
+
+
+                         Nova Sala de Disputa: Visão Governo   49
+Análise de Propostas Manual
+
+
+
+
+                                       Itens que já tiveram suas
+                                       propostas analisadas.
+
+
+
+
+                                       Ao acessar esse ícone, o
+                                       Agente de Contratação terá
+                                       acesso    às      propostas
+                                       cadastradas para o item.
+
+
+
+
+ Nova Sala de Disputa: Visão Governo                    50
+           Análise de Propostas Manual
+
+Caso o Agente de Contratação precise de tempo adicional para analisar as
+propostas deverá clicar no ícone    para acessar as opções de “Estender
+prazo da análise das propostas”.
+Caso identifique que o tempo restante não é o suficiente, o agente de
+contratação poderá prorrogar sucessivas vezes para continuar com as
+análises das propostas. Caso contrário, a sessão iniciará
+AUTOMATICAMENTE.
+
+
+
+
+                                                                                              Clique      aqui
+                                                                                              para incluir o
+                                                                                              tempo adicional.
+
+
+
+
+                                                    IMPORTANTE: Se o agente de contratação colocar mais
+                                                    minutos do que ele realmente necessita, deverá aguardar até
+                                                    o término deste tempo. Não há possibilidade de antecipação
+                                                    deste prazo. Assim, sugere-se que haja várias prorrogações
+                                                    em tempos razoáveis do que uma única prorrogação com um
+                                                    tempo muito longo.
+
+
+
+              Nova Sala de Disputa: Visão Governo                                                      51
+                                Análise de Propostas Manual
+
+
+
+
+Campo         destinado     a
+justificativa para estender o
+prazo da análise das
+propostas.
+
+
+
+
+                                 Nova Sala de Disputa: Visão Governo   52
+Análise de Propostas Manual
+
+
+
+
+                                       Caso o Agente de
+                                       Contratação decida por
+                                       desclassificar     alguma
+                                       proposta deverá clicar no
+                                       ícone X e terá acesso ao
+                                       conteúdo da proposta e
+                                       ao campo “Justificativa”.
+
+
+
+
+ Nova Sala de Disputa: Visão Governo                     53
+Análise de Propostas Manual
+
+
+
+
+Então, surgirá a informação de PROPOSTAS DESCLASSIFICADAS. O Agente de
+Contratação irá clicar na opção “Finalizar análise do item”.
+
+Caso decida pela continuidade da proposta deverá clicar na opção   para
+cancelar a desclassificação da proposta.
+
+
+   Nova Sala de Disputa: Visão Governo                                    54
+                               Análise de Propostas Manual
+
+
+
+
+Após análise de todas as
+propostas, o sistema emitirá
+a    seguinte     mensagem:
+“Todos os XX itens foram
+analisados. Aguarde o início
+da disputa.”
+Abaixo dos itens constará,
+em vermelho, a informação
+Aguardando disputa.
+
+
+
+
+                                 Nova Sala de Disputa: Visão Governo   55
+                              Acompanhar Sessão Pública
+
+
+
+
+O Agente de Contratação
+acompanha os itens que
+estão “Aguardando disputa”,
+“Em         disputa”      e
+“Encerrados”.
+Destaca-se que os itens que
+foram priorizados ficam na
+frente dos demais na fase
+de disputa. Caso houvesse
+um grupo priorizado este
+ficaria na frente dos itens
+priorizados.
+
+
+
+
+                                Nova Sala de Disputa: Visão Governo   56
+SESSÃO PÚBLICA
+– ACOMPANHAR
+    DISPUTA
+    Acompanhar Disputa
+
+
+
+
+  No Acompanhar Disputa serão apresentadas ao
+  Agente de Contratação três abas:
+  • “Aguardando disputa”,
+  • “Em disputa” e
+  • “Encerrados”
+
+
+
+
+Nova Sala de Disputa: Visão Governo             58
+   Acompanhar Disputa
+
+
+
+
+                                      Aqui ficam os itens aguardando a ordem de
+                                      abertura para a fase de lances, que seguirá
+                                      a ordem de priorização, caso tenha sido
+                                      indicado pelo Agente de Contratação no
+                                      momento da configuração da compra.
+
+
+
+
+Nova Sala de Disputa: Visão Governo                                                 59
+ Acompanhar Disputa
+
+
+
+                          Nesta aba o sistema apresentará os itens que
+                          estão em disputa.
+                          O Agente de Contratação acompanha em
+                          tempo real a disputa e também é onde poderá,
+                          se necessário, fazer a exclusão de lances.
+
+
+
+
+Nova Sala de Disputa: Visão Governo                                      60
+ Acompanhar Disputa
+
+
+
+
+              Nesta aba o sistema apresentará todos os itens que foram
+              encerrados após término da disputa. Os ‘itens desertos’ e
+              ‘fracassados’ também aparecerão nessa aba, inclusive os itens que
+              tiveram suas propostas desclassificadas na análise manual.
+
+
+
+
+Nova Sala de Disputa: Visão Governo                                               61
+ Acompanhar Disputa
+
+
+
+
+     O número em vermelho indica a
+     atualização dos itens.
+
+
+
+
+Nova Sala de Disputa: Visão Governo   62
+ Acompanhar Disputa
+
+
+
+
+Nova Sala de Disputa: Visão Governo   63
+   Acompanhar Disputa
+
+
+
+
+Nesta opção      o sistema apresenta ao Agente de Contratação
+algumas informações básicas da compra, a saber:
+• Indicação da análise de proposta, se manual, o tempo em
+    minutos para essa análise;
+• Quantidade máxima de itens em disputa;
+• Tempo (em minutos) de aviso prévio para abertura de itens em
+    disputa;
+• Período de abertura dos itens, com ou sem intervalo.
+
+Tal como foi definido em “Configurar Comprar”.
+
+
+  Nova Sala de Disputa: Visão Governo                            64
+Acompanhar Disputa
+
+
+
+
+                       Neste ícone      o Agente de Contratação
+                       poderá     ver    algumas    informações
+                       adicionais da compra.
+
+
+
+
+Nova Sala de Disputa: Visão Governo                               65
+ Acompanhar Disputa
+
+
+       Neste ícone       é possível
+       suspender a sessão pública.
+
+
+
+
+                                      Neste momento a suspensão vai fazer
+                                      efeito para a abertura de novos itens
+                                      em disputa.
+                                      Ou seja, os itens em disputa continuam
+                                      até o final da disputa e não abrem
+                                      mais itens para disputa. Ao passar o
+                                      mouse sobre o ícone       o sistema vai
+                                      apresentar o motivo e a justificativa
+                                      da suspensão.
+
+
+
+
+Nova Sala de Disputa: Visão Governo                               66
+        Acompanhar Disputa
+
+
+
+
+Ao tentar suspender um Pregão com a sessão pública em andamento, o sistema
+apresentará a mensagem redirecionando o usuário para a tela de acompanhar a
+disputa. Somente nesta tela é possível efetuar a suspensão.
+
+
+
+
+       Nova Sala de Disputa: Visão Governo                                    67
+                                                Acompanhar Disputa
+
+
+
+
+                                         Neste ícone o Agente de Contratação poderá enviar
+                                         mensagens aos fornecedores para esta compra.
+                                         Bem como visualizar as mensagens emitidas pelo
+                                         Sistema.
+
+
+
+Para abrir a comunicação via chat o Agente de Contratação vai utilizar o ícone “Mensagens da Compra”
+
+Para fechar a comunicação do chat o Agente de Contratação vai utilizar o botão
+
+Para enviar mensagens deverá acionar o balão
+
+E assim será aberto campo para o registro das mensagens a serem enviadas.
+
+
+
+                                               Nova Sala de Disputa: Visão Governo                     68
+Acompanhar Disputa
+
+
+
+
+ Ao terminar de digitar a mensagem deverá acionar o
+
+ Para fechar a caixa de envio de mensagem deverá acionar o
+
+
+
+
+ Para visualizar e ler todas as mensagens poderá
+ navegar no rodapé das páginas do chat.
+
+
+
+
+Nova Sala de Disputa: Visão Governo                          69
+                              Acompanhar Disputa
+
+
+
+
+O Agente de Contratação
+pode visualizar, para cada
+item: as       “Propostas
+iniciais”, os “Melhores
+valores por fornecedor”
+e “Todos os lances”.
+
+
+
+
+                             Nova Sala de Disputa: Visão Governo   70
+ Acompanhar Disputa
+
+
+
+
+                                      Na opção de visualizar
+                                      “Todos os lances”, o Agente
+                                      de Contratação pode excluir
+                                      um lance.
+
+                                      A informação da exclusão
+                                      constará conforme segue.
+
+
+
+
+Nova Sala de Disputa: Visão Governo                   71
+ Acompanhar Disputa
+
+
+
+
+Nova Sala de Disputa: Visão Governo   72
+ Acompanhar Disputa
+
+
+
+                   MODO DE DISPUTA: ABERTO
+O Agente de Contratação terá a opção de indicar, justificadamente,
+o reinício da disputa para item(ns) que não tiveram lances entre o
+intervalo do 8º (oitavo) e 10º (décimo) minuto da fase aberta.
+No qual o item vai ficar com status de “Aguardando Decisão sobre o
+reinício”.
+
+
+
+
+Nova Sala de Disputa: Visão Governo                                  73
+                                                Acompanhar Disputa
+
+
+ Terminada a disputa para que o Pregão siga para a fase de julgamento, faz se necessário a ação do Agente de Contratação
+ confirmando quando sugerido pelo sistema, ou ainda na opção do sistema (figura          ). E assim enquanto o Agente de
+ Contratação não passar por esta tela o Pregão não vai para a fase de julgamento. Ficará como meio “sumido”. Pois com
+ essa nova sala de disputa o início do julgamento de propostas somente por acionamento do Agente de Contratação.
+ Enquanto a ação não for realizada, o Pregão continua sendo acessado a partir da opção 'Lances' da sala de disputa.
+
+
+
+
+Por ser um Pregão com modo de disputa aberto e o item/grupo estar dentro da possibilidade do reinício da disputa, o
+sistema vai ficar aguardando a ação do Agente de Contratação em reiniciar ou encerrar.
+
+
+
+
+                                              Nova Sala de Disputa: Visão Governo                                          74
+                                             Acompanhar Disputa
+
+Caso decida por reiniciar etapa aberta, a seguinte tela será apresentada.
+
+
+
+
+                                            Nova Sala de Disputa: Visão Governo   75
+ Acompanhar Disputa
+
+
+
+
+ Caso o Agente de Contratação não queira reabrir
+ nenhum item para reinicio de disputa, poderá
+ encerrar todos de uma única vez.
+
+Nova Sala de Disputa: Visão Governo                76
+ Acompanhar Disputa
+
+
+
+
+                                      Após o encerramento da fase
+                                      competitiva de lances, o Agente de
+                                      Contratação poderá visualizar uma
+                                      lista de opções itens com disputa
+                                      encerrada.
+                                      Dentre as opções constam: “Itens
+                                      acima do critério de valor”, “Itens
+                                      abaixo do critério de valor”, “Itens
+                                      desertos” e “Itens fracassados”.
+
+
+
+
+Nova Sala de Disputa: Visão Governo                             77
+                              Acompanhar Disputa
+
+
+
+
+Quando houver lance nos
+últimos 2 (dois) minutos, o
+sistema informará para este
+item      ‘Etapa     aberta
+prorrogação’
+No caso de não ocorrer
+lances,      o      sistema
+apresentará a mensagem
+logo abaixo do item:
+Aguardando decisão sobre
+Reinício.
+
+
+
+
+                              Nova Sala de Disputa: Visão Governo   78
+ Acompanhar Disputa
+
+
+
+
+                                      Caso não ocorram lances nos
+                                      últimos 2 (dois) minutos de tempo
+                                      restante, o Agente de Contratação
+                                      poderá, motivadamente, fazer o
+                                      reinício da disputa do item.
+
+
+
+
+Nova Sala de Disputa: Visão Governo                         79
+                                               Acompanhar Disputa
+
+
+Lembrando que mesmo terminada a disputa da compra, estando na fase de julgamento, antes e depois de julgado,
+se necessário, o Agente de Contratação poderá acessar a sala de disputa e enviar mensagens aos fornecedores.
+
+
+
+
+                                             Nova Sala de Disputa: Visão Governo                               80
+                                              Acompanhar Disputa
+
+
+
+Os fornecedores poderão visualizar em: “Acompanhar Julgamento/Habilitação/Admissibilidade”.
+
+
+
+
+  Aqui depois de julgado, neste exemplo, todos os itens foram cancelados, pois estavam acima do valor estimado.
+
+
+                                            Nova Sala de Disputa: Visão Governo                                   81
+                                                         Acompanhar Disputa
+
+
+
+
+Importa esclarecer que todas as mensagens constarão na ata da sessão pública.
+
+
+
+
+                                                       Nova Sala de Disputa: Visão Governo   82
+Iniciar Julgamento de Propostas
+
+
+
+
+                      Clique    aqui para iniciar
+                      julgamento de propostas.
+
+
+
+
+    Nova Sala de Disputa: Visão Governo             83
+                                              Iniciar Julgamento de Propostas
+
+
+Ao terminar a disputa de todos os itens automaticamente o sistema apresentará ao Agente de Contratação a seguinte tela para “Realizar o
+julgamento''.
+
+
+
+
+                                                                                          Clique    aqui para iniciar
+                                                                                          julgamento de propostas.
+
+
+
+
+                                                    Nova Sala de Disputa: Visão Governo                                              84
+                                         Iniciar Julgamento de Propostas
+
+
+
+O sistema encaminhará o Agente de Contratação para a tela de julgamento dos itens da compra.
+
+
+
+
+                                              Nova Sala de Disputa: Visão Governo              85
+                                          Iniciar Julgamento de Propostas
+
+
+
+Para fins de esclarecimento na nova sala de disputa em que os itens ou forem ‘fracassados’ ou ‘desertos’ o sistema
+automaticamente vai direcionar o Agente de Contratação para a indicação do prazo recursal.
+
+
+
+
+                                               Nova Sala de Disputa: Visão Governo                                   86
+                               INFORMAÇÕES
+
+
+
+
+Outras informações, acesse o Portal de Compras - https://www.gov.br/compras
+
+Em caso de dúvidas e sugestões:
+
+•   Telefone: 0800.978.9001
+•   Portal de Atendimento: https://portaldeservicos.economia.gov.br
+•   Suporte realizado de segunda à sexta-feira, de 07:00 às 20:00 horas.
+
+
+
+
+                             Nova Sala de Disputa: Visão Governo              87
+
