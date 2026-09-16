@@ -217,8 +217,10 @@ export async function postarResultadoNoMural(
  * esta coluna existe para resolver.
  */
 function inicioDaSessao(data?: string, hora?: string): string | null {
-  if (!data) return null;
-  const instante = new Date(`${data}T${(hora && hora.length >= 4 ? hora : '00:00').slice(0, 5)}:00`);
+  // Sem horário, não há instante: gravar a data sozinha virava MEIA-NOITE, e o
+  // agendador despacharia o robô às 23:45 da véspera (visto em 16/09/2026).
+  if (!data || !hora || hora.length < 4) return null;
+  const instante = new Date(`${data}T${hora.slice(0, 5)}:00`);
   return Number.isNaN(instante.getTime()) ? null : instante.toISOString();
 }
 
