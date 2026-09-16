@@ -72,6 +72,11 @@ export type DisputeItem = {
    * disputa cadastrada antes de 16/09 segue igual.
    */
   estrategia?: EstrategiaDoItem;
+  /**
+   * Só na estratégia "Desempatar no 1º lugar": a distância máxima, em reais,
+   * entre o lance da empresa e o do 1º colocado para o robô cobri-lo.
+   */
+  margemDesempate?: number | null;
   lote: string;
   disputando: boolean;
   situacao: 'aguardando' | 'disputando' | 'encerrado';
@@ -190,12 +195,14 @@ function LinhaDeItem({
   larguraDescricao,
   aoMudarPiso,
   aoMudarEstrategia,
+  aoMudarMargem,
   aoRemover,
 }: {
   item: DisputeItem;
   larguraDescricao: string;
   aoMudarPiso: (id: string, texto: string) => void;
   aoMudarEstrategia: (id: string, estrategia: EstrategiaDoItem) => void;
+  aoMudarMargem: (id: string, texto: string) => void;
   aoRemover: (id: string) => void;
 }) {
   // `null` e `0` são estados diferentes e a tela precisa mostrar essa
@@ -264,6 +271,19 @@ function LinhaDeItem({
             ))}
           </SelectContent>
         </Select>
+        {item.estrategia === 'desempatar_1o' && (
+          <Input
+            value={item.margemDesempate === null || item.margemDesempate === undefined ? '' : String(item.margemDesempate)}
+            onChange={(e) => aoMudarMargem(item.id, e.target.value)}
+            placeholder="margem R$"
+            inputMode="decimal"
+            aria-label={`Margem de desempate do item ${item.numero}`}
+            title="Distância máxima, em reais, entre o lance da empresa e o do 1º colocado para o robô cobri-lo"
+            className={`mt-1 h-9 w-32 text-sm text-right tabular-nums px-2 ${
+              item.margemDesempate ? '' : 'border-warning-line placeholder:text-warning-ink'
+            }`}
+          />
+        )}
       </TableCell>
       <TableCell className="text-center">
         <Button
@@ -347,7 +367,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
   // O Compras.gov busca por "número+ano" e por UASG; os outros portais, não.
   const ehComprasGov = idDoPortal(portal) === 'compras-gov';
   const [decrementoMin, setDecrementoMin] = useState(editingLance?.decrementoMin?.toString() || '');
-  const [decrementoPercentual, setDecrementoPercentual] = useState(editingLance ? (editingLance.decrementoPercentual ? String(editingLance.decrementoPercentual) : '') : '1.5');
+  const [decrementoPercentual, setDecrementoPercentual] = useState(editingLance?.decrementoPercentual ? String(editingLance.decrementoPercentual) : '');
   const [intervaloSegundos, setIntervaloSegundos] = useState(editingLance?.intervaloSegundos?.toString() || '30');
   const [maxLances, setMaxLances] = useState(editingLance ? (editingLance.maxLances ? String(editingLance.maxLances) : '') : '20');
   const [modoAutomatico, setModoAutomatico] = useState(editingLance?.modoAutomatico ?? true);
@@ -831,7 +851,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
   // Com a disputa em página própria, editar virou o caminho principal.
   const resetForm = () => {
     setEdital(editingLance?.edital || ''); setPortal(editingLance?.portal || ''); setUasg(editingLance?.uasg || '');
-    setDecrementoMin(editingLance?.decrementoMin?.toString() || ''); setDecrementoPercentual(editingLance ? (editingLance.decrementoPercentual ? String(editingLance.decrementoPercentual) : '') : '1.5');
+    setDecrementoMin(editingLance?.decrementoMin?.toString() || ''); setDecrementoPercentual(editingLance?.decrementoPercentual ? String(editingLance.decrementoPercentual) : '');
     setIntervaloSegundos(editingLance?.intervaloSegundos?.toString() || '30'); setMaxLances(editingLance ? (editingLance.maxLances ? String(editingLance.maxLances) : '') : '20');
     setModoAutomatico(editingLance?.modoAutomatico ?? true); setHorario(editingLance?.horario || '');
     setDataSessao(editingLance?.dataSessao || '');
@@ -895,6 +915,15 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
     setItens(prev => prev.map(i => (i.id === id ? { ...i, estrategia } : i)));
   };
 
+  /** Margem vazia grava `null`: sem ela a estratégia de desempate aguarda. */
+  const handleMargemItem = (id: string, texto: string) => {
+    const limpo = texto.replace(/[^\d,.]/g, '').replace(',', '.');
+    const n = parseFloat(limpo);
+    setItens(prev => prev.map(i =>
+      i.id === id ? { ...i, margemDesempate: limpo === '' || !Number.isFinite(n) ? null : n } : i
+    ));
+  };
+
   const handleSave = () => {
     const lance: LanceConfig = {
       id: editingLance?.id || crypto.randomUUID(),
@@ -903,10 +932,11 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
       valorInicial,
       valorMinimo,
       decrementoMin: parseFloat(decrementoMin) || 0,
-      // Campo apagado é "sem decremento percentual", e não 1,5%: sem
-      // decremento nenhum, o robô usa o intervalo mínimo que o edital publica
-      // (R$ 0,0100 no 7/2026). O `|| 1.5` de antes gravava 1,5% mesmo com o
-      // campo vazio — um passo que ninguém escolheu.
+      // Campo vazio é "sem decremento percentual", e não 1,5%: sem decremento
+      // nenhum, o robô desce só o intervalo mínimo que o edital publica
+      // (R$ 0,0100 no 7/2026), para não gastar margem à toa — decisão do Ian em
+      // 16/09. O `|| 1.5` de antes, e o 1,5 já escrito no campo de disputa
+      // nova, gravavam um passo que ninguém escolheu.
       decrementoPercentual: parseFloat(decrementoPercentual) > 0 ? parseFloat(decrementoPercentual) : 0,
       intervaloSegundos: parseInt(intervaloSegundos) || 30,
       // Vazio ou zero = sem teto: o robô disputa até o piso de cada item.
@@ -1388,11 +1418,11 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                 </div>
                 <div>
                   <Label htmlFor="disputa-decremento-pct">Decremento Percentual (%)</Label>
-                  <Input id="disputa-decremento-pct" type="number" step="0.1" value={decrementoPercentual} onChange={(e) => setDecrementoPercentual(e.target.value)} placeholder="nenhum" className="mt-1" />
+                  <Input id="disputa-decremento-pct" type="number" step="0.1" value={decrementoPercentual} onChange={(e) => setDecrementoPercentual(e.target.value)} placeholder="vazio = intervalo do edital" className="mt-1" />
                 </div>
               </div>
               <p className="text-sm text-muted-foreground">
-                Com os dois decrementos vazios, o robô usa o intervalo mínimo entre lances publicado no edital. Um decremento menor que esse intervalo sobe para ele, porque o portal recusaria o lance.
+                Vazios, o robô desce só o intervalo mínimo entre lances publicado no edital, para não gastar margem à toa. Preencha só para descer mais a cada lance; um valor menor que o intervalo do edital sobe para ele, porque o portal recusaria o lance.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
@@ -1564,6 +1594,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                                   larguraDescricao="max-w-[180px]"
                                   aoMudarPiso={handlePisoItem}
                                   aoMudarEstrategia={handleEstrategiaItem}
+                                  aoMudarMargem={handleMargemItem}
                                   aoRemover={handleRemoveItem}
                                 />
                               ))}
@@ -1598,6 +1629,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                             larguraDescricao="max-w-[160px]"
                             aoMudarPiso={handlePisoItem}
                             aoMudarEstrategia={handleEstrategiaItem}
+                            aoMudarMargem={handleMargemItem}
                             aoRemover={handleRemoveItem}
                           />
                         ))}

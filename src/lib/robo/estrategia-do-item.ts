@@ -9,7 +9,7 @@
  * lance, e o teste `estrategia.test.ts` confere que as duas listas batem.
  */
 
-export type EstrategiaDoItem = 'melhor_preco' | 'iminencia';
+export type EstrategiaDoItem = 'melhor_preco' | 'iminencia' | 'desempatar_1o';
 
 export const ESTRATEGIAS_DO_ITEM: ReadonlyArray<{ id: EstrategiaDoItem; nome: string; explicacao: string }> = [
   {
@@ -21,6 +21,12 @@ export const ESTRATEGIAS_DO_ITEM: ReadonlyArray<{ id: EstrategiaDoItem; nome: st
     id: 'iminencia',
     nome: 'Iminência',
     explicacao: 'Só dá lance nos 2 minutos finais da etapa aberta, sem passar do piso.',
+  },
+  {
+    id: 'desempatar_1o',
+    nome: 'Desempatar no 1º lugar',
+    explicacao:
+      'Só cobre o 1º lugar quando ele está perto: a diferença até o lance da empresa cabe na margem em reais do item. Mais longe que isso, não persegue.',
   },
 ];
 

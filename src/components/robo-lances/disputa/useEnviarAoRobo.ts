@@ -108,6 +108,7 @@ export function useEnviarAoRobo({ empresaId, estadoDoRobo, relerLigado, portaisS
             valor_minimo: i.valorMinimo ?? null,
             // Vazio viaja vazio: o agente trata como melhor preço.
             estrategia: i.estrategia ?? null,
+            margem_desempate: i.margemDesempate ?? null,
             origem: i.origem ?? null,
             disputando: i.disputando,
           })),
