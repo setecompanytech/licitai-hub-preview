@@ -13545,3 +13545,63 @@ Reversão (só se nenhuma disputa tiver sido salva sem limite):
 UPDATE public.robo_lances_disputas SET max_lances = 20 WHERE max_lances IS NULL;
 ALTER TABLE public.robo_lances_disputas ALTER COLUMN max_lances SET NOT NULL;
 ```
+
+---
+
+## 20260916000004 — disputa remarcada volta para a agenda; contagem de tentativas de envio
+
+**Aplicar ANTES de publicar o `robo-lances-webhook`** que lê `tentativas_envio`
+(sem a coluna, o agendador segue funcionando como antes, sem nova tentativa).
+
+**Por quê:** a disputa pode ser cadastrada com meses de antecedência, e pregão é
+adiado com frequência. O agendador marca `enviada_em` ao despachar e nunca mais
+olha a disputa — se o pregão foi remarcado **depois** do despacho, corrigir a
+data não fazia o robô voltar. O gatilho, no banco, limpa a marca quando a data
+**muda de verdade**, por qualquer caminho (tela, Lovable, SQL); salvar sem mexer
+na data não rearma nada. `tentativas_envio` conta as falhas passageiras (robô
+sem resposta, tempo estourado, erro 5xx): até 5, uma por minuto, e zera quando a
+data muda.
+
+```sql
+ALTER TABLE public.robo_lances_disputas
+  ADD COLUMN IF NOT EXISTS tentativas_envio integer NOT NULL DEFAULT 0;
+
+COMMENT ON COLUMN public.robo_lances_disputas.tentativas_envio IS
+  'Quantas vezes o agendador tentou despachar e o robô não respondeu (falha passageira). Zera quando a data da sessão muda.';
+
+CREATE OR REPLACE FUNCTION public.robo_disputa_remarcada_volta_a_agenda()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
+BEGIN
+  IF NEW.inicio_sessao IS DISTINCT FROM OLD.inicio_sessao THEN
+    NEW.enviada_em := NULL;
+    NEW.tentativas_envio := 0;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_robo_disputa_remarcada ON public.robo_lances_disputas;
+CREATE TRIGGER trg_robo_disputa_remarcada
+  BEFORE UPDATE OF inicio_sessao ON public.robo_lances_disputas
+  FOR EACH ROW
+  EXECUTE FUNCTION public.robo_disputa_remarcada_volta_a_agenda();
+```
+
+Conferir:
+
+```sql
+SELECT column_name, column_default FROM information_schema.columns
+ WHERE table_schema = 'public' AND table_name = 'robo_lances_disputas' AND column_name = 'tentativas_envio';
+SELECT tgname FROM pg_trigger WHERE tgname = 'trg_robo_disputa_remarcada';
+```
+
+Reversão:
+
+```sql
+DROP TRIGGER IF EXISTS trg_robo_disputa_remarcada ON public.robo_lances_disputas;
+DROP FUNCTION IF EXISTS public.robo_disputa_remarcada_volta_a_agenda();
+ALTER TABLE public.robo_lances_disputas DROP COLUMN IF EXISTS tentativas_envio;
+```
