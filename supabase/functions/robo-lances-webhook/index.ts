@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { credencialEmClaro } from "../_shared/credenciais-cifra.ts";
 import { portalDoAgente } from "../_shared/robo-portais.ts";
+import { autorizadoComoCron } from "../_shared/cron-auth.ts";
 import { instalarCertificadoNoAgente } from "../_shared/certificado-agente.ts";
 import {
   resolverAcao,
@@ -627,6 +628,258 @@ serve(async (req) => {
           502
         );
       }
+    }
+
+    // ─── O AGENDADOR: O ROBÔ ENTRA SOZINHO NO HORÁRIO ─────────────────────
+    //
+    // Chamado por pg_cron a cada minuto (migration 20260916000002). Faz o que
+    // o "Enviar ao robô" faz, sem ninguém clicando: acha as disputas que
+    // começam agora, confere se o robô da empresa está ligado, monta a sessão
+    // e chama o agente.
+    //
+    // Não tem usuário logado: a autorização é o CRON_SECRET, e cada disputa é
+    // despachada em nome de QUEM A CADASTROU (`user_id` da linha) — é dele o
+    // agente, a credencial do portal e o certificado.
+    if (action === "disparar-agendadas") {
+      if (!autorizadoComoCron(req)) return jsonResponse({ error: "Unauthorized" }, 401);
+
+      const agora = Date.now();
+      // Adianta o login: entrar 15 minutos antes dá margem para o captcha do
+      // gov.br pedir um clique humano e ainda assim a sessão estar de pé
+      // quando o pregão abrir.
+      const ate = new Date(agora + 15 * 60_000).toISOString();
+      // Atrasada demais não vira sessão: uma disputa de ontem que ninguém
+      // despachou não deve abrir Chrome hoje.
+      const desde = new Date(agora - 30 * 60_000).toISOString();
+
+      const { data: pendentes, error: erroLeitura } = await supabase
+        .from("robo_lances_disputas")
+        .select("*")
+        .is("enviada_em", null)
+        .not("inicio_sessao", "is", null)
+        .gte("inicio_sessao", desde)
+        .lte("inicio_sessao", ate)
+        .order("inicio_sessao", { ascending: true })
+        .limit(20);
+
+      if (erroLeitura) {
+        // Coluna ausente = migration 20260916000001 ainda não aplicada. É
+        // estado de instalação, não defeito: responde dizendo o que falta.
+        const faltaMigration = erroDeColunaAusente(erroLeitura);
+        return jsonResponse(
+          {
+            ok: false,
+            erro: faltaMigration
+              ? "Agendamento indisponível: a migration 20260916000001 (inicio_sessao/enviada_em) ainda não foi aplicada."
+              : erroLeitura.message,
+          },
+          faltaMigration ? 409 : 500,
+        );
+      }
+
+      const relatorio: Array<Record<string, unknown>> = [];
+
+      for (const d of (pendentes || []) as Array<Record<string, any>>) {
+        const donoId = d.user_id as string;
+        const avisar = async (titulo: string, mensagem: string) => {
+          await supabase.from("notificacoes").insert({
+            user_id: donoId,
+            tipo: "urgente",
+            titulo,
+            mensagem,
+            link: `/robo-lances/disputa/${d.id}`,
+          });
+        };
+
+        // O robô da empresa desligado é decisão de quem assina, e vale também
+        // para o agendamento. Aqui NÃO marca `enviada_em`: se religarem antes
+        // da sessão, o próximo minuto despacha.
+        if (d.empresa_id) {
+          const ligado = await lerLigadoDaEmpresa(supabase, d.empresa_id);
+          if (ligado.estado === "desligado") {
+            relatorio.push({ disputa: d.id, resultado: "robo-desligado" });
+            continue;
+          }
+        }
+
+        // RESERVA ANTES DE TRABALHAR. Duas execuções do job podem se cruzar
+        // (a anterior ainda esperando o agente), e duas sessões no mesmo
+        // portal, com o mesmo CPF e o mesmo certificado, derrubam uma à
+        // outra. O update condicional é a reserva: quem não pegar a linha,
+        // desiste.
+        const { data: reservada } = await supabase
+          .from("robo_lances_disputas")
+          .update({ enviada_em: new Date().toISOString() })
+          .eq("id", d.id)
+          .is("enviada_em", null)
+          .select("id");
+        if (!reservada || reservada.length === 0) {
+          relatorio.push({ disputa: d.id, resultado: "ja-despachada" });
+          continue;
+        }
+
+        const portalAgente = portalDoAgente(d.portal);
+        if (!portalAgente) {
+          await avisar(
+            `🤖 Robô não entrou — ${d.edital}`,
+            `O portal "${d.portal || "(não informado)"}" não é um que o robô conhece. Reabra a disputa e escolha o portal de novo.`,
+          );
+          relatorio.push({ disputa: d.id, resultado: "portal-desconhecido" });
+          continue;
+        }
+
+        const itensCadastrados = Array.isArray(d.itens) ? d.itens : [];
+        if (itensCadastrados.length === 0) {
+          await avisar(
+            `🤖 Robô não entrou — ${d.edital}`,
+            "A disputa não tem item cadastrado, e o robô precisa saber o que acompanhar dentro do processo.",
+          );
+          relatorio.push({ disputa: d.id, resultado: "sem-itens" });
+          continue;
+        }
+
+        const { data: agentesAtivos } = await supabase
+          .from("agente_externo_config")
+          .select("*")
+          .eq("user_id", donoId)
+          .eq("status", "ativo")
+          .order("updated_at", { ascending: false });
+        const agente = agentesParaUsuario(agentesAtivos, ambiente)[0];
+        if (!agente) {
+          await avisar(`🤖 Robô não entrou — ${d.edital}`, "Nenhum robô ativo configurado para quem cadastrou esta disputa.");
+          relatorio.push({ disputa: d.id, resultado: "sem-agente" });
+          continue;
+        }
+
+        let credenciais;
+        try {
+          credenciais = await credencialEmClaro(supabase, donoId, d.portal);
+        } catch (e) {
+          await avisar(`🤖 Robô não entrou — ${d.edital}`, `A credencial do portal não pôde ser lida: ${textoDoErro(e)}`);
+          relatorio.push({ disputa: d.id, resultado: "credencial-ilegivel" });
+          continue;
+        }
+        if (!credenciais) {
+          await avisar(
+            `🤖 Robô não entrou — ${d.edital}`,
+            "Nenhuma credencial ativa cadastrada para este portal. Cadastre em Robô de Lances → Portais.",
+          );
+          relatorio.push({ disputa: d.id, resultado: "sem-credencial" });
+          continue;
+        }
+
+        // Os itens são gravados no vocabulário da tela (camelCase) e viajam no
+        // do servidor (snake_case) — a mesma tradução que o envio manual faz
+        // antes de chamar esta função.
+        const itensParaSessao = itensCadastrados.map((i: Record<string, any>, idx: number) => ({
+          numero: Number(i.numero) || idx + 1,
+          lote: i.lote ?? null,
+          descricao: String(i.descricao || ""),
+          marca: i.marca ?? null,
+          modelo: i.modelo ?? null,
+          quantidade: Number(i.quantidade) || 1,
+          unidade: i.unidade || "UN",
+          preco_venda: Number(i.valorReferencia) > 0 ? Number(i.valorReferencia) : null,
+          custo_unitario: i.custoUnitario ?? null,
+          valor_estimado_orgao: i.valorEstimadoOrgao ?? null,
+          valor_minimo: i.valorMinimo ?? null,
+          origem: i.origem ?? null,
+        }));
+
+        const sessaoData = {
+          user_id: donoId,
+          lance_config_id: d.id,
+          licitacao_id: d.licitacao_id ?? null,
+          tipo_disputa: d.tipo_disputa ?? null,
+          portal_id: d.portal,
+          portal_nome: d.portal,
+          edital: d.edital,
+          valor_referencia: d.valor_referencia,
+          valor_inicial: d.valor_inicial,
+          valor_minimo: d.valor_minimo,
+          decremento_min: d.decremento_min,
+          decremento_percentual: d.decremento_percentual,
+          intervalo_segundos: d.intervalo_segundos || 30,
+          max_lances: d.max_lances || 20,
+          modo: "real",
+          status: "enviando",
+          agente_id: agente.id,
+        };
+
+        let { data: sessao, error: sessErr } = await supabase
+          .from("sessoes_lance_real")
+          .insert({ ...sessaoData, empresa_id: d.empresa_id ?? null })
+          .select()
+          .single();
+        if (sessErr && erroDeColunaAusente(sessErr)) {
+          ({ data: sessao, error: sessErr } = await supabase
+            .from("sessoes_lance_real")
+            .insert(sessaoData)
+            .select()
+            .single());
+        }
+        if (sessErr || !sessao) {
+          await avisar(`🤖 Robô não entrou — ${d.edital}`, "A sessão não pôde ser registrada e o robô não foi acionado.");
+          await registrarNoLog(supabase, donoId, "enviar-sessao-recusada", { disputa_id: d.id, etapa: "gravar-sessao", origem: "agendador" }, { erro: sessErr?.message ?? "insert sem retorno" });
+          relatorio.push({ disputa: d.id, resultado: "sessao-nao-gravada" });
+          continue;
+        }
+
+        await supabase.from("sessao_lance_itens").insert(
+          itensParaSessao.map((i) => ({
+            ...i,
+            sessao_id: sessao.id,
+            user_id: donoId,
+            empresa_id: d.empresa_id ?? null,
+            situacao: "aguardando",
+          })),
+        );
+
+        try {
+          const resp = await fetch(`${agente.url_base}/sessao/iniciar`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Agent-Key": chaveParaOAgente(agente, chaveGerenciada),
+              "X-Callback-URL": `${supabaseUrl}/functions/v1/robo-lances-webhook/callback`,
+            },
+            body: JSON.stringify({
+              sessao_id: sessao.id,
+              ...sessaoData,
+              portal_id: portalAgente,
+              credenciais_portal: credenciais,
+              uasg: d.uasg ?? null,
+              itens: itensParaSessao,
+            }),
+            signal: AbortSignal.timeout(60000),
+          });
+          const corpo = await resp.json().catch(() => ({}));
+          if (resp.ok) {
+            await supabase.from("sessoes_lance_real").update({ status: "ativo" }).eq("id", sessao.id);
+            // Sem notificação de sucesso aqui: quem avisa que o robô chegou é
+            // o próprio agente, pelo callback `sessao-ativa`, e dois avisos
+            // para o mesmo fato treinam a pessoa a ignorar os dois.
+            relatorio.push({ disputa: d.id, resultado: "despachada", sessao: sessao.id });
+          } else {
+            const erroCru = corpo?.error || `O agente respondeu HTTP ${resp.status}`;
+            await supabase.from("sessoes_lance_real").update({ status: "erro", erro: erroCru }).eq("id", sessao.id);
+            await avisar(`🤖 Robô não entrou — ${d.edital}`, motivoDeNegocio(corpo?.error, FRASES_AO_CLIENTE.sessaoNaoIniciada));
+            await registrarNoLog(supabase, donoId, "enviar-sessao-falha", { disputa_id: d.id, sessao_id: sessao.id, etapa: "agente-recusou", origem: "agendador" }, { erro: erroCru });
+            relatorio.push({ disputa: d.id, resultado: "agente-recusou" });
+          }
+        } catch (e) {
+          const erroCru = textoDoErro(e);
+          await supabase.from("sessoes_lance_real").update({ status: "erro", erro: erroCru }).eq("id", sessao.id);
+          await avisar(
+            `🤖 Robô não entrou — ${d.edital}`,
+            ehEstouroDeTempo(e) ? FRASES_AO_CLIENTE.semRespostaATempo : FRASES_AO_CLIENTE.roboForaDoAr,
+          );
+          await registrarNoLog(supabase, donoId, "enviar-sessao-falha", { disputa_id: d.id, sessao_id: sessao.id, etapa: "agente-sem-resposta", origem: "agendador" }, { erro: erroCru });
+          relatorio.push({ disputa: d.id, resultado: "agente-sem-resposta" });
+        }
+      }
+
+      return jsonResponse({ ok: true, janela: { desde, ate }, encontradas: (pendentes || []).length, relatorio });
     }
 
     // ─── CALLBACKS FROM THE EXTERNAL AGENT ───
