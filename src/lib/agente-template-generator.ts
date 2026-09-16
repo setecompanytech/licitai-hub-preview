@@ -213,6 +213,11 @@ const PORT = process.env.PORT || 3500;
 const AGENT_KEY = process.env.AGENT_API_KEY || '';
 const sessionManager = new SessionManager();
 
+// Vigia da sessao do Compras.gov (D12, 16/09/2026): mantem o perfil logado e
+// mede quando a sessao do gov.br vence. Ver src/vigia-sessao.js.
+const vigiaSessao = require('./vigia-sessao').criarVigia(sessionManager);
+vigiaSessao.iniciar();
+
 // Rotas que ESTA versão do agente implementa, publicadas no /health.
 // Sem essa lista o Praefectus não tem como saber o que existe aqui: HEAD devolve
 // 404 tanto para rota ausente quanto para rota que só aceita POST, e OPTIONS
@@ -317,6 +322,10 @@ app.get('/health', (req, res) => {
     // mas nao submete nada. O painel precisa poder mostrar isso.
     portais_com_lance_liberado: PORTAIS_COM_LANCE_LIBERADO,
     certificado: certificadoInstalado(),
+    // O ultimo resultado do vigia para cada perfil do Compras.gov: logado,
+    // vencida, em uso. E o que diz, sem abrir log, se a proxima disputa vai
+    // entrar sem captcha.
+    vigia_sessao: vigiaSessao.resumo(),
   });
 });
 
@@ -741,6 +750,8 @@ class SessionManager {
     // pasta duas vezes: duas disputas simultaneas da mesma empresa no mesmo
     // portal fariam a segunda falhar. A segunda entra com perfil temporario.
     this.perfisEmUso = new Set();
+    // Pastas que o vigia da sessao esta conferindo agora (src/vigia-sessao.js).
+    this.perfisDoVigia = new Set();
 
     // O ROBO PAROU ESPERANDO UMA PESSOA — captcha, codigo de verificacao.
     // O pedido vira callback, e o webhook avisa os administradores da
@@ -770,6 +781,21 @@ class SessionManager {
    * limpo; chegar ja logado poderia confundi-los, e ninguem conferiu isso.
    * PERFIL_PERSISTENTE=false no .env desliga para todos.
    */
+  /**
+   * Espera o vigia da sessao soltar o perfil — a conferencia leva segundos.
+   *
+   * Sem isto, uma disputa que chegasse durante a conferencia cairia para
+   * perfil temporario e o gov.br pediria o captcha — exatamente o que o perfil
+   * guardado existe para evitar.
+   */
+  async esperarVigiaSoltar(pasta, ms = 90000) {
+    const limite = Date.now() + ms;
+    while (this.perfisDoVigia.has(pasta) && Date.now() < limite) {
+      await new Promise((r) => setTimeout(r, 500));
+    }
+    return !this.perfisDoVigia.has(pasta);
+  }
+
   perfilDaSessao(config) {
     const PORTAIS_COM_PERFIL_PERSISTENTE = ['comprasgov'];
     if (String(process.env.PERFIL_PERSISTENTE ?? 'true') === 'false') return null;
@@ -842,18 +868,35 @@ class SessionManager {
       });
     }, 30000);
 
+    let pastaReservada = null;
     try {
       // Cada sessão recebe seu próprio browser (instância Chromium isolada)
       console.log(\`🚀 Abrindo sessão \${config.sessao_id} (browser #\${this.getActiveSessions().length})\`);
-      const { browser, page, perfil } = await launchBrowser(null, { perfil: this.perfilDaSessao(config) });
+      // O perfil e RESERVADO antes de abrir, para o vigia da sessao nao
+      // comecar a confere-lo no meio; e, se o vigia ja estiver nele, a sessao
+      // espera ele terminar.
+      pastaReservada = this.perfilDaSessao(config);
+      if (pastaReservada) {
+        this.perfisEmUso.add(pastaReservada);
+        if (!(await this.esperarVigiaSoltar(pastaReservada))) {
+          console.log(\`🗂️  [\${config.sessao_id}] O vigia nao soltou o perfil a tempo — esta sessao entra com perfil temporario\`);
+          this.perfisEmUso.delete(pastaReservada);
+          pastaReservada = null;
+        }
+      }
+      const { browser, page, perfil } = await launchBrowser(null, { perfil: pastaReservada });
       session.browser = browser;
       session.page = page;
       session.perfil = perfil || null;
       if (perfil) {
-        this.perfisEmUso.add(perfil);
         // Liberar quando o Chrome fechar, por qualquer caminho — fim, erro,
         // kill switch ou queda. Amarrar a cada um deles esqueceria algum.
         browser.on('disconnected', () => this.perfisEmUso.delete(perfil));
+      } else if (pastaReservada) {
+        // O Chrome nao abriu com o perfil e caiu para o temporario: a reserva
+        // nao serve mais.
+        this.perfisEmUso.delete(pastaReservada);
+        pastaReservada = null;
       }
 
       // Toda aba que nasce ou morre vai para o log, com URL. Foi a falta disto
@@ -1036,6 +1079,9 @@ class SessionManager {
       console.error(\`❌ Erro ao iniciar sessão \${config.sessao_id}:\`, err);
       sendCallback(session, 'erro', { mensagem: err.message });
       session.status = 'erro';
+      // O Chrome nem abriu: a reserva do perfil seria eterna — nenhum
+      // 'disconnected' viria solta-la.
+      if (pastaReservada && !session.browser) this.perfisEmUso.delete(pastaReservada);
       // Sem isto, cada sessao que falha deixa um timer de 30s batendo no
       // callback para sempre — e hoje TODA sessao falha antes de comecar.
       if (session.heartbeatInterval) clearInterval(session.heartbeatInterval);
@@ -1747,6 +1793,170 @@ async function launchBrowser(cnpj, opcoes = {}) {
 }
 
 module.exports = { launchBrowser, getCertConfig };
+`,
+
+  'src/vigia-sessao.js': `const fs = require('fs');
+const path = require('path');
+const { launchBrowser } = require('./browser');
+const { getPortal } = require('./portals');
+
+/**
+ * VIGIA DA SESSAO DO COMPRAS.GOV (16/09/2026).
+ *
+ * O cliente autorizou (D12, Rafael Castro) que a sessao do Compras.gov fique
+ * aberta no servidor o dia todo, todos os dias. O perfil persistente ja guarda
+ * o login entre uma disputa e outra — provado as 13:46, login em 2 s sem
+ * captcha —, mas nada impedia a sessao do gov.br de vencer no intervalo, e o
+ * captcha voltaria justo na hora da disputa.
+ *
+ * De tempos em tempos o vigia abre cada perfil do Compras.gov, passa pelo
+ * gov.br e confere se voltou logado. Faz duas coisas ao mesmo tempo:
+ *
+ *   - RENOVA a sessao, se o gov.br a vence por inatividade;
+ *   - MEDE quando ela vence de qualquer jeito, numa linha de
+ *     logs/logins.jsonl por conferencia — que era a pergunta em aberto.
+ *
+ * O que ele NAO faz: login. Sessao vencida so volta com o clique no captcha, e
+ * esse clique acontece quando uma disputa entrar (o aviso urgente vai aos
+ * administradores). Por isso, perfil vencido so e conferido de novo depois que
+ * uma disputa logar nele — bater no gov.br a cada 20 minutos sem poder entrar
+ * so geraria acesso automatizado a toa.
+ *
+ * Nunca disputa a pasta com uma sessao: perfil em uso e pulado, e a sessao que
+ * chegar enquanto o vigia confere espera ele terminar (ver session-manager).
+ *
+ * VIGIA_SESSAO_MIN no .env (padrao 20); 0 desliga.
+ */
+
+function registrar(linha) {
+  try {
+    fs.mkdirSync('./logs', { recursive: true });
+    fs.appendFileSync('./logs/logins.jsonl', JSON.stringify(linha) + '\\n');
+  } catch (e) {
+    /* medir e diagnostico; o vigia segue */
+  }
+}
+
+function criarVigia(sessionManager, opcoes = {}) {
+  const bruto = opcoes.minutos ?? process.env.VIGIA_SESSAO_MIN ?? 20;
+  const minutos = Number(bruto);
+  const dir = opcoes.dir || process.env.PERFIS_DIR || './perfis';
+  const abrir = opcoes.launchBrowser || launchBrowser;
+  const portalDe = opcoes.getPortal || getPortal;
+  const estado = new Map();
+  let rodando = false;
+  let timer = null;
+
+  function pastasDoComprasGov() {
+    try {
+      return fs.readdirSync(dir).filter((n) => n.startsWith('comprasgov-')).map((n) => path.join(dir, n));
+    } catch (e) {
+      return [];
+    }
+  }
+
+  // Uma disputa logou nesta pasta depois da ultima conferencia? O arquivo de
+  // cookies muda quando o Chrome fecha com sessao nova.
+  function usadaDepoisDe(pasta, ms) {
+    try {
+      return fs.statSync(path.join(pasta, 'Default', 'Cookies')).mtimeMs > ms;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  async function conferir(pasta) {
+    const anterior = estado.get(pasta);
+    if (anterior && anterior.resultado === 'vencida' && !usadaDepoisDe(pasta, anterior.em)) {
+      return 'vencida-sem-novo-login';
+    }
+    if (sessionManager.perfisEmUso.has(pasta)) return 'em-uso';
+
+    sessionManager.perfisDoVigia.add(pasta);
+    const inicio = Date.now();
+    let browser = null;
+    let resultado = 'erro';
+    let detalhe = null;
+    try {
+      const aberto = await abrir(null, { perfil: pasta });
+      browser = aberto.browser;
+      if (!aberto.perfil) {
+        resultado = 'perfil-indisponivel';
+      } else {
+        const portal = portalDe('comprasgov', aberto.page, {});
+        await portal.aplicarAntiDeteccao();
+        await portal.page.goto(portal.loginUrl, { waitUntil: 'networkidle2', timeout: 45000 });
+        const destino = await portal.destinoDoSso();
+        resultado = destino === 'logado' ? 'logado' : destino === 'login' ? 'vencida' : 'indefinido';
+      }
+    } catch (e) {
+      detalhe = String((e && e.message) || e).slice(0, 200);
+    } finally {
+      if (browser) await browser.close().catch(() => {});
+      sessionManager.perfisDoVigia.delete(pasta);
+    }
+
+    estado.set(pasta, { resultado, em: Date.now() });
+    const linha = {
+      quando: new Date().toISOString(),
+      portal: 'comprasgov',
+      sessao_id: null,
+      perfil: path.basename(pasta),
+      perfil_persistente: true,
+      desfecho: 'vigia-' + resultado,
+      segundos: Math.round((Date.now() - inicio) / 1000),
+    };
+    if (detalhe) linha.detalhe = detalhe;
+    registrar(linha);
+    console.log('👁️  Vigia: ' + path.basename(pasta) + ' ' + resultado + ' em ' + linha.segundos + 's');
+    return resultado;
+  }
+
+  async function rodada() {
+    if (rodando) return [];
+    rodando = true;
+    try {
+      const saida = [];
+      for (const pasta of pastasDoComprasGov()) {
+        saida.push([path.basename(pasta), await conferir(pasta)]);
+      }
+      return saida;
+    } finally {
+      rodando = false;
+    }
+  }
+
+  function iniciar() {
+    if (!Number.isFinite(minutos) || minutos <= 0) {
+      console.log('👁️  Vigia da sessao do Compras.gov desligado (VIGIA_SESSAO_MIN=' + bruto + ')');
+      return false;
+    }
+    timer = setInterval(() => { rodada().catch(() => {}); }, minutos * 60000);
+    console.log('👁️  Vigia da sessao do Compras.gov: confere os perfis a cada ' + minutos + ' min');
+    return true;
+  }
+
+  function parar() {
+    if (timer) clearInterval(timer);
+    timer = null;
+  }
+
+  function resumo() {
+    return {
+      ligado: !!timer,
+      intervalo_min: minutos,
+      perfis: [...estado.entries()].map(([pasta, e]) => ({
+        perfil: path.basename(pasta),
+        ultimo: e.resultado,
+        em: new Date(e.em).toISOString(),
+      })),
+    };
+  }
+
+  return { iniciar, parar, rodada, conferir, resumo };
+}
+
+module.exports = { criarVigia };
 `,
 
   'src/interacao-humana.js': `/**

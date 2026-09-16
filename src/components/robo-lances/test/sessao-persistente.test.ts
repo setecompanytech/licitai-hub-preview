@@ -316,3 +316,123 @@ describe('Compras.gov: sessão guardada e medição do login', () => {
     expect(JSON.parse(linhas[0])).toMatchObject({ desfecho: 'falhou', perfil_persistente: false });
   });
 });
+
+/**
+ * O vigia da sessão do Compras.gov (D12, 16/09/2026): confere de tempos em
+ * tempos se o perfil continua logado — renovando a sessão e medindo quando ela
+ * vence —, sem nunca disputar a pasta com uma disputa.
+ */
+describe('vigia da sessão', () => {
+  type Vigia = {
+    iniciar: () => boolean;
+    parar: () => void;
+    rodada: () => Promise<Array<[string, string]>>;
+    conferir: (pasta: string) => Promise<string>;
+    resumo: () => { ligado: boolean; intervalo_min: number; perfis: Array<{ perfil: string; ultimo: string }> };
+  };
+  type Gerente = { perfisEmUso: Set<string>; perfisDoVigia: Set<string> };
+
+  function montar(destino: 'logado' | 'login' | 'fora', over: { cookiesMtime?: number; minutos?: number; perfilAbre?: boolean } = {}) {
+    const linhas: string[] = [];
+    const aberturas: string[] = [];
+    let fechou = 0;
+    const gerente: Gerente = { perfisEmUso: new Set(), perfisDoVigia: new Set() };
+    let doVigiaDuranteConferencia = false;
+    const { criarVigia } = carregar<{ criarVigia: (g: Gerente, o: Record<string, unknown>) => Vigia }>(
+      'src/vigia-sessao.js',
+      {
+        fs: {
+          readdirSync: () => ['comprasgov-aaaa', 'bll-bbbb'],
+          statSync: () => ({ mtimeMs: over.cookiesMtime ?? 0 }),
+          mkdirSync: () => {},
+          appendFileSync: (_: string, l: string) => { linhas.push(l); },
+        },
+        path: nodePath,
+      },
+    );
+    const vigia = criarVigia(gerente, {
+      minutos: over.minutos ?? 20,
+      dir: 'perfis',
+      launchBrowser: async (_c: unknown, o: { perfil: string }) => {
+        aberturas.push(o.perfil);
+        doVigiaDuranteConferencia = gerente.perfisDoVigia.has(o.perfil);
+        return { browser: { close: async () => { fechou += 1; } }, page: {}, perfil: over.perfilAbre === false ? null : o.perfil };
+      },
+      getPortal: () => ({
+        aplicarAntiDeteccao: async () => {},
+        loginUrl: 'https://sso.acesso.gov.br/authorize',
+        page: { goto: async () => {} },
+        destinoDoSso: async () => destino,
+      }),
+    });
+    return { vigia, gerente, linhas, aberturas, fechou: () => fechou, doVigia: () => doVigiaDuranteConferencia };
+  }
+
+  it('confere só os perfis do Compras.gov, marca a pasta enquanto confere e fecha o Chrome', async () => {
+    const m = montar('logado');
+    const r = await m.vigia.rodada();
+    expect(r).toEqual([['comprasgov-aaaa', 'logado']]);
+    expect(m.aberturas).toEqual(['perfis/comprasgov-aaaa']);
+    expect(m.doVigia()).toBe(true);
+    expect(m.gerente.perfisDoVigia.size).toBe(0);
+    expect(m.fechou()).toBe(1);
+  });
+
+  it('cada conferência vira linha em logs/logins.jsonl — é a medição de quanto a sessão dura', async () => {
+    const m = montar('logado');
+    await m.vigia.rodada();
+    expect(JSON.parse(m.linhas[0])).toMatchObject({
+      portal: 'comprasgov', sessao_id: null, perfil: 'comprasgov-aaaa', perfil_persistente: true, desfecho: 'vigia-logado',
+    });
+  });
+
+  it('perfil em uso por uma disputa não é tocado', async () => {
+    const m = montar('logado');
+    m.gerente.perfisEmUso.add('perfis/comprasgov-aaaa');
+    expect(await m.vigia.conferir('perfis/comprasgov-aaaa')).toBe('em-uso');
+    expect(m.aberturas).toHaveLength(0);
+    expect(m.linhas).toHaveLength(0);
+  });
+
+  it('sessão vencida: registra e não volta a bater no gov.br até uma disputa logar de novo', async () => {
+    const m = montar('login', { cookiesMtime: 0 });
+    expect(await m.vigia.conferir('perfis/comprasgov-aaaa')).toBe('vencida');
+    expect(JSON.parse(m.linhas[0]).desfecho).toBe('vigia-vencida');
+    expect(await m.vigia.conferir('perfis/comprasgov-aaaa')).toBe('vencida-sem-novo-login');
+    expect(m.aberturas).toHaveLength(1);
+  });
+
+  it('depois de uma disputa logar no perfil vencido, volta a conferir', async () => {
+    const m = montar('login', { cookiesMtime: Date.now() + 60_000 });
+    await m.vigia.conferir('perfis/comprasgov-aaaa');
+    await m.vigia.conferir('perfis/comprasgov-aaaa');
+    expect(m.aberturas).toHaveLength(2);
+  });
+
+  it('Chrome que não abre com o perfil não conta como sessão vencida', async () => {
+    const m = montar('logado', { perfilAbre: false });
+    expect(await m.vigia.conferir('perfis/comprasgov-aaaa')).toBe('perfil-indisponivel');
+    expect(m.fechou()).toBe(1);
+  });
+
+  it('o /health mostra o último resultado por perfil; VIGIA_SESSAO_MIN=0 desliga', async () => {
+    const m = montar('logado');
+    await m.vigia.rodada();
+    expect(m.vigia.resumo().perfis).toEqual([expect.objectContaining({ perfil: 'comprasgov-aaaa', ultimo: 'logado' })]);
+    expect(montar('logado', { minutos: 0 }).vigia.iniciar()).toBe(false);
+  });
+
+  it('a disputa que chega durante a conferência espera o vigia soltar o perfil', async () => {
+    const { SessionManager } = carregar<{
+      SessionManager: new () => Gerente & { esperarVigiaSoltar: (p: string, ms?: number) => Promise<boolean> };
+    }>('src/session-manager.js', { './interacao-humana': { aoPedir: () => {} }, crypto: nodeCrypto, path: nodePath });
+    const g = new SessionManager();
+    g.perfisDoVigia.add('perfis/comprasgov-aaaa');
+    setTimeout(() => g.perfisDoVigia.delete('perfis/comprasgov-aaaa'), 700);
+    const inicio = Date.now();
+    expect(await g.esperarVigiaSoltar('perfis/comprasgov-aaaa', 5000)).toBe(true);
+    expect(Date.now() - inicio).toBeGreaterThanOrEqual(600);
+    g.perfisDoVigia.add('perfis/comprasgov-bbbb');
+    expect(await g.esperarVigiaSoltar('perfis/comprasgov-bbbb', 600)).toBe(false);
+  });
+});
