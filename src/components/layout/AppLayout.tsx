@@ -7,6 +7,8 @@ import TrilhaDoTopo, { type DegrauDaTrilha } from './TrilhaDoTopo';
 import { ProvedorDeTrilha } from './contexto-trilha';
 import LembreteDeVencimento from '@/components/documentos/LembreteDeVencimento';
 import LembreteDeConvocacao from '@/components/monitoramento/LembreteDeConvocacao';
+import LembreteDoRobo from '@/components/robo-lances/LembreteDoRobo';
+import { ehAvisoDoRobo, gravarSininhoAbertoEm, lerSininhoAbertoEm, sininhoDeveChamar } from '@/lib/robo/avisos-do-robo';
 import AlertaVencimentoBanner from './AlertaVencimentoBanner';
 import NotificationCenter from '@/components/notifications/NotificationCenter';
 import AureliaChat from '@/components/aurelia/AureliaChat';
@@ -60,6 +62,8 @@ const AppLayout = forwardRef<HTMLDivElement, AppLayoutProps>(function AppLayout(
   const location = useLocation();
   const { user } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
+  // Aviso novo do robô desde a última abertura do painel: o sininho treme e brilha.
+  const [sininhoChamando, setSininhoChamando] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -69,6 +73,17 @@ const AppLayout = forwardRef<HTMLDivElement, AppLayoutProps>(function AppLayout(
       .eq('user_id', user.id)
       .eq('lida', false)
       .then(({ count }) => setUnreadCount(count || 0));
+
+    // Ao abrir o sistema: há aviso do robô não lido que chegou depois da
+    // última vez que a pessoa abriu o painel? A regra está em `sininhoDeveChamar`.
+    supabase
+      .from('notificacoes')
+      .select('link, lida, created_at')
+      .eq('user_id', user.id)
+      .eq('lida', false)
+      .order('created_at', { ascending: false })
+      .limit(50)
+      .then(({ data }) => setSininhoChamando(sininhoDeveChamar(data ?? [], lerSininhoAbertoEm(user.id))));
 
     const channel = supabase
       .channel('notificacoes-realtime')
@@ -90,22 +105,34 @@ const AppLayout = forwardRef<HTMLDivElement, AppLayoutProps>(function AppLayout(
         setUnreadCount(count || 0);
 
         if (payload.eventType === 'INSERT' && payload.new) {
+          if (ehAvisoDoRobo(payload.new)) setSininhoChamando(true);
           const { playNotificationSound, isSoundEnabled } = await import('@/lib/notification-sound');
           const { toast } = await import('sonner');
           const tipo = payload.new.tipo || 'info';
           if (isSoundEnabled()) {
             playNotificationSound(tipo === 'alerta' ? 'alert' : tipo === 'sucesso' ? 'success' : 'message');
           }
-          toast(payload.new.titulo || 'Nova notificação', {
-            description: payload.new.mensagem || undefined,
-            action: payload.new.link ? { label: 'Ver', onClick: () => navigate(payload.new.link) } : undefined,
-          });
+          // Aviso do robô vira caixinha no canto (`LembreteDoRobo`), que fica
+          // até ser dispensada; o toast simples aqui seria o mesmo aviso duas vezes.
+          if (!ehAvisoDoRobo(payload.new)) {
+            toast(payload.new.titulo || 'Nova notificação', {
+              description: payload.new.mensagem || undefined,
+              action: payload.new.link ? { label: 'Ver', onClick: () => navigate(payload.new.link) } : undefined,
+            });
+          }
         }
       })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
   }, [user]);
+
+  // Abrir o painel é o "vi": o sininho para de chamar, mesmo sem marcar como lida.
+  useEffect(() => {
+    if (!notifOpen || !user) return;
+    setSininhoChamando(false);
+    gravarSininhoAbertoEm(user.id, new Date());
+  }, [notifOpen, user]);
 
   // Navegar fecha o diretório: sem isso ele continuaria aberto sobre a tela
   // recém-carregada, e a pessoa teria que fechá-lo à mão depois de cada clique.
@@ -118,6 +145,7 @@ const AppLayout = forwardRef<HTMLDivElement, AppLayoutProps>(function AppLayout(
     <div className="flex min-h-screen flex-col bg-background">
       <AppHeader
         naoLidas={unreadCount}
+        sininhoChamando={sininhoChamando}
         aoAbrirNotificacoes={() => setNotifOpen((o) => !o)}
         aoAbrirMeuPerfil={() => setPerfilModalOpen(true)}
         aoAbrirFerramentas={() => setMenuAberto(true)}
@@ -164,6 +192,7 @@ const AppLayout = forwardRef<HTMLDivElement, AppLayoutProps>(function AppLayout(
             faria a pilha invadir a faixa no dia em que a altura mudar. */}
         <div className="pointer-events-none fixed right-5 top-[calc(var(--g-topo)+1.25rem)] z-40 flex w-[min(316px,calc(100vw-2.5rem))] flex-col gap-2.5 [&>*]:pointer-events-auto">
           <LembreteDeConvocacao />
+          <LembreteDoRobo />
           <LembreteDeVencimento />
         </div>
         {/* Uma vez aqui, vale para as 56 telas que usam este layout. */}
