@@ -253,6 +253,40 @@ describe('Compras.gov: sessão guardada e medição do login', () => {
     expect(ComprasGovPortal.pareceAreaLogada('Compras.gov.br\nAcesse sua Conta\nSelecione o perfil')).toBe(false);
   });
 
+  it('volta logada do gov.br: espera a área do fornecedor carregar antes de concluir', async () => {
+    // Rodada 4 do teste (16/09, 13:34): logado de verdade, mas conferido com o
+    // frameset ainda vazio — o robô concluiu "não logado" e caiu.
+    const { ComprasGovPortal } = portal();
+    const p = new ComprasGovPortal({ url: () => 'https://www.comprasnet.gov.br/intro.htm' }, {}) as Portal & {
+      esperarAreaLogada: (ms?: number) => Promise<boolean>;
+      adotarAbaViva: () => Promise<void>;
+      textoDaTela: () => Promise<string>;
+      page: { url: () => string };
+    };
+    let leituras = 0;
+    p.page = { url: () => 'https://www.comprasnet.gov.br/intro.htm' };
+    p.adotarAbaViva = async () => {};
+    p.textoDaTela = async () => (++leituras < 3 ? '' : 'Área de Trabalho do Fornecedor Brasileiro');
+    expect(await p.esperarAreaLogada(10000)).toBe(true);
+    expect(leituras).toBe(3);
+  }, 15000);
+
+  it('ainda no gov.br, não espera: a tela de login é o caminho de sempre', async () => {
+    const { ComprasGovPortal } = portal();
+    const p = new ComprasGovPortal({}, {}) as Portal & {
+      esperarAreaLogada: (ms?: number) => Promise<boolean>;
+      adotarAbaViva: () => Promise<void>;
+      textoDaTela: () => Promise<string>;
+      page: { url: () => string };
+    };
+    p.page = { url: () => 'https://sso.acesso.gov.br/login' };
+    p.adotarAbaViva = async () => {};
+    p.textoDaTela = async () => '';
+    const inicio = Date.now();
+    expect(await p.esperarAreaLogada(10000)).toBe(false);
+    expect(Date.now() - inicio).toBeLessThan(500);
+  });
+
   it('cada login vira uma linha em logs/logins.jsonl, com o jeito que entrou', async () => {
     const { ComprasGovPortal, linhas } = portal();
     const p = new ComprasGovPortal({}, {});
