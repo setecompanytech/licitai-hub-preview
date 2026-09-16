@@ -438,7 +438,8 @@ Dois esclarecimentos para não perder no caminho:
 **Fase 4 — autonomia: o robô entra sozinho e avisa** (D7)
 - [x] Data e hora da sessão na disputa — escrito em 16/09: migration `20260916000001` (`inicio_sessao` e `enviada_em`, com índice parcial) e o campo "Data da Sessão" no formulário, ao lado do horário. Os dois viram um instante só; sem a data, a disputa continua sendo enviada por clique, como antes. O pré-preenchimento vindo do PNCP fica na Fase 6
 - [x] **SQL da `20260916000001` aplicado** em 16/09, no editor do Supabase — conferido de fora: `inicio_sessao` e `enviada_em` respondem na tabela do projeto que o app usa
-- [ ] Publicar o webhook (v33) com a ação `disparar-agendadas`, e **só depois** aplicar a `20260916000002` (o job de um minuto) — nesta ordem, senão o job bate numa rota que ainda não existe
+- [x] Publicar o webhook com a ação `disparar-agendadas` — **v33** em 16/09 às 10:37. Provado no ar: chamada sem o segredo de cron responde `Unauthorized`, que é a resposta do próprio bloco novo — se a ação não fosse reconhecida, a função diria "ação desconhecida"
+- [ ] **Aplicar a `20260916000002`** (o job de um minuto) no editor do Supabase — agora sim, com a rota já publicada
 - [ ] Agendamento: a cada minuto, disputas que começam em até 15 minutos, com a empresa ligada, são enviadas ao robô **sem clique de ninguém**
 - [ ] Sessão persistente do Chrome por empresa e login antes da hora — medir quanto o login dura
 - [ ] Captcha que ainda aparecer: aviso ao admin da Praefectus com o link da tela remota
