@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { posicaoNoQuadro, resumoDoQuadro, type EstadoNoQuadro } from '@/lib/robo/quadro-da-sala';
+import { itensDoQuadro, posicaoNoQuadro, resumoDoQuadro, type EstadoNoQuadro } from '@/lib/robo/quadro-da-sala';
 
 /**
  * O quadro de status da aba Acompanhamento (D13): uma linha com onde a empresa
@@ -61,5 +61,17 @@ describe('posicaoNoQuadro', () => {
     expect(posicaoNoQuadro({ ...BAQPLAST, nossa_desclassificada: true })).toBe('Proposta desclassificada');
     expect(posicaoNoQuadro({ ...BAQPLAST, tem_proposta: false, posicao: null })).toBe('Sem proposta da empresa');
     expect(posicaoNoQuadro({ item: 1 })).toBeNull();
+  });
+});
+
+describe('itensDoQuadro', () => {
+  it('vários itens: um por linha, na ordem do número', () => {
+    const item2 = { ...BAQPLAST, item: 2, posicao: 3 };
+    const itens = itensDoQuadro({ ...item2, por_item: { '2': item2, '1': BAQPLAST } });
+    expect(itens.map((i) => i.item)).toEqual([1, 2]);
+  });
+
+  it('sem por_item, o estado único de antes', () => {
+    expect(itensDoQuadro(BAQPLAST)).toEqual([BAQPLAST]);
   });
 });

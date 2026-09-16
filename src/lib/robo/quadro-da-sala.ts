@@ -19,6 +19,8 @@ export type EstadoNoQuadro = {
   modo?: string | null;
   fase?: string | null;
   decisao?: { acao?: string | null; motivo?: string | null; motivo_legivel?: string | null } | null;
+  /** Último estado de cada item, quando o robô acompanha vários (Fase 7). */
+  por_item?: Record<string, EstadoNoQuadro> | null;
 };
 
 const ROTULO_DA_FASE: Record<string, string> = {
@@ -71,4 +73,15 @@ export function resumoDoQuadro(
   }
 
   return { partes, motivo, aviso };
+}
+
+/**
+ * Os itens do quadro, na ordem do número (Fase 7, 16/09/2026). Com vários
+ * itens, o robô grava o último estado de cada um em `por_item`; sem ele, o
+ * estado único de antes vale como o único item.
+ */
+export function itensDoQuadro(estado: EstadoNoQuadro): EstadoNoQuadro[] {
+  const porItem = estado.por_item ? Object.values(estado.por_item) : [];
+  if (porItem.length === 0) return [estado];
+  return [...porItem].sort((a, b) => (Number(a.item) || 0) - (Number(b.item) || 0));
 }

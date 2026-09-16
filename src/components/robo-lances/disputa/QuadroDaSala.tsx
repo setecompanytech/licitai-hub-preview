@@ -1,6 +1,6 @@
 import type { SessaoCarregada } from '@/hooks/useParticipacoesDoRobo';
 import { dataHoraDeBrasilia } from '@/components/workspace/robo/formatos';
-import { resumoDoQuadro, type EstadoNoQuadro } from '@/lib/robo/quadro-da-sala';
+import { itensDoQuadro, resumoDoQuadro, type EstadoNoQuadro } from '@/lib/robo/quadro-da-sala';
 
 const STATUS_DE_SESSAO_VIVA = ['ativo', 'enviando', 'pausado'];
 
@@ -35,7 +35,11 @@ export default function QuadroDaSala({ sessao }: { sessao: SessaoCarregada | nul
     );
   }
 
-  const resumo = resumoDoQuadro(bruto.estado_sala, { estadoEm: bruto.estado_sala_em, sessaoViva: viva });
+  const opcoes = { estadoEm: bruto.estado_sala_em, sessaoViva: viva };
+  // Um por item quando o robô acompanha vários (Fase 7); o aviso de "sem
+  // notícia" é da sessão, então sai uma vez só, embaixo.
+  const itens = itensDoQuadro(bruto.estado_sala).map((estado) => ({ estado, resumo: resumoDoQuadro(estado, opcoes) }));
+  const aviso = resumoDoQuadro(bruto.estado_sala, opcoes).aviso;
   const quando = dataHoraDeBrasilia(bruto.estado_sala_em, { segundos: true });
 
   return (
@@ -44,9 +48,15 @@ export default function QuadroDaSala({ sessao }: { sessao: SessaoCarregada | nul
         <h3 className="g-titulo-secao text-foreground">{viva ? 'Robô na sala' : 'Última leitura da sala'}</h3>
         {quando && <span className="g-meta text-muted-foreground">atualizado {quando} • Brasília</span>}
       </div>
-      {resumo.partes.length > 0 && <p className="g-corpo text-foreground tabular-nums">{resumo.partes.join(' · ')}</p>}
-      {resumo.motivo && <p className="g-corpo text-muted-foreground">{resumo.motivo}</p>}
-      {resumo.aviso && <p className="g-meta text-warning-ink">{resumo.aviso}</p>}
+      <ul className={itens.length > 1 ? 'flex flex-col divide-y divide-border' : 'flex flex-col'}>
+        {itens.map(({ estado, resumo }, i) => (
+          <li key={String(estado.item ?? i)} className={itens.length > 1 ? 'flex flex-col gap-0.5 py-2 first:pt-0 last:pb-0' : 'flex flex-col gap-1'}>
+            {resumo.partes.length > 0 && <p className="g-corpo text-foreground tabular-nums">{resumo.partes.join(' · ')}</p>}
+            {resumo.motivo && <p className="g-corpo text-muted-foreground">{resumo.motivo}</p>}
+          </li>
+        ))}
+      </ul>
+      {aviso && <p className="g-meta text-warning-ink">{aviso}</p>}
     </section>
   );
 }
