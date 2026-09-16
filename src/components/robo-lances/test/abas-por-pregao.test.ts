@@ -213,3 +213,58 @@ describe('um Chrome por conta, uma aba por pregão', () => {
     gerente.killAll('fim do teste');
   });
 });
+
+describe('sessão encerrada durante a entrada', () => {
+  beforeEach(() => { vi.useFakeTimers(); });
+  afterEach(() => { vi.useRealTimers(); });
+
+  it('parar enquanto o login espera não vira "erro": nada de aviso vermelho nem status de falha', async () => {
+    const chamadas: string[] = [];
+    let soltarLogin: (e: Error) => void = () => {};
+    const mod = { exports: {} as { SessionManager: new () => Gerente } };
+    const falso: Record<string, unknown> = {
+      './browser': {
+        launchBrowser: async (_c: unknown, o: { perfil?: string | null }) => {
+          const a = aba('x');
+          const chrome = { abas: [a], fechado: false, newPage: async () => a, close: async () => {}, on: () => {}, process: () => ({ pid: 1 }), isConnected: () => true, pages: async () => [a] };
+          return { browser: chrome, page: a, perfil: o.perfil || null };
+        },
+      },
+      './callback': { sendCallback: async (_s: unknown, tipo: string) => { chamadas.push(tipo); } },
+      './portals': {
+        getPortal: (_id: string, page: Aba) => ({
+          page,
+          // o login fica esperando o captcha até a sessão ser encerrada
+          login: () => new Promise((_r, rejeitar) => { soltarLogin = rejeitar; }),
+          navegarParaDisputa: async () => {},
+        }),
+      },
+      './estrategia': { decidirLance: () => ({}), conferirItens: () => ({}), proximaLeituraMs: () => 30_000, itensParaLer: () => [] },
+      './interacao-humana': { aoPedir: () => {}, encerrar: () => {} },
+      os: { totalmem: () => 16e9, freemem: () => 8e9 },
+      fs: { mkdirSync: () => {} },
+      path: nodePath,
+      crypto: nodeCrypto,
+    };
+    const ctx = vm.createContext({
+      require: (n: string) => falso[n], module: mod, exports: mod.exports,
+      process: { env: { GRAVADOR_INTERVALO_S: '0', SEGUNDOS_JANELA_APOS_ERRO: '60' } },
+      console: { log: () => {}, warn: () => {}, error: () => {} },
+      setTimeout: (f: () => void, ms: number) => setTimeout(f, ms), clearTimeout: (t: ReturnType<typeof setTimeout>) => clearTimeout(t),
+      setInterval: (f: () => void, ms: number) => setInterval(f, ms), clearInterval: (t: ReturnType<typeof setInterval>) => clearInterval(t),
+      Date, Math, Number, JSON, Set, Map, Promise, Array, Object, String,
+    });
+    new vm.Script(sessionManagerJs).runInContext(ctx);
+    const gerente = new mod.exports.SessionManager();
+
+    const criando = gerente.createSession(disputa('a'));
+    await vi.advanceTimersByTimeAsync(10);
+    gerente.endSession('a', 'Encerrada a pedido, pelo painel');
+    soltarLogin(new Error('Target closed'));
+    const s = await criando;
+
+    expect(s.status).toBe('encerrado');
+    expect(chamadas).not.toContain('erro');
+    expect(chamadas.filter((c) => c === 'sessao-encerrada')).toHaveLength(1);
+  });
+});

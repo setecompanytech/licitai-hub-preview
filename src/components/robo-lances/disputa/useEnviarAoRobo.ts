@@ -152,7 +152,13 @@ export function useEnviarAoRobo({ empresaId, estadoDoRobo, relerLigado, portaisS
         { portal: portalId, edital: lance.edital, origem: 'botao_enviar_ao_robo' },
         { licitacaoId: lance.licitacaoId, nivelAutomacao: nivel },
       );
-      toast.success('Sessão aceita pelo robô.', { duration: 6000 });
+      // `entrando`: o robô aceitou e ainda está no login ou esperando a
+      // verificação do gov.br — o resultado chega pelos avisos (16/09/2026).
+      if ((data as { entrando?: boolean } | null)?.entrando) {
+        toast.success('Sessão aceita. O robô ainda está entrando no portal — você será avisado quando ele chegar à sala.', { duration: 8000 });
+      } else {
+        toast.success('Sessão aceita pelo robô.', { duration: 6000 });
+      }
       aoAceitar?.();
       return true;
     } catch (e) {

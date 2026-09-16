@@ -602,6 +602,13 @@ serve(async (req) => {
 
         const agentData = await agentResp.json().catch(() => ({}));
 
+        // 202 = o robô aceitou e ainda está entrando (login ou captcha): a
+        // sessão fica "enviando", e quem a marca ativa é o callback
+        // `sessao-ativa` (16/09/2026).
+        if (agentResp.status === 202) {
+          sessao.status = "enviando";
+          return jsonResponse({ success: true, sessao, entrando: true, mensagem: agentData?.mensagem ?? null });
+        }
         if (agentResp.ok) {
           await supabase
             .from("sessoes_lance_real")
@@ -948,7 +955,13 @@ serve(async (req) => {
           // 5xx e 429 são do lado do robô (reiniciando, sem vaga, sobrecarga):
           // vale tentar de novo. 4xx é configuração, e repetir não resolve.
           const passageira = resp.status >= 500 || resp.status === 429;
-          if (resp.ok) {
+          if (resp.status === 202) {
+            // Aceita e ainda entrando (login ou captcha). Fica "enviando" — a
+            // trava de sessão viva do agendador a enxerga, e não há novo
+            // despacho da mesma disputa. `sessao-ativa` marca ativa depois.
+            await supabase.from("sessoes_lance_real").update({ updated_at: new Date().toISOString() }).eq("id", sessao.id);
+            relatorio.push({ disputa: d.id, resultado: "entrando", sessao: sessao.id });
+          } else if (resp.ok) {
             await supabase.from("sessoes_lance_real").update({ status: "ativo" }).eq("id", sessao.id);
             // Sem notificação de sucesso aqui: quem avisa que o robô chegou é
             // o próprio agente, pelo callback `sessao-ativa`, e dois avisos

@@ -365,12 +365,15 @@ app.post('/sessao/iniciar', authMiddleware, async (req, res) => {
       });
     }
 
-    const session = await sessionManager.createSession({
+    const criacao = sessionManager.createSession({
       sessao_id, portal_id, portal_nome, edital,
       valor_referencia, valor_inicial, valor_minimo,
       decremento_min, decremento_percentual,
       intervalo_segundos: intervalo_segundos || 30,
-      max_lances: max_lances || 20,
+      // Vazio = SEM TETO: a disputa vai ate o piso (decisao de 16/09). O
+      // "|| 20" que estava aqui transformava a disputa sem teto numa de 20
+      // lances, sem ninguem ver.
+      max_lances: Number(max_lances) > 0 ? Number(max_lances) : null,
       // Normalizado aqui, na entrada: o session-manager e o modulo do portal
       // tratam ausencia como "abrir o processo e parar", e nao como erro.
       itens: Array.isArray(itens) ? itens : [],
@@ -383,7 +386,30 @@ app.post('/sessao/iniciar', authMiddleware, async (req, res) => {
       credenciais_portal, callbackUrl, agentKey: AGENT_KEY,
     });
 
-    res.json({ success: true, sessao_id: session.sessao_id, status: 'ativo' });
+    // RESPONDER SEM ESPERAR O CAPTCHA (16/09/2026). A rota so respondia depois
+    // do login e da navegacao. Com o gov.br pedindo o clique (ate 10 minutos),
+    // quem chamou estourava o tempo, marcava a sessao como erro e o agendador
+    // despachava a MESMA disputa de novo, com a primeira ainda esperando. Agora:
+    // pronta em ate SEGUNDOS_RESPOSTA_INICIAR (40), responde como antes; senao
+    // 202 "entrando", e o resto chega pelos callbacks (sessao-ativa, erro,
+    // pedido-humano). A criacao segue de pe nos dois casos.
+    const limite = Number(process.env.SEGUNDOS_RESPOSTA_INICIAR || 40) * 1000;
+    let temporizador = null;
+    const resultado = await Promise.race([
+      criacao.then((session) => ({ pronta: true, session })),
+      new Promise((resolver) => { temporizador = setTimeout(() => resolver({ pronta: false }), limite); }),
+    ]);
+    clearTimeout(temporizador);
+    if (!resultado.pronta) {
+      criacao.catch((e) => console.error(\`[\${sessao_id}] Erro ao iniciar sessão (depois da resposta):\`, e));
+      return res.status(202).json({
+        success: true,
+        sessao_id,
+        status: 'entrando',
+        mensagem: 'O robô ainda está entrando no portal (login ou verificação); o resultado chega pelos avisos',
+      });
+    }
+    res.json({ success: true, sessao_id: resultado.session.sessao_id, status: 'ativo' });
   } catch (err) {
     console.error('Erro ao iniciar sessão:', err);
     res.status(500).json({ error: err.message });
@@ -1217,6 +1243,17 @@ class SessionManager {
       console.log(\`✅ Sessão \${config.sessao_id} ativa. Total ativas: \${this.getActiveSessions().length}\`);
     } catch (err) {
       liberarAbertura();
+      // ENCERRADA DURANTE A ENTRADA (16/09/2026, 13:28): alguem parou a sessao
+      // enquanto o login esperava o captcha. O login falha em seguida — a aba
+      // fechou —, e isto mandava "erro": aviso vermelho "Robo parou", status
+      // "erro" por cima de "encerrado" e uma janela de observacao num Chrome
+      // ja fechado. Parada pedida nao e falha.
+      if (session.status === 'encerrado') {
+        console.log(\`🏁 [\${config.sessao_id}] Sessão encerrada durante a entrada — sem aviso de erro (\${err && err.message ? err.message.split('\\n')[0] : 'login interrompido'})\`);
+        if (session.heartbeatInterval) clearInterval(session.heartbeatInterval);
+        try { require('./interacao-humana').encerrar(config.sessao_id); } catch (e) {}
+        return session;
+      }
       console.error(\`❌ Erro ao iniciar sessão \${config.sessao_id}:\`, err);
       sendCallback(session, 'erro', { mensagem: err.message });
       session.status = 'erro';
