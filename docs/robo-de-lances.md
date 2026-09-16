@@ -185,6 +185,21 @@ Agente do `RoboLances.tsx:1599`. A regra está escrita no próprio arquivo:
 ela que fez a apresentação de 14/09 à noite não ter tela para mostrar: a tela
 estava em **menu Admin › Robô de Lances**, visível só para quem tem o papel.
 
+**A rota direta, para operar a exceção** (descoberta em 16/09, com o robô
+esperando um clique e ninguém com o papel de admin à mão):
+
+```
+https://agente.praefectus.com.br/vnc/vnc.html?path=/vnc/&autoconnect=true&resize=scale&reconnect=true
+```
+
+É a mesma URL que o `VncWebViewer` carrega no iframe — a tela é servida pela
+**VPS**, não pelo Praefectus, então ela não passa pelo `AdminGuard`. Serve
+para quem opera o robô resolver captcha e olhar a sessão sem depender do papel
+no sistema. Duas armadilhas: `vnc_auto.html` **não** funciona (tenta o caminho
+padrão do noVNC e devolve "connection is closed" — o nosso websocket está em
+`/vnc/`), e a tela continua sendo **compartilhada entre todas as empresas**,
+então o endereço é da operação, nunca do cliente.
+
 #### O clique humano do gov.br, com a tela remota na área admin — e a direção dada em 15/09
 
 O login do Compras.gov **exige um clique humano** (hCaptcha na página do
