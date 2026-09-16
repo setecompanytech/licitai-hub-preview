@@ -52,6 +52,11 @@ interface AppHeaderProps {
   naoLidas: number;
   /** Abre o painel de notificações (o `NotificationCenter` é do AppLayout). */
   aoAbrirNotificacoes: () => void;
+  /**
+   * Aviso novo do robô desde a última abertura do painel: o sininho treme e
+   * brilha até ser aberto. Quem decide é o AppLayout (`sininhoDeveChamar`).
+   */
+  sininhoChamando?: boolean;
   /** Abre o modal do perfil (também montado pelo AppLayout). */
   aoAbrirMeuPerfil: () => void;
   /**
@@ -72,6 +77,7 @@ export default function AppHeader({
   aoAbrirMeuPerfil,
   aoAbrirFerramentas,
   ferramentasAberto = false,
+  sininhoChamando = false,
 }: AppHeaderProps) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -267,12 +273,19 @@ export default function AppHeader({
             type="button"
             onClick={aoAbrirNotificacoes}
             aria-label={
-              naoLidas > 0 ? `Notificações — ${naoLidas} não lidas` : 'Notificações'
+              (naoLidas > 0 ? `Notificações — ${naoLidas} não lidas` : 'Notificações') +
+              (sininhoChamando ? ' — aviso novo do robô' : '')
             }
-            title="Notificações"
-            className={cn(classeDoIcone, 'relative')}
+            title={sininhoChamando ? 'Aviso novo do robô' : 'Notificações'}
+            data-chamando={sininhoChamando || undefined}
+            // Só com movimento permitido (motion-safe): quem desliga animação
+            // no sistema continua vendo o contador, sem o balanço.
+            className={cn(classeDoIcone, 'relative', sininhoChamando && 'motion-safe:animate-pulse-glow')}
           >
-            <Bell aria-hidden="true" className="h-[18px] w-[18px]" />
+            <Bell
+              aria-hidden="true"
+              className={cn('h-[18px] w-[18px]', sininhoChamando && 'origin-top motion-safe:animate-sininho-tremer')}
+            />
             {naoLidas > 0 && (
               <span
                 aria-hidden="true"

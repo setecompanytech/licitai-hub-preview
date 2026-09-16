@@ -227,6 +227,16 @@ export default {
           from: { opacity: "0", transform: "translateY(10px)" },
           to: { opacity: "1", transform: "translateY(0)" },
         },
+        // Sininho com aviso novo do robô: um balanço curto e leve, depois
+        // quase 2 segundos parado — chama a atenção sem virar tremedeira.
+        "sininho-tremer": {
+          "0%, 24%, 100%": { transform: "rotate(0deg)" },
+          "4%": { transform: "rotate(14deg)" },
+          "8%": { transform: "rotate(-12deg)" },
+          "12%": { transform: "rotate(8deg)" },
+          "16%": { transform: "rotate(-5deg)" },
+          "20%": { transform: "rotate(2deg)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -235,6 +245,7 @@ export default {
         "slide-in-left": "slide-in-left 0.3s ease-out forwards",
         "pulse-glow": "pulse-glow 2s ease-in-out infinite",
         "count-up": "count-up 0.5s ease-out forwards",
+        "sininho-tremer": "sininho-tremer 2.4s ease-in-out infinite",
       },
     },
   },
