@@ -10,6 +10,8 @@ import {
   perfilDoComprasGov,
   qualLembrete,
   sessaoDoPerfil,
+  sessoesVencidasParaAvisar,
+  textoDaSessaoVencida,
   textoDoLembrete,
   MINUTOS_DA_VESPERA,
   MINUTOS_DO_DESPACHO,
@@ -976,7 +978,20 @@ serve(async (req) => {
         console.error("robo-lances-webhook: lembretes de prontidão falharam:", textoDoErro(e));
       }
 
-      return jsonResponse({ ok: true, janela: { desde, ate }, encontradas: (pendentes || []).length, relatorio, lembretes });
+      // SESSÃO DO GOV.BR VENCIDA (Fase 8, 16/09/2026): o vigia vê, a equipe
+      // fica sabendo na hora — e não no minuto do pregão. A cada 5 minutos
+      // basta: o vigia confere de 20 em 20.
+      let vigia: Array<Record<string, unknown>> = [];
+      if (new Date(agora).getUTCMinutes() % 5 === 0) {
+        try {
+          vigia = await avisarSessoesVencidas(supabase, ambiente, agora);
+        } catch (e) {
+          vigia = [{ erro: textoDoErro(e) }];
+          console.error("robo-lances-webhook: aviso de sessão vencida falhou:", textoDoErro(e));
+        }
+      }
+
+      return jsonResponse({ ok: true, janela: { desde, ate }, encontradas: (pendentes || []).length, relatorio, lembretes, vigia });
     }
 
     // ─── CALLBACKS FROM THE EXTERNAL AGENT ───
@@ -3025,6 +3040,104 @@ async function enviarLembretesDeProntidao(
 
     await registrarNoLog(supabase, donoId, "lembrete-prontidao", { disputa_id: d.id, qual, pendencias: pendencias.map((p) => p.chave) }, erroAviso ? { erro: erroAviso.message } : {});
     feitos.push({ disputa: d.id, qual, pendencias: pendencias.map((p) => p.chave), avisados: destinatarios.size, chamou_equipe: chamaEquipe });
+  }
+  return feitos;
+}
+
+/**
+ * Avisa os administradores da Praefectus quando o vigia do robô acha a sessão
+ * do gov.br vencida (Fase 8, 16/09/2026).
+ *
+ * Lê o `/health` de cada robô ativo, separa as conferências vencidas que ainda
+ * não viraram aviso (`sessoesVencidasParaAvisar`; a marca é a linha
+ * `vigia-sessao-vencida` no `webhook_log`), descobre de quem é a conta pelo
+ * perfil da credencial e diz qual é a próxima disputa dela — é o horário em que
+ * alguém vai precisar clicar no captcha.
+ */
+async function avisarSessoesVencidas(
+  supabase: any,
+  ambiente: { AGENTE_URL_BASE: string | null },
+  agoraMs: number,
+): Promise<Array<Record<string, unknown>>> {
+  const agora = new Date(agoraMs);
+  const { data: agentes } = await supabase.from("agente_externo_config").select("url_base").eq("status", "ativo");
+  const urls = new Set<string>(
+    [...(agentes || []).map((a: { url_base?: string | null }) => a.url_base), ambiente.AGENTE_URL_BASE]
+      .filter((u): u is string => typeof u === "string" && u.trim() !== "")
+      .map((u) => u.trim().replace(/\/+$/, "")),
+  );
+
+  const { data: avisadas } = await supabase
+    .from("webhook_log")
+    .select("payload")
+    .eq("tipo", "vigia-sessao-vencida")
+    .gte("created_at", new Date(agoraMs - 7 * 86_400_000).toISOString());
+  const jaAvisadas = new Set<string>(
+    (avisadas || []).map((l: { payload?: { chave?: string } }) => l.payload?.chave).filter(Boolean) as string[],
+  );
+
+  let donosPorPerfil: Map<string, string> | null = null;
+  const donoDoPerfil = async (perfil: string) => {
+    if (!donosPorPerfil) {
+      donosPorPerfil = new Map();
+      const { data: creds } = await supabase
+        .from("credenciais_portais")
+        .select("user_id, login, status")
+        .eq("portal_id", "compras-gov");
+      for (const c of creds || []) {
+        if (!c.login || (c.status && c.status !== "ativo")) continue;
+        donosPorPerfil.set(await perfilDoComprasGov(String(c.login)), c.user_id);
+      }
+    }
+    return donosPorPerfil.get(perfil) ?? null;
+  };
+
+  const feitos: Array<Record<string, unknown>> = [];
+  for (const url of urls) {
+    let saude: Record<string, any> | null = null;
+    try {
+      const r = await fetch(`${url}/health`, { signal: AbortSignal.timeout(8000) });
+      saude = r.ok ? await r.json() : null;
+    } catch {
+      saude = null;
+    }
+    if (!saude) continue;
+
+    for (const vencida of sessoesVencidasParaAvisar(saude.vigia_sessao, jaAvisadas)) {
+      const dono = await donoDoPerfil(vencida.perfil);
+      let proxima: { edital: string; inicioSessao: Date } | null = null;
+      if (dono) {
+        const { data: disputas } = await supabase
+          .from("robo_lances_disputas")
+          .select("edital, inicio_sessao")
+          .eq("user_id", dono)
+          .is("enviada_em", null)
+          .gt("inicio_sessao", agora.toISOString())
+          .lte("inicio_sessao", new Date(agoraMs + 7 * 86_400_000).toISOString())
+          .order("inicio_sessao", { ascending: true })
+          .limit(1);
+        if (disputas && disputas[0]) proxima = { edital: disputas[0].edital, inicioSessao: new Date(disputas[0].inicio_sessao) };
+      }
+      const texto = textoDaSessaoVencida({ conferidaEm: new Date(vencida.em), agora, proxima });
+
+      const { data: admins } = await supabase.from("user_roles").select("user_id").eq("role", "admin");
+      const idsAdmin = [...new Set((admins || []).map((a: { user_id: string }) => a.user_id))] as string[];
+      // Sem administrador cadastrado, o aviso não pode sumir: vai ao dono da conta.
+      const destinatarios = idsAdmin.length ? idsAdmin : dono ? [dono] : [];
+      if (destinatarios.length) {
+        await supabase.from("notificacoes").insert(
+          destinatarios.map((uid) => ({ user_id: uid, tipo: "alerta", titulo: texto.titulo, mensagem: texto.mensagem, link: "/admin/robo-lances" })),
+        );
+      }
+      const quemRegistra = dono ?? destinatarios[0] ?? null;
+      if (quemRegistra) {
+        await registrarNoLog(supabase, quemRegistra, "vigia-sessao-vencida", { chave: vencida.chave, perfil: vencida.perfil, conferida_em: vencida.em, avisados: destinatarios.length });
+      } else {
+        console.error("robo-lances-webhook: sessão do gov.br vencida sem ninguém para avisar:", vencida.chave);
+      }
+      jaAvisadas.add(vencida.chave);
+      feitos.push({ chave: vencida.chave, avisados: destinatarios.length, proxima: proxima?.edital ?? null });
+    }
   }
   return feitos;
 }

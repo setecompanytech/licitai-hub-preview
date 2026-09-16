@@ -6,6 +6,8 @@ import {
   qualLembrete,
   quandoEmBrasilia,
   sessaoDoPerfil,
+  sessoesVencidasParaAvisar,
+  textoDaSessaoVencida,
   textoDoLembrete,
   type EntradaDaProntidao,
 } from '../../../../supabase/functions/_shared/robo-prontidao';
@@ -153,5 +155,37 @@ describe('sessão do gov.br pelo vigia', () => {
     expect(sessaoDoPerfil(vigia, 'comprasgov-def').estado).toBe('vencida');
     expect(sessaoDoPerfil(vigia, 'comprasgov-xyz')).toEqual({ estado: 'sem-conferencia', em: null });
     expect(sessaoDoPerfil(null, 'comprasgov-abc').estado).toBe('sem-conferencia');
+  });
+});
+
+describe('sessão do gov.br vencida, avisada assim que o vigia vê', () => {
+  const vigia = {
+    perfis: [
+      { perfil: 'comprasgov-abc', ultimo: 'vencida', em: '2026-09-16T19:00:00.000Z' },
+      { perfil: 'comprasgov-def', ultimo: 'logado', em: '2026-09-16T19:00:00.000Z' },
+      { perfil: 'comprasgov-ghi', ultimo: 'vencida-sem-novo-login', em: '2026-09-16T18:20:00.000Z' },
+    ],
+  };
+
+  it('só as vencidas, e cada conferência vencida uma vez', () => {
+    expect(sessoesVencidasParaAvisar(vigia, new Set()).map((v) => v.chave)).toEqual([
+      'comprasgov-abc@2026-09-16T19:00:00.000Z',
+      'comprasgov-ghi@2026-09-16T18:20:00.000Z',
+    ]);
+    expect(sessoesVencidasParaAvisar(vigia, new Set(['comprasgov-abc@2026-09-16T19:00:00.000Z'])).map((v) => v.perfil)).toEqual(['comprasgov-ghi']);
+    expect(sessoesVencidasParaAvisar(null, new Set())).toEqual([]);
+  });
+
+  it('o texto diz quando venceu, o que fazer e a próxima disputa', () => {
+    const t = textoDaSessaoVencida({
+      conferidaEm: new Date('2026-09-16T19:00:00Z'),
+      agora: new Date('2026-09-16T19:05:00Z'),
+      proxima: { edital: '07/2026', inicioSessao: new Date('2026-09-17T12:00:00Z') },
+    });
+    expect(t.titulo).toBe('🔐 Sessão do gov.br venceu — Compras.gov.br');
+    expect(t.mensagem).toBe(
+      'O vigia do robô encontrou a sessão do gov.br vencida na conferência das 16:00. Na próxima entrada, o robô vai pedir a confirmação do acesso pela tela remota (clique em "Seu certificado digital"). Próxima disputa: 07/2026, amanhã às 09:00 — o robô entra às 08:45. Fique de olho nesse horário.',
+    );
+    expect(textoDaSessaoVencida({ conferidaEm: new Date('2026-09-16T19:00:00Z'), agora: new Date('2026-09-16T19:05:00Z') }).mensagem).toContain('Nenhuma disputa agendada');
   });
 });

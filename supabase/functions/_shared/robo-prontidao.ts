@@ -181,3 +181,45 @@ export function sessaoDoPerfil(
     : "sem-conferencia";
   return { estado, em: em && !Number.isNaN(em.getTime()) ? em : null };
 }
+
+/**
+ * Sessões do gov.br que o vigia achou vencidas e ainda não viraram aviso
+ * (Fase 8, 16/09/2026).
+ *
+ * O vigia confere cada perfil a cada 20 minutos, mas só registrava no log: a
+ * equipe descobria a sessão vencida quando o robô pedia o captcha, na hora do
+ * pregão. A chave do aviso é perfil + instante da conferência: o vigia guarda o
+ * PRIMEIRO "vencida" e não bate de novo no gov.br até um login novo, então a
+ * mesma sessão vencida gera um aviso só, e uma que vença de novo depois de
+ * renovada gera outro.
+ */
+export function sessoesVencidasParaAvisar(
+  vigia: { perfis?: ReadonlyArray<{ perfil?: string; ultimo?: string; em?: string }> } | null | undefined,
+  jaAvisadas: ReadonlySet<string>,
+): Array<{ perfil: string; em: string; chave: string }> {
+  return (vigia?.perfis || [])
+    .filter((p) => p.perfil && p.em && (p.ultimo === "vencida" || p.ultimo === "vencida-sem-novo-login"))
+    .map((p) => ({ perfil: String(p.perfil), em: String(p.em), chave: `${p.perfil}@${p.em}` }))
+    .filter((p) => !jaAvisadas.has(p.chave));
+}
+
+export function textoDaSessaoVencida(entrada: {
+  conferidaEm: Date;
+  agora: Date;
+  proxima?: { edital: string; inicioSessao: Date } | null;
+}): { titulo: string; mensagem: string } {
+  const partes = [
+    `O vigia do robô encontrou a sessão do gov.br vencida na conferência das ${horaEmBrasilia(entrada.conferidaEm)}.`,
+    "Na próxima entrada, o robô vai pedir a confirmação do acesso pela tela remota (clique em \"Seu certificado digital\").",
+  ];
+  if (entrada.proxima) {
+    const inicio = entrada.proxima.inicioSessao;
+    const entra = new Date(inicio.getTime() - MINUTOS_DO_DESPACHO * 60_000);
+    partes.push(
+      `Próxima disputa: ${entrada.proxima.edital}, ${quandoEmBrasilia(inicio, entrada.agora)} às ${horaEmBrasilia(inicio)} — o robô entra às ${horaEmBrasilia(entra)}. Fique de olho nesse horário.`,
+    );
+  } else {
+    partes.push("Nenhuma disputa agendada nos próximos 7 dias para esta conta.");
+  }
+  return { titulo: "🔐 Sessão do gov.br venceu — Compras.gov.br", mensagem: partes.join(" ") };
+}
