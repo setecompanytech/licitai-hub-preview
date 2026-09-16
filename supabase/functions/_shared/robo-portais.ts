@@ -57,33 +57,44 @@ export function portalDoAgente(portalId: string | null | undefined): string | nu
   return PORTAL_NO_AGENTE[portalId.trim()] ?? null;
 }
 
-/** Nome de exibição (e apelido) → id de armazenamento. */
-const ID_POR_NOME: Record<string, string> = {
-  "compras.gov.br": "compras-gov",
-  "compras governamentais": "compras-gov",
-  "bll compras": "bll",
-  "licitacoes-e (bb)": "licitacoes-e",
-  "bolsa nacional de compras": "bnc",
-  "portal de compras publicas": "portal-compras",
-  "bec/sp": "bec-sp",
-  "pncp": "pncp",
-  "licitanet": "licitanet",
-  "banparanet (pa)": "banparanet",
-  "bbmnet": "bbmnet",
-  "comprasbr": "comprasbr",
-  "licitar digital": "licitar-digital",
-  "compras publicas rj": "compras-rj",
-  "comprasnet ba": "comprasnet-ba",
-  "comprasnet go": "comprasnet-go",
-  "compras mg": "compras-mg",
-  "pe integrado": "compras-pe",
-  "compras pr": "compras-pr",
-  "compras rs": "compras-rs",
-  "compras sc": "compras-sc",
-  "e-compras df": "compras-df",
-  "e-compras am": "e-compras-am",
-  "portal compras ce": "portal-compras-ce",
-};
+/**
+ * Nome de exibição (e apelido) → id de armazenamento.
+ *
+ * ESCRITO EM PARES, E NÃO EM OBJETO LITERAL, DE PROPÓSITO. O teste
+ * `agente-template.test.ts` varre este arquivo procurando linhas no formato
+ * `"chave": "valor",` para conferir que a tradução **id → módulo do agente**
+ * bate exatamente com a lista do app. Como objeto, este segundo mapa entraria
+ * naquela conta e quebraria a comparação — dois mapas diferentes somados como
+ * se fossem um só, e o teste passaria a acusar uma divergência que não existe.
+ */
+const NOME_PARA_ID: Array<[string, string]> = [
+  ["compras.gov.br", "compras-gov"],
+  ["compras governamentais", "compras-gov"],
+  ["bll compras", "bll"],
+  ["licitacoes-e (bb)", "licitacoes-e"],
+  ["bolsa nacional de compras", "bnc"],
+  ["portal de compras publicas", "portal-compras"],
+  ["bec/sp", "bec-sp"],
+  ["pncp", "pncp"],
+  ["licitanet", "licitanet"],
+  ["banparanet (pa)", "banparanet"],
+  ["bbmnet", "bbmnet"],
+  ["comprasbr", "comprasbr"],
+  ["licitar digital", "licitar-digital"],
+  ["compras publicas rj", "compras-rj"],
+  ["comprasnet ba", "comprasnet-ba"],
+  ["comprasnet go", "comprasnet-go"],
+  ["compras mg", "compras-mg"],
+  ["pe integrado", "compras-pe"],
+  ["compras pr", "compras-pr"],
+  ["compras rs", "compras-rs"],
+  ["compras sc", "compras-sc"],
+  ["e-compras df", "compras-df"],
+  ["e-compras am", "e-compras-am"],
+  ["portal compras ce", "portal-compras-ce"],
+];
+
+const ID_POR_NOME = new Map<string, string>(NOME_PARA_ID);
 
 function semAcento(valor: string): string {
   return valor.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
@@ -107,5 +118,5 @@ export function idDeArmazenamento(valor: string | null | undefined): string | nu
   if (!valor) return null;
   const alvo = valor.trim();
   if (PORTAL_NO_AGENTE[alvo]) return alvo;
-  return ID_POR_NOME[semAcento(alvo)] ?? null;
+  return ID_POR_NOME.get(semAcento(alvo)) ?? null;
 }
