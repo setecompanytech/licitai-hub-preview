@@ -22,6 +22,7 @@ import {
   type SessaoGovBr,
 } from "../_shared/robo-prontidao.ts";
 import { instalarCertificadoNoAgente } from "../_shared/certificado-agente.ts";
+import { posicoesFinais, processoEntraEmDisputa, textoDoProcessoEmDisputa, STATUS_EM_DISPUTA, STATUS_QUE_ENTRAM_EM_DISPUTA } from "../_shared/robo-kanban.ts";
 import {
   resolverAcao,
   erroDeColunaAusente,
@@ -1297,6 +1298,42 @@ serve(async (req) => {
           if (!erroSessao) {
             await registrarEventos(supabase, sessao, userId, eventosDoEstado(anterior, estadoDoItem, formatarReais));
           }
+
+          // KANBAN (16/09/2026): a proposta da empresa apareceu na sala → o
+          // processo está em disputa. Só na primeira leitura que a mostra (por
+          // item), e só a partir de Monitorando, Em Análise ou Proposta Enviada
+          // — regra e motivo em `_shared/robo-kanban.ts`. Falha aqui não pode
+          // custar o estado da sala: só registra.
+          if (sessao.licitacao_id && novo.tem_proposta === true && anterior?.tem_proposta !== true) {
+            try {
+              const { data: processo } = await supabase
+                .from("licitacoes")
+                .select("status")
+                .eq("id", sessao.licitacao_id)
+                .maybeSingle();
+              if (processo && processoEntraEmDisputa(processo.status, true)) {
+                const { data: movido, error: erroKanban } = await supabase
+                  .from("licitacoes")
+                  .update({ status: STATUS_EM_DISPUTA })
+                  .eq("id", sessao.licitacao_id)
+                  .in("status", [...STATUS_QUE_ENTRAM_EM_DISPUTA])
+                  .select("id");
+                if (erroKanban) {
+                  await registrarNoLog(supabase, userId, "kanban-em-disputa-falhou", { sessao_id, licitacao_id: sessao.licitacao_id }, { erro: erroKanban.message });
+                } else if (movido && movido.length) {
+                  await supabase.from("licitacao_mensagens").insert({
+                    licitacao_id: sessao.licitacao_id,
+                    user_id: userId,
+                    tipo: "sistema",
+                    conteudo: textoDoProcessoEmDisputa(sessao.edital, processo.status, sessao.portal_nome),
+                  });
+                  await registrarNoLog(supabase, userId, "kanban-em-disputa", { sessao_id, licitacao_id: sessao.licitacao_id, de: processo.status });
+                }
+              }
+            } catch (e) {
+              await registrarNoLog(supabase, userId, "kanban-em-disputa-falhou", { sessao_id }, { erro: textoDoErro(e) });
+            }
+          }
           break;
         }
 
@@ -1436,6 +1473,9 @@ serve(async (req) => {
             const lancesDoRobo = typeof payload.lances_enviados === "number"
               ? ` ${payload.lances_enviados} lance(s) enviado(s) pelo robô.`
               : "";
+            // A última posição de cada item, para quem registra o resultado.
+            const posicoes = posicoesFinais(((sessao as any).estado_sala ?? null) as EstadoGravado | null, formatarReais);
+            const posicoesDoFim = posicoes ? ` ${posicoes}.` : "";
 
             await supabase.from("licitacao_mensagens").insert({
               licitacao_id: sessao.licitacao_id,
@@ -1446,7 +1486,7 @@ serve(async (req) => {
                   `(${sessao.portal_nome}) após ${rodadas} rodada(s). ` +
                   `A parada foi acionada por uma pessoa. O resultado da disputa ainda precisa ser registrado.`
                 : `🏁 **Sessão do robô encerrada** em ${sessao.edital} ` +
-                  `(${sessao.portal_nome}) após ${rodadas} rodada(s).${lancesDoRobo}${motivoDoFim} ` +
+                  `(${sessao.portal_nome}) após ${rodadas} rodada(s).${lancesDoRobo}${motivoDoFim}${posicoesDoFim} ` +
                   `O resultado da disputa ainda precisa ser registrado.`,
             });
 
@@ -1460,7 +1500,7 @@ serve(async (req) => {
                 ? `🛑 Robô interrompido — ${sessao.edital}`
                 : `🏁 Robô encerrou — ${sessao.edital}`,
               mensagem:
-                `A sessão em ${sessao.portal_nome} terminou após ${rodadas} rodada(s).${lancesDoRobo}${motivoDoFim} ` +
+                `A sessão em ${sessao.portal_nome} terminou após ${rodadas} rodada(s).${lancesDoRobo}${motivoDoFim}${posicoesDoFim} ` +
                 `Abra o processo para registrar como a disputa terminou.`,
               link: `/processo/${sessao.licitacao_id}`,
             });
