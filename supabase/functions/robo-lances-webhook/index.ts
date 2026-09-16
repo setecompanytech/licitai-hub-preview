@@ -1084,6 +1084,73 @@ serve(async (req) => {
           break;
         }
 
+        // ── O ROBÔ PAROU ESPERANDO UMA PESSOA (16/09/2026) ─────────────────
+        //
+        // Captcha do gov.br, código de verificação. O pedido só existia no
+        // /health do agente, e em 14/09 às 20:07 o gov.br pediu o clique, a
+        // tela remota estava na área admin, ninguém viu e a espera expirou.
+        //
+        // Quem pode atender é o administrador da PLATAFORMA — a tela remota é
+        // só dele desde 14/09 —, então o aviso urgente vai para os admins, com
+        // o caminho direto da tela e até que horas o robô espera. Quem enviou a
+        // disputa recebe um aviso simples, sem a tela remota: fica sabendo por
+        // que o robô ainda não entrou, e que a Praefectus já foi chamada.
+        case "pedido-humano": {
+          const tipoPedido = String(payload?.tipo || "");
+          const oQue = tipoPedido === "captcha"
+            ? "o clique no captcha do gov.br"
+            : tipoPedido === "codigo"
+              ? "um código de verificação"
+              : "uma ação de uma pessoa";
+          const expira = payload?.expira_em ? new Date(String(payload.expira_em)) : null;
+          const ate = expira && !Number.isNaN(expira.getTime())
+            ? expira.toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" })
+            : null;
+          const urlDoAgente = String((sessao as any).agente_externo_config?.url_base || ambiente.AGENTE_URL_BASE || "")
+            .trim()
+            .replace(/\/+$/, "");
+          const telaRemota = urlDoAgente
+            ? `${urlDoAgente}/vnc/vnc.html?path=/vnc/&autoconnect=true&resize=scale&reconnect=true`
+            : null;
+
+          const { data: admins, error: adminsErr } = await supabase
+            .from("user_roles")
+            .select("user_id")
+            .eq("role", "admin");
+          if (adminsErr) {
+            await registrarNoLog(supabase, userId, "pedido-humano-sem-destinatario", { sessao_id }, { erro: adminsErr.message });
+          }
+          const idsAdmin = [...new Set((admins || []).map((a: { user_id: string }) => a.user_id))];
+
+          if (idsAdmin.length) {
+            await supabase.from("notificacoes").insert(
+              idsAdmin.map((adminId) => ({
+                user_id: adminId,
+                tipo: "urgente",
+                titulo: `🧑 Robô esperando uma pessoa — ${sessao.edital}`,
+                mensagem:
+                  `O robô parou em ${sessao.portal_nome} esperando ${oQue}` +
+                  `${ate ? `, até as ${ate}` : ""}. ` +
+                  (telaRemota ? `Tela remota: ${telaRemota}` : "Abra a tela remota na área admin do Robô de Lances."),
+                link: "/admin/robo-lances",
+              })),
+            );
+          }
+
+          if (!idsAdmin.includes(userId)) {
+            await supabase.from("notificacoes").insert({
+              user_id: userId,
+              tipo: "info",
+              titulo: `⏳ Robô aguardando verificação — ${sessao.edital}`,
+              mensagem:
+                `O ${sessao.portal_nome} pediu ${oQue} antes de o robô entrar. ` +
+                `A equipe Praefectus já foi avisada; o robô segue sozinho depois disso.`,
+              link: linkDaDisputa(sessao),
+            });
+          }
+          break;
+        }
+
         case "sessao-encerrada": {
           await supabase
             .from("sessoes_lance_real")
