@@ -443,9 +443,24 @@ Dois esclarecimentos para não perder no caminho:
 - [ ] O que a leitura pública ainda não dá: **fase e tempo restante** (iminência), **elegibilidade no fechado**, o **caminho até a sala logada**, o **envio do lance** e a **conferência do resultado** — e confirmar que a página de propostas se atualiza durante a disputa ao vivo
 
 **Fase 2 — estratégia**
-- [ ] A decisão de lance passa a considerar modo, fase, tempo restante, posição, os 10%, a estratégia do item (iminência, melhor posição, desempatar em 1º) e o intervalo mínimo do edital — mantendo piso, nunca cobrir a si e nunca lance sem leitura
-- [ ] Limite de lances opcional e contado por lance enviado; sem limite, disputa até o piso
-- [ ] Ritmo de leitura mais lento fora da iminência e mais rápido dentro
+- [x] **A decisão de lance por estratégia** — escrita em 16/09 em `src/lib/agent-template/estrategia.ts`, com 54 testes em `src/test/robo-estrategia.test.ts` (eram 13). As guardas de antes continuam na mesma ordem de prioridade — trava do portal primeiro, nunca cobrir o próprio lance, nunca lance sem leitura, nunca abaixo do piso — e a função passou a saber:
+
+  | O que | Como decide |
+  | --- | --- |
+  | **Estratégia do item** | `melhor_preco` cobre o 1º lugar sempre que não estivermos nele, até o piso. `iminencia` faz a mesma conta só nos **2 minutos finais** da etapa aberta, e em todo o encerramento aleatório do aberto e fechado. Item sem estratégia escolhida segue como melhor preço — é o que o robô já fazia, então disputa antiga não muda de comportamento. Estratégia com nome desconhecido **aguarda** e diz o nome, em vez de virar melhor preço por conta própria |
+  | **Piso obrigatório** | sem valor mínimo, o robô não disputa o item. Antes, piso vazio virava comparação com zero, e o lance podia descer até um centavo |
+  | **Intervalo mínimo do edital** | lido do portal (R$ 0,0100 no 7/2026), em reais ou percentual. Vale como passo quando a empresa não configurou decremento, e sobe o decremento configurado quando ele é menor — lance com diferença menor que a do edital é recusado. O arredondamento para centavos nunca encolhe o passo abaixo do intervalo |
+  | **Limite de lances** | conta **lances enviados**, não rodadas de leitura, e é opcional: vazio ou zero disputa até o piso ("30 ou infinitamente até chegar no meu limite") |
+  | **Empate perdido** | nosso valor igual ao melhor, com o portal dizendo que não lideramos, é empate decidido por ordem de registro — há o que cobrir |
+  | **Fases** | `aguardando` e `suspensa` esperam; `encerrada` encerra; fase com nome desconhecido espera. **Fase não lida não bloqueia o melhor preço** — é a situação de hoje, enquanto a sala não está mapeada |
+  | **Fechado e aberto** | proposta fora das classificadas para a etapa aberta encerra o item |
+  | **Lance final fechado** (aberto e fechado) | só com a elegibilidade confirmada pelo portal, uma vez só, e **só com o valor escolhido pela empresa** — o robô não escolhe sozinho o número de um lance que não dá para corrigir. Nunca abaixo do piso, e o líder também dá o seu |
+  | **Ritmo de leitura** | `proximaLeituraMs`: o intervalo da disputa fora da iminência; a cada **3 s** dentro dela e no lance final fechado; e, faltando menos de um intervalo para a iminência, a próxima leitura cai no começo dela |
+
+  O que ela ainda não recebe de ninguém: **fase, tempo restante e elegibilidade** saem do mapeamento da sala (Fase 1). Até lá chegam vazios, e vazio quer dizer "não sei" — por isso a iminência, hoje, aguarda com o motivo "o tempo restante não foi lido". Posição além do 1º lugar ainda não entra na conta: nenhuma das duas estratégias escritas a usa
+- [ ] **"Desempatar no 1º lugar"** — a terceira estratégia da tela do ConLicitação, com uma margem em reais ao lado. O produto não publica o que ela faz, e há duas leituras razoáveis: cobrir o 1º lugar **só quando a distância até ele couber na margem**, ou usar a margem como passo no **desempate de ME/EPP** (quando o portal convoca a pequena empresa a cobrir o primeiro colocado). Fica fora até a definição; enquanto isso, uma disputa que chegue com esse nome aguarda e diz por quê
+- [ ] O laço de lances usar a decisão nova: teto por lance enviado (hoje ainda encerra por rodada, **antes** da decisão), ritmo por `proximaLeituraMs`, piso e estratégia do item que o robô acompanha, e o nosso último lance lido do portal
+- [ ] A tela: estratégia por item e limite de lances opcional; o webhook levando os dois ao agente
 
 **Fase 3 — proposta (etapa 1 da esteira)**
 - [ ] Cadastro da proposta no Compras.gov pelo robô: valor, marca, fabricante, modelo e descrição por item; declarações do portal só quando o cadastro disser
@@ -457,7 +472,18 @@ Dois esclarecimentos para não perder no caminho:
 - [x] Publicar o webhook com a ação `disparar-agendadas` — **v33** em 16/09 às 10:37. Provado no ar: chamada sem o segredo de cron responde `Unauthorized`, que é a resposta do próprio bloco novo — se a ação não fosse reconhecida, a função diria "ação desconhecida"
 - [x] **Job de um minuto no ar** — `20260916000002` aplicada em 16/09: `robo-disparar-agendadas`, `* * * * *`, `active = true` (job 32)
 - [x] Agendamento no ar em 16/09: a cada minuto, disputas que começam em até 15 minutos, com a empresa ligada, são enviadas ao robô **sem clique de ninguém**. Provado que o job chama e a função responde: `net._http_response` mostra `200` com `{"ok":true,"janela":{…},"encontradas":0}` às 13:42 e 13:43 UTC — ela acordou, olhou a agenda e não achou nada para despachar, que é o certo enquanto nenhuma disputa tem data
-- [ ] Prova de ponta a ponta: uma disputa com data marcada virando sessão sozinha, sem ninguém clicar
+- [x] **Prova de ponta a ponta** — 16/09, com a disputa do 7/2026 (SEDUC/PA) marcada para dali a poucos minutos. A primeira tentativa não despachou: o agendador lia o **nome** do portal gravado na disputa ("Compras.gov.br") e o tradutor só conhecia ids — corrigido com `idDeArmazenamento()` em `_shared/robo-portais.ts` (webhook v34). Na segunda, a corrente fechou sem ninguém enviar nada:
+
+  | Hora | O que aconteceu |
+  | --- | --- |
+  | 10:56:00 | o job despachou a disputa sozinho e o agente abriu a sessão `aded18bb…` |
+  | 10:56:15 | o gov.br pediu o clique humano no certificado (hCaptcha) — dado pela rota direta da tela remota |
+  | 11:00:03 | autenticado; login no Compras.gov e gravador ligado |
+  | 11:00:09 | busca com número **72026** e UASG **925315**, os dois conferidos na tela |
+  | 11:00:11 | compra localizada entre as homônimas — etapa "Seleção de fornecedores" |
+  | 11:00:15 | "Acompanhar compra" aberto; o gravador registrou 12 capturas |
+
+  O único gesto humano foi o do captcha — é ele que a sessão persistente (abaixo) tenta tirar do caminho
 - [ ] Sessão persistente do Chrome por empresa e login antes da hora — medir quanto o login dura
 - [ ] Captcha que ainda aparecer: aviso ao admin da Praefectus com o link da tela remota
 - [x] **Avisos ao usuário** — escrito em 16/09. O webhook passou a avisar em três momentos novos: **robô entrou na sala** (callback `sessao-ativa`, criado no agente), **lance recusado pelo portal** e **robô parou com erro**. Os dois últimos são urgentes, e todos levam para a página da disputa. Junto veio um conserto: o agente já enviava `lance-recusado` e o webhook respondia "tipo desconhecido" — o aviso era descartado, como havia acontecido com `rodada-sem-lance` em 08/09. O lance recusado agora entra no histórico com o motivo do portal, **sem** avançar o valor atual, e a linha do tempo da disputa deixa de chamá-lo de "enviado". Falta publicar a função e instalar o agente na VPS (abaixo)
