@@ -45,7 +45,13 @@ function podeEnviarLance(portalId) {
 
 /** Nunca dar lance sem saber contra quem. */
 const AGUARDAR = (motivo) => ({ acao: 'aguardar', valor: null, motivo });
-const ENCERRAR = (motivo) => ({ acao: 'encerrar', valor: null, motivo });
+/**
+ * Encerrar tem ESCOPO (16/09/2026, Fase 7): o teto de lances vale para a
+ * disputa inteira e tira o robo da sala; piso alcancado, item encerrado no
+ * portal ou proposta nao classificada acabam so com AQUELE item — num pregao
+ * de varios itens, os outros continuam.
+ */
+const ENCERRAR = (motivo, escopo = 'item') => ({ acao: 'encerrar', valor: null, motivo, escopo });
 const LANCE = (valor, motivo) => ({ acao: 'lance', valor, motivo });
 
 /**
@@ -175,7 +181,7 @@ function decidirLance(estado) {
   // ("30 ou infinitamente ate chegar no meu limite" — reuniao de 14/09).
   const enviados = Number.isFinite(lancesEnviados) ? lancesEnviados : 0;
   if (Number.isFinite(maxLances) && maxLances > 0 && enviados >= maxLances) {
-    return ENCERRAR(\`Teto de \${maxLances} lances atingido\`);
+    return ENCERRAR(\`Teto de \${maxLances} lances atingido\`, 'sessao');
   }
 
   // O piso e obrigatorio. Sem ele a comparacao com o proximo lance virava

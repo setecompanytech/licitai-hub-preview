@@ -1039,12 +1039,20 @@ class SessionManager {
       // intervalo e recusado). Lidos uma vez — nao mudam durante a sessao.
       // Portal que nao sabe ler segue como antes, com o decremento configurado.
       session.detalhesDoItem = null;
+      session.detalhesPorItem = {};
       if (typeof session.portal.lerDetalhesDoItem === 'function' && session.itens.length) {
-        try {
-          session.detalhesDoItem = await session.portal.lerDetalhesDoItem(session.itens[0].numero);
-        } catch (e) {
-          console.error(\`[\${config.sessao_id}] Falha ao ler modo e intervalo do item: \${e.message}\`);
+        // Um por item (Fase 7): cada item do edital tem o seu modo e o seu
+        // intervalo minimo. Falha num item nao impede os outros.
+        for (const it of session.itens) {
+          if (it.numero === undefined || it.numero === null) continue;
+          try {
+            const lidos = await session.portal.lerDetalhesDoItem(it.numero);
+            if (lidos) session.detalhesPorItem[String(it.numero)] = lidos;
+          } catch (e) {
+            console.error(\`[\${config.sessao_id}] Falha ao ler modo e intervalo do item \${it.numero}: \${e.message}\`);
+          }
         }
+        session.detalhesDoItem = session.detalhesPorItem[String(session.itens[0].numero)] || null;
       }
 
       // ─── "CHEGUEI NA SALA" ────────────────────────────────────────────
@@ -1276,161 +1284,45 @@ class SessionManager {
           console.error(\`[\${session.sessao_id}] Falha ao ler o chat: \${e.message}\`);
         }
 
-        // 1. Ler o estado da disputa no portal
-        const melhorLance = await session.portal.lerMelhorLance();
-        const souLider = await session.portal.souLider?.() ?? null;
-        // Fase, tempo restante e elegibilidade saem da sala logada, que ainda
-        // nao foi mapeada: nenhum portal implementa lerSala hoje, e o vazio
-        // chega a decidirLance como "nao sei".
-        const sala = (await session.portal.lerSala?.()) || {};
-        const nossoNoPortal = await session.portal.nossoLance?.() ?? null;
-        const classificacao = (await session.portal.resumoDaClassificacao?.()) || null;
-
-        // LANCE DE CONCORRENTE: so quando o melhor lance MUDA, e nao e nosso.
-        //
-        // Ate 16/09/2026 o aviso saia a cada rodada em que o melhor lance era
-        // menor que o valor da sessao — com a leitura publica, toda rodada —, e
-        // encheria o historico com a mesma linha a cada 30 s. A primeira
-        // leitura da sessao nao e lance novo: e o retrato de quando o robo
-        // chegou.
-        if (melhorLance !== null) {
-          const anterior = session.ultimoMelhorLance;
-          session.ultimoMelhorLance = melhorLance;
-          if (anterior !== undefined && anterior !== melhorLance && souLider !== true) {
-            await sendCallback(session, 'lance-concorrente', {
-              rodada: session.rodada,
-              valor: melhorLance,
-              metadata: { timestamp: new Date().toISOString(), anterior },
-            });
+        // 1. CADA ITEM DO PREGAO (Fase 7, 16/09/2026). Ate aqui o laco
+        // acompanhava so o primeiro item, e num pregao de 40 itens o robo
+        // entrava na sala olhando um so. Agora percorre todos, cada um com o
+        // seu piso, a sua estrategia e o seu estado; o teto de lances continua
+        // sendo da disputa inteira. Um item que falha na leitura nao para os
+        // outros.
+        const itens = Array.isArray(session.itens) && session.itens.length ? session.itens : [{}];
+        session.porItem = session.porItem || {};
+        let proximaDaRodada = null;
+        for (let indice = 0; indice < itens.length; indice++) {
+          if (!vivo()) return;
+          const item = itens[indice] || {};
+          const chave = item.numero !== undefined && item.numero !== null ? String(item.numero) : 'indice-' + indice;
+          const estadoDoItem = session.porItem[chave] = session.porItem[chave] || {};
+          if (estadoDoItem.encerrado) continue;
+          const decisaoDoItem = await this._rodadaDoItem(session, item, indice, itens.length, estadoDoItem);
+          if (!decisaoDoItem) continue;
+          if (Number.isFinite(decisaoDoItem.proxima)) {
+            proximaDaRodada = proximaDaRodada === null ? decisaoDoItem.proxima : Math.min(proximaDaRodada, decisaoDoItem.proxima);
+          }
+          if (decisaoDoItem.encerrarSessao) {
+            this.endSession(session.sessao_id, decisaoDoItem.motivo);
+            return;
           }
         }
+        if (proximaDaRodada !== null) proxima = proximaDaRodada;
 
-        // O item que o robo acompanha. A estrategia e o piso sao DELE; o piso
-        // da disputa inteira so vale para item que nao tem o proprio.
-        const item = session.itens[0] || {};
-        const pisoDoItem = Number(item.valor_minimo);
-        const piso = Number.isFinite(pisoDoItem) && pisoDoItem > 0 ? pisoDoItem : Number(session.valor_minimo);
-
-        // Nosso ultimo valor: o que o portal publica para o nosso CNPJ, ou o
-        // ultimo lance que o portal aceitou nesta sessao, se for menor (a
-        // pagina publica pode estar atrasada). So sem nenhum dos dois cai no
-        // valor inicial da disputa.
-        const conhecidos = [nossoNoPortal, session.ultimo_lance_aceito].filter((v) => Number.isFinite(v));
-        const valorAtual = conhecidos.length ? Math.min(...conhecidos) : session.valor_atual;
-
-        const detalhes = session.detalhesDoItem || {};
-
-        // 2. Decidir — função pura, testada em src/components/robo-lances/test/estrategia.test.ts.
-        // A conta vivia aqui dentro e cobria o proprio lance quando liderava,
-        // descendo o preco ate o piso sem concorrente nenhum.
-        const decisao = decidirLance({
-          portalId: session.portal_id,
-          valorAtual,
-          valorMinimo: piso,
-          melhorLance,
-          souLider,
-          decrementoMin: session.decremento_min,
-          decrementoPercentual: session.decremento_percentual,
-          intervaloMinimo: detalhes.intervalo_minimo,
-          intervaloMinimoPercentual: detalhes.intervalo_minimo_percentual,
-          estrategia: item.estrategia,
-          margemDesempate: Number(item.margem_desempate),
-          fase: sala.fase,
-          segundosRestantes: sala.segundosRestantes,
-          elegivel: sala.elegivel,
-          lanceFinalFechado: Number(item.lance_final_fechado),
-          lanceFechadoEnviado: session.lance_fechado_enviado === true,
-          lanceDesempateEnviado: session.lance_desempate_enviado === true,
-          lancesEnviados: session.lances_enviados,
-          maxLances: session.max_lances,
-          rodada: session.rodada,
-        });
-
-        proxima = proximaLeituraMs({
-          intervaloSegundos: session.intervalo_segundos,
-          fase: sala.fase,
-          segundosRestantes: sala.segundosRestantes,
-        });
-
-        // O ESTADO DA SALA vai ao Praefectus (D13, 16/09/2026): e o que a
-        // pagina da disputa mostra no quadro de status, nas colunas dos itens
-        // e na linha do tempo — para acompanhar sem a tela remota. Sai antes
-        // de encerrar, aguardar ou dar lance, para a decisao desta rodada
-        // chegar mesmo quando a sessao acaba nela.
-        await this._avisarEstadoDaSala(session, {
-          item: item.numero ?? null,
-          melhor_lance: melhorLance,
-          nosso_lance: Number.isFinite(nossoNoPortal) ? nossoNoPortal : null,
-          posicao: classificacao ? classificacao.posicao : null,
-          sou_lider: souLider,
-          tem_proposta: classificacao ? classificacao.tem_proposta : null,
-          propostas_validas: classificacao ? classificacao.validas : null,
-          desclassificadas: classificacao ? classificacao.desclassificadas : null,
-          nossa_desclassificada: classificacao ? classificacao.nossa_desclassificada : null,
-          modo: detalhes.modo_texto || null,
-          intervalo_minimo: Number.isFinite(detalhes.intervalo_minimo) ? detalhes.intervalo_minimo : null,
-          fase: sala.fase || null,
-          segundos_restantes: Number.isFinite(sala.segundosRestantes) ? sala.segundosRestantes : null,
-          estrategia: item.estrategia || 'melhor_preco',
-          decisao: { acao: decisao.acao, valor: decisao.valor, motivo: decisao.motivo },
-          lances_enviados: session.lances_enviados,
-          rodada: session.rodada,
-        });
-
-        if (decisao.acao === 'encerrar') {
-          console.log(\`[\${session.sessao_id}] \${decisao.motivo}\`);
-          this.endSession(session.sessao_id, decisao.motivo);
+        // Todos os itens acabaram (piso, portal encerrou, nao classificada):
+        // nada mais a acompanhar nesta sala.
+        const chaves = itens.map((it, i) => (it && it.numero !== undefined && it.numero !== null ? String(it.numero) : 'indice-' + i));
+        if (chaves.every((c) => session.porItem[c] && session.porItem[c].encerrado)) {
+          const motivos = chaves.map((c) => session.porItem[c].motivo).filter(Boolean);
+          const motivo = itens.length === 1
+            ? motivos[0]
+            : 'Todos os itens encerraram — ' + chaves.map((c) => 'item ' + c + ': ' + session.porItem[c].motivo).join('; ');
+          console.log(\`[\${session.sessao_id}] \${motivo}\`);
+          this.endSession(session.sessao_id, motivo);
           return;
         }
-
-        if (decisao.acao === 'aguardar') {
-          // O motivo ja foi ao Praefectus no estado da sala, acima — que
-          // substituiu o antigo aviso de rodada sem lance.
-          console.log(\`[\${session.sessao_id}] Rodada \${session.rodada} sem lance: \${decisao.motivo}\`);
-          return;
-        }
-
-        const novoValor = decisao.valor;
-
-        // 3. Enviar lance real no portal
-        await session.portal.enviarLance(novoValor);
-
-        // 4. Conferir se o portal ACEITOU. Antes o resultado era lido e
-        // descartado: lance recusado virava valor_atual e a rodada seguinte
-        // partia de uma premissa falsa.
-        const resultado = (await session.portal.verificarResultado?.()) || 'enviado';
-        const recusado = typeof resultado === 'string' &&
-          /recus|rejeit|inval|erro|negad/i.test(resultado);
-
-        if (recusado) {
-          console.warn(\`[\${session.sessao_id}] Lance RECUSADO pelo portal: \${resultado}\`);
-          await sendCallback(session, 'lance-recusado', {
-            rodada: session.rodada,
-            valor: novoValor,
-            resultado,
-          });
-          return; // valor_atual NAO avanca
-        }
-
-        session.valor_atual = novoValor;
-        session.ultimo_lance_aceito = novoValor;
-        session.lances_enviados += 1;
-        if (sala.fase === 'fechada') session.lance_fechado_enviado = true;
-        if (sala.fase === 'desempate_me_epp') session.lance_desempate_enviado = true;
-
-        await sendCallback(session, 'lance-enviado', {
-          rodada: session.rodada,
-          valor: novoValor,
-          tipo_lance: 'meu',
-          resultado,
-          motivo: decisao.motivo,
-          lances_enviados: session.lances_enviados,
-          metadata: { timestamp: new Date().toISOString(), estrategia: item.estrategia || 'melhor_preco' },
-        });
-
-        console.log(
-          \`[\${session.sessao_id}] Rodada \${session.rodada} | lance \${session.lances_enviados} | R$ \${novoValor.toFixed(2)} | \${resultado}\`
-        );
       } catch (err) {
         console.error(\`[\${session.sessao_id}] Erro rodada \${session.rodada}:\`, err);
         await session.portal.screenshot?.('erro-rodada-' + session.rodada).catch(() => {});
@@ -1444,6 +1336,181 @@ class SessionManager {
   }
 
   /**
+   * Uma rodada de UM item: le a classificacao dele, decide com o piso e a
+   * estrategia dele, avisa o estado e, se for o caso, da o lance.
+   *
+   * Devolve { proxima, encerrarSessao, motivo } ou null quando o item falhou
+   * nesta rodada (o erro vai ao Praefectus e os outros itens seguem).
+   */
+  async _rodadaDoItem(session, item, indice, totalDeItens, estadoDoItem) {
+    const numero = item.numero ?? null;
+    const rotulo = totalDeItens > 1 && numero !== null ? \` item \${numero}\` : '';
+    try {
+      const melhorLance = await session.portal.lerMelhorLance(numero);
+      const souLider = (await session.portal.souLider?.(numero)) ?? null;
+      // Fase, tempo restante e elegibilidade saem da sala logada, que ainda
+      // nao foi mapeada: nenhum portal implementa lerSala hoje, e o vazio
+      // chega a decidirLance como "nao sei".
+      const sala = (await session.portal.lerSala?.(numero)) || {};
+      const nossoNoPortal = (await session.portal.nossoLance?.(numero)) ?? null;
+      const classificacao = (await session.portal.resumoDaClassificacao?.(numero)) || null;
+
+      // LANCE DE CONCORRENTE: so quando o melhor lance MUDA, e nao e nosso.
+      // A primeira leitura do item nao e lance novo: e o retrato de quando o
+      // robo chegou.
+      if (melhorLance !== null) {
+        const anterior = estadoDoItem.ultimoMelhorLance;
+        estadoDoItem.ultimoMelhorLance = melhorLance;
+        if (anterior !== undefined && anterior !== melhorLance && souLider !== true) {
+          await sendCallback(session, 'lance-concorrente', {
+            rodada: session.rodada,
+            item: numero,
+            valor: melhorLance,
+            metadata: { timestamp: new Date().toISOString(), anterior, item: numero },
+          });
+        }
+      }
+
+      // O piso e a estrategia sao DO ITEM; o piso da disputa inteira so vale
+      // para item que nao tem o proprio.
+      const pisoDoItem = Number(item.valor_minimo);
+      const piso = Number.isFinite(pisoDoItem) && pisoDoItem > 0 ? pisoDoItem : Number(session.valor_minimo);
+
+      // Nosso ultimo valor NESTE item: o que o portal publica para o nosso
+      // CNPJ, ou o ultimo lance aceito nele nesta sessao, se for menor. Sem
+      // nenhum dos dois: com um item so, o valor inicial da disputa; com
+      // varios, o preco de venda do item (o valor da disputa inteira seria o
+      // numero de outro item).
+      const conhecidos = [nossoNoPortal, estadoDoItem.ultimo_lance_aceito].filter((v) => Number.isFinite(v));
+      const precoDoItem = Number(item.preco_venda);
+      const inicialDoItem = totalDeItens > 1 && Number.isFinite(precoDoItem) && precoDoItem > 0 ? precoDoItem : session.valor_atual;
+      const valorAtual = conhecidos.length ? Math.min(...conhecidos) : (Number.isFinite(estadoDoItem.valor_atual) ? estadoDoItem.valor_atual : inicialDoItem);
+
+      const detalhes = (session.detalhesPorItem && numero !== null && session.detalhesPorItem[String(numero)])
+        || (indice === 0 ? session.detalhesDoItem : null)
+        || {};
+
+      // 2. Decidir — função pura, testada em src/components/robo-lances/test/estrategia.test.ts.
+      const decisao = decidirLance({
+        portalId: session.portal_id,
+        valorAtual,
+        valorMinimo: piso,
+        melhorLance,
+        souLider,
+        decrementoMin: session.decremento_min,
+        decrementoPercentual: session.decremento_percentual,
+        intervaloMinimo: detalhes.intervalo_minimo,
+        intervaloMinimoPercentual: detalhes.intervalo_minimo_percentual,
+        estrategia: item.estrategia,
+        margemDesempate: Number(item.margem_desempate),
+        fase: sala.fase,
+        segundosRestantes: sala.segundosRestantes,
+        elegivel: sala.elegivel,
+        lanceFinalFechado: Number(item.lance_final_fechado),
+        lanceFechadoEnviado: estadoDoItem.lance_fechado_enviado === true,
+        lanceDesempateEnviado: estadoDoItem.lance_desempate_enviado === true,
+        lancesEnviados: session.lances_enviados,
+        maxLances: session.max_lances,
+        rodada: session.rodada,
+      });
+
+      const proxima = proximaLeituraMs({
+        intervaloSegundos: session.intervalo_segundos,
+        fase: sala.fase,
+        segundosRestantes: sala.segundosRestantes,
+      });
+
+      // O ESTADO DA SALA do item vai ao Praefectus (D13): quadro de status,
+      // colunas do item e linha do tempo. Sai antes de encerrar, aguardar ou
+      // dar lance, para a decisao desta rodada chegar mesmo quando o item acaba.
+      await this._avisarEstadoDaSala(session, {
+        item: numero,
+        melhor_lance: melhorLance,
+        nosso_lance: Number.isFinite(nossoNoPortal) ? nossoNoPortal : null,
+        posicao: classificacao ? classificacao.posicao : null,
+        sou_lider: souLider,
+        tem_proposta: classificacao ? classificacao.tem_proposta : null,
+        propostas_validas: classificacao ? classificacao.validas : null,
+        desclassificadas: classificacao ? classificacao.desclassificadas : null,
+        nossa_desclassificada: classificacao ? classificacao.nossa_desclassificada : null,
+        modo: detalhes.modo_texto || null,
+        intervalo_minimo: Number.isFinite(detalhes.intervalo_minimo) ? detalhes.intervalo_minimo : null,
+        fase: sala.fase || null,
+        segundos_restantes: Number.isFinite(sala.segundosRestantes) ? sala.segundosRestantes : null,
+        estrategia: item.estrategia || 'melhor_preco',
+        decisao: { acao: decisao.acao, valor: decisao.valor, motivo: decisao.motivo },
+        lances_enviados: session.lances_enviados,
+        rodada: session.rodada,
+        total_itens: totalDeItens,
+      });
+
+      if (decisao.acao === 'encerrar') {
+        if (decisao.escopo === 'sessao') return { proxima, encerrarSessao: true, motivo: decisao.motivo };
+        // So este item acabou; os outros seguem.
+        estadoDoItem.encerrado = true;
+        estadoDoItem.motivo = decisao.motivo;
+        console.log(\`[\${session.sessao_id}]\${rotulo} encerrado: \${decisao.motivo}\`);
+        return { proxima, encerrarSessao: false };
+      }
+
+      if (decisao.acao === 'aguardar') {
+        console.log(\`[\${session.sessao_id}] Rodada \${session.rodada}\${rotulo} sem lance: \${decisao.motivo}\`);
+        return { proxima, encerrarSessao: false };
+      }
+
+      const novoValor = decisao.valor;
+
+      // 3. Enviar lance real no portal — no item certo.
+      await session.portal.enviarLance(novoValor, numero);
+
+      // 4. Conferir se o portal ACEITOU. Lance recusado nao vira valor atual.
+      const resultado = (await session.portal.verificarResultado?.(numero)) || 'enviado';
+      const recusado = typeof resultado === 'string' &&
+        /recus|rejeit|inval|erro|negad/i.test(resultado);
+
+      if (recusado) {
+        console.warn(\`[\${session.sessao_id}]\${rotulo} Lance RECUSADO pelo portal: \${resultado}\`);
+        await sendCallback(session, 'lance-recusado', {
+          rodada: session.rodada,
+          item: numero,
+          valor: novoValor,
+          resultado,
+        });
+        return { proxima, encerrarSessao: false };
+      }
+
+      estadoDoItem.valor_atual = novoValor;
+      estadoDoItem.ultimo_lance_aceito = novoValor;
+      session.valor_atual = novoValor;
+      session.ultimo_lance_aceito = novoValor;
+      session.lances_enviados += 1;
+      if (sala.fase === 'fechada') estadoDoItem.lance_fechado_enviado = true;
+      if (sala.fase === 'desempate_me_epp') estadoDoItem.lance_desempate_enviado = true;
+
+      await sendCallback(session, 'lance-enviado', {
+        rodada: session.rodada,
+        item: numero,
+        valor: novoValor,
+        tipo_lance: 'meu',
+        resultado,
+        motivo: decisao.motivo,
+        lances_enviados: session.lances_enviados,
+        metadata: { timestamp: new Date().toISOString(), estrategia: item.estrategia || 'melhor_preco', item: numero },
+      });
+
+      console.log(
+        \`[\${session.sessao_id}] Rodada \${session.rodada}\${rotulo} | lance \${session.lances_enviados} | R$ \${novoValor.toFixed(2)} | \${resultado}\`
+      );
+      return { proxima, encerrarSessao: false };
+    } catch (err) {
+      console.error(\`[\${session.sessao_id}] Erro rodada \${session.rodada}\${rotulo}:\`, err);
+      await session.portal.screenshot?.('erro-rodada-' + session.rodada + (numero !== null ? '-item-' + numero : '')).catch(() => {});
+      await sendCallback(session, 'erro', { mensagem: err.message, rodada: session.rodada, item: numero });
+      return null;
+    }
+  }
+
+  /**
    * Manda o estado da sala quando ele MUDA, ou a cada 30 s se nada mudar.
    *
    * Na iminencia o laco roda a cada poucos segundos, e o mesmo estado repetido
@@ -1452,11 +1519,15 @@ class SessionManager {
    * e a rodada ficam fora da comparacao, porque mudam sempre.
    */
   async _avisarEstadoDaSala(session, estado) {
-    const assinatura = JSON.stringify({ ...estado, segundos_restantes: null, rodada: null });
+    // Por item: com varios itens, o estado de um nao pode apagar a comparacao
+    // do outro — cada um so e reenviado quando ELE muda, ou a cada 30 s.
+    const chave = String(estado.item ?? '-');
+    session.estadosAvisados = session.estadosAvisados || {};
+    const ultimo = session.estadosAvisados[chave] || {};
+    const assinatura = JSON.stringify({ ...estado, segundos_restantes: null, rodada: null, lances_enviados: null });
     const agora = Date.now();
-    if (assinatura === session.ultimoEstadoAvisado && agora - (session.ultimoEstadoEm || 0) < 30000) return false;
-    session.ultimoEstadoAvisado = assinatura;
-    session.ultimoEstadoEm = agora;
+    if (assinatura === ultimo.assinatura && agora - (ultimo.em || 0) < 30000) return false;
+    session.estadosAvisados[chave] = { assinatura, em: agora };
     try {
       await sendCallback(session, 'estado-da-sala', estado);
     } catch (e) {

@@ -352,6 +352,106 @@ describe('laço de lances', () => {
     expect(chamadas.find((c) => c.tipo === 'sessao-encerrada')?.dados.motivo).toMatch(/limite de seguranca/);
   });
 
+  it('pregão com vários itens: cada item com o seu piso, a sua estratégia e o seu lance', async () => {
+    const { gerente, chamadas } = montar(true);
+    const lidos: Array<number | null> = [];
+    const enviadosPorItem: Array<[number, number | null]> = [];
+    const melhor: Record<number, number> = { 1: 90, 2: 300 };
+    const { portal } = portalFalso({
+      lerMelhorLance: async (n: number) => { lidos.push(n); return melhor[n]; },
+      nossoLance: async (n: number) => (n === 1 ? 100 : 320),
+      souLider: async () => false,
+      enviarLance: async (v: number, n: number) => { enviadosPorItem.push([v, n]); melhor[n] = v; },
+    });
+    const s = sessao(portal, {
+      itens: [
+        { numero: 1, valor_minimo: 60, estrategia: 'melhor_preco' },
+        { numero: 2, valor_minimo: 250, estrategia: 'iminencia' },
+      ],
+    });
+    gerente.sessions.set('s1', s);
+    gerente._startBiddingLoop(s);
+
+    await vi.advanceTimersByTimeAsync(30_000);
+
+    // Os dois itens foram lidos na mesma rodada.
+    expect(lidos).toEqual([1, 2]);
+    // Item 1 (melhor preço) cobre 90 − 5; item 2 (iminência, sem tempo lido) aguarda.
+    expect(enviadosPorItem).toEqual([[85, 1]]);
+    const estados = chamadas.filter((c) => c.tipo === 'estado-da-sala').map((c) => [c.dados.item, (c.dados.decisao as { acao: string }).acao]);
+    expect(estados).toEqual([[1, 'lance'], [2, 'aguardar']]);
+    expect(chamadas.find((c) => c.tipo === 'lance-enviado')?.dados.item).toBe(1);
+    s.status = 'encerrado';
+  });
+
+  it('um item que chega ao piso sai da disputa; a sessão segue com os outros e só encerra quando todos acabam', async () => {
+    const { gerente, chamadas } = montar(true);
+    const melhor: Record<number, number> = { 1: 64, 2: 300 };
+    const { portal } = portalFalso({
+      lerMelhorLance: async (n: number) => melhor[n],
+      nossoLance: async (n: number) => (n === 1 ? 70 : 320),
+      enviarLance: async () => {},
+    });
+    const s = sessao(portal, {
+      itens: [
+        { numero: 1, valor_minimo: 60 },
+        { numero: 2, valor_minimo: 250, estrategia: 'iminencia' },
+      ],
+    });
+    gerente.sessions.set('s1', s);
+    gerente._startBiddingLoop(s);
+
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(s.status).toBe('ativo'); // item 1 acabou no piso, item 2 segue
+    await vi.advanceTimersByTimeAsync(30_000);
+    const lidosNaRodada2 = chamadas.filter((c) => c.tipo === 'estado-da-sala' && c.dados.item === 1);
+    expect(lidosNaRodada2).toHaveLength(1); // item encerrado não é mais lido
+
+    melhor[2] = 254; // agora o item 2 também chegaria ao piso
+    s.itens = [{ numero: 1, valor_minimo: 60 }, { numero: 2, valor_minimo: 250 }];
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(s.status).toBe('encerrado');
+    const motivo = String(chamadas.find((c) => c.tipo === 'sessao-encerrada')?.dados.motivo);
+    expect(motivo).toMatch(/^Todos os itens encerraram — item 1: .*piso de R\$ 60\.00.*; item 2: .*piso de R\$ 250\.00/);
+  });
+
+  it('o teto de lances é da disputa inteira, somando os itens', async () => {
+    const { gerente, chamadas } = montar(true);
+    const melhor: Record<number, number> = { 1: 90, 2: 300 };
+    const { portal } = portalFalso({
+      lerMelhorLance: async (n: number) => melhor[n],
+      nossoLance: async () => null,
+      enviarLance: async (v: number, n: number) => { melhor[n] = v - 1; },
+    });
+    const s = sessao(portal, {
+      max_lances: 2,
+      itens: [
+        { numero: 1, valor_minimo: 60, preco_venda: 100 },
+        { numero: 2, valor_minimo: 200, preco_venda: 320 },
+      ],
+    });
+    gerente.sessions.set('s1', s);
+    gerente._startBiddingLoop(s);
+
+    await vi.advanceTimersByTimeAsync(30_000 * 2);
+
+    expect(s.status).toBe('encerrado');
+    expect(chamadas.filter((c) => c.tipo === 'lance-enviado').map((c) => c.dados.item)).toEqual([1, 2]);
+    expect(chamadas.find((c) => c.tipo === 'sessao-encerrada')?.dados.motivo).toMatch(/Teto de 2 lances/);
+  });
+
+  it('com vários itens, o estado de um não apaga a comparação do outro', async () => {
+    const { gerente, chamadas } = montar(false);
+    const { portal } = portalFalso({ lerSala: async () => ({ fase: 'aberta', segundosRestantes: 90 }) });
+    const s = sessao(portal, { itens: [{ numero: 1, valor_minimo: 60 }, { numero: 2, valor_minimo: 60 }] });
+    gerente.sessions.set('s1', s);
+    gerente._startBiddingLoop(s);
+
+    await vi.advanceTimersByTimeAsync(30_000 + 3_000 * 4); // 5 rodadas, estados iguais
+    expect(chamadas.filter((c) => c.tipo === 'estado-da-sala').map((c) => c.dados.item)).toEqual([1, 2]);
+    s.status = 'encerrado';
+  });
+
   it('pausar e retomar no meio de uma rodada não deixa dois laços vivos', async () => {
     const { gerente } = montar(false);
     let emCurso = 0;

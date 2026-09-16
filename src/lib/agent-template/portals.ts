@@ -1433,12 +1433,15 @@ class ComprasGovPortal extends BasePortal {
    * Sem item alvo ou sem id da compra devolve null: sem leitura confiavel nao
    * ha estrategia, e decidirLance para.
    */
-  async lerMelhorLance() {
-    if (!this.itemAlvo || !this.compraId) {
+  async lerMelhorLance(numero) {
+    // O item pedido pelo laco (Fase 7: todos os itens do pregao); sem numero,
+    // o primeiro item, como antes.
+    const item = Number(numero) || this.itemAlvo;
+    if (!item || !this.compraId) {
       console.warn('⚠️ Sem item alvo ou sem id da compra — melhor lance desconhecido');
       return null;
     }
-    const valor = await this.melhorLanceDoItem(this.itemAlvo);
+    const valor = await this.melhorLanceDoItem(item);
     if (valor === null) await this.screenshot('lance-leitura-falha');
     return valor;
   }
@@ -1447,9 +1450,10 @@ class ComprasGovPortal extends BasePortal {
    * SOMOS O LIDER? Pelo CNPJ da empresa na classificacao publica do item.
    * null quando nao da para afirmar — e decidirLance trata null como parar.
    */
-  async souLider() {
-    if (!this.itemAlvo || !this.compraId || !this.cnpjEmpresa) return null;
-    return this.souLiderNoItem(this.itemAlvo, this.cnpjEmpresa);
+  async souLider(numero) {
+    const item = Number(numero) || this.itemAlvo;
+    if (!item || !this.compraId || !this.cnpjEmpresa) return null;
+    return this.souLiderNoItem(item, this.cnpjEmpresa);
   }
 
   /**
@@ -1461,10 +1465,11 @@ class ComprasGovPortal extends BasePortal {
    * na lista: nao ha lance nosso a comparar, e decidirLance trata isso sem
    * inventar numero.
    */
-  async nossoLance() {
-    if (!this.itemAlvo || !this.compraId || !this.cnpjEmpresa) return null;
+  async nossoLance(numero) {
+    const item = Number(numero) || this.itemAlvo;
+    if (!item || !this.compraId || !this.cnpjEmpresa) return null;
     const meu = String(this.cnpjEmpresa).replace(/\\D/g, '');
-    const propostas = await this.lerPropostasDoItem(this.itemAlvo);
+    const propostas = await this.lerPropostasDoItem(item);
     const minha = propostas.find((p) => p.cnpj.replace(/\\D/g, '') === meu);
     return minha && !minha.desclassificada ? minha.valor : null;
   }
@@ -1477,9 +1482,10 @@ class ComprasGovPortal extends BasePortal {
    * Usa a mesma leitura do melhor lance (cache de 8 s): nao custa carga de
    * pagina a mais por rodada.
    */
-  async resumoDaClassificacao() {
-    if (!this.itemAlvo || !this.compraId) return null;
-    const propostas = await this.lerPropostasDoItem(this.itemAlvo);
+  async resumoDaClassificacao(numero) {
+    const item = Number(numero) || this.itemAlvo;
+    if (!item || !this.compraId) return null;
+    const propostas = await this.lerPropostasDoItem(item);
     const validas = propostas.filter((p) => !p.desclassificada);
     const meu = String(this.cnpjEmpresa || '').replace(/\\D/g, '');
     const minha = meu ? propostas.find((p) => p.cnpj.replace(/\\D/g, '') === meu) : null;
