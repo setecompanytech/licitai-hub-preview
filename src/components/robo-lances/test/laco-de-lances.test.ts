@@ -203,9 +203,9 @@ describe('laço de lances', () => {
     await vi.advanceTimersByTimeAsync(30_000);
 
     expect(enviados).toEqual([]);
-    const aviso = chamadas.find((c) => c.tipo === 'rodada-sem-lance');
-    expect(aviso?.dados.motivo).toMatch(/iminencia/i);
-    expect(aviso?.dados.estrategia).toBe('iminencia');
+    const estado = chamadas.find((c) => c.tipo === 'estado-da-sala');
+    expect((estado?.dados.decisao as { motivo: string }).motivo).toMatch(/iminencia/i);
+    expect(estado?.dados.estrategia).toBe('iminencia');
     s.status = 'encerrado';
   });
 
@@ -227,7 +227,8 @@ describe('laço de lances', () => {
     longe.gerente._startBiddingLoop(s2);
     await vi.advanceTimersByTimeAsync(30_000);
     expect(p2.enviados).toEqual([]);
-    expect(longe.chamadas.find((c) => c.tipo === 'rodada-sem-lance')?.dados.motivo).toMatch(/nao persegue/);
+    const estadoLonge = longe.chamadas.find((c) => c.tipo === 'estado-da-sala');
+    expect((estadoLonge?.dados.decisao as { motivo: string }).motivo).toMatch(/nao persegue/);
     s2.status = 'encerrado';
   });
 
@@ -258,6 +259,83 @@ describe('laço de lances', () => {
     await vi.advanceTimersByTimeAsync(30_000 + 3_000 * 4);
 
     expect(lidas.length).toBe(5);
+    s.status = 'encerrado';
+  });
+
+  it('o estado da sala chega ao Praefectus com posição, liderança e decisão', async () => {
+    const { gerente, chamadas } = montar(false);
+    const { portal } = portalFalso({
+      resumoDaClassificacao: async () => ({ validas: 13, desclassificadas: 0, tem_proposta: true, posicao: 8, nossa_desclassificada: false }),
+      nossoLance: async () => 4999.7,
+      lerMelhorLance: async () => 3100,
+    });
+    const s = sessao(portal, { detalhesDoItem: { modo_texto: 'Aberto', intervalo_minimo: 0.01 } });
+    gerente.sessions.set('s1', s);
+    gerente._startBiddingLoop(s);
+
+    await vi.advanceTimersByTimeAsync(30_000);
+
+    const estado = chamadas.find((c) => c.tipo === 'estado-da-sala')?.dados;
+    expect(estado).toMatchObject({
+      item: 1, melhor_lance: 3100, nosso_lance: 4999.7, posicao: 8, sou_lider: false,
+      propostas_validas: 13, modo: 'Aberto', intervalo_minimo: 0.01, estrategia: 'melhor_preco',
+    });
+    expect((estado?.decisao as { acao: string }).acao).toBe('aguardar'); // trava fechada
+    s.status = 'encerrado';
+  });
+
+  it('estado igual não é reenviado a cada rodada — só quando muda, ou a cada 30 s', async () => {
+    const { gerente, chamadas } = montar(false);
+    let melhor = 90;
+    const { portal } = portalFalso({
+      lerSala: async () => ({ fase: 'aberta', segundosRestantes: 90 }), // iminência: rodada a cada 3 s
+      lerMelhorLance: async () => melhor,
+    });
+    const s = sessao(portal);
+    gerente.sessions.set('s1', s);
+    gerente._startBiddingLoop(s);
+
+    await vi.advanceTimersByTimeAsync(30_000 + 3_000 * 5); // 6 rodadas, estado igual
+    expect(chamadas.filter((c) => c.tipo === 'estado-da-sala')).toHaveLength(1);
+
+    melhor = 85; // mudou
+    await vi.advanceTimersByTimeAsync(3_000);
+    expect(chamadas.filter((c) => c.tipo === 'estado-da-sala')).toHaveLength(2);
+    s.status = 'encerrado';
+  });
+
+  it('lance de concorrente só quando o melhor lance MUDA — nunca a cada rodada', async () => {
+    const { gerente, chamadas } = montar(false);
+    let melhor = 90;
+    const { portal } = portalFalso({ lerMelhorLance: async () => melhor, nossoLance: async () => 100 });
+    const s = sessao(portal, { valor_atual: 500 });
+    gerente.sessions.set('s1', s);
+    gerente._startBiddingLoop(s);
+
+    await vi.advanceTimersByTimeAsync(30_000 * 4); // 4 rodadas com o mesmo melhor lance
+    expect(chamadas.filter((c) => c.tipo === 'lance-concorrente')).toHaveLength(0);
+
+    melhor = 88;
+    await vi.advanceTimersByTimeAsync(30_000);
+    const concorrentes = chamadas.filter((c) => c.tipo === 'lance-concorrente');
+    expect(concorrentes).toHaveLength(1);
+    expect(concorrentes[0].dados).toMatchObject({ valor: 88, metadata: expect.objectContaining({ anterior: 90 }) });
+    s.status = 'encerrado';
+  });
+
+  it('melhor lance que mudou para o NOSSO não é lance de concorrente', async () => {
+    const { gerente, chamadas } = montar(false);
+    let melhor = 90;
+    let lider = false;
+    const { portal } = portalFalso({ lerMelhorLance: async () => melhor, souLider: async () => lider });
+    const s = sessao(portal);
+    gerente.sessions.set('s1', s);
+    gerente._startBiddingLoop(s);
+    await vi.advanceTimersByTimeAsync(30_000);
+    melhor = 85;
+    lider = true;
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(chamadas.filter((c) => c.tipo === 'lance-concorrente')).toHaveLength(0);
     s.status = 'encerrado';
   });
 

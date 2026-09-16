@@ -1469,6 +1469,29 @@ class ComprasGovPortal extends BasePortal {
     return minha && !minha.desclassificada ? minha.valor : null;
   }
 
+  /**
+   * A CLASSIFICACAO DO ITEM ACOMPANHADO, resumida para o acompanhamento da
+   * disputa na tela do Praefectus (D13, 16/09/2026): posicao da empresa,
+   * quantas propostas valem e quantas foram desclassificadas.
+   *
+   * Usa a mesma leitura do melhor lance (cache de 8 s): nao custa carga de
+   * pagina a mais por rodada.
+   */
+  async resumoDaClassificacao() {
+    if (!this.itemAlvo || !this.compraId) return null;
+    const propostas = await this.lerPropostasDoItem(this.itemAlvo);
+    const validas = propostas.filter((p) => !p.desclassificada);
+    const meu = String(this.cnpjEmpresa || '').replace(/\\D/g, '');
+    const minha = meu ? propostas.find((p) => p.cnpj.replace(/\\D/g, '') === meu) : null;
+    return {
+      validas: validas.length,
+      desclassificadas: propostas.length - validas.length,
+      tem_proposta: !!minha,
+      posicao: minha ? minha.posicao : null,
+      nossa_desclassificada: !!(minha && minha.desclassificada),
+    };
+  }
+
   /** "Aberto", "Aberto e Fechado", "Fechado e Aberto" → id usado pela estrategia. */
   static modoDeDisputa(texto) {
     const t = String(texto || '').toLowerCase();

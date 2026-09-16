@@ -1284,13 +1284,25 @@ class SessionManager {
         // chega a decidirLance como "nao sei".
         const sala = (await session.portal.lerSala?.()) || {};
         const nossoNoPortal = await session.portal.nossoLance?.() ?? null;
+        const classificacao = (await session.portal.resumoDaClassificacao?.()) || null;
 
-        if (melhorLance !== null && melhorLance < session.valor_atual) {
-          await sendCallback(session, 'lance-concorrente', {
-            rodada: session.rodada,
-            valor: melhorLance,
-            metadata: { timestamp: new Date().toISOString() },
-          });
+        // LANCE DE CONCORRENTE: so quando o melhor lance MUDA, e nao e nosso.
+        //
+        // Ate 16/09/2026 o aviso saia a cada rodada em que o melhor lance era
+        // menor que o valor da sessao — com a leitura publica, toda rodada —, e
+        // encheria o historico com a mesma linha a cada 30 s. A primeira
+        // leitura da sessao nao e lance novo: e o retrato de quando o robo
+        // chegou.
+        if (melhorLance !== null) {
+          const anterior = session.ultimoMelhorLance;
+          session.ultimoMelhorLance = melhorLance;
+          if (anterior !== undefined && anterior !== melhorLance && souLider !== true) {
+            await sendCallback(session, 'lance-concorrente', {
+              rodada: session.rodada,
+              valor: melhorLance,
+              metadata: { timestamp: new Date().toISOString(), anterior },
+            });
+          }
         }
 
         // O item que o robo acompanha. A estrategia e o piso sao DELE; o piso
@@ -1340,6 +1352,31 @@ class SessionManager {
           segundosRestantes: sala.segundosRestantes,
         });
 
+        // O ESTADO DA SALA vai ao Praefectus (D13, 16/09/2026): e o que a
+        // pagina da disputa mostra no quadro de status, nas colunas dos itens
+        // e na linha do tempo — para acompanhar sem a tela remota. Sai antes
+        // de encerrar, aguardar ou dar lance, para a decisao desta rodada
+        // chegar mesmo quando a sessao acaba nela.
+        await this._avisarEstadoDaSala(session, {
+          item: item.numero ?? null,
+          melhor_lance: melhorLance,
+          nosso_lance: Number.isFinite(nossoNoPortal) ? nossoNoPortal : null,
+          posicao: classificacao ? classificacao.posicao : null,
+          sou_lider: souLider,
+          tem_proposta: classificacao ? classificacao.tem_proposta : null,
+          propostas_validas: classificacao ? classificacao.validas : null,
+          desclassificadas: classificacao ? classificacao.desclassificadas : null,
+          nossa_desclassificada: classificacao ? classificacao.nossa_desclassificada : null,
+          modo: detalhes.modo_texto || null,
+          intervalo_minimo: Number.isFinite(detalhes.intervalo_minimo) ? detalhes.intervalo_minimo : null,
+          fase: sala.fase || null,
+          segundos_restantes: Number.isFinite(sala.segundosRestantes) ? sala.segundosRestantes : null,
+          estrategia: item.estrategia || 'melhor_preco',
+          decisao: { acao: decisao.acao, valor: decisao.valor, motivo: decisao.motivo },
+          lances_enviados: session.lances_enviados,
+          rodada: session.rodada,
+        });
+
         if (decisao.acao === 'encerrar') {
           console.log(\`[\${session.sessao_id}] \${decisao.motivo}\`);
           this.endSession(session.sessao_id, decisao.motivo);
@@ -1347,22 +1384,9 @@ class SessionManager {
         }
 
         if (decisao.acao === 'aguardar') {
+          // O motivo ja foi ao Praefectus no estado da sala, acima — que
+          // substituiu o antigo aviso de rodada sem lance.
           console.log(\`[\${session.sessao_id}] Rodada \${session.rodada} sem lance: \${decisao.motivo}\`);
-          // Na iminencia o laco roda a cada poucos segundos. O aviso de rodada
-          // sem lance so sai quando o motivo muda, ou a cada 30 s — e isso que
-          // diz "a sessao esta viva", e repetir o mesmo motivo nao diz mais.
-          const agora = Date.now();
-          if (decisao.motivo !== session.ultimoMotivoAvisado || agora - (session.ultimoAvisoEm || 0) >= 30000) {
-            session.ultimoMotivoAvisado = decisao.motivo;
-            session.ultimoAvisoEm = agora;
-            await sendCallback(session, 'rodada-sem-lance', {
-              rodada: session.rodada,
-              motivo: decisao.motivo,
-              melhor_lance: melhorLance,
-              sou_lider: souLider,
-              estrategia: item.estrategia || 'melhor_preco',
-            });
-          }
           return;
         }
 
@@ -1417,6 +1441,28 @@ class SessionManager {
     };
 
     agendar(proximaLeituraMs({ intervaloSegundos: session.intervalo_segundos }));
+  }
+
+  /**
+   * Manda o estado da sala quando ele MUDA, ou a cada 30 s se nada mudar.
+   *
+   * Na iminencia o laco roda a cada poucos segundos, e o mesmo estado repetido
+   * nao diz nada novo — so gasta callback e escrita no banco. Os 30 s sao o
+   * sinal de vida: a tela sabe que o robo continua na sala. O tempo restante
+   * e a rodada ficam fora da comparacao, porque mudam sempre.
+   */
+  async _avisarEstadoDaSala(session, estado) {
+    const assinatura = JSON.stringify({ ...estado, segundos_restantes: null, rodada: null });
+    const agora = Date.now();
+    if (assinatura === session.ultimoEstadoAvisado && agora - (session.ultimoEstadoEm || 0) < 30000) return false;
+    session.ultimoEstadoAvisado = assinatura;
+    session.ultimoEstadoEm = agora;
+    try {
+      await sendCallback(session, 'estado-da-sala', estado);
+    } catch (e) {
+      console.error(\`[\${session.sessao_id}] Falha ao avisar o estado da sala: \${e.message}\`);
+    }
+    return true;
   }
 
   pauseSession(sessaoId) {
