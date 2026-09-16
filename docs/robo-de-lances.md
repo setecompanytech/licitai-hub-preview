@@ -260,7 +260,7 @@ continua no servidor.
 | D4 | O robô "deve funcionar como já deixou — mas com ele **rodando por trás sem precisar necessariamente que o usuário veja**, via RPA / browser automation" | Giovanny — WhatsApp 15/09 13:03 |
 | D5 | **Autorização para dar lance:** "pode testar fazer lances sem problemas, pra validar se ele tá conseguindo dar lance". A retirada da trava foi autorizada por **Giovanny e Rubens** | Giovanny — WhatsApp 15/09 13:03; Giovanny e Rubens |
 | D6 | A esteira do robô: **"1. cadastrar a proposta → 2. fazer o lance no dia do pregão"** | Giovanny — WhatsApp 15/09 13:03 |
-| D7 | **Pré-configurado no próprio Praefectus:** no dia e hora da sessão o robô **entra sozinho na sala**, sem esperar permissão do usuário — no modelo do ConLicitação | alinhamento 14–15/09 |
+| D7 | **Pré-configurado no próprio Praefectus, com agendamento:** a disputa é cadastrada com antecedência e, no dia e hora da sessão, o robô **entra sozinho na sala** — sem esperar permissão nem clique do usuário. O usuário **é avisado** do que o robô faz (entrou, a disputa começou, lance enviado ou recusado, encerrou), em vez de precisar ficar olhando a tela. É o modelo do ConLicitação e o que o Rafael espera do módulo | alinhamento 14–15/09; reforçado pelo Ian em 16/09 |
 | D8 | Regras de disputa que a estratégia tem de seguir: iminência no modo aberto, lance final no aberto e fechado, limite de lances ou disputa contínua até o piso (ver "As regras de disputa") | Giovanny — reunião, vídeo 1 |
 | D9 | O checklist do grupo (literal, abaixo) | Giovanny — grupo, 14/09 20:10 |
 | D10 | A tela remota **sai do caminho do usuário** e fica para **auditoria e exceção** (captcha) — é onde o Rafael a colocou em 14/09 (`/admin/robo-lances`) | alinhamento 14–15/09 |
@@ -425,11 +425,13 @@ Dois esclarecimentos para não perder no caminho:
 - [ ] Cadastro da proposta no Compras.gov pelo robô: valor, marca, fabricante, modelo e descrição por item; declarações do portal só quando o cadastro disser
 - [ ] Ação "cadastrar proposta no portal" na página da disputa, com o resultado voltando ao processo
 
-**Fase 4 — autonomia**
-- [ ] Data e hora da sessão na disputa, pré-preenchidas do PNCP ou do processo
-- [ ] Agendamento: a cada minuto, disputas que começam em até 15 minutos, com a empresa ligada, são enviadas ao robô sem clique
+**Fase 4 — autonomia: o robô entra sozinho e avisa** (D7)
+- [ ] Data e hora da sessão na disputa, pré-preenchidas do PNCP ou do processo — hoje só existe a hora, e sem data nada pode ser agendado
+- [ ] Agendamento: a cada minuto, disputas que começam em até 15 minutos, com a empresa ligada, são enviadas ao robô **sem clique de ninguém**
 - [ ] Sessão persistente do Chrome por empresa e login antes da hora — medir quanto o login dura
 - [ ] Captcha que ainda aparecer: aviso ao admin da Praefectus com o link da tela remota
+- [ ] **Avisos ao usuário** no dia da disputa: robô entrou na sala · disputa começou · lance enviado · lance recusado · falha ao entrar (urgente). Os callbacks já existem (`lance-enviado`, `lance-concorrente`, `rodada-sem-lance`, `sessao-encerrada`, `erro`); falta gravar `notificacoes` neles — a tabela é a mesma do sino do cabeçalho, e o webhook novo já a usa para três casos: sessão encerrada ou interrompida, pregoeiro chamando e itens que não conferem
+- [ ] Linha do tempo da disputa na própria página (`EventosDaDisputa`, que hoje diz "o robô ainda não operou nesta disputa"), para o usuário acompanhar sem abrir tela remota nenhuma
 
 **Fase 5 — liberar o lance**
 - [ ] Com a sala lida e a estratégia testada, antes do pregão B: `PORTAIS_COM_LANCE_LIBERADO = ['comprasgov']`, com o registro "autorizado por Giovanny Valente e Rubens, 14–15/09/2026"
