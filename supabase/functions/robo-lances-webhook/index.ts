@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { credencialEmClaro } from "../_shared/credenciais-cifra.ts";
 import { portalDoAgente, idDeArmazenamento } from "../_shared/robo-portais.ts";
 import { autorizadoComoCron } from "../_shared/cron-auth.ts";
+import { eventosDoEstado, motivoParaPessoas, situacaoDoItem, type EstadoDaSala, type EventoDaSala } from "../_shared/robo-estado-da-sala.ts";
 import { instalarCertificadoNoAgente } from "../_shared/certificado-agente.ts";
 import {
   resolverAcao,
@@ -1023,6 +1024,12 @@ serve(async (req) => {
               status: "ativo",
             })
             .eq("id", sessao_id);
+          await registrarEventos(supabase, sessao, userId, [{
+            tipo: "lance-enviado",
+            mensagem: `Lance enviado: R$ ${formatarReais(valor)}`,
+            item: null,
+            dados: { valor, rodada, motivo: payload.motivo ?? null },
+          }]);
           break;
         }
 
@@ -1038,9 +1045,12 @@ serve(async (req) => {
             origem: "real",
             metadata: payload.metadata || {},
           });
+          // `valor_atual` é o NOSSO valor. Até 16/09/2026 este callback
+          // gravava ali o lance do concorrente, e a tela mostrava o preço dele
+          // como se fosse o nosso.
           await supabase
             .from("sessoes_lance_real")
-            .update({ valor_atual: valor, rodada_atual: rodada })
+            .update({ rodada_atual: rodada })
             .eq("id", sessao_id);
           break;
         }
@@ -1086,6 +1096,12 @@ serve(async (req) => {
               `Confira o intervalo mínimo do edital e a disputa.`,
             link: linkDaDisputa(sessao),
           });
+          await registrarEventos(supabase, sessao, userId, [{
+            tipo: "lance-recusado",
+            mensagem: `O portal recusou o lance de R$ ${formatarReais(valor)}`,
+            item: null,
+            dados: { valor, rodada: rodada ?? null, resultado: resultado ?? null },
+          }]);
           break;
         }
 
@@ -1113,6 +1129,64 @@ serve(async (req) => {
               `${payload.itens ? ` ${payload.itens} item(ns)` : ""}.`,
             link: linkDaDisputa(sessao),
           });
+          await registrarEventos(supabase, sessao, userId, [{
+            tipo: "entrou",
+            mensagem: `Robô entrou na compra ${sessao.edital}` +
+              `${payload.modo_disputa ? ` · modo ${payload.modo_disputa}` : ""}` +
+              `${Number.isFinite(Number(payload.intervalo_minimo)) && payload.intervalo_minimo !== null ? ` · intervalo mínimo R$ ${formatarReais(payload.intervalo_minimo)}` : ""}`,
+            item: null,
+            dados: { itens: payload.itens ?? null, modo: payload.modo_disputa ?? null },
+          }]);
+          break;
+        }
+
+        // ─── O ESTADO DA SALA (D13, 16/09/2026) ──────────────────────────
+        //
+        // O robô manda o que viu na sala a cada mudança, ou a cada 30 s. É o
+        // que a página da disputa mostra: o quadro de status (estado_sala),
+        // as colunas "Seu último lance", "Melhor lance" e "Situação"
+        // (sessao_lance_itens) e a linha do tempo (robo_eventos_sessao) — para
+        // acompanhar sem a tela remota. Substitui o `rodada-sem-lance`.
+        case "estado-da-sala": {
+          const novo = (payload || {}) as EstadoDaSala;
+          const anterior = ((sessao as any).estado_sala ?? null) as EstadoDaSala | null;
+          const estadoGravado: EstadoDaSala = {
+            ...novo,
+            decisao: { ...(novo.decisao || {}), motivo_legivel: motivoParaPessoas(novo) },
+          };
+          const agoraIso = new Date().toISOString();
+          const atualizacao: Record<string, unknown> = {
+            estado_sala: estadoGravado,
+            estado_sala_em: agoraIso,
+            updated_at: agoraIso,
+            rodada_atual: novo.rodada ?? null,
+          };
+          // O nosso valor publicado no portal é o valor atual da sessão.
+          if (Number.isFinite(novo.nosso_lance as number)) atualizacao.valor_atual = novo.nosso_lance;
+
+          const { error: erroSessao } = await supabase.from("sessoes_lance_real").update(atualizacao).eq("id", sessao_id);
+          if (erroSessao && erroDeColunaAusente(erroSessao)) {
+            // Migration 20260916000005 ainda não aplicada: ao menos o sinal de
+            // vida, como fazia o rodada-sem-lance.
+            await supabase.from("sessoes_lance_real").update({ updated_at: agoraIso, rodada_atual: novo.rodada ?? null }).eq("id", sessao_id);
+          }
+
+          if (Number.isFinite(novo.item as number)) {
+            await supabase
+              .from("sessao_lance_itens")
+              .update({
+                melhor_lance: Number.isFinite(novo.melhor_lance as number) ? novo.melhor_lance : null,
+                seu_ultimo_lance: Number.isFinite(novo.nosso_lance as number) ? novo.nosso_lance : null,
+                sou_lider: typeof novo.sou_lider === "boolean" ? novo.sou_lider : null,
+                situacao: situacaoDoItem(novo.fase),
+              })
+              .eq("sessao_id", sessao_id)
+              .eq("numero", novo.item);
+          }
+
+          if (!erroSessao) {
+            await registrarEventos(supabase, sessao, userId, eventosDoEstado(anterior, estadoGravado, formatarReais));
+          }
           break;
         }
 
@@ -1180,6 +1254,12 @@ serve(async (req) => {
               link: linkDaDisputa(sessao),
             });
           }
+          await registrarEventos(supabase, sessao, userId, [{
+            tipo: "verificacao",
+            mensagem: `Aguardando ${oQue} antes de entrar${ate ? ` (até as ${ate})` : ""} — a equipe Praefectus foi avisada`,
+            item: null,
+            dados: { tipo: tipoPedido },
+          }]);
           break;
         }
 
@@ -1192,6 +1272,15 @@ serve(async (req) => {
               valor_atual: payload.valor_final,
             })
             .eq("id", sessao_id);
+          await registrarEventos(supabase, sessao, userId, [{
+            tipo: "encerrou",
+            mensagem: payload.resultado === "parada_emergencial"
+              ? "Sessão interrompida pela parada emergencial"
+              : `Sessão encerrada${typeof payload.motivo === "string" && payload.motivo ? ` — ${payload.motivo}` : ""}` +
+                `${typeof payload.lances_enviados === "number" ? ` · ${payload.lances_enviados} lance(s) enviado(s)` : ""}`,
+            item: null,
+            dados: { resultado: payload.resultado ?? null, motivo: payload.motivo ?? null },
+          }]);
 
           // ── O PROCESSO FICA SABENDO, SEM NINGUÉM CLICAR ──────────────────
           //
@@ -1340,6 +1429,12 @@ serve(async (req) => {
               `A disputa em ${sessao.portal_nome} segue sem o robô até alguém agir.`,
             link: linkDaDisputa(sessao),
           });
+          await registrarEventos(supabase, sessao, userId, [{
+            tipo: "erro",
+            mensagem: "O robô parou com erro — a disputa segue sem o robô até alguém agir",
+            item: null,
+            dados: {},
+          }]);
           break;
         }
 
@@ -2596,6 +2691,33 @@ serve(async (req) => {
  * Escrito à mão em vez de `Intl` porque o valor chega do agente como número
  * ou string, e um `NaN` formatado viraria "R$ NaN" no sino do usuário.
  */
+/**
+ * Grava eventos na linha do tempo da sessão (`robo_eventos_sessao`, D13).
+ *
+ * Nunca derruba o callback: a linha do tempo é informação adicional, e a
+ * tabela pode ainda não existir (migration 20260916000005 não aplicada).
+ */
+async function registrarEventos(
+  supabase: any,
+  sessao: Record<string, any>,
+  userId: string,
+  eventos: EventoDaSala[],
+): Promise<void> {
+  if (!eventos.length) return;
+  const { error } = await supabase.from("robo_eventos_sessao").insert(
+    eventos.map((e) => ({
+      sessao_id: sessao.id,
+      user_id: userId,
+      empresa_id: sessao.empresa_id ?? null,
+      tipo: e.tipo,
+      item: e.item,
+      mensagem: e.mensagem,
+      dados: e.dados,
+    })),
+  );
+  if (error) console.error("[robo-lances-webhook] linha do tempo não gravada:", error.message);
+}
+
 function formatarReais(valor: unknown): string {
   const n = Number(valor);
   if (!Number.isFinite(n)) return "—";
