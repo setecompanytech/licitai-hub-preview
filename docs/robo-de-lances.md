@@ -1156,6 +1156,47 @@ div.cp-valor-item.cp-label > div.mb-half-half.ng-star-inserted > span > span
 página **pública**, sem login, por URL previsível a partir do que a disputa já
 guarda (UASG + número + ano + número do item).
 
+**Conferido nas 12 capturas da sessão** (trazidas da VPS em 16/09): o corte do
+texto por CNPJ amarra cada valor ao seu dono, e a ordem da página é a
+classificação. Itens 1, 2 e 3 do 7/2026 — **13, 12 e 11 fornecedores, todos em
+ordem crescente**. Cada bloco entrega CNPJ, razão social, UF, selos (ME/EPP,
+equidade, integridade) e o valor ofertado.
+
+Duas coisas que as capturas ensinaram, e que viraram código:
+
+- **Ler por texto, não por seletor.** Os valores saem todos no mesmo caminho
+  genérico (`div.cp-valor-item.cp-label`), sem dizer de quem são; o CNPJ é o
+  único marcador que separa um fornecedor do próximo.
+- **A lista monta depois.** A captura das 11:06 saiu vazia e a das 11:08, na
+  mesma tela, trouxe os 11 valores. Quem lê precisa esperar a lista existir —
+  rede lenta não pode virar "nenhuma proposta", que o robô leria como sala
+  vazia.
+
+E um achado que muda o teste: **a Santa Rosa não tem proposta neste pregão** —
+nenhum dos 12 CNPJs é o dela. O 7/2026 serviu para mapear a leitura; provar o
+`souLider` exige um pregão em que a empresa realmente ofertou.
+
+**Escrito e provado no mesmo dia.** O módulo do Compras.gov ganhou
+`lerPropostasDoItem(numero)`, `melhorLanceDoItem(numero)` e
+`souLiderNoItem(numero, cnpj)`. A prova não foi "compila": o parser do
+**módulo gerado** foi rodado contra o **texto real** das capturas — itens 1, 2
+e 3 devolveram 13, 12 e 11 propostas, todas com valor maior que zero, em ordem
+crescente, com CNPJ, UF, selo ME/EPP e posição.
+
+`souLiderNoItem` devolve `true` só quando o nosso CNPJ é o primeiro, `false`
+quando está na lista e não é o primeiro, e **`null` quando não dá para
+afirmar** (lista vazia ou CNPJ ausente). O nulo é o ponto: `decidirLance`
+trata "não sei" como motivo para não dar lance — é o que impede o robô de
+cobrir o próprio lance.
+
+O caminho até aqui custou **seis defeitos pegos pelo teste do template**,
+todos antes de qualquer coisa chegar ao servidor: duas crases em comentário
+(que fecham o literal), um `replace` inútil que virou comentário e engoliu a
+linha seguinte, e três expressões que perderiam as barras invertidas na
+geração. Duas dessas não quebrariam nada visivelmente — `replace(/./g, '')`
+apagaria o valor inteiro e `/R$s*(…)/` não casaria preço nenhum: o robô leria
+"nenhuma proposta" numa sala cheia. É a razão de o teste existir.
+
 **O que ainda falta confirmar:** se esta mesma página se atualiza **durante** a
 sessão de disputa, com os lances chegando. O que foi visto é a etapa "seleção
 de fornecedores", depois do pregão. Se atualizar, a leitura da disputa deixa de

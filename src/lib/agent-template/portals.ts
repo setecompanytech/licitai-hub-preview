@@ -465,6 +465,8 @@ class ComprasGovPortal extends BasePortal {
       + '&redirect_uri=https://www.comprasnet.gov.br/seguro/landing_sso.asp';
     this.certLoginUrl = 'https://certificado.sso.acesso.gov.br';
     this.publicUrl = 'https://cnetmobile.estaleiro.serpro.gov.br/comprasnet-web/public/compras';
+    // Guardado quando a compra e localizada, para ler itens por URL direta.
+    this.compraId = null;
     // Quantos segundos esperar por um clique humano no VNC quando o captcha
     // barrar o caminho. Zero desliga a espera e faz falhar na hora.
     this.segundosEsperaHumano = Number(process.env.SEGUNDOS_ESPERA_HUMANO || 180);
@@ -1158,9 +1160,114 @@ class ComprasGovPortal extends BasePortal {
       await this.screenshot('compra-aberta');
       console.log((clicou ? '📂 Cliquei em "' + clicou + '"; ' : '📂 Nao achei o icone de abrir; ')
         + 'a tela ficou em ' + this.page.url());
+
+      // O id da compra (UASG + 05 + numero + ano) vem de graca na URL em que a
+      // tela ficou. Guardado aqui, a leitura das propostas de qualquer item
+      // vira uma URL direta — sem depender de achar o card de novo.
+      const idNaUrl = (this.page.url().match(/[?&]compra=(\\d+)/) || [])[1];
+      if (idNaUrl) {
+        this.compraId = idNaUrl;
+        console.log('🔗 Id da compra guardado: ' + idNaUrl);
+      }
       console.log('📍 A sala de disputa ainda nao foi mapeada — a leitura de lances daqui em diante '
         + 'depende de ver essa tela com um pregao em sessao. Nao estou afirmando estar nela.');
     }, 'navegar-disputa');
+  }
+
+  /**
+   * A CLASSIFICACAO DE UM ITEM, LIDA DA PAGINA PUBLICA.
+   *
+   * Descoberto em 16/09/2026, com o robo dentro do portal: a URL
+   * .../acompanhamento-compra/item/NUMERO?compra=ID abre a aba "Propostas"
+   * com CNPJ, razao social, UF, selos e "Valor ofertado (unitario)" de cada
+   * fornecedor, EM ORDEM CRESCENTE DE VALOR. Conferido nos itens 1, 2 e 3 do
+   * pregao 7/2026: 13, 12 e 11 fornecedores, todos crescentes.
+   *
+   * POR QUE CORTAR O TEXTO POR CNPJ, e nao ler por seletor: os valores saem
+   * todos no mesmo caminho generico (div.cp-valor-item.cp-label), sem dizer de
+   * quem sao. O CNPJ e o unico marcador que separa um fornecedor do proximo, e
+   * texto nao muda quando o portal troca de classe de CSS.
+   *
+   * A espera existe porque a pagina e Angular: a captura das 11:06 saiu vazia
+   * e a das 11:08, na mesma tela, trouxe os 11 valores — a lista monta depois.
+   */
+  async lerPropostasDoItem(numero, compraId) {
+    const alvo = compraId || this.compraId;
+    if (!alvo || !numero) return [];
+    // Concatenacao simples: o replace que existia aqui trocava '/compras' por
+    // '/compras' (nao fazia nada) e, ao ser gerado dentro do literal do
+    // template, virava '//compras$/' — um comentario, que engolia a linha
+    // seguinte e quebrava o modulo inteiro.
+    const url = this.publicUrl + '/acompanhamento-compra/item/'
+      + String(numero) + '?compra=' + String(alvo);
+
+    if (this.page.url() !== url) {
+      await this.page.goto(url, { waitUntil: 'networkidle2', timeout: 45000 });
+    }
+    // Espera a lista existir, e nao um tempo fixo: rede lenta nao pode virar
+    // "nenhuma proposta", que o robo leria como sala vazia.
+    await this.page.waitForFunction(
+      () => /\\d{2}\\.\\d{3}\\.\\d{3}\\/\\d{4}-\\d{2}/.test(document.body.innerText || ''),
+      { timeout: 30000 },
+    ).catch(() => {});
+
+    const texto = await this.textoDaTela();
+    const inicio = texto.indexOf('Propostas');
+    const corpo = inicio >= 0 ? texto.slice(inicio) : texto;
+
+    const blocos = corpo.split(/(?=\\d{2}\\.\\d{3}\\.\\d{3}\\/\\d{4}-\\d{2})/).slice(1);
+    const propostas = [];
+    for (const bloco of blocos) {
+      const cnpj = (bloco.match(/\\d{2}\\.\\d{3}\\.\\d{3}\\/\\d{4}-\\d{2}/) || [])[0];
+      const bruto = (bloco.match(/R\\$\\s*([\\d.]+),(\\d+)/) || []);
+      if (!cnpj || !bruto.length) continue;
+      const valor = Number(bruto[1].replace(/\\./g, '') + '.' + bruto[2]);
+      if (!Number.isFinite(valor)) continue;
+      propostas.push({
+        cnpj,
+        valor,
+        uf: (bloco.match(/\\b([A-Z]{2})\\b\\s+Valor ofertado/) || [])[1] || null,
+        me_epp: /ME\\/EPP/.test(bloco),
+        posicao: propostas.length + 1,
+      });
+    }
+    if (propostas.length) {
+      console.log('📊 Item ' + numero + ': ' + propostas.length + ' proposta(s); melhor R$ '
+        + this.formatarMoeda(propostas[0].valor) + ' (' + propostas[0].cnpj + ')');
+    } else {
+      console.warn('⚠️ Item ' + numero + ': nenhuma proposta legivel na pagina publica');
+    }
+    return propostas;
+  }
+
+  /**
+   * O melhor lance do item, pela classificacao publica.
+   *
+   * Sem item alvo, nao inventa: devolver o menor numero visivel numa tela
+   * qualquer foi o defeito que a versao antiga cometia com seletores chutados.
+   */
+  async melhorLanceDoItem(numero) {
+    const propostas = await this.lerPropostasDoItem(numero);
+    return propostas.length ? propostas[0].valor : null;
+  }
+
+  /**
+   * SOMOS O LIDER NESTE ITEM?
+   *
+   * Devolve true so quando o CNPJ da empresa e o primeiro da lista; false quando
+   * ele esta na lista e nao e o primeiro; **null quando nao da para afirmar** —
+   * lista vazia ou CNPJ ausente. O nulo e o ponto: decidirLance trata
+   * "nao sei" como motivo para NAO dar lance, e e o que impede o robo de
+   * cobrir o proprio lance.
+   */
+  async souLiderNoItem(numero, cnpjDaEmpresa) {
+    const meu = String(cnpjDaEmpresa || this.credenciais.cnpj || '').replace(/\\D/g, '');
+    if (!meu) return null;
+    const propostas = await this.lerPropostasDoItem(numero);
+    if (!propostas.length) return null;
+    const minha = propostas.find((p) => p.cnpj.replace(/\\D/g, '') === meu);
+    if (!minha) return null;
+    return minha.posicao === 1;
   }
 
   async lerMelhorLance() {
