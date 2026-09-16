@@ -493,7 +493,7 @@ Dois esclarecimentos para não perder no caminho:
   - [ ] **2b.** publicar o `robo-lances-webhook` de novo, com a margem de desempate de cada item (a v37 leva só a estratégia)
   - [ ] **3b.** instalar de novo `estrategia.js` e `session-manager.js` na VPS, com a estratégia "Desempatar no 1º lugar" e a fase de desempate de ME/EPP
   - [x] **4a.** push em 16/09: `0bcf5cfd..10812e69` para `origin` e `sete` (os três em `10812e69`), com o remoto conferido parado antes. Seguro mesmo antes do 2b e do 3b: a v37 e o agente das 12:18 ignoram a margem, e um item com "Desempatar no 1º lugar" aguarda com o motivo "estratégia não conhecida por esta versão do robô" em vez de dar lance
-  - [ ] **4b.** publicação da tela no Lovable, conferida com `bash scripts/verificar-publicacao.sh` (versão `2026-09-16.2`)
+  - [x] **4b.** tela publicada pelo Ian no Lovable em 16/09 — `bash scripts/verificar-publicacao.sh` leu https://praefectus.com.br e respondeu **versão `2026-09-16.2`, a mesma do repositório**
 - [ ] Mostrar a estratégia de cada item também na página da disputa, sem alargar a tabela (sob o piso, como texto pequeno)
 
 **Fase 3 — proposta (etapa 1 da esteira)**
