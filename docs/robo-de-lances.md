@@ -583,7 +583,8 @@ Dois esclarecimentos para não perder no caminho:
   - [x] **o webhook grava** `estado_sala` (com o motivo em linguagem de cliente), e `melhor_lance`, `seu_ultimo_lance`, `sou_lider` e `situacao` em `sessao_lance_itens` — escrito em 16/09; migration `20260916000005` **aplicada pelo Ian** em 16/09 ("Success")
   - [x] **linha do tempo** em `robo_eventos_sessao`, na aba Eventos junto das sessões e dos lances: primeiro retrato da sala, liderança assumida ou perdida, mudança de posição, desclassificação, fase, motivo novo para aguardar, entrou, verificação do gov.br, erro e encerramento. O mesmo estado repetido não vira linha. A regra mora em `_shared/robo-estado-da-sala.ts` (10 testes) — escrito em 16/09
   - [x] **quadro de status** no topo da aba Acompanhamento (`QuadroDaSala`, texto em `src/lib/robo/quadro-da-sala.ts`, 6 testes): "Robô na sala — Item 1 · Modo aberto · 8º lugar · Melhor R$ 3.100,00 · Nosso R$ 4.999,70", o motivo embaixo, a hora da leitura, e aviso quando o robô fica 2 minutos sem dar notícia — escrito em 16/09, versão `2026-09-16.4`
-  - [ ] pôr no ar — servidor feito em 16/09: `robo-lances-webhook` **v41** às 14:38; na VPS, `session-manager.js` (md5 `af8444ea…`) e `portals/comprasgov.js` (`1e715087…`) iguais ao template, backups `.bak-20260916-1439`, 0 sessões antes do `pm2 restart` das 14:39, `/health` online, 14 rotas, trava `[]`, vigia ligado. **Falta** o push dos commits da tela e a publicação da versão `2026-09-16.4`
+  - [ ] pôr no ar — servidor feito em 16/09: `robo-lances-webhook` **v41** às 14:38; na VPS, `session-manager.js` (md5 `af8444ea…`) e `portals/comprasgov.js` (`1e715087…`) iguais ao template, backups `.bak-20260916-1439`, 0 sessões antes do `pm2 restart` das 14:39, `/health` online, 14 rotas, trava `[]`, vigia ligado. Push feito em 16/09 às 15:10 nos dois remotos (`5ba8d0ae..7fb4bbd7`), com tipos, lint e 165 testes do robô verdes. **Falta** o Publish da versão `2026-09-16.4` no Lovable (o domínio servia a `2026-09-16.2` às 15:10)
+    - achado ao conferir: **o preview da Cloudflare (`praefectus-preview.pages.dev`) serve a versão `2026-09-04.6`** — não recompila desde 04/09, apesar dos pushes no `sete`. O push chega ao GitHub (hash conferido), então o problema está do lado da Cloudflare (build falhando ou integração desligada); só quem tem acesso ao projeto `praefectus-preview` consegue ver os deploys
   - [ ] prova com uma disputa da BAQPLAST no 7/2026: 8º lugar no item 1, R$ 4.999,70, visível no quadro e nas colunas — **provada no banco em 16/09**; falta ver na tela depois da publicação da `2026-09-16.4`
     - preparo: a BAQPLAST já existia no Praefectus, com o robô ligado (sem linha em `robo_empresa_config`), mas o usuário dono da credencial do Compras.gov e do agente não era membro dela. O agendador tira agente e credencial do dono da disputa, e o CNPJ, da empresa; a tela só mostra a disputa a membro da empresa. O Ian entrou na BAQPLAST como `viewer` e cadastrou uma cópia da disputa do 7/2026 em nome dela, marcada para 2 minutos depois
     - **14:55:01** o agendador despachou sozinho (sessão `3508533b`); o gov.br lembrou do login em 2 s, sem certificado e sem captcha; compra localizada e item 1 lido às 14:55:15 (modo Aberto, intervalo R$ 0,01); a sessão ficou ativa às 14:55:16 e leu a sala a cada ~34 s, sem lance (trava `[]`)
@@ -592,7 +593,28 @@ Dois esclarecimentos para não perder no caminho:
     - encerrada pela VPS às 15:00:25, 14 capturas do gravador; `/health` voltou a 0 sessões
   - [ ] **o agendador confere se o dono da disputa ainda é membro da empresa** antes de despachar. O envio pelo botão recusa quem não é membro; o agendador não confere. Então quem saiu da empresa, ou uma disputa gravada direto no banco, continua mandando o robô entrar com a credencial dessa pessoa. Achado em 16/09, ao montar a prova da BAQPLAST
 
-**Fase 7 — vários pregões ao mesmo tempo** (pergunta do Ian em 16/09; depois do acompanhamento)
+**Fase 8 — o robô conversa com o processo, o calendário e os avisos** (pedido do Ian em 16/09; aprovada para vir **antes da Fase 7**)
+
+> O que já existe (conferido no código em 16/09): a disputa nasce da pasta do
+> processo e puxa itens e horário; a página da disputa mostra a data do
+> processo; toda notificação aparece na hora como toast, com som e contador
+> (`AppLayout`, realtime em `notificacoes`) — os avisos do robô já saem
+> assim; o calendário mostra os processos pela data de abertura e de
+> encerramento e exporta `.ics`. O que falta: nenhum lembrete de pregão com
+> robô agendado; o cadastro puxa do processo só a hora, não a data (sem data,
+> o robô não entra sozinho); a data do processo mudar não chega à disputa; o
+> calendário não sabe que o robô está agendado; o resultado da disputa não
+> move o kanban sozinho.
+
+- [ ] **O cadastro puxa data e hora da sessão do processo** — hoje só a hora vem de `data_abertura`, e a data fica para digitar
+- [ ] **Lembrete de prontidão na véspera e 1 hora antes**, com a checagem junto: robô da empresa ligado, credencial do portal cadastrada, itens sem piso (e sem margem, no "Desempatar no 1º lugar") e a sessão do gov.br ativa segundo o vigia. Sai por `notificacoes`, então vira toast sem trabalho extra
+- [ ] **O vigia avisa os admins assim que a sessão do gov.br vence**, para o clique no captcha acontecer com folga, e não no minuto do pregão
+- [ ] **Pregão remarcado**: a data do processo mudou e a disputa ainda não foi enviada → a disputa acompanha a data nova, com aviso a quem cadastrou
+- [ ] **Marcador no calendário**: "robô agendado" no dia do processo, com a hora em que o robô entra
+- [ ] **Canal fora do sistema** (e-mail ou WhatsApp) para os avisos urgentes do robô — o captcha e a falha ao entrar — e para o lembrete de prontidão
+- [ ] **Kanban automático**: o resultado da disputa move o processo sozinho — só depois de mapear o encerramento na sala (Fase 1); hoje o registro é pelo botão
+
+**Fase 7 — vários pregões ao mesmo tempo** (pergunta do Ian em 16/09; depois do acompanhamento e da Fase 8)
 - [ ] **Um navegador por empresa, uma aba por pregão**: a segunda disputa da mesma identidade abre aba nova no Chrome já logado, em vez de um Chrome com perfil temporário; o Chrome fecha quando a última disputa da empresa termina; o vigia convive com ele
 - [ ] **Todos os itens do pregão**, e não só o primeiro: o laço acompanha cada item configurado, com o piso e a estratégia dele
 - [ ] Testes simulando duas disputas da mesma empresa ao mesmo tempo, antes de instalar
