@@ -128,8 +128,21 @@ export function useOperacoesDaDisputa(disputaId: string | null, gatilho = 0) {
             eventos.push({
               id: `lance-${l.id}`,
               timestamp: new Date(l.timestamp_lance),
-              acao: l.tipo === 'concorrente' ? 'Lance de concorrente' : 'Lance enviado',
-              resultado: l.tipo === 'concorrente' ? 'info' : 'sucesso',
+              // Três tipos, três leituras. `recusado` passou a chegar em
+              // 16/09, quando o webhook deixou de descartar o callback que o
+              // agente já enviava: o portal não aceitou aquele lance, e
+              // mostrá-lo como "enviado" faria a linha do tempo afirmar algo
+              // que não está no portal.
+              acao: l.tipo === 'concorrente'
+                ? 'Lance de concorrente'
+                : l.tipo === 'recusado'
+                  ? 'Lance recusado pelo portal'
+                  : 'Lance enviado',
+              resultado: l.tipo === 'concorrente'
+                ? 'info'
+                : l.tipo === 'recusado'
+                  ? 'erro'
+                  : 'sucesso',
               detalhes: `${moeda(Number(l.valor) || 0)} · rodada ${l.rodada} · origem ${l.origem}`,
             });
           }

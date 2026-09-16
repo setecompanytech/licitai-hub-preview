@@ -718,6 +718,77 @@ serve(async (req) => {
           break;
         }
 
+        // ─── O LANCE QUE O PORTAL RECUSOU ────────────────────────────────
+        //
+        // O agente envia `lance-recusado` desde que passou a conferir se o
+        // portal aceitou o envio, e este switch não conhecia o tipo: a
+        // resposta era 400 "Tipo de callback desconhecido" e o aviso morria
+        // no log do agente — o mesmo defeito que `rodada-sem-lance` teve em
+        // 08/09. E é o evento em que alguém MAIS precisa agir: intervalo
+        // mínimo do edital, lance que não cobre o próprio anterior, sessão
+        // derrubada pelo portal.
+        case "lance-recusado": {
+          const { rodada, valor, resultado } = payload;
+          // `valor_atual` NÃO avança: o portal não aceitou este número, e
+          // gravá-lo como nosso faria a rodada seguinte partir de uma
+          // premissa falsa — foi por isso que o agente passou a conferir o
+          // resultado antes de dar o lance por enviado.
+          await supabase.from("lances_historico").insert({
+            user_id: userId,
+            sessao_id,
+            rodada: rodada ?? 0,
+            valor,
+            tipo: "recusado",
+            origem: "real",
+            metadata: { ...(payload.metadata || {}), resultado: resultado ?? null },
+          });
+          await supabase
+            .from("sessoes_lance_real")
+            .update({
+              rodada_atual: rodada ?? null,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", sessao_id);
+          await supabase.from("notificacoes").insert({
+            user_id: userId,
+            tipo: "urgente",
+            titulo: `⛔ Lance recusado — ${sessao.edital}`,
+            mensagem:
+              `O portal não aceitou o lance de R$ ${formatarReais(valor)}` +
+              `${resultado ? ` (${String(resultado).slice(0, 120)})` : ""}. ` +
+              `Confira o intervalo mínimo do edital e a disputa.`,
+            link: linkDaDisputa(sessao),
+          });
+          break;
+        }
+
+        // ─── O ROBÔ CHEGOU NA SALA ───────────────────────────────────────
+        //
+        // O robô entra sozinho no horário da sessão (D7): quem cadastrou a
+        // disputa precisa saber que ele chegou, sem abrir tela remota
+        // nenhuma. Sem este aviso, "entrou" e "não entrou" têm a mesma cara
+        // do lado de cá — foi o que aconteceu em 14/09 às 20:07, quando o
+        // login parou no captcha e ninguém soube a tempo.
+        case "sessao-ativa": {
+          await supabase
+            .from("sessoes_lance_real")
+            .update({
+              status: "ativo",
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", sessao_id);
+          await supabase.from("notificacoes").insert({
+            user_id: userId,
+            tipo: "info",
+            titulo: `🤖 Robô na sala — ${sessao.edital}`,
+            mensagem:
+              `O robô entrou na disputa em ${sessao.portal_nome} e está acompanhando` +
+              `${payload.itens ? ` ${payload.itens} item(ns)` : ""}.`,
+            link: linkDaDisputa(sessao),
+          });
+          break;
+        }
+
         case "sessao-encerrada": {
           await supabase
             .from("sessoes_lance_real")
@@ -847,13 +918,27 @@ serve(async (req) => {
         }
 
         case "erro": {
+          const mensagemDoErro = payload.mensagem || "Erro desconhecido";
           await supabase
             .from("sessoes_lance_real")
             .update({
               status: "erro",
-              erro: payload.mensagem || "Erro desconhecido",
+              erro: mensagemDoErro,
             })
             .eq("id", sessao_id);
+          // O robô que não conseguiu operar é o caso mais caro de ficar
+          // calado: a disputa acontece do mesmo jeito, só que sem ninguém
+          // sabendo que ela está sem robô. A sessão já registrava o erro na
+          // própria linha, e ninguém olha a linha durante um pregão.
+          await supabase.from("notificacoes").insert({
+            user_id: userId,
+            tipo: "urgente",
+            titulo: `⚠️ Robô parou — ${sessao.edital}`,
+            mensagem:
+              `${String(mensagemDoErro).slice(0, 200)} ` +
+              `A disputa em ${sessao.portal_nome} segue sem o robô até alguém agir.`,
+            link: linkDaDisputa(sessao),
+          });
           break;
         }
 
@@ -2103,6 +2188,35 @@ serve(async (req) => {
     );
   }
 });
+
+/**
+ * Reais numa frase de aviso: "R$ 1.234,56".
+ *
+ * Escrito à mão em vez de `Intl` porque o valor chega do agente como número
+ * ou string, e um `NaN` formatado viraria "R$ NaN" no sino do usuário.
+ */
+function formatarReais(valor: unknown): string {
+  const n = Number(valor);
+  if (!Number.isFinite(n)) return "—";
+  const [inteiro, centavos] = Math.abs(n).toFixed(2).split(".");
+  return `${n < 0 ? "-" : ""}${inteiro.replace(/\B(?=(\d{3})+(?!\d))/g, ".")},${centavos}`;
+}
+
+/**
+ * Para onde o aviso leva quem clicar.
+ *
+ * A página da disputa é onde há o que fazer; o processo é o segundo melhor
+ * destino; a lista é o último recurso. O que não pode acontecer é um aviso
+ * urgente com link quebrado — sessão sem disputa vinculada é estado
+ * legítimo, não motivo para não avisar.
+ */
+function linkDaDisputa(
+  sessao: { lance_config_id?: string | null; licitacao_id?: string | null } | null | undefined,
+): string {
+  if (sessao?.lance_config_id) return `/robo-lances/disputa/${sessao.lance_config_id}`;
+  if (sessao?.licitacao_id) return `/processo/${sessao.licitacao_id}`;
+  return "/robo-lances";
+}
 
 function jsonResponse(data: any, status = 200) {
   return new Response(JSON.stringify(data), {
