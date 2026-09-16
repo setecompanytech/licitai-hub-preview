@@ -129,7 +129,27 @@ export type EntradaDaProntidao = {
   donoForaDaEmpresa?: boolean;
   /** Interruptor "Modo Automático" da disputa: desligado, o robô entra e só acompanha. */
   modoAutomatico?: boolean | null;
+  /**
+   * Documentos da empresa (certidões) vencidos ou que vencem até o dia da sessão
+   * — a habilitação vem logo depois dos lances (16/09/2026). Nulo = não lido.
+   */
+  documentosVencendo?: ReadonlyArray<{ nome: string; validade: string }> | null;
 };
+
+/**
+ * Os documentos da empresa que não chegam válidos ao dia da sessão: validade
+ * (data, sem hora) antes do dia da sessão em Brasília. A habilitação pode ser
+ * pedida na mesma sessão, logo depois dos lances.
+ */
+export function documentosQueVencemAteASessao(
+  documentos: ReadonlyArray<{ nome: string; validade: string | null }>,
+  inicioSessao: Date,
+): Array<{ nome: string; validade: string }> {
+  const diaDaSessao = DIA.format(inicioSessao);
+  return documentos
+    .filter((d): d is { nome: string; validade: string } => !!d.validade && d.validade.slice(0, 10) < diaDaSessao)
+    .sort((a, b) => a.validade.localeCompare(b.validade));
+}
 
 const positivo = (v: unknown) => Number(v) > 0;
 
@@ -163,6 +183,15 @@ export function pendenciasDaDisputa(e: EntradaDaProntidao): Pendencia[] {
   if (e.sessaoGovBr === "sem-conferencia") add("gov-br-sem-conferencia", false, "a sessão do gov.br ainda não foi conferida pelo robô");
   if (e.lanceLiberado === false) add("lance-travado", false, "o envio de lances ainda não foi liberado para este portal: o robô entra e só acompanha");
   else if (e.modoAutomatico === false) add("modo-automatico-desligado", false, "o modo automático está desligado nesta disputa: o robô entra e só acompanha, sem dar lance");
+  if (e.documentosVencendo && e.documentosVencendo.length) {
+    const lista = e.documentosVencendo.slice(0, 3).map((d) => `${d.nome} (${d.validade.slice(8, 10)}/${d.validade.slice(5, 7)})`).join(", ");
+    const mais = e.documentosVencendo.length > 3 ? ` e mais ${e.documentosVencendo.length - 3}` : "";
+    add(
+      "documentos-vencidos",
+      false,
+      `${e.documentosVencendo.length === 1 ? "1 documento da empresa não estará válido" : `${e.documentosVencendo.length} documentos da empresa não estarão válidos`} no dia da sessão, e a habilitação vem logo depois dos lances: ${lista}${mais}`,
+    );
+  }
   return p;
 }
 

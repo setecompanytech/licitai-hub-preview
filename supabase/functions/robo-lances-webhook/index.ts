@@ -5,6 +5,7 @@ import { portalDoAgente, idDeArmazenamento } from "../_shared/robo-portais.ts";
 import { autorizadoComoCron } from "../_shared/cron-auth.ts";
 import { anteriorDoItem, eventosDoEstado, mesclarEstadoDoItem, motivoParaPessoas, situacaoDoItem, type EstadoDaSala, type EstadoGravado, type EventoDaSala } from "../_shared/robo-estado-da-sala.ts";
 import {
+  documentosQueVencemAteASessao,
   deveDespacharAgora,
   entradaFalhouPorFaltaDeClique,
   horaEmBrasilia,
@@ -3323,6 +3324,18 @@ async function enviarLembretesDeProntidao(
 
     const itens = Array.isArray(d.itens) ? d.itens : [];
     const acessoDoDono = d.empresa_id ? await acessoDoDonoNaEmpresa(supabase, d.empresa_id, donoId) : "indeterminado";
+
+    // Habilitação (16/09/2026): documentos da empresa que não chegam válidos ao
+    // dia da sessão. Leitura que falha não vira pendência — só deixa de avisar.
+    let documentosVencendo: Array<{ nome: string; validade: string }> | null = null;
+    if (d.empresa_id) {
+      const { data: docs, error: erroDocs } = await supabase
+        .from("documentos")
+        .select("nome, validade")
+        .eq("empresa_id", d.empresa_id)
+        .not("validade", "is", null);
+      if (!erroDocs) documentosVencendo = documentosQueVencemAteASessao(docs || [], inicio);
+    }
     const pendencias = pendenciasDaDisputa({
       donoForaDaEmpresa: acessoDoDono === "fora",
       itens,
@@ -3337,6 +3350,7 @@ async function enviarLembretesDeProntidao(
       sessaoConferidaAs,
       lanceLiberado,
       modoAutomatico: typeof d.modo_automatico === "boolean" ? d.modo_automatico : null,
+      documentosVencendo,
     });
     const texto = textoDoLembrete({ qual, edital: d.edital, portalNome: d.portal, inicioSessao: inicio, agora, pendencias, sessaoGovBr, sessaoConferidaAs });
     const link = `/robo-lances/disputa/${d.id}`;

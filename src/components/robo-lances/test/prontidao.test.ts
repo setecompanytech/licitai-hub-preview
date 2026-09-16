@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createHash } from 'node:crypto';
 import {
+  documentosQueVencemAteASessao,
   deveDespacharAgora,
   entradaFalhouPorFaltaDeClique,
   horaDaEntrada,
@@ -266,5 +267,36 @@ describe('lembrete com o lance liberado', () => {
     expect(pendenciasDaDisputa({ ...base, modoAutomatico: true })).toEqual([]);
     // Portal travado já diz que o robô só acompanha: não repete.
     expect(pendenciasDaDisputa({ ...base, lanceLiberado: false, modoAutomatico: false }).map((p) => p.chave)).toEqual(['lance-travado']);
+  });
+});
+
+describe('habilitação: documentos que não chegam válidos ao dia da sessão', () => {
+  // Sessão 17/09/2026 às 09:00 em Brasília.
+  const inicio = new Date('2026-09-17T12:00:00Z');
+  const docs = [
+    { nome: 'CND Federal', validade: '2026-09-16' },
+    { nome: 'FGTS', validade: '2026-09-17' },
+    { nome: 'CNDT', validade: '2026-08-30' },
+    { nome: 'Contrato social', validade: null },
+    { nome: 'Estadual', validade: '2026-10-01' },
+  ];
+
+  it('vencido antes do dia da sessão entra; vale no dia, não; sem validade, não', () => {
+    expect(documentosQueVencemAteASessao(docs, inicio).map((d) => d.nome)).toEqual(['CNDT', 'CND Federal']);
+  });
+
+  it('vira aviso no lembrete, com os nomes e as datas', () => {
+    const base: EntradaDaProntidao = {
+      itens: [{ valorMinimo: 60 }], roboDaEmpresa: 'ligado', temAgente: true, temCredencial: true, portalConhecido: true,
+      precisaUasg: true, uasg: '925315', sessaoGovBr: 'logado', lanceLiberado: true, modoAutomatico: true,
+    };
+    const p = pendenciasDaDisputa({ ...base, documentosVencendo: documentosQueVencemAteASessao(docs, inicio) });
+    expect(p).toEqual([{
+      chave: 'documentos-vencidos',
+      grave: false,
+      texto: '2 documentos da empresa não estarão válidos no dia da sessão, e a habilitação vem logo depois dos lances: CNDT (30/08), CND Federal (16/09)',
+    }]);
+    expect(pendenciasDaDisputa({ ...base, documentosVencendo: [] })).toEqual([]);
+    expect(pendenciasDaDisputa({ ...base, documentosVencendo: null })).toEqual([]);
   });
 });
