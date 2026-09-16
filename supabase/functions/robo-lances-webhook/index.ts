@@ -2542,6 +2542,125 @@ serve(async (req) => {
     // RAM, slots nem erro cru — e só as sessões e os pedidos de código que ele
     // pode ver. O `/health` do agente compartilhado traz os de TODAS as
     // empresas.
+    // ─── ENVIAR PROPOSTA AO ROBÔ (16/09/2026) ─────────────────────────────
+    //
+    // A tela de Proposta chamava a função `enviar-proposta-portal`, que lia
+    // colunas que não existem em `credenciais_portais` (usuario_cifrado,
+    // portal, empresa_id) — respondia "credenciais não cadastradas" sempre —,
+    // não mandava login, senha nem UASG ao robô e pegava o agente com
+    // `.single()`, que falha com duas configurações. Aqui ela usa as MESMAS
+    // peças do envio de sessão: membro da empresa, robô da empresa ligado,
+    // agente mais recente, credencial em claro só para o robô, chave certa.
+    //
+    // O robô ainda responde 501 no Compras.gov: o preenchimento do formulário
+    // de proposta só pode ser escrito depois de ver a tela, numa compra que a
+    // empresa escolher. Até lá a resposta diz exatamente isso.
+    if (action === "enviar-proposta") {
+      const { user, resposta: naoAutenticado } = await usuarioDaRequisicao(supabase, req);
+      if (!user) return naoAutenticado!;
+      const ehAdmin = await ehAdminDaPlataforma(supabase, user.id);
+
+      const empresaId = ehUuid(body.empresa_id) ? body.empresa_id : null;
+      const numeroPregao = String(body.numero_pregao ?? "").trim();
+      const itens = Array.isArray(body.itens) ? body.itens : [];
+      if (!empresaId || !numeroPregao || itens.length === 0) {
+        return jsonResponse({ ok: false, error: "Informe a empresa, o número do pregão e ao menos um item." }, 400);
+      }
+      if (!ehAdmin) {
+        const { data: membro } = await supabase
+          .from("empresa_membros")
+          .select("empresa_id")
+          .eq("empresa_id", empresaId)
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (!membro) return jsonResponse({ ok: false, error: FRASES_AO_CLIENTE.foraDaEmpresa }, 403);
+      }
+      const ligado = await lerLigadoDaEmpresa(supabase, empresaId);
+      if (ligado.estado === "desligado") return jsonResponse({ ok: false, error: FRASES_AO_CLIENTE.roboDesligado }, 409);
+
+      const portalId = idDeArmazenamento(String(body.portal ?? "")) ?? String(body.portal ?? "");
+      const portalAgente = portalDoAgente(portalId);
+      if (!portalAgente) {
+        return jsonResponse({ ok: false, error: `O portal "${body.portal ?? ""}" não é um que o robô conhece.` }, 400);
+      }
+      if (portalAgente === "comprasgov" && !/^\d{6}$/.test(String(body.uasg ?? ""))) {
+        return jsonResponse({ ok: false, error: "No Compras.gov, informe a UASG (6 dígitos): o número da compra se repete entre órgãos." }, 400);
+      }
+
+      const { data: agentesAtivos } = await supabase
+        .from("agente_externo_config")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("status", "ativo")
+        .order("updated_at", { ascending: false });
+      const agente = agentesParaUsuario(agentesAtivos, ambiente)[0];
+      if (!agente) {
+        return jsonResponse({ ok: false, code: "AGENTE_INATIVO", error: "Nenhum robô ativo configurado para a sua conta." }, 422);
+      }
+      let credenciais;
+      try {
+        credenciais = await credencialEmClaro(supabase, user.id, portalId);
+      } catch (e) {
+        return jsonResponse({ ok: false, error: `A credencial do portal não pôde ser lida: ${textoDoErro(e)}` }, 500);
+      }
+      if (!credenciais) {
+        return jsonResponse({
+          ok: false,
+          code: "CREDENCIAL_NAO_ENCONTRADA",
+          error: "Nenhuma credencial ativa cadastrada para este portal. Cadastre em Robô de Lances → Portais.",
+        }, 422);
+      }
+      const { data: emp } = await supabase.from("empresas").select("cnpj").eq("id", empresaId).maybeSingle();
+
+      let resp: Response | null = null;
+      let corpo: Record<string, any> = {};
+      try {
+        resp = await fetch(`${agente.url_base}/api/proposta/enviar`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Agent-Key": chaveParaOAgente(agente, chaveGerenciada) },
+          body: JSON.stringify({
+            portal: portalAgente,
+            numero_pregao: numeroPregao,
+            uasg: body.uasg ?? null,
+            itens,
+            declaracoes: body.declaracoes ?? {},
+            anexos_urls: Array.isArray(body.anexos_urls) ? body.anexos_urls : [],
+            credenciais_portal: credenciais,
+            cnpj_empresa: emp?.cnpj ?? null,
+            empresa_id: empresaId,
+            user_id: user.id,
+          }),
+          signal: AbortSignal.timeout(60000),
+        });
+        corpo = await resp.json().catch(() => ({}));
+      } catch (e) {
+        await registrarNoLog(supabase, user.id, "enviar-proposta-falha", { empresa_id: empresaId, portal: portalAgente, pregao: numeroPregao }, { erro: textoDoErro(e) });
+        return jsonResponse({ ok: false, status: "falha_conexao", error: ehEstouroDeTempo(e) ? FRASES_AO_CLIENTE.semRespostaATempo : FRASES_AO_CLIENTE.roboForaDoAr }, 502);
+      }
+
+      await registrarNoLog(supabase, user.id, "enviar-proposta", { empresa_id: empresaId, portal: portalAgente, pregao: numeroPregao, itens: itens.length, http: resp.status }, resp.ok ? {} : { erro: corpo?.error ?? null });
+
+      if (resp.status === 501) {
+        return jsonResponse({
+          ok: false,
+          status: "nao_implementado",
+          mensagem:
+            "Os dados da proposta chegaram ao robô, com a credencial e a UASG. O que falta é o preenchimento do formulário de proposta " +
+            "neste portal, que só pode ser escrito depois de ver a tela numa compra escolhida pela empresa. Até lá, cadastre a proposta no portal.",
+        });
+      }
+      if (!resp.ok) {
+        return jsonResponse({ ok: false, status: "erro_agente", error: corpo?.error || `O robô respondeu HTTP ${resp.status}` }, 502);
+      }
+      return jsonResponse({
+        ok: true,
+        status: "aceito",
+        itens_enviados: itens.length,
+        protocolo: corpo?.protocolo ?? null,
+        mensagem: `Proposta cadastrada pelo robô no portal${corpo?.protocolo ? ` — protocolo ${corpo.protocolo}` : ""}.`,
+      });
+    }
+
     if (action === "healthcheck") {
       const { user, resposta: naoAutenticado } = await usuarioDaRequisicao(supabase, req);
       if (!user) return naoAutenticado!;

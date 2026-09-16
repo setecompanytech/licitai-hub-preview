@@ -45,6 +45,8 @@ export default function EnvioProposta() {
   
   const [tab, setTab] = useState('itens');
   const [numeroPregao, setNumeroPregao] = useState('');
+  // Compras.gov: o número da compra se repete entre órgãos; a UASG desambigua.
+  const [uasg, setUasg] = useState('');
   const [portal, setPortal] = useState('compras-gov');
   const [declaracoes, setDeclaracoes] = useState({
     meEpp: false,
@@ -144,7 +146,10 @@ export default function EnvioProposta() {
         return;
       }
 
-      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enviar-proposta-portal`, {
+      // Pelo webhook do robô (16/09/2026): a função `enviar-proposta-portal`
+      // lia colunas que não existem nas credenciais e não mandava login nem
+      // UASG ao robô. O webhook usa as mesmas peças do envio de sessão.
+      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/robo-lances-webhook/enviar-proposta`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -153,6 +158,7 @@ export default function EnvioProposta() {
         body: JSON.stringify({
           portal,
           numero_pregao: numeroPregao,
+          uasg: portal === 'compras-gov' ? uasg : null,
           empresa_id: empresaAtiva?.id,
           itens: itensFormatados,
           declaracoes: {
@@ -167,7 +173,13 @@ export default function EnvioProposta() {
 
       const result = await resp.json();
 
-      if (resp.ok && result.ok) {
+      if (result.status === 'nao_implementado') {
+        // Não é falha de envio: o robô recebeu tudo e diz o que falta.
+        setEnvioStatus('idle');
+        setEnvioResult({ ok: false, status: result.status, mensagem: result.mensagem });
+        toast.info('O robô recebeu a proposta, mas ainda não a cadastra neste portal.');
+        setTab('revisao');
+      } else if (resp.ok && result.ok) {
         setEnvioStatus('sucesso');
         setEnvioResult(result);
         toast.success('Proposta enviada ao Agente Cloud com sucesso!');
@@ -193,7 +205,8 @@ export default function EnvioProposta() {
 
   const portalSelecionado = PORTAIS_SUPORTADOS.find(p => p.id === portal);
   const declaracoesCompletas = Object.values(declaracoes).filter(Boolean).length;
-  const prontaParaEnvio = numeroPregao.trim() && itensFormatados.length > 0 && temCredencial && agenteOnline;
+  const prontaParaEnvio = numeroPregao.trim() && itensFormatados.length > 0 && temCredencial && agenteOnline
+    && (portal !== 'compras-gov' || /^\d{6}$/.test(uasg));
 
   return (
     <div className="space-y-4">
@@ -243,6 +256,16 @@ export default function EnvioProposta() {
           className="w-full sm:w-[280px]"
           aria-label="Número do pregão"
         />
+        {portal === 'compras-gov' && (
+          <Input
+            placeholder="UASG (6 dígitos)"
+            value={uasg}
+            onChange={e => setUasg(e.target.value.replace(/\D/g, '').slice(0, 6))}
+            inputMode="numeric"
+            className="w-full sm:w-[160px]"
+            aria-label="UASG da unidade compradora"
+          />
+        )}
         {temCredencial === false && (
           <Badge variant="danger" className="gap-1">
             <AlertTriangle className="w-3 h-3" aria-hidden="true" /> Sem credencial para {portalSelecionado?.nome}
@@ -407,6 +430,7 @@ export default function EnvioProposta() {
               <p className="text-sm font-semibold text-foreground">Checklist de envio</p>
               {[
                 { ok: !!numeroPregao.trim(), label: 'Número do pregão informado' },
+                ...(portal === 'compras-gov' ? [{ ok: /^\d{6}$/.test(uasg), label: 'UASG informada (Compras.gov)' }] : []),
                 { ok: itensFormatados.length > 0, label: 'Itens com valores cadastrados' },
                 { ok: temCredencial === true, label: `Credenciais do ${portalSelecionado?.nome} cadastradas` },
                 { ok: agenteOnline === true, label: 'Agente Cloud online e disponível' },
@@ -438,9 +462,9 @@ export default function EnvioProposta() {
 
             {/* Resultado do envio */}
             {envioResult && (
-              <Alert variant={envioResult.ok ? 'success' : 'destructive'}>
-                {envioResult.ok ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
-                <AlertTitle>{envioResult.ok ? 'Proposta enviada' : 'Falha no envio'}</AlertTitle>
+              <Alert variant={envioResult.ok ? 'success' : envioResult.status === 'nao_implementado' ? 'warning' : 'destructive'}>
+                {envioResult.ok ? <CheckCircle2 className="h-4 w-4" /> : envioResult.status === 'nao_implementado' ? <AlertTriangle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                <AlertTitle>{envioResult.ok ? 'Proposta enviada' : envioResult.status === 'nao_implementado' ? 'Cadastro automático ainda não disponível neste portal' : 'Falha no envio'}</AlertTitle>
                 <AlertDescription>{envioResult.mensagem}</AlertDescription>
               </Alert>
             )}
