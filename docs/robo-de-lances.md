@@ -1101,6 +1101,33 @@ E uma regra do próprio sistema, que a estratégia tem de respeitar: o licitante
 sistema" — ou seja, cada lance nosso precisa ser menor que o nosso anterior,
 não apenas menor que o melhor da sala.
 
+**E o que a página pública de acompanhamento já entrega** — visto ao vivo em
+16/09, com o robô dentro dela e o raio-X ligado. Abrindo um item, o portal
+mostra, por item:
+
+| Campo | Exemplo lido |
+| --- | --- |
+| Número, descrição e **descrição detalhada** | "1 NOTEBOOK", com a especificação inteira |
+| Quantidade mínima, quantidade solicitada, unidade | 34207 · 34207 · Unidade |
+| Critério de julgamento | Menor Preço |
+| Valor estimado (unitário e total) | **Sigiloso** |
+| Orçamento sigiloso | Sim |
+| **Intervalo mínimo entre Lances** | **R$ 0,0100** |
+| Tratamento diferenciado | "Sem benefícios ME/EPP (Art. 4º…)" · "Item de participação aberta" · "Cota reservada ME/EPP do item 4" |
+| Margem de preferência e conteúdo nacional | Não · Não |
+| Situação do item | "Aguardando julgamento" |
+
+O que isso muda, concretamente: **o decremento mínimo não precisa ser digitado
+por ninguém**. Ele é regra do edital, está publicado por item, e o robô pode
+lê-lo do portal — e conferir contra o que foi cadastrado, do mesmo jeito que
+já faz com a lista de itens. Um decremento menor que esse é lance recusado.
+
+A estrutura, para escrever a leitura: o portal usa pares rótulo/valor com as
+classes `cp-label` e `cp-valor-item` dentro de `div.col-sm-4.pt-2`
+(`R$ 0,0100 → div.col-sm-4.pt-2 > div.cp-valor-item.cp-label`). Vale ler
+**pelo texto do rótulo** e pegar o valor ao lado — classe de CSS muda a cada
+atualização do portal, o rótulo não.
+
 **O que isto não é:** prova. O manual descreve a tela do Comprasnet anterior à
 reformulação de 2021, e o que está no ar é o Compras.gov novo (`cnetmobile`,
 Angular/PrimeNG). Os nomes tendem a sobreviver — o portal reaproveita o mesmo
