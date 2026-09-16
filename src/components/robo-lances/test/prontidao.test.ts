@@ -255,3 +255,16 @@ describe('entrada antecipada quando a sessão do gov.br venceu', () => {
     expect(t.mensagem).toContain('O robô entra sozinho às 08:00.');
   });
 });
+
+describe('lembrete com o lance liberado', () => {
+  const base: EntradaDaProntidao = {
+    itens: [{ valorMinimo: 60 }], roboDaEmpresa: 'ligado', temAgente: true, temCredencial: true, portalConhecido: true,
+    precisaUasg: true, uasg: '925315', sessaoGovBr: 'logado', lanceLiberado: true,
+  };
+  it('modo automático desligado na disputa vira aviso; ligado, nada', () => {
+    expect(pendenciasDaDisputa({ ...base, modoAutomatico: false }).map((p) => p.chave)).toEqual(['modo-automatico-desligado']);
+    expect(pendenciasDaDisputa({ ...base, modoAutomatico: true })).toEqual([]);
+    // Portal travado já diz que o robô só acompanha: não repete.
+    expect(pendenciasDaDisputa({ ...base, lanceLiberado: false, modoAutomatico: false }).map((p) => p.chave)).toEqual(['lance-travado']);
+  });
+});

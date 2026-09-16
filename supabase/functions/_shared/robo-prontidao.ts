@@ -127,6 +127,8 @@ export type EntradaDaProntidao = {
   lanceLiberado: boolean | null;
   /** Quem cadastrou a disputa saiu da empresa (confirmado): o agendador não despacha. */
   donoForaDaEmpresa?: boolean;
+  /** Interruptor "Modo Automático" da disputa: desligado, o robô entra e só acompanha. */
+  modoAutomatico?: boolean | null;
 };
 
 const positivo = (v: unknown) => Number(v) > 0;
@@ -160,6 +162,7 @@ export function pendenciasDaDisputa(e: EntradaDaProntidao): Pendencia[] {
   if (e.roboDaEmpresa === "indeterminado") add("ligado-indeterminado", false, "não foi possível confirmar se o robô da empresa está ligado");
   if (e.sessaoGovBr === "sem-conferencia") add("gov-br-sem-conferencia", false, "a sessão do gov.br ainda não foi conferida pelo robô");
   if (e.lanceLiberado === false) add("lance-travado", false, "o envio de lances ainda não foi liberado para este portal: o robô entra e só acompanha");
+  else if (e.modoAutomatico === false) add("modo-automatico-desligado", false, "o modo automático está desligado nesta disputa: o robô entra e só acompanha, sem dar lance");
   return p;
 }
 

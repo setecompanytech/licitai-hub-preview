@@ -541,6 +541,22 @@ serve(async (req) => {
         payload: { sessao_id: sessao.id, ...sessaoData },
       });
 
+      // MODO AUTOMÁTICO DA DISPUTA (16/09/2026): com o lance liberado, é o
+      // interruptor de cada disputa que decide se o robô dá lance ou só
+      // acompanha. O gravado na disputa vale mais que o corpo; sem disputa
+      // gravada, o que a tela mandou. Na dúvida, false: o robô só acompanha.
+      let modoAutomatico = body.modo_automatico === true;
+      if (ehUuid(sessaoData.lance_config_id)) {
+        const { data: disputaGravada } = await supabase
+          .from("robo_lances_disputas")
+          .select("modo_automatico")
+          .eq("id", sessaoData.lance_config_id)
+          .maybeSingle();
+        if (disputaGravada && typeof disputaGravada.modo_automatico === "boolean") {
+          modoAutomatico = disputaGravada.modo_automatico;
+        }
+      }
+
       // Forward to external agent
       try {
         const agentResp = await fetch(`${agente.url_base}/sessao/iniciar`, {
@@ -567,6 +583,7 @@ serve(async (req) => {
             // sessao, e assim o envio nao depende de migration.
             uasg: body.uasg ?? null,
             cnpj_empresa: cnpjEmpresa,
+            modo_automatico: modoAutomatico,
             // O ALVO DENTRO DO PROCESSO.
             //
             // `sessaoData` ja leva `tipo_disputa`; os itens vao aqui porque
@@ -963,6 +980,8 @@ serve(async (req) => {
               credenciais_portal: credenciais,
               uasg: d.uasg ?? null,
               cnpj_empresa: cnpjDaEmpresa,
+              // Com o lance liberado, o interruptor da disputa decide (16/09/2026).
+              modo_automatico: d.modo_automatico === true,
               // Estratégia e margem não são colunas de `sessao_lance_itens`: entram só aqui.
               itens: itensParaSessao.map((i, idx) => ({
                 ...i,
@@ -3143,6 +3162,7 @@ async function enviarLembretesDeProntidao(
       sessaoGovBr,
       sessaoConferidaAs,
       lanceLiberado,
+      modoAutomatico: typeof d.modo_automatico === "boolean" ? d.modo_automatico : null,
     });
     const texto = textoDoLembrete({ qual, edital: d.edital, portalNome: d.portal, inicioSessao: inicio, agora, pendencias, sessaoGovBr, sessaoConferidaAs });
     const link = `/robo-lances/disputa/${d.id}`;

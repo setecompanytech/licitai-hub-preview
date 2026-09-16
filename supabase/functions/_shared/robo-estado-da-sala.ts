@@ -80,6 +80,12 @@ export function motivoParaPessoas(estado: EstadoDaSala): string | null {
   if (decisao.acao === "lance") return "Enviando lance";
   if (!motivo) return null;
 
+  if (/modo automatico desligado/i.test(motivo)) {
+    return "Modo automático desligado nesta disputa: o robô acompanha e não dá lance";
+  }
+  if (/campo de lance deste item nao esta na tela/i.test(motivo)) {
+    return "Lance decidido, mas o campo de lance deste item não está na tela do robô — acompanhando";
+  }
   if (/nao esta liberado para enviar lance/i.test(motivo)) {
     return "Só acompanhando: o envio de lances ainda não foi liberado para este portal";
   }

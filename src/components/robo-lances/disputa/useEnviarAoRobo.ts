@@ -89,6 +89,9 @@ export function useEnviarAoRobo({ empresaId, estadoDoRobo, relerLigado, portaisS
           tipo_disputa: lance.tipoDisputa,
           // Compras.gov: o número da compra se repete entre órgãos; a UASG desambigua.
           uasg: lance.uasg ?? null,
+          // Com o lance liberado no Compras.gov, é o que decide se o robô dá
+          // lance ou só acompanha (o servidor prefere o valor gravado).
+          modo_automatico: lance.modoAutomatico === true,
           itens: (lance.itens || []).map((i) => ({
             // Vínculo estável com `licitacao_itens` — o servidor confere se o
             // item ainda existe antes de gravar.

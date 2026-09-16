@@ -138,3 +138,12 @@ describe('vários itens na mesma sessão (Fase 7)', () => {
     expect(Object.keys(mesclarEstadoDoItem(BAQPLAST, item2).por_item!)).toEqual(['1', '2']);
   });
 });
+
+describe('motivos do lance ligado (16/09/2026)', () => {
+  it('modo automático desligado e campo de lance fora da tela viram frase de gente', () => {
+    expect(motivoParaPessoas({ decisao: { acao: 'aguardar', motivo: 'Modo automatico desligado nesta disputa: o robo acompanha e nao da lance' } } as never))
+      .toBe('Modo automático desligado nesta disputa: o robô acompanha e não dá lance');
+    expect(motivoParaPessoas({ decisao: { acao: 'aguardar', valor: 85, motivo: 'Lance de R$ 85.00 decidido, mas o campo de lance deste item nao esta na tela' } } as never))
+      .toBe('Lance decidido, mas o campo de lance deste item não está na tela do robô — acompanhando');
+  });
+});
