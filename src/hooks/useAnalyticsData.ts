@@ -106,6 +106,10 @@ type LicitacaoDeAnalytics = {
   municipio: string | null;
   data_abertura: string | null;
   data_encerramento: string | null;
+  /** Dá o ano ao número publicado sem ele — identidade do card na agenda. */
+  ano_compra: string | null;
+  /** Fora da mesa de trabalho. Sem esta coluna a agenda cobrava prazo de processo encerrado. */
+  arquivado_em: string | null;
   created_at: string;
   updated_at: string | null;
 };
@@ -127,7 +131,7 @@ export function useAnalyticsData() {
     // das quais o usuário é membro.
     let q = supabase
       .from('licitacoes')
-      .select('id, numero, orgao, objeto, modalidade, status, valor_estimado, valor_adjudicado, uf, municipio, data_abertura, data_encerramento, created_at, updated_at');
+      .select('id, numero, orgao, objeto, modalidade, status, valor_estimado, valor_adjudicado, uf, municipio, data_abertura, data_encerramento, ano_compra, arquivado_em, created_at, updated_at');
 
     if (!todasSelecionadas && empresaAtiva) {
       q = q.eq('empresa_id', empresaAtiva.id);

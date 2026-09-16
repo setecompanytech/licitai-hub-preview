@@ -39,11 +39,14 @@ import { useQuery } from '@tanstack/react-query';
 import { format, isWithinInterval, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import SyncCalendarButton from './SyncCalendarButton';
+import { identidadeDoProcesso } from '@/lib/licitacao/identidade-do-processo';
 import { CalendarEvent } from '@/lib/calendar-sync';
 
 interface LicitacaoEvento {
   id: string;
   numero: string;
+  /** Com modalidade e ano, `identidadeDoProcesso` escreve "PE nº 86/2026". */
+  ano_compra: string | null;
   objeto: string;
   orgao: string;
   status: string;
@@ -111,7 +114,7 @@ export default function CalendarioLicitacoes() {
       if (!user) return [];
       const { data, error } = await supabase
         .from('licitacoes')
-        .select('id, numero, objeto, orgao, status, data_abertura, data_encerramento, modalidade, valor_estimado')
+        .select('id, numero, ano_compra, objeto, orgao, status, data_abertura, data_encerramento, modalidade, valor_estimado')
         .order('data_abertura', { ascending: true });
       // CLAUDE.md, princípio 3: falha silenciosa é proibida. Sem este `throw`
       // o react-query nunca enxerga o erro do banco — a consulta "termina bem"
@@ -521,7 +524,7 @@ export default function CalendarioLicitacoes() {
                         onClick={() => irParaProcesso(l.id)}
                         className="text-left underline underline-offset-2 hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm"
                       >
-                        {l.numero} — {l.orgao} —{' '}
+                        {identidadeDoProcesso(l)} — {l.orgao} —{' '}
                         {l.data_abertura &&
                           format(new Date(l.data_abertura), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                       </button>
@@ -643,7 +646,7 @@ export default function CalendarioLicitacoes() {
                   .filter((l) => l.data_abertura)
                   .map((l): CalendarEvent => ({
                     uid: l.id,
-                    title: `[${l.modalidade}] ${l.numero} — ${l.orgao}`,
+                    title: `${identidadeDoProcesso(l)} — ${l.orgao}`,
                     description: l.objeto,
                     start: new Date(l.data_abertura!),
                     end: l.data_encerramento ? new Date(l.data_encerramento) : undefined,
@@ -736,7 +739,7 @@ export default function CalendarioLicitacoes() {
                           )}
                         />
                         <span className="min-w-0 flex-1 block">
-                          <span className="block text-sm font-medium truncate group-hover:underline">{l.numero}</span>
+                          <span className="block text-sm font-medium truncate group-hover:underline">{identidadeDoProcesso(l)}</span>
                           <span className="block text-sm text-muted-foreground truncate">{l.orgao}</span>
                           <span className="block text-sm text-muted-foreground truncate">{l.objeto}</span>
                         </span>
@@ -835,7 +838,7 @@ export default function CalendarioLicitacoes() {
                           </span>
                           <span className="min-w-0 flex-1 block">
                             <span className="block text-sm font-medium truncate group-hover:underline">
-                              {l.numero} — {l.orgao}
+                              {identidadeDoProcesso(l)} — {l.orgao}
                             </span>
                             <span className="block text-sm text-muted-foreground truncate">{l.objeto}</span>
                           </span>

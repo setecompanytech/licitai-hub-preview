@@ -42,6 +42,23 @@ describe('identidadeDoProcesso', () => {
       .toBe('PE · processo manual');
   });
 
+  /* O caso do painel de 16/09: o PNCP grava só o sequencial em `numero` (70 dos
+     97 processos da base), e o ano vive em `ano_compra`. A agenda mostrava "86". */
+  it('o sequencial do PNCP ganha o ano de ano_compra', () => {
+    expect(identidadeDoProcesso({ numero: '86', modalidade: 'Pregão - Eletrônico', ano_compra: '2026' }))
+      .toBe('PE nº 86/2026');
+  });
+
+  it('sem ano_compra, não inventa ano', () => {
+    expect(identidadeDoProcesso({ numero: '86', modalidade: 'Pregão - Eletrônico' }))
+      .toBe('PE nº 86');
+  });
+
+  it('ano publicado no próprio número manda — ano_compra só socorre quem não tem', () => {
+    expect(identidadeDoProcesso({ numero: '17/2026', modalidade: 'Pregão - Eletrônico', ano_compra: '2025' }))
+      .toBe('PE nº 17/2026');
+  });
+
   it('sem modalidade, o número segura a identidade sozinho', () => {
     expect(identidadeDoProcesso({ numero: '99023/2026', modalidade: null })).toBe('nº 99023/2026');
   });

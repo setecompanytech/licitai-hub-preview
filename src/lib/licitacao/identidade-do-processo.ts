@@ -58,6 +58,12 @@ const NAO_E_NUMERO = /^(processo\s*manual|manual|s\/n|sem\s*n[uú]mero)?$/i;
 export function identidadeDoProcesso(p: {
   numero?: string | null;
   modalidade?: string | null;
+  /**
+   * `ano_compra` do PNCP, na grafia da coluna — quem chama passa a linha do
+   * banco inteira. É o que salva o número publicado sem ano: a O S tem 70 dos
+   * 97 processos gravados só com o sequencial ("86"), e o card dizia "86".
+   */
+  ano_compra?: string | number | null;
 }): string {
   const sigla = siglaDaModalidade(p.modalidade);
   const numero = String(p.numero ?? '').trim();
@@ -65,7 +71,7 @@ export function identidadeDoProcesso(p: {
 
   if (!temNumero) return sigla ? `${sigla} · processo manual` : 'Processo manual';
 
-  const id = identidadeDoEdital({ numeroCompra: numero, modalidade: p.modalidade });
+  const id = identidadeDoEdital({ numeroCompra: numero, modalidade: p.modalidade, anoCompra: p.ano_compra });
   const srp = id.srpNoTexto ? ' · SRP' : '';
   if (id.numeroPadronizado) {
     return sigla ? `${sigla} ${id.numeroPadronizado}${srp}` : `${id.numeroPadronizado}${srp}`;

@@ -10,7 +10,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { badgeVariants } from '@/components/ui/badge';
 import EstadoVazio from '@/components/shared/EstadoVazio';
 import { cn } from '@/lib/utils';
-import { normalizarStatus, STATUS_DECIDIDOS } from '@/lib/licitacao/status';
+import { faixaDe, normalizarStatus, STATUS_DECIDIDOS } from '@/lib/licitacao/status';
+import { identidadeDoProcesso } from '@/lib/licitacao/identidade-do-processo';
 import { diaDaValidade, diasAteVencer, ROTULO_DA_SITUACAO } from '@/lib/documentos/situacao';
 import { useVencimentosDeDocumentos, ROTA_DA_ORIGEM } from '@/hooks/useVencimentosDeDocumentos';
 
@@ -38,10 +39,14 @@ import { useVencimentosDeDocumentos, ROTA_DA_ORIGEM } from '@/hooks/useVenciment
 export interface ProcessoDaAgenda {
   id: string;
   numero: string | null;
+  /** Compõe a identidade do card ("PE nº 86/2026") junto com número e ano. */
+  modalidade?: string | null;
+  ano_compra?: string | null;
   orgao: string | null;
   status: string | null;
   data_abertura: string | null;
   data_encerramento: string | null;
+  arquivado_em?: string | null;
 }
 
 interface Props {
@@ -103,7 +108,12 @@ export default function AgendaPendencias({
 
     processos.forEach((p) => {
       const situacao = normalizarStatus(p.status);
-      const encerrado = STATUS_DECIDIDOS.includes(situacao) || situacao === 'Arquivada';
+      /* Arquivado saiu da mesa de trabalho: o prazo dele não é atraso nem
+         compromisso. A regra está escrita no topo deste arquivo desde sempre,
+         mas `arquivado_em` não vinha na consulta do painel — e a agenda
+         cobrava "Atrasado" de processo que a própria empresa já encerrou. */
+      if (faixaDe(p.status ?? '', p.arquivado_em) === 'arquivo') return;
+      const decidido = STATUS_DECIDIDOS.includes(situacao);
 
       ([
         { campo: p.data_abertura, natureza: 'Sessão' },
@@ -114,10 +124,13 @@ export default function AgendaPendencias({
         if (dias > DIAS_A_FRENTE || dias < -DIAS_ATRAS) return;
         // Processo decidido não tem prazo pendente — o dele passou porque
         // terminou. Marcá-lo como atraso encheria a agenda de falso alarme.
-        if (encerrado && dias < 0) return;
+        if (decidido && dias < 0) return;
         lista.push({
           chave: `${p.id}-${natureza}`,
-          titulo: p.numero || 'Processo sem número',
+          /* "86" não identifica nada: é o sequencial do PNCP, sem modalidade e
+             sem ano. A autoridade de nomeação é a mesma do Kanban e do
+             workspace — o painel escrevia o campo cru. */
+          titulo: identidadeDoProcesso(p),
           contexto: p.orgao || 'Órgão não informado',
           quando: new Date(campo),
           natureza,
@@ -156,6 +169,13 @@ export default function AgendaPendencias({
   }, [processos, documentos]);
 
   const carregando = carregandoProcessos || carregandoDocs;
+
+  /* O que não coube na lista, contado por situação. O rodapé dizia "+26 com
+     data nos próximos 30 dias" somando também o que já venceu — e atraso é
+     passado, não próximo. */
+  const naoListados = itens.slice(LIMITE);
+  const atrasadosOcultos = naoListados.filter((i) => i.urgencia === 'atrasado').length;
+  const programadosOcultos = naoListados.length - atrasadosOcultos;
 
   if (carregando) {
     return (
@@ -244,9 +264,11 @@ export default function AgendaPendencias({
       )}
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
-        {itens.length > LIMITE && (
+        {naoListados.length > 0 && (
           <p className="text-sm leading-5 text-muted-foreground">
-            +{itens.length - LIMITE} com data nos próximos 30 dias
+            +{naoListados.length} com prazo
+            {atrasadosOcultos > 0 && ` · ${atrasadosOcultos} em atraso`}
+            {programadosOcultos > 0 && ` · ${programadosOcultos} nos próximos 30 dias`}
           </p>
         )}
         <Link

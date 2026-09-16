@@ -71,6 +71,7 @@ const abreHoje = () => {
 const PROCESSO = {
   id: 'lic-123',
   numero: 'PE 90001/2026',
+  ano_compra: null,
   objeto: 'Aquisição de material de expediente',
   orgao: 'Prefeitura de Belém',
   status: 'Publicado',
@@ -111,10 +112,27 @@ describe('CalendarioLicitacoes', () => {
     definirEstados({ 'calendario-licitacoes': { data: [PROCESSO] } });
     render(<CalendarioLicitacoes />);
 
-    fireEvent.click(screen.getAllByText('PE 90001/2026')[0]);
+    // Rótulo padronizado desde 16/09: o calendário passou a nomear o processo
+    // pela mesma autoridade do Kanban e do painel (identidadeDoProcesso), e o
+    // "PE" que o portal grava dentro do número não se repete.
+    fireEvent.click(screen.getAllByText('PE nº 90001/2026')[0]);
 
     expect(navegou).toHaveBeenCalledWith('/processo/lic-123');
     expect(navegou).not.toHaveBeenCalledWith('/kanban');
+  });
+
+  /* O defeito do print de 16/09: o PNCP grava só o sequencial em `numero`, e a
+     agenda exibia "86" — sem modalidade e sem ano, não identifica processo. */
+  it('sequencial cru do PNCP vira identidade com modalidade e ano', () => {
+    definirEstados({
+      'calendario-licitacoes': {
+        data: [{ ...PROCESSO, numero: '86', ano_compra: '2026', modalidade: 'Pregão - Eletrônico' }],
+      },
+    });
+    render(<CalendarioLicitacoes />);
+
+    expect(screen.getAllByText('PE nº 86/2026').length).toBeGreaterThan(0);
+    expect(screen.queryByText('86')).toBeNull();
   });
 
   it('mostra o estado de carregando em vez dos estados vazios', () => {
