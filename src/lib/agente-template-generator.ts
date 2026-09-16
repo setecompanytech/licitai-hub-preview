@@ -721,6 +721,7 @@ app.listen(PORT, BIND_HOST, () => {
 const { sendCallback } = require('./callback');
 const { getPortal } = require('./portals');
 const { decidirLance, conferirItens, proximaLeituraMs } = require('./estrategia');
+const interacao = require('./interacao-humana');
 const os = require('os');
 const fs = require('fs');
 const path = require('path');
@@ -735,6 +736,53 @@ class SessionManager {
   constructor() {
     this.sessions = new Map();
     this.maxParallel = parseInt(process.env.MAX_SESSOES_PARALELAS || '3', 10);
+
+    // Pastas de perfil persistente abertas agora. O Chrome nao abre a mesma
+    // pasta duas vezes: duas disputas simultaneas da mesma empresa no mesmo
+    // portal fariam a segunda falhar. A segunda entra com perfil temporario.
+    this.perfisEmUso = new Set();
+
+    // O ROBO PAROU ESPERANDO UMA PESSOA — captcha, codigo de verificacao.
+    // O pedido vira callback, e o webhook avisa os administradores da
+    // plataforma com o caminho da tela remota (16/09/2026). Antes ele so
+    // existia no /health, e em 14/09 as 20:07 expirou sem ninguem ver.
+    interacao.aoPedir((sessaoId, pedido) => {
+      const session = this.sessions.get(sessaoId);
+      if (!session) return null;
+      return sendCallback(session, 'pedido-humano', {
+        tipo: pedido.tipo,
+        mensagem: pedido.mensagem,
+        tela: pedido.tela,
+        expira_em: pedido.expira_em,
+      });
+    });
+  }
+
+  /**
+   * A pasta do perfil persistente desta sessao, ou null para perfil temporario.
+   *
+   * Um perfil por PORTAL e por IDENTIDADE de login — no Compras.gov, quem entra
+   * no gov.br e o titular do certificado, e e a sessao dele que o perfil
+   * guarda. A identidade vira hash no nome da pasta: CPF nao fica escrito no
+   * disco em texto.
+   *
+   * So nos portais da lista. O login dos outros foi escrito supondo navegador
+   * limpo; chegar ja logado poderia confundi-los, e ninguem conferiu isso.
+   * PERFIL_PERSISTENTE=false no .env desliga para todos.
+   */
+  perfilDaSessao(config) {
+    const PORTAIS_COM_PERFIL_PERSISTENTE = ['comprasgov'];
+    if (String(process.env.PERFIL_PERSISTENTE ?? 'true') === 'false') return null;
+    if (!PORTAIS_COM_PERFIL_PERSISTENTE.includes(config.portal_id)) return null;
+    const cred = config.credenciais_portal || {};
+    const quem = String(cred.cpf || cred.login || cred.usuario || config.cnpj_empresa || 'padrao');
+    const chave = crypto.createHash('sha256').update(config.portal_id + ':' + quem).digest('hex').slice(0, 16);
+    const pasta = path.join(process.env.PERFIS_DIR || './perfis', config.portal_id + '-' + chave);
+    if (this.perfisEmUso.has(pasta)) {
+      console.log(\`🗂️  [\${config.sessao_id}] O perfil desta identidade esta em uso por outra sessao — esta entra com perfil temporario\`);
+      return null;
+    }
+    return pasta;
   }
 
   /**
@@ -797,9 +845,16 @@ class SessionManager {
     try {
       // Cada sessão recebe seu próprio browser (instância Chromium isolada)
       console.log(\`🚀 Abrindo sessão \${config.sessao_id} (browser #\${this.getActiveSessions().length})\`);
-      const { browser, page } = await launchBrowser();
+      const { browser, page, perfil } = await launchBrowser(null, { perfil: this.perfilDaSessao(config) });
       session.browser = browser;
       session.page = page;
+      session.perfil = perfil || null;
+      if (perfil) {
+        this.perfisEmUso.add(perfil);
+        // Liberar quando o Chrome fechar, por qualquer caminho — fim, erro,
+        // kill switch ou queda. Amarrar a cada um deles esqueceria algum.
+        browser.on('disconnected', () => this.perfisEmUso.delete(perfil));
+      }
 
       // Toda aba que nasce ou morre vai para o log, com URL. Foi a falta disto
       // que deixou "Session closed" sem explicacao em 10/09/2026: o Chrome
@@ -830,6 +885,9 @@ class SessionManager {
       // um codigo de verificacao, por exemplo — e para a resposta voltar ao
       // lugar certo quando ha varias sessoes abertas ao mesmo tempo.
       session.portal.sessaoId = config.sessao_id;
+      // O login registra se entrou com perfil guardado — e o que a medicao
+      // em logs/logins.jsonl precisa separar.
+      session.portal.perfilPersistente = !!session.perfil;
 
       // Login no portal
       console.log(\`🔐 [\${config.sessao_id}] Login no portal: \${config.portal_id}\`);
@@ -1516,7 +1574,14 @@ function dimensoesDaTela() {
   };
 }
 
-async function launchBrowser(cnpj) {
+/**
+ * @param {string} [cnpj]
+ * @param {{perfil?: string|null}} [opcoes]
+ *        perfil: pasta do perfil PERSISTENTE do Chrome (cookies, sessao do
+ *        gov.br). Sem ela, o Chrome abre com perfil temporario, que some ao
+ *        fechar — o comportamento de sempre.
+ */
+async function launchBrowser(cnpj, opcoes = {}) {
   const cert = getCertConfig(cnpj);
   const { largura, altura } = dimensoesDaTela();
 
@@ -1557,7 +1622,7 @@ async function launchBrowser(cnpj) {
   const visivel = process.env.HEADLESS === 'false';
   const display = process.env.DISPLAY || ':99';
 
-  const browser = await puppeteer.launch({
+  const configuracao = {
     headless: visivel ? false : 'new',
     args,
     // Com janela de verdade, o viewport tem que SEGUIR a janela. Fixa-lo faria
@@ -1566,7 +1631,40 @@ async function launchBrowser(cnpj) {
     defaultViewport: visivel ? null : { width: largura, height: altura },
     executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
     env: visivel ? { ...process.env, DISPLAY: display } : process.env,
-  });
+  };
+
+  // ── PERFIL PERSISTENTE (16/09/2026) ──────────────────────────────────────
+  //
+  // Todo envio era um login novo, e o gov.br pedia o clique do hCaptcha em 10
+  // de 16 logins (10 a 14/09). Com o perfil guardado, o gov.br pode lembrar da
+  // sessao e devolver o robo ja logado — sem certificado e sem captcha. Quanto
+  // isso de fato evita esta sendo medido em logs/logins.jsonl.
+  //
+  // Se o Chrome nao abrir com o perfil (pasta travada por um Chrome que morreu
+  // de mau jeito, disco cheio), a sessao NAO cai: abre com perfil temporario,
+  // como sempre abriu, e o log diz por que.
+  let perfil = opcoes && opcoes.perfil ? opcoes.perfil : null;
+  let browser;
+  if (perfil) {
+    try {
+      fs.mkdirSync(perfil, { recursive: true, mode: 0o700 });
+      browser = await puppeteer.launch({
+        ...configuracao,
+        userDataDir: perfil,
+        // O perfil guarda a sessao; cache de pagina nao precisa crescer sem
+        // limite num disco de VPS. E sem o balao "restaurar paginas" depois de
+        // um pm2 restart, que cobriria a tela remota.
+        args: [...args, '--disk-cache-size=52428800', '--hide-crash-restore-bubble'],
+      });
+      console.log('🗂️  Perfil persistente: ' + perfil);
+    } catch (e) {
+      console.warn('⚠️ Nao abri o Chrome com o perfil persistente (' + e.message.split('\\n')[0]
+        + ') — seguindo com perfil temporario');
+      perfil = null;
+      browser = null;
+    }
+  }
+  if (!browser) browser = await puppeteer.launch(configuracao);
 
   console.log(visivel
     ? '🖥️  Chrome VISIVEL em ' + display + ' a ' + largura + 'x' + altura + ' — acompanhe em /vnc/'
@@ -1602,7 +1700,7 @@ async function launchBrowser(cnpj) {
     await page.setViewport({ width: largura, height: altura });
   }
 
-  return { browser, page, cert };
+  return { browser, page, cert, perfil };
 }
 
 module.exports = { launchBrowser, getCertConfig };
@@ -1625,6 +1723,23 @@ const pendentes = new Map();
 const respostas = new Map();
 
 /**
+ * Quem quer saber, na hora, que o robo parou esperando uma pessoa.
+ *
+ * Existe desde 16/09/2026: o pedido morava so na memoria e no /health, e so
+ * era visto por quem estivesse com a tela certa aberta. Em 14/09 as 20:07 o
+ * gov.br pediu o clique, ninguem estava olhando, e a espera expirou. O
+ * session-manager escuta aqui e manda o pedido ao webhook, que avisa os
+ * administradores da plataforma.
+ *
+ * Quem escuta nunca derruba quem pede: um aviso que falha nao pode impedir o
+ * robo de esperar o clique.
+ */
+const ouvintes = [];
+function aoPedir(fn) {
+  if (typeof fn === 'function') ouvintes.push(fn);
+}
+
+/**
  * Registra o que falta para seguir.
  * @param {string} sessaoId
  * @param {{tipo: string, mensagem: string, tela?: string}} pedido
@@ -1645,6 +1760,14 @@ function pedir(sessaoId, pedido) {
   // Uma resposta antiga nao pode satisfazer um pedido novo: quem respondeu
   // "123456" ao pedido anterior nao respondeu a este.
   respostas.delete(sessaoId);
+  for (const fn of ouvintes) {
+    try {
+      const r = fn(sessaoId, registro);
+      if (r && typeof r.catch === 'function') r.catch(() => {});
+    } catch (e) {
+      /* avisar e informacao adicional; o pedido segue de pe */
+    }
+  }
   return registro;
 }
 
@@ -1758,7 +1881,7 @@ function desfechosRecentes() {
 
 module.exports = {
   pedir, responder, colher, pendente, encerrar, todos, classificarTela,
-  renovar, resolver, desfechosRecentes,
+  renovar, resolver, desfechosRecentes, aoPedir,
 };
 `,
 

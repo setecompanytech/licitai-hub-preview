@@ -54,6 +54,7 @@ function montar(liberar: boolean) {
     },
     './portals': { getPortal: () => ({}) },
     './estrategia': estrategia.exports,
+    './interacao-humana': { aoPedir: () => {}, encerrar: () => {} },
     os: { totalmem: () => 8e9, freemem: () => 4e9 },
     fs: {},
     path: {},

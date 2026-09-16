@@ -619,7 +619,60 @@ class ComprasGovPortal extends BasePortal {
     }
   }
 
+  /**
+   * A pagina e a area logada do fornecedor? Palavras que so existem DENTRO —
+   * "Compras" sozinha nao vale, esta no logo de toda pagina, inclusive a de
+   * login. As tres primeiras sao da "Area de Trabalho do Fornecedor
+   * Brasileiro", lidas da tela real em 10/09/2026.
+   */
+  static pareceAreaLogada(texto) {
+    return /[aá]rea de trabalho do fornecedor|placar de licita[cç][oõ]es|dados cadastrais|bem-vindo|painel|meus preg[oõ]es|em disputa|abertas para participa[cç][aã]o|\\bsair\\b|minha conta/i
+      .test(String(texto || ''));
+  }
+
+  /**
+   * UMA LINHA POR LOGIN em logs/logins.jsonl: quando, se havia perfil
+   * persistente, como entrou e quanto demorou.
+   *
+   * Existe para MEDIR o perfil persistente (16/09/2026). "Guardar a sessao
+   * reduz o captcha" e hipotese; a resposta sai de contar, depois de alguns
+   * pregoes, quantos logins foram reaproveitados, quantos entraram sem clique e
+   * quantos pediram clique. Nada de identidade vai para o arquivo.
+   */
+  registrarLogin(desfecho, inicio, detalhe) {
+    const linha = {
+      quando: new Date().toISOString(),
+      portal: this.nome,
+      sessao_id: this.sessaoId || null,
+      perfil_persistente: this.perfilPersistente === true,
+      desfecho,
+      segundos: Math.round((Date.now() - inicio) / 1000),
+    };
+    if (detalhe) linha.detalhe = String(detalhe).slice(0, 200);
+    try {
+      const fs = require('fs');
+      fs.mkdirSync('./logs', { recursive: true });
+      fs.appendFileSync('./logs/logins.jsonl', JSON.stringify(linha) + '\\n');
+    } catch (e) {
+      /* medir e diagnostico; o login segue */
+    }
+    console.log('⏱️  Login ' + desfecho + ' em ' + linha.segundos + 's'
+      + (linha.perfil_persistente ? ' (perfil persistente)' : ' (perfil temporario)'));
+  }
+
   async login() {
+    const inicio = Date.now();
+    this._comoEntrou = null;
+    try {
+      await this._entrar();
+      this.registrarLogin(this._comoEntrou || 'certificado', inicio);
+    } catch (e) {
+      this.registrarLogin('falhou', inicio, e.message);
+      throw e;
+    }
+  }
+
+  async _entrar() {
     console.log('🔐 Iniciando login no Compras.gov via SSO gov.br...');
     await this.aplicarAntiDeteccao();
 
@@ -633,6 +686,20 @@ class ComprasGovPortal extends BasePortal {
       await this.page.goto(this.loginUrl, { waitUntil: 'networkidle2', timeout: 45000 });
       await this.delayHumano(600, 1400);
 
+      // SESSAO GUARDADA (perfil persistente, 16/09/2026). Se o gov.br lembra do
+      // login, o /authorize devolve o navegador direto ao Compras.gov, ja na
+      // area do fornecedor — sem certificado e sem captcha. Sem esta checagem o
+      // codigo abaixo leria a volta como "o SSO nao respondeu", iria a porta do
+      // portal e procuraria um botao de certificado que nao aparece mais.
+      if (!this.page.url().includes('acesso.gov.br')) {
+        await this.adotarAbaViva('sessao guardada', { urlDeRetorno: this.portaLogin });
+        if (ComprasGovPortal.pareceAreaLogada(await this.textoDaTela())) {
+          console.log('♻️  O gov.br lembrou do login — entrei sem certificado e sem captcha');
+          this._comoEntrou = 'sessao-reaproveitada';
+          return;
+        }
+      }
+
       if (!this.page.url().includes('acesso.gov.br')) {
         // Caminho longo, para o caso de o /authorize mudar: entrar pela pagina
         // do portal e deixar que ELA monte a chamada.
@@ -645,6 +712,13 @@ class ComprasGovPortal extends BasePortal {
           if (el) el.click();
         });
         await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 }).catch(() => {});
+        // Pela porta do portal a sessao guardada tambem pode devolver direto.
+        if (!this.page.url().includes('acesso.gov.br')
+            && ComprasGovPortal.pareceAreaLogada(await this.textoDaTela())) {
+          console.log('♻️  O gov.br lembrou do login (pela porta do portal) — sem certificado e sem captcha');
+          this._comoEntrou = 'sessao-reaproveitada';
+          return;
+        }
       }
 
       await this.delayHumano(500, 1200);
@@ -704,6 +778,7 @@ class ComprasGovPortal extends BasePortal {
       await this.page.click('#login-certificate').catch(() => {});
 
       let desfecho = await this.esperarDesfechoDoCertificado(20000);
+      if (desfecho === 'autenticado') this._comoEntrou = 'certificado-sem-clique';
 
       // ─── O clique humano, quando o captcha barra o automatico ───────────
       if (desfecho !== 'autenticado' && this.segundosEsperaHumano > 0) {
@@ -748,6 +823,7 @@ class ComprasGovPortal extends BasePortal {
           if (!agora.includes('acesso.gov.br')) {
             console.log('🧑 ✅ Autenticado — o login saiu do gov.br');
             desfecho = 'autenticado';
+            this._comoEntrou = 'certificado-com-clique';
             interacao.resolver(this.sessaoId, 'atendido');
             break;
           }
@@ -888,10 +964,8 @@ class ComprasGovPortal extends BasePortal {
       if (/acesse sua conta/i.test(body) && /selecione o perfil/i.test(body)) {
         return { ok: false, motivo: 'o Compras.gov voltou para a escolha de perfil sem entrar' };
       }
-      // Palavras que so existem DENTRO — "Compras" sozinha nao vale, esta no logo.
-      // As tres primeiras sao da "Area de Trabalho do Fornecedor Brasileiro",
-      // lidas da tela real em 10/09/2026.
-      const dentro = /[aá]rea de trabalho do fornecedor|placar de licita[cç][oõ]es|dados cadastrais|bem-vindo|painel|meus preg[oõ]es|em disputa|abertas para participa[cç][aã]o|\\bsair\\b|minha conta/i.test(body);
+      // Palavras que so existem DENTRO (ver pareceAreaLogada).
+      const dentro = ComprasGovPortal.pareceAreaLogada(body);
       return dentro ? { ok: true } : { ok: false, motivo: 'a pagina nao tem nenhum sinal de area logada' };
     })();
 
