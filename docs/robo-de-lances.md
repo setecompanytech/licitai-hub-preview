@@ -518,8 +518,15 @@ Dois esclarecimentos para não perder no caminho:
   | 11:00:15 | "Acompanhar compra" aberto; o gravador registrou 12 capturas |
 
   O único gesto humano foi o do captcha — é ele que a sessão persistente (abaixo) tenta tirar do caminho
-- [ ] Sessão persistente do Chrome por empresa e login antes da hora — medir quanto o login dura
-- [ ] Captcha que ainda aparecer: aviso ao admin da Praefectus com o link da tela remota
+- [x] **Sessão persistente do Chrome** — escrita em 16/09. Todo envio era um login novo, e o gov.br pediu o clique do hCaptcha em 10 de 16 logins entre 10 e 14/09. Agora:
+  - no Compras.gov, o Chrome abre com um **perfil guardado na VPS** (`perfis/comprasgov-<hash>`, pasta só do root), **um por identidade de login** — o titular do certificado. O nome da pasta é um hash: CPF não fica escrito no disco. Com a sessão guardada, o gov.br pode devolver o robô já logado, **sem certificado e sem captcha**;
+  - o login **reconhece a volta direta**: se o `/authorize` do gov.br devolve o navegador já na Área de Trabalho do Fornecedor, o robô segue dali. Sem isso, a volta seria lida como "o SSO não respondeu" e o robô procuraria um botão de certificado que não aparece mais;
+  - **nada cai por causa do perfil**: se outra sessão da mesma identidade estiver com ele aberto (o Chrome não abre a mesma pasta duas vezes), ou se o Chrome não abrir com ele, a sessão entra com perfil temporário, como antes, e o log diz por quê;
+  - só no Compras.gov: o login dos outros portais foi escrito supondo navegador limpo, e ninguém conferiu como reagem chegando logados. `PERFIL_PERSISTENTE=false` no `.env` da VPS desliga para todos;
+  - **medição**: cada login vira uma linha em `logs/logins.jsonl` na VPS — quando, se havia perfil guardado, **como entrou** (`sessao-reaproveitada`, `certificado-sem-clique`, `certificado-com-clique`, `falhou`) e em quantos segundos. É daí que sai, depois de alguns pregões, quanto o perfil de fato evita o captcha (comando em §9)
+- [x] **Aviso quando o robô para esperando uma pessoa** — escrito em 16/09. Todo pedido de ação humana (captcha, código de verificação, de qualquer portal) vira o callback `pedido-humano`, e o webhook avisa na hora: **os administradores da plataforma** recebem um aviso urgente com o que o portal pediu, **até que horas o robô espera** e a rota direta da tela remota; **quem enviou a disputa** recebe um aviso simples, sem tela remota, dizendo que o robô aguarda uma verificação e que a Praefectus já foi chamada. É o que faltou em 14/09 às 20:07, quando o pedido expirou sem ninguém ver. Um aviso que falha não impede o robô de seguir esperando o clique
+- [ ] **Pôr no ar a sessão persistente e o aviso** (com o OK do Ian): **1.** publicar o `robo-lances-webhook` — antes do agente, senão o `pedido-humano` volta como "tipo desconhecido"; **2.** instalar `browser.js`, `interacao-humana.js`, `session-manager.js` e `portals/comprasgov.js` na VPS, com md5 igual ao template, nenhuma sessão ativa e espaço em disco conferido
+- [ ] Medir: depois de alguns pregões, contar os desfechos em `logs/logins.jsonl` e registrar aqui quantos logins o perfil guardado evitou
 - [x] **Avisos ao usuário** — escrito em 16/09. O webhook passou a avisar em três momentos novos: **robô entrou na sala** (callback `sessao-ativa`, criado no agente), **lance recusado pelo portal** e **robô parou com erro**. Os dois últimos são urgentes, e todos levam para a página da disputa. Junto veio um conserto: o agente já enviava `lance-recusado` e o webhook respondia "tipo desconhecido" — o aviso era descartado, como havia acontecido com `rodada-sem-lance` em 08/09. O lance recusado agora entra no histórico com o motivo do portal, **sem** avançar o valor atual, e a linha do tempo da disputa deixa de chamá-lo de "enviado". Falta publicar a função e instalar o agente na VPS (abaixo)
 - [x] Publicar o webhook e instalar o agente — feito em 16/09 na ordem obrigatória (função antes do agente, senão o `sessao-ativa` voltaria como "tipo desconhecido"): `robo-lances-webhook` **v32** às 10:17, e o `session-manager.js` na VPS com md5 **igual ao template** (`a452c25a…`), backup `.bak-20260916-1005`, `pm2 restart` e `/health` respondendo online, 14 rotas, `portais_com_lance_liberado: []`
 - [ ] Linha do tempo da disputa na própria página (`EventosDaDisputa`, que hoje diz "o robô ainda não operou nesta disputa"), para o usuário acompanhar sem abrir tela remota nenhuma
@@ -1991,6 +1998,9 @@ npx vitest run src/components/robo-lances/test/estrategia.test.ts
 
 # Só o laço de lances, com portal falso e relógio simulado (9 testes)
 npx vitest run src/components/robo-lances/test/laco-de-lances.test.ts
+
+# Quanto o perfil persistente evita o captcha: desfechos de login, com e sem perfil
+ssh -p 22022 root@129.121.48.145 'cd /opt/agente-lances && python3 -c "import json,collections; print(collections.Counter((l[\"perfil_persistente\"], l[\"desfecho\"]) for l in map(json.loads, open(\"logs/logins.jsonl\"))))"'
 
 # As fotos que o robô tirou
 ls capturas-robo/
