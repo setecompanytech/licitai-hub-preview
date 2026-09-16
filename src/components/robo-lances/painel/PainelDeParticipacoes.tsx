@@ -47,6 +47,7 @@ import { useAbaNaUrl } from '@/lib/navegacao/aba-na-url';
 import { useParticipacoesDoRobo, type ParticipacaoCarregada } from '@/hooks/useParticipacoesDoRobo';
 import { ROTULO_DA_ABA, ROTULO_DO_ESTADO_DO_ROBO, type AbaDoPainel } from '@/lib/robo/situacao-da-participacao';
 import { cn } from '@/lib/utils';
+import { agendamentoDaDisputa } from '@/lib/robo/agendamento';
 import {
   ABAS_DO_PAINEL,
   ABA_PADRAO,
@@ -220,6 +221,20 @@ export default function PainelDeParticipacoes({ empresaId, licitacaoId = null, s
       tituloCurto: 'Data',
       prioridade: 'sempre',
       render: (p) => {
+        // A sessão agendada NA DISPUTA vem primeiro: é o instante em que o
+        // robô entra sozinho. A coluna não está no tipo gerado do banco.
+        const agenda = agendamentoDaDisputa({
+          inicioSessao: (p.disputa as { inicio_sessao?: string | null }).inicio_sessao ?? null,
+          horario: p.disputa.horario,
+        });
+        if (agenda.tipo === 'agendada') {
+          return (
+            <span className="flex flex-col">
+              <span className="whitespace-nowrap tabular-nums">{agenda.texto}</span>
+              <span className="g-meta text-muted-foreground">robô entra sozinho {agenda.textoEntrada}</span>
+            </span>
+          );
+        }
         const abertura = p.processo?.data_abertura ? aberturaEmBrasilia(p.processo.data_abertura) : null;
         if (abertura) {
           return (
@@ -235,7 +250,7 @@ export default function PainelDeParticipacoes({ empresaId, licitacaoId = null, s
           return (
             <span className="flex flex-col">
               <span className="whitespace-nowrap tabular-nums">{p.disputa.horario}</span>
-              <span className="g-meta text-muted-foreground">horário sem data</span>
+              <span className="g-meta text-muted-foreground">horário sem data — o robô só entra pelo botão</span>
             </span>
           );
         }

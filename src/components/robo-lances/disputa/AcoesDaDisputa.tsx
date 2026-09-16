@@ -19,6 +19,7 @@ import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
 import { supabase } from '@/integrations/supabase/client';
 import { gravarFase, postarResultadoNoMural, proximoStatus, removerDisputa } from './disputa-do-robo';
 import { textoDoLimiteDeLances } from '@/lib/robo/estrategia-do-item';
+import { agendamentoDaDisputa } from '@/lib/robo/agendamento';
 
 const moeda = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -245,7 +246,13 @@ export default function AcoesDaDisputa({ lance, nivel, aoAlterar, aoEncerrar, ao
               {
                 icon: CalendarDays,
                 label: 'Data de abertura',
-                value: lance.horario || <ValorIndisponivel razao="Horário da sessão não cadastrado" />,
+                value: (() => {
+                  const agenda = agendamentoDaDisputa({ dataSessao: lance.dataSessao, horario: lance.horario });
+                  if (agenda.tipo === 'agendada') return `${agenda.texto} — o robô entra sozinho ${agenda.textoEntrada}`;
+                  if (agenda.tipo === 'so-horario') return `${agenda.texto}, sem data — o robô só entra pelo botão`;
+                  if (agenda.tipo === 'so-data') return `${agenda.texto}, sem horário — o robô só entra pelo botão`;
+                  return <ValorIndisponivel razao="Data e horário da sessão não cadastrados" />;
+                })(),
               },
               {
                 icon: FileText,

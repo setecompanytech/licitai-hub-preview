@@ -7,6 +7,7 @@ import type { LanceConfig } from '@/components/robo-lances/ConfigurarLanceDialog
 import type { NivelAutomacao } from '@/components/robo-lances/NivelAutomacaoSelector';
 import { TOM_DO_ESTADO_DO_ROBO, aberturaEmBrasilia } from '@/components/robo-lances/painel/participacoes-no-painel';
 import type { ParticipacaoCarregada } from '@/hooks/useParticipacoesDoRobo';
+import { agendamentoDaDisputa } from '@/lib/robo/agendamento';
 import { nomeDoPortal } from '@/lib/robo/portais';
 import { ROTULO_DA_ABA, ROTULO_DO_ESTADO_DO_ROBO } from '@/lib/robo/situacao-da-participacao';
 import FonteDaFaseTexto from './FonteDaFase';
@@ -79,13 +80,21 @@ export default function CabecalhoDaDisputa({
   const processo = participacao?.processo ?? null;
   const titulo = processo?.numero || lance.edital || 'Disputa sem número de edital';
   const abertura = processo?.data_abertura ? aberturaEmBrasilia(processo.data_abertura) : null;
-  const quando = abertura
-    ? abertura.temHorario
-      ? `Abertura ${abertura.texto} (Brasília)`
-      : `Abertura ${abertura.texto}, sem horário`
-    : lance.horario
-      ? `Sessão: ${lance.horario}`
-      : null;
+  // O agendamento da DISPUTA vem antes da abertura do processo: é por ele que
+  // o robô entra sozinho, e é ele que precisa estar à vista quando a disputa
+  // foi cadastrada com meses de antecedência.
+  const agenda = agendamentoDaDisputa({ dataSessao: lance.dataSessao, horario: lance.horario });
+  const quando = agenda.tipo === 'agendada'
+    ? `Sessão ${agenda.texto} · o robô entra sozinho ${agenda.textoEntrada}`
+    : abertura
+      ? abertura.temHorario
+        ? `Abertura ${abertura.texto} (Brasília)`
+        : `Abertura ${abertura.texto}, sem horário`
+      : agenda.tipo === 'so-horario'
+        ? `Sessão: ${agenda.texto}, sem data — o robô só entra pelo botão`
+        : agenda.tipo === 'so-data'
+          ? `Sessão: ${agenda.texto}, sem horário — o robô só entra pelo botão`
+          : null;
 
   const meta: ReactNode[] = [
     <span key="portal" className="inline-flex items-center gap-1">

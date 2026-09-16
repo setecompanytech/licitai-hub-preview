@@ -29,6 +29,7 @@ import { useLinkedEditalSource } from '@/hooks/useLinkedEditalSource';
 import LimparItensExtraidosButton from '@/components/licitacoes/LimparItensExtraidosButton';
 import { PORTAIS_ROBO, idDoPortal } from '@/lib/robo/portais';
 import { ESTRATEGIAS_DO_ITEM, type EstrategiaDoItem } from '@/lib/robo/estrategia-do-item';
+import { agendamentoDaDisputa } from '@/lib/robo/agendamento';
 import { cn } from '@/lib/utils';
 
 // A lista mora em `src/lib/robo/portais.ts`, autoridade unica compartilhada com
@@ -1408,6 +1409,34 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                 <Input id="disputa-horario" type="time" value={horario} onChange={(e) => setHorario(e.target.value)} className="mt-1 w-full sm:w-40" />
               </div>
             </div>
+            {/* O que o agendador vai fazer com o que está preenchido — dito na
+                hora, e não descoberto no dia do pregão. Só horário, ou só data,
+                não agenda nada. */}
+            {(() => {
+              const agenda = agendamentoDaDisputa({ dataSessao, horario });
+              if (agenda.tipo === 'agendada') {
+                return (
+                  <p className="text-sm text-muted-foreground" role="status">
+                    O robô entra sozinho {agenda.textoEntrada}, 15 minutos antes da sessão de {agenda.texto}.
+                  </p>
+                );
+              }
+              if (agenda.tipo === 'so-horario') {
+                return (
+                  <p className="text-sm text-warning-ink" role="status">
+                    Falta a data: sem ela, o robô não entra sozinho — só pelo botão Enviar ao robô.
+                  </p>
+                );
+              }
+              if (agenda.tipo === 'so-data') {
+                return (
+                  <p className="text-sm text-warning-ink" role="status">
+                    Falta o horário: sem ele, o robô não entra sozinho — só pelo botão Enviar ao robô.
+                  </p>
+                );
+              }
+              return null;
+            })()}
 
             <div className="space-y-3">
               <h4 className="text-base font-semibold text-foreground">Regras de Decremento Automático</h4>
@@ -1793,6 +1822,22 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
               </Button>
             )}
           </div>
+          {/* O robô não disputa item sem piso (nem o próprio, nem o geral da
+              disputa), e "Desempatar no 1º lugar" sem margem aguarda. Não
+              impede salvar — a disputa pode ser cadastrada meses antes e
+              completada depois —, mas diz antes, e não no pregão. */}
+          {step === 2 && (() => {
+            const semPisoGeral = !(valorMinimo > 0);
+            const semPiso = semPisoGeral ? itens.filter((i) => !(Number(i.valorMinimo) > 0)).length : 0;
+            const semMargem = itens.filter((i) => i.estrategia === 'desempatar_1o' && !(Number(i.margemDesempate) > 0)).length;
+            if (!semPiso && !semMargem) return null;
+            return (
+              <p className="text-sm text-warning-ink" role="status">
+                {semPiso > 0 && `${semPiso} item(ns) sem piso: o robô não disputa esses itens. `}
+                {semMargem > 0 && `${semMargem} item(ns) em "Desempatar no 1º lugar" sem margem: o robô aguarda neles.`}
+              </p>
+            );
+          })()}
           <div className="flex flex-wrap gap-2">
             <Button variant="ghost" onClick={() => { setOpen(false); resetForm(); }}>Cancelar</Button>
             {step === 0 && (
