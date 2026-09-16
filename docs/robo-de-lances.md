@@ -280,6 +280,7 @@ continua no servidor.
 | D9 | O checklist do grupo (literal, abaixo) | Giovanny — grupo, 14/09 20:10 |
 | D10 | A tela remota **sai do caminho do usuário** e fica para **auditoria e exceção** (captcha) — é onde o Rafael a colocou em 14/09 (`/admin/robo-lances`) | alinhamento 14–15/09 |
 | D11 | Demonstrações passam a ser **ao vivo, em call**: "quando for assim, acione eles em uma call pra demonstrar, fica melhor" | Giovanny — WhatsApp 15/09 14:01 |
+| D12 | **A sessão do Compras.gov pode ficar aberta no servidor o dia todo, todos os dias**, no perfil do certificado do Rafael; o robô tem de ficar atento às disputas configuradas no Praefectus e entrar sozinho em cada uma | Rafael Castro — autorização repassada pelo Ian em 16/09 |
 
 Decisões do Ian sobre o caminho (15/09): o checklist do grupo **fica na nossa
 lista por ora** (sai se algum item for do Giovanny); o mapeamento e o primeiro
@@ -552,6 +553,7 @@ Dois esclarecimentos para não perder no caminho:
 - [ ] Medir: depois de alguns pregões, contar os desfechos em `logs/logins.jsonl` e registrar aqui quantos logins o perfil guardado evitou e **por quanto tempo** o gov.br mantém a sessão
 - [x] **Avisos de pedido humano conferidos no banco** (16/09): três linhas "🧑 Robô esperando uma pessoa — 07/2026", criadas às **13:13:15, 13:23:15 e 13:31:16** — o segundo exato de cada pedido de clique das rodadas 1, 2 e 3. Uma linha por pedido indica **um único administrador da plataforma** cadastrado; o aviso simples para quem enviou ("⏳ Robô aguardando verificação") não saiu porque quem enviou a disputa é esse administrador. Quem não é admin (a conta do Ian, hoje) não vê o aviso urgente no sino
 - [ ] Sessão encerrada no meio do login: hoje o login ainda tenta de novo depois de o Chrome fechar e manda o aviso "Robô parou" — ruído quando a parada é intencional (visto na 2ª rodada, 13:28). O laço de tentativas deve parar quando a sessão já não está ativa
+- [ ] **Vigia da sessão** (D12): no agente, conferir de tempos em tempos se o perfil do Compras.gov continua logado — renovando a sessão e medindo quando ela vence —, sem disputar a pasta do perfil com uma disputa que esteja entrando, e registrando cada conferência em `logs/logins.jsonl`
 - [x] **Avisos ao usuário** — escrito em 16/09. O webhook passou a avisar em três momentos novos: **robô entrou na sala** (callback `sessao-ativa`, criado no agente), **lance recusado pelo portal** e **robô parou com erro**. Os dois últimos são urgentes, e todos levam para a página da disputa. Junto veio um conserto: o agente já enviava `lance-recusado` e o webhook respondia "tipo desconhecido" — o aviso era descartado, como havia acontecido com `rodada-sem-lance` em 08/09. O lance recusado agora entra no histórico com o motivo do portal, **sem** avançar o valor atual, e a linha do tempo da disputa deixa de chamá-lo de "enviado". Falta publicar a função e instalar o agente na VPS (abaixo)
 - [x] Publicar o webhook e instalar o agente — feito em 16/09 na ordem obrigatória (função antes do agente, senão o `sessao-ativa` voltaria como "tipo desconhecido"): `robo-lances-webhook` **v32** às 10:17, e o `session-manager.js` na VPS com md5 **igual ao template** (`a452c25a…`), backup `.bak-20260916-1005`, `pm2 restart` e `/health` respondendo online, 14 rotas, `portais_com_lance_liberado: []`
 - [ ] Linha do tempo da disputa na própria página (`EventosDaDisputa`, que hoje diz "o robô ainda não operou nesta disputa"), para o usuário acompanhar sem abrir tela remota nenhuma
@@ -564,6 +566,56 @@ Dois esclarecimentos para não perder no caminho:
 - [ ] Buscar os itens do edital no PNCP a partir de UASG + número/ano, no cadastro manual da nova sessão
 - [ ] Marca e modelo como colunas editáveis na grade, pré-preenchidas do termo de referência quando houver
 - [ ] Painel da disputa com órgão, objeto, SRP, modo de disputa, critério e data da sessão vindos do PNCP
+
+#### 16/09 — a sessão do Compras.gov aberta o dia todo: o que já está assim e o que falta
+
+Registro feito depois das seis rodadas do teste da sessão guardada (Fase 4) e
+da autorização D12.
+
+**O captcha deixa de ser a cada disputa.** Com o perfil guardando os cookies de
+sessão, o gov.br devolve o robô já logado enquanto a sessão dele valer — provado
+às 13:46, login em 2 s, sem certificado e sem captcha. O clique só volta:
+
+1. no **primeiro login** de cada identidade (o titular do certificado) depois
+   que a sessão do gov.br vence;
+2. se a sessão **vencer entre uma disputa e outra**.
+
+**O que ainda não se sabe é quanto a sessão do gov.br dura.** Medido até agora:
+pelo menos 15 minutos (13:31 → 13:46). E o tipo de validade decide o caminho:
+
+| Se a sessão vence… | Caminho |
+| --- | --- |
+| **por inatividade** (ninguém usa por X minutos) | **manter a sessão viva**: o robô entra rapidamente no Compras.gov de tempos em tempos, sem disputa — o clique fica para quando o gov.br forçar novo login |
+| **por tempo fixo** (ex.: 8 h depois do login) | **aquecimento diário**: numa hora marcada o robô faz login, o administrador recebe o aviso e clica uma vez, e as disputas do dia entram sozinhas |
+
+Com a D12 autorizando a sessão aberta o dia todo, os dois caminhos cabem numa
+peça só: um **vigia da sessão** no agente, que de tempos em tempos confere se o
+perfil ainda está logado — e, ao conferir, **renova** a sessão se ela vence por
+inatividade, e **mede** quando ela vence de qualquer jeito. Cada conferência vira
+linha em `logs/logins.jsonl`, sem ninguém precisar reagendar disputa de teste.
+
+**Já está assim? — o que o robô faz hoje, conferido no código e no ar (16/09):**
+
+| O que o cliente pediu | Hoje |
+| --- | --- |
+| Entrar **sozinho** na disputa configurada no Praefectus | **Sim.** O job de um minuto (`robo-disparar-agendadas`, job 32) despacha toda disputa com **data e hora da sessão** preenchidas que começa nos próximos 15 minutos, com o robô da empresa ligado — sem clique. Provado em 16/09 às 10:56 e em seis rodadas à tarde. Disputa sem data continua dependendo do botão |
+| Não pedir captcha a cada disputa | **Sim, dentro da validade da sessão do gov.br** — provado às 13:46 |
+| Manter a sessão aberta o dia todo | **Não ainda.** Nada renova a sessão entre uma disputa e outra — é o vigia, próximo passo |
+| Entrar na **sala de disputa logada** e dar lance | **Não ainda.** O robô chega à página pública da compra, lê itens, modo, intervalo e classificação; a sala logada só aparece com pregão em andamento (Fase 1) e o lance segue travado (Fase 5) |
+| Relogar sozinho quando a sessão vencer | **Não é garantido por ninguém**: o hCaptcha do gov.br pediu clique em 10 de 16 logins entre 10 e 14/09. Quando pedir, o aviso urgente chega aos administradores na hora (conferido no banco: 13:13:15, 13:23:15, 13:31:16) |
+
+**Conferência da compilação feita pelo Gemini em 16/09**, separando fato de
+interpretação:
+
+| O que a compilação disse | O que é |
+| --- | --- |
+| Nos vídeos 3 e 4 o Giovanny lê e comenta "manter o navegador logado o dia todo" / "já mantém uma sessão automatizada" | **Não está na transcrição** dos vídeos registrada em 15/09 — lá, o vídeo 3 fala de API de dados abertos e de "automação de navegador via nuvem ou extensões", e o vídeo 4, de RPA "o máximo automatizado possível". A autorização da sessão aberta é a D12, do Rafael, repassada pelo Ian |
+| "O front-end chama /sessao/iniciar" e o robô abre "instância limpa do Chromium" | **Desatualizado**: desde 16/09 quem chama é o **agendador**, sozinho, e o Chrome abre com **perfil persistente** |
+| "Faz o login via certificado A1 na hora" | Só quando a sessão do gov.br não vale mais; dentro dela, entra direto |
+| "O gov.br derruba por inatividade, geralmente após algumas horas" | **Não medido** — é o que o vigia vai responder |
+| "Relogar automaticamente com o certificado se expirar" | Tentar, sim; garantir, não — o hCaptcha pede gesto humano na maioria das vezes |
+| "Colisão de sessão se a Izabelle entrar com o mesmo certificado" | **Risco plausível, não observado.** A observar: se a operadora entrar com o CPF do Rafael enquanto o robô está logado, anotar quem cai |
+| "Navegar até a sala de lances" | Depende do mapeamento da sala logada (Fase 1) |
 
 #### O que depende de alguém
 
