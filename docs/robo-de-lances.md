@@ -418,7 +418,7 @@ Dois esclarecimentos para não perder no caminho:
 
 **Fase 0 — base**
 - [x] Registrar a reestruturação de 14–15/09 e as decisões de 15/09 (este documento)
-- [ ] Trazer o remoto para o local (`git pull --rebase`) — as telas novas são a base do front daqui em diante
+- [x] Trazer o remoto para o local — feito em 16/09: os 19 commits de 14–15/09 entraram e a documentação ficou por cima deles. Tipos sem erro e 94 testes do robô passando depois do rebase. (A branch segue o remoto `sete`, então o comando é `git fetch origin && git rebase origin/feature/rebrand-ui-ux`; a forma `git pull --rebase origin <branch>` é recusada por apontar para dois destinos.)
 - [ ] Publicar as três edge functions das telas novas e conferir a versão no ar
 
 **Fase 1 — ver a sala e a tela de proposta, em pregão real**
