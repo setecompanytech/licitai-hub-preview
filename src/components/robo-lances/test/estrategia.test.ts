@@ -484,12 +484,12 @@ describe('proximaLeituraMs — ritmo da leitura', () => {
 });
 
 describe('trava de liberação por portal', () => {
-  it('nasce vazia — nenhum portal envia lance sem alguém liberar', () => {
-    // Se este teste falhar, alguém liberou um portal. Isso é permitido, mas
-    // tem de ser deliberado: confira se o souLider() daquele portal foi
-    // conferido contra a tela real de uma disputa.
+  it('só o Compras.gov está liberado — por ato registrado (16/09/2026)', () => {
+    // Se este teste falhar, alguém liberou ou fechou um portal. Isso é
+    // permitido, mas tem de ser deliberado, com autor e data no comentário
+    // de PORTAIS_COM_LANCE_LIBERADO.
     const reais = liberados.filter((p) => p !== '__teste__');
-    expect(reais).toEqual([]);
+    expect(reais).toEqual(['comprasgov']);
   });
 
   it('portal fora da lista aguarda, mesmo com tudo o mais perfeito', () => {
@@ -497,7 +497,7 @@ describe('trava de liberação por portal', () => {
     // portal: uma linha, passa num diff, e faz o robô cobrir o próprio lance.
     // A trava vem ANTES de qualquer outra checagem justamente por isso.
     const d = decidirLance({
-      portalId: 'comprasgov',
+      portalId: 'bll',
       valorAtual: 100,
       valorMinimo: 50,
       melhorLance: 90,
@@ -513,6 +513,14 @@ describe('trava de liberação por portal', () => {
   it('sem portalId também aguarda — não existe padrão permissivo', () => {
     const d = decidirLance({ valorAtual: 100, valorMinimo: 50, melhorLance: 90, souLider: false, decrementoMin: 5, rodada: 1, maxLances: 20 });
     expect(d.acao).toBe('aguardar');
+  });
+
+  it('modo automático desligado na disputa: aguarda, mesmo liberado e com tudo pronto', () => {
+    const base = { portalId: 'comprasgov', valorAtual: 100, valorMinimo: 50, melhorLance: 90, souLider: false, decrementoMin: 5, rodada: 1, maxLances: 20 };
+    const d = decidirLance({ ...base, modoAutomatico: false });
+    expect(d.acao).toBe('aguardar');
+    expect(d.motivo).toMatch(/modo automatico desligado/i);
+    expect(decidirLance({ ...base, modoAutomatico: true }).acao).toBe('lance');
   });
 
   it('podeEnviarLance responde pela lista, não por adivinhação', () => {

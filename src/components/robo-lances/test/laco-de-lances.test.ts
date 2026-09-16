@@ -115,6 +115,8 @@ function sessao(portal: unknown, over: Record<string, unknown> = {}): Sessao {
     decremento_min: 5,
     intervalo_segundos: 30,
     max_lances: 20,
+    // Interruptor da disputa: só true explícito libera lance (16/09/2026).
+    modo_automatico: true,
     itens: [{ numero: 1, valor_minimo: 60, estrategia: 'melhor_preco' }],
     ...over,
   };
@@ -136,6 +138,70 @@ describe('laço de lances', () => {
     expect(s.rodada).toBe(25);
     expect(s.status).toBe('ativo');
     expect(enviados).toEqual([]);
+    s.status = 'encerrado';
+  });
+
+  it('modo automático desligado na disputa: acompanha, e nenhum lance sai', async () => {
+    const { gerente, chamadas } = montar(true);
+    const { portal, enviados } = portalFalso();
+    const s = sessao(portal, { modo_automatico: false });
+    gerente.sessions.set('s1', s);
+    gerente._startBiddingLoop(s);
+
+    await vi.advanceTimersByTimeAsync(30_000 * 3);
+
+    expect(enviados).toEqual([]);
+    const estado = chamadas.find((c) => c.tipo === 'estado-da-sala');
+    expect((estado?.dados.decisao as { motivo: string }).motivo).toMatch(/modo automatico desligado/i);
+    s.status = 'encerrado';
+  });
+
+  it('sem o campo de lance do item na tela: avisa uma vez, não conta lance e tenta de novo depois de 1 minuto', async () => {
+    const { gerente, chamadas } = montar(true);
+    let tentativas = 0;
+    const { portal } = portalFalso({
+      enviarLance: async () => {
+        tentativas += 1;
+        const e = new Error('campo de lance do item 1 nao encontrado nesta tela') as Error & { codigo?: string };
+        e.codigo = 'sem-campo-de-lance';
+        throw e;
+      },
+    });
+    const s = sessao(portal);
+    gerente.sessions.set('s1', s);
+    gerente._startBiddingLoop(s);
+
+    // A primeira rodada é na hora; as seguintes, a cada 30 s — mas o envio
+    // só é tentado de novo 1 minuto depois: em 0 s, 60 s e 120 s.
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(tentativas).toBe(1);
+    await vi.advanceTimersByTimeAsync(30_000 * 4);
+    expect(tentativas).toBe(3);
+
+    const avisos = chamadas.filter((c) => c.tipo === 'lance-recusado');
+    expect(avisos).toHaveLength(1);
+    expect(String(avisos[0].dados.resultado)).toMatch(/nao enviado: campo de lance do item 1/);
+    expect(chamadas.some((c) => c.tipo === 'lance-enviado')).toBe(false);
+    expect(chamadas.some((c) => c.tipo === 'erro')).toBe(false);
+    expect(s.lances_enviados ?? 0).toBe(0);
+    s.status = 'encerrado';
+  });
+
+  it('lance sem confirmação do portal não conta nem vira valor atual', async () => {
+    const { gerente, chamadas } = montar(true);
+    const { portal, enviados } = portalFalso({
+      verificarResultado: async () => 'sem confirmacao do portal — a proxima leitura da sala mostra se o lance entrou',
+    });
+    const s = sessao(portal);
+    gerente.sessions.set('s1', s);
+    gerente._startBiddingLoop(s);
+
+    await vi.advanceTimersByTimeAsync(30_000 * 1);
+
+    expect(enviados).toEqual([85]);
+    expect(chamadas.some((c) => c.tipo === 'lance-enviado')).toBe(false);
+    expect(chamadas.find((c) => c.tipo === 'lance-recusado')?.dados.valor).toBe(85);
+    expect(s.lances_enviados ?? 0).toBe(0);
     s.status = 'encerrado';
   });
 

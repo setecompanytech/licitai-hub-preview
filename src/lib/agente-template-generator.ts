@@ -350,6 +350,9 @@ app.post('/sessao/iniciar', authMiddleware, async (req, res) => {
       // guardava — e esta lista nao a nomeava. Chegou null; sem ela a busca
       // do Compras.gov achou dez "7/2026" de outros orgaos e nenhum da SEDUC.
       itens, tipo_disputa, uasg, cnpj_empresa,
+      // Interruptor da disputa (16/09/2026). Nomeado aqui porque campo fora
+      // desta lista some em silencio — e sumido, o lance sairia sem ele.
+      modo_automatico,
     } = req.body;
 
     const callbackUrl = req.headers['x-callback-url'] || process.env.CALLBACK_URL;
@@ -383,6 +386,8 @@ app.post('/sessao/iniciar', authMiddleware, async (req, res) => {
       // aqui de proposito: campo fora desta lista some em silencio (ja foi
       // assim com os itens e com a UASG).
       cnpj_empresa: cnpj_empresa ? String(cnpj_empresa) : null,
+      // So true explicito libera lance: quem nao mandou o campo acompanha.
+      modo_automatico: modo_automatico === true,
       credenciais_portal, callbackUrl, agentKey: AGENT_KEY,
     });
 
@@ -1598,6 +1603,7 @@ class SessionManager {
         lanceDesempateEnviado: estadoDoItem.lance_desempate_enviado === true,
         lancesEnviados: session.lances_enviados,
         maxLances: session.max_lances,
+        modoAutomatico: session.modo_automatico === true,
         rodada: session.rodada,
       });
 
@@ -1606,6 +1612,13 @@ class SessionManager {
         fase: sala.fase,
         segundosRestantes: sala.segundosRestantes,
       });
+
+      // Lance decidido, mas sem campo de lance na tela ainda (o envio falhou
+      // ha menos de 1 minuto): a tela nao pode dizer "Enviando lance".
+      const semCampoAgora = decisao.acao === 'lance' && estadoDoItem.semCampoDeLanceAte && Date.now() < estadoDoItem.semCampoDeLanceAte;
+      const decisaoParaTela = semCampoAgora
+        ? { acao: 'aguardar', valor: decisao.valor, motivo: 'Lance de R$ ' + Number(decisao.valor).toFixed(2) + ' decidido, mas o campo de lance deste item nao esta na tela' }
+        : decisao;
 
       // O ESTADO DA SALA do item vai ao Praefectus (D13): quadro de status,
       // colunas do item e linha do tempo. Sai antes de encerrar, aguardar ou
@@ -1625,7 +1638,7 @@ class SessionManager {
         fase: sala.fase || null,
         segundos_restantes: Number.isFinite(sala.segundosRestantes) ? sala.segundosRestantes : null,
         estrategia: item.estrategia || 'melhor_preco',
-        decisao: { acao: decisao.acao, valor: decisao.valor, motivo: decisao.motivo },
+        decisao: { acao: decisaoParaTela.acao, valor: decisaoParaTela.valor, motivo: decisaoParaTela.motivo },
         lances_enviados: session.lances_enviados,
         rodada: session.rodada,
         total_itens: totalDeItens,
@@ -1647,13 +1660,38 @@ class SessionManager {
 
       const novoValor = decisao.valor;
 
-      // 3. Enviar lance real no portal — no item certo.
-      await session.portal.enviarLance(novoValor, numero);
+      // SEM CAMPO DE LANCE NA TELA (16/09/2026): o envio so acontece no campo
+      // do item, e quando ele nao esta na tela o robo nao tenta de novo a cada
+      // rodada — espera 1 minuto e avisa uma vez por item.
+      if (estadoDoItem.semCampoDeLanceAte && Date.now() < estadoDoItem.semCampoDeLanceAte) {
+        console.log(\`[\${session.sessao_id}]\${rotulo} lance de R$ \${novoValor.toFixed(2)} decidido, mas sem campo de lance na tela — acompanhando\`);
+        return { proxima, encerrarSessao: false };
+      }
 
-      // 4. Conferir se o portal ACEITOU. Lance recusado nao vira valor atual.
-      const resultado = (await session.portal.verificarResultado?.(numero)) || 'enviado';
+      // 3. Enviar lance real no portal — no item certo.
+      try {
+        await session.portal.enviarLance(novoValor, numero);
+      } catch (e) {
+        if (!e || e.codigo !== 'sem-campo-de-lance') throw e;
+        estadoDoItem.semCampoDeLanceAte = Date.now() + 60000;
+        console.warn(\`[\${session.sessao_id}]\${rotulo} lance NAO enviado: \${e.message}\`);
+        if (!estadoDoItem.avisouSemCampoDeLance) {
+          estadoDoItem.avisouSemCampoDeLance = true;
+          await sendCallback(session, 'lance-recusado', {
+            rodada: session.rodada,
+            item: numero,
+            valor: novoValor,
+            resultado: 'nao enviado: ' + e.message + ' — o robo segue acompanhando e tenta de novo a cada minuto',
+          });
+        }
+        return { proxima, encerrarSessao: false };
+      }
+
+      // 4. Conferir se o portal ACEITOU. Lance recusado — ou sem confirmacao —
+      // nao vira valor atual: a proxima leitura da sala mostra se entrou.
+      const resultado = (await session.portal.verificarResultado?.(numero, novoValor)) || 'enviado';
       const recusado = typeof resultado === 'string' &&
-        /recus|rejeit|inval|erro|negad/i.test(resultado);
+        /recus|rejeit|inval|erro|negad|sem confirma/i.test(resultado);
 
       if (recusado) {
         console.warn(\`[\${session.sessao_id}]\${rotulo} Lance RECUSADO pelo portal: \${resultado}\`);

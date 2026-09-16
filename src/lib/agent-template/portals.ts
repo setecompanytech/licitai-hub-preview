@@ -1651,113 +1651,144 @@ class ComprasGovPortal extends BasePortal {
     return detalhes;
   }
 
-  async enviarLance(valor) {
-    console.log(\`📤 Enviando lance: R$ \${this.formatarMoeda(valor)}\`);
+  /**
+   * LANCE NO CAMPO DO ITEM, OU NENHUM (16/09/2026, ao liberar o lance).
+   *
+   * A versao anterior nunca tinha visto a sala: sem achar o campo, digitava
+   * em QUALQUER input visivel com "valor" ou "proposta" no placeholder, e
+   * clicava em QUALQUER botao com "enviar" ou "registrar" no texto — na sala
+   * logada, "Registrar intencao de recurso" casa — e em qualquer modal com
+   * "sim" ou "ok". Com a trava fechada nao importava; aberta, importa.
+   *
+   * Agora: so um campo cujo nome/id/placeholder/rotulo fala de LANCE, dentro
+   * de um bloco da tela que cita o ITEM pedido e nao tem campo de lance de
+   * outro item; so o botao desse mesmo bloco com texto de lance ("Enviar
+   * lance", "Enviar", "Ofertar"); so modal que fala de lance. Qualquer
+   * duvida vira erro com codigo 'sem-campo-de-lance' — o laco avisa uma vez e
+   * segue acompanhando, sem clicar em nada.
+   */
+  async enviarLance(valor, numero) {
     const valorStr = this.formatarMoeda(valor);
+    const item = numero === null || numero === undefined ? null : Number(numero);
+    console.log('📤 Lance de R$ ' + valorStr + (item !== null ? ' no item ' + item : ''));
+    await this.adotarAbaViva('antes do lance', { urlDeRetorno: this.portaLogin });
 
-    await this.comRetry(async () => {
-      const campoSelectors = [
-        'input[name="valorLance"]', 'input[name="lance"]',
-        '#campoLance', '#valorLance', '#inputLance',
-        'input[type="text"][name*="lance"]',
-        'input[formcontrolname="valorLance"]',
-        'input[formcontrolname="lance"]',
-        'input[placeholder*="lance"]', 'input[placeholder*="valor"]',
-      ];
-
-      let campoFound = false;
-      for (const sel of campoSelectors) {
-        const found = await this.aguardarElemento(sel, 2000);
-        if (found) {
-          await this.preencherCampo(sel, valorStr);
-          campoFound = true;
-          break;
-        }
-      }
-
-      if (!campoFound) {
-        await this.page.evaluate((val) => {
-          const inputs = [...document.querySelectorAll('input[type="text"], input[type="number"], input:not([type])')];
-          const campo = inputs.find(i =>
-            i.offsetParent !== null &&
-            (i.placeholder || '').toLowerCase().match(/lance|valor|proposta/)
-          );
-          if (campo) {
-            campo.value = '';
-            campo.focus();
-            campo.value = val;
-            campo.dispatchEvent(new Event('input', { bubbles: true }));
-            campo.dispatchEvent(new Event('change', { bubbles: true }));
-          }
-        }, valorStr);
-      }
-
-      await this.delayHumano(300, 600);
-
-      const enviado = await this.page.evaluate(() => {
-        const btns = [...document.querySelectorAll('button, input[type="submit"], a.btn')];
-        const btn = btns.find(b => {
-          const text = (b.textContent || b.value || '').toLowerCase();
-          return text.includes('enviar') || text.includes('confirmar lance') ||
-                 text.includes('registrar') || text.includes('submeter');
-        });
-        if (btn) { btn.click(); return true; }
-        return false;
+    const alvo = await this.page.evaluate((item) => {
+      document.querySelectorAll('[data-praefectus-lance],[data-praefectus-enviar]').forEach((el) => {
+        el.removeAttribute('data-praefectus-lance');
+        el.removeAttribute('data-praefectus-enviar');
       });
+      const visivel = (el) => !!(el && el.offsetParent !== null);
+      const falaDeLance = (el) => [el.name, el.id, el.getAttribute('formcontrolname'), el.placeholder, el.getAttribute('aria-label')]
+        .join(' ').toLowerCase().indexOf('lance') >= 0;
+      const camposDeLance = (raiz) => [...raiz.querySelectorAll('input')].filter((i) => falaDeLance(i));
+      const campos = camposDeLance(document).filter((i) => visivel(i) && !i.disabled && !i.readOnly);
+      if (campos.length === 0) return { ok: false, motivo: 'nenhum campo de lance visivel nesta tela' };
 
-      if (!enviado) throw new Error('Botão de enviar lance não encontrado');
-
-      await this.delayHumano(500, 1000);
-
-      // Confirmação em 2 etapas (modal)
-      const modalConfirm = await this.page.evaluate(() => {
-        const modals = document.querySelectorAll('.modal, .mat-dialog-container, .cdk-overlay-pane, [role="dialog"]');
-        for (const modal of modals) {
-          const btns = [...modal.querySelectorAll('button')];
-          const ok = btns.find(b => {
-            const text = (b.textContent || '').toLowerCase();
-            return text.includes('confirmar') || text.includes('sim') || text.includes('ok');
-          });
-          if (ok) { ok.click(); return true; }
+      const citaItem = (texto) => {
+        if (item === null) return true;
+        const t = String(texto || '').toLowerCase();
+        let pos = t.indexOf('item');
+        while (pos >= 0) {
+          const resto = t.slice(pos + 4, pos + 16);
+          const digitos = resto.replace(/^[^0-9]{0,6}/, '').match(/^[0-9]+/);
+          if (digitos && Number(digitos[0]) === item) return true;
+          pos = t.indexOf('item', pos + 4);
         }
         return false;
+      };
+
+      // O bloco do campo: sobe enquanto so houver ESTE campo de lance nele.
+      const blocoDoCampo = (campo) => {
+        let bloco = null;
+        for (let el = campo.parentElement, nivel = 0; el && nivel < 10; el = el.parentElement, nivel++) {
+          if (camposDeLance(el).length > 1) break;
+          bloco = el;
+          if (citaItem(el.innerText)) return { bloco: el, cita: true };
+        }
+        return { bloco, cita: false };
+      };
+
+      const candidatos = campos.map((c) => ({ campo: c, ...blocoDoCampo(c) })).filter((c) => c.bloco && c.cita);
+      if (item === null && campos.length !== 1) return { ok: false, motivo: campos.length + ' campos de lance e nenhum item informado' };
+      if (candidatos.length === 0) return { ok: false, motivo: 'campo de lance do item ' + item + ' nao encontrado nesta tela' };
+      if (candidatos.length > 1) return { ok: false, motivo: 'mais de um campo de lance para o item ' + item + ' — nao arrisco' };
+
+      const { campo, bloco } = candidatos[0];
+      const TEXTOS = ['enviar lance', 'registrar lance', 'dar lance', 'ofertar lance', 'ofertar', 'enviar', 'lance'];
+      const botoes = [...bloco.querySelectorAll('button, input[type="submit"]')].filter((b) => {
+        const texto = (b.textContent || b.value || b.getAttribute('aria-label') || '').replace(/\\s+/g, ' ').trim().toLowerCase();
+        return visivel(b) && !b.disabled && TEXTOS.indexOf(texto) >= 0;
       });
-
-      // Dialog nativo do browser
-      this.page.once('dialog', async dialog => {
-        console.log(\`📌 Confirmação: \${dialog.message()}\`);
-        await dialog.accept();
-      });
-
-      await new Promise((r) => setTimeout(r, 3000));
-      await this.screenshot('lance-enviado');
-
-      if (modalConfirm) {
-        console.log('✅ Confirmação em 2 etapas aceita');
+      if (botoes.length !== 1) {
+        return { ok: false, motivo: (botoes.length ? botoes.length + ' botoes' : 'nenhum botao') + ' de enviar lance junto do campo do item ' + item };
       }
-    }, 'enviar-lance');
+      campo.setAttribute('data-praefectus-lance', '1');
+      botoes[0].setAttribute('data-praefectus-enviar', '1');
+      return { ok: true };
+    }, item);
 
-    console.log(\`✅ Lance de R$ \${valorStr} enviado\`);
+    if (!alvo || !alvo.ok) {
+      const erro = new Error((alvo && alvo.motivo) || 'campo de lance nao encontrado');
+      erro.codigo = 'sem-campo-de-lance';
+      erro.semRetry = true;
+      throw erro;
+    }
+
+    // Dialogo nativo ANTES do clique — registrado depois, ele ja teria passado.
+    const aoDialogo = async (dialogo) => {
+      const texto = dialogo.message() || '';
+      console.log('📌 Confirmacao do portal: ' + texto);
+      if (/lance/i.test(texto)) await dialogo.accept(); else await dialogo.dismiss();
+    };
+    this.page.once('dialog', aoDialogo);
+
+    await this.digitarConferindo('[data-praefectus-lance="1"]', valorStr);
+    await this.delayHumano(200, 400);
+    await this.page.click('[data-praefectus-enviar="1"]');
+    await this.delayHumano(500, 900);
+
+    // Confirmacao em modal: so a que fala de lance.
+    const confirmou = await this.page.evaluate(() => {
+      const modais = [...document.querySelectorAll('.modal, .mat-dialog-container, .cdk-overlay-pane, [role="dialog"], p-dialog, .p-dialog')]
+        .filter((m) => m.offsetParent !== null && (m.innerText || '').toLowerCase().indexOf('lance') >= 0);
+      for (const modal of modais) {
+        const botao = [...modal.querySelectorAll('button')].find((b) => ['confirmar', 'sim', 'ok', 'confirmar lance'].indexOf((b.textContent || '').trim().toLowerCase()) >= 0);
+        if (botao) { botao.click(); return true; }
+      }
+      return false;
+    }).catch(() => false);
+    if (confirmou) console.log('✅ Confirmacao do lance aceita');
+    await this.screenshot('lance-enviado-item-' + item);
     return true;
   }
 
-  async verificarResultado() {
-    return await this.page.evaluate(() => {
-      const texto = document.body.innerText.toLowerCase();
-      if (texto.includes('lance aceito') || texto.includes('lance registrado') ||
-          texto.includes('sucesso') || texto.includes('lance enviado com sucesso')) {
-        return 'aceito';
-      }
-      if (texto.includes('lance recusado') || texto.includes('valor inválido') ||
-          texto.includes('erro ao enviar') || texto.includes('não aceito')) {
-        return 'recusado';
-      }
-      if (texto.includes('sessão encerrada') || texto.includes('disputa encerrada') ||
-          texto.includes('fase encerrada')) {
-        return 'encerrado';
-      }
-      return 'indefinido';
-    });
+  /**
+   * O PORTAL ACEITOU? Pelo texto que ele mostra depois do envio — frases de
+   * lance, nao a palavra "sucesso" solta (que aparece em qualquer tela). Sem
+   * frase conclusiva: "sem confirmacao", e o laco nao conta o lance; a proxima
+   * leitura da sala mostra se ele entrou.
+   */
+  async verificarResultado(numero, valor) {
+    const limite = Date.now() + 6000;
+    while (Date.now() < limite) {
+      const lido = await this.page.evaluate(() => {
+        const t = (document.body.innerText || '').toLowerCase();
+        const aceito = ['lance registrado', 'lance enviado com sucesso', 'lance aceito', 'lance efetuado'].find((f) => t.indexOf(f) >= 0);
+        if (aceito) return 'aceito';
+        const recusas = ['lance recusado', 'lance nao aceito', 'lance não aceito', 'lance invalido', 'lance inválido', 'valor invalido', 'valor inválido', 'intervalo minimo', 'intervalo mínimo', 'nao foi possivel registrar', 'não foi possível registrar'];
+        const recusa = recusas.find((f) => t.indexOf(f) >= 0);
+        if (recusa) {
+          const pos = t.indexOf(recusa);
+          return 'recusado: ' + t.slice(pos, pos + 140).split('.')[0];
+        }
+        if (t.indexOf('sessao encerrada') >= 0 || t.indexOf('sessão encerrada') >= 0 || t.indexOf('disputa encerrada') >= 0) return 'encerrado';
+        return null;
+      }).catch(() => null);
+      if (lido) return lido;
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+    return 'sem confirmacao do portal — a proxima leitura da sala mostra se o lance entrou';
   }
 
   /**

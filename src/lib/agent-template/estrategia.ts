@@ -36,7 +36,15 @@ export const ESTRATEGIA_FILES: Record<string, string> = {
  * Com a lista, liberar um portal e um ato deliberado, num arquivo que existe
  * para isso, com autor e data no historico.
  */
-const PORTAIS_COM_LANCE_LIBERADO = [];
+// LIBERADO: comprasgov — 16/09/2026, pedido do Ian ("pode ligar o robo pra dar
+// lances, mandaram eu ligar"), sobre a autorizacao de Giovanny Valente e Rubens
+// de 14-15/09/2026 ("pode testar fazer lances sem problemas"). O que segura o
+// lance daqui em diante e a configuracao de cada disputa e o controle de quem
+// opera: modo automatico, piso por item, teto de lances, robo da empresa
+// ligado, parada pelo painel e freio de emergencia. E o envio so acontece no
+// campo de lance DO ITEM, com o botao ao lado dele (ComprasGovPortal.enviarLance);
+// sem esse campo na tela, o robo avisa e segue acompanhando.
+const PORTAIS_COM_LANCE_LIBERADO = ['comprasgov'];
 
 /** Este portal pode enviar lance? */
 function podeEnviarLance(portalId) {
@@ -164,6 +172,7 @@ function decidirLance(estado) {
     lanceDesempateEnviado,
     lancesEnviados,
     maxLances,
+    modoAutomatico,
   } = estado;
 
   // A trava fica ANTES de tudo: sem ela, corrigir um seletor de leitura poderia
@@ -173,6 +182,14 @@ function decidirLance(estado) {
       \`Portal "\${portalId || '(nao informado)'}" nao esta liberado para enviar lance — \` +
       'o souLider() dele ainda nao foi conferido contra a tela real'
     );
+  }
+
+  // MODO AUTOMATICO DA DISPUTA (16/09/2026): o interruptor do cadastro dizia
+  // "o robo enviara lances automaticamente" e nao chegava ao robo. Desligado,
+  // o robo entra e acompanha, sem lance. So \`false\` explicito para aqui: quem
+  // chama pelo laco manda o valor da disputa (ausente vira false no laco).
+  if (modoAutomatico === false) {
+    return AGUARDAR('Modo automatico desligado nesta disputa: o robo acompanha e nao da lance');
   }
 
   // O teto conta LANCES ENVIADOS, e e opcional. Antes contava rodadas de

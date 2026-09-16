@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import * as vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -483,5 +483,128 @@ describe('Compras.gov: propostas do item e desclassificadas', () => {
   it('leitura que não trouxe proposta nenhuma é "não sei", e não "a empresa não tem proposta"', async () => {
     // 16/09, 16:48:22: a aba fechou no meio da leitura e o item 1 virou "sem proposta" na tela.
     expect(await portalCom('').resumoDaClassificacao(1)).toBeNull();
+  });
+});
+
+/**
+ * O lance só sai no campo DO ITEM, com o botão ao lado dele (16/09/2026, ao
+ * liberar o lance no Compras.gov). A versão de fevereiro digitava em qualquer
+ * campo com "valor" e clicava em qualquer botão com "enviar" ou "registrar" —
+ * inclusive "Registrar intenção de recurso". A tela abaixo é montada no jsdom;
+ * o `page` de mentira roda as funções do módulo gerado contra ela.
+ */
+describe('Compras.gov: lance só no campo do item', () => {
+  type PortalDeLance = {
+    enviarLance: (valor: number, numero: number | null) => Promise<boolean>;
+    verificarResultado: (numero: number, valor: number) => Promise<string>;
+    digitarConferindo: (sel: string, valor: string) => Promise<void>;
+  };
+  let Portal: new (page: unknown, cred: unknown) => PortalDeLance;
+  const cliques: string[] = [];
+  const originais: Record<string, PropertyDescriptor | undefined> = {};
+
+  beforeAll(() => {
+    originais.offsetParent = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetParent');
+    originais.innerText = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'innerText');
+    // O jsdom não faz layout: sem isto, nada é "visível" e nenhum texto é lido.
+    Object.defineProperty(HTMLElement.prototype, 'offsetParent', { configurable: true, get() { return this.parentNode; } });
+    Object.defineProperty(HTMLElement.prototype, 'innerText', { configurable: true, get() { return this.textContent; } });
+
+    class BasePortal {
+      constructor(public page: unknown, public credenciais: unknown) {}
+      async adotarAbaViva() {}
+      async delayHumano() {}
+      async screenshot() { return null; }
+      formatarMoeda(v: number) { return v.toFixed(2).replace('.', ','); }
+    }
+    const mod = { exports: {} as Record<string, unknown> };
+    const ctx = vm.createContext({
+      require: (n: string) => (n === './base-portal' ? { BasePortal } : {}),
+      module: mod, exports: mod.exports, process: { env: {} }, console: { log: () => {}, warn: () => {} },
+      document, Error, Number,
+      // Resolvidos na hora da chamada, para o relógio simulado valer aqui dentro.
+      setTimeout: (f: () => void, ms: number) => setTimeout(f, ms),
+      Date: { now: () => Date.now() },
+    });
+    new vm.Script(ler('src/portals/comprasgov.js')).runInContext(ctx);
+    Portal = mod.exports.ComprasGovPortal as typeof Portal;
+  });
+
+  afterAll(() => {
+    for (const [nome, d] of Object.entries(originais)) {
+      if (d) Object.defineProperty(HTMLElement.prototype, nome, d);
+      else delete (HTMLElement.prototype as unknown as Record<string, unknown>)[nome];
+    }
+    document.body.innerHTML = '';
+  });
+
+  function telaCom(html: string) {
+    document.body.innerHTML = html;
+    cliques.length = 0;
+    document.querySelectorAll('button').forEach((b, i) => {
+      b.addEventListener('click', () => cliques.push(b.getAttribute('data-nome') || `botao-${i}`));
+    });
+    const page = {
+      evaluate: async (fn: (a: unknown) => unknown, arg: unknown) => fn(arg),
+      click: async (sel: string) => { (document.querySelector(sel) as HTMLElement).click(); },
+      once: () => {},
+    };
+    const p = new Portal(page, {});
+    p.digitarConferindo = async (sel, valor) => { (document.querySelector(sel) as HTMLInputElement).value = valor; };
+    return p;
+  }
+
+  const SALA = `
+    <div><h3>Item 1 - Notebook</h3><input formcontrolname="valorLance"><button data-nome="lance-1">Enviar lance</button></div>
+    <div><h3>Item 12 - Monitor</h3><input formcontrolname="valorLance"><button data-nome="lance-12">Enviar lance</button></div>
+    <div><h3>Item 2 - Televisor</h3><input formcontrolname="valorLance"><button data-nome="lance-2">Enviar lance</button></div>
+    <button data-nome="recurso">Registrar intenção de recurso</button>`;
+
+  it('digita e clica só no bloco do item pedido — o item 1 não é o 12', async () => {
+    const p = telaCom(SALA);
+    await p.enviarLance(4999.7, 1);
+    const campos = [...document.querySelectorAll('input')] as HTMLInputElement[];
+    expect(campos.map((c) => c.value)).toEqual(['4999,70', '', '']);
+    expect(cliques).toEqual(['lance-1']);
+
+    const q = telaCom(SALA);
+    await q.enviarLance(3100, 12);
+    expect(([...document.querySelectorAll('input')] as HTMLInputElement[]).map((c) => c.value)).toEqual(['', '3100,00', '']);
+    expect(cliques).toEqual(['lance-12']);
+  });
+
+  it('tela sem campo de lance (a página pública): não digita nem clica em nada', async () => {
+    const p = telaCom(`
+      <div><h3>Item 1</h3><input placeholder="Valor da proposta"><button data-nome="enviar-generico">Enviar</button></div>
+      <button data-nome="recurso">Registrar intenção de recurso</button>`);
+    await expect(p.enviarLance(4999.7, 1)).rejects.toMatchObject({ codigo: 'sem-campo-de-lance' });
+    expect(cliques).toEqual([]);
+    expect((document.querySelector('input') as HTMLInputElement).value).toBe('');
+  });
+
+  it('item sem bloco próprio, ou botão ambíguo: recusa em vez de arriscar', async () => {
+    const semItem = telaCom(`<div><h3>Item 3</h3><input formcontrolname="valorLance"><button>Enviar lance</button></div>`);
+    await expect(semItem.enviarLance(10, 1)).rejects.toMatchObject({ codigo: 'sem-campo-de-lance' });
+    expect(cliques).toEqual([]);
+
+    const doisBotoes = telaCom(`<div><h3>Item 1</h3><input formcontrolname="valorLance"><button>Enviar lance</button><button>Enviar</button></div>`);
+    await expect(doisBotoes.enviarLance(10, 1)).rejects.toMatchObject({ codigo: 'sem-campo-de-lance' });
+    expect(cliques).toEqual([]);
+  });
+
+  it('confirmação: frase de lance aceito ou recusado; sem frase, "sem confirmação" — "sucesso" solto não vale', async () => {
+    vi.useFakeTimers();
+    try {
+      let p = telaCom('<p>Lance registrado para o item 1.</p>');
+      expect(await p.verificarResultado(1, 10)).toBe('aceito');
+      p = telaCom('<p>Lance recusado. O valor não respeita o intervalo mínimo.</p>');
+      expect(await p.verificarResultado(1, 10)).toMatch(/^recusado: lance recusado/);
+      p = telaCom('<p>Operação realizada com sucesso</p>');
+      const pendente = p.verificarResultado(1, 10);
+      await vi.advanceTimersByTimeAsync(7000);
+      expect(await pendente).toMatch(/^sem confirmacao/);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
