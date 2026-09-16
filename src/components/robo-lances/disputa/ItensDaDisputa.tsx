@@ -13,6 +13,7 @@ import { useItensDaSessao } from '@/components/workspace/robo/consultas';
 import { linhasDaDisputa, situacaoDoItem, type LinhaDoItem } from '@/components/workspace/robo/itens-da-disputa';
 import { LimiteDoItem, NaoInformado } from '@/components/workspace/robo/ValoresDoItem';
 import { formatarMoeda } from '@/components/workspace/robo/formatos';
+import { nomeDaEstrategia } from '@/lib/robo/estrategia-do-item';
 
 /** Título de coluna com mais de uma palavra, numa linha só. */
 const semQuebra = (texto: string) => <span className="whitespace-nowrap">{texto}</span>;
@@ -136,9 +137,19 @@ export default function ItensDaDisputa({
       tituloCurto: 'Limite',
       alinhamento: 'direita',
       prioridade: 'sempre',
+      // A estratégia mora embaixo do piso, e não numa coluna própria: a tabela
+      // foi medida para caber a 1.280 px, e piso e estratégia são lidos juntos
+      // — até onde o robô desce, e como.
       render: (l) => (
-        <span className="md:whitespace-nowrap">
-          <LimiteDoItem valor={l.limite} confirmado={confirmado} />
+        <span className="flex flex-col items-end">
+          <span className="md:whitespace-nowrap">
+            <LimiteDoItem valor={l.limite} confirmado={confirmado} />
+          </span>
+          <span className="g-meta whitespace-nowrap text-muted-foreground">
+            {nomeDaEstrategia(l.estrategia)}
+            {l.estrategia === 'desempatar_1o' &&
+              (l.margemDesempate !== null ? ` · margem ${formatarMoeda(l.margemDesempate)}` : ' · sem margem')}
+          </span>
         </span>
       ),
     },

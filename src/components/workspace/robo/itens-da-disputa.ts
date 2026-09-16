@@ -54,6 +54,13 @@ export interface LinhaDoItem {
   valorReferencia: number | null;
   /** Se o item entra na disputa. `null` = o cadastro não diz. */
   disputando: boolean | null;
+  /**
+   * Como o robô disputa o item (16/09/2026): 'melhor_preco' | 'iminencia' |
+   * 'desempatar_1o'. `null` = não escolhida, e o robô trata como melhor preço.
+   */
+  estrategia: string | null;
+  /** Só em 'desempatar_1o': distância máxima até o 1º colocado, em reais. */
+  margemDesempate: number | null;
   /** O que o agente registrou para este item, quando o casamento é inequívoco. */
   daSessao: ItemDaSessao | null;
 }
@@ -134,6 +141,11 @@ export function linhasDaDisputa(
       // Referência zero é "não informada", não "vale R$ 0,00".
       valorReferencia: referencia !== null && referencia > 0 ? referencia : null,
       disputando: typeof item.disputando === 'boolean' ? item.disputando : null,
+      estrategia: textoOuNulo(item.estrategia),
+      margemDesempate: (() => {
+        const m = numeroOuNulo(item.margemDesempate ?? item.margem_desempate);
+        return m !== null && m > 0 ? m : null;
+      })(),
       daSessao,
     };
   });
