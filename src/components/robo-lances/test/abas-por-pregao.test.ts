@@ -180,6 +180,17 @@ describe('um Chrome por conta, uma aba por pregão', () => {
     expect(chromes[0].fechado).toBe(true);
   });
 
+  it('duas disputas da mesma conta chegando juntas: a segunda espera o Chrome da primeira e entra numa aba dele', async () => {
+    const { gerente, chromes } = montar();
+    const primeira = gerente.createSession(disputa('a'));
+    const segunda = gerente.createSession(disputa('b'));
+    const [a, b] = await Promise.all([primeira, segunda]);
+    expect(chromes).toHaveLength(1);
+    expect(b.browser).toBe(a.browser);
+    expect(b.perfil).toBe(a.perfil);
+    gerente.killAll('fim do teste');
+  });
+
   it('a aba morta de uma disputa nunca adota a aba viva da outra', async () => {
     const { gerente } = montar();
     const a = await gerente.createSession(disputa('a'));

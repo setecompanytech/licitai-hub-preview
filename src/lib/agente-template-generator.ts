@@ -761,6 +761,10 @@ class SessionManager {
     // perfil temporario — que fazia login do zero (captcha) e podia derrubar a
     // sessao da primeira. UMA_ABA_POR_PREGAO=false volta ao comportamento antigo.
     this.navegadores = new Map();
+    // Chrome de uma conta ABRINDO agora (do launch ate o fim do login): outra
+    // disputa da mesma conta que chegar nesse meio espera, em vez de abrir um
+    // segundo Chrome com login do zero. Chave: pasta do perfil.
+    this.navegadoresAbrindo = new Map();
 
     // O ROBO PAROU ESPERANDO UMA PESSOA — captcha, codigo de verificacao.
     // O pedido vira callback, e o webhook avisa os administradores da
@@ -938,7 +942,22 @@ class SessionManager {
     }, 30000);
 
     let pastaReservada = null;
+    let soltarAbertura = null;
+    const liberarAbertura = () => {
+      if (!soltarAbertura) return;
+      const soltar = soltarAbertura;
+      soltarAbertura = null;
+      soltar();
+    };
     try {
+      // O Chrome desta conta esta abrindo para outra disputa (ainda no login)?
+      // Espera ele ficar pronto para entrar numa aba dele.
+      const pastaDaConta = String(process.env.UMA_ABA_POR_PREGAO ?? 'true') === 'false' ? null : this.pastaDaIdentidade(config);
+      const abrindo = pastaDaConta ? this.navegadoresAbrindo.get(pastaDaConta) : null;
+      if (abrindo) {
+        console.log(\`🗂️  [\${config.sessao_id}] O Chrome desta conta esta abrindo para outra disputa — esperando para entrar numa aba dele\`);
+        await Promise.race([abrindo, new Promise((r) => setTimeout(r, 12 * 60 * 1000))]);
+      }
       const compartilhado = this.navegadorParaCompartilhar(config);
       let browser;
       let page;
@@ -963,10 +982,23 @@ class SessionManager {
         pastaReservada = this.perfilDaSessao(config);
         if (pastaReservada) {
           this.perfisEmUso.add(pastaReservada);
+          // Marcado JA, na mesma volta da reserva: qualquer espera antes disto
+          // (a do vigia, por exemplo) deixaria outra disputa da conta passar e
+          // abrir um segundo Chrome com login do zero.
+          if (String(process.env.UMA_ABA_POR_PREGAO ?? 'true') !== 'false') {
+            const pastaAbrindo = pastaReservada;
+            this.navegadoresAbrindo.set(pastaAbrindo, new Promise((resolver) => {
+              soltarAbertura = () => {
+                this.navegadoresAbrindo.delete(pastaAbrindo);
+                resolver();
+              };
+            }));
+          }
           if (!(await this.esperarVigiaSoltar(pastaReservada))) {
             console.log(\`🗂️  [\${config.sessao_id}] O vigia nao soltou o perfil a tempo — esta sessao entra com perfil temporario\`);
             this.perfisEmUso.delete(pastaReservada);
             pastaReservada = null;
+            liberarAbertura();
           }
         }
         ({ browser, page, perfil } = await launchBrowser(null, { perfil: pastaReservada }));
@@ -1033,6 +1065,8 @@ class SessionManager {
       // Login no portal
       console.log(\`🔐 [\${config.sessao_id}] Login no portal: \${config.portal_id}\`);
       await session.portal.login();
+      // Chrome e login prontos: quem esperava para dividir este Chrome pode entrar.
+      liberarAbertura();
       // O portal pode ter trocado de aba durante o login (adotarAbaViva). A
       // sessao segue a aba do portal, senao screenshot, chat e foco olhariam
       // para uma aba que ja nao existe.
@@ -1182,6 +1216,7 @@ class SessionManager {
 
       console.log(\`✅ Sessão \${config.sessao_id} ativa. Total ativas: \${this.getActiveSessions().length}\`);
     } catch (err) {
+      liberarAbertura();
       console.error(\`❌ Erro ao iniciar sessão \${config.sessao_id}:\`, err);
       sendCallback(session, 'erro', { mensagem: err.message });
       session.status = 'erro';
