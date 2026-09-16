@@ -1581,6 +1581,38 @@ function dimensoesDaTela() {
  *        gov.br). Sem ela, o Chrome abre com perfil temporario, que some ao
  *        fechar — o comportamento de sempre.
  */
+/**
+ * Faz o Chrome deste perfil GUARDAR OS COOKIES DE SESSAO ao fechar.
+ *
+ * Medido em 16/09/2026, na segunda rodada do teste (13:23): o perfil
+ * persistente abriu, mas o gov.br pediu o captcha de novo. O cookie do login,
+ * Session_Gov_Br_Prod, e um cookie "de sessao" — sem validade —, e o Chrome
+ * apaga esse tipo toda vez que fecha, a nao ser que o perfil esteja em
+ * "continuar de onde parei" (session.restore_on_startup = 1). Os cookies da
+ * protecao anti-robo do gov.br (TS..., TSPD_101_DID) sao do mesmo tipo.
+ *
+ * Tambem marca a ultima saida como normal: o Chrome morto pelo pm2 restart
+ * deixaria o perfil como "fechou com erro", e a restauracao viria com aviso.
+ *
+ * Falhar aqui nao impede abrir: o perfil segue util para o que tem validade.
+ */
+function manterCookiesDeSessao(perfil) {
+  const arquivo = path.join(perfil, 'Default', 'Preferences');
+  let prefs = {};
+  try {
+    prefs = JSON.parse(fs.readFileSync(arquivo, 'utf8')) || {};
+  } catch (e) {
+    prefs = {};
+  }
+  try {
+    prefs.session = { ...(prefs.session || {}), restore_on_startup: 1 };
+    prefs.profile = { ...(prefs.profile || {}), exit_type: 'Normal', exited_cleanly: true };
+    fs.writeFileSync(arquivo, JSON.stringify(prefs));
+  } catch (e) {
+    console.warn('⚠️ Nao consegui ajustar as preferencias do perfil (' + e.message + ')');
+  }
+}
+
 async function launchBrowser(cnpj, opcoes = {}) {
   const cert = getCertConfig(cnpj);
   const { largura, altura } = dimensoesDaTela();
@@ -1647,14 +1679,16 @@ async function launchBrowser(cnpj, opcoes = {}) {
   let browser;
   if (perfil) {
     try {
-      fs.mkdirSync(perfil, { recursive: true, mode: 0o700 });
+      fs.mkdirSync(path.join(perfil, 'Default'), { recursive: true, mode: 0o700 });
+      manterCookiesDeSessao(perfil);
       browser = await puppeteer.launch({
         ...configuracao,
         userDataDir: perfil,
         // O perfil guarda a sessao; cache de pagina nao precisa crescer sem
         // limite num disco de VPS. E sem o balao "restaurar paginas" depois de
-        // um pm2 restart, que cobriria a tela remota.
-        args: [...args, '--disk-cache-size=52428800', '--hide-crash-restore-bubble'],
+        // um pm2 restart, que cobriria a tela remota. --restore-last-session
+        // reforca a preferencia escrita por manterCookiesDeSessao.
+        args: [...args, '--disk-cache-size=52428800', '--hide-crash-restore-bubble', '--restore-last-session'],
       });
       console.log('🗂️  Perfil persistente: ' + perfil);
     } catch (e) {
@@ -1687,6 +1721,15 @@ async function launchBrowser(cnpj, opcoes = {}) {
   }
 
   const page = await browser.newPage();
+
+  // Com a sessao restaurada, o Chrome reabre as abas da ultima vez (a pagina da
+  // compra, o gov.br). O que se quer restaurar sao os cookies, nao as abas:
+  // fecha-las evita que o robo, ao procurar a aba viva, adote uma aba velha.
+  if (perfil) {
+    for (const antiga of await browser.pages()) {
+      if (antiga !== page) await antiga.close().catch(() => {});
+    }
+  }
 
   // O user-agent e o do proprio Chrome, so sem a marca "Headless". Era um
   // "Chrome/120" fixo, e em 10/09/2026 o Compras.gov abriu a pagina de

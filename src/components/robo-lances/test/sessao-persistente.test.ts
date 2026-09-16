@@ -136,9 +136,17 @@ describe('qual perfil a sessão usa', () => {
 });
 
 describe('o Chrome com perfil persistente', () => {
-  function browserJs(lancar: (cfg: Record<string, unknown>) => Promise<unknown>) {
-    const pagina = { setUserAgent: async () => {}, setViewport: async () => {} };
-    const navegador = { newPage: async () => pagina, userAgent: async () => 'HeadlessChrome/153' };
+  function browserJs(lancar: (cfg: Record<string, unknown>) => Promise<unknown>, prefsExistentes?: string) {
+    const pagina = { setUserAgent: async () => {}, setViewport: async () => {}, close: async () => {} };
+    const fechadas: string[] = [];
+    const velha = (nome: string) => ({ close: async () => { fechadas.push(nome); } });
+    const navegador = {
+      newPage: async () => pagina,
+      userAgent: async () => 'HeadlessChrome/153',
+      // o Chrome restaurado reabre abas da última vez
+      pages: async () => [velha('about:blank'), velha('compra antiga'), pagina],
+    };
+    const escritos: Record<string, string> = {};
     const lancamentos: Array<Record<string, unknown>> = [];
     const mod = carregar<{ launchBrowser: (c?: unknown, o?: unknown) => Promise<{ perfil: string | null }> }>(
       'src/browser.js',
@@ -150,12 +158,20 @@ describe('o Chrome com perfil persistente', () => {
             return navegador;
           },
         },
-        fs: { existsSync: () => false, mkdirSync: () => {} },
+        fs: {
+          existsSync: () => false,
+          mkdirSync: () => {},
+          readFileSync: () => {
+            if (prefsExistentes === undefined) throw new Error('ENOENT');
+            return prefsExistentes;
+          },
+          writeFileSync: (arq: string, conteudo: string) => { escritos[arq] = conteudo; },
+        },
         path: nodePath,
         './certificado': { estado: () => ({ carregado: false }) },
       },
     );
-    return { launchBrowser: mod.launchBrowser, lancamentos };
+    return { launchBrowser: mod.launchBrowser, lancamentos, escritos, fechadas };
   }
 
   it('abre com a pasta do perfil e devolve qual usou', async () => {
@@ -174,6 +190,33 @@ describe('o Chrome com perfil persistente', () => {
     expect(r.perfil).toBeNull();
     expect(lancamentos).toHaveLength(2);
     expect(lancamentos[1].userDataDir).toBeUndefined();
+  });
+
+  it('liga "continuar de onde parei" no perfil, para o Chrome não apagar os cookies de sessão', async () => {
+    // Medido na segunda rodada do teste (16/09, 13:23): o login do gov.br é o
+    // cookie de sessão Session_Gov_Br_Prod, que o Chrome apaga ao fechar.
+    const { launchBrowser, lancamentos, escritos } = browserJs(
+      async () => {},
+      JSON.stringify({ session: { restore_on_startup: 5 }, profile: { exit_type: 'Crashed', name: 'Pessoa 1' }, outra: 1 }),
+    );
+    await launchBrowser(null, { perfil: 'perfis/comprasgov-abc' });
+    const prefs = JSON.parse(escritos['perfis/comprasgov-abc/Default/Preferences']);
+    expect(prefs.session.restore_on_startup).toBe(1);
+    expect(prefs.profile).toMatchObject({ exit_type: 'Normal', exited_cleanly: true, name: 'Pessoa 1' });
+    expect(prefs.outra).toBe(1); // o resto das preferências fica como estava
+    expect(lancamentos[0].args).toContain('--restore-last-session');
+  });
+
+  it('perfil novo, sem preferências ainda: cria o arquivo', async () => {
+    const { launchBrowser, escritos } = browserJs(async () => {});
+    await launchBrowser(null, { perfil: 'perfis/comprasgov-abc' });
+    expect(JSON.parse(escritos['perfis/comprasgov-abc/Default/Preferences']).session.restore_on_startup).toBe(1);
+  });
+
+  it('fecha as abas que o Chrome reabriu — restaurar é para os cookies, não para as abas', async () => {
+    const { launchBrowser, fechadas } = browserJs(async () => {});
+    await launchBrowser(null, { perfil: 'perfis/comprasgov-abc' });
+    expect(fechadas).toEqual(['about:blank', 'compra antiga']);
   });
 
   it('sem perfil pedido, é o de sempre', async () => {
