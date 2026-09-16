@@ -467,6 +467,9 @@ class ComprasGovPortal extends BasePortal {
     this.publicUrl = 'https://cnetmobile.estaleiro.serpro.gov.br/comprasnet-web/public/compras';
     // Guardado quando a compra e localizada, para ler itens por URL direta.
     this.compraId = null;
+    this.itemAlvo = null;
+    this.cnpjEmpresa = null;
+    this._ultimaLeitura = null;
     // Quantos segundos esperar por um clique humano no VNC quando o captcha
     // barrar o caminho. Zero desliga a espera e faz falhar na hora.
     this.segundosEsperaHumano = Number(process.env.SEGUNDOS_ESPERA_HUMANO || 180);
@@ -1018,6 +1021,13 @@ class ComprasGovPortal extends BasePortal {
     console.log('📋 Navegando para disputa: ' + edital);
     await this.aplicarAntiDeteccao();
 
+    // O alvo dentro do processo: o item cuja classificacao o laco vai ler, e o
+    // CNPJ que responde "somos o lider". Um item por sessao por enquanto — o
+    // primeiro enviado; disputa com varios itens entra com a estrategia.
+    const primeiroItem = alvo && Array.isArray(alvo.itens) && alvo.itens.length ? alvo.itens[0] : null;
+    this.itemAlvo = primeiroItem && Number(primeiroItem.numero) ? Number(primeiroItem.numero) : null;
+    this.cnpjEmpresa = alvo && alvo.cnpj_empresa ? String(alvo.cnpj_empresa) : null;
+
     const numero = this.numeroDaCompra(edital);
     if (!numero) {
       const e = new Error('O edital "' + edital + '" nao tem numero e ano de compra (ex.: 90012/2024), '
@@ -1201,7 +1211,17 @@ class ComprasGovPortal extends BasePortal {
     const url = this.publicUrl + '/acompanhamento-compra/item/'
       + String(numero) + '?compra=' + String(alvo);
 
-    if (this.page.url() !== url) {
+    // Cache curto: o laco pergunta melhor lance e lider na MESMA rodada, e sem
+    // isto seriam duas cargas de pagina seguidas para a mesma resposta.
+    const cache = this._ultimaLeitura;
+    if (cache && cache.url === url && Date.now() - cache.em < 8000) return cache.propostas;
+
+    // Recarregar e obrigatorio: depois da primeira leitura o robo ja esta na
+    // URL do item, e sem recarregar leria sempre a mesma lista — a disputa
+    // andando e o robo olhando o retrato de minutos atras.
+    if (this.page.url() === url) {
+      await this.page.reload({ waitUntil: 'networkidle2', timeout: 45000 });
+    } else {
       await this.page.goto(url, { waitUntil: 'networkidle2', timeout: 45000 });
     }
     // Espera a lista existir, e nao um tempo fixo: rede lenta nao pode virar
@@ -1237,6 +1257,7 @@ class ComprasGovPortal extends BasePortal {
     } else {
       console.warn('⚠️ Item ' + numero + ': nenhuma proposta legivel na pagina publica');
     }
+    this._ultimaLeitura = { url, em: Date.now(), propostas };
     return propostas;
   }
 
@@ -1270,44 +1291,32 @@ class ComprasGovPortal extends BasePortal {
     return minha.posicao === 1;
   }
 
+  /**
+   * O MELHOR LANCE DO ITEM QUE ESTAMOS DISPUTANDO.
+   *
+   * Ate 16/09/2026 este metodo tentava 16 seletores escritos antes de alguem
+   * ver a sala, e devolvia o primeiro numero que achasse — em qualquer lugar da
+   * tela. Agora le a classificacao publica do item alvo (lerPropostasDoItem).
+   * Sem item alvo ou sem id da compra devolve null: sem leitura confiavel nao
+   * ha estrategia, e decidirLance para.
+   */
   async lerMelhorLance() {
-    const valor = await this.page.evaluate(() => {
-      const seletores = [
-        '.melhor-lance', '.menor-lance', '.valor-lance',
-        '#melhorLance', '#menorLance', '#valorAtual',
-        'td.valor', '.lance-atual', '.proposta-valor',
-        '[data-field="melhorLance"]', '[data-field="valor"]',
-        'span.ng-star-inserted',
-        '.mat-cell',
-        'table tbody tr:first-child td:nth-child(3)',
-        'table tbody tr:first-child td:nth-child(4)',
-        '.classificacao-item:first-child .valor',
-      ];
-      for (const sel of seletores) {
-        const el = document.querySelector(sel);
-        if (el) {
-          const texto = el.textContent.replace(/[^\\d.,]/g, '');
-          if (!texto) continue;
-          const parts = texto.split(',');
-          if (parts.length === 2) {
-            const inteiro = parts[0].replace(/\\./g, '');
-            const num = parseFloat(inteiro + '.' + parts[1]);
-            if (!isNaN(num) && num > 0) return num;
-          }
-          const num = parseFloat(texto.replace('.', '').replace(',', '.'));
-          if (!isNaN(num) && num > 0) return num;
-        }
-      }
+    if (!this.itemAlvo || !this.compraId) {
+      console.warn('⚠️ Sem item alvo ou sem id da compra — melhor lance desconhecido');
       return null;
-    });
-
-    if (valor === null) {
-      console.warn('⚠️ Não foi possível ler o melhor lance atual');
-      await this.screenshot('lance-leitura-falha');
-    } else {
-      console.log(\`💰 Melhor lance atual: R$ \${this.formatarMoeda(valor)}\`);
     }
+    const valor = await this.melhorLanceDoItem(this.itemAlvo);
+    if (valor === null) await this.screenshot('lance-leitura-falha');
     return valor;
+  }
+
+  /**
+   * SOMOS O LIDER? Pelo CNPJ da empresa na classificacao publica do item.
+   * null quando nao da para afirmar — e decidirLance trata null como parar.
+   */
+  async souLider() {
+    if (!this.itemAlvo || !this.compraId || !this.cnpjEmpresa) return null;
+    return this.souLiderNoItem(this.itemAlvo, this.cnpjEmpresa);
   }
 
   async enviarLance(valor) {

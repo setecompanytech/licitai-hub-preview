@@ -340,7 +340,7 @@ app.post('/sessao/iniciar', authMiddleware, async (req, res) => {
       // front mandava 925315, a edge function repassava, o session-manager
       // guardava — e esta lista nao a nomeava. Chegou null; sem ela a busca
       // do Compras.gov achou dez "7/2026" de outros orgaos e nenhum da SEDUC.
-      itens, tipo_disputa, uasg,
+      itens, tipo_disputa, uasg, cnpj_empresa,
     } = req.body;
 
     const callbackUrl = req.headers['x-callback-url'] || process.env.CALLBACK_URL;
@@ -367,6 +367,10 @@ app.post('/sessao/iniciar', authMiddleware, async (req, res) => {
       itens: Array.isArray(itens) ? itens : [],
       tipo_disputa: tipo_disputa || null,
       uasg: uasg ? String(uasg) : null,
+      // E assim que o robo se acha na classificacao publica do item. Nomeado
+      // aqui de proposito: campo fora desta lista some em silencio (ja foi
+      // assim com os itens e com a UASG).
+      cnpj_empresa: cnpj_empresa ? String(cnpj_empresa) : null,
       credenciais_portal, callbackUrl, agentKey: AGENT_KEY,
     });
 
@@ -859,6 +863,7 @@ class SessionManager {
       session.tipo_disputa = config.tipo_disputa || null;
       // UASG (Compras.gov): o numero da compra se repete entre orgaos.
       session.uasg = config.uasg ? String(config.uasg) : null;
+      session.cnpj_empresa = config.cnpj_empresa ? String(config.cnpj_empresa) : null;
 
       console.log(
         \`📋 [\${config.sessao_id}] Navegando para edital: \${config.edital}\` +
@@ -868,6 +873,7 @@ class SessionManager {
         tipo: session.tipo_disputa,
         itens: session.itens,
         uasg: session.uasg,
+        cnpj_empresa: session.cnpj_empresa,
       });
 
       // ── O QUE MANDAMOS BATE COM O QUE O PORTAL PUBLICOU? ──────────────────

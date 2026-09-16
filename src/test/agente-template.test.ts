@@ -226,6 +226,10 @@ describe('template do agente de lances', () => {
     expect(destructuring, 'não achei a desestruturação do req.body').toBeTruthy();
     expect(destructuring![1]).toMatch(/\bitens\b/);
     expect(destructuring![1]).toMatch(/\btipo_disputa\b/);
+    // 16/09/2026: o CNPJ da empresa e como o robo responde "somos o lider".
+    // Terceiro campo a atravessar esta lista — e o terceiro que ela descartaria.
+    expect(destructuring![1]).toMatch(/\bcnpj_empresa\b/);
+    expect(index).toMatch(/cnpj_empresa:\s*cnpj_empresa/);
 
     // Nomear na desestruturação não basta — tem que CHEGAR ao createSession.
     const chamada = index.match(/createSession\(\{([\s\S]*?)\}\);/);
