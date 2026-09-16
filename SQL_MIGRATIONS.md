@@ -13742,3 +13742,157 @@ Reversão:
 ALTER TABLE public.robo_lances_disputas DROP COLUMN IF EXISTS lembrete_vespera_em, DROP COLUMN IF EXISTS lembrete_1h_em;
 -- e recriar a função da migration 20260916000004 (sem as duas linhas dos lembretes)
 ```
+
+
+---
+
+## 20260916000007 — pregão remarcado: a disputa do robô acompanha a data nova do processo
+
+**Por quê (Fase 8, 16/09/2026):** a disputa copia a data da sessão do processo
+quando é cadastrada. Se o pregão é adiado e alguém corrige a data no processo
+(kanban, leitura do edital, integração), a disputa ficava na data velha — o robô
+entraria num pregão que não vai acontecer. Regra, por disputa ligada ao processo
+e ainda não enviada: estava na data velha do processo → passa para a nova e
+avisa quem cadastrou; foi ajustada à mão, está sem data ou o processo perdeu a
+data → não muda e avisa com as duas datas. Falha no gatilho vira WARNING e o
+processo é salvo normalmente.
+
+```sql
+CREATE OR REPLACE FUNCTION public.robo_processo_remarcado_move_disputa()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  antes  timestamptz := date_trunc('minute', COALESCE(OLD.data_abertura, OLD.data_encerramento));
+  depois timestamptz := date_trunc('minute', COALESCE(NEW.data_abertura, NEW.data_encerramento));
+  d record;
+  quando_depois text;
+BEGIN
+  IF depois IS NOT DISTINCT FROM antes THEN
+    RETURN NEW;
+  END IF;
+
+  BEGIN
+    quando_depois := COALESCE(to_char(depois AT TIME ZONE 'America/Sao_Paulo', 'DD/MM/YYYY "às" HH24:MI'), 'sem data');
+
+    FOR d IN
+      SELECT id, user_id, edital, inicio_sessao
+        FROM public.robo_lances_disputas
+       WHERE licitacao_id = NEW.id
+         AND enviada_em IS NULL
+    LOOP
+      IF depois IS NOT NULL AND antes IS NOT NULL AND d.inicio_sessao IS NOT NULL
+         AND date_trunc('minute', d.inicio_sessao) = antes THEN
+        UPDATE public.robo_lances_disputas SET inicio_sessao = depois WHERE id = d.id;
+        INSERT INTO public.notificacoes (user_id, tipo, titulo, mensagem, link)
+        VALUES (
+          d.user_id, 'alerta',
+          '📅 Pregão remarcado — ' || d.edital,
+          'A data do processo mudou para ' || quando_depois || ', e a disputa do robô acompanhou: o robô entra 15 minutos antes. Confira no edital.',
+          '/robo-lances/disputa/' || d.id
+        );
+      ELSE
+        INSERT INTO public.notificacoes (user_id, tipo, titulo, mensagem, link)
+        VALUES (
+          d.user_id, 'alerta',
+          '📅 A data do processo mudou — ' || d.edital,
+          'O processo agora está ' || CASE WHEN depois IS NULL THEN 'sem data' ELSE 'em ' || quando_depois END ||
+          ', mas a disputa do robô continua ' ||
+          COALESCE('em ' || to_char(d.inicio_sessao AT TIME ZONE 'America/Sao_Paulo', 'DD/MM/YYYY "às" HH24:MI'), 'sem data') ||
+          ' (ajustada à mão ou sem agendamento) e não foi mudada. Confira e ajuste a disputa se for o caso.',
+          '/robo-lances/disputa/' || d.id
+        );
+      END IF;
+    END LOOP;
+  EXCEPTION WHEN OTHERS THEN
+    RAISE WARNING 'robo_processo_remarcado_move_disputa (processo %): %', NEW.id, SQLERRM;
+  END;
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_robo_processo_remarcado ON public.licitacoes;
+CREATE TRIGGER trg_robo_processo_remarcado
+  AFTER UPDATE OF data_abertura, data_encerramento ON public.licitacoes
+  FOR EACH ROW
+  EXECUTE FUNCTION public.robo_processo_remarcado_move_disputa();
+```
+
+Testar sem deixar rastro (o bloco é desfeito no fim; só o resultado volta):
+
+```sql
+-- Teste sem deixar rastro: tudo roda dentro de um bloco que é desfeito no fim,
+-- e só o resultado volta. Liga a disputa de prova da BAQPLAST a um processo
+-- com data, adia o processo em 2 dias e mostra o que o gatilho fez.
+CREATE OR REPLACE FUNCTION pg_temp.testar_remarcacao()
+RETURNS TABLE (caso text, disputa_antes text, disputa_depois text, aviso text)
+LANGUAGE plpgsql AS $$
+DECLARE
+  v_lic uuid;
+  v_antes timestamptz;
+  v_resultado jsonb := '[]'::jsonb;
+BEGIN
+  BEGIN
+    SELECT id, date_trunc('minute', COALESCE(data_abertura, data_encerramento))
+      INTO v_lic, v_antes
+      FROM public.licitacoes
+     WHERE COALESCE(data_abertura, data_encerramento) IS NOT NULL
+     ORDER BY updated_at DESC LIMIT 1;
+
+    -- caso 1: disputa na data do processo (acompanha)
+    UPDATE public.robo_lances_disputas
+       SET licitacao_id = v_lic, inicio_sessao = v_antes, enviada_em = NULL
+     WHERE id = '9ed940f2-a18e-49fc-a2dc-409e2e49da5e';
+    UPDATE public.licitacoes
+       SET data_abertura = data_abertura + interval '2 days',
+           data_encerramento = data_encerramento + interval '2 days'
+     WHERE id = v_lic;
+    SELECT v_resultado || jsonb_build_array(jsonb_build_object(
+             'caso', 'disputa na data do processo',
+             'disputa_antes', to_char(v_antes AT TIME ZONE 'America/Sao_Paulo', 'DD/MM HH24:MI'),
+             'disputa_depois', to_char(d.inicio_sessao AT TIME ZONE 'America/Sao_Paulo', 'DD/MM HH24:MI'),
+             'aviso', (SELECT titulo || ' · ' || mensagem FROM public.notificacoes
+                        WHERE link = '/robo-lances/disputa/' || d.id ORDER BY created_at DESC LIMIT 1)))
+      INTO v_resultado
+      FROM public.robo_lances_disputas d WHERE d.id = '9ed940f2-a18e-49fc-a2dc-409e2e49da5e';
+
+    -- caso 2: disputa ajustada à mão (só avisa)
+    UPDATE public.robo_lances_disputas
+       SET inicio_sessao = inicio_sessao + interval '1 minute'
+     WHERE id = '9ed940f2-a18e-49fc-a2dc-409e2e49da5e';
+    UPDATE public.licitacoes
+       SET data_abertura = data_abertura + interval '1 day',
+           data_encerramento = data_encerramento + interval '1 day'
+     WHERE id = v_lic;
+    SELECT v_resultado || jsonb_build_array(jsonb_build_object(
+             'caso', 'disputa ajustada à mão',
+             'disputa_antes', to_char((v_antes + interval '2 days 1 minute') AT TIME ZONE 'America/Sao_Paulo', 'DD/MM HH24:MI'),
+             'disputa_depois', to_char(d.inicio_sessao AT TIME ZONE 'America/Sao_Paulo', 'DD/MM HH24:MI'),
+             'aviso', (SELECT titulo || ' · ' || mensagem FROM public.notificacoes
+                        WHERE link = '/robo-lances/disputa/' || d.id ORDER BY created_at DESC, titulo LIMIT 1)))
+      INTO v_resultado
+      FROM public.robo_lances_disputas d WHERE d.id = '9ed940f2-a18e-49fc-a2dc-409e2e49da5e';
+
+    RAISE EXCEPTION 'desfazer-teste';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM <> 'desfazer-teste' THEN RAISE; END IF;
+  END;
+
+  RETURN QUERY
+    SELECT r->>'caso', r->>'disputa_antes', r->>'disputa_depois', r->>'aviso'
+      FROM jsonb_array_elements(v_resultado) r;
+END;
+$$;
+
+SELECT * FROM pg_temp.testar_remarcacao();
+```
+
+Reversão:
+
+```sql
+DROP TRIGGER IF EXISTS trg_robo_processo_remarcado ON public.licitacoes;
+DROP FUNCTION IF EXISTS public.robo_processo_remarcado_move_disputa();
+```
