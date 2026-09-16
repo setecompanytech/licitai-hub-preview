@@ -1218,11 +1218,13 @@ class SessionManager {
           intervaloMinimo: detalhes.intervalo_minimo,
           intervaloMinimoPercentual: detalhes.intervalo_minimo_percentual,
           estrategia: item.estrategia,
+          margemDesempate: Number(item.margem_desempate),
           fase: sala.fase,
           segundosRestantes: sala.segundosRestantes,
           elegivel: sala.elegivel,
           lanceFinalFechado: Number(item.lance_final_fechado),
           lanceFechadoEnviado: session.lance_fechado_enviado === true,
+          lanceDesempateEnviado: session.lance_desempate_enviado === true,
           lancesEnviados: session.lances_enviados,
           maxLances: session.max_lances,
           rodada: session.rodada,
@@ -1286,6 +1288,7 @@ class SessionManager {
         session.ultimo_lance_aceito = novoValor;
         session.lances_enviados += 1;
         if (sala.fase === 'fechada') session.lance_fechado_enviado = true;
+        if (sala.fase === 'desempate_me_epp') session.lance_desempate_enviado = true;
 
         await sendCallback(session, 'lance-enviado', {
           rodada: session.rodada,

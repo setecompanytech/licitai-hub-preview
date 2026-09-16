@@ -58,12 +58,27 @@ const LANCE = (valor, motivo) => ({ acao: 'lance', valor, motivo });
  * - iminencia: a mesma conta, mas so nos 2 minutos finais da etapa aberta (e
  *   no encerramento aleatorio do modo aberto e fechado). Lance dado no inicio
  *   so ensina o preco ao concorrente e gasta margem antes da hora.
+ * - desempatar_1o: cobre o 1o lugar SO QUANDO ele esta perto — a diferenca
+ *   entre o nosso ultimo lance e o do 1o colocado cabe na MARGEM EM REAIS do
+ *   item. Mais longe que isso, o robo nao persegue. O passo do lance e o
+ *   mesmo das outras (decremento, ou o intervalo minimo do edital).
+ *   Definido pelo Ian em 16/09. Na reuniao de 14/09 o Giovanny marcou
+ *   "Desempatar no 1o lugar" com 10,00 na tela do ConLicitacao e disse "eu
+ *   acho perigoso... porque vai muito do modo de disputa", mas o produto nao
+ *   explica o que o campo faz; a leitura como distancia maxima foi escolhida
+ *   por nao depender de nada que o robo ainda nao le.
  *
  * Estrategia escrita que nao esta aqui NAO vira melhor_preco: o robo aguarda e
  * diz por que. Nome desconhecido e sinal de tela e agente em versoes
  * diferentes, e adivinhar a intencao seria decidir preco no chute.
  */
-const ESTRATEGIAS = ['melhor_preco', 'iminencia'];
+const ESTRATEGIAS = ['melhor_preco', 'iminencia', 'desempatar_1o'];
+
+const NOME_DA_ESTRATEGIA = {
+  melhor_preco: 'melhor preco',
+  iminencia: 'iminencia',
+  desempatar_1o: 'desempatar no 1o lugar',
+};
 
 /**
  * Modo aberto: 10 minutos, e cada lance nos 2 minutos finais prorroga mais 2
@@ -81,10 +96,12 @@ const SEGUNDOS_DE_IMINENCIA = 120;
  * - encerramento_aleatorio: aberto e fechado, depois dos 15 minutos — pode
  *   fechar a qualquer segundo, entao ja e iminencia
  * - fechada: o lance final e fechado do aberto e fechado
+ * - desempate_me_epp: o portal convocou a microempresa ou empresa de pequeno
+ *   porte (empate ficto da LC 123/2006) a cobrir o 1o colocado — um lance so
  * - suspensa: o pregoeiro suspendeu
  * - encerrada: acabou para este item
  */
-const FASES = ['aguardando', 'aberta', 'encerramento_aleatorio', 'fechada', 'suspensa', 'encerrada'];
+const FASES = ['aguardando', 'aberta', 'encerramento_aleatorio', 'fechada', 'desempate_me_epp', 'suspensa', 'encerrada'];
 
 const CENTAVOS = (valor) => Number(valor.toFixed(2));
 const CENTAVOS_PARA_BAIXO = (valor) => Math.floor(valor * 100 + 1e-6) / 100;
@@ -109,11 +126,13 @@ function emIminencia(fase, segundosRestantes) {
  * @param {number}      [estado.intervaloMinimo] intervalo minimo entre lances do edital, em reais
  * @param {number}      [estado.intervaloMinimoPercentual] o mesmo, quando o edital o da em %
  * @param {string}      [estado.estrategia]      uma de ESTRATEGIAS; vazio = melhor_preco
+ * @param {number}      [estado.margemDesempate] desempatar_1o: distancia maxima ate o 1o colocado, em reais
  * @param {string|null} [estado.fase]            uma de FASES; null = nao lida
  * @param {number|null} [estado.segundosRestantes] da etapa aberta; null = nao lido
- * @param {boolean|null} [estado.elegivel]       fase fechada: estamos entre os que podem dar o lance final?
+ * @param {boolean|null} [estado.elegivel]       chamados pelo portal para a fase (lance final, etapa aberta, desempate)?
  * @param {number}      [estado.lanceFinalFechado] valor do lance final fechado, escolhido pela empresa
  * @param {boolean}     [estado.lanceFechadoEnviado] o lance final ja foi dado
+ * @param {boolean}     [estado.lanceDesempateEnviado] o lance de desempate de ME/EPP ja foi dado
  * @param {number}      [estado.lancesEnviados]  lances aceitos ate aqui
  * @param {number|null} [estado.maxLances]       teto de lances; vazio ou 0 = sem teto, disputa ate o piso
  * @returns {{acao: 'lance'|'aguardar'|'encerrar', valor: number|null, motivo: string}}
@@ -130,11 +149,13 @@ function decidirLance(estado) {
     intervaloMinimo,
     intervaloMinimoPercentual,
     estrategia,
+    margemDesempate,
     fase,
     segundosRestantes,
     elegivel,
     lanceFinalFechado,
     lanceFechadoEnviado,
+    lanceDesempateEnviado,
     lancesEnviados,
     maxLances,
   } = estado;
@@ -167,6 +188,7 @@ function decidirLance(estado) {
   if (!ESTRATEGIAS.includes(qual)) {
     return AGUARDAR(\`Estrategia "\${qual}" nao e conhecida por esta versao do robo\`);
   }
+  const porMargem = qual === 'desempatar_1o';
 
   const faseLida = fase === null || fase === undefined || fase === '' ? null : fase;
   if (faseLida !== null && !FASES.includes(faseLida)) {
@@ -176,20 +198,127 @@ function decidirLance(estado) {
   if (faseLida === 'suspensa') return AGUARDAR('Disputa suspensa pelo pregoeiro');
   if (faseLida === 'aguardando') return AGUARDAR('A disputa deste item ainda nao abriu');
 
+  // O código antigo fazia \`decrementoPercentual || 1\`: quem configurasse 0%
+  // recebia 1% sem saber. Substituir configuração por padrão inventado é a
+  // mesma família de defeito que esta função existe para eliminar.
+  const decrementoConfigurado = () => {
+    if (Number.isFinite(decrementoMin) && decrementoMin > 0) return decrementoMin;
+    if (Number.isFinite(decrementoPercentual) && decrementoPercentual > 0) return melhorLance * (decrementoPercentual / 100);
+    return null;
+  };
+
+  // O INTERVALO MINIMO DO EDITAL nao e padrao inventado: e regra publicada pelo
+  // orgao e lida no portal (R$ 0,0100 no 7/2026 da SEDUC/PA), e lance com
+  // diferenca menor e recusado. E O PADRAO (decisao do Ian, 16/09): sem passo
+  // configurado, o robo desce so o degrau minimo do portal, para nao gastar
+  // margem a toa; um passo configurado menor que ele sobe para ele.
+  const calcularPasso = (configurado, nomeDoConfigurado) => {
+    let intervalo = null;
+    if (Number.isFinite(intervaloMinimo) && intervaloMinimo > 0) {
+      intervalo = intervaloMinimo;
+    } else if (Number.isFinite(intervaloMinimoPercentual) && intervaloMinimoPercentual > 0) {
+      intervalo = melhorLance * (intervaloMinimoPercentual / 100);
+    }
+    let passo = Number.isFinite(configurado) && configurado > 0 ? configurado : null;
+    let origem = nomeDoConfigurado;
+    if (intervalo !== null && (passo === null || passo < intervalo)) {
+      origem = passo === null
+        ? 'intervalo minimo do edital'
+        : 'intervalo minimo do edital, maior que o ' + nomeDoConfigurado + ' configurado';
+      passo = intervalo;
+    }
+    if (passo === null || !Number.isFinite(passo) || passo <= 0) return null;
+    // Centavos: portal recusa fracao. Arredondar para cima encolheria o passo
+    // abaixo do intervalo do edital (e o lance seria recusado), entao nesse
+    // caso o arredondamento vai para baixo.
+    const bruto = melhorLance - passo;
+    let valor = CENTAVOS(bruto);
+    if (intervalo !== null && melhorLance - valor < intervalo - 1e-9) valor = CENTAVOS_PARA_BAIXO(bruto);
+    return { passo, origem, valor };
+  };
+
+  /**
+   * Cobrir o 1o colocado. Um caminho so para todas as ocasioes, com as
+   * mesmas guardas: sem leitura nao ha lance, nunca cobrir o proprio lance,
+   * so perto do 1o na estrategia desempatar_1o, nunca chegar no piso.
+   */
+  const cobrirOPrimeiro = (ocasiao) => {
+    // Sem leitura confiável não há estratégia. O código antigo caía em
+    // \`melhorLance || valorAtual\` e dava lance às cegas partindo do próprio
+    // valor — cobrindo a si mesmo com um número inventado.
+    if (melhorLance === null || melhorLance === undefined || !Number.isFinite(melhorLance)) {
+      return AGUARDAR('Não foi possível ler o melhor lance no portal');
+    }
+    // O DEFEITO QUE CUSTAVA DINHEIRO: quando lideramos, o melhor lance da
+    // sessão é o nosso. Sem esta guarda o robô cobria o próprio lance a cada
+    // rodada e descia sozinho até o piso, sem nenhum concorrente ter aparecido.
+    if (souLider === true) {
+      return AGUARDAR('Já estamos liderando — cobrir o próprio lance só queima margem');
+    }
+    // \`souLider\` desconhecido é diferente de \`false\`: sem saber quem lidera,
+    // a guarda acima perde o efeito. Melhor parar do que arriscar.
+    if (souLider !== false) {
+      return AGUARDAR('O portal não informou quem está liderando');
+    }
+    // DESEMPATAR NO 1o LUGAR: a margem e a distancia maxima ate o 1o colocado.
+    // Sem margem ou sem lance nosso para medir, nao ha como saber se ele esta
+    // perto — e a estrategia existe justamente para nao perseguir quem esta
+    // longe.
+    if (porMargem) {
+      if (!Number.isFinite(margemDesempate) || margemDesempate <= 0) {
+        return AGUARDAR('Desempatar no 1o lugar precisa da margem em reais do item: sem ela o robo nao sabe ate que distancia do 1o colocado vale cobrir');
+      }
+      if (!Number.isFinite(valorAtual)) {
+        return AGUARDAR('Desempatar no 1o lugar: sem lance nosso no item, nao ha distancia ate o 1o colocado para medir');
+      }
+      const distancia = valorAtual - melhorLance;
+      if (distancia > margemDesempate + 1e-9) {
+        return AGUARDAR(
+          \`Desempatar no 1o lugar: o 1o colocado esta \${REAIS(distancia)} abaixo do nosso lance, \` +
+          \`alem da margem de \${REAIS(margemDesempate)} — o robo nao persegue\`
+        );
+      }
+    }
+    const conta = calcularPasso(decrementoConfigurado(), 'decremento');
+    if (!conta) {
+      return AGUARDAR('Nenhum decremento válido configurado (nem em reais, nem em %), e o intervalo minimo do edital nao foi lido');
+    }
+    // O piso é intransponível, e chegar nele encerra em vez de dar lance nele:
+    // igualar o mínimo é entregar a margem inteira sem garantia de vitória.
+    if (conta.valor <= valorMinimo) {
+      return ENCERRAR(\`Próximo lance (\${REAIS(conta.valor)}) alcançaria o piso de \${REAIS(valorMinimo)}\`);
+    }
+    return LANCE(
+      conta.valor,
+      \`Cobrindo \${REAIS(melhorLance)} com passo de \${REAIS(conta.passo)} \` +
+      \`(\${conta.origem}; estrategia: \${NOME_DA_ESTRATEGIA[qual]}\${ocasiao ? '; ' + ocasiao : ''})\`
+    );
+  };
+
   // LANCE FINAL FECHADO (modo aberto e fechado). Um lance so, as cegas, e so
-  // para quem o portal deixar. O valor e decisao da empresa: o robo nao
+  // para quem o portal chamar. O valor e decisao da empresa: o robo nao
   // escolhe sozinho o numero de um lance que nao da para corrigir depois.
   if (faseLida === 'fechada') {
     if (elegivel === false) return AGUARDAR('Fora dos elegiveis para o lance final fechado');
     if (elegivel !== true) return AGUARDAR('Nao foi possivel saber se estamos entre os elegiveis do lance final fechado');
     if (lanceFechadoEnviado) return AGUARDAR('O lance final fechado ja foi dado — o portal aceita um so');
-    if (!Number.isFinite(lanceFinalFechado) || lanceFinalFechado <= 0) {
-      return AGUARDAR('O lance final fechado precisa de valor definido pela empresa; o robo nao escolhe esse numero');
+    if (Number.isFinite(lanceFinalFechado) && lanceFinalFechado > 0) {
+      if (lanceFinalFechado < valorMinimo) {
+        return AGUARDAR(\`O lance final configurado (\${REAIS(lanceFinalFechado)}) fica abaixo do piso de \${REAIS(valorMinimo)}\`);
+      }
+      return LANCE(CENTAVOS(lanceFinalFechado), \`Lance final fechado configurado: \${REAIS(lanceFinalFechado)}\`);
     }
-    if (lanceFinalFechado < valorMinimo) {
-      return AGUARDAR(\`O lance final configurado (\${REAIS(lanceFinalFechado)}) fica abaixo do piso de \${REAIS(valorMinimo)}\`);
-    }
-    return LANCE(CENTAVOS(lanceFinalFechado), \`Lance final fechado configurado: \${REAIS(lanceFinalFechado)}\`);
+    return AGUARDAR('O lance final fechado precisa de valor definido pela empresa; o robo nao escolhe esse numero sozinho');
+  }
+
+  // DESEMPATE DE ME/EPP: o portal convoca a pequena empresa com lance ate 5%
+  // acima do 1o colocado a cobri-lo, uma vez. Qualquer estrategia aproveita a
+  // convocacao, com as mesmas guardas — inclusive a margem da desempatar_1o.
+  if (faseLida === 'desempate_me_epp') {
+    if (elegivel === false) return AGUARDAR('O portal nao convocou a empresa para o desempate');
+    if (elegivel !== true) return AGUARDAR('Nao foi possivel saber se a empresa foi convocada para o desempate');
+    if (lanceDesempateEnviado) return AGUARDAR('O lance de desempate ja foi dado — o portal aceita um so');
+    return cobrirOPrimeiro('desempate de ME/EPP');
   }
 
   // Modo fechado e aberto: so passam para a etapa aberta a melhor proposta e
@@ -198,23 +327,12 @@ function decidirLance(estado) {
     return ENCERRAR('Nossa proposta nao foi classificada para a etapa aberta');
   }
 
-  // Sem leitura confiável não há estratégia. O código antigo caía em
-  // \`melhorLance || valorAtual\` e dava lance às cegas partindo do próprio
-  // valor — cobrindo a si mesmo com um número inventado.
   if (melhorLance === null || melhorLance === undefined || !Number.isFinite(melhorLance)) {
     return AGUARDAR('Não foi possível ler o melhor lance no portal');
   }
-
-  // O DEFEITO QUE CUSTAVA DINHEIRO: quando lideramos, o melhor lance da sessão
-  // é o nosso. Sem esta guarda o robô cobria o próprio lance a cada rodada e
-  // descia sozinho até o piso, sem nenhum concorrente ter aparecido.
   if (souLider === true) {
     return AGUARDAR('Já estamos liderando — cobrir o próprio lance só queima margem');
   }
-
-  // \`souLider\` desconhecido é diferente de \`false\`. Se o portal não sabe dizer
-  // quem lidera, não dá para distinguir o nosso lance do alheio, e a guarda
-  // acima perde o efeito. Melhor parar do que arriscar.
   if (souLider !== false) {
     return AGUARDAR('O portal não informou quem está liderando');
   }
@@ -235,61 +353,7 @@ function decidirLance(estado) {
     return AGUARDAR(\`Estrategia de iminencia: faltam \${Math.round(segundosRestantes)} s; o robo age nos \${SEGUNDOS_DE_IMINENCIA / 60} minutos finais\`);
   }
 
-  // O código antigo fazia \`decrementoPercentual || 1\`: quem configurasse 0%
-  // recebia 1% sem saber. Substituir configuração por padrão inventado é a
-  // mesma família de defeito que esta função existe para eliminar — aqui, zero
-  // explícito significa "não sei de quanto descer", e isso manda parar.
-  let decremento = null;
-  if (Number.isFinite(decrementoMin) && decrementoMin > 0) {
-    decremento = decrementoMin;
-  } else if (Number.isFinite(decrementoPercentual) && decrementoPercentual > 0) {
-    decremento = melhorLance * (decrementoPercentual / 100);
-  }
-
-  // O INTERVALO MINIMO DO EDITAL nao e padrao inventado: e regra publicada pelo
-  // orgao e lida no portal (R$ 0,0100 no 7/2026 da SEDUC/PA), e lance com
-  // diferenca menor e recusado. Por isso ele vale como passo quando a empresa
-  // nao configurou um, e sobe o passo configurado quando este e menor.
-  let intervalo = null;
-  if (Number.isFinite(intervaloMinimo) && intervaloMinimo > 0) {
-    intervalo = intervaloMinimo;
-  } else if (Number.isFinite(intervaloMinimoPercentual) && intervaloMinimoPercentual > 0) {
-    intervalo = melhorLance * (intervaloMinimoPercentual / 100);
-  }
-
-  let passo = decremento;
-  let origemDoPasso = 'decremento';
-  if (intervalo !== null && (passo === null || !Number.isFinite(passo) || passo < intervalo)) {
-    passo = intervalo;
-    origemDoPasso = decremento === null ? 'intervalo minimo do edital' : 'intervalo minimo do edital, maior que o decremento configurado';
-  }
-
-  if (passo === null || !Number.isFinite(passo) || passo <= 0) {
-    return AGUARDAR('Nenhum decremento válido configurado (nem em reais, nem em %), e o intervalo minimo do edital nao foi lido');
-  }
-
-  // Centavos: portal recusa fracao. Arredondar para cima encolheria o passo
-  // abaixo do intervalo do edital (e o lance seria recusado), entao nesse
-  // caso o arredondamento vai para baixo.
-  const bruto = melhorLance - passo;
-  let novoValor = CENTAVOS(bruto);
-  if (intervalo !== null && melhorLance - novoValor < intervalo - 1e-9) {
-    novoValor = CENTAVOS_PARA_BAIXO(bruto);
-  }
-
-  // O piso é intransponível, e chegar nele encerra em vez de dar lance nele:
-  // igualar o mínimo é entregar a margem inteira sem garantia de vitória.
-  if (novoValor <= valorMinimo) {
-    return ENCERRAR(
-      \`Próximo lance (\${REAIS(novoValor)}) alcançaria o piso de \${REAIS(valorMinimo)}\`
-    );
-  }
-
-  const nomeDaEstrategia = qual === 'iminencia' ? 'iminencia' : 'melhor preco';
-  return LANCE(
-    novoValor,
-    \`Cobrindo \${REAIS(melhorLance)} com passo de \${REAIS(passo)} (\${origemDoPasso}; estrategia: \${nomeDaEstrategia})\`
-  );
+  return cobrirOPrimeiro(null);
 }
 
 /**

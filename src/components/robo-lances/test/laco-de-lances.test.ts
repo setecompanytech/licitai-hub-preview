@@ -208,6 +208,28 @@ describe('laço de lances', () => {
     s.status = 'encerrado';
   });
 
+  it('a margem de desempate do item chega à decisão', async () => {
+    // Nosso lance no portal: 100; 1º colocado: 90 — distância de R$ 10.
+    const perto = montar(true);
+    const p1 = portalFalso();
+    const s1 = sessao(p1.portal, { itens: [{ numero: 1, valor_minimo: 60, estrategia: 'desempatar_1o', margem_desempate: 15 }] });
+    perto.gerente.sessions.set('s1', s1);
+    perto.gerente._startBiddingLoop(s1);
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(p1.enviados).toEqual([85]);
+    s1.status = 'encerrado';
+
+    const longe = montar(true);
+    const p2 = portalFalso();
+    const s2 = sessao(p2.portal, { itens: [{ numero: 1, valor_minimo: 60, estrategia: 'desempatar_1o', margem_desempate: 5 }] });
+    longe.gerente.sessions.set('s1', s2);
+    longe.gerente._startBiddingLoop(s2);
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(p2.enviados).toEqual([]);
+    expect(longe.chamadas.find((c) => c.tipo === 'rodada-sem-lance')?.dados.motivo).toMatch(/nao persegue/);
+    s2.status = 'encerrado';
+  });
+
   it('o intervalo mínimo lido do portal vira o passo quando não há decremento', async () => {
     const { gerente } = montar(true);
     const { portal, enviados } = portalFalso({ nossoLance: async () => null });

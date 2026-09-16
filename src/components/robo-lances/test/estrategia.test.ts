@@ -235,9 +235,9 @@ describe('estratégia por item', () => {
   });
 
   it('estratégia desconhecida aguarda, e não vira melhor preço por conta própria', () => {
-    const d = decidirLance(cenario({ estrategia: 'desempatar_1o' }));
+    const d = decidirLance(cenario({ estrategia: 'estrategia_inventada' }));
     expect(d.acao).toBe('aguardar');
-    expect(d.motivo).toMatch(/desempatar_1o/);
+    expect(d.motivo).toMatch(/estrategia_inventada/);
   });
 
   it('iminência: fora dos 2 minutos finais, aguarda', () => {
@@ -270,6 +270,79 @@ describe('estratégia por item', () => {
     expect(decidirLance(cenario({ estrategia: 'iminencia', segundosRestantes: 30, souLider: true })).acao).toBe('aguardar');
     expect(decidirLance(cenario({ estrategia: 'iminencia', segundosRestantes: 30, melhorLance: null })).acao).toBe('aguardar');
     expect(decidirLance(cenario({ estrategia: 'iminencia', segundosRestantes: 30, melhorLance: 54 })).acao).toBe('encerrar');
+  });
+});
+
+describe('desempatar no 1º lugar — a margem é a distância máxima até o 1º', () => {
+  beforeAll(() => {
+    if (!liberados.includes('__teste__')) liberados.push('__teste__');
+  });
+  // cenario(): nosso lance 100, 1º colocado 90 → distância de R$ 10.
+  const desempate = (over: Record<string, unknown> = {}) =>
+    cenario({ estrategia: 'desempatar_1o', margemDesempate: 10, ...over });
+
+  it('com o 1º dentro da margem, cobre com o passo de sempre', () => {
+    const d = decidirLance(desempate());
+    expect(d.acao).toBe('lance');
+    expect(d.valor).toBe(85); // 90 − decremento de 5
+    expect(d.motivo).toMatch(/desempatar no 1o lugar/);
+  });
+
+  it('com o 1º além da margem, não persegue', () => {
+    const d = decidirLance(desempate({ melhorLance: 80 })); // distância de R$ 20
+    expect(d.acao).toBe('aguardar');
+    expect(d.valor).toBeNull();
+    expect(d.motivo).toMatch(/nao persegue/);
+    expect(d.motivo).toContain('R$ 20.00');
+  });
+
+  it('sem decremento, o passo é o intervalo do edital — a margem não vira passo', () => {
+    const d = decidirLance(desempate({ decrementoMin: 0, decrementoPercentual: 0, intervaloMinimo: 0.01 }));
+    expect(d.valor).toBe(89.99);
+  });
+
+  it('sem margem configurada, aguarda e diz por quê', () => {
+    for (const margem of [null, undefined, 0, -1]) {
+      const d = decidirLance(desempate({ margemDesempate: margem }));
+      expect(d.acao).toBe('aguardar');
+      expect(d.motivo).toMatch(/margem/);
+    }
+  });
+
+  it('sem lance nosso no item, não há distância para medir', () => {
+    const d = decidirLance(desempate({ valorAtual: null }));
+    expect(d.acao).toBe('aguardar');
+    expect(d.motivo).toMatch(/distancia/);
+  });
+
+  it('as guardas de sempre continuam: liderança, leitura e piso', () => {
+    expect(decidirLance(desempate({ souLider: true })).acao).toBe('aguardar');
+    expect(decidirLance(desempate({ melhorLance: null })).acao).toBe('aguardar');
+    expect(decidirLance(desempate({ valorAtual: 58, melhorLance: 54 })).acao).toBe('encerrar');
+  });
+});
+
+describe('desempate de ME/EPP convocado pelo portal', () => {
+  beforeAll(() => {
+    if (!liberados.includes('__teste__')) liberados.push('__teste__');
+  });
+
+  it('convocada, cobre o 1º uma vez', () => {
+    const d = decidirLance(cenario({ fase: 'desempate_me_epp', elegivel: true }));
+    expect(d.acao).toBe('lance');
+    expect(d.valor).toBe(85);
+    expect(d.motivo).toMatch(/desempate de ME\/EPP/);
+    expect(decidirLance(cenario({ fase: 'desempate_me_epp', elegivel: true, lanceDesempateEnviado: true })).acao).toBe('aguardar');
+  });
+
+  it('sem convocação confirmada, aguarda', () => {
+    expect(decidirLance(cenario({ fase: 'desempate_me_epp', elegivel: false })).acao).toBe('aguardar');
+    expect(decidirLance(cenario({ fase: 'desempate_me_epp', elegivel: null })).acao).toBe('aguardar');
+  });
+
+  it('a margem do desempatar no 1º lugar vale também aqui', () => {
+    const d = decidirLance(cenario({ fase: 'desempate_me_epp', elegivel: true, estrategia: 'desempatar_1o', margemDesempate: 5 }));
+    expect(d.acao).toBe('aguardar'); // distância de R$ 10, margem de R$ 5
   });
 });
 
