@@ -503,6 +503,16 @@ serve(async (req) => {
         );
       }
 
+      // O CNPJ da empresa é como o robô se acha na classificação pública do
+      // item e responde "somos o líder". Falha de leitura não barra o envio:
+      // sem CNPJ o robô só não afirma liderança, e decidirLance trata isso
+      // como motivo para não dar lance.
+      let cnpjEmpresa: string | null = null;
+      if (empresaDaSessao) {
+        const { data: emp } = await supabase.from("empresas").select("cnpj").eq("id", empresaDaSessao).maybeSingle();
+        cnpjEmpresa = emp?.cnpj ?? null;
+      }
+
       // Log the outgoing webhook
       await supabase.from("webhook_log").insert({
         user_id: user.id,
@@ -536,6 +546,7 @@ serve(async (req) => {
             // entre orgaos. Fora do sessaoData de proposito — nao e coluna da
             // sessao, e assim o envio nao depende de migration.
             uasg: body.uasg ?? null,
+            cnpj_empresa: cnpjEmpresa,
             // O ALVO DENTRO DO PROCESSO.
             //
             // `sessaoData` ja leva `tipo_disputa`; os itens vao aqui porque
@@ -774,6 +785,12 @@ serve(async (req) => {
           continue;
         }
 
+        let cnpjDaEmpresa: string | null = null;
+        if (d.empresa_id) {
+          const { data: emp } = await supabase.from("empresas").select("cnpj").eq("id", d.empresa_id).maybeSingle();
+          cnpjDaEmpresa = emp?.cnpj ?? null;
+        }
+
         // Os itens são gravados no vocabulário da tela (camelCase) e viajam no
         // do servidor (snake_case) — a mesma tradução que o envio manual faz
         // antes de chamar esta função.
@@ -857,6 +874,7 @@ serve(async (req) => {
               portal_id: portalAgente,
               credenciais_portal: credenciais,
               uasg: d.uasg ?? null,
+              cnpj_empresa: cnpjDaEmpresa,
               itens: itensParaSessao,
             }),
             signal: AbortSignal.timeout(60000),
