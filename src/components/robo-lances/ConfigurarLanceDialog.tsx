@@ -29,7 +29,7 @@ import { useLinkedEditalSource } from '@/hooks/useLinkedEditalSource';
 import LimparItensExtraidosButton from '@/components/licitacoes/LimparItensExtraidosButton';
 import { PORTAIS_ROBO, idDoPortal } from '@/lib/robo/portais';
 import { ESTRATEGIAS_DO_ITEM, type EstrategiaDoItem } from '@/lib/robo/estrategia-do-item';
-import { agendamentoDaDisputa } from '@/lib/robo/agendamento';
+import { agendamentoDaDisputa, sessaoDoProcesso, HORA_MINIMA_ESPERADA, type SessaoDoProcesso } from '@/lib/robo/agendamento';
 import { cn } from '@/lib/utils';
 
 // A lista mora em `src/lib/robo/portais.ts`, autoridade unica compartilhada com
@@ -374,6 +374,8 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
   const [modoAutomatico, setModoAutomatico] = useState(editingLance?.modoAutomatico ?? true);
   const [horario, setHorario] = useState(editingLance?.horario || '');
   const [dataSessao, setDataSessao] = useState(editingLance?.dataSessao || '');
+  // A sessão puxada do processo no último import — só para a tela dizer de onde veio.
+  const [sessaoPuxada, setSessaoPuxada] = useState<SessaoDoProcesso | null>(null);
 
   // Step 2 fields
   const [tipoDisputa, setTipoDisputa] = useState<'item' | 'lote'>(editingLance?.tipoDisputa || 'item');
@@ -742,20 +744,15 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
     setPortal(lic.portal || '');
     setLicitacaoIdRef(lic.id);
 
-    // Horário da sessão de disputa = data_abertura (início do pregão).
-    // Fallback para data_encerramento (prazo de envio de propostas) só quando abertura não existir.
-    const fonteHorario = lic.data_abertura || lic.data_encerramento;
-    if (fonteHorario) {
-      try {
-        const d = new Date(fonteHorario);
-        if (!isNaN(d.getTime())) {
-          // Timestamps do banco chegam em UTC; getUTCHours preserva o horário
-          // original sem conversão para o fuso local do navegador
-          setHorario(`${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`);
-        }
-      } catch {
-        // ignore
-      }
+    // Data E horário da sessão vêm do processo, lidos em Brasília (Fase 8,
+    // 16/09/2026). Antes vinha só a hora, lida em UTC: sem a data o robô não
+    // entrava sozinho, e a hora saía 3 horas atrasada nos processos gravados
+    // com o fuso certo. A regra e os casos estão em `sessaoDoProcesso`.
+    const sessao = sessaoDoProcesso(lic);
+    setSessaoPuxada(sessao);
+    if (sessao) {
+      setDataSessao(sessao.dataSessao);
+      if (sessao.horario) setHorario(sessao.horario);
     }
 
     try {
@@ -856,6 +853,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
     setIntervaloSegundos(editingLance?.intervaloSegundos?.toString() || '30'); setMaxLances(editingLance ? (editingLance.maxLances ? String(editingLance.maxLances) : '') : '20');
     setModoAutomatico(editingLance?.modoAutomatico ?? true); setHorario(editingLance?.horario || '');
     setDataSessao(editingLance?.dataSessao || '');
+    setSessaoPuxada(null);
     setItens(editingLance?.itens || []); setTipoDisputa(editingLance?.tipoDisputa || 'item'); setStep(editingLance ? 1 : 0);
     setSelectedLicId(null); setSearchLic(''); setStatusFilter('todos'); setLicitacaoIdRef(editingLance?.licitacaoId);
     setTrocarProcesso(false);
@@ -1396,7 +1394,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                   id="disputa-data"
                   type="date"
                   value={dataSessao}
-                  onChange={(e) => setDataSessao(e.target.value)}
+                  onChange={(e) => { setDataSessao(e.target.value); setSessaoPuxada(null); }}
                   className="mt-1 w-full"
                 />
                 <p className="mt-1 text-xs text-muted-foreground">
@@ -1406,9 +1404,22 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
               </div>
               <div>
                 <Label htmlFor="disputa-horario">Horário da Sessão</Label>
-                <Input id="disputa-horario" type="time" value={horario} onChange={(e) => setHorario(e.target.value)} className="mt-1 w-full sm:w-40" />
+                <Input id="disputa-horario" type="time" value={horario} onChange={(e) => { setHorario(e.target.value); setSessaoPuxada(null); }} className="mt-1 w-full sm:w-40" />
               </div>
             </div>
+            {/* De onde veio a data que a pessoa não digitou — e o pedido de
+                conferência quando o horário parece a importação com o fuso
+                errado. Some quando a pessoa mexe no campo. */}
+            {sessaoPuxada && (
+              <p className={cn('text-xs', sessaoPuxada.horarioIncomum ? 'text-warning-ink' : 'text-muted-foreground')} role="status">
+                {sessaoPuxada.fonte === 'abertura'
+                  ? 'Data e horário puxados da abertura do processo.'
+                  : 'Data e horário puxados do fim do prazo de propostas do processo — no Compras.gov, a sessão abre logo em seguida.'}
+                {sessaoPuxada.horarioIncomum
+                  ? ` Horário antes das ${HORA_MINIMA_ESPERADA}h: confira no edital. Parte dos processos importados do PNCP está com o horário 3 horas adiantado.`
+                  : sessaoPuxada.horario ? ' Confira no edital.' : ' O processo não tem horário: preencha.'}
+              </p>
+            )}
             {/* O que o agendador vai fazer com o que está preenchido — dito na
                 hora, e não descoberto no dia do pregão. Só horário, ou só data,
                 não agenda nada. */}

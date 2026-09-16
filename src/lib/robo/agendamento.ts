@@ -67,3 +67,75 @@ export function agendamentoDaDisputa(entrada: {
   if (temHorario) return { tipo: 'so-horario', texto: horario };
   return { tipo: 'sem-agenda' };
 }
+
+// ── A sessão a partir do processo ──────────────────────────────────────────
+
+const FUSO_DA_SESSAO = 'America/Sao_Paulo';
+const SO_DATA = /^\d{4}-\d{2}-\d{2}$/;
+const PARTES_EM_BRASILIA = new Intl.DateTimeFormat('en-CA', {
+  timeZone: FUSO_DA_SESSAO,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+});
+
+/** Antes disto, o horário é incomum para sessão pública e a tela pede conferência. */
+export const HORA_MINIMA_ESPERADA = 8;
+
+export type SessaoDoProcesso = {
+  /** `AAAA-MM-DD`, no formato do campo de data do formulário. */
+  dataSessao: string;
+  /** `HH:MM` em Brasília; nulo quando o processo só tem a data. */
+  horario: string | null;
+  /**
+   * De qual coluna veio. Em processo importado do PNCP a `data_abertura`
+   * costuma estar vazia e a data que existe é o fim do prazo de propostas —
+   * no Compras.gov, praticamente a hora da sessão (7/2026: propostas até 08:59,
+   * sessão às 09:00).
+   */
+  fonte: 'abertura' | 'encerramento';
+  /** Horário antes das 8h: provável importação com o fuso errado (3 horas a menos). */
+  horarioIncomum: boolean;
+};
+
+/**
+ * Data e horário da sessão, lidos do processo (Fase 8, 16/09/2026).
+ *
+ * Antes, o cadastro da disputa puxava só a HORA do processo, e lia a hora em
+ * UTC. Sem a data, o robô não entra sozinho; e ler em UTC atrasa em 3 horas
+ * todo processo gravado com o fuso certo (pasta manual, crawler do PNCP) — o
+ * robô chegaria depois de a sessão abrir.
+ *
+ * Aqui o instante gravado é lido em Brasília, como o resto do módulo lê
+ * (`aberturaEmBrasilia`). Parte dos processos importados do PNCP está gravada
+ * com o horário de Brasília como se fosse UTC e aparece 3 horas adiantada;
+ * por isso o horário antes das 8h volta marcado, e a tela pede conferência.
+ * Errar para antes deixa o robô esperando na sala; errar para depois perderia
+ * o pregão.
+ */
+export function sessaoDoProcesso(processo: {
+  data_abertura?: string | null;
+  data_encerramento?: string | null;
+}): SessaoDoProcesso | null {
+  const fonte = processo.data_abertura ? 'abertura' : processo.data_encerramento ? 'encerramento' : null;
+  if (!fonte) return null;
+  const valor = String(fonte === 'abertura' ? processo.data_abertura : processo.data_encerramento).trim();
+
+  // Coluna só com data não passa por `new Date`: seria meia-noite UTC, e em
+  // Brasília viraria o dia anterior.
+  if (SO_DATA.test(valor)) return { dataSessao: valor, horario: null, fonte, horarioIncomum: false };
+
+  const instante = new Date(valor);
+  if (Number.isNaN(instante.getTime())) return null;
+  const partes = Object.fromEntries(PARTES_EM_BRASILIA.formatToParts(instante).map((p) => [p.type, p.value]));
+  const horaDoDia = Number(partes.hour);
+  return {
+    dataSessao: `${partes.year}-${partes.month}-${partes.day}`,
+    horario: `${partes.hour}:${partes.minute}`,
+    fonte,
+    horarioIncomum: horaDoDia < HORA_MINIMA_ESPERADA,
+  };
+}
