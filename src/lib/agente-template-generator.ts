@@ -732,7 +732,7 @@ app.listen(PORT, BIND_HOST, () => {
   'src/session-manager.js': `const { launchBrowser } = require('./browser');
 const { sendCallback } = require('./callback');
 const { getPortal } = require('./portals');
-const { decidirLance, conferirItens, proximaLeituraMs } = require('./estrategia');
+const { decidirLance, conferirItens, proximaLeituraMs, itensParaLer } = require('./estrategia');
 const interacao = require('./interacao-humana');
 const os = require('os');
 const fs = require('fs');
@@ -1425,13 +1425,21 @@ class SessionManager {
         // outros.
         const itens = Array.isArray(session.itens) && session.itens.length ? session.itens : [{}];
         session.porItem = session.porItem || {};
+        const chaveDe = (it, i) => (it && it.numero !== undefined && it.numero !== null ? String(it.numero) : 'indice-' + i);
+        // Prioridade: com item em disputa, os que aguardam sao lidos no maximo
+        // a cada minuto (itensParaLer, testada) — a rodada fica curta para o
+        // item que decide o preco.
+        const aLer = new Set(itensParaLer(
+          itens.map((it, i) => ({ chave: chaveDe(it, i), ...(session.porItem[chaveDe(it, i)] || {}) })),
+          Date.now(),
+        ));
         let proximaDaRodada = null;
         for (let indice = 0; indice < itens.length; indice++) {
           if (!vivo()) return;
           const item = itens[indice] || {};
-          const chave = item.numero !== undefined && item.numero !== null ? String(item.numero) : 'indice-' + indice;
+          const chave = chaveDe(item, indice);
           const estadoDoItem = session.porItem[chave] = session.porItem[chave] || {};
-          if (estadoDoItem.encerrado) continue;
+          if (estadoDoItem.encerrado || !aLer.has(chave)) continue;
           const decisaoDoItem = await this._rodadaDoItem(session, item, indice, itens.length, estadoDoItem);
           if (!decisaoDoItem) continue;
           if (Number.isFinite(decisaoDoItem.proxima)) {
@@ -1487,6 +1495,9 @@ class SessionManager {
       const sala = (await session.portal.lerSala?.(numero)) || {};
       const nossoNoPortal = (await session.portal.nossoLance?.(numero)) ?? null;
       const classificacao = (await session.portal.resumoDaClassificacao?.(numero)) || null;
+      // Para a prioridade de leitura da proxima rodada.
+      estadoDoItem.fase = sala.fase || null;
+      estadoDoItem.ultimaLeituraEm = Date.now();
 
       // A SESSAO ACABOU ENQUANTO ESTE ITEM ERA LIDO (16/09/2026, 16:48:22): o
       // encerramento fechou a aba no meio da leitura, a leitura voltou vazia, e
@@ -1934,6 +1945,14 @@ async function launchBrowser(cnpj, opcoes = {}) {
     // de automacao numa VPS dedicada: o custo de seguranca nao se aplica.
     '--disable-site-isolation-trials',
     '--disable-features=IsolateOrigins,site-per-process',
+    // ABA EM SEGUNDO PLANO NAO DESACELERA (16/09/2026, Fase 7). Com uma aba por
+    // pregao, so uma fica na frente; sem isto o Chrome espaca timers e
+    // renderizacao das outras — na iminencia, um lance atrasado. O Puppeteer
+    // 22.15 ja passa as tres por padrao (conferido na VPS); escritas aqui para
+    // uma atualizacao dele nao as tirar em silencio.
+    '--disable-background-timer-throttling',
+    '--disable-backgrounding-occluded-windows',
+    '--disable-renderer-backgrounding',
   ];
 
   // Para certificado A3 via PKCS#11

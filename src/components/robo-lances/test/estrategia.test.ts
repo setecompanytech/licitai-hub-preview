@@ -590,3 +590,30 @@ describe('conferirItens', () => {
     expect(r.divergencias).toHaveLength(0);
   });
 });
+
+describe('itensParaLer — prioridade dos itens em disputa', () => {
+  let itensParaLer: (itens: Array<Record<string, unknown>>, agora: number) => string[];
+  beforeAll(() => {
+    const module = { exports: {} as { itensParaLer: typeof itensParaLer } };
+    new vm.Script(ESTRATEGIA_FILES['src/estrategia.js'], { filename: 'estrategia.js' }).runInNewContext({ module, exports: module.exports });
+    itensParaLer = module.exports.itensParaLer;
+  });
+
+  it('sem item em disputa (ou sem fase lida, como hoje): todos a cada rodada', () => {
+    expect(itensParaLer([{ chave: '1' }, { chave: '2', fase: 'aguardando', ultimaLeituraEm: 1000 }], 2000)).toEqual(['1', '2']);
+  });
+
+  it('com item em disputa: ele sempre; os outros só se a última leitura passou de 1 minuto', () => {
+    const itens = [
+      { chave: '1', fase: 'aberta', ultimaLeituraEm: 99_000 },
+      { chave: '2', fase: 'aguardando', ultimaLeituraEm: 90_000 },
+      { chave: '3', fase: null, ultimaLeituraEm: 30_000 },
+      { chave: '4', fase: 'aguardando' },
+    ];
+    expect(itensParaLer(itens, 100_000)).toEqual(['1', '3', '4']);
+  });
+
+  it('item encerrado não é lido', () => {
+    expect(itensParaLer([{ chave: '1', encerrado: true }, { chave: '2' }], 0)).toEqual(['2']);
+  });
+});

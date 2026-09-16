@@ -470,7 +470,41 @@ function conferirItens(nossos, doPortal) {
   };
 }
 
+/**
+ * QUAIS ITENS LER NESTA RODADA (16/09/2026, Fase 7).
+ *
+ * O robo le item por item, e cada leitura custa alguns segundos de pagina. Com
+ * um item em disputa (lance correndo, iminencia), reler a cada rodada os que
+ * ainda aguardam atrasaria justamente o que decide o preco: 4 itens dao uma
+ * rodada de ~14 s, 40 itens passariam de 2 minutos.
+ *
+ * - item EM DISPUTA (fase aberta, encerramento aleatorio, fechada, desempate):
+ *   toda rodada;
+ * - os outros: no maximo a cada LEITURA_DE_ITEM_FORA_DA_DISPUTA_MS, mas SO
+ *   enquanto houver algum item em disputa;
+ * - nenhum item em disputa (ou a fase ainda nao e lida, como hoje): todos a
+ *   cada rodada, como antes.
+ * Item encerrado nao e lido.
+ *
+ * @param {Array<{chave: string, fase?: string|null, ultimaLeituraEm?: number, encerrado?: boolean}>} itens
+ * @param {number} agora ms
+ * @returns {string[]} as chaves a ler, na ordem recebida
+ */
+const FASES_EM_DISPUTA = ['aberta', 'encerramento_aleatorio', 'fechada', 'desempate_me_epp'];
+const LEITURA_DE_ITEM_FORA_DA_DISPUTA_MS = 60000;
+
+function itensParaLer(itens, agora) {
+  const vivos = (itens || []).filter((i) => i && !i.encerrado);
+  const emDisputa = (i) => FASES_EM_DISPUTA.includes(i.fase);
+  if (!vivos.some(emDisputa)) return vivos.map((i) => i.chave);
+  return vivos
+    .filter((i) => emDisputa(i) || !Number.isFinite(i.ultimaLeituraEm) || agora - i.ultimaLeituraEm >= LEITURA_DE_ITEM_FORA_DA_DISPUTA_MS)
+    .map((i) => i.chave);
+}
+
 module.exports = {
+  itensParaLer,
+  LEITURA_DE_ITEM_FORA_DA_DISPUTA_MS,
   decidirLance,
   podeEnviarLance,
   conferirItens,

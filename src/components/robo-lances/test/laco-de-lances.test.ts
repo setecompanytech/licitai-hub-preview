@@ -475,6 +475,27 @@ describe('laço de lances', () => {
     expect(enviados).toEqual([]);
   });
 
+  it('com um item em disputa, o que aguarda é lido no máximo a cada minuto — a rodada fica curta', async () => {
+    const { gerente } = montar(false);
+    const lidos: number[] = [];
+    const { portal } = portalFalso({
+      lerSala: async (n: number) => (n === 1 ? { fase: 'aberta', segundosRestantes: 90 } : { fase: 'aguardando' }),
+      lerMelhorLance: async (n: number) => { lidos.push(n); return 90; },
+    });
+    const s = sessao(portal, { itens: [{ numero: 1, valor_minimo: 60 }, { numero: 2, valor_minimo: 60 }] });
+    gerente.sessions.set('s1', s);
+    gerente._startBiddingLoop(s);
+
+    await vi.advanceTimersByTimeAsync(30_000); // 1ª rodada: sem fase conhecida ainda, lê os dois
+    expect(lidos).toEqual([1, 2]);
+    await vi.advanceTimersByTimeAsync(3_000 * 10); // 10 rodadas rápidas (iminência do item 1)
+    expect(lidos.filter((n) => n === 1)).toHaveLength(11);
+    expect(lidos.filter((n) => n === 2)).toHaveLength(1); // o 2 ainda não completou 1 minuto
+    await vi.advanceTimersByTimeAsync(3_000 * 11); // passa de 1 minuto desde a leitura do 2
+    expect(lidos.filter((n) => n === 2)).toHaveLength(2);
+    s.status = 'encerrado';
+  });
+
   it('pausar e retomar no meio de uma rodada não deixa dois laços vivos', async () => {
     const { gerente } = montar(false);
     let emCurso = 0;
