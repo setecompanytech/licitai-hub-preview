@@ -1488,6 +1488,12 @@ class SessionManager {
       const nossoNoPortal = (await session.portal.nossoLance?.(numero)) ?? null;
       const classificacao = (await session.portal.resumoDaClassificacao?.(numero)) || null;
 
+      // A SESSAO ACABOU ENQUANTO ESTE ITEM ERA LIDO (16/09/2026, 16:48:22): o
+      // encerramento fechou a aba no meio da leitura, a leitura voltou vazia, e
+      // o estado vazio ia ao Praefectus apagando o 8o lugar do item. O que se
+      // leu depois do fim nao vale nada — nem estado, nem lance.
+      if (session.status !== 'ativo') return null;
+
       // LANCE DE CONCORRENTE: so quando o melhor lance MUDA, e nao e nosso.
       // A primeira leitura do item nao e lance novo: e o retrato de quando o
       // robo chegou.

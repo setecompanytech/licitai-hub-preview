@@ -1490,6 +1490,10 @@ class ComprasGovPortal extends BasePortal {
     const item = Number(numero) || this.itemAlvo;
     if (!item || !this.compraId) return null;
     const propostas = await this.lerPropostasDoItem(item);
+    // Lista vazia e leitura que nao aconteceu (aba fechada, pagina que nao
+    // carregou), e nao "a empresa nao tem proposta": em 16/09 isso apagou o 8o
+    // lugar do item 1 na tela. Sem lista, nao se afirma nada.
+    if (!propostas.length) return null;
     const validas = propostas.filter((p) => !p.desclassificada);
     const meu = String(this.cnpjEmpresa || '').replace(/\\D/g, '');
     const minha = meu ? propostas.find((p) => p.cnpj.replace(/\\D/g, '') === meu) : null;

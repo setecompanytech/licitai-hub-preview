@@ -18,6 +18,7 @@ import { generateAgentTemplate } from '@/lib/agente-template-generator';
 type Chamada = { tipo: string; dados: Record<string, unknown> };
 type Sessao = Record<string, unknown> & { status: string; rodada: number };
 type Gerente = {
+  endSessionPorTeste?: () => void;
   _startBiddingLoop: (s: Sessao) => void;
   pauseSession: (id: string) => unknown;
   resumeSession: (id: string) => unknown;
@@ -450,6 +451,28 @@ describe('laço de lances', () => {
     await vi.advanceTimersByTimeAsync(30_000 + 3_000 * 4); // 5 rodadas, estados iguais
     expect(chamadas.filter((c) => c.tipo === 'estado-da-sala').map((c) => c.dados.item)).toEqual([1, 2]);
     s.status = 'encerrado';
+  });
+
+  it('sessão encerrada no meio da leitura de um item: nada do que foi lido depois vai ao Praefectus', async () => {
+    const { gerente, chamadas } = montar(true);
+    const { portal, enviados } = portalFalso({
+      lerMelhorLance: async () => {
+        // o encerramento chega enquanto a página do item carrega
+        gerente.endSessionPorTeste?.();
+        await new Promise((r) => setTimeout(r, 1_000));
+        return null;
+      },
+      resumoDaClassificacao: async () => ({ validas: 0, desclassificadas: 0, tem_proposta: false, posicao: null, nossa_desclassificada: false }),
+    });
+    const s = sessao(portal);
+    gerente.sessions.set('s1', s);
+    (gerente as unknown as { endSessionPorTeste: () => void }).endSessionPorTeste = () => { gerente.sessions.get('s1')!.status = 'encerrado'; };
+    gerente._startBiddingLoop(s);
+
+    await vi.advanceTimersByTimeAsync(31_000);
+
+    expect(chamadas.filter((c) => c.tipo === 'estado-da-sala')).toHaveLength(0);
+    expect(enviados).toEqual([]);
   });
 
   it('pausar e retomar no meio de uma rodada não deixa dois laços vivos', async () => {

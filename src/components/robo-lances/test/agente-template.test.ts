@@ -407,7 +407,8 @@ describe('Compras.gov: propostas do item e desclassificadas', () => {
       lerPropostasDoItem: (n: number) => Promise<Proposta[]>;
       melhorLanceDoItem: (n: number) => Promise<number | null>;
       souLiderNoItem: (n: number, cnpj: string) => Promise<boolean | null>;
-      nossoLance: () => Promise<number | null>;
+      nossoLance: (n?: number) => Promise<number | null>;
+      resumoDaClassificacao: (n?: number) => Promise<Record<string, unknown> | null>;
     };
     propostasNoTexto: (t: string) => Proposta[];
   };
@@ -472,5 +473,15 @@ describe('Compras.gov: propostas do item e desclassificadas', () => {
   it('empresa que é a melhor válida é líder, mesmo com desclassificadas acima', async () => {
     const p = portalCom(item5);
     expect(await p.souLiderNoItem(5, '40.557.194/0001-45')).toBe(true);
+  });
+
+  it('resumo da classificação por item: posição da empresa, válidas e desclassificadas', async () => {
+    expect(await portalCom(item1).resumoDaClassificacao(1)).toMatchObject({ tem_proposta: true, posicao: 8, nossa_desclassificada: false });
+    expect(await portalCom(item5).resumoDaClassificacao(5)).toMatchObject({ validas: 7, desclassificadas: 6, tem_proposta: true, nossa_desclassificada: true });
+  });
+
+  it('leitura que não trouxe proposta nenhuma é "não sei", e não "a empresa não tem proposta"', async () => {
+    // 16/09, 16:48:22: a aba fechou no meio da leitura e o item 1 virou "sem proposta" na tela.
+    expect(await portalCom('').resumoDaClassificacao(1)).toBeNull();
   });
 });
