@@ -2989,7 +2989,7 @@ async function enviarLembretesDeProntidao(
       sessaoConferidaAs,
       lanceLiberado,
     });
-    const texto = textoDoLembrete({ qual, edital: d.edital, portalNome: d.portal, inicioSessao: inicio, agora, pendencias });
+    const texto = textoDoLembrete({ qual, edital: d.edital, portalNome: d.portal, inicioSessao: inicio, agora, pendencias, sessaoGovBr, sessaoConferidaAs });
     const link = `/robo-lances/disputa/${d.id}`;
 
     // Processo é da empresa (princípio 2): quem opera a empresa também é lembrado.

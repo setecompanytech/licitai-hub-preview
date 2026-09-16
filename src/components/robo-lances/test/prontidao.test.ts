@@ -121,6 +121,11 @@ describe('textoDoLembrete', () => {
     expect(t.mensagem).not.toContain('Conferido:');
   });
 
+  it('com o vigia confirmando, o "Conferido" diz que a sessão do gov.br está ativa', () => {
+    const t = textoDoLembrete({ qual: 'uma-hora', edital: '07/2026', inicioSessao: SESSAO, agora: antes(60), pendencias: [], sessaoGovBr: 'logado', sessaoConferidaAs: '15:19' });
+    expect(t.mensagem).toContain('Conferido: robô ligado, credencial do portal cadastrada, sessão do gov.br ativa (conferida às 15:19) e itens prontos.');
+  });
+
   it('1 hora antes, pronto', () => {
     const t = textoDoLembrete({ qual: 'uma-hora', edital: '07/2026', inicioSessao: SESSAO, agora: antes(60), pendencias: [] });
     expect(t.titulo).toBe('⏰ Pregão em 1 hora — 07/2026');

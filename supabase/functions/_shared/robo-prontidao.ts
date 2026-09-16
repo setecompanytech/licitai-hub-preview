@@ -123,6 +123,9 @@ export function textoDoLembrete(entrada: {
   inicioSessao: Date;
   agora: Date;
   pendencias: Pendencia[];
+  /** Para o "Conferido" dizer que a sessão do gov.br está ativa, quando o vigia confirmou. */
+  sessaoGovBr?: SessaoGovBr;
+  sessaoConferidaAs?: string | null;
 }): { titulo: string; mensagem: string; tipo: "alerta" | "lembrete" } {
   const quando = quandoEmBrasilia(entrada.inicioSessao, entrada.agora);
   const hora = horaEmBrasilia(entrada.inicioSessao);
@@ -141,7 +144,12 @@ export function textoDoLembrete(entrada: {
     `${Quando} às ${hora} é a sessão do pregão ${entrada.edital}${entrada.portalNome ? ` (${entrada.portalNome})` : ""}. O robô entra sozinho às ${entra}.`,
   ];
   if (graves.length) partes.push(`Antes, resolva: ${graves.map((p) => p.texto).join("; ")}.`);
-  else partes.push("Conferido: robô ligado, credencial do portal cadastrada e itens prontos.");
+  else {
+    const govBr = entrada.sessaoGovBr === "logado"
+      ? `, sessão do gov.br ativa${entrada.sessaoConferidaAs ? ` (conferida às ${entrada.sessaoConferidaAs})` : ""}`
+      : "";
+    partes.push(`Conferido: robô ligado, credencial do portal cadastrada${govBr} e itens prontos.`);
+  }
   if (avisos.length) partes.push(`Atenção: ${avisos.map((p) => p.texto).join("; ")}.`);
 
   return { titulo, mensagem: partes.join(" "), tipo: graves.length ? "alerta" : "lembrete" };
