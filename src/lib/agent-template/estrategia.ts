@@ -519,7 +519,30 @@ function itensParaLer(itens, agora) {
     .map((i) => i.chave);
 }
 
+/**
+ * A FASE DE LANCES DO ITEM JA ACABOU NO PORTAL? (16/09/2026)
+ *
+ * A pagina publica da compra mostra a situacao de cada item. No 7/2026, dois
+ * dias depois da sessao, todos estavam "Aguardando julgamento". Sem ler isso o
+ * robo nao percebia o fim — a fase da sala ainda nao e lida — e ficava na sala
+ * ate o limite de 10 horas, ocupando uma das 6 vagas.
+ *
+ * So palavras de fase POSTERIOR aos lances. "Encerramento aleatorio" e
+ * "Disputa encerrada" (fim da etapa aberta, com a fechada por vir) NAO contam.
+ */
+const SITUACOES_DEPOIS_DOS_LANCES = [
+  'julgamento', 'aceito', 'aceita', 'adjudicad', 'homologad', 'habilitad', 'habilitação', 'habilitacao',
+  'recurso', 'deserto', 'fracassad', 'cancelad', 'revogad', 'anulad',
+];
+
+function faseDeLancesEncerrada(situacao) {
+  const s = String(situacao || '').toLowerCase();
+  if (!s) return false;
+  return SITUACOES_DEPOIS_DOS_LANCES.some((p) => s.indexOf(p) >= 0);
+}
+
 module.exports = {
+  faseDeLancesEncerrada,
   itensParaLer,
   LEITURA_DE_ITEM_FORA_DA_DISPUTA_MS,
   decidirLance,

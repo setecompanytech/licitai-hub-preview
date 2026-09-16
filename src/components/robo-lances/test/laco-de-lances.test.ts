@@ -205,6 +205,42 @@ describe('laço de lances', () => {
     s.status = 'encerrado';
   });
 
+  it('a fase de lances acabou no portal: lê a sala uma vez, depois encerra com a situação como motivo', async () => {
+    const { gerente, chamadas } = montar(true);
+    let leiturasDeSituacao = 0;
+    const { portal } = portalFalso({
+      lerSituacoesDosItens: async () => { leiturasDeSituacao += 1; return { 1: 'Aguardando julgamento' }; },
+    });
+    const s = sessao(portal);
+    gerente.sessions.set('s1', s);
+    gerente._startBiddingLoop(s);
+
+    await vi.advanceTimersByTimeAsync(30_000 * 3);
+
+    expect(chamadas.some((c) => c.tipo === 'estado-da-sala')).toBe(true);
+    expect(leiturasDeSituacao).toBe(1);
+    expect(s.status).toBe('encerrado');
+    expect(chamadas.find((c) => c.tipo === 'sessao-encerrada')?.dados.motivo).toMatch(/fase de lances terminou no portal \(situacao: Aguardando julgamento\)/);
+  });
+
+  it('item ainda em disputa no portal: segue, e a situação é relida só a cada 3 minutos', async () => {
+    const { gerente } = montar(true);
+    let leiturasDeSituacao = 0;
+    const { portal } = portalFalso({
+      lerSituacoesDosItens: async () => { leiturasDeSituacao += 1; return { 1: 'Em disputa' }; },
+      souLider: async () => true,
+    });
+    const s = sessao(portal);
+    gerente.sessions.set('s1', s);
+    gerente._startBiddingLoop(s);
+
+    await vi.advanceTimersByTimeAsync(30_000 * 8);
+
+    expect(s.status).toBe('ativo');
+    expect(leiturasDeSituacao).toBe(2);
+    s.status = 'encerrado';
+  });
+
   it('o teto conta lances enviados, e o encerramento diz o motivo', async () => {
     const { gerente, chamadas } = montar(true);
     let melhor = 90;

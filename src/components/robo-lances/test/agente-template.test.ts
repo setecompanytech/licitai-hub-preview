@@ -322,6 +322,7 @@ describe('Compras.gov: modo de disputa e intervalo mínimo, pelo texto da compra
   };
   let Portal: {
     detalhesDoItemNoTexto: (texto: string, numero: number) => Detalhes;
+    situacoesDosItensNoTexto: (texto: string) => Record<string, string>;
     modoDeDisputa: (texto: string) => string | null;
   };
 
@@ -357,6 +358,11 @@ describe('Compras.gov: modo de disputa e intervalo mínimo, pelo texto da compra
 
   it('reconhece os outros tratamentos como cabeçalho de item', () => {
     expect(Portal.detalhesDoItemNoTexto(CAPTURA_7_2026, 4).tratamento).toBe('Item de participação aberta');
+    // A situação de todos os itens da página, de uma vez (16/09/2026: é o que
+    // encerra o item quando o portal já passou da fase de lances).
+    expect(Portal.situacoesDosItensNoTexto(CAPTURA_7_2026)).toEqual({
+      1: 'Aguardando julgamento', 2: 'Aguardando julgamento', 4: 'Aguardando julgamento', 5: 'Aguardando julgamento',
+    });
     expect(Portal.detalhesDoItemNoTexto(CAPTURA_7_2026, 5).tratamento).toBe('Cota reservada ME/EPP do item 4');
   });
 

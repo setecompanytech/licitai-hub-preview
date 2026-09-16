@@ -763,7 +763,10 @@ app.listen(PORT, BIND_HOST, () => {
   'src/session-manager.js': `const { launchBrowser } = require('./browser');
 const { sendCallback } = require('./callback');
 const { getPortal } = require('./portals');
-const { decidirLance, conferirItens, proximaLeituraMs, itensParaLer } = require('./estrategia');
+const { decidirLance, conferirItens, proximaLeituraMs, itensParaLer, faseDeLancesEncerrada } = require('./estrategia');
+
+// De quanto em quanto tempo o laco confere a situacao dos itens na pagina da compra.
+const MS_ENTRE_LEITURAS_DE_SITUACAO = 3 * 60 * 1000;
 const interacao = require('./interacao-humana');
 const os = require('os');
 const fs = require('fs');
@@ -1468,6 +1471,31 @@ class SessionManager {
         const itens = Array.isArray(session.itens) && session.itens.length ? session.itens : [{}];
         session.porItem = session.porItem || {};
         const chaveDe = (it, i) => (it && it.numero !== undefined && it.numero !== null ? String(it.numero) : 'indice-' + i);
+
+        // 0. O PORTAL JA ENCERROU A FASE DE LANCES DO ITEM? (16/09/2026) A
+        // situacao na pagina da compra ("Aguardando julgamento", "Homologado"...)
+        // encerra o item — sem isso o robo ficava ate o limite de horas. Da
+        // segunda rodada em diante, a cada 3 minutos: a primeira leitura da
+        // sala sempre chega ao Praefectus, com a posicao da empresa.
+        if (session.rodada >= 2 && typeof session.portal.lerSituacoesDosItens === 'function'
+          && Date.now() - (session.situacoesLidasEm || 0) >= MS_ENTRE_LEITURAS_DE_SITUACAO) {
+          session.situacoesLidasEm = Date.now();
+          try {
+            const situacoes = (await session.portal.lerSituacoesDosItens()) || {};
+            for (const [numeroDoItem, situacao] of Object.entries(situacoes)) {
+              const estado = session.porItem[numeroDoItem] = session.porItem[numeroDoItem] || {};
+              estado.situacao_no_portal = situacao;
+              if (!estado.encerrado && faseDeLancesEncerrada(situacao)) {
+                estado.encerrado = true;
+                estado.motivo = 'a fase de lances terminou no portal (situacao: ' + situacao + ')';
+                console.log(\`[\${session.sessao_id}] item \${numeroDoItem}: \${estado.motivo}\`);
+              }
+            }
+          } catch (e) {
+            console.warn(\`[\${session.sessao_id}] Nao consegui ler a situacao dos itens: \${e.message}\`);
+          }
+          if (!vivo()) return;
+        }
         // Prioridade: com item em disputa, os que aguardam sao lidos no maximo
         // a cada minuto (itensParaLer, testada) — a rodada fica curta para o
         // item que decide o preco.

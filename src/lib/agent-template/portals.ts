@@ -1532,6 +1532,33 @@ class ComprasGovPortal extends BasePortal {
    * descricao detalhada que comece por numero ("2 unidades...") nao pode ser
    * confundida com o item 2.
    */
+  /**
+   * A SITUACAO DE CADA ITEM na pagina da compra, pelo mesmo cabecalho que
+   * detalhesDoItemNoTexto reconhece (numero + descricao, tratamento, situacao).
+   * So os itens da pagina aberta (10 por pagina); os outros ficam sem leitura.
+   */
+  static situacoesDosItensNoTexto(texto) {
+    const linhas = String(texto || '').split('\\n').map((l) => l.trim());
+    const ehTratamento = (l) => /ME\\/EPP|participa..o aberta/i.test(l || '');
+    const situacoes = {};
+    for (let i = 0; i < linhas.length; i++) {
+      if (/^\\d+\\s+\\S/.test(linhas[i] || '') && ehTratamento(linhas[i + 1]) && linhas[i + 2]) {
+        situacoes[linhas[i].split(/\\s+/)[0]] = linhas[i + 2];
+      }
+    }
+    return situacoes;
+  }
+
+  /** Le a pagina da compra e devolve { numero: situacao } dos itens visiveis. */
+  async lerSituacoesDosItens() {
+    if (!this.compraId) return {};
+    const url = this.publicUrl + '/acompanhamento-compra?compra=' + String(this.compraId);
+    if (this.page.url() === url) await this.page.reload({ waitUntil: 'networkidle2', timeout: 45000 });
+    else await this.page.goto(url, { waitUntil: 'networkidle2', timeout: 45000 });
+    await this.page.waitForFunction(() => /ME\\/EPP|participa..o aberta/i.test(document.body.innerText || ''), { timeout: 30000 }).catch(() => {});
+    return ComprasGovPortal.situacoesDosItensNoTexto(await this.textoDaTela());
+  }
+
   static detalhesDoItemNoTexto(texto, numero) {
     const bruto = String(texto || '');
     const linhas = bruto.split('\\n').map((l) => l.trim());

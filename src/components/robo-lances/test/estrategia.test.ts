@@ -483,6 +483,28 @@ describe('proximaLeituraMs — ritmo da leitura', () => {
   });
 });
 
+describe('fase de lances encerrada pela situação do item no portal', () => {
+  const modulo = () => {
+    const module = { exports: {} as { faseDeLancesEncerrada: (s: unknown) => boolean } };
+    new vm.Script(ESTRATEGIA_FILES['src/estrategia.js']).runInNewContext({ module, exports: module.exports });
+    return module.exports;
+  };
+
+  it('situações depois dos lances encerram o item — a do 7/2026 real inclusive', () => {
+    const { faseDeLancesEncerrada } = modulo();
+    for (const s of ['Aguardando julgamento', 'Em julgamento', 'Aceito', 'Adjudicado', 'Homologado', 'Deserto', 'Fracassado', 'Cancelado', 'Em fase de recurso']) {
+      expect(faseDeLancesEncerrada(s)).toBe(true);
+    }
+  });
+
+  it('antes e durante a disputa — inclusive o encerramento aleatório — não encerram', () => {
+    const { faseDeLancesEncerrada } = modulo();
+    for (const s of ['Aguardando abertura', 'Em disputa', 'Encerramento aleatório', 'Disputa encerrada', 'Item de participação aberta', '', null]) {
+      expect(faseDeLancesEncerrada(s)).toBe(false);
+    }
+  });
+});
+
 describe('trava de liberação por portal', () => {
   it('só o Compras.gov está liberado — por ato registrado (16/09/2026)', () => {
     // Se este teste falhar, alguém liberou ou fechou um portal. Isso é
