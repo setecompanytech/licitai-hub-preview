@@ -440,7 +440,8 @@ Dois esclarecimentos para não perder no caminho:
 - [ ] Agendamento: a cada minuto, disputas que começam em até 15 minutos, com a empresa ligada, são enviadas ao robô **sem clique de ninguém**
 - [ ] Sessão persistente do Chrome por empresa e login antes da hora — medir quanto o login dura
 - [ ] Captcha que ainda aparecer: aviso ao admin da Praefectus com o link da tela remota
-- [ ] **Avisos ao usuário** no dia da disputa: robô entrou na sala · disputa começou · lance enviado · lance recusado · falha ao entrar (urgente). Os callbacks já existem (`lance-enviado`, `lance-concorrente`, `rodada-sem-lance`, `sessao-encerrada`, `erro`); falta gravar `notificacoes` neles — a tabela é a mesma do sino do cabeçalho, e o webhook novo já a usa para três casos: sessão encerrada ou interrompida, pregoeiro chamando e itens que não conferem
+- [x] **Avisos ao usuário** — escrito em 16/09. O webhook passou a avisar em três momentos novos: **robô entrou na sala** (callback `sessao-ativa`, criado no agente), **lance recusado pelo portal** e **robô parou com erro**. Os dois últimos são urgentes, e todos levam para a página da disputa. Junto veio um conserto: o agente já enviava `lance-recusado` e o webhook respondia "tipo desconhecido" — o aviso era descartado, como havia acontecido com `rodada-sem-lance` em 08/09. O lance recusado agora entra no histórico com o motivo do portal, **sem** avançar o valor atual, e a linha do tempo da disputa deixa de chamá-lo de "enviado". Falta publicar a função e instalar o agente na VPS (abaixo)
+- [ ] Publicar o webhook (v32) e instalar o `session-manager.js` novo na VPS — **nesta ordem**: enquanto a função no ar não conhecer `sessao-ativa`, o agente que já o envia receberia "tipo desconhecido"
 - [ ] Linha do tempo da disputa na própria página (`EventosDaDisputa`, que hoje diz "o robô ainda não operou nesta disputa"), para o usuário acompanhar sem abrir tela remota nenhuma
 
 **Fase 5 — liberar o lance**
