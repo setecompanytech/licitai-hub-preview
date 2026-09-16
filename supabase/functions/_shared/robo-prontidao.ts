@@ -65,6 +65,8 @@ export type EntradaDaProntidao = {
   sessaoConferidaAs?: string | null;
   /** `portais_com_lance_liberado` do robô inclui este portal? Nulo = não se sabe. */
   lanceLiberado: boolean | null;
+  /** Quem cadastrou a disputa saiu da empresa (confirmado): o agendador não despacha. */
+  donoForaDaEmpresa?: boolean;
 };
 
 const positivo = (v: unknown) => Number(v) > 0;
@@ -74,6 +76,7 @@ export function pendenciasDaDisputa(e: EntradaDaProntidao): Pendencia[] {
   const p: Pendencia[] = [];
   const add = (chave: string, grave: boolean, texto: string) => p.push({ chave, grave, texto });
 
+  if (e.donoForaDaEmpresa) add("dono-fora-da-empresa", true, "quem cadastrou a disputa não é mais membro da empresa — um membro precisa reabrir e enviar a disputa, senão o robô não entra");
   if (e.roboDaEmpresa === "desligado") add("robo-desligado", true, "o robô da empresa está desligado — sem religar, ele não entra");
   if (!e.temAgente) add("sem-agente", true, "não há robô ativo configurado para quem cadastrou a disputa");
   if (!e.portalConhecido) add("portal-desconhecido", true, "o portal da disputa não é um que o robô conhece — reabra a disputa e escolha o portal");

@@ -768,6 +768,22 @@ serve(async (req) => {
           continue;
         }
 
+        // QUEM CADASTROU AINDA É DA EMPRESA? (16/09/2026) O envio pelo botão
+        // recusa quem não é membro; o agendador não conferia. Quem saiu da
+        // empresa — ou uma disputa gravada direto no banco — continuava
+        // mandando o robô entrar com a credencial dessa pessoa. A disputa fica
+        // reservada (não tenta de novo a cada minuto) e o dono é avisado; só
+        // "fora" confirmado barra: leitura que falhou não impede o pregão.
+        if (d.empresa_id && (await acessoDoDonoNaEmpresa(supabase, d.empresa_id, donoId)) === "fora") {
+          await avisar(
+            `🤖 Robô não entrou — ${d.edital}`,
+            "Quem cadastrou esta disputa não é mais membro da empresa, e o robô entra com a credencial de quem cadastrou. Um membro da empresa precisa reabrir a disputa e enviá-la.",
+          );
+          await registrarNoLog(supabase, donoId, "enviar-sessao-recusada", { disputa_id: d.id, etapa: "dono-fora-da-empresa", origem: "agendador" });
+          relatorio.push({ disputa: d.id, resultado: "dono-fora-da-empresa" });
+          continue;
+        }
+
         // A disputa grava o NOME do portal ("Compras.gov.br"); o agente e a
         // credencial falam por id ("compras-gov"). Quem traduz no envio manual
         // é o navegador; aqui não há navegador nenhum, e mandar o nome cru foi
@@ -3009,7 +3025,9 @@ async function enviarLembretesDeProntidao(
     }
 
     const itens = Array.isArray(d.itens) ? d.itens : [];
+    const acessoDoDono = d.empresa_id ? await acessoDoDonoNaEmpresa(supabase, d.empresa_id, donoId) : "indeterminado";
     const pendencias = pendenciasDaDisputa({
+      donoForaDaEmpresa: acessoDoDono === "fora",
       itens,
       valorMinimoGeral: d.valor_minimo,
       roboDaEmpresa,
@@ -3236,6 +3254,34 @@ async function avisarPorEmail(
     }
   }
   return resultado;
+}
+
+/**
+ * O dono da disputa ainda tem acesso à empresa? Membro da empresa ou
+ * administrador da plataforma — a mesma regra do envio pelo botão. Devolve
+ * "indeterminado" quando a leitura falha: quem chama só barra "fora".
+ */
+async function acessoDoDonoNaEmpresa(supabase: any, empresaId: string, userId: string): Promise<"membro" | "fora" | "indeterminado"> {
+  try {
+    const { data: membro, error } = await supabase
+      .from("empresa_membros")
+      .select("empresa_id")
+      .eq("empresa_id", empresaId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (error) return "indeterminado";
+    if (membro) return "membro";
+    const { data: papel, error: erroPapel } = await supabase
+      .from("user_roles")
+      .select("user_id")
+      .eq("user_id", userId)
+      .eq("role", "admin")
+      .maybeSingle();
+    if (erroPapel) return "indeterminado";
+    return papel ? "membro" : "fora";
+  } catch {
+    return "indeterminado";
+  }
 }
 
 /** `robo_empresa_config` → ligado / desligado / indeterminado (ver `estadoDoLigado`). */

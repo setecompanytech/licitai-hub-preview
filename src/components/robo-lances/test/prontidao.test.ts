@@ -93,6 +93,11 @@ describe('pendenciasDaDisputa', () => {
     expect(p[0].texto).toBe('1 item está sem piso — o robô não disputa item sem valor mínimo');
   });
 
+  it('quem cadastrou saiu da empresa: grave, porque o agendador não despacha', () => {
+    const p = pendenciasDaDisputa({ ...PRONTA, donoForaDaEmpresa: true });
+    expect(p.map((x) => [x.chave, x.grave])).toEqual([['dono-fora-da-empresa', true]]);
+  });
+
   it('o piso geral da disputa cobre o item sem piso próprio', () => {
     expect(pendenciasDaDisputa({ ...PRONTA, itens: [{ valorMinimo: null }], valorMinimoGeral: 2500 })).toEqual([]);
   });
