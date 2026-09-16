@@ -13605,3 +13605,81 @@ DROP TRIGGER IF EXISTS trg_robo_disputa_remarcada ON public.robo_lances_disputas
 DROP FUNCTION IF EXISTS public.robo_disputa_remarcada_volta_a_agenda();
 ALTER TABLE public.robo_lances_disputas DROP COLUMN IF EXISTS tentativas_envio;
 ```
+
+
+---
+
+## 20260916000005 — acompanhamento da disputa sem a tela remota (D13)
+
+**Aplicar ANTES** de publicar o `robo-lances-webhook` que grava `estado_sala` e
+`robo_eventos_sessao`, e antes de instalar o agente que envia o callback
+`estado-da-sala`.
+
+**Por quê:** a cada rodada o robô lê melhor lance, posição, liderança e modo, e
+decide — e nada disso chegava ao Praefectus. A página da disputa já tem as
+colunas "Seu último lance", "Melhor lance" e "Situação" e a aba de eventos, e
+elas ficavam "não informado". `estado_sala` guarda o **último** estado (para o
+quadro de status); `robo_eventos_sessao` é a **linha do tempo**, separada de
+`lances_historico` porque lá `valor` é obrigatório e a tela conta as linhas como
+lances. Escrita só pelo webhook (service role); leitura igual à dos itens da
+sessão.
+
+```sql
+ALTER TABLE public.sessoes_lance_real DROP COLUMN IF EXISTS estado_sala,
+--     DROP COLUMN IF EXISTS estado_sala_em;
+
+ALTER TABLE public.sessoes_lance_real
+  ADD COLUMN IF NOT EXISTS estado_sala jsonb,
+  ADD COLUMN IF NOT EXISTS estado_sala_em timestamptz;
+
+COMMENT ON COLUMN public.sessoes_lance_real.estado_sala IS
+  'Último estado da sala enviado pelo robô: item, melhor lance, nosso lance, posição, liderança, modo, fase e a decisão da rodada com o motivo.';
+
+CREATE TABLE IF NOT EXISTS public.robo_eventos_sessao (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  sessao_id uuid NOT NULL REFERENCES public.sessoes_lance_real(id) ON DELETE CASCADE,
+  user_id uuid NOT NULL,
+  -- Nullable como em `sessao_lance_itens`: a sessão pode não ter empresa.
+  empresa_id uuid REFERENCES public.empresas(id) ON DELETE CASCADE,
+  tipo text NOT NULL,
+  item integer,
+  mensagem text NOT NULL,
+  dados jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+COMMENT ON TABLE public.robo_eventos_sessao IS
+  'Linha do tempo do robô numa sessão: entrou, liderança, lance enviado ou recusado, aguardando com motivo, encerrou. Escrita pelo webhook.';
+
+CREATE INDEX IF NOT EXISTS idx_robo_eventos_sessao_sessao
+  ON public.robo_eventos_sessao (sessao_id, created_at DESC);
+
+ALTER TABLE public.robo_eventos_sessao ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS robo_eventos_sessao_select ON public.robo_eventos_sessao;
+CREATE POLICY robo_eventos_sessao_select ON public.robo_eventos_sessao
+  FOR SELECT TO authenticated
+  USING (auth.uid() = user_id OR (empresa_id IS NOT NULL AND public.is_empresa_member(auth.uid(), empresa_id)));
+
+DROP POLICY IF EXISTS robo_eventos_sessao_delete ON public.robo_eventos_sessao;
+CREATE POLICY robo_eventos_sessao_delete ON public.robo_eventos_sessao
+  FOR DELETE TO authenticated
+  USING (auth.uid() = user_id OR (empresa_id IS NOT NULL AND public.is_empresa_admin(auth.uid(), empresa_id)));
+
+NOTIFY pgrst, 'reload schema';
+```
+
+Conferir:
+
+```sql
+SELECT column_name FROM information_schema.columns
+ WHERE table_schema = 'public' AND table_name = 'sessoes_lance_real' AND column_name IN ('estado_sala', 'estado_sala_em');
+SELECT policyname FROM pg_policies WHERE tablename = 'robo_eventos_sessao';
+```
+
+Reversão:
+
+```sql
+DROP TABLE IF EXISTS public.robo_eventos_sessao;
+ALTER TABLE public.sessoes_lance_real DROP COLUMN IF EXISTS estado_sala, DROP COLUMN IF EXISTS estado_sala_em;
+```
