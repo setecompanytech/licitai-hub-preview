@@ -406,6 +406,16 @@ Dois esclarecimentos para não perder no caminho:
 
 #### O caminho — lista de trabalho
 
+> **Ordem definida em 16/09.** O mapeamento da sala de disputa continua de pé —
+> é o que destrava o lance de verdade —, mas deixa de ser o primeiro passo. O
+> que não depende de estar dentro de um pregão vem antes: **agendamento e
+> avisos** (Fase 4), **estratégia** (Fase 2) e **itens do PNCP, marca/modelo e
+> dados da licitação** (Fase 6), com a medição da sessão persistente correndo
+> em paralelo. Assim, quando houver pregão real com proposta da empresa, entrar
+> e mapear (Fases 1 e 3) fecha o conjunto, e a liberação do lance (Fase 5) vem
+> por último. As fases seguem numeradas como nasceram, para não perder as
+> referências já feitas neste documento.
+
 **Fase 0 — base**
 - [x] Registrar a reestruturação de 14–15/09 e as decisões de 15/09 (este documento)
 - [ ] Trazer o remoto para o local (`git pull --rebase`) — as telas novas são a base do front daqui em diante
