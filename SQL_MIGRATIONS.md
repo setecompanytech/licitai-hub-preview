@@ -13402,3 +13402,53 @@ Repete `is_empresa_operador` (idempotente) para não depender da ordem em que
   fantasia, só para o administrador da plataforma. Evita liberar `empresas`
   inteira (CPF, RG e dados do representante legal de todos os clientes).
 
+---
+
+## 20260916000001 — a disputa ganha data, e não só hora
+
+O cliente pediu que o robô entre sozinho na sala no dia e hora da sessão, sem
+esperar clique de ninguém. Hoje a disputa guarda `horario text` ("09:00") e
+mais nada — "09:00" de que dia? Sem a data, nenhum agendamento é possível, e
+foi por isso que em 14/09 às 20:07 a sessão dependeu de alguém na tela.
+
+- `robo_lances_disputas.inicio_sessao timestamptz` — data e hora da sessão
+  pública, com fuso. É o que o agendador vai ler. **Nulo = disputa sem
+  agendamento**, enviada por clique, exatamente como antes: registro existente
+  herda o comportamento atual, mudança de política é decisão de alguém.
+- `robo_lances_disputas.enviada_em timestamptz` — quando o agendador
+  despachou. Existe para o job de um minuto não despachar a mesma disputa duas
+  vezes: seriam duas sessões no mesmo portal, com o mesmo CPF e o mesmo
+  certificado, uma derrubando a outra.
+- `idx_robo_lances_disputas_agendadas` — índice parcial sobre `inicio_sessao`
+  onde `enviada_em IS NULL`, que é exatamente a pergunta do job.
+
+`horario` continua existindo e continua sendo o que as telas mostram: apagá-lo
+quebraria as disputas já cadastradas. Nenhuma política nova — a tabela já tem
+RLS por empresa desde `20260816000001`, e quem lê e escreve continua o mesmo.
+
+```sql
+ALTER TABLE public.robo_lances_disputas
+  ADD COLUMN IF NOT EXISTS inicio_sessao timestamptz;
+
+ALTER TABLE public.robo_lances_disputas
+  ADD COLUMN IF NOT EXISTS enviada_em timestamptz;
+
+COMMENT ON COLUMN public.robo_lances_disputas.inicio_sessao IS
+  'Data e hora da sessão pública, com fuso. É o que o agendador lê para '
+  'mandar o robô entrar sozinho. Nulo = disputa sem agendamento, enviada por '
+  'clique, como antes de 16/09/2026.';
+
+COMMENT ON COLUMN public.robo_lances_disputas.enviada_em IS
+  'Quando o agendador despachou esta disputa ao robô. Existe para o job de '
+  'um minuto não despachar a mesma disputa duas vezes. Nulo = ainda não foi '
+  'despachada automaticamente.';
+
+CREATE INDEX IF NOT EXISTS idx_robo_lances_disputas_agendadas
+  ON public.robo_lances_disputas (inicio_sessao)
+  WHERE enviada_em IS NULL;
+```
+
+Reversão: `DROP INDEX IF EXISTS public.idx_robo_lances_disputas_agendadas;` e
+`ALTER TABLE public.robo_lances_disputas DROP COLUMN IF EXISTS enviada_em;`
+seguido de `DROP COLUMN IF EXISTS inicio_sessao;`.
+
