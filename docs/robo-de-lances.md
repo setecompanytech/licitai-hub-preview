@@ -1064,6 +1064,36 @@ sem o contorno do 500); ir direto ao `acompanhamento-compra?compra=<UASG>05<nº
 e `souLider` do Compras.gov continuam sendo palpite — o mapeamento é sobre a
 pasta `logs/sessoes/<id>` de hoje.
 
+#### 16/09 — o vocabulário da sala de disputa, pelo manual oficial
+
+Antes de ver a sala por dentro, dá para reduzir o chute: o **Manual do Pregão
+Eletrônico — Fornecedor** (Comprasnet/MP-SLTI) descreve a tela de lances campo
+a campo. É o que o robô vai procurar quando entrar.
+
+| O que a tela tem | Como o manual chama | Para que serve no robô |
+| --- | --- | --- |
+| Sinal colorido na linha do item | **"Indicador da proposta"** — verde: "o lance ofertado é menor para aquele item, sendo o vencedor até o momento"; vermelho: "houve um lance de valor inferior ao apresentado"; amarelo: proposta empatada | **É o `souLider`.** É esta a informação que falta hoje e sem a qual o robô não pode cobrir lance sem risco de cobrir a si mesmo |
+| Número e descrição do item | "Número do item", "Descrição" | achar a linha do item que estamos disputando |
+| Melhor lance do momento | **"Lance mínimo"** | o `lerMelhorLance` |
+| Nosso último lance | **"Seu último lance"** | saber de onde partir, e não repetir valor |
+| Relógio | "Horário oficial da sessão" — sempre Brasília | medir a iminência (os 2 minutos finais) |
+| Campo de digitar | **"Lance"** | onde o valor é escrito |
+| Botão | **"Enviar"** — "ao efetuar o envio, é solicitada confirmação do valor digitado" | o envio tem **dois passos**: enviar e confirmar |
+| Estado do item | **"Situação"**: Fechado · Aberto · Suspenso · Cancelado · Encerrado | saber se o item aceita lance agora |
+
+E uma regra do próprio sistema, que a estratégia tem de respeitar: o licitante
+"poderá oferecer lance inferior ao último por ele ofertado e registrado pelo
+sistema" — ou seja, cada lance nosso precisa ser menor que o nosso anterior,
+não apenas menor que o melhor da sala.
+
+**O que isto não é:** prova. O manual descreve a tela do Comprasnet anterior à
+reformulação de 2021, e o que está no ar é o Compras.gov novo (`cnetmobile`,
+Angular/PrimeNG). Os nomes tendem a sobreviver — o portal reaproveita o mesmo
+vocabulário —, mas o que vale é o que a gravação mostrar de dentro da sala. O
+ganho é escrever a leitura **por texto** (procurar "Lance mínimo", "Situação",
+o indicador colorido) em vez de por classe de CSS, que é o que se quebra a
+cada atualização do portal.
+
 ### 4.3 Licitações-e (BB) — o muro caro
 
 Este é o portal nº 1 do cliente, e é o único item da lista que pode exigir
