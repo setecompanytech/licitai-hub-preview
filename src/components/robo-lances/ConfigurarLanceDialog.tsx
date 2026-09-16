@@ -30,6 +30,15 @@ import LimparItensExtraidosButton from '@/components/licitacoes/LimparItensExtra
 import { PORTAIS_ROBO, idDoPortal } from '@/lib/robo/portais';
 import { ESTRATEGIAS_DO_ITEM, type EstrategiaDoItem } from '@/lib/robo/estrategia-do-item';
 import { agendamentoDaDisputa, sessaoDoProcesso, HORA_MINIMA_ESPERADA, type SessaoDoProcesso } from '@/lib/robo/agendamento';
+import {
+  buscarCompraDoComprasGov,
+  itensDaCompraParaDisputa,
+  podeBuscarCompra,
+  resumoDaCompra,
+  sessaoDaCompra,
+  type CompraDoComprasGov,
+} from '@/lib/robo/compra-comprasgov';
+import { lerValorDigitado, valorParaDigitar } from '@/lib/robo/valor-digitado';
 import { cn } from '@/lib/utils';
 
 // A lista mora em `src/lib/robo/portais.ts`, autoridade unica compartilhada com
@@ -176,12 +185,58 @@ const ROTULO_ORIGEM: Record<string, { texto: string; titulo: string }> = {
     texto: 'Manual',
     titulo: 'Digitado à mão nesta tela',
   },
+  comprasgov: {
+    texto: 'Compras.gov',
+    titulo: 'Item publicado pelo órgão no Compras.gov — o valor é o estimado pelo órgão (teto), não o nosso preço; com orçamento sigiloso vem vazio',
+  },
 };
 
 const paraBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 /** Variantes semânticas do Badge de ui — status sempre com texto. */
 type BadgeVariant = 'success' | 'warning' | 'danger' | 'info' | 'muted';
+
+/**
+ * Campo de valor em reais que guarda o TEXTO enquanto a pessoa digita.
+ *
+ * Controlado pelo número, cada tecla fazia a volta texto → número → texto e a
+ * vírgula sumia: "4999,70" virava 499970 (visto em 16/09/2026). Aqui o texto é
+ * do campo; o número vai ao estado a cada tecla; e o texto só é refeito a
+ * partir do número quando o número muda por fora (outra importação, reset).
+ */
+function CampoDecimal({
+  valor,
+  aoMudar,
+  zeroEhVazio = false,
+  ...props
+}: Omit<React.ComponentProps<typeof Input>, 'value' | 'onChange'> & {
+  valor: number | null | undefined;
+  aoMudar: (valor: number | null) => void;
+  /** O estado guarda "sem valor" como 0 (valor unitário): "0" digitado a caminho de "0,50" não pode limpar o campo. */
+  zeroEhVazio?: boolean;
+}) {
+  const [texto, setTexto] = useState(() => valorParaDigitar(valor));
+  const ultimoEnviado = useRef<number | null | undefined>(valor);
+  useEffect(() => {
+    if (valor !== ultimoEnviado.current) {
+      ultimoEnviado.current = valor;
+      setTexto(valorParaDigitar(valor));
+    }
+  }, [valor]);
+  return (
+    <Input
+      {...props}
+      value={texto}
+      onChange={(e) => {
+        const digitado = e.target.value.replace(/[^\d,.]/g, '');
+        const n = lerValorDigitado(digitado);
+        setTexto(digitado);
+        ultimoEnviado.current = zeroEhVazio && !(n && n > 0) ? null : n;
+        aoMudar(n);
+      }}
+    />
+  );
+}
 
 /**
  * A linha de UM item na tabela de itens da disputa.
@@ -194,6 +249,8 @@ type BadgeVariant = 'success' | 'warning' | 'danger' | 'info' | 'muted';
 function LinhaDeItem({
   item,
   larguraDescricao,
+  aoMudarValor,
+  aoMudarMarcaModelo,
   aoMudarPiso,
   aoMudarEstrategia,
   aoMudarMargem,
@@ -201,9 +258,11 @@ function LinhaDeItem({
 }: {
   item: DisputeItem;
   larguraDescricao: string;
-  aoMudarPiso: (id: string, texto: string) => void;
+  aoMudarValor: (id: string, valor: number | null) => void;
+  aoMudarMarcaModelo: (id: string, campo: 'marca' | 'modelo', texto: string) => void;
+  aoMudarPiso: (id: string, valor: number | null) => void;
   aoMudarEstrategia: (id: string, estrategia: EstrategiaDoItem) => void;
-  aoMudarMargem: (id: string, texto: string) => void;
+  aoMudarMargem: (id: string, valor: number | null) => void;
   aoRemover: (id: string) => void;
 }) {
   // `null` e `0` são estados diferentes e a tela precisa mostrar essa
@@ -211,17 +270,16 @@ function LinhaDeItem({
   // ausente é uma decisão que ninguém tomou ainda.
   const semPiso = item.valorMinimo === null || item.valorMinimo === undefined;
   const rotulo = item.origem ? ROTULO_ORIGEM[item.origem] : undefined;
+  // Item do processo: marca e modelo vêm da Proposta e são editados lá — uma
+  // segunda fonte do mesmo dado aqui divergiria dela. Item sem processo
+  // (manual, edital, Compras.gov) não tem outra casa: edita nesta grade.
+  const marcaModeloDoProcesso = !!item.licitacaoItemId;
 
   return (
     <TableRow>
       <TableCell className="text-sm text-center font-medium tabular-nums">{item.numero}</TableCell>
       <TableCell className={`text-sm ${larguraDescricao}`}>
-        <span className="block truncate">{item.descricao}</span>
-        {(item.marca || item.modelo) && (
-          <span className="block truncate text-muted-foreground">
-            {[item.marca, item.modelo].filter(Boolean).join(' · ')}
-          </span>
-        )}
+        <span className="block truncate" title={item.descricao}>{item.descricao}</span>
         {rotulo && (
           <span
             title={rotulo.titulo}
@@ -231,18 +289,62 @@ function LinhaDeItem({
           </span>
         )}
       </TableCell>
+      <TableCell className="text-sm">
+        {marcaModeloDoProcesso ? (
+          <span
+            className="block max-w-[7rem] truncate text-muted-foreground"
+            title="Marca e modelo vêm da Proposta do processo — altere por lá"
+          >
+            {[item.marca, item.modelo].filter(Boolean).join(' · ') || '—'}
+          </span>
+        ) : (
+          <div className="flex flex-col gap-1">
+            <Input
+              value={item.marca ?? ''}
+              onChange={(e) => aoMudarMarcaModelo(item.id, 'marca', e.target.value)}
+              placeholder="marca"
+              aria-label={`Marca do item ${item.numero}`}
+              className="h-8 w-28 text-xs px-2"
+            />
+            <Input
+              value={item.modelo ?? ''}
+              onChange={(e) => aoMudarMarcaModelo(item.id, 'modelo', e.target.value)}
+              placeholder="modelo"
+              aria-label={`Modelo do item ${item.numero}`}
+              className="h-8 w-28 text-xs px-2"
+            />
+          </div>
+        )}
+      </TableCell>
       <TableCell className="text-sm text-center tabular-nums">{item.quantidade}</TableCell>
       <TableCell className="text-sm text-center">{item.unidade}</TableCell>
-      <TableCell className="text-sm text-right tabular-nums">
-        {item.valorReferencia > 0 ? paraBRL(item.valorReferencia) : '—'}
+      <TableCell className="text-right">
+        {/* Editável: com orçamento sigiloso o item chega sem valor, e a disputa
+            não salva com referência zero. Quem digita assume o número. */}
+        <CampoDecimal
+          valor={item.valorReferencia > 0 ? item.valorReferencia : null}
+          aoMudar={(v) => aoMudarValor(item.id, v)}
+          zeroEhVazio
+          placeholder="definir"
+          inputMode="decimal"
+          aria-label={`Valor unitário do item ${item.numero}`}
+          title={
+            item.valorEstimadoOrgao
+              ? `Estimado pelo órgão: ${paraBRL(item.valorEstimadoOrgao)}`
+              : 'Valor unitário de referência deste item'
+          }
+          className={`h-9 w-28 text-sm text-right tabular-nums px-2 ml-auto ${
+            item.valorReferencia > 0 ? '' : 'border-warning-line placeholder:text-warning-ink'
+          }`}
+        />
       </TableCell>
       <TableCell className="text-sm text-right tabular-nums font-semibold">
         {item.valorReferencia > 0 ? paraBRL(item.valorReferencia * item.quantidade) : '—'}
       </TableCell>
       <TableCell className="text-right">
-        <Input
-          value={semPiso ? '' : String(item.valorMinimo)}
-          onChange={(e) => aoMudarPiso(item.id, e.target.value)}
+        <CampoDecimal
+          valor={item.valorMinimo}
+          aoMudar={(v) => aoMudarPiso(item.id, v)}
           placeholder="definir"
           inputMode="decimal"
           aria-label={`Piso do item ${item.numero}`}
@@ -273,9 +375,9 @@ function LinhaDeItem({
           </SelectContent>
         </Select>
         {item.estrategia === 'desempatar_1o' && (
-          <Input
-            value={item.margemDesempate === null || item.margemDesempate === undefined ? '' : String(item.margemDesempate)}
-            onChange={(e) => aoMudarMargem(item.id, e.target.value)}
+          <CampoDecimal
+            valor={item.margemDesempate}
+            aoMudar={(v) => aoMudarMargem(item.id, v)}
             placeholder="margem R$"
             inputMode="decimal"
             aria-label={`Margem de desempate do item ${item.numero}`}
@@ -376,6 +478,13 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
   const [dataSessao, setDataSessao] = useState(editingLance?.dataSessao || '');
   // A sessão puxada do processo no último import — só para a tela dizer de onde veio.
   const [sessaoPuxada, setSessaoPuxada] = useState<SessaoDoProcesso | null>(null);
+  // Compras.gov — a compra lida dos dados abertos por UASG + número/ano.
+  const [buscandoCompra, setBuscandoCompra] = useState(false);
+  const [erroDaCompra, setErroDaCompra] = useState<string | null>(null);
+  const [comprasAchadas, setComprasAchadas] = useState<CompraDoComprasGov[]>([]);
+  const [compraEscolhida, setCompraEscolhida] = useState<CompraDoComprasGov | null>(null);
+  // De qual compra vieram os itens da grade — para oferecer a troca só quando não vieram dela.
+  const [itensDaCompraDe, setItensDaCompraDe] = useState<string | null>(null);
 
   // Step 2 fields
   const [tipoDisputa, setTipoDisputa] = useState<'item' | 'lote'>(editingLance?.tipoDisputa || 'item');
@@ -854,6 +963,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
     setModoAutomatico(editingLance?.modoAutomatico ?? true); setHorario(editingLance?.horario || '');
     setDataSessao(editingLance?.dataSessao || '');
     setSessaoPuxada(null);
+    setBuscandoCompra(false); setErroDaCompra(null); setComprasAchadas([]); setCompraEscolhida(null); setItensDaCompraDe(null);
     setItens(editingLance?.itens || []); setTipoDisputa(editingLance?.tipoDisputa || 'item'); setStep(editingLance ? 1 : 0);
     setSelectedLicId(null); setSearchLic(''); setStatusFilter('todos'); setLicitacaoIdRef(editingLance?.licitacaoId);
     setTrocarProcesso(false);
@@ -900,27 +1010,74 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
    * escolhido — autoriza o robô a descer até ele. Nulo é "ninguém decidiu
    * ainda", e é o estado em que o robô não deve dar lance.
    */
-  const handlePisoItem = (id: string, texto: string) => {
-    const limpo = texto.replace(/[^\d,.]/g, '').replace(',', '.');
-    const n = parseFloat(limpo);
-    setItens(prev => prev.map(i =>
-      i.id === id
-        ? { ...i, valorMinimo: limpo === '' || !Number.isFinite(n) ? null : n }
-        : i
-    ));
+  const handlePisoItem = (id: string, valor: number | null) => {
+    setItens(prev => prev.map(i => (i.id === id ? { ...i, valorMinimo: valor } : i)));
   };
 
   const handleEstrategiaItem = (id: string, estrategia: EstrategiaDoItem) => {
     setItens(prev => prev.map(i => (i.id === id ? { ...i, estrategia } : i)));
   };
 
-  /** Margem vazia grava `null`: sem ela a estratégia de desempate aguarda. */
-  const handleMargemItem = (id: string, texto: string) => {
-    const limpo = texto.replace(/[^\d,.]/g, '').replace(',', '.');
-    const n = parseFloat(limpo);
+  /**
+   * Valor unitário digitado na grade. Quem digita assume o número: a origem
+   * passa a "Manual" — a estimativa do órgão, se havia, segue guardada à parte.
+   */
+  const handleValorItem = (id: string, valor: number | null) => {
     setItens(prev => prev.map(i =>
-      i.id === id ? { ...i, margemDesempate: limpo === '' || !Number.isFinite(n) ? null : n } : i
+      i.id === id ? { ...i, valorReferencia: valor && valor > 0 ? valor : 0, origem: 'manual' } : i
     ));
+  };
+
+  const handleMarcaModeloItem = (id: string, campo: 'marca' | 'modelo', texto: string) => {
+    setItens(prev => prev.map(i => (i.id === id ? { ...i, [campo]: texto || undefined } : i)));
+  };
+
+  /**
+   * Compras.gov: a compra por UASG + número/ano (Fase 6, checklist do grupo).
+   * Preenche data e horário só se estiverem vazios, e os itens só se a grade
+   * estiver vazia — o que a pessoa já digitou não é sobrescrito sem ela pedir.
+   */
+  const aplicarCompra = (compra: CompraDoComprasGov) => {
+    setCompraEscolhida(compra);
+    setComprasAchadas([]);
+    if (!dataSessao && !horario) {
+      const sessao = sessaoDaCompra(compra);
+      if (sessao) {
+        setDataSessao(sessao.dataSessao);
+        setHorario(sessao.horario ?? '');
+        setSessaoPuxada(sessao);
+      }
+    }
+    if (itens.length === 0 && compra.itens.length > 0) {
+      usarItensDaCompra(compra);
+      toast.success(`${compra.itens.length} ${compra.itens.length === 1 ? 'item carregado' : 'itens carregados'} do Compras.gov.`);
+    }
+  };
+
+  const usarItensDaCompra = (compra: CompraDoComprasGov) => {
+    applyImportedItems(itensDaCompraParaDisputa(compra.itens));
+    setItensDaCompraDe(compra.idCompra);
+  };
+
+  const handleBuscarCompra = async () => {
+    setBuscandoCompra(true);
+    setErroDaCompra(null);
+    setComprasAchadas([]);
+    const r = await buscarCompraDoComprasGov(uasg, edital);
+    setBuscandoCompra(false);
+    if (!r.ok) {
+      setCompraEscolhida(null);
+      setErroDaCompra(r.motivo ?? 'O Compras.gov não devolveu a compra.');
+      return;
+    }
+    const compras = r.compras ?? [];
+    if (compras.length === 1) aplicarCompra(compras[0]);
+    else setComprasAchadas(compras);
+  };
+
+  /** Margem vazia grava `null`: sem ela a estratégia de desempate aguarda. */
+  const handleMargemItem = (id: string, valor: number | null) => {
+    setItens(prev => prev.map(i => (i.id === id ? { ...i, margemDesempate: valor } : i)));
   };
 
   const handleSave = () => {
@@ -1386,6 +1543,76 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                   <p className="text-xs text-muted-foreground mt-1">
                     O número da compra se repete entre órgãos; a UASG é o que torna a busca exata. Está no edital e na lista do portal (ex.: <b>170162</b> - MINISTERIO DA FAZENDA).
                   </p>
+                  {/* Fase 6: com UASG e número/ano, a compra vem dos dados abertos
+                      do Compras.gov — itens, datas e dados da licitação. */}
+                  <div className="mt-3 space-y-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleBuscarCompra}
+                      disabled={buscandoCompra || !podeBuscarCompra(uasg, edital)}
+                    >
+                      {buscandoCompra
+                        ? <><Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Buscando a compra...</>
+                        : <><Search className="w-4 h-4" aria-hidden="true" /> Buscar itens e dados no Compras.gov</>}
+                    </Button>
+                    {!podeBuscarCompra(uasg, edital) && (
+                      <p className="text-xs text-muted-foreground">Preencha o número/ano e a UASG para buscar.</p>
+                    )}
+                    {erroDaCompra && (
+                      <p className="text-sm text-destructive-ink" role="alert">{erroDaCompra}</p>
+                    )}
+                    {comprasAchadas.length > 1 && (
+                      <div className="space-y-1.5" role="status">
+                        <p className="text-sm text-foreground">Há {comprasAchadas.length} compras com esse número nesta UASG. Qual é a do edital?</p>
+                        {comprasAchadas.map((c) => (
+                          <Button key={c.idCompra} type="button" variant="outline" size="sm" className="mr-2" onClick={() => aplicarCompra(c)}>
+                            {c.modalidade} · {c.itens.length} {c.itens.length === 1 ? 'item' : 'itens'}
+                          </Button>
+                        ))}
+                      </div>
+                    )}
+                    {compraEscolhida && (() => {
+                      const resumo = resumoDaCompra(compraEscolhida);
+                      return (
+                        <div className="rounded-lg border border-border bg-muted px-4 py-3 space-y-1" role="status">
+                          <p className="text-sm font-semibold text-foreground flex items-center gap-2">
+                            <CheckCircle2 className="w-4 h-4 text-success-ink shrink-0" aria-hidden="true" />
+                            {resumo.titulo} encontrada no Compras.gov
+                          </p>
+                          {resumo.linhas.map((linha, idx) => (
+                            <p key={idx} className={cn('text-xs text-muted-foreground', idx === 2 && 'line-clamp-2')}>{linha}</p>
+                          ))}
+                          <div className="flex flex-wrap items-center gap-3 pt-1">
+                            {compraEscolhida.urlPncp && (
+                              <a
+                                href={compraEscolhida.urlPncp}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs font-medium text-primary hover:underline"
+                              >
+                                Ver no PNCP
+                              </a>
+                            )}
+                            {itens.length > 0 && itensDaCompraDe !== compraEscolhida.idCompra && compraEscolhida.itens.length > 0 && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  usarItensDaCompra(compraEscolhida);
+                                  toast.success(`Itens trocados pelos ${compraEscolhida.itens.length} da compra.`);
+                                }}
+                              >
+                                Usar os {compraEscolhida.itens.length} itens da compra (substitui os {itens.length} atuais)
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
                 </div>
               )}
               <div>
@@ -1617,6 +1844,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                               <TableRow className="bg-muted/30">
                                 <TableHead className="w-10 text-center">Nº</TableHead>
                                 <TableHead>Descrição</TableHead>
+                                <TableHead title="Marca e modelo ofertados. Em item do processo, vêm da Proposta">Marca / Modelo</TableHead>
                                 <TableHead className="text-center">Qtd</TableHead>
                                 <TableHead className="text-center">Unid.</TableHead>
                                 <TableHead className="text-right">Vlr Unit.</TableHead>
@@ -1632,6 +1860,8 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                                   key={item.id}
                                   item={item}
                                   larguraDescricao="max-w-[180px]"
+                                  aoMudarValor={handleValorItem}
+                                  aoMudarMarcaModelo={handleMarcaModeloItem}
                                   aoMudarPiso={handlePisoItem}
                                   aoMudarEstrategia={handleEstrategiaItem}
                                   aoMudarMargem={handleMargemItem}
@@ -1652,6 +1882,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                         <TableRow className="bg-muted/50">
                           <TableHead className="w-10 text-center">Nº</TableHead>
                           <TableHead>Descrição</TableHead>
+                          <TableHead title="Marca e modelo ofertados. Em item do processo, vêm da Proposta">Marca / Modelo</TableHead>
                           <TableHead className="text-center">Qtd</TableHead>
                           <TableHead className="text-center">Unid.</TableHead>
                           <TableHead className="text-right">Vlr Unit.</TableHead>
@@ -1667,7 +1898,9 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                             key={item.id}
                             item={item}
                             larguraDescricao="max-w-[160px]"
-                            aoMudarPiso={handlePisoItem}
+                            aoMudarValor={handleValorItem}
+                                  aoMudarMarcaModelo={handleMarcaModeloItem}
+                                  aoMudarPiso={handlePisoItem}
                             aoMudarEstrategia={handleEstrategiaItem}
                             aoMudarMargem={handleMargemItem}
                             aoRemover={handleRemoveItem}
