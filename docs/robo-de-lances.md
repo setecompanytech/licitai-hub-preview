@@ -281,6 +281,7 @@ continua no servidor.
 | D10 | A tela remota **sai do caminho do usuário** e fica para **auditoria e exceção** (captcha) — é onde o Rafael a colocou em 14/09 (`/admin/robo-lances`) | alinhamento 14–15/09 |
 | D11 | Demonstrações passam a ser **ao vivo, em call**: "quando for assim, acione eles em uma call pra demonstrar, fica melhor" | Giovanny — WhatsApp 15/09 14:01 |
 | D12 | **A sessão do Compras.gov pode ficar aberta no servidor o dia todo, todos os dias**, no perfil do certificado do Rafael; o robô tem de ficar atento às disputas configuradas no Praefectus e entrar sozinho em cada uma | Rafael Castro — autorização repassada pelo Ian em 16/09 |
+| D13 | **Acompanhar a disputa pela tela do Praefectus, sem precisar da tela remota**: uma interface simples que mostre como a disputa está indo. **A tela remota continua de pé** (auditoria e captcha) | reunião de 14/09 e WhatsApp de 15/09 ("rodando por trás sem precisar necessariamente que o usuário veja"); reforçado pelo Ian em 16/09 |
 
 Decisões do Ian sobre o caminho (15/09): o checklist do grupo **fica na nossa
 lista por ora** (sai se algum item for do Giovanny); o mapeamento e o primeiro
@@ -575,7 +576,20 @@ Dois esclarecimentos para não perder no caminho:
   - **a estratégia de cada item** aparece na página da disputa, embaixo do piso ("Iminência", "Desempatar no 1º lugar · margem R$ 10,00"), sem coluna nova
 - [x] **Avisos ao usuário** — escrito em 16/09. O webhook passou a avisar em três momentos novos: **robô entrou na sala** (callback `sessao-ativa`, criado no agente), **lance recusado pelo portal** e **robô parou com erro**. Os dois últimos são urgentes, e todos levam para a página da disputa. Junto veio um conserto: o agente já enviava `lance-recusado` e o webhook respondia "tipo desconhecido" — o aviso era descartado, como havia acontecido com `rodada-sem-lance` em 08/09. O lance recusado agora entra no histórico com o motivo do portal, **sem** avançar o valor atual, e a linha do tempo da disputa deixa de chamá-lo de "enviado". Falta publicar a função e instalar o agente na VPS (abaixo)
 - [x] Publicar o webhook e instalar o agente — feito em 16/09 na ordem obrigatória (função antes do agente, senão o `sessao-ativa` voltaria como "tipo desconhecido"): `robo-lances-webhook` **v32** às 10:17, e o `session-manager.js` na VPS com md5 **igual ao template** (`a452c25a…`), backup `.bak-20260916-1005`, `pm2 restart` e `/health` respondendo online, 14 rotas, `portais_com_lance_liberado: []`
-- [ ] Linha do tempo da disputa na própria página (`EventosDaDisputa`, que hoje diz "o robô ainda não operou nesta disputa"), para o usuário acompanhar sem abrir tela remota nenhuma
+- [ ] **Acompanhamento sem tela remota (D13)** — ordem definida em 16/09: vem antes de "uma aba por pregão"
+  - [ ] o robô envia o estado da sala (callback novo), quando algo muda e no máximo a cada 30 s: item, melhor lance, nosso lance, posição, lidera, propostas válidas e desclassificadas, modo, fase, intervalo e a decisão da rodada com o motivo
+  - [ ] `lance-concorrente` só quando o melhor lance muda; o webhook deixa de gravar o valor do concorrente em `sessoes_lance_real.valor_atual`
+  - [ ] o webhook grava `melhor_lance`, `seu_ultimo_lance`, `sou_lider` e `situacao` em `sessao_lance_itens` — as colunas que a tabela de itens já lê
+  - [ ] linha do tempo com o que importa (entrou, assumiu ou perdeu a liderança, lance enviado ou recusado, aguardando com motivo quando ele muda, encerrou) na aba Eventos
+  - [ ] quadro de status em uma linha no topo da aba Acompanhamento
+  - [ ] prova com uma disputa da BAQPLAST no 7/2026: 8º lugar no item 1, R$ 4.999,70, visível no quadro e nas colunas
+
+**Fase 7 — vários pregões ao mesmo tempo** (pergunta do Ian em 16/09; depois do acompanhamento)
+- [ ] **Um navegador por empresa, uma aba por pregão**: a segunda disputa da mesma identidade abre aba nova no Chrome já logado, em vez de um Chrome com perfil temporário; o Chrome fecha quando a última disputa da empresa termina; o vigia convive com ele
+- [ ] **Todos os itens do pregão**, e não só o primeiro: o laço acompanha cada item configurado, com o piso e a estratégia dele
+- [ ] Testes simulando duas disputas da mesma empresa ao mesmo tempo, antes de instalar
+- [ ] Prova ao vivo: dois pregões no mesmo horário, ou um pregão real com vários itens
+- [ ] Observar se um segundo login do mesmo CPF derruba o primeiro (hoje, risco não testado)
 
 **Fase 5 — liberar o lance**
 - [ ] Com a sala lida e a estratégia testada, antes do pregão B: `PORTAIS_COM_LANCE_LIBERADO = ['comprasgov']`, com o registro "autorizado por Giovanny Valente e Rubens, 14–15/09/2026"
@@ -635,6 +649,75 @@ interpretação:
 | "Relogar automaticamente com o certificado se expirar" | Tentar, sim; garantir, não — o hCaptcha pede gesto humano na maioria das vezes |
 | "Colisão de sessão se a Izabelle entrar com o mesmo certificado" | **Risco plausível, não observado.** A observar: se a operadora entrar com o CPF do Rafael enquanto o robô está logado, anotar quem cai |
 | "Navegar até a sala de lances" | Depende do mapeamento da sala logada (Fase 1) |
+
+#### 16/09 — acompanhar a disputa sem a tela remota (D13)
+
+**O que já existe na tela**, feito pelo XFIN em 14/09, na página de cada
+disputa (`/robo-lances/disputa/:id`): a aba **Acompanhamento**
+(`AcompanhamentoDaDisputa`: estado do robô, último sinal, parada), a tabela de
+itens com as colunas **Seu último lance**, **Melhor lance** e **Situação**
+(`ItensDaDisputa`, lendo `sessao_lance_itens`) e a aba **Eventos**
+(`EventosDaDisputa`, lendo sessões e `lances_historico`).
+
+**O que falta é o robô alimentar essa tela.** A cada rodada ele já lê o melhor
+lance, a posição da empresa, se ela lidera, o modo de disputa, o intervalo mínimo
+e decide o que fazer, com motivo — e **não manda nada disso ao Praefectus**
+além do número da rodada. Ninguém grava `melhor_lance`, `seu_ultimo_lance`,
+`sou_lider` ou `situacao` em `sessao_lance_itens`: as colunas ficam sempre
+"não informado", e os eventos só mostram início e fim de sessão.
+
+**Um defeito no mesmo caminho**: o callback `lance-concorrente` sai **a cada
+rodada** em que o melhor lance é menor que o valor atual da sessão — não só
+quando o melhor lance muda —, e o webhook grava o valor do concorrente em
+`sessoes_lance_real.valor_atual`, o campo do **nosso** valor. Numa disputa real,
+encheria o histórico a cada 30 s e mostraria o preço do concorrente como se
+fosse o nosso.
+
+Registro das falas: a compilação feita pelo Gemini em 16/09 cita frases dos
+vídeos ("historizador", "pode ficar oculto") que **não estão na transcrição**
+registrada em 15/09; o que está registrado é a mensagem de WhatsApp de 15/09. A
+direção é a mesma.
+
+**O plano, em três partes:**
+
+1. **O robô envia o estado da sala** quando algo muda, e no máximo a cada 30 s
+   se nada mudar: item, melhor lance, nosso lance, posição, se lidera,
+   propostas válidas e desclassificadas, modo, fase, intervalo mínimo e a
+   decisão da rodada com o motivo. O `lance-concorrente` passa a sair só quando
+   o melhor lance muda.
+2. **O webhook grava** nas colunas que a tela já lê (`sessao_lance_itens`) e
+   registra na linha do tempo só o que importa: entrou na sala, assumiu ou
+   perdeu a liderança, lance enviado, lance recusado, aguardando (com o motivo,
+   quando ele muda), encerrou. E deixa de gravar o valor do concorrente no campo
+   do nosso valor.
+3. **Um quadro de status** no topo da aba Acompanhamento, em uma linha:
+   "Robô na sala · Modo aberto · 8º lugar · Melhor R$ 3.100,00 · Nosso
+   R$ 4.999,70 · Aguardando: estratégia de iminência" — e a linha do tempo
+   embaixo, na aba Eventos.
+
+**Como provar sem pregão ao vivo**: uma disputa da **BAQPLAST** no 7/2026 — a
+proposta dela está em **8º no item 1** (R$ 4.999,70, captura das 11:04) — deve
+aparecer assim no quadro e nas colunas.
+
+#### 16/09 — vários pregões ao mesmo tempo, no Compras.gov
+
+Pergunta do Ian em 16/09. O que o robô faz hoje:
+
+| Situação | Hoje |
+| --- | --- |
+| **Empresas diferentes** ao mesmo tempo (cada uma com seu certificado) | **Funciona**: cada sessão tem o próprio Chrome e o próprio perfil. O servidor (8 GB de RAM, 4 núcleos) comporta **até 8 sessões** simultâneas (`MAX_SESSOES_PARALELAS=8`, ~500 MB cada) |
+| **A mesma empresa em dois pregões** ao mesmo tempo | **Não funciona bem.** O Chrome não abre a mesma pasta de perfil duas vezes: a segunda sessão entra com perfil temporário, faz login do zero, e o captcha pede clique. E um segundo login do mesmo CPF **pode derrubar a sessão do primeiro pregão** — risco real, **não testado** |
+| **Um pregão com vários itens** | O robô acompanha **só o primeiro item** da disputa |
+
+**O caminho — o dos robôs de mercado: um navegador por empresa, uma aba por
+pregão.** A empresa tem um Chrome logado (o mesmo que o vigia mantém vivo); cada
+pregão daquela empresa abre uma aba nova nele — sem login, sem captcha, sem
+derrubar o outro —, e o Chrome só fecha quando a última disputa da empresa
+termina. Dentro de cada pregão, o laço passa a acompanhar **todos os itens
+configurados**, cada um com seu piso e sua estratégia.
+
+Lembrete de escopo: esta automação de navegador é para o **Compras.gov**; outros
+portais seguem por API (D1, D2).
 
 #### O que depende de alguém
 
