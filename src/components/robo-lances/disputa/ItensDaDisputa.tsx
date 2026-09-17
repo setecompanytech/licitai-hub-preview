@@ -149,6 +149,7 @@ export default function ItensDaDisputa({
             {nomeDaEstrategia(l.estrategia)}
             {l.estrategia === 'desempatar_1o' &&
               (l.margemDesempate !== null ? ` · margem ${formatarMoeda(l.margemDesempate)}` : ' · sem margem')}
+            {l.lanceFinalFechado !== null && ` · final ${formatarMoeda(l.lanceFinalFechado)}`}
           </span>
         </span>
       ),

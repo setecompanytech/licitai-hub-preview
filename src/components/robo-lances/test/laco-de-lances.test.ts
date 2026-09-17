@@ -335,6 +335,30 @@ describe('laço de lances', () => {
     s2.status = 'encerrado';
   });
 
+  it('o lance final fechado do item chega à decisão com o nome que o webhook manda', async () => {
+    // Nome do campo: `lance_final_fechado`, o mesmo de robo-lances-webhook (envio
+    // manual e agendador) e de useEnviarAoRobo. Se um lado mudar, este teste cai.
+    const { gerente } = montar(true);
+    const { portal, enviados } = portalFalso({ lerSala: async () => ({ fase: 'fechada', elegivel: true }) });
+    const s = sessao(portal, { itens: [{ numero: 1, valor_minimo: 60, estrategia: 'melhor_preco', lance_final_fechado: 77.5 }] });
+    gerente.sessions.set('s1', s);
+    gerente._startBiddingLoop(s);
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(enviados).toEqual([77.5]);
+    s.status = 'encerrado';
+
+    const semValor = montar(true);
+    const p2 = portalFalso({ lerSala: async () => ({ fase: 'fechada', elegivel: true }) });
+    const s2 = sessao(p2.portal, { itens: [{ numero: 1, valor_minimo: 60, estrategia: 'melhor_preco' }] });
+    semValor.gerente.sessions.set('s1', s2);
+    semValor.gerente._startBiddingLoop(s2);
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(p2.enviados).toEqual([]);
+    const estado = semValor.chamadas.find((c) => c.tipo === 'estado-da-sala');
+    expect((estado?.dados.decisao as { motivo: string }).motivo).toMatch(/lance final fechado precisa de valor/);
+    s2.status = 'encerrado';
+  });
+
   it('o intervalo mínimo lido do portal vira o passo quando não há decremento', async () => {
     const { gerente } = montar(true);
     const { portal, enviados } = portalFalso({ nossoLance: async () => null });

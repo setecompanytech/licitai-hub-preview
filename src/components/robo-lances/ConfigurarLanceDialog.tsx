@@ -28,7 +28,7 @@ import { useEditalExtraction, type LicitacaoItem } from '@/hooks/useEditalExtrac
 import { useLinkedEditalSource } from '@/hooks/useLinkedEditalSource';
 import LimparItensExtraidosButton from '@/components/licitacoes/LimparItensExtraidosButton';
 import { PORTAIS_ROBO, idDoPortal } from '@/lib/robo/portais';
-import { ESTRATEGIAS_DO_ITEM, type EstrategiaDoItem } from '@/lib/robo/estrategia-do-item';
+import { ESTRATEGIAS_DO_ITEM, avisosDaGrade, modoTemLanceFinalFechado, type EstrategiaDoItem } from '@/lib/robo/estrategia-do-item';
 import { agendamentoDaDisputa, sessaoDoProcesso, HORA_MINIMA_ESPERADA, type SessaoDoProcesso } from '@/lib/robo/agendamento';
 import {
   aplicarMarcaModeloDoTermo,
@@ -91,6 +91,12 @@ export type DisputeItem = {
    * entre o lance da empresa e o do 1º colocado para o robô cobri-lo.
    */
   margemDesempate?: number | null;
+  /**
+   * Só no modo aberto e fechado: o valor do único lance final fechado, se o
+   * portal chamar a empresa. Vazio = o robô não dá esse lance — ele não escolhe
+   * sozinho um número que não dá para corrigir.
+   */
+  lanceFinalFechado?: number | null;
   lote: string;
   disputando: boolean;
   situacao: 'aguardando' | 'disputando' | 'encerrado';
@@ -262,6 +268,8 @@ function LinhaDeItem({
   aoMudarPiso,
   aoMudarEstrategia,
   aoMudarMargem,
+  mostrarLanceFinal,
+  aoMudarLanceFinal,
   aoRemover,
 }: {
   item: DisputeItem;
@@ -271,6 +279,8 @@ function LinhaDeItem({
   aoMudarPiso: (id: string, valor: number | null) => void;
   aoMudarEstrategia: (id: string, estrategia: EstrategiaDoItem) => void;
   aoMudarMargem: (id: string, valor: number | null) => void;
+  mostrarLanceFinal: boolean;
+  aoMudarLanceFinal: (id: string, valor: number | null) => void;
   aoRemover: (id: string) => void;
 }) {
   // `null` e `0` são estados diferentes e a tela precisa mostrar essa
@@ -395,6 +405,24 @@ function LinhaDeItem({
             }`}
           />
         )}
+        {/* Valor já digitado continua visível mesmo se a compra escolhida for de
+            outro modo: esconder um número salvo seria perdê-lo de vista. */}
+        {(mostrarLanceFinal || !!item.lanceFinalFechado) && (
+          <CampoDecimal
+            valor={item.lanceFinalFechado ?? null}
+            aoMudar={(v) => aoMudarLanceFinal(item.id, v)}
+            zeroEhVazio
+            placeholder="lance final R$"
+            inputMode="decimal"
+            aria-label={`Lance final fechado do item ${item.numero}`}
+            title="Modo aberto e fechado: o valor do único lance final fechado, se o portal chamar a empresa. Vazio = o robô não dá esse lance."
+            className={`mt-1 h-9 w-32 text-sm text-right tabular-nums px-2 ${
+              item.lanceFinalFechado && item.valorMinimo && item.lanceFinalFechado < item.valorMinimo
+                ? 'border-warning-line'
+                : ''
+            }`}
+          />
+        )}
       </TableCell>
       <TableCell className="text-center">
         <Button
@@ -498,6 +526,8 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
   const [compraEscolhida, setCompraEscolhida] = useState<CompraDoComprasGov | null>(null);
   // De qual compra vieram os itens da grade — para oferecer a troca só quando não vieram dela.
   const [itensDaCompraDe, setItensDaCompraDe] = useState<string | null>(null);
+  // O campo do lance final fechado só some quando a compra lida diz um modo sem ele.
+  const mostrarLanceFinal = modoTemLanceFinalFechado(compraEscolhida?.modoDisputa);
   // Marca e modelo lidos do termo de referência (sob demanda, com IA).
   const [lendoTermo, setLendoTermo] = useState(false);
   const [resultadoDoTermo, setResultadoDoTermo] = useState<{ ok: boolean; texto: string } | null>(null);
@@ -1129,6 +1159,11 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
   /** Margem vazia grava `null`: sem ela a estratégia de desempate aguarda. */
   const handleMargemItem = (id: string, valor: number | null) => {
     setItens(prev => prev.map(i => (i.id === id ? { ...i, margemDesempate: valor } : i)));
+  };
+
+  /** Lance final vazio grava `null`: sem ele o robô não dá o lance final fechado. */
+  const handleLanceFinalItem = (id: string, valor: number | null) => {
+    setItens(prev => prev.map(i => (i.id === id ? { ...i, lanceFinalFechado: valor && valor > 0 ? valor : null } : i)));
   };
 
   const handleSave = () => {
@@ -1941,6 +1976,8 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                                   aoMudarPiso={handlePisoItem}
                                   aoMudarEstrategia={handleEstrategiaItem}
                                   aoMudarMargem={handleMargemItem}
+                                  mostrarLanceFinal={mostrarLanceFinal}
+                                  aoMudarLanceFinal={handleLanceFinalItem}
                                   aoRemover={handleRemoveItem}
                                 />
                               ))}
@@ -1979,6 +2016,8 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                                   aoMudarPiso={handlePisoItem}
                             aoMudarEstrategia={handleEstrategiaItem}
                             aoMudarMargem={handleMargemItem}
+                            mostrarLanceFinal={mostrarLanceFinal}
+                            aoMudarLanceFinal={handleLanceFinalItem}
                             aoRemover={handleRemoveItem}
                           />
                         ))}
@@ -2147,14 +2186,16 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
               impede salvar — a disputa pode ser cadastrada meses antes e
               completada depois —, mas diz antes, e não no pregão. */}
           {step === 2 && (() => {
-            const semPisoGeral = !(valorMinimo > 0);
-            const semPiso = semPisoGeral ? itens.filter((i) => !(Number(i.valorMinimo) > 0)).length : 0;
-            const semMargem = itens.filter((i) => i.estrategia === 'desempatar_1o' && !(Number(i.margemDesempate) > 0)).length;
-            if (!semPiso && !semMargem) return null;
+            const a = avisosDaGrade({ itens, pisoGeral: valorMinimo, ehComprasGov });
+            if (!a.semPiso && !a.semMargem && !a.iminenciaSemTempo && !a.lanceFinalAbaixoDoPiso) return null;
             return (
               <p className="text-sm text-warning-ink" role="status">
-                {semPiso > 0 && `${semPiso} item(ns) sem piso: o robô não disputa esses itens. `}
-                {semMargem > 0 && `${semMargem} item(ns) em "Desempatar no 1º lugar" sem margem: o robô aguarda neles.`}
+                {a.semPiso > 0 && `${a.semPiso} item(ns) sem piso: o robô não disputa esses itens. `}
+                {a.semMargem > 0 && `${a.semMargem} item(ns) em "Desempatar no 1º lugar" sem margem: o robô aguarda neles. `}
+                {a.iminenciaSemTempo > 0 &&
+                  `${a.iminenciaSemTempo} item(ns) em "Iminência": no Compras.gov o robô ainda não lê o tempo restante da sala, então nesses itens ele só acompanha — para disputar, use "Melhor preço". `}
+                {a.lanceFinalAbaixoDoPiso > 0 &&
+                  `${a.lanceFinalAbaixoDoPiso} item(ns) com lance final abaixo do piso: o robô não dá esse lance.`}
               </p>
             );
           })()}

@@ -61,6 +61,8 @@ export interface LinhaDoItem {
   estrategia: string | null;
   /** Só em 'desempatar_1o': distância máxima até o 1º colocado, em reais. */
   margemDesempate: number | null;
+  /** Modo aberto e fechado: valor do lance final fechado escolhido pela empresa. */
+  lanceFinalFechado: number | null;
   /** O que o agente registrou para este item, quando o casamento é inequívoco. */
   daSessao: ItemDaSessao | null;
 }
@@ -145,6 +147,10 @@ export function linhasDaDisputa(
       margemDesempate: (() => {
         const m = numeroOuNulo(item.margemDesempate ?? item.margem_desempate);
         return m !== null && m > 0 ? m : null;
+      })(),
+      lanceFinalFechado: (() => {
+        const v = numeroOuNulo(item.lanceFinalFechado ?? item.lance_final_fechado);
+        return v !== null && v > 0 ? v : null;
       })(),
       daSessao,
     };

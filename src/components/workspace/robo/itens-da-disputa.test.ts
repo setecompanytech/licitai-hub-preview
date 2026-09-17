@@ -72,6 +72,14 @@ describe('linhasDaDisputa — casamento dos itens', () => {
     expect(linhas.map((l) => l.limite)).toEqual([null, 750, null]);
   });
 
+  it('lance final fechado nas duas grafias; zero ou ausente é "não definido"', () => {
+    const linhas = linhasDaDisputa(
+      [{ numero: 1, lanceFinalFechado: 77.5 }, { numero: 2, lance_final_fechado: '88' }, { numero: 3, lanceFinalFechado: 0 }, { numero: 4 }],
+      [],
+    );
+    expect(linhas.map((l) => l.lanceFinalFechado)).toEqual([77.5, 88, null, null]);
+  });
+
   it('gera chaves únicas mesmo para itens repetidos', () => {
     const linhas = linhasDaDisputa([{ numero: 1, lote: '1' }, { numero: 1, lote: '1' }], []);
     expect(new Set(linhas.map((l) => l.chave)).size).toBe(2);
