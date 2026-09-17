@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { Link, MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ProvedorDeTrilha, useTrilhaDaPagina } from '@/components/layout/contexto-trilha';
 
 /**
  * A página de UMA disputa do robô — `/robo-lances/disputa/:id`.
@@ -184,23 +185,40 @@ function LocalAtual() {
 
 type Entrada = string | { pathname: string; search?: string; state?: unknown };
 
+/**
+ * A trilha que a página registra, desenhada como a faixa superior desenharia
+ * (o AppLayout está simulado). Desde 17/09 é ela o caminho de volta: o link
+ * "← Robô de lances" próprio da página saiu por duplicar a faixa.
+ */
+function TrilhaDeTeste() {
+  const trilha = useTrilhaDaPagina();
+  return (
+    <nav aria-label="Trilha">
+      {(trilha ?? []).map((d) => (d.para ? <Link key={d.rotulo} to={d.para}>{d.rotulo}</Link> : <span key={d.rotulo}>{d.rotulo}</span>))}
+    </nav>
+  );
+}
+
 function renderizar(entrada: Entrada = '/robo-lances/disputa/disputa-1') {
   const cliente = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={cliente}>
       <MemoryRouter initialEntries={[entrada]}>
-        <Routes>
-          <Route
-            path="/robo-lances/disputa/:id"
-            element={
-              <>
-                <RoboLancesDisputa />
-                <LocalAtual />
-              </>
-            }
-          />
-          <Route path="/robo-lances" element={<LocalAtual />} />
-        </Routes>
+        <ProvedorDeTrilha>
+          <TrilhaDeTeste />
+          <Routes>
+            <Route
+              path="/robo-lances/disputa/:id"
+              element={
+                <>
+                  <RoboLancesDisputa />
+                  <LocalAtual />
+                </>
+              }
+            />
+            <Route path="/robo-lances" element={<LocalAtual />} />
+          </Routes>
+        </ProvedorDeTrilha>
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -289,11 +307,14 @@ describe('RoboLancesDisputa — abas na URL', () => {
     expect(screen.queryByRole('tab', { name: /Simulação|Auditoria/ })).not.toBeInTheDocument();
   });
 
-  it('o caminho de volta leva à lista na mesma aba e com a mesma busca', async () => {
+  it('o caminho de volta, na trilha, leva à lista na mesma aba e com a mesma busca', async () => {
     renderizar({ pathname: '/robo-lances/disputa/disputa-1', state: { daLista: '?painel=configuradas&q=PE' } });
 
+    // Um caminho de volta só: o da trilha da faixa superior. A página não
+    // desenha mais um "← Robô de lances" próprio abaixo dela.
     const voltar = await screen.findByRole('link', { name: 'Robô de lances' });
     expect(voltar).toHaveAttribute('href', '/robo-lances?painel=configuradas&q=PE');
+    expect(screen.getAllByRole('link', { name: 'Robô de lances' })).toHaveLength(1);
   });
 });
 

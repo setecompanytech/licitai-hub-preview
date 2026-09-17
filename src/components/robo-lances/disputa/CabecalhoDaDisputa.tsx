@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, ArrowLeft, Bot, Building2, CalendarDays, FolderOpen, Globe, PowerOff } from 'lucide-react';
+import { AlertTriangle, Bot, Building2, CalendarDays, FolderOpen, Globe, PowerOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import SeloSituacao from '@/components/gestao/SeloSituacao';
 import type { LanceConfig } from '@/components/robo-lances/ConfigurarLanceDialog';
@@ -42,7 +42,6 @@ interface Props {
   /** O menu "Ações", já com os handlers da disputa. */
   acoes: ReactNode;
   /** A lista, na aba e com a busca de onde a pessoa veio. */
-  voltarPara: string;
 }
 
 /**
@@ -80,7 +79,6 @@ export default function CabecalhoDaDisputa({
   aoDefinirData,
   editar,
   acoes,
-  voltarPara,
 }: Props) {
   const processo = participacao?.processo ?? null;
   const titulo = processo?.numero || lance.edital || 'Disputa sem número de edital';
@@ -164,13 +162,10 @@ export default function CabecalhoDaDisputa({
 
   return (
     <header className="flex flex-col gap-3">
-      <Link
-        to={voltarPara}
-        className="g-meta inline-flex w-fit items-center gap-1 rounded text-muted-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        <ArrowLeft aria-hidden="true" className="h-3.5 w-3.5" />
-        Robô de lances
-      </Link>
+      {/* Sem link "← Robô de lances" próprio: a faixa superior já tem o Voltar
+          comum e a trilha "Robô de lances", registrada pela página com o
+          endereço da lista (aba e busca preservadas). Dois caminhos de volta
+          um embaixo do outro era a navegação duplicada apontada em 17/09. */}
 
       {/* Título e ações dividem a primeira linha; selos e contexto ganham a
           largura inteira embaixo. Na coluna ao lado dos botões eles ficavam com

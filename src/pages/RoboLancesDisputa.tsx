@@ -245,7 +245,6 @@ function TelaDaDisputa() {
         nivel={modo.nivel}
         roboLigado={roboDaEmpresa.estado.ligado || !roboDaEmpresa.estado.confirmado}
         aoDefinirData={() => { setFocoDaEdicao('data'); setEditando(true); }}
-        voltarPara={voltarPara}
         editar={
           podeOperar ? (
             <ConfigurarLanceDialog
