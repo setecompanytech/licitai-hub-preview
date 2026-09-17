@@ -1,4 +1,5 @@
 import { SkeletonCorpo } from '@/components/shared/SkeletonPagina';
+import { cn } from '@/lib/utils';
 import EstadoVazio from '@/components/shared/EstadoVazio';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
@@ -133,14 +134,24 @@ const TRILHA_BASE = trilhaDaRota('/kanban')
 /** Campo da ficha do processo: rótulo em cima, valor embaixo. Substitui as
  *  linhas separadas por "|" — que não embrulhavam em tela estreita e pintavam
  *  o separador com a cor da borda. */
-function Campo({ rotulo, children }: { rotulo: string; children: ReactNode }) {
+function Campo({ rotulo, children, largo }: { rotulo: string; children: ReactNode; largo?: boolean }) {
   return (
-    <div className="min-w-0">
+    <div className={cn('min-w-0', largo && 'col-span-2')}>
       <dt className="g-meta text-muted-foreground">{rotulo}</dt>
-      <dd className="g-corpo mt-1 text-foreground">{children}</dd>
+      <dd className="g-corpo mt-0.5 break-words text-foreground">{children}</dd>
     </div>
   );
 }
+
+/**
+ * A grade da ficha do Resumo. Eram três colunas num cartão de 1.600 px — cada
+ * coluna com 500 px para um valor de 150, e o cartão passava de 600 px de
+ * altura para dezesseis campos (print de 17/09). Seis colunas na tela larga,
+ * quatro no notebook, três no tablet, duas no celular; campo longo (órgão,
+ * unidade compradora, amparo legal) ocupa duas, para não sobrar buraco ao
+ * lado dos curtos.
+ */
+const GRADE_DA_FICHA = 'grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6';
 
 /** Tom do selo de situação no cabeçalho — só apresentação; o texto continua o
  *  status bruto do processo, e a cor é reforço (SeloSituacao leva ícone junto). */
@@ -633,7 +644,7 @@ export default function ProcessoWorkspace() {
             <ContratoDoProcesso licitacaoId={lic.id} />
 
             <SecaoGestao titulo="Resumo">
-              <Card className="p-6 space-y-6">
+              <Card className="p-5 space-y-5">
                 {/* O objeto, que saiu do cabeçalho, chega aqui inteiro — em
                     três linhas, com botão real de expansão. */}
                 <div>
@@ -643,11 +654,11 @@ export default function ProcessoWorkspace() {
                     : <p className="g-corpo text-muted-foreground">—</p>}
                 </div>
 
-                <dl className="grid grid-cols-1 gap-x-6 gap-y-4 border-t border-border pt-6 sm:grid-cols-2 lg:grid-cols-3">
+                <dl className={cn(GRADE_DA_FICHA, 'border-t border-border pt-5')}>
+                  <Campo rotulo="Órgão" largo>{lic.orgao || '—'}</Campo>
                   <Campo rotulo="Local">
                     {lic.municipio && lic.uf ? `${lic.municipio}/${lic.uf}` : lic.municipio || lic.uf || '—'}
                   </Campo>
-                  <Campo rotulo="Órgão">{lic.orgao || '—'}</Campo>
                   <Campo rotulo="Status">{lic.status || '—'}</Campo>
                   <Campo rotulo="Modalidade">{lic.modalidade || '—'}</Campo>
                   <Campo rotulo="Valor estimado">
@@ -667,7 +678,7 @@ export default function ProcessoWorkspace() {
                     </Campo>
                   )}
                   {lic.resultado && (
-                    <Campo rotulo="Resultado">
+                    <Campo rotulo="Resultado" largo>
                       <div className="flex flex-wrap items-center gap-2">
                         <span className={lic.vencedor ? 'font-semibold text-success-ink' : undefined}>{lic.resultado}</span>
                         {/* O ponto verde dizia "vencemos" só pela cor, com o texto
@@ -687,13 +698,13 @@ export default function ProcessoWorkspace() {
                 </dl>
 
                 {temEspelho && (
-                  <div className="border-t border-border pt-6">
-                    <h3 className="g-titulo-secao mb-4">Espelho do PNCP</h3>
-                    <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="border-t border-border pt-5">
+                    <h3 className="g-titulo-secao mb-3">Espelho do PNCP</h3>
+                    <dl className={GRADE_DA_FICHA}>
                       {espelho.unidadeCompradora && (
-                        <Campo rotulo="Unidade compradora">{espelho.unidadeCompradora}</Campo>
+                        <Campo rotulo="Unidade compradora" largo>{espelho.unidadeCompradora}</Campo>
                       )}
-                      {espelho.amparoLegal && <Campo rotulo="Amparo legal">{espelho.amparoLegal}</Campo>}
+                      {espelho.amparoLegal && <Campo rotulo="Amparo legal" largo>{espelho.amparoLegal}</Campo>}
                       {espelho.tipo && <Campo rotulo="Tipo">{espelho.tipo}</Campo>}
                       {espelho.modoDisputa && <Campo rotulo="Modo de disputa">{espelho.modoDisputa}</Campo>}
                       {espelho.srp != null && (
@@ -711,7 +722,7 @@ export default function ProcessoWorkspace() {
                         <Campo rotulo="Fim das propostas">{dataHora(espelho.fimPropostas)}</Campo>
                       )}
                       {espelho.idPncp && (
-                        <Campo rotulo="Id contratação PNCP">
+                        <Campo rotulo="Id contratação PNCP" largo>
                           <span className="tabular-nums">{espelho.idPncp}</span>
                         </Campo>
                       )}
@@ -721,7 +732,7 @@ export default function ProcessoWorkspace() {
                 )}
 
                 {lic.observacoes && (
-                  <div className="border-t border-border pt-6">
+                  <div className="border-t border-border pt-5">
                     <h3 className="g-meta mb-1 uppercase tracking-wide text-muted-foreground">Observações</h3>
                     <TextoExpansivel
                       texto={lic.observacoes}
