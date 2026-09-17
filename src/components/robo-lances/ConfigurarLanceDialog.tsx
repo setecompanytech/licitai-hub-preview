@@ -42,6 +42,7 @@ import {
   type CompraDoComprasGov,
 } from '@/lib/robo/compra-comprasgov';
 import { lerValorDigitado, valorParaDigitar } from '@/lib/robo/valor-digitado';
+import TextoExpansivel from '@/components/gestao/TextoExpansivel';
 import { buscarUasgDoProcesso } from '@/lib/robo/uasg-do-processo';
 import { cn } from '@/lib/utils';
 
@@ -230,6 +231,10 @@ function CampoDecimal({
   zeroEhVazio?: boolean;
 }) {
   const [texto, setTexto] = useState(() => valorParaDigitar(valor));
+  // Em foco, o texto cru que a pessoa digita; fora dele, o número em moeda
+  // ("R$ 6.686.383,56"), como as outras colunas em reais. Formatar DURANTE a
+  // digitação era o que engolia a vírgula (16/09) — por isso só no repouso.
+  const [focado, setFocado] = useState(false);
   const ultimoEnviado = useRef<number | null | undefined>(valor);
   useEffect(() => {
     if (valor !== ultimoEnviado.current) {
@@ -237,10 +242,13 @@ function CampoDecimal({
       setTexto(valorParaDigitar(valor));
     }
   }, [valor]);
+  const emRepouso = valor === null || valor === undefined ? '' : paraBRL(valor);
   return (
     <Input
       {...props}
-      value={texto}
+      value={focado ? texto : emRepouso}
+      onFocus={(e) => { setFocado(true); props.onFocus?.(e); }}
+      onBlur={(e) => { setFocado(false); props.onBlur?.(e); }}
       onChange={(e) => {
         const digitado = e.target.value.replace(/[^\d,.]/g, '');
         const n = lerValorDigitado(digitado);
@@ -307,7 +315,10 @@ function LinhaDeItem({
     <TableRow>
       <TableCell className="text-sm text-center font-medium tabular-nums">{item.numero}</TableCell>
       <TableCell className={`text-sm ${larguraDescricao}`}>
-        <span className="block truncate" title={item.descricao}>{item.descricao}</span>
+        {/* Uma linha; o clique em cima abre a descrição inteira (pedido de
+            17/09). A dica ao passar o mouse não servia a quem usa teclado ou
+            toque, e a descrição do Compras.gov costuma ter várias linhas. */}
+        <TextoExpansivel texto={item.descricao} linhas={1} modo="texto" limiarPorLinha={22} className="text-sm" />
         {rotulo && (
           <span
             title={rotulo.titulo}
