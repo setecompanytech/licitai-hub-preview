@@ -1266,3 +1266,43 @@ uma frase própria.
 
 A senha numérica real de cada conta. Com ela, o teste é imediato e não depende
 de pregão agendado: ou entra, ou o portal diz por que não.
+
+## 18. Estratégias cumulativas no agente — 17/09/2026
+
+Pedido do Rafael, dono do produto: as três estratégias do item (melhor preço,
+iminência, desempatar no 1º lugar) passam a **somar**, como no ConLicitação.
+O retrato completo está em `docs/robo-de-lances.md` ("17/09, tarde"). Aqui fica
+o contrato do agente.
+
+**Contrato do item** (`POST /sessao/iniciar`, `itens[]`):
+- `estrategias`: lista com uma, duas ou as três. É o formato novo.
+- `estrategia`: uma só. O webhook continua mandando a mais ampla marcada, que é o
+  que o agente anterior lê.
+- Leitura em `estrategiasDoItem(estrategias, estrategia)`:
+  - lista informada vale mais;
+  - lista vazia aguarda;
+  - nada informado = melhor preço.
+
+**Decisão** (`decidirLance`): cobre o 1º quando qualquer marcada autoriza.
+- Melhor preço, sempre.
+- Iminência, nos 2 minutos finais, a qualquer distância.
+- Desempatar, só com o 1º dentro da margem.
+- No desempate de ME/EPP, a margem só vale com desempatar sozinho.
+- O estado da sala passa a mandar `estrategia` como `"iminencia+desempatar_1o"`.
+
+**Instalação pendente, esperando o OK do Ian:**
+
+| Arquivo | md5 | Situação |
+| --- | --- | --- |
+| `src/estrategia.js` | `4fdc9e00` | instalar |
+| `src/session-manager.js` | `05848651` | instalar |
+| `src/callback.js` | — | diferente do template só num comentário, desde 02/09; **não** entra |
+
+Diferença para o instalado conferida por `diff`: é só a mudança de hoje.
+Seguir o roteiro de sempre: backup `*.bak-AAAAMMDD-HHMM`, 0 sessões e 0 Chrome
+antes do `pm2 restart`, e md5 igual ao template.
+
+**Junto, sem mexer na VPS:** o webhook passa a conferir a licitação antes de
+entrar (`conferirLicitacaoAntesDeEntrar`). Com a licitação mudada desde o
+cadastro, o agente recebe `modo_automatico: false`: entra e só acompanha.
+

@@ -138,6 +138,29 @@ nova — inclusive as commitadas pelo Lovable — deve nascer alinhada a eles:
    ausência de configuração não é barrada por um padrão inventado — quem ainda
    não escolheu não pode ser bloqueado pela escolha alheia.
 
+## Robô de Lances — regras de produto do dono (17/09/2026)
+
+Decididas pelo Rafael Castro testando o cadastro. Detalhe, arquivos e testes em
+`docs/robo-de-lances.md` ("17/09, tarde"). Mudança que contrarie qualquer uma
+delas precisa passar por ele:
+
+- **Processo vencido não vira disputa de lance.** Sessão num dia anterior só é
+  cadastrada como acompanhamento, com o Modo Automático desligado
+  (`lib/robo/prazo-da-disputa.ts`). Sessão de hoje que já abriu só avisa: pode
+  estar em andamento. A lista de processos do cadastro esconde os encerrados
+  por padrão.
+- **Estratégias somam.** Melhor preço, Iminência e Desempatar no 1º lugar são
+  caixas: uma, duas ou as três, e ao menos uma. O robô cobre o 1º quando
+  qualquer marcada autoriza. Leitura única por `estrategiasDoItem`, em três
+  cópias que mudam juntas: front, `_shared/robo-estrategias.ts` e o agente.
+- **Pregão remarcado não é troca de data.** Edital alterado muda itens,
+  quantidades e unidades (Lei 14.133, art. 55 §1º). Nada troca só a data da
+  disputa: a sessão passada leva a "Conferir alterações", o gatilho do processo
+  só avisa, e o webhook tira o lance do robô quando a licitação mudou desde o
+  cadastro (`_shared/robo-alteracoes-da-licitacao.ts` + espelho em `lib/robo`).
+- **Nome de botão é do produto, não do portal.** "Conferir alterações", não
+  "Conferir no Compras.gov": a mesma tela precisa servir aos próximos portais.
+
 ## Preview do rebranding — a branch tem DOIS remotos
 
 A `feature/rebrand-ui-ux` está no ar em **https://praefectus-preview.pages.dev**,

@@ -344,7 +344,7 @@ reestruturou:
 1. o interruptor **ligar/desligar** do robô — já existe no Praefectus
    (`robo_empresa_config.ligado`, migration `20260914000004`; o envio novo
    recusa quando a empresa está desligada);
-2. as **três estratégias por item** com piso obrigatório;
+2. as **três estratégias por item** com piso obrigatório (**cumulativas desde 17/09**: marca uma, duas ou as três);
 3. a **esteira proposta → configurar lances**, com as duas travas de estado;
 4. **data e hora** de abertura na lista — hoje a disputa guarda só a hora;
 5. o **teto de lances opcional**, com a alternativa de disputar até o piso.
@@ -635,7 +635,7 @@ Dois esclarecimentos para não perder no caminho:
 - [x] **O sininho chama quando chega aviso do robô** (pedido do Ian em 16/09) — escrito em 16/09, versão `2026-09-16.6`. Treme de leve (um balanço curto a cada 2,4 s) e brilha enquanto houver aviso do robô não lido que chegou depois da última vez que o painel foi aberto; abrir o painel para os dois, mesmo sem marcar como lida. Só com movimento permitido no sistema (`motion-safe`): quem desliga animações vê o contador, sem balanço
 - [x] **O vigia avisa os admins assim que a sessão do gov.br vence** — escrito e no ar em 16/09 (`robo-lances-webhook` **v44**, 16:04). O agendador, a cada 5 minutos, lê o `/health` de cada robô ativo; conferência vencida que ainda não virou aviso (marca `vigia-sessao-vencida` no `webhook_log`, chave perfil + instante) vai aos administradores da Praefectus — ou ao dono da conta, se não houver administrador —, com a próxima disputa agendada daquela conta: "🔐 Sessão do gov.br venceu — Compras.gov.br · O vigia do robô encontrou a sessão do gov.br vencida na conferência das 16:00. Na próxima entrada, o robô vai pedir a confirmação do acesso pela tela remota (clique em \"Seu certificado digital\"). Próxima disputa: 07/2026, amanhã às 09:00 — o robô entra às 08:45. Fique de olho nesse horário." Regra em `_shared/robo-prontidao.ts` (3 testes novos). **Limite**: o aviso antecipa o horário do clique, mas ainda não permite renovar a sessão antes — o vigia não faz login de propósito; um botão "renovar agora" na área admin é o passo seguinte, se desejado
   - **toast e sininho vistos na tela pelo Ian às 16:02** (pré-visualização do Lovable): o lembrete "⏰ Pregão em 1 hora" com a faixa de lembrete, os "Robô na sala" com a faixa verde, "e mais 13 avisos do robô" e o sininho com o brilho
-- [x] **Pregão remarcado**: a data do processo mudou e a disputa ainda não foi enviada → a disputa acompanha a data nova, com aviso a quem cadastrou — escrito em 16/09 como gatilho no banco (migration `20260916000007`), porque a data do processo muda por vários caminhos (edição no kanban, leitura do edital, integração). Por disputa ligada ao processo e não enviada: se estava na data velha do processo (ninguém mexeu à mão), passa para a nova e avisa "📅 Pregão remarcado"; se foi ajustada à mão, está sem data ou o processo perdeu a data, não muda e avisa com as duas datas. A disputa movida volta à agenda e aos lembretes pelo gatilho de remarcação. Falha no gatilho vira WARNING e o processo é salvo normalmente. Teste que não deixa rastro no `SQL_MIGRATIONS.md`. **Aplicado e testado pelo Ian em 16/09**: "disputa na data do processo" foi de 18/09 06:00 para 20/09 06:00 com "📅 Pregão remarcado — 07/2026"; "disputa ajustada à mão" ficou em 20/09 06:01 com "📅 A data do processo mudou — 07/2026 … não foi mudada" (o teste é desfeito no fim)
+- [x] ~~**Pregão remarcado**~~ — **substituído em 17/09** (feedback do Rafael, ver "17/09, tarde"): o gatilho passou a só avisar, sem mover a data. Registro do que era: a data do processo mudou e a disputa ainda não foi enviada → a disputa acompanha a data nova, com aviso a quem cadastrou — escrito em 16/09 como gatilho no banco (migration `20260916000007`), porque a data do processo muda por vários caminhos (edição no kanban, leitura do edital, integração). Por disputa ligada ao processo e não enviada: se estava na data velha do processo (ninguém mexeu à mão), passa para a nova e avisa "📅 Pregão remarcado"; se foi ajustada à mão, está sem data ou o processo perdeu a data, não muda e avisa com as duas datas. A disputa movida volta à agenda e aos lembretes pelo gatilho de remarcação. Falha no gatilho vira WARNING e o processo é salvo normalmente. Teste que não deixa rastro no `SQL_MIGRATIONS.md`. **Aplicado e testado pelo Ian em 16/09**: "disputa na data do processo" foi de 18/09 06:00 para 20/09 06:00 com "📅 Pregão remarcado — 07/2026"; "disputa ajustada à mão" ficou em 20/09 06:01 com "📅 A data do processo mudou — 07/2026 … não foi mudada" (o teste é desfeito no fim)
 - [x] **Marcador no calendário**: "robô agendado" no dia do processo, com a hora em que o robô entra — escrito em 16/09, versão `2026-09-16.7`. O calendário lê as disputas com data de sessão (da véspera em diante): o processo com disputa agendada ganha o selo "🤖 Robô entra 17/09 às 08:45" no dia e na lista dos próximos 30 dias; disputa agendada sem processo ligado aparece sozinha no dia ("Disputa 07/2026 · Robô agendado · entra às 08:45", com link para a disputa); o dia fica marcado no calendário. Falha na leitura entra no aviso "Tentar novamente" da tela, como as outras fontes. Regra em `src/lib/robo/robo-no-calendario.ts` (2 testes)
 - [x] **Canal fora do sistema: e-mail** — escrito e no ar em 16/09 (`robo-lances-webhook` **v45**, 16:21). Decisão do Ian: por enquanto só e-mail, que é a integração que existe. Usa a fila que o sistema já tem (`send-transactional-email`, modelo "notificação do sistema", com lista de supressão e descadastro), para o e-mail da conta de cada destinatário, com botão "Abrir no Praefectus". Vai por e-mail: o **lembrete de prontidão** (véspera e 1 hora antes, a quem cadastrou e a quem opera a empresa, e aos administradores quando a equipe precisa agir), a **sessão do gov.br vencida** (administradores) e o **pedido de captcha** (administradores; em segundo plano, porque o robô reenvia o callback se a resposta passar de 10 s). Falha de e-mail não derruba o aviso do sininho
   - **provado em 16/09 às 16:23**: a disputa de prova remarcada para 50 minutos depois gerou o lembrete, e o `email_send_log` registrou `notificacao-sistema` com status `sent`. **Efeito do teste a registrar**: a disputa de prova está em nome da BAQPLAST, e o lembrete vai a quem cadastrou e aos administradores e operadores da empresa — por isso usuários reais da BAQPLAST receberam o aviso no sininho (15:43 e 16:23) e o e-mail (16:23) de um "pregão 07/2026" que era teste. Próximos testes de aviso: disputa de empresa sem outros membros
@@ -857,7 +857,7 @@ portais seguem por API (D1, D2).
 | D11 — demonstração em call | ⏳ |
 | D12 — sessão aberta o dia todo | ✅ **medido: último clique às 13:31, logado em todas as conferências do vigia até 22:09 (8h38 sem captcha)** · atualizado em 17/09: vencida às 06:18, **cerca de 16h30 depois do clique** — um clique pela manhã cobre o dia |
 | D13 — acompanhar sem a tela remota | ✅ quadro e linha do tempo; a prova na tela depende do Publish |
-| Referência do ConLicitação: ligar/desligar, 4 abas com contador, 3 estratégias, piso obrigatório, teto opcional, data e hora | ✅ |
+| Referência do ConLicitação: ligar/desligar, 4 abas com contador, 3 estratégias (cumulativas desde 17/09), piso obrigatório, teto opcional, data e hora | ✅ |
 | Referência do ConLicitação: "editar a proposta reseta os lances" e "proposta já cadastrada" | ❌ dependem do cadastro de proposta no portal |
 | WhatsApp | ❌ outro dia (decisão do Ian) |
 
@@ -877,7 +877,7 @@ portais seguem por API (D1, D2).
 
 **17/09, madrugada — o que o Ian achou olhando a tela** (versões `2026-09-17.2` e `.3`):
 - [x] **Aviso falso "Envio de lances indisponível — modo de monitoramento"** com o lance liberado. Dois desencontros só de exibição: o `/health` é guardado em `agente_externo_config.capacidades.saude` e a tela lia `portais_com_lance_liberado` no nível de cima; e a comparação do portal casava só texto, então "Compras.gov.br" nunca batia com o id do agente `comprasgov` (`lanceLiberadoNoPortal` agora também traduz pelo `portalDoAgente`)
-- [x] **"Enviar ao robô" deixa de ser o botão principal** (decisão do Ian sobre a D7 — ligar/desligar, não enviar). Sem o robô na sala, o destaque da página da disputa é a agenda: "Robô entra sozinho 23/10 às 09:15"; "Robô da empresa desligado — não entra…"; passada a hora de entrar, "Entrada prevista… — se o robô não entrou, use Ações › Entrar agora"; sem data, **"Definir data da sessão"**, que abre "Editar parâmetros" (sessão já passada: "Definir nova data"). O envio imediato virou **Ações › Entrar agora**, com o aviso de que, com o Modo Automático ligado, o robô pode dar lance. Regra em `acaoPrincipalDaAgenda` (`src/lib/robo/agendamento.ts`, 5 testes); os textos que diziam "só entra pelo botão" apontam para "Entrar agora". O "Nível 1 — Assistente" segue como rótulo: quem liga o lance é o Modo Automático da disputa
+- [x] **"Enviar ao robô" deixa de ser o botão principal** (decisão do Ian sobre a D7 — ligar/desligar, não enviar). Sem o robô na sala, o destaque da página da disputa é a agenda: "Robô entra sozinho 23/10 às 09:15"; "Robô da empresa desligado — não entra…"; passada a hora de entrar, "Entrada prevista… — se o robô não entrou, use Ações › Entrar agora"; sem data, **"Definir data da sessão"**, que abre "Editar parâmetros" (sessão já passada: "Definir nova data" — **substituído em 17/09 à tarde** por "Conferir alterações", ver "17/09, tarde"). O envio imediato virou **Ações › Entrar agora**, com o aviso de que, com o Modo Automático ligado, o robô pode dar lance. Regra em `acaoPrincipalDaAgenda` (`src/lib/robo/agendamento.ts`, 5 testes); os textos que diziam "só entra pelo botão" apontam para "Entrar agora". O "Nível 1 — Assistente" segue como rótulo: quem liga o lance é o Modo Automático da disputa
 - [x] **"Detalhes da licitação" com os dados da compra** — o diálogo do menu Ações dizia "Disputa sem processo vinculado" no órgão e "Não apurado" no SRP mesmo com a compra lida no Compras.gov. Agora, em disputa do Compras.gov com UASG, completa órgão (quando o processo não tem), modalidade e modo de disputa, objeto, SRP, prazo de propostas e o link do PNCP, da mesma consulta do cartão da página (`useCompraDaDisputa`, `detalhesDaCompra`)
 
 **O que continua dependendo de outros:** pregão escolhido pelo Rafael e pela Izabelle (sala logada: campo de lance, fase, tempo restante, elegibilidade, chat; formulário de proposta), Publish no Lovable, build do preview da Cloudflare, fuso do PNCP e WhatsApp.
@@ -945,6 +945,86 @@ Pedidos do Ian olhando a `2026-09-17.4` publicada (versão `2026-09-17.8`; a `.6
 - [x] **"Remover disputa" pede confirmação.** O clique apagava na hora — uma disputa foi apagada sem querer em 17/09 de manhã. `removerDisputa` é `delete` de verdade (a linha sai com itens, limites e agenda; as sessões do robô ficam em `sessoes_lance_real`, com `disputa_id` nulo). Agora o item abre "Remover a disputa X?", que diz que não dá para desfazer; o botão "Remover de vez" fica travado enquanto apaga, e o diálogo não fecha no meio. Teste na página: cancelar não apaga, e só "Remover de vez" chama a remoção
 - [x] **Tutorial do robô no "?" do topo** (pedido do Ian): ícone discreto ao lado de "Exportar", com dica ao passar o mouse, que abre um modal largo em três abas — **Como funciona** (as três fases, as estratégias de cada item lidas de `ESTRATEGIAS_DO_ITEM`, "bom saber" e o que é cada aba da lista), **Passo a passo** (8 passos, cada um dizendo onde fica) e **Portais**, um cartão por portal: **Compras.gov.br** (robô com login gov.br, lance liberado; proposta com a equipe e iminência ainda só acompanhando), **Portal de Compras Públicas** (robô com login, lance ainda não liberado, conta precisa estar ativa) e **Demais portais** (integração por API, sem robô com login). O texto mora em `src/lib/robo/tutorial-do-robo.ts`, com teste que trava "só o Compras.gov com lance liberado" — quando outro portal ganhar lance, o texto e o teste mudam juntos. Conferido em tela (Chrome headless, 1440 e 500 px): o `flex` no `TabsContent` vencia o `hidden` da aba inativa e deixava uma faixa vazia; o layout foi para um `div` interno
 - **Recuperar a disputa apagada**: não há lixeira nem auditoria dessa tabela. O caminho é cadastrar de novo pela Nova sessão (UASG + número/ano trazem itens e data do Compras.gov) e refazer valor mínimo e estratégia; os valores da última sessão do robô dela estão em `sessoes_lance_real`. Restaurar o backup do banco voltaria o banco inteiro, e não vale para uma disputa de teste
+
+#### 17/09, tarde — feedback do Rafael no cadastro: processo vencido, estratégias somadas e pregão remarcado
+
+O Rafael Castro, dono do produto, testou o cadastro na O S Distribuidora com a compra **90029/2026** (UASG 925448, propostas até 30/07/2026) e apontou três regras de negócio. Tudo abaixo está **no working tree, sem commit** (pedido do Ian), com a versão `2026-09-17.14`. Os três commits dele na grade (11:29, 11:32 e 11:39: moeda na grade, campos de 124 px e a coluna Piso só com dois ou mais itens) foram trazidos por stash e rebase, com dois conflitos resolvidos nos títulos da grade: a coluna Piso condicional dele e o título "Estratégias" nosso. O piso que ele deriva para o item único (`pisoUnitarioDoItemUnico`) espalha o item inteiro, então as estratégias marcadas seguem junto.
+
+**1. Processo vencido não vira disputa de lance.** "Cadastra processos vencidos, processos fora do prazo, não faz sentido. Se o processo passou, qual seria a finalidade de usar o robô? Ele não enviaria lances. A não ser pra acompanhamento."
+- [x] `src/lib/robo/prazo-da-disputa.ts` (10 testes):
+  - `prazoDaDisputa` lê a data da licitação quando há; sem ela, a data digitada.
+  - **Sessão de dia anterior** trava o cadastro: aviso "Fase de lances encerrada", e só segue marcando "Cadastrar só para acompanhamento". O Modo Automático fica desligado e travado, e o salvar grava `false`.
+  - **Sessão de hoje que já abriu** só avisa, sem travar: no Compras.gov a sessão dura horas, item a item, e travar tiraria o robô de quem já tem proposta.
+  - O aviso diz que, numa remarcação, trocar a data não basta.
+- [x] "Seus Processos Licitatórios" esconde por padrão arquivado, decidido (Vencida, Homologada, Perdida; cancelado e revogado caem em Perdida) e desfecho em `resultado`. Esconde também o prazo de propostas em dia anterior (`processoEncerradoNaLista`, pela régua única de `lib/licitacao/status.ts`). O interruptor "Mostrar encerrados (N)" traz de volta, e a consulta passou a ler `resultado` e `arquivado_em`.
+
+**2. Estratégias somam.** "São as 3 opções que o usuário escolhe. Ou seja, ele pode escolher as 3 ou somente 2 ou somente 1."
+- [x] Na grade, três caixas por item no lugar do seletor. Sem nenhuma marcada, o item avisa "Marque ao menos uma" e o salvar trava. "Desempatar no 1º lugar" marcado mostra a margem.
+- [x] Regra única nas três pontas: `estrategiasDoItem` no front (`lib/robo/estrategia-do-item.ts`), no webhook (`_shared/robo-estrategias.ts`) e no agente (`estrategia.ts`).
+  - O item grava `estrategias` (lista) e `estrategia` com a mais ampla marcada, para o agente anterior à troca.
+  - Nada escolhido = melhor preço, como sempre. Lista vazia continua vazia: o robô aguarda.
+- [x] Decisão no agente: o robô cobre o 1º quando **qualquer** estratégia marcada autoriza.
+  - Melhor preço autoriza sempre.
+  - Iminência, nos 2 minutos finais, a qualquer distância.
+  - Desempatar, a qualquer momento, só com o 1º dentro da margem.
+  - Iminência + desempatar: antes da iminência, só perto do 1º; nela, a qualquer distância.
+  - No desempate de ME/EPP, a margem vale só quando desempatar é a única marcada.
+  - 9 testes de combinação em `estrategia.test.ts` e 1 no laço.
+- [x] O lembrete de prontidão avisa "sem estratégia marcada". A iminência sem melhor preço no Compras.gov continua avisando que não dá lance (tempo restante não lido).
+
+**3. Pregão remarcado não é troca de data.** "Tem processos que podem ser cancelados, suspensos, etc pra mudar algo no edital e no TR. Mas acaba sendo um risco pro usuário porque na maioria dos casos, muda tudo, não só a data, mas a quantidade, unidade, descrição. Então essa página acaba não 'servindo'." Lei 14.133, art. 55 §1º: alteração que afeta as propostas reabre a divulgação.
+
+O que estava errado, conferido no código:
+- o botão "Definir nova data" e o gatilho `robo_processo_remarcado_move_disputa` trocavam **só a data**;
+- os itens da disputa são uma cópia do cadastro;
+- a página comparava só a data;
+- **o robô do Compras.gov não confere itens**: `conferirItens` só roda no Portal de Compras Públicas, e ali só avisa.
+
+O que foi feito:
+- [x] **Regra única** `alteracoesDaLicitacao`, em `_shared/robo-alteracoes-da-licitacao.ts` e no espelho `src/lib/robo/alteracoes-da-licitacao.ts`. Os 10 testes rodam as duas cópias e exigem a mesma resposta.
+  - Compara a situação da licitação (revogada, anulada, cancelada ou suspensa) e, por número de item: quantidade sempre; descrição e unidade só em item vindo da própria licitação (`origem: 'comprasgov'`).
+  - Item do Kanban escreve "UN" e texto resumido, e acusaria mudança em toda disputa. O "(Cota reservada…)" do cadastro não conta.
+  - Também contam: item que sumiu, e item cancelado, deserto, fracassado ou suspenso.
+  - Item publicado fora da disputa é escolha da empresa, não mudança.
+  - A data de atualização do item no PNCP **não** entra: ela muda também quando sai o resultado. Desvio do plano, por falso positivo.
+- [x] **Página da disputa, sessão passada**: o botão principal é **"Conferir alterações"**. O nome é do produto, sem portal (pedido do Ian: futuramente serve a outros portais). "Definir nova data" não existe mais para sessão passada (`acaoPrincipalDaAgenda` → `sessao-passou`), e o cabeçalho diz "Sessão 30/07/2026 às 09:30 — já passou" em vez de "o robô entra sozinho". O mesmo diálogo fica em **Ações › Conferir alterações da licitação**, para remarcação antes de a data passar.
+- [x] **`ConferirAlteracoesDialog`** (5 testes) lê a licitação na hora e oferece:
+
+  | Resultado | O diálogo oferece |
+  | --- | --- |
+  | revogada ou anulada | só "Encerrar a disputa" |
+  | suspensa | só fechar, com o aviso de que o robô não dá lance enquanto estiver suspensa |
+  | itens mudaram | lista das mudanças e "Atualizar a disputa com a licitação" (efeitos abaixo) |
+  | só a data | "Atualizar a data", que mantém pisos, estratégias e Modo Automático |
+  | nada mudou e a sessão passou | "Encerrar a disputa" |
+  | portal sem leitura | "Cadastrar nova disputa" (`/robo-lances?nova=1` abre a Nova sessão) |
+
+  Efeitos de "Atualizar a disputa com a licitação" (`atualizarDisputaComALicitacao`):
+  - itens iguais mantêm tudo;
+  - itens alterados recebem descrição, quantidade e unidade novas e **ficam sem piso, estratégias, margem, lance final e marca/modelo**;
+  - itens que saíram deixam a disputa;
+  - a data vem da licitação;
+  - o Modo Automático desliga e o valor mínimo geral zera, porque o agente usa o piso geral no item sem piso próprio.
+- [x] **Barreira antes de o robô entrar** (`robo-lances-webhook`: `conferirLicitacaoAntesDeEntrar`, no agendador e no "Entrar agora").
+  - Quando: disputa do Compras.gov com o Modo Automático ligado.
+  - Como: lê a licitação nos dados abertos e aplica a mesma regra.
+  - Se mudou (revogada, suspensa ou itens diferentes): o robô entra com `modo_automatico: false`, e sai o aviso urgente "⚠️ A licitação mudou" com o resumo, para quem cadastrou e para os admins, no sininho e por e-mail. Fica registrado no `webhook_log`.
+  - Se não dá para conferir (sem UASG ou número, dados abertos fora, mais de uma compra): segue como antes, com o log.
+  - `deno check`: os mesmos 6 erros antigos.
+- [x] **Gatilho do processo só avisa**: migration `20260917000003_remarcado_so_avisa.sql`, também em `SQL_MIGRATIONS.md`. A disputa não muda de data; o aviso aponta para "Conferir alterações da licitação".
+- [x] Tutorial: um "Bom saber" sobre pregão remarcado; os textos de estratégia agora dizem que elas somam.
+
+**Conferido**: `tsc` sem erro, eslint limpo (só os dois `any` antigos do diálogo de cadastro), **677 testes** nas pastas do robô, lib, páginas, workspace e gestão. Tela não vista em navegador.
+
+**Para ir ao ar — nada disto feito, cada passo espera o OK do Ian:**
+1. Commit e push (origin e sete).
+2. Publish no Lovable (`2026-09-17.14`).
+3. `robo-lances-webhook` deploy: estratégias, barreira e aviso.
+4. ~~SQL `20260917000003`~~ — **aplicado pelo Ian em 17/09 às 13:11**. A conferência devolveu `so_avisa = true`: o gatilho do processo já só avisa. Até o Publish, o aviso aponta para "Ações › Conferir alterações da licitação", que ainda não está na tela publicada.
+5. VPS: `estrategia.js` (`4fdc9e00`) e `session-manager.js` (`05848651`).
+   - Conferido que a única diferença para o instalado é a de hoje.
+   - O `callback.js` difere só num comentário desde 02/09 e não entra.
+   - A ordem não quebra nada: o cadastro grava também a estratégia única que o robô atual lê.
 
 #### O que depende de alguém
 
