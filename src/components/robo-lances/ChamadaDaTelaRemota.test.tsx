@@ -60,14 +60,30 @@ describe('ChamadaDaTelaRemota', () => {
     vi.useRealTimers();
   });
 
-  it('aparece grande, e "Abrir a tela remota" leva ao admin do robô já abrindo a tela', () => {
+  it('"Abrir a tela remota" leva ao admin do robô já abrindo a tela, carregando a volta para a disputa', () => {
     montar();
     chamar();
 
     expect(screen.getByRole('heading', { name: 'Robô entrando — 07/2026' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Abrir a tela remota/ }));
-    expect(screen.getByTestId('local')).toHaveTextContent('/admin/robo-lances?aba=sessoes&tela=abrir');
+    expect(screen.getByTestId('local')).toHaveTextContent(
+      '/admin/robo-lances?aba=sessoes&tela=abrir&voltar=%2Frobo-lances%2Fdisputa%2Fd1',
+    );
     expect(chamadaAtual()).toBeNull();
+  });
+
+  it('aviso sem disputa, fora da tela do robô: leva ao admin sem atalho de volta', () => {
+    render(
+      <MemoryRouter initialEntries={['/dashboard']}>
+        <ChamadaDaTelaRemota />
+        <Routes>
+          <Route path="*" element={<Local />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    chamar({ disputaId: null, motivo: 'captcha' });
+    fireEvent.click(screen.getByRole('button', { name: /Abrir a tela remota/ }));
+    expect(screen.getByTestId('local')).toHaveTextContent('/admin/robo-lances?aba=sessoes&tela=abrir');
   });
 
   it('quem não é da equipe Praefectus não vê nada', () => {
