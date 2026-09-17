@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, Bot, Trash2, Package, Layers, FileSearch, Loader2, Search, CheckCircle2, Building2, ArrowRight, Pencil, Calculator, Upload, FileText, Sparkles , Target } from 'lucide-react';
+import { Plus, Bot, Trash2, Package, Layers, FileSearch, Loader2, Search, CheckCircle2, Building2, ArrowRight, Pencil, Calculator, Upload, FileText, Sparkles , Target, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { identidadeDoEdital } from '@/lib/licitacao/identidade-edital';
@@ -33,6 +33,7 @@ import {
   ESTRATEGIAS_DO_ITEM, avisosDaGrade, estrategiaUnicaDe, estrategiasDoItem, modoTemLanceFinalFechado, type EstrategiaDoItem,
 } from '@/lib/robo/estrategia-do-item';
 import { agendamentoDaDisputa, sessaoDoProcesso, HORA_MINIMA_ESPERADA, type SessaoDoProcesso } from '@/lib/robo/agendamento';
+import { processoEncerradoNaLista, prazoDaDisputa } from '@/lib/robo/prazo-da-disputa';
 import {
   aplicarMarcaModeloDoTermo,
   buscarCompraDoComprasGov,
@@ -179,6 +180,8 @@ type LicitacaoRow = {
   portal: string | null;
   data_encerramento: string | null;
   data_abertura: string | null;
+  resultado?: string | null;
+  arquivado_em?: string | null;
   numero_controle_pncp?: string | null;
   cnpj_orgao?: string | null;
   ano_compra?: string | null;
@@ -577,6 +580,12 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
   const [selectedLicId, setSelectedLicId] = useState<string | null>(null);
   const [loadingItems, setLoadingItems] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('todos');
+  // Processo que já terminou não é ponto de partida de disputa (Rafael,
+  // 17/09/2026): fica fora da lista até a pessoa pedir.
+  const [mostrarEncerrados, setMostrarEncerrados] = useState(false);
+  // Disputa com a sessão num dia anterior só salva como acompanhamento, e só
+  // com a pessoa dizendo que é isso que quer.
+  const [soAcompanhamento, setSoAcompanhamento] = useState(false);
   const [trocarProcesso, setTrocarProcesso] = useState(false);
 
   // Step 0 – AI Extraction
@@ -868,7 +877,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
     try {
       let q = supabase
         .from('licitacoes')
-        .select('id, numero, orgao, objeto, modalidade, status, valor_estimado, portal, data_encerramento, data_abertura, numero_controle_pncp, cnpj_orgao, ano_compra, sequencial_compra');
+        .select('id, numero, orgao, objeto, modalidade, status, resultado, arquivado_em, valor_estimado, portal, data_encerramento, data_abertura, numero_controle_pncp, cnpj_orgao, ano_compra, sequencial_compra');
       if (empresaAtiva) q = q.eq('empresa_id', empresaAtiva.id);
       const { data, error } = await q.order('created_at', { ascending: false });
       if (error) throw error;
@@ -1114,6 +1123,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
     setLendoTermo(false); setResultadoDoTermo(null);
     setItens(editingLance?.itens || []); setTipoDisputa(editingLance?.tipoDisputa || 'item'); setStep(editingLance ? 1 : 0);
     setSelectedLicId(null); setSearchLic(''); setStatusFilter('todos'); setLicitacaoIdRef(editingLance?.licitacaoId);
+    setMostrarEncerrados(false); setSoAcompanhamento(false);
     setTrocarProcesso(false);
     setValorInicialInput(editingLance ? String(editingLance.valorInicial) : ''); setValorMinimoInput(editingLance ? String(editingLance.valorMinimo) : '');
     setEditalFile(null); setShowEditalUpload(false); setAutoExtractTriggered(false);
@@ -1272,7 +1282,8 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
       intervaloSegundos: parseInt(intervaloSegundos) || 30,
       // Vazio ou zero = sem teto: o robô disputa até o piso de cada item.
       maxLances: parseInt(maxLances) > 0 ? parseInt(maxLances) : null,
-      modoAutomatico, status: 'aguardando', horario,
+      // Sessão num dia anterior: só acompanhamento, confirmado na etapa de dados.
+      modoAutomatico: prazoEncerrado ? false : modoAutomatico, status: 'aguardando', horario,
       dataSessao: dataSessao || undefined,
       meuLance: editingLance?.meuLance || 0,
       valorAtual: somaReferencia,
@@ -1292,6 +1303,15 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
 
   const step1Valid = edital && portal;
 
+  // A sessão já passou? A compra lida no portal manda; sem ela, a data digitada.
+  const prazo = prazoDaDisputa({
+    encerramentoPropostas: compraEscolhida?.encerramentoPropostas ?? null,
+    dataSessao,
+    horario,
+    agora: new Date(),
+  });
+  const prazoEncerrado = prazo.tipo === 'encerrado';
+  const faltaConfirmarAcompanhamento = prazoEncerrado && !soAcompanhamento;
 
   const formatCurrency = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -1305,8 +1325,14 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
   };
 
   // Filter licitações
-  const statusOptions = ['todos', ...new Set(licitacoes.map(l => l.status))];
-  const filteredLicitacoes = licitacoes.filter(l => {
+  // O que já terminou (arquivado, decidido, prazo de propostas em dia
+  // anterior) sai da lista por padrão; o status oferecido é o do que aparece.
+  const agoraDaLista = new Date();
+  const encerradoDe = new Map(licitacoes.map((l) => [l.id, processoEncerradoNaLista(l, agoraDaLista)]));
+  const quantosEncerrados = licitacoes.filter((l) => encerradoDe.get(l.id)).length;
+  const licitacoesVisiveis = mostrarEncerrados ? licitacoes : licitacoes.filter((l) => !encerradoDe.get(l.id));
+  const statusOptions = ['todos', ...new Set(licitacoesVisiveis.map(l => l.status))];
+  const filteredLicitacoes = licitacoesVisiveis.filter(l => {
     const matchSearch = !searchLic ||
       l.numero.toLowerCase().includes(searchLic.toLowerCase()) ||
       l.orgao.toLowerCase().includes(searchLic.toLowerCase()) ||
@@ -1565,6 +1591,22 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                     </SelectContent>
                   </Select>
                 </div>
+                {quantosEncerrados > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id="mostrar-encerrados"
+                      checked={mostrarEncerrados}
+                      onCheckedChange={(v) => {
+                        setMostrarEncerrados(v);
+                        // O status escolhido pode só existir entre os encerrados.
+                        if (!v) setStatusFilter('todos');
+                      }}
+                    />
+                    <Label htmlFor="mostrar-encerrados" className="cursor-pointer text-sm font-normal text-muted-foreground">
+                      Mostrar encerrados ({quantosEncerrados}) — perdidos, homologados, arquivados ou com o prazo de propostas já passado
+                    </Label>
+                  </div>
+                )}
 
                 {loadingLicitacoes ? (
                   <div className="space-y-2 py-2" role="status" aria-busy="true">
@@ -1586,7 +1628,9 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                     <p className="text-sm text-muted-foreground mt-1">
                       {licitacoes.length === 0
                         ? 'Nenhum processo na gestão. Inicie um processo pelo Monitoramento ou Kanban.'
-                        : 'Nenhum processo encontrado com os filtros selecionados.'}
+                        : licitacoesVisiveis.length === 0
+                          ? `Nenhum processo em aberto. ${quantosEncerrados} ${quantosEncerrados === 1 ? 'encerrado está escondido' : 'encerrados estão escondidos'} — use "Mostrar encerrados".`
+                          : 'Nenhum processo encontrado com os filtros selecionados.'}
                     </p>
                   </div>
                 ) : (
@@ -1627,6 +1671,9 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                                 <Badge variant={statusVariant(lic.status)}>
                                   {lic.status}
                                 </Badge>
+                                {encerradoDe.get(lic.id) === 'prazo' && (
+                                  <Badge variant="muted">Prazo de propostas encerrado</Badge>
+                                )}
                               </div>
                               {/* `truncate` (nowrap) foi o que estourava o modal
                                   em grid; aqui o pai tem min-w-0 e o modal é
@@ -1870,6 +1917,44 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
               return null;
             })()}
 
+            {/* PROCESSO VENCIDO (Rafael, 17/09/2026): "se o processo passou, qual
+                seria a finalidade de usar o robô? Ele não enviaria lances. A não
+                ser para acompanhamento." Sessão de dia anterior só segue como
+                acompanhamento, e com a pessoa marcando que é isso. Sessão de
+                hoje que já abriu só avisa: pode estar em andamento. */}
+            {prazoEncerrado && (
+              <div className="space-y-3 rounded-lg border border-warning-line bg-warning-tint px-4 py-3" role="alert">
+                <p className="flex items-center gap-2 text-base font-semibold text-warning-ink">
+                  <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  Fase de lances encerrada
+                </p>
+                <p className="text-sm text-warning-ink">
+                  {prazo.fonte === 'compra'
+                    ? `O Compras.gov mostra propostas até ${prazo.quando}: a sessão desta compra já passou, e nela não há mais lance a dar.`
+                    : `A sessão desta disputa foi em ${prazo.quando}: já passou, e nela não há mais lance a dar.`}
+                  {' '}Se o pregão foi remarcado, não basta trocar a data: numa remarcação costumam mudar também itens,
+                  quantidades e unidades — confira a compra de novo antes de seguir.
+                </p>
+                <div className="flex items-start gap-2">
+                  <Checkbox
+                    id="so-acompanhamento"
+                    checked={soAcompanhamento}
+                    onCheckedChange={(v) => setSoAcompanhamento(v === true)}
+                    className="mt-0.5"
+                  />
+                  <Label htmlFor="so-acompanhamento" className="cursor-pointer text-sm font-normal text-foreground">
+                    Cadastrar só para acompanhamento: o robô pode entrar e ler a sala e o resultado, sem dar lance
+                    (o Modo Automático fica desligado).
+                  </Label>
+                </div>
+              </div>
+            )}
+            {prazo.tipo === 'comecou-hoje' && (
+              <p className="text-sm text-warning-ink" role="status">
+                A sessão {prazo.fonte === 'compra' ? 'desta compra' : 'desta disputa'} começou hoje às {prazo.quando}. O robô só
+                dá lance se a empresa já tiver proposta e a disputa ainda estiver aberta.
+              </p>
+            )}
 
             <div className="space-y-3">
               <h4 className="text-base font-semibold text-foreground">Regras de Decremento Automático</h4>
@@ -1902,9 +1987,18 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
             <div className="flex items-center justify-between gap-4 bg-muted rounded-lg p-4 border border-border">
               <div>
                 <Label htmlFor="disputa-modo-automatico" className="text-base font-medium">Modo Automático</Label>
-                <p className="text-sm text-muted-foreground mt-1">O robô enviará lances automaticamente respeitando os parâmetros configurados</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {prazoEncerrado
+                    ? 'Desligado: a fase de lances desta sessão já passou — só acompanhamento.'
+                    : 'O robô enviará lances automaticamente respeitando os parâmetros configurados'}
+                </p>
               </div>
-              <Switch id="disputa-modo-automatico" checked={modoAutomatico} onCheckedChange={setModoAutomatico} />
+              <Switch
+                id="disputa-modo-automatico"
+                checked={prazoEncerrado ? false : modoAutomatico}
+                onCheckedChange={setModoAutomatico}
+                disabled={prazoEncerrado}
+              />
             </div>
           </div>
         )}
@@ -2314,7 +2408,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
               </Button>
             )}
             {step === 1 && (
-              <Button onClick={() => setStep(2)} disabled={!step1Valid}>
+              <Button onClick={() => setStep(2)} disabled={!step1Valid || faltaConfirmarAcompanhamento}>
                 Próximo: Itens / Lotes
                 <ArrowRight className="w-4 h-4" aria-hidden="true" />
               </Button>
@@ -2324,7 +2418,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                 onClick={handleSave}
                 disabled={
                   itens.length === 0 || somaReferencia <= 0 || valorMinimo > valorInicial ||
-                  itens.some((i) => estrategiasDoItem(i).length === 0)
+                  itens.some((i) => estrategiasDoItem(i).length === 0) || faltaConfirmarAcompanhamento
                 }
               >
                 <CheckCircle2 className="w-4 h-4" aria-hidden="true" />

@@ -79,6 +79,32 @@ const DISPUTA: LanceConfig = {
 const abrir = (lance: LanceConfig) =>
   render(<ConfigurarLanceDialog editingLance={lance} onSave={() => {}} aberto aoMudarAberto={() => {}} />);
 
+describe('ConfigurarLanceDialog — processo vencido (Rafael, 17/09)', () => {
+  it('sessão num dia anterior: "Fase de lances encerrada", Modo Automático travado, e só segue marcando acompanhamento', async () => {
+    abrir({ ...DISPUTA, dataSessao: '2026-09-10', horario: '09:00' });
+
+    const titulo = await screen.findByText('Fase de lances encerrada');
+    const aviso = titulo.closest('[role="alert"]') as HTMLElement;
+    expect(within(aviso).getByText(/foi em 10\/09\/2026 às 09:00/)).toBeInTheDocument();
+
+    const proximo = screen.getByRole('button', { name: /Próximo: Itens \/ Lotes/ });
+    expect(proximo).toBeDisabled();
+    const modo = screen.getByRole('switch', { name: 'Modo Automático' });
+    expect(modo).toBeDisabled();
+    expect(modo).not.toBeChecked();
+
+    fireEvent.click(within(aviso).getByRole('checkbox', { name: /Cadastrar só para acompanhamento/ }));
+    expect(proximo).toBeEnabled();
+  });
+
+  it('sessão futura não mostra a trava', async () => {
+    abrir({ ...DISPUTA, dataSessao: '2999-01-10', horario: '09:00' });
+    expect(await screen.findByRole('button', { name: /Próximo: Itens \/ Lotes/ })).toBeEnabled();
+    expect(screen.queryByText('Fase de lances encerrada')).not.toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'Modo Automático' })).toBeEnabled();
+  });
+});
+
 describe('ConfigurarLanceDialog — estratégias cumulativas (Rafael, 17/09)', () => {
   it('marca mais de uma; sem nenhuma, avisa e não salva; desempatar pede a margem', async () => {
     abrir(DISPUTA);
@@ -122,5 +148,31 @@ describe('ConfigurarLanceDialog — estratégias cumulativas (Rafael, 17/09)', (
     const salvo = onSave.mock.calls[0][0] as LanceConfig;
     expect(salvo.itens[0].estrategias).toEqual(['iminencia', 'desempatar_1o']);
     expect(salvo.itens[0].estrategia).toBe('iminencia');
+  });
+});
+
+describe('ConfigurarLanceDialog — "Seus Processos Licitatórios" sem os encerrados (Rafael, 17/09)', () => {
+  it('esconde perdido e prazo vencido por padrão, e mostra ao pedir', async () => {
+    const processo = (id: string, extra: Record<string, unknown>) => ({
+      id, numero: id, orgao: 'Órgão', objeto: `Objeto ${id}`, modalidade: 'Pregão Eletrônico', status: 'Monitorando',
+      resultado: null, arquivado_em: null, valor_estimado: null, portal: 'PNCP', data_abertura: null,
+      data_encerramento: '2999-01-10T12:00:00Z', ...extra,
+    });
+    RESPOSTAS.licitacoes = [
+      processo('ABERTO-1', {}),
+      processo('PERDIDO-2', { status: 'Perdida' }),
+      processo('VENCIDO-3', { data_encerramento: '2026-07-30T12:30:00Z' }),
+    ];
+    render(<ConfigurarLanceDialog onSave={() => {}} aberto aoMudarAberto={() => {}} />);
+
+    expect(await screen.findByText('Objeto ABERTO-1')).toBeInTheDocument();
+    expect(screen.queryByText('Objeto PERDIDO-2')).not.toBeInTheDocument();
+    expect(screen.queryByText('Objeto VENCIDO-3')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('switch', { name: /Mostrar encerrados \(2\)/ }));
+    expect(await screen.findByText('Objeto PERDIDO-2')).toBeInTheDocument();
+    expect(screen.getByText('Objeto VENCIDO-3')).toBeInTheDocument();
+    expect(screen.getByText('Prazo de propostas encerrado')).toBeInTheDocument();
+    delete RESPOSTAS.licitacoes;
   });
 });
