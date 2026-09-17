@@ -9,9 +9,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
  * ─── O QUE ESTES TESTES GUARDAM, E POR QUE ────────────────────────────────
  *
  *  1. A aba mora na URL (`?aba=`): F5, link e "voltar" caem nela.
- *  2. UMA ação principal, escolhida pelo estado: "Enviar ao robô" sem sessão em
- *     andamento; "Parar robô nesta disputa" com — e a parada "solicitada"
- *     nunca vira "Parado".
+ *  2. UMA ação principal, escolhida pelo estado: sem sessão em andamento, a
+ *     AGENDA ("Robô entra sozinho…" ou "Definir data da sessão", desde 17/09 —
+ *     o envio imediato mora em Ações › "Entrar agora"); com sessão, "Parar robô
+ *     nesta disputa" — e a parada "solicitada" nunca vira "Parado".
  *  3. "Não conseguimos carregar" ≠ "não existe".
  *  4. A tabela de itens tem os valores DENTRO das células — a tela antiga os
  *     espremia numa coluna até sair uma letra por linha.
@@ -168,6 +169,8 @@ vi.mock('@/components/robo-lances/AutorizacaoLanceDialog', () => ({
 
 import RoboLancesDisputa from './RoboLancesDisputa';
 import { toast } from 'sonner';
+import fixtureDaCompra from '@/components/robo-lances/test/fixtures/compra-comprasgov-7-2026.json';
+import { compraDoComprasGov } from '../../supabase/functions/_shared/compra-comprasgov';
 
 function LocalAtual() {
   const local = useLocation();
@@ -290,14 +293,34 @@ describe('RoboLancesDisputa — abas na URL', () => {
 });
 
 describe('RoboLancesDisputa — a ação principal é escolhida pelo estado', () => {
-  it('sem sessão em andamento: "Enviar ao robô", e nenhum botão de parar', async () => {
+  it('sem data da sessão: "Definir data da sessão" — nada de "Enviar ao robô" nem botão de parar', async () => {
     renderizar();
 
-    expect(await screen.findByRole('button', { name: /Enviar ao robô/ })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /Definir data da sessão/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Enviar ao robô/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Parar robô nesta disputa/ })).not.toBeInTheDocument();
+    expect(screen.getByText(/o robô só entra por Ações › Entrar agora/)).toBeInTheDocument();
     // Sem pedido algum, nada foi mandado ao serviço só por abrir a página.
     expect(solicitarParada).not.toHaveBeenCalled();
     expect(invoke).not.toHaveBeenCalledWith('robo-lances-webhook/enviar-sessao', expect.anything());
+  });
+
+  it('com data e hora: o destaque é quando o robô entra sozinho, e não há botão de envio', async () => {
+    respostas.robo_lances_disputas = { data: { ...DISPUTA, inicio_sessao: '2099-10-23T12:30:00Z' }, error: null };
+    renderizar();
+
+    expect(await screen.findByText(/^Robô entra sozinho \d{2}\/\d{2} às \d{2}:\d{2}$/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Definir data da sessão|Enviar ao robô/ })).not.toBeInTheDocument();
+  });
+
+  it('"Entrar agora" fica no menu Ações e manda a disputa ao robô', async () => {
+    renderizar();
+
+    fireEvent.keyDown(await screen.findByRole('button', { name: 'Ações' }), { key: 'Enter' });
+    expect(await screen.findByText(/Com o Modo Automático ligado, ele pode dar lance/)).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Entrar agora'));
+
+    await waitFor(() => expect(invoke).toHaveBeenCalledWith('robo-lances-webhook/enviar-sessao', expect.anything()));
   });
 
   it('com o robô operando: "Parar robô nesta disputa" — e "solicitada" nunca vira "Parado"', async () => {
@@ -314,7 +337,7 @@ describe('RoboLancesDisputa — a ação principal é escolhida pelo estado', ()
     renderizar();
 
     const parar = await screen.findByRole('button', { name: /Parar robô nesta disputa/ });
-    expect(screen.queryByRole('button', { name: /Enviar ao robô/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Enviar ao robô|Definir data da sessão/ })).not.toBeInTheDocument();
     expect(screen.getByText('informada pelo agente')).toBeInTheDocument();
 
     fireEvent.click(parar);
@@ -330,7 +353,7 @@ describe('RoboLancesDisputa — a ação principal é escolhida pelo estado', ()
     expect(screen.queryByText(/Parada confirmada/)).not.toBeInTheDocument();
   });
 
-  it('quem só visualiza não tem "Enviar ao robô" nem "Editar parâmetros", e lê por quê', async () => {
+  it('quem só visualiza não tem "Definir data", "Entrar agora" nem "Editar parâmetros", e lê por quê', async () => {
     papel.isAdmin = false;
     papel.podeOperar = false;
     papel.isViewer = true;
@@ -338,8 +361,11 @@ describe('RoboLancesDisputa — a ação principal é escolhida pelo estado', ()
     renderizar();
 
     await screen.findByRole('heading', { level: 1, name: 'PE 90001/2026' });
-    expect(screen.queryByRole('button', { name: /Enviar ao robô/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Enviar ao robô|Definir data da sessão/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Editar parâmetros/ })).not.toBeInTheDocument();
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Ações' }), { key: 'Enter' });
+    await screen.findByText('Detalhes da licitação');
+    expect(screen.queryByText('Entrar agora')).not.toBeInTheDocument();
     expect(screen.getAllByText(/modo leitura/i).length).toBeGreaterThan(0);
   });
 });
@@ -415,8 +441,8 @@ describe('RoboLancesDisputa — acompanhamento', () => {
     renderizar('/robo-lances/disputa/disputa-1?aba=acompanhamento');
 
     expect(await screen.findByText('O portal não respondeu a tempo. Tentar de novo mais tarde.')).toBeInTheDocument();
-    // Sessão com erro já acabou: a ação principal volta a ser enviar.
-    expect(screen.getByRole('button', { name: /Enviar ao robô/ })).toBeInTheDocument();
+    // Sessão com erro já acabou: a ação principal volta a ser a agenda.
+    expect(screen.getByRole('button', { name: /Definir data da sessão/ })).toBeInTheDocument();
 
     fireEvent.mouseDown(screen.getByRole('tab', { name: /Operações/ }));
     expect(await screen.findByText('Sessão do robô')).toBeInTheDocument();
@@ -440,7 +466,8 @@ describe('RoboLancesDisputa — recusa do envio ao robô', () => {
         ? recusa(409, { success: false, error: 'O robô de lances desta empresa está desligado.' })
         : { data: null, error: null }) as never);
     renderizar();
-    fireEvent.click(await screen.findByRole('button', { name: /Enviar ao robô/ }));
+    fireEvent.keyDown(await screen.findByRole('button', { name: 'Ações' }), { key: 'Enter' });
+    fireEvent.click(await screen.findByText('Entrar agora'));
 
     await waitFor(() =>
       expect(toast.error).toHaveBeenCalledWith('O robô de lances desta empresa está desligado.', expect.anything()),
@@ -452,7 +479,8 @@ describe('RoboLancesDisputa — recusa do envio ao robô', () => {
     invoke.mockImplementation((async (nome: string) =>
       nome === 'robo-lances-webhook/enviar-sessao' ? recusa(502, null) : { data: null, error: null }) as never);
     renderizar();
-    fireEvent.click(await screen.findByRole('button', { name: /Enviar ao robô/ }));
+    fireEvent.keyDown(await screen.findByRole('button', { name: 'Ações' }), { key: 'Enter' });
+    fireEvent.click(await screen.findByText('Entrar agora'));
 
     await waitFor(() =>
       expect(toast.error).toHaveBeenCalledWith(expect.stringMatching(/não aceitou a sessão/), expect.anything()),
@@ -489,6 +517,29 @@ describe('RoboLancesDisputa — estratégia e limite financeiro', () => {
 });
 
 describe('RoboLancesDisputa — menu "Ações"', () => {
+  it('"Detalhes da licitação" completa órgão, modalidade, SRP e prazo com a compra do Compras.gov', async () => {
+    const compra = compraDoComprasGov(
+      fixtureDaCompra.compra as unknown as Record<string, unknown>,
+      fixtureDaCompra.itens as unknown as Record<string, unknown>[],
+    );
+    invoke.mockImplementation((async (nome: string) =>
+      nome === 'compra-comprasgov' ? { data: { success: true, compras: [compra] }, error: null } : { data: null, error: null }) as never);
+    renderizar();
+
+    fireEvent.keyDown(await screen.findByRole('button', { name: 'Ações' }), { key: 'Enter' });
+    fireEvent.click(await screen.findByText('Detalhes da licitação'));
+
+    expect(await screen.findByText('SECRETARIA DE ESTADO DE EDUCACAO - PA (BELÉM/PA) — Compras.gov')).toBeInTheDocument();
+    expect(screen.getByText('Pregão - Eletrônico · modo Aberto · Menor preço')).toBeInTheDocument();
+    expect(screen.getByText('Sim (Compras.gov)')).toBeInTheDocument();
+    expect(screen.getByText('14/09/2026 às 08:59 (Compras.gov)')).toBeInTheDocument();
+    expect(screen.queryByText(/Disputa sem processo vinculado/)).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Ver a compra no PNCP/ })).toHaveAttribute(
+      'href',
+      'https://pncp.gov.br/app/editais/05054937000163/2026/56',
+    );
+  });
+
   it('diz que marcar a fase não inicia nem para o robô', async () => {
     renderizar();
 

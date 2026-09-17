@@ -250,7 +250,7 @@ export default function PainelDeParticipacoes({ empresaId, licitacaoId = null, s
           return (
             <span className="flex flex-col">
               <span className="whitespace-nowrap tabular-nums">{p.disputa.horario}</span>
-              <span className="g-meta text-muted-foreground">horário sem data — o robô só entra pelo botão</span>
+              <span className="g-meta text-muted-foreground">horário sem data — o robô só entra por “Entrar agora”</span>
             </span>
           );
         }

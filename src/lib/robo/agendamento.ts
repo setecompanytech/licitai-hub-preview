@@ -68,6 +68,52 @@ export function agendamentoDaDisputa(entrada: {
   return { tipo: 'sem-agenda' };
 }
 
+// ── O que fica no lugar do botão "Enviar ao robô" ──────────────────────────
+
+/**
+ * Depois do início da sessão o agendador ainda tenta entrar por este tempo (a
+ * etapa aberta dura 10 minutos mais as prorrogações) — o mesmo número de
+ * `MINUTOS_DE_TOLERANCIA_DEPOIS_DO_INICIO`, em `functions/_shared/robo-prontidao.ts`.
+ */
+export const MINUTOS_EM_QUE_O_AGENDADOR_AINDA_TENTA = 20;
+
+export type AcaoPrincipalDaAgenda =
+  /** Agendada, robô ligado: o destaque é a hora em que ele entra. */
+  | { tipo: 'entra-sozinho'; texto: string }
+  /** Agendada, mas o robô da empresa está desligado: não entra. */
+  | { tipo: 'robo-desligado'; texto: string }
+  /** Já passou a hora de entrar e a sessão ainda pode ser alcançada. */
+  | { tipo: 'hora-de-entrar'; texto: string }
+  /** Sem data e hora (ou a sessão já passou): o destaque leva a definir. */
+  | { tipo: 'definir-data'; rotulo: string };
+
+const diaCurto = (d: Date) => `${doisDigitos(d.getDate())}/${doisDigitos(d.getMonth() + 1)}`;
+
+/**
+ * A ação principal da página da disputa quando o robô não está na sala.
+ *
+ * Decisão de 17/09/2026 (Ian, sobre a D7 — "ligar/desligar, não enviar ao
+ * robô", o modelo do ConLicitação): com data e hora, o robô entra sozinho, e o
+ * destaque passa a ser QUANDO ele entra; o envio imediato vira "Entrar agora"
+ * no menu Ações, para teste, disputa sem data ou nova tentativa.
+ *
+ * @param roboLigado o interruptor da empresa; leitura não confirmada conta como
+ *        ligado — a tela não acusa o que não leu.
+ */
+export function acaoPrincipalDaAgenda(agenda: AgendamentoDaDisputa, agora: Date, roboLigado: boolean): AcaoPrincipalDaAgenda {
+  if (agenda.tipo !== 'agendada') return { tipo: 'definir-data', rotulo: 'Definir data da sessão' };
+  const agoraMs = agora.getTime();
+  if (agoraMs > agenda.sessaoEm.getTime() + MINUTOS_EM_QUE_O_AGENDADOR_AINDA_TENTA * 60_000) {
+    return { tipo: 'definir-data', rotulo: 'Definir nova data' };
+  }
+  const entrada = `${diaCurto(agenda.roboEntraEm)} às ${hora(agenda.roboEntraEm)}`;
+  if (!roboLigado) return { tipo: 'robo-desligado', texto: `Robô da empresa desligado — não entra ${entrada}` };
+  if (agoraMs >= agenda.roboEntraEm.getTime()) {
+    return { tipo: 'hora-de-entrar', texto: `Entrada prevista ${entrada} — se o robô não entrou, use Ações › Entrar agora` };
+  }
+  return { tipo: 'entra-sozinho', texto: `Robô entra sozinho ${entrada}` };
+}
+
 // ── A sessão a partir do processo ──────────────────────────────────────────
 
 const FUSO_DA_SESSAO = 'America/Sao_Paulo';

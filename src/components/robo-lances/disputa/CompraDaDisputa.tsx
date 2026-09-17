@@ -1,15 +1,9 @@
-import { useQuery } from '@tanstack/react-query';
 import { AlertTriangle, ExternalLink } from 'lucide-react';
 import type { LanceConfig } from '@/components/robo-lances/ConfigurarLanceDialog';
 import { AvisoDeFalha } from '@/components/gestao/SeloSituacao';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  buscarCompraDoComprasGov,
-  divergenciaDaSessao,
-  podeBuscarCompra,
-  resumoDaCompra,
-} from '@/lib/robo/compra-comprasgov';
-import { idDoPortal } from '@/lib/robo/portais';
+import { divergenciaDaSessao, resumoDaCompra } from '@/lib/robo/compra-comprasgov';
+import { useCompraDaDisputa } from './useCompraDaDisputa';
 
 /**
  * Os dados da licitação na página da disputa — Fase 6 do robô ("retornar dados
@@ -22,20 +16,7 @@ import { idDoPortal } from '@/lib/robo/portais';
  * "Tentar novamente"; não bloqueia nada da página.
  */
 export default function CompraDaDisputa({ lance }: { lance: LanceConfig }) {
-  const uasg = lance.uasg ?? '';
-  const ativa = idDoPortal(lance.portal) === 'compras-gov' && podeBuscarCompra(uasg, lance.edital);
-
-  const consulta = useQuery({
-    queryKey: ['compra-comprasgov', uasg, lance.edital],
-    enabled: ativa,
-    staleTime: 10 * 60_000,
-    retry: false,
-    queryFn: async () => {
-      const r = await buscarCompraDoComprasGov(uasg, lance.edital);
-      if (!r.ok) throw new Error(r.motivo ?? 'O Compras.gov não devolveu a compra.');
-      return r.compras ?? [];
-    },
-  });
+  const { ativa, consulta } = useCompraDaDisputa(lance);
 
   if (!ativa) return null;
 

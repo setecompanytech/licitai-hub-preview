@@ -89,8 +89,8 @@ export default function ControleDoRobo({
       <section aria-label="Robô nesta disputa" className="g-cartao flex flex-col gap-1 p-4">
         <h3 className="g-titulo-secao text-foreground">Robô nesta disputa</h3>
         <p className="g-corpo text-muted-foreground">
-          {ROTULO_DO_ESTADO_DO_ROBO.sem_sessao} — não há sessão aberta para esta participação. A sessão só começa
-          por “Enviar ao robô”, na disputa do robô de lances; abrir esta tela não inicia nada.
+          {ROTULO_DO_ESTADO_DO_ROBO.sem_sessao} — não há sessão aberta para esta participação. A sessão começa
+          sozinha no horário agendado na disputa do robô de lances, ou por Ações › “Entrar agora”; abrir esta tela não inicia nada.
         </p>
       </section>
     );

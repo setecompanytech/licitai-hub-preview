@@ -230,7 +230,7 @@ export default function SessoesDoRobo() {
         <EstadoVazio
           icone={<Activity />}
           titulo="Nenhuma sessão enviada ao robô ainda"
-          descricao={<>Crie uma disputa e use <strong>Enviar ao robô</strong> — o resultado aparece aqui.</>}
+          descricao={<>Crie uma disputa com data e horário — o robô entra sozinho — ou use <strong>Ações › Entrar agora</strong>. O resultado aparece aqui.</>}
           tamanho="compacto"
         />
       ) : (

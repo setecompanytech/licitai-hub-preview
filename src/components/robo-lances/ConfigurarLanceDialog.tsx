@@ -473,14 +473,25 @@ type Props = {
   trigger?: React.ReactNode;
   /** Processo aberto no prontuário — a disputa nasce dele, sem reseleção. */
   processoAtivoId?: string | null;
+  /**
+   * Abertura controlada por fora (opcional): a página da disputa abre o mesmo
+   * diálogo pelo "Definir data da sessão", além do gatilho "Editar parâmetros".
+   */
+  aberto?: boolean;
+  aoMudarAberto?: (aberto: boolean) => void;
 };
 
-export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, processoAtivoId }: Props) {
+export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, processoAtivoId, aberto, aoMudarAberto }: Props) {
   const { user } = useAuth();
   const { empresaAtiva } = useEmpresa();
   const { fetchItens, extrairItensDoTexto, extrairItensIA } = useEditalExtraction();
   const { resolveLinkedEditalText } = useLinkedEditalSource();
-  const [open, setOpen] = useState(false);
+  const [abertoInterno, setAbertoInterno] = useState(false);
+  const open = aberto ?? abertoInterno;
+  const setOpen = (valor: boolean) => {
+    if (aberto === undefined) setAbertoInterno(valor);
+    aoMudarAberto?.(valor);
+  };
   const [step, setStep] = useState<0 | 1 | 2>(editingLance ? 1 : 0);
 
   // Step 0 – Import
@@ -1753,14 +1764,14 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
               if (agenda.tipo === 'so-horario') {
                 return (
                   <p className="text-sm text-warning-ink" role="status">
-                    Falta a data: sem ela, o robô não entra sozinho — só pelo botão Enviar ao robô.
+                    Falta a data: sem ela, o robô não entra sozinho — só por Ações › Entrar agora, na página da disputa.
                   </p>
                 );
               }
               if (agenda.tipo === 'so-data') {
                 return (
                   <p className="text-sm text-warning-ink" role="status">
-                    Falta o horário: sem ele, o robô não entra sozinho — só pelo botão Enviar ao robô.
+                    Falta o horário: sem ele, o robô não entra sozinho — só por Ações › Entrar agora, na página da disputa.
                   </p>
                 );
               }

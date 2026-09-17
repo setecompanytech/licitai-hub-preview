@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
-  AlertTriangle, ArrowDown, Bot, Building2, CalendarDays, ChevronDown, Clock, FileText, Globe, Hand, Hash,
-  Info, ListChecks, Settings, Shield, Target, Trash2, TrendingDown, Trophy, XCircle,
+  AlertTriangle, ArrowDown, Bot, Building2, CalendarDays, ChevronDown, Clock, ExternalLink, FileText, Gavel, Globe, Hand,
+  Hash, Info, ListChecks, Send, Settings, Shield, Target, Trash2, TrendingDown, Trophy, XCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { gravarFase, postarResultadoNoMural, proximoStatus, removerDisputa } from './disputa-do-robo';
 import { textoDoLimiteDeLances } from '@/lib/robo/estrategia-do-item';
 import { agendamentoDaDisputa } from '@/lib/robo/agendamento';
+import { detalhesDaCompra } from '@/lib/robo/compra-comprasgov';
+import { useCompraDaDisputa } from './useCompraDaDisputa';
 
 const moeda = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -38,6 +40,11 @@ type Props = {
   aoEncerrar: () => void;
   /** Removida — a tela sai da página de uma disputa que não existe mais. */
   aoRemover: () => void;
+  /**
+   * "Entrar agora" — o envio imediato ao robô, que até 17/09/2026 era o botão
+   * principal da página. `null` com o robô já na sala ou sem papel de operador.
+   */
+  entrarAgora?: { enviando: boolean; aoEntrar: () => void } | null;
 };
 
 /**
@@ -52,7 +59,7 @@ type Props = {
  * Os rótulos são os honestos desta semana: "Marcar como … (manual)" só grava a
  * fase — não inicia nem para o robô —, e o aviso depois do clique repete isso.
  */
-export default function AcoesDaDisputa({ lance, nivel, aoAlterar, aoEncerrar, aoRemover }: Props) {
+export default function AcoesDaDisputa({ lance, nivel, aoAlterar, aoEncerrar, aoRemover, entrarAgora = null }: Props) {
   const { user } = useAuth();
   const { empresaAtiva } = useEmpresa();
   const { registrarResultadoDisputa, registrarPerda } = useLicitacaoIntegration();
@@ -67,6 +74,20 @@ export default function AcoesDaDisputa({ lance, nivel, aoAlterar, aoEncerrar, ao
    */
   const [orgaoDoProcesso, setOrgaoDoProcesso] = useState<string | null>(null);
   const [orgaoCarregando, setOrgaoCarregando] = useState(false);
+
+  // A compra no Compras.gov completa o que o cadastro não tem (checklist do
+  // grupo: "retornar dados da licitação"). Mesma consulta do cartão da página,
+  // lida só com o diálogo aberto.
+  const { ativa: temCompra, consulta: consultaDaCompra } = useCompraDaDisputa(lance, detalhesAbertos);
+  const compras = consultaDaCompra.data ?? [];
+  const compra = compras.length === 1 ? detalhesDaCompra(compras[0]) : null;
+  const semCompra = (razao: string) => {
+    if (!temCompra) return <ValorIndisponivel razao={razao} />;
+    if (consultaDaCompra.isLoading) return <ValorIndisponivel razao="Consultando o Compras.gov" />;
+    if (consultaDaCompra.isError) return <ValorIndisponivel razao={`Compras.gov não respondeu: ${(consultaDaCompra.error as Error).message}`} />;
+    if (compras.length > 1) return <ValorIndisponivel razao={`${compras.length} compras com este número no Compras.gov — veja na página da disputa`} />;
+    return <ValorIndisponivel razao={razao} />;
+  };
 
   useEffect(() => {
     if (!detalhesAbertos || !lance.licitacaoId) {
@@ -177,6 +198,21 @@ export default function AcoesDaDisputa({ lance, nivel, aoAlterar, aoEncerrar, ao
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          {entrarAgora && (
+            <DropdownMenuItem
+              disabled={entrarAgora.enviando}
+              onClick={entrarAgora.aoEntrar}
+              className="flex-col items-start gap-0.5"
+            >
+              <span className="inline-flex items-center">
+                <Send className="mr-2 h-4 w-4" aria-hidden="true" />
+                {entrarAgora.enviando ? 'Enviando ao robô…' : 'Entrar agora'}
+              </span>
+              <span className="pl-6 text-xs text-muted-foreground">
+                O robô entra na disputa já, sem esperar o horário. Com o Modo Automático ligado, ele pode dar lance.
+              </span>
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem onClick={() => setDetalhesAbertos(true)}>
             <Info className="mr-2 h-4 w-4" aria-hidden="true" /> Detalhes da licitação
           </DropdownMenuItem>
@@ -231,13 +267,30 @@ export default function AcoesDaDisputa({ lance, nivel, aoAlterar, aoEncerrar, ao
                 value: orgaoCarregando ? (
                   <ValorIndisponivel razao="Consultando o processo vinculado" />
                 ) : (
-                  orgaoDoProcesso ?? (
-                    <ValorIndisponivel
-                      razao={lance.licitacaoId ? 'O processo vinculado não registra o órgão' : 'Disputa sem processo vinculado'}
-                    />
-                  )
+                  orgaoDoProcesso ??
+                  (compra?.orgao ? `${compra.orgao} — Compras.gov` : null) ??
+                  semCompra(lance.licitacaoId ? 'O processo vinculado não registra o órgão' : 'Disputa sem processo vinculado')
                 ),
               },
+              ...(temCompra
+                ? [
+                    {
+                      icon: Gavel,
+                      label: 'Modalidade',
+                      value: compra?.modalidade ?? semCompra('O Compras.gov não informa a modalidade'),
+                    },
+                    {
+                      icon: FileText,
+                      label: 'Objeto',
+                      value: compra?.objeto ?? semCompra('O Compras.gov não informa o objeto'),
+                    },
+                    {
+                      icon: Clock,
+                      label: 'Propostas até',
+                      value: compra?.propostasAte ? `${compra.propostasAte} (Compras.gov)` : semCompra('O Compras.gov não informa o prazo'),
+                    },
+                  ]
+                : []),
               {
                 icon: Hash,
                 label: 'UASG',
@@ -249,17 +302,19 @@ export default function AcoesDaDisputa({ lance, nivel, aoAlterar, aoEncerrar, ao
                 value: (() => {
                   const agenda = agendamentoDaDisputa({ dataSessao: lance.dataSessao, horario: lance.horario });
                   if (agenda.tipo === 'agendada') return `${agenda.texto} — o robô entra sozinho ${agenda.textoEntrada}`;
-                  if (agenda.tipo === 'so-horario') return `${agenda.texto}, sem data — o robô só entra pelo botão`;
-                  if (agenda.tipo === 'so-data') return `${agenda.texto}, sem horário — o robô só entra pelo botão`;
+                  if (agenda.tipo === 'so-horario') return `${agenda.texto}, sem data — o robô só entra por Ações › Entrar agora`;
+                  if (agenda.tipo === 'so-data') return `${agenda.texto}, sem horário — o robô só entra por Ações › Entrar agora`;
                   return <ValorIndisponivel razao="Data e horário da sessão não cadastrados" />;
                 })(),
               },
               {
                 icon: FileText,
                 label: 'Sistema de Registro de Preços',
-                // O sistema não guarda SRP em lugar nenhum — afirmar "Não" seria
-                // inventar um dado sobre o edital.
-                value: <ValorIndisponivel razao="Não apurado — o cadastro não registra SRP" />,
+                // O cadastro não guarda SRP — afirmar "Não" seria inventar um dado
+                // sobre o edital. Com a compra lida no Compras.gov, vale o que ela diz.
+                value: compra?.srp
+                  ? `${compra.srp} (Compras.gov)`
+                  : semCompra('Não apurado — o cadastro não registra SRP'),
               },
               { icon: TrendingDown, label: 'Valor de Referência', value: moeda(lance.valorReferencia) },
               { icon: Target, label: 'Valor Inicial (1º Lance)', value: moeda(lance.valorInicial) },
@@ -280,6 +335,16 @@ export default function AcoesDaDisputa({ lance, nivel, aoAlterar, aoEncerrar, ao
               </div>
             ))}
           </div>
+          {compra?.urlPncp && (
+            <a
+              href={compra.urlPncp}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex w-fit items-center gap-1 rounded px-1 text-sm font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              Ver a compra no PNCP <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+            </a>
+          )}
         </DialogContent>
       </Dialog>
 

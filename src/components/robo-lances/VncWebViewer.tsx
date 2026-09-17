@@ -518,8 +518,8 @@ export default function VncWebViewer({ abrirEm = 0 }: Props) {
                   Isso não é falha da conexão.
                 </p>
                 <p className="text-sm text-white/60">
-                  Deixe esta tela aberta e clique em <strong>Enviar ao robô</strong> na aba
-                  Disputar — a janela dele aparece aqui em poucos segundos.
+                  Deixe esta tela aberta e use <strong>Ações › Entrar agora</strong> na página
+                  da disputa — a janela dele aparece aqui em poucos segundos.
                 </p>
               </div>
             </div>

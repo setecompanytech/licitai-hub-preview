@@ -18,6 +18,7 @@ import {
   itensDaCompraParaDisputa,
   podeBuscarCompra,
   resumoDaCompra,
+  detalhesDaCompra,
   sessaoDaCompra,
   type CompraDoComprasGov,
 } from '@/lib/robo/compra-comprasgov';
@@ -123,6 +124,17 @@ describe('na tela da disputa', () => {
     expect(r.linhas[1]).toBe('SECRETARIA DE ESTADO DE EDUCACAO - PA (BELÉM/PA) · UASG 925315');
     expect(r.linhas).toContain('Propostas até 14/09/2026 às 08:59');
     expect(r.linhas.at(-1)).toBe('4 itens · orçamento sigiloso: o valor de cada item fica para a empresa preencher');
+  });
+
+  it('detalhes para o diálogo "Detalhes da licitação": órgão, modalidade, SRP, objeto e prazo', () => {
+    const d = detalhesDaCompra(compra());
+    expect(d.orgao).toBe('SECRETARIA DE ESTADO DE EDUCACAO - PA (BELÉM/PA)');
+    expect(d.modalidade).toBe('Pregão - Eletrônico · modo Aberto · Menor preço');
+    expect(d.srp).toBe('Sim');
+    expect(d.objeto).toMatch(/^Registro de Preços para aquisição/);
+    expect(d.propostasAte).toBe('14/09/2026 às 08:59');
+    expect(d.urlPncp).toBe('https://pncp.gov.br/app/editais/05054937000163/2026/56');
+    expect(detalhesDaCompra({ ...compra(), srp: false }).srp).toBe('Não');
   });
 });
 

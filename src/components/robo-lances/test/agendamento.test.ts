@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { agendamentoDaDisputa, MINUTOS_DE_ANTECEDENCIA, sessaoDoProcesso } from '@/lib/robo/agendamento';
+import { acaoPrincipalDaAgenda, agendamentoDaDisputa, MINUTOS_DE_ANTECEDENCIA, sessaoDoProcesso } from '@/lib/robo/agendamento';
 
 /**
  * O texto do agendamento que a tela mostra. O agendador só despacha disputa com
@@ -37,6 +37,46 @@ describe('agendamentoDaDisputa', () => {
   it('nada preenchido', () => {
     expect(agendamentoDaDisputa({})).toEqual({ tipo: 'sem-agenda' });
     expect(agendamentoDaDisputa({ inicioSessao: 'lixo', horario: null })).toEqual({ tipo: 'sem-agenda' });
+  });
+});
+
+/**
+ * O que fica no lugar do "Enviar ao robô" (17/09): com data e hora, o robô
+ * entra sozinho e o destaque é quando; sem elas, o destaque leva a definir.
+ */
+describe('acaoPrincipalDaAgenda', () => {
+  const agenda = agendamentoDaDisputa({ dataSessao: '2026-10-23', horario: '09:30' });
+  const as = (hhmm: string, dia = '2026-10-23') => new Date(`${dia}T${hhmm}:00`);
+
+  it('agendada e ligado: "Robô entra sozinho", com dia e hora da entrada', () => {
+    expect(acaoPrincipalDaAgenda(agenda, as('08:00', '2026-10-20'), true)).toEqual({
+      tipo: 'entra-sozinho',
+      texto: 'Robô entra sozinho 23/10 às 09:15',
+    });
+  });
+
+  it('agendada e desligado: diz que não entra', () => {
+    expect(acaoPrincipalDaAgenda(agenda, as('08:00'), false)).toEqual({
+      tipo: 'robo-desligado',
+      texto: 'Robô da empresa desligado — não entra 23/10 às 09:15',
+    });
+  });
+
+  it('passou da hora de entrar, sessão ainda alcançável: aponta para "Entrar agora"', () => {
+    const a = acaoPrincipalDaAgenda(agenda, as('09:40'), true);
+    expect(a.tipo).toBe('hora-de-entrar');
+    expect(a.tipo === 'hora-de-entrar' && a.texto).toMatch(/Ações › Entrar agora/);
+  });
+
+  it('a sessão já passou (mais de 20 min): "Definir nova data"', () => {
+    expect(acaoPrincipalDaAgenda(agenda, as('09:51'), true)).toEqual({ tipo: 'definir-data', rotulo: 'Definir nova data' });
+  });
+
+  it('sem data ou sem horário: "Definir data da sessão"', () => {
+    expect(acaoPrincipalDaAgenda(agendamentoDaDisputa({ horario: '09:30' }), as('08:00'), true))
+      .toEqual({ tipo: 'definir-data', rotulo: 'Definir data da sessão' });
+    expect(acaoPrincipalDaAgenda(agendamentoDaDisputa({}), as('08:00'), false))
+      .toEqual({ tipo: 'definir-data', rotulo: 'Definir data da sessão' });
   });
 });
 

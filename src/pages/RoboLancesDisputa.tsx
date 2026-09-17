@@ -99,6 +99,8 @@ function TelaDaDisputa() {
   const [gatilhoDosEventos, setGatilhoDosEventos] = useState(0);
   const [paradaEmergencial, setParadaEmergencial] = useState(false);
   const [versaoDoFormulario, setVersaoDoFormulario] = useState(0);
+  // "Editar parâmetros" também abre pelo "Definir data da sessão" do cabeçalho.
+  const [editando, setEditando] = useState(false);
 
   const modo = useModoDeOperacao();
   const roboDaEmpresa = useRoboDaEmpresa(empresaId);
@@ -229,8 +231,8 @@ function TelaDaDisputa() {
         emAndamento={sessaoEmAndamento(leituraDaParada)}
         podeOperar={podeOperar}
         nivel={modo.nivel}
-        enviando={envio.enviando}
-        aoEnviar={() => void envio.enviar(lance)}
+        roboLigado={roboDaEmpresa.estado.ligado || !roboDaEmpresa.estado.confirmado}
+        aoDefinirData={() => setEditando(true)}
         voltarPara={voltarPara}
         editar={
           podeOperar ? (
@@ -239,6 +241,8 @@ function TelaDaDisputa() {
               processoAtivoId={processoId}
               editingLance={lance}
               onSave={aoSalvar}
+              aberto={editando}
+              aoMudarAberto={setEditando}
               trigger={
                 <Button variant="outline" className="g-controle">
                   <Edit2 className="h-4 w-4" aria-hidden="true" /> Editar parâmetros
@@ -258,6 +262,11 @@ function TelaDaDisputa() {
               void recarregar();
             }}
             aoRemover={() => navigate(voltarPara)}
+            entrarAgora={
+              podeOperar && !sessaoEmAndamento(leituraDaParada)
+                ? { enviando: envio.enviando, aoEntrar: () => void envio.enviar(lance) }
+                : null
+            }
           />
         }
       />

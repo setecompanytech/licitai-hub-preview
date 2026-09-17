@@ -273,3 +273,30 @@ export function resumoDaCompra(compra: CompraDoComprasGov): { titulo: string; li
   ].filter(Boolean);
   return { titulo: `Compra ${compra.numero}/${compra.ano}`, linhas };
 }
+
+/**
+ * Os dados da compra para o diálogo "Detalhes da licitação" (17/09/2026): o
+ * diálogo dizia "Disputa sem processo vinculado" no órgão e "Não apurado" no
+ * SRP mesmo com a compra lida no Compras.gov. `null` = a compra não informa.
+ */
+export function detalhesDaCompra(compra: CompraDoComprasGov): {
+  orgao: string | null;
+  modalidade: string | null;
+  srp: 'Sim' | 'Não' | null;
+  objeto: string | null;
+  propostasAte: string | null;
+  urlPncp: string | null;
+} {
+  const local = [compra.municipio, compra.uf].filter(Boolean).join('/');
+  const orgao = compra.unidade || compra.orgao || null;
+  return {
+    orgao: orgao ? `${orgao}${local ? ` (${local})` : ''}` : null,
+    modalidade: [compra.modalidade || null, compra.modoDisputa ? `modo ${compra.modoDisputa}` : null, compra.criterio]
+      .filter(Boolean)
+      .join(' · ') || null,
+    srp: compra.srp === true ? 'Sim' : compra.srp === false ? 'Não' : null,
+    objeto: compra.objeto || null,
+    propostasAte: dataHora(compra.encerramentoPropostas),
+    urlPncp: compra.urlPncp || null,
+  };
+}

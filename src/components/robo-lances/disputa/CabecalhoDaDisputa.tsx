@@ -1,13 +1,13 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Building2, CalendarDays, FolderOpen, Globe, RefreshCw, Send } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Bot, Building2, CalendarDays, FolderOpen, Globe, PowerOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import SeloSituacao from '@/components/gestao/SeloSituacao';
 import type { LanceConfig } from '@/components/robo-lances/ConfigurarLanceDialog';
 import type { NivelAutomacao } from '@/components/robo-lances/NivelAutomacaoSelector';
 import { TOM_DO_ESTADO_DO_ROBO, aberturaEmBrasilia } from '@/components/robo-lances/painel/participacoes-no-painel';
 import type { ParticipacaoCarregada } from '@/hooks/useParticipacoesDoRobo';
-import { agendamentoDaDisputa } from '@/lib/robo/agendamento';
+import { acaoPrincipalDaAgenda, agendamentoDaDisputa } from '@/lib/robo/agendamento';
 import { nomeDoPortal } from '@/lib/robo/portais';
 import { ROTULO_DA_ABA, ROTULO_DO_ESTADO_DO_ROBO } from '@/lib/robo/situacao-da-participacao';
 import FonteDaFaseTexto from './FonteDaFase';
@@ -33,8 +33,10 @@ interface Props {
   emAndamento: boolean;
   podeOperar: boolean;
   nivel: NivelAutomacao;
-  enviando: boolean;
-  aoEnviar: () => void;
+  /** O interruptor do robô da empresa; leitura não confirmada conta como ligado. */
+  roboLigado: boolean;
+  /** Abre "Editar parâmetros" — é onde a data e o horário da sessão são definidos. */
+  aoDefinirData: () => void;
   /** "Editar parâmetros" — o diálogo é montado pela página, que grava. */
   editar: ReactNode;
   /** O menu "Ações", já com os handlers da disputa. */
@@ -54,10 +56,13 @@ interface Props {
  *
  * ── A ação principal é escolhida pelo estado ────────────────────────────────
  *
- * Sem sessão em andamento: "Enviar ao robô". Com sessão em andamento: "Parar
- * robô nesta disputa". Nunca as duas — com o robô de pé, enviar de novo abriria
- * outra sessão para o mesmo pregão; sem robô, botão vermelho sem nada para
- * parar treina a pessoa a ignorá-lo.
+ * Com sessão em andamento: "Parar robô nesta disputa". Sem ela, desde
+ * 17/09/2026 o destaque é a AGENDA, não o envio (D7 — o modelo do ConLicitação
+ * é ligar/desligar, não "enviar ao robô"): com data e hora, "Robô entra sozinho
+ * 23/10 às 09:15"; sem elas, "Definir data da sessão". O envio imediato mora em
+ * Ações › "Entrar agora", para teste, disputa sem data ou nova tentativa. Nunca
+ * parar e entrar juntos — com o robô de pé, entrar de novo abriria outra sessão
+ * para o mesmo pregão.
  *
  * Os selos separam duas perguntas que a tela antiga fundia: em que fase está o
  * CERTAME (e quem informou) e o que o ROBÔ está fazendo nele.
@@ -71,8 +76,8 @@ export default function CabecalhoDaDisputa({
   emAndamento,
   podeOperar,
   nivel,
-  enviando,
-  aoEnviar,
+  roboLigado,
+  aoDefinirData,
   editar,
   acoes,
   voltarPara,
@@ -91,9 +96,9 @@ export default function CabecalhoDaDisputa({
         ? `Abertura ${abertura.texto} (Brasília)`
         : `Abertura ${abertura.texto}, sem horário`
       : agenda.tipo === 'so-horario'
-        ? `Sessão: ${agenda.texto}, sem data — o robô só entra pelo botão`
+        ? `Sessão: ${agenda.texto}, sem data — o robô só entra por Ações › Entrar agora`
         : agenda.tipo === 'so-data'
-          ? `Sessão: ${agenda.texto}, sem horário — o robô só entra pelo botão`
+          ? `Sessão: ${agenda.texto}, sem horário — o robô só entra por Ações › Entrar agora`
           : null;
 
   const meta: ReactNode[] = [
@@ -125,27 +130,37 @@ export default function CabecalhoDaDisputa({
 
   const manual = participacao?.projecao.faseInformadaPor === 'marcacao_manual';
 
+  const acaoDaAgenda = acaoPrincipalDaAgenda(agenda, new Date(), roboLigado);
   const principal = emAndamento ? (
     <BotaoDePararRobo parada={parada} />
-  ) : podeOperar ? (
+  ) : !podeOperar ? null : acaoDaAgenda.tipo === 'definir-data' ? (
     <Button
       type="button"
-      onClick={aoEnviar}
-      disabled={enviando}
+      onClick={aoDefinirData}
       className="g-controle"
-      title="Abre a sessão no agente: entra no portal, navega até a disputa e lê a tela. Não envia lance — o envio segue travado até o portal ser liberado."
+      title="Com data e horário da sessão, o robô entra sozinho 15 minutos antes. Para entrar já, use Ações › Entrar agora."
     >
-      {enviando ? (
-        <>
-          <RefreshCw className="h-4 w-4 animate-spin" aria-hidden="true" /> Enviando…
-        </>
-      ) : (
-        <>
-          <Send className="h-4 w-4" aria-hidden="true" /> Enviar ao robô
-        </>
-      )}
+      <CalendarDays className="h-4 w-4" aria-hidden="true" /> {acaoDaAgenda.rotulo}
     </Button>
-  ) : null;
+  ) : (
+    <p
+      role="status"
+      className={`g-controle inline-flex max-w-full items-center gap-2 rounded-md border px-3 text-sm font-medium ${
+        acaoDaAgenda.tipo === 'entra-sozinho'
+          ? 'border-border bg-card text-foreground'
+          : 'border-warning-line bg-warning-tint text-warning-ink'
+      }`}
+    >
+      {acaoDaAgenda.tipo === 'entra-sozinho' ? (
+        <Bot className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+      ) : acaoDaAgenda.tipo === 'robo-desligado' ? (
+        <PowerOff className="h-4 w-4 shrink-0" aria-hidden="true" />
+      ) : (
+        <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />
+      )}
+      <span className="min-w-0">{acaoDaAgenda.texto}</span>
+    </p>
+  );
 
   return (
     <header className="flex flex-col gap-3">
@@ -214,7 +229,7 @@ export default function CabecalhoDaDisputa({
 
       {!podeOperar && (
         <p className="g-corpo rounded-[var(--g-raio)] border border-dashed border-border px-3 py-2 text-muted-foreground">
-          Você acompanha esta disputa em modo leitura. Enviar ao robô e editar parâmetros exigem o papel de operador —
+          Você acompanha esta disputa em modo leitura. Mandar o robô entrar e editar parâmetros exigem o papel de operador —
           peça em Equipe → Permissões.
         </p>
       )}

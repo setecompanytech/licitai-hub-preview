@@ -89,7 +89,7 @@ export default function EventosDaDisputa({
             <EstadoVazio
               icone={<ListChecks />}
               titulo="O robô ainda não operou nesta disputa"
-              descricao='Use "Enviar ao robô" para abrir uma sessão. Cada sessão e cada lance aparecem aqui.'
+              descricao='Com data e horário da sessão o robô entra sozinho; para entrar já, use Ações › Entrar agora. Cada sessão e cada lance aparecem aqui.'
               tamanho="compacto"
             />
           ) : (
