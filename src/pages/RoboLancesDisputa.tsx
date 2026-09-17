@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { AlertTriangle, Edit2, RefreshCw, SearchX } from 'lucide-react';
 import AppLayout from '@/components/layout/AppLayout';
@@ -19,6 +19,7 @@ import AcoesDaDisputa from '@/components/robo-lances/disputa/AcoesDaDisputa';
 import AcompanhamentoDaDisputa from '@/components/robo-lances/disputa/AcompanhamentoDaDisputa';
 import CabecalhoDaDisputa from '@/components/robo-lances/disputa/CabecalhoDaDisputa';
 import CompraDaDisputa from '@/components/robo-lances/disputa/CompraDaDisputa';
+import FaixaDaEntrada from '@/components/robo-lances/disputa/FaixaDaEntrada';
 import ContextoDaDisputa from '@/components/robo-lances/disputa/ContextoDaDisputa';
 import EstrategiaDaDisputa from '@/components/robo-lances/disputa/EstrategiaDaDisputa';
 import ItensDaDisputa from '@/components/robo-lances/disputa/ItensDaDisputa';
@@ -35,6 +36,7 @@ import { useEmpresa } from '@/contexts/EmpresaContext';
 import { usePapelEmpresa } from '@/hooks/usePapelEmpresa';
 import { useProcessoAtivo } from '@/hooks/useProcessoAtivo';
 import { useAbaNaUrl } from '@/lib/navegacao/aba-na-url';
+import { nomeDoPortal } from '@/lib/robo/portais';
 
 /**
  * Uma disputa do robô, em página própria — `/robo-lances/disputa/:id`.
@@ -101,6 +103,7 @@ function TelaDaDisputa() {
   const [versaoDoFormulario, setVersaoDoFormulario] = useState(0);
   // "Editar parâmetros" também abre pelo "Definir data da sessão" do cabeçalho.
   const [editando, setEditando] = useState(false);
+  const [focoDaEdicao, setFocoDaEdicao] = useState<'data' | undefined>(undefined);
 
   const modo = useModoDeOperacao();
   const roboDaEmpresa = useRoboDaEmpresa(empresaId);
@@ -119,6 +122,15 @@ function TelaDaDisputa() {
   const salvarDisputa = useSalvarDisputa();
   const { data: estadoDoAgente } = usePedidosDoRobo();
   const sessao = participacao?.sessao ?? null;
+
+  // ENTRANDO (17/09/2026): enquanto o robô entra, a página relê a cada 4 s em
+  // vez de 15 — a faixa "Ligando o robô" passa a "Robô na sala" logo que ele chega.
+  const entrando = participacao?.projecao.estadoDoRobo === 'enviando';
+  useEffect(() => {
+    if (!entrando) return;
+    const id = window.setInterval(() => { void recarregar(); }, 4000);
+    return () => window.clearInterval(id);
+  }, [entrando, recarregar]);
   const parada = useParadaDaSessao(sessao?.id ?? null, recarregar);
   const versao = useVersaoVinculada(linha?.precificacao_versao_id ?? null);
 
@@ -232,7 +244,7 @@ function TelaDaDisputa() {
         podeOperar={podeOperar}
         nivel={modo.nivel}
         roboLigado={roboDaEmpresa.estado.ligado || !roboDaEmpresa.estado.confirmado}
-        aoDefinirData={() => setEditando(true)}
+        aoDefinirData={() => { setFocoDaEdicao('data'); setEditando(true); }}
         voltarPara={voltarPara}
         editar={
           podeOperar ? (
@@ -242,7 +254,8 @@ function TelaDaDisputa() {
               editingLance={lance}
               onSave={aoSalvar}
               aberto={editando}
-              aoMudarAberto={setEditando}
+              aoMudarAberto={(v) => { setEditando(v); if (!v) setFocoDaEdicao(undefined); }}
+              focarEm={focoDaEdicao}
               trigger={
                 <Button variant="outline" className="g-controle">
                   <Edit2 className="h-4 w-4" aria-hidden="true" /> Editar parâmetros
@@ -269,6 +282,15 @@ function TelaDaDisputa() {
             }
           />
         }
+      />
+
+      <FaixaDaEntrada
+        estado={leituraDaParada.estado}
+        enviando={envio.enviando}
+        sessaoCriadaEm={sessao?.created_at ?? null}
+        esperandoPessoa={!!sessao && (estadoDoAgente?.pedidos || []).some((p) => (p as { sessao_id?: string }).sessao_id === sessao.id)}
+        portal={nomeDoPortal(lance.portal)}
+        aoVerAcompanhamento={() => definirAba('acompanhamento')}
       />
 
       <ContextoDaDisputa

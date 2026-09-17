@@ -184,6 +184,7 @@ export default function CabecalhoDaDisputa({
               <>
                 <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
                   <SeloSituacao
+                    tamanho="grande"
                     tom={manual ? 'atencao' : TOM_DA_ABA[participacao.projecao.aba]}
                     explicacao="Fase do certame, na mesma classificação da lista do robô."
                   >
@@ -192,6 +193,7 @@ export default function CabecalhoDaDisputa({
                   <FonteDaFaseTexto fonte={participacao.projecao.faseInformadaPor} />
                 </span>
                 <SeloSituacao
+                  tamanho="grande"
                   tom={TOM_DO_ESTADO_DO_ROBO[leituraDaParada.estado]}
                   explicacao="O que o robô está fazendo nesta disputa."
                 >
@@ -199,11 +201,12 @@ export default function CabecalhoDaDisputa({
                 </SeloSituacao>
               </>
             ) : (
-              <SeloSituacao tom="indisponivel">
+              <SeloSituacao tamanho="grande" tom="indisponivel">
                 {situacaoPendente ? 'Consultando a situação…' : 'Situação do robô não lida'}
               </SeloSituacao>
             )}
             <SeloSituacao
+              tamanho="grande"
               tom={nivel >= 3 ? 'critico' : nivel === 2 ? 'atencao' : 'neutro'}
               explicacao="Modo de operação da empresa. Muda-se na aba Estratégia."
             >

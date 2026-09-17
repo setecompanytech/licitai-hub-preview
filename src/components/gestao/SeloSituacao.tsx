@@ -53,6 +53,11 @@ interface SeloSituacaoProps {
   /** Explicação curta do critério — vira `title` e rótulo acessível. */
   explicacao?: string;
   className?: string;
+  /**
+   * `grande`: selos que são o assunto da tela (situação do robô no topo da
+   * disputa, 17/09/2026 — o Ian achou os pequenos fáceis de não notar).
+   */
+  tamanho?: 'normal' | 'grande';
 }
 
 export default function SeloSituacao({
@@ -61,19 +66,22 @@ export default function SeloSituacao({
   icone,
   explicacao,
   className,
+  tamanho = 'normal',
 }: SeloSituacaoProps) {
   const { classe, icone: IconePadrao } = TOM[tom];
   const Icone = icone ?? IconePadrao;
+  const grande = tamanho === 'grande';
   return (
     <span
       className={cn(
-        'g-meta inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 font-medium',
+        'inline-flex max-w-full items-center rounded-full border font-medium',
+        grande ? 'g-corpo gap-2 px-3.5 py-1.5' : 'g-meta gap-1.5 px-2.5 py-1',
         classe,
         className,
       )}
       title={explicacao}
     >
-      <Icone aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+      <Icone aria-hidden="true" className={cn('shrink-0', grande ? 'h-4 w-4' : 'h-3.5 w-3.5')} />
       <span className="truncate">{children}</span>
     </span>
   );

@@ -431,11 +431,12 @@ export default function VncWebViewer({ abrirEm = 0 }: Props) {
                     ~13 segundos, medidos. Quem dispara primeiro e vai abrir a
                     tela depois chega sempre atrasado. */}
                 <p className="font-medium text-foreground">
-                  Abra esta tela ANTES de enviar ao robô
+                  Abra esta tela ANTES de o robô entrar
                 </p>
                 <p>
-                  A sessão pode durar poucos segundos. Com o VNC já aberto, você acompanha
-                  desde o primeiro instante; abrindo depois, costuma chegar quando já acabou.
+                  Pelo horário agendado ou por Ações › Entrar agora, na disputa. Com o VNC já
+                  aberto, você acompanha desde o primeiro instante; quando o robô entra, chega
+                  também o aviso "Assistir o robô ao vivo", que abre esta tela.
                 </p>
                 <p className="font-medium text-foreground pt-1">Quando usar o VNC?</p>
                 <ul className="list-disc list-inside space-y-0.5">

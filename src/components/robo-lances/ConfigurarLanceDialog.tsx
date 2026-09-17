@@ -479,9 +479,15 @@ type Props = {
    */
   aberto?: boolean;
   aoMudarAberto?: (aberto: boolean) => void;
+  /**
+   * Campo para onde o diálogo rola e foca ao abrir. `data`: aberto pelo
+   * "Definir data da sessão" (17/09/2026) — o campo ficava abaixo da dobra, e
+   * o foco caía no número do edital.
+   */
+  focarEm?: 'data';
 };
 
-export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, processoAtivoId, aberto, aoMudarAberto }: Props) {
+export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, processoAtivoId, aberto, aoMudarAberto, focarEm }: Props) {
   const { user } = useAuth();
   const { empresaAtiva } = useEmpresa();
   const { fetchItens, extrairItensDoTexto, extrairItensIA } = useEditalExtraction();
@@ -493,6 +499,17 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
     aoMudarAberto?.(valor);
   };
   const [step, setStep] = useState<0 | 1 | 2>(editingLance ? 1 : 0);
+
+  useEffect(() => {
+    if (!open || focarEm !== 'data' || step !== 1) return;
+    const id = window.setTimeout(() => {
+      const campo = document.getElementById('disputa-data');
+      if (!campo) return;
+      campo.scrollIntoView?.({ block: 'center' });
+      campo.focus();
+    }, 150);
+    return () => window.clearTimeout(id);
+  }, [open, focarEm, step]);
 
   // Step 0 – Import
   const [licitacoes, setLicitacoes] = useState<LicitacaoRow[]>([]);
@@ -1581,7 +1598,9 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                   <p className="font-semibold">
                     {licitacaoIdRef
                       ? <>Dados importados do processo <strong>{edital}</strong>{itens.length > 0 ? <> · <strong>{itens.length}</strong> {itens.length === 1 ? 'item carregado' : 'itens carregados'}</> : ''}</>
-                      : <><strong>{itens.length} itens</strong> extraídos do edital por IA</>
+                      : itens.length > 0 && itens.every((i) => i.origem === 'ia')
+                        ? <><strong>{itens.length} {itens.length === 1 ? 'item extraído' : 'itens extraídos'}</strong> do edital por IA</>
+                        : <><strong>{itens.length}</strong> {itens.length === 1 ? 'item cadastrado' : 'itens cadastrados'} nesta disputa</>
                     }
                   </p>
                   {licitacaoIdRef && (
@@ -1796,7 +1815,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="disputa-intervalo">Intervalo entre lances (seg)</Label>
-                  <Input id="disputa-intervalo" type="number" value={intervaloSegundos} onChange={(e) => setIntervaloSegundos(e.target.value)} placeholder="30" className="mt-1" />
+                  <Input id="disputa-intervalo" type="number" min={10} value={intervaloSegundos} onChange={(e) => setIntervaloSegundos(e.target.value)} placeholder="30" title="Mínimo de 10 s: abaixo disso o robô relê o portal a cada 10 s de qualquer jeito" className="mt-1" />
                 </div>
                 <div>
                   <Label htmlFor="disputa-max-lances">Máx. lances por sessão</Label>
