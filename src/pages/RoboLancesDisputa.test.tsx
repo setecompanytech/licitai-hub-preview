@@ -102,8 +102,9 @@ vi.mock('@/integrations/supabase/client', () => ({
    Literal novo a cada chamada invalida `useMemo`/`useEffect` que dependem dele
    e vira laço de renderização. `vi.hoisted` porque as fábricas de `vi.mock`
    sobem para o topo do arquivo. */
-const { solicitarParada, estadoDoHook, estadoDoAgente } = vi.hoisted(() => ({
+const { solicitarParada, removerDisputa, estadoDoHook, estadoDoAgente } = vi.hoisted(() => ({
   solicitarParada: vi.fn(),
+  removerDisputa: vi.fn(async () => ({ ok: true as const })),
   estadoDoHook: {
     participacoes: [] as unknown[],
     carregando: false,
@@ -116,6 +117,10 @@ const { solicitarParada, estadoDoHook, estadoDoAgente } = vi.hoisted(() => ({
   estadoDoAgente: { data: { pedidos: [] as unknown[], desfechos: [] as unknown[], sessoesVivas: [] as unknown[] } },
 }));
 vi.mock('@/lib/robo/comandos', () => ({ solicitarParada, causaDoErro: async () => '' }));
+vi.mock('@/components/robo-lances/disputa/disputa-do-robo', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/components/robo-lances/disputa/disputa-do-robo')>()),
+  removerDisputa,
+}));
 vi.mock('@/hooks/useParticipacoesDoRobo', () => ({ useParticipacoesDoRobo: () => estadoDoHook }));
 vi.mock('@/components/robo-lances/usePedidosDoRobo', () => ({ usePedidosDoRobo: () => estadoDoAgente }));
 
@@ -538,6 +543,25 @@ describe('RoboLancesDisputa — menu "Ações"', () => {
       'href',
       'https://pncp.gov.br/app/editais/05054937000163/2026/56',
     );
+  });
+
+  it('"Remover disputa" pede confirmação: cancelar não apaga, e só "Remover de vez" apaga', async () => {
+    renderizar();
+
+    fireEvent.keyDown(await screen.findByRole('button', { name: 'Ações' }), { key: 'Enter' });
+    fireEvent.click(await screen.findByText('Remover disputa'));
+    expect(await screen.findByRole('alertdialog', { name: 'Remover a disputa PE 90001/2026?' })).toBeInTheDocument();
+    expect(screen.getByText(/Não dá para desfazer/)).toBeInTheDocument();
+    expect(removerDisputa).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
+    expect(removerDisputa).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Ações' }), { key: 'Enter' });
+    fireEvent.click(await screen.findByText('Remover disputa'));
+    fireEvent.click(await screen.findByRole('button', { name: /Remover de vez/ }));
+    await waitFor(() => expect(removerDisputa).toHaveBeenCalledWith('disputa-1'));
   });
 
   it('diz que marcar a fase não inicia nem para o robô', async () => {

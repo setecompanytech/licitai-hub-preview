@@ -4,6 +4,10 @@ import {
   Hash, Info, ListChecks, Send, Settings, Shield, Target, Trash2, TrendingDown, Trophy, XCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
@@ -66,6 +70,8 @@ export default function AcoesDaDisputa({ lance, nivel, aoAlterar, aoEncerrar, ao
   const [detalhesAbertos, setDetalhesAbertos] = useState(false);
   const [perdaAlvo, setPerdaAlvo] = useState<PerdaAlvo | null>(null);
   const [salvandoPerda, setSalvandoPerda] = useState(false);
+  const [confirmandoRemocao, setConfirmandoRemocao] = useState(false);
+  const [removendo, setRemovendo] = useState(false);
 
   /**
    * O órgão do processo vinculado, para "Detalhes da licitação". Só é lido com
@@ -180,11 +186,14 @@ export default function AcoesDaDisputa({ lance, nivel, aoAlterar, aoEncerrar, ao
   };
 
   const remover = async () => {
+    setRemovendo(true);
     const r = await removerDisputa(lance.id);
+    setRemovendo(false);
     if (!r.ok) {
       toast.error(r.motivo, { duration: 12000 });
       return;
     }
+    setConfirmandoRemocao(false);
     toast.info('Disputa removida.');
     aoRemover();
   };
@@ -197,18 +206,23 @@ export default function AcoesDaDisputa({ lance, nivel, aoAlterar, aoEncerrar, ao
             <Settings className="h-4 w-4" aria-hidden="true" /> Ações <ChevronDown className="h-4 w-4" aria-hidden="true" />
           </Button>
         </DropdownMenuTrigger>
+        {/* O realce do item é o verde cheio de `--accent` com texto branco. A
+            descrição em `text-muted-foreground` e os itens em verde/vermelho
+            sumiam sobre ele (Ian, 17/09/2026): a descrição acompanha o texto
+            do realce, e os itens coloridos trocam o realce pelo fundo claro
+            da própria cor. */}
         <DropdownMenuContent align="end">
           {entrarAgora && (
             <DropdownMenuItem
               disabled={entrarAgora.enviando}
               onClick={entrarAgora.aoEntrar}
-              className="flex-col items-start gap-0.5"
+              className="group flex-col items-start gap-0.5"
             >
               <span className="inline-flex items-center">
                 <Send className="mr-2 h-4 w-4" aria-hidden="true" />
                 {entrarAgora.enviando ? 'Enviando ao robô…' : 'Entrar agora'}
               </span>
-              <span className="pl-6 text-xs text-muted-foreground">
+              <span className="pl-6 text-xs text-muted-foreground group-focus:text-accent-foreground/85">
                 O robô entra na disputa já, sem esperar o horário. Com o Modo Automático ligado, ele pode dar lance.
               </span>
             </DropdownMenuItem>
@@ -220,38 +234,56 @@ export default function AcoesDaDisputa({ lance, nivel, aoAlterar, aoEncerrar, ao
               desligar o robô. Some com a disputa encerrada — ali o clique não
               fazia nada. */}
           {proxima && (
-            <DropdownMenuItem onClick={() => void alternarFase()} className="flex-col items-start gap-0.5">
+            <DropdownMenuItem onClick={() => void alternarFase()} className="group flex-col items-start gap-0.5">
               <span className="inline-flex items-center">
                 <Hand className="mr-2 h-4 w-4" aria-hidden="true" />
                 {lance.status === 'aguardando' ? 'Marcar como em disputa (manual)' : 'Marcar como aguardando (manual)'}
               </span>
-              <span className="pl-6 text-xs text-muted-foreground">Só registra a fase. Não inicia nem para o robô.</span>
+              <span className="pl-6 text-xs text-muted-foreground group-focus:text-accent-foreground/85">
+                Só registra a fase. Não inicia nem para o robô.
+              </span>
             </DropdownMenuItem>
           )}
-          <DropdownMenuItem className="text-success-ink focus:text-success-ink" onClick={() => void encerrar('venceu')}>
+          <DropdownMenuItem
+            className="text-success-ink focus:bg-success-tint focus:text-success-ink"
+            onClick={() => void encerrar('venceu')}
+          >
             <Trophy className="mr-2 h-4 w-4" aria-hidden="true" /> Encerrar como Venceu
           </DropdownMenuItem>
-          <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => void encerrar('perdeu')}>
+          <DropdownMenuItem
+            className="text-destructive focus:bg-destructive-tint focus:text-destructive-ink"
+            onClick={() => void encerrar('perdeu')}
+          >
             <XCircle className="mr-2 h-4 w-4" aria-hidden="true" /> Encerrar como Perdeu
           </DropdownMenuItem>
-          <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => void remover()}>
+          {/* Apagar a disputa é definitivo (a linha sai do banco, com itens e
+              limites) e ficava a um clique: uma disputa foi apagada sem querer
+              em 17/09/2026. Agora o clique só abre a confirmação. */}
+          <DropdownMenuItem
+            className="text-destructive focus:bg-destructive-tint focus:text-destructive-ink"
+            onClick={() => setConfirmandoRemocao(true)}
+          >
             <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" /> Remover disputa
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
       <Dialog open={detalhesAbertos} onOpenChange={setDetalhesAbertos}>
-        <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto">
+        {/* Largo, em duas colunas (Ian, 17/09/2026): em 448 px o objeto da
+            compra virava uma coluna de 15 linhas. Os campos curtos andam em
+            pares; empresa, órgão, objeto e data ocupam a linha inteira. */}
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Detalhes da licitação</DialogTitle>
           </DialogHeader>
           {/* Nenhum travessão mudo: ou o dado real, ou `ValorIndisponivel` com a
               razão de ele não estar aqui. */}
-          <div className="divide-y divide-border">
+          <div className="grid gap-x-6 sm:grid-cols-2">
             {[
               {
                 icon: Building2,
                 label: 'Empresa',
+                largo: true,
                 value: empresaAtiva?.razao_social ?? <ValorIndisponivel razao="Nenhuma empresa ativa selecionada" />,
               },
               {
@@ -262,8 +294,14 @@ export default function AcoesDaDisputa({ lance, nivel, aoAlterar, aoEncerrar, ao
               { icon: Globe, label: 'Portal', value: lance.portal },
               { icon: Hash, label: 'Licitação', value: lance.edital },
               {
+                icon: Hash,
+                label: 'UASG',
+                value: lance.uasg ?? <ValorIndisponivel razao="UASG não informada no cadastro da disputa" />,
+              },
+              {
                 icon: Building2,
                 label: 'Órgão',
+                largo: true,
                 value: orgaoCarregando ? (
                   <ValorIndisponivel razao="Consultando o processo vinculado" />
                 ) : (
@@ -280,25 +318,22 @@ export default function AcoesDaDisputa({ lance, nivel, aoAlterar, aoEncerrar, ao
                       value: compra?.modalidade ?? semCompra('O Compras.gov não informa a modalidade'),
                     },
                     {
-                      icon: FileText,
-                      label: 'Objeto',
-                      value: compra?.objeto ?? semCompra('O Compras.gov não informa o objeto'),
-                    },
-                    {
                       icon: Clock,
                       label: 'Propostas até',
                       value: compra?.propostasAte ? `${compra.propostasAte} (Compras.gov)` : semCompra('O Compras.gov não informa o prazo'),
                     },
+                    {
+                      icon: FileText,
+                      label: 'Objeto',
+                      largo: true,
+                      value: compra?.objeto ?? semCompra('O Compras.gov não informa o objeto'),
+                    },
                   ]
                 : []),
               {
-                icon: Hash,
-                label: 'UASG',
-                value: lance.uasg ?? <ValorIndisponivel razao="UASG não informada no cadastro da disputa" />,
-              },
-              {
                 icon: CalendarDays,
                 label: 'Data de abertura',
+                largo: true,
                 value: (() => {
                   const agenda = agendamentoDaDisputa({ dataSessao: lance.dataSessao, horario: lance.horario });
                   if (agenda.tipo === 'agendada') return `${agenda.texto} — o robô entra sozinho ${agenda.textoEntrada}`;
@@ -326,7 +361,10 @@ export default function AcoesDaDisputa({ lance, nivel, aoAlterar, aoEncerrar, ao
               { icon: Bot, label: 'Modo', value: lance.modoAutomatico ? 'Automático' : 'Manual' },
               { icon: Shield, label: 'Nível de Automação', value: `Nível ${nivel} — ${ROTULO_DO_NIVEL[nivel]}` },
             ].map((item) => (
-              <div key={item.label} className="flex items-start gap-3 px-1 py-3">
+              <div
+                key={item.label}
+                className={`flex items-start gap-3 border-b border-border px-1 py-3${item.largo ? ' sm:col-span-2' : ''}`}
+              >
                 <item.icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-foreground">{item.label}</p>
@@ -347,6 +385,25 @@ export default function AcoesDaDisputa({ lance, nivel, aoAlterar, aoEncerrar, ao
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={confirmandoRemocao} onOpenChange={(aberto) => !removendo && setConfirmandoRemocao(aberto)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover a disputa {lance.edital}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A disputa é apagada de vez, com os itens, os limites e a agenda do robô. Não dá para desfazer: para
+              voltar, é preciso cadastrá-la de novo.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={removendo}>Cancelar</AlertDialogCancel>
+            <Button variant="destructive" disabled={removendo} onClick={() => void remover()}>
+              <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
+              {removendo ? 'Removendo…' : 'Remover de vez'}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <RegistrarPerdaDialog
         alvo={perdaAlvo}
