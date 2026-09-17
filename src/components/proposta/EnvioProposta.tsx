@@ -111,7 +111,17 @@ export default function EnvioProposta() {
     fabricante: item.fabricante || '',
   }));
 
+  // COMPRAS.GOV PAUSADO (17/09/2026, decisão do Ian): o robô não cadastra
+  // proposta lá — a equipe monta no portal. E esta tela numera os itens pela
+  // ordem do carrinho (1, 2, 3…), enquanto no Compras.gov cada item tem o número
+  // da compra: o valor do item 12 iria para o item 2.
+  const pausadoNoPortal = portal === 'compras-gov';
+
   const handleEnviar = async () => {
+    if (pausadoNoPortal) {
+      toast.info('No Compras.gov a proposta é cadastrada no portal pela equipe — o robô não faz esse envio.');
+      return;
+    }
     if (!numeroPregao.trim()) {
       toast.error('Informe o número do pregão');
       return;
@@ -205,8 +215,7 @@ export default function EnvioProposta() {
 
   const portalSelecionado = PORTAIS_SUPORTADOS.find(p => p.id === portal);
   const declaracoesCompletas = Object.values(declaracoes).filter(Boolean).length;
-  const prontaParaEnvio = numeroPregao.trim() && itensFormatados.length > 0 && temCredencial && agenteOnline
-    && (portal !== 'compras-gov' || /^\d{6}$/.test(uasg));
+  const prontaParaEnvio = !pausadoNoPortal && numeroPregao.trim() && itensFormatados.length > 0 && temCredencial && agenteOnline;
 
   return (
     <div className="space-y-4">
@@ -277,6 +286,17 @@ export default function EnvioProposta() {
           </Badge>
         )}
       </div>
+
+      {pausadoNoPortal && (
+        <Alert variant="warning">
+          <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+          <AlertTitle>No Compras.gov, a proposta é feita no portal pela equipe</AlertTitle>
+          <AlertDescription>
+            O robô não cadastra proposta no Compras.gov: o foco dele é a disputa (lances e acompanhamento). Use esta tela para
+            revisar itens, valores e declarações antes de cadastrar no portal.
+          </AlertDescription>
+        </Alert>
+      )}
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
