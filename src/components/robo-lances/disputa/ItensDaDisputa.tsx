@@ -13,7 +13,7 @@ import { useItensDaSessao } from '@/components/workspace/robo/consultas';
 import { linhasDaDisputa, situacaoDoItem, type LinhaDoItem } from '@/components/workspace/robo/itens-da-disputa';
 import { LimiteDoItem, NaoInformado } from '@/components/workspace/robo/ValoresDoItem';
 import { formatarMoeda } from '@/components/workspace/robo/formatos';
-import { nomeDaEstrategia } from '@/lib/robo/estrategia-do-item';
+import { nomesDasEstrategias } from '@/lib/robo/estrategia-do-item';
 
 /** Título de coluna com mais de uma palavra, numa linha só. */
 const semQuebra = (texto: string) => <span className="whitespace-nowrap">{texto}</span>;
@@ -146,8 +146,8 @@ export default function ItensDaDisputa({
             <LimiteDoItem valor={l.limite} confirmado={confirmado} />
           </span>
           <span className="g-meta whitespace-nowrap text-muted-foreground">
-            {nomeDaEstrategia(l.estrategia)}
-            {l.estrategia === 'desempatar_1o' &&
+            {nomesDasEstrategias(l.estrategias)}
+            {l.estrategias.includes('desempatar_1o') &&
               (l.margemDesempate !== null ? ` · margem ${formatarMoeda(l.margemDesempate)}` : ' · sem margem')}
             {l.lanceFinalFechado !== null && ` · final ${formatarMoeda(l.lanceFinalFechado)}`}
           </span>

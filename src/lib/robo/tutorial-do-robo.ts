@@ -66,8 +66,8 @@ export const PASSOS_DO_TUTORIAL: readonly PassoDoTutorial[] = [
     onde: 'Nova sessão',
   },
   {
-    titulo: 'Defina o valor mínimo e a estratégia de cada item',
-    texto: 'O valor mínimo (piso) é obrigatório: o robô nunca dá lance abaixo dele. Escolha a estratégia do item. O limite de lances é opcional.',
+    titulo: 'Defina o valor mínimo e as estratégias de cada item',
+    texto: 'O valor mínimo (piso) é obrigatório: o robô nunca dá lance abaixo dele. Marque uma, duas ou as três estratégias do item — elas somam. O limite de lances é opcional.',
     onde: 'Nova sessão › itens, ou Editar parâmetros',
   },
   {

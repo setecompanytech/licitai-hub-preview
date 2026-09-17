@@ -107,7 +107,10 @@ export default function TutorialDoRobo() {
               </ol>
 
               <section className="flex flex-col gap-3">
-                <h3 className="g-titulo-secao text-foreground">Estratégia de cada item</h3>
+                <h3 className="g-titulo-secao text-foreground">Estratégias de cada item</h3>
+                <p className="g-corpo -mt-1 text-muted-foreground">
+                  Marque uma, duas ou as três: elas somam, e o robô cobre o 1º lugar quando qualquer uma autoriza.
+                </p>
                 <ul className="grid gap-3 md:grid-cols-3">
                   {ESTRATEGIAS_DO_ITEM.map((e) => (
                     <li key={e.id} className="rounded-[var(--g-raio)] border border-border p-3">

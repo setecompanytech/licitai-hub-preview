@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MoneyInput } from '@/components/ui/money-input';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Dialog,
@@ -28,7 +29,9 @@ import { useEditalExtraction, type LicitacaoItem } from '@/hooks/useEditalExtrac
 import { useLinkedEditalSource } from '@/hooks/useLinkedEditalSource';
 import LimparItensExtraidosButton from '@/components/licitacoes/LimparItensExtraidosButton';
 import { PORTAIS_ROBO, idDoPortal } from '@/lib/robo/portais';
-import { ESTRATEGIAS_DO_ITEM, avisosDaGrade, modoTemLanceFinalFechado, type EstrategiaDoItem } from '@/lib/robo/estrategia-do-item';
+import {
+  ESTRATEGIAS_DO_ITEM, avisosDaGrade, estrategiaUnicaDe, estrategiasDoItem, modoTemLanceFinalFechado, type EstrategiaDoItem,
+} from '@/lib/robo/estrategia-do-item';
 import { agendamentoDaDisputa, sessaoDoProcesso, HORA_MINIMA_ESPERADA, type SessaoDoProcesso } from '@/lib/robo/agendamento';
 import {
   aplicarMarcaModeloDoTermo,
@@ -84,8 +87,14 @@ export type DisputeItem = {
    */
   valorMinimo: number | null;
   /**
-   * Vazio = melhor preço, que é o que o robô fazia antes de a escolha existir:
-   * disputa cadastrada antes de 16/09 segue igual.
+   * As estratégias marcadas, CUMULATIVAS (17/09/2026): o Rafael quer poder
+   * marcar as três, duas ou uma. Ler sempre por `estrategiasDoItem`, que cai no
+   * formato de antes e trata "nada escolhido" como melhor preço.
+   */
+  estrategias?: EstrategiaDoItem[];
+  /**
+   * Formato de antes (uma só), gravado junto da lista com a mais ampla marcada:
+   * é o que o agente anterior à troca na VPS lê. Vazio = melhor preço.
    */
   estrategia?: EstrategiaDoItem;
   /**
@@ -285,7 +294,7 @@ function LinhaDeItem({
   aoMudarValor,
   aoMudarMarcaModelo,
   aoMudarPiso,
-  aoMudarEstrategia,
+  aoMudarEstrategias,
   aoMudarMargem,
   mostrarLanceFinal,
   mostrarPiso,
@@ -297,7 +306,7 @@ function LinhaDeItem({
   aoMudarValor: (id: string, valor: number | null) => void;
   aoMudarMarcaModelo: (id: string, campo: 'marca' | 'modelo', texto: string) => void;
   aoMudarPiso: (id: string, valor: number | null) => void;
-  aoMudarEstrategia: (id: string, estrategia: EstrategiaDoItem) => void;
+  aoMudarEstrategias: (id: string, estrategias: EstrategiaDoItem[]) => void;
   aoMudarMargem: (id: string, valor: number | null) => void;
   mostrarLanceFinal: boolean;
   /**
@@ -318,6 +327,7 @@ function LinhaDeItem({
   // segunda fonte do mesmo dado aqui divergiria dela. Item sem processo
   // (manual, edital, Compras.gov) não tem outra casa: edita nesta grade.
   const marcaModeloDoProcesso = !!item.licitacaoItemId;
+  const marcadas = estrategiasDoItem(item);
 
   return (
     <TableRow>
@@ -408,22 +418,40 @@ function LinhaDeItem({
         </TableCell>
       )}
       <TableCell>
-        <Select
-          value={item.estrategia ?? 'melhor_preco'}
-          onValueChange={(v) => aoMudarEstrategia(item.id, v as EstrategiaDoItem)}
+        {/* Caixas, não seletor (Rafael, 17/09/2026): as estratégias somam, e o
+            robô cobre o 1º quando qualquer marcada autoriza. Todas desmarcadas
+            ficam visíveis em aviso e impedem salvar. */}
+        <fieldset
+          aria-label={`Estratégias do item ${item.numero}`}
+          className={cn(
+            'flex w-44 flex-col gap-1 rounded-md border px-2 py-1.5',
+            marcadas.length === 0 ? 'border-warning-line' : 'border-transparent',
+          )}
         >
-          <SelectTrigger className="h-9 w-32 text-sm" aria-label={`Estratégia do item ${item.numero}`}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {ESTRATEGIAS_DO_ITEM.map((e) => (
-              <SelectItem key={e.id} value={e.id} title={e.explicacao}>
-                {e.nome}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {item.estrategia === 'desempatar_1o' && (
+          {ESTRATEGIAS_DO_ITEM.map((e) => {
+            const idDaCaixa = `estrategia-${item.id}-${e.id}`;
+            const marcada = marcadas.includes(e.id);
+            return (
+              <div key={e.id} className="flex items-center gap-2" title={e.explicacao}>
+                <Checkbox
+                  id={idDaCaixa}
+                  checked={marcada}
+                  onCheckedChange={(v) =>
+                    aoMudarEstrategias(
+                      item.id,
+                      v === true ? [...marcadas, e.id] : marcadas.filter((m) => m !== e.id),
+                    )
+                  }
+                />
+                <label htmlFor={idDaCaixa} className="cursor-pointer whitespace-nowrap text-xs text-foreground">
+                  {e.nome}
+                </label>
+              </div>
+            );
+          })}
+          {marcadas.length === 0 && <span className="text-xs text-warning-ink">Marque ao menos uma</span>}
+        </fieldset>
+        {marcadas.includes('desempatar_1o') && (
           <CampoDecimal
             valor={item.margemDesempate}
             aoMudar={(v) => aoMudarMargem(item.id, v)}
@@ -1134,8 +1162,10 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
     setItens(prev => prev.map(i => (i.id === id ? { ...i, valorMinimo: valor } : i)));
   };
 
-  const handleEstrategiaItem = (id: string, estrategia: EstrategiaDoItem) => {
-    setItens(prev => prev.map(i => (i.id === id ? { ...i, estrategia } : i)));
+  /** A lista vai na ordem de sempre, e a única de antes vai junto (ver `DisputeItem.estrategia`). */
+  const handleEstrategiasItem = (id: string, marcadas: EstrategiaDoItem[]) => {
+    const lista = estrategiasDoItem({ estrategias: marcadas });
+    setItens(prev => prev.map(i => (i.id === id ? { ...i, estrategias: lista, estrategia: estrategiaUnicaDe(lista) } : i)));
   };
 
   /**
@@ -1261,6 +1291,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
   };
 
   const step1Valid = edital && portal;
+
 
   const formatCurrency = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -1839,6 +1870,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
               return null;
             })()}
 
+
             <div className="space-y-3">
               <h4 className="text-base font-semibold text-foreground">Regras de Decremento Automático</h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -2035,7 +2067,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                                 <TableHead className="text-right">Vlr Unit.</TableHead>
                                 <TableHead className="text-right">Vlr Total</TableHead>
                                 {mostrarPiso && <TableHead className="text-right" title="Piso deste item — o robô não desce abaixo dele">Piso</TableHead>}
-                                <TableHead title="Melhor preço: cobre o 1º lugar sempre. Iminência: só nos 2 minutos finais da etapa aberta.">Estratégia</TableHead>
+                                <TableHead title="Marque uma, duas ou as três. Melhor preço: cobre o 1º lugar sempre. Iminência: só nos 2 minutos finais da etapa aberta. Desempatar no 1º lugar: só com o 1º dentro da margem.">Estratégias</TableHead>
                                 <TableHead className="w-10"><span className="sr-only">Ações</span></TableHead>
                               </TableRow>
                             </TableHeader>
@@ -2048,7 +2080,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                                   aoMudarValor={handleValorItem}
                                   aoMudarMarcaModelo={handleMarcaModeloItem}
                                   aoMudarPiso={handlePisoItem}
-                                  aoMudarEstrategia={handleEstrategiaItem}
+                                  aoMudarEstrategias={handleEstrategiasItem}
                                   aoMudarMargem={handleMargemItem}
                                   mostrarLanceFinal={mostrarLanceFinal} mostrarPiso={mostrarPiso}
                                   aoMudarLanceFinal={handleLanceFinalItem}
@@ -2075,7 +2107,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                           <TableHead className="text-right">Vlr Unit.</TableHead>
                           <TableHead className="text-right">Vlr Total</TableHead>
                           {mostrarPiso && <TableHead className="text-right" title="Piso deste item — o robô não desce abaixo dele">Piso</TableHead>}
-                                <TableHead title="Melhor preço: cobre o 1º lugar sempre. Iminência: só nos 2 minutos finais da etapa aberta.">Estratégia</TableHead>
+                                <TableHead title="Marque uma, duas ou as três. Melhor preço: cobre o 1º lugar sempre. Iminência: só nos 2 minutos finais da etapa aberta. Desempatar no 1º lugar: só com o 1º dentro da margem.">Estratégias</TableHead>
                           <TableHead className="w-10"><span className="sr-only">Ações</span></TableHead>
                         </TableRow>
                       </TableHeader>
@@ -2088,7 +2120,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                             aoMudarValor={handleValorItem}
                                   aoMudarMarcaModelo={handleMarcaModeloItem}
                                   aoMudarPiso={handlePisoItem}
-                            aoMudarEstrategia={handleEstrategiaItem}
+                            aoMudarEstrategias={handleEstrategiasItem}
                             aoMudarMargem={handleMargemItem}
                             mostrarLanceFinal={mostrarLanceFinal} mostrarPiso={mostrarPiso}
                             aoMudarLanceFinal={handleLanceFinalItem}
@@ -2261,13 +2293,14 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
               completada depois —, mas diz antes, e não no pregão. */}
           {step === 2 && (() => {
             const a = avisosDaGrade({ itens, pisoGeral: valorMinimo, ehComprasGov });
-            if (!a.semPiso && !a.semMargem && !a.iminenciaSemTempo && !a.lanceFinalAbaixoDoPiso) return null;
+            if (!a.semPiso && !a.semEstrategia && !a.semMargem && !a.iminenciaSemTempo && !a.lanceFinalAbaixoDoPiso) return null;
             return (
               <p className="text-sm text-warning-ink" role="status">
+                {a.semEstrategia > 0 && `${a.semEstrategia} item(ns) sem estratégia marcada: marque ao menos uma para salvar. `}
                 {a.semPiso > 0 && `${a.semPiso} item(ns) sem piso: o robô não disputa esses itens. `}
-                {a.semMargem > 0 && `${a.semMargem} item(ns) em "Desempatar no 1º lugar" sem margem: o robô aguarda neles. `}
+                {a.semMargem > 0 && `${a.semMargem} item(ns) com "Desempatar no 1º lugar" sem margem: o robô aguarda neles. `}
                 {a.iminenciaSemTempo > 0 &&
-                  `${a.iminenciaSemTempo} item(ns) em "Iminência": no Compras.gov o robô ainda não lê o tempo restante da sala, então nesses itens ele só acompanha — para disputar, use "Melhor preço". `}
+                  `${a.iminenciaSemTempo} item(ns) com "Iminência" sem "Melhor preço": no Compras.gov o robô ainda não lê o tempo restante da sala, então a iminência não dá lance — para disputar, marque também "Melhor preço". `}
                 {a.lanceFinalAbaixoDoPiso > 0 &&
                   `${a.lanceFinalAbaixoDoPiso} item(ns) com lance final abaixo do piso: o robô não dá esse lance.`}
               </p>
@@ -2289,7 +2322,10 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
             {step === 2 && (
               <Button
                 onClick={handleSave}
-                disabled={itens.length === 0 || somaReferencia <= 0 || valorMinimo > valorInicial}
+                disabled={
+                  itens.length === 0 || somaReferencia <= 0 || valorMinimo > valorInicial ||
+                  itens.some((i) => estrategiasDoItem(i).length === 0)
+                }
               >
                 <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
                 {editingLance ? 'Salvar Alterações' : 'Cadastrar Sessão'}

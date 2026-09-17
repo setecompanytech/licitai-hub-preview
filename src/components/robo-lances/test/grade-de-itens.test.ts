@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { avisosDaGrade, modoTemLanceFinalFechado } from '@/lib/robo/estrategia-do-item';
+import {
+  avisosDaGrade,
+  estrategiaUnicaDe,
+  estrategiasDoItem,
+  modoTemLanceFinalFechado,
+  nomesDasEstrategias,
+} from '@/lib/robo/estrategia-do-item';
 
 describe('modoTemLanceFinalFechado — quando a grade mostra o campo do lance final', () => {
   it('só o modo aberto e fechado tem lance final fechado', () => {
@@ -29,7 +35,7 @@ describe('avisosDaGrade', () => {
       pisoGeral: null,
       ehComprasGov: true,
     });
-    expect(a).toEqual({ semPiso: 1, semMargem: 1, iminenciaSemTempo: 1, lanceFinalAbaixoDoPiso: 1 });
+    expect(a).toEqual({ semPiso: 1, semEstrategia: 0, semMargem: 1, iminenciaSemTempo: 1, lanceFinalAbaixoDoPiso: 1 });
   });
 
   it('iminência fora do Compras.gov não avisa', () => {
@@ -53,6 +59,42 @@ describe('avisosDaGrade', () => {
       pisoGeral: null,
       ehComprasGov: true,
     });
-    expect(a).toEqual({ semPiso: 0, semMargem: 0, iminenciaSemTempo: 0, lanceFinalAbaixoDoPiso: 0 });
+    expect(a).toEqual({ semPiso: 0, semEstrategia: 0, semMargem: 0, iminenciaSemTempo: 0, lanceFinalAbaixoDoPiso: 0 });
+  });
+});
+
+describe('estratégias cumulativas na grade (Rafael, 17/09)', () => {
+  it('lê a lista, cai no formato de antes, e nada escolhido é melhor preço', () => {
+    expect(estrategiasDoItem({ estrategias: ['desempatar_1o', 'iminencia'] })).toEqual(['iminencia', 'desempatar_1o']);
+    expect(estrategiasDoItem({ estrategia: 'iminencia' })).toEqual(['iminencia']);
+    expect(estrategiasDoItem({})).toEqual(['melhor_preco']);
+    expect(estrategiasDoItem({ estrategias: [] })).toEqual([]);
+  });
+
+  it('a estratégia única gravada junto é a mais ampla marcada', () => {
+    expect(estrategiaUnicaDe(['iminencia', 'desempatar_1o'])).toBe('iminencia');
+    expect(estrategiaUnicaDe(['melhor_preco', 'desempatar_1o'])).toBe('melhor_preco');
+    expect(estrategiaUnicaDe([])).toBeUndefined();
+  });
+
+  it('nomes para leitura', () => {
+    expect(nomesDasEstrategias(['melhor_preco', 'iminencia'])).toBe('Melhor preço + Iminência');
+    expect(nomesDasEstrategias([])).toBe('Nenhuma estratégia');
+  });
+
+  it('avisos: sem estratégia, margem com desempate marcado e iminência sem melhor preço', () => {
+    const a = avisosDaGrade({
+      itens: [
+        { valorMinimo: 10, estrategias: [] },
+        { valorMinimo: 10, estrategias: ['melhor_preco', 'desempatar_1o'], margemDesempate: null },
+        { valorMinimo: 10, estrategias: ['melhor_preco', 'iminencia'] },
+        { valorMinimo: 10, estrategias: ['iminencia', 'desempatar_1o'], margemDesempate: 5 },
+      ],
+      pisoGeral: null,
+      ehComprasGov: true,
+    });
+    expect(a.semEstrategia).toBe(1);
+    expect(a.semMargem).toBe(1);
+    expect(a.iminenciaSemTempo).toBe(1);
   });
 });

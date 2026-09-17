@@ -23,6 +23,7 @@
  * escolhem uma delas: a ambiguidade vira ausência.
  */
 import type { TomSituacao } from '@/components/gestao/SeloSituacao';
+import { estrategiasDoItem, type EstrategiaDoItem } from '@/lib/robo/estrategia-do-item';
 
 /** Linha de `sessao_lance_itens` — só as colunas que a aba lê. */
 export interface ItemDaSessao {
@@ -55,10 +56,11 @@ export interface LinhaDoItem {
   /** Se o item entra na disputa. `null` = o cadastro não diz. */
   disputando: boolean | null;
   /**
-   * Como o robô disputa o item (16/09/2026): 'melhor_preco' | 'iminencia' |
-   * 'desempatar_1o'. `null` = não escolhida, e o robô trata como melhor preço.
+   * Como o robô disputa o item: 'melhor_preco' | 'iminencia' | 'desempatar_1o',
+   * CUMULATIVAS desde 17/09/2026. Já normalizadas: disputa de antes vira lista
+   * de uma, e nada escolhido é melhor preço.
    */
-  estrategia: string | null;
+  estrategias: EstrategiaDoItem[];
   /** Só em 'desempatar_1o': distância máxima até o 1º colocado, em reais. */
   margemDesempate: number | null;
   /** Modo aberto e fechado: valor do lance final fechado escolhido pela empresa. */
@@ -143,7 +145,10 @@ export function linhasDaDisputa(
       // Referência zero é "não informada", não "vale R$ 0,00".
       valorReferencia: referencia !== null && referencia > 0 ? referencia : null,
       disputando: typeof item.disputando === 'boolean' ? item.disputando : null,
-      estrategia: textoOuNulo(item.estrategia),
+      estrategias: estrategiasDoItem({
+        estrategias: Array.isArray(item.estrategias) ? (item.estrategias as string[]) : undefined,
+        estrategia: textoOuNulo(item.estrategia),
+      }),
       margemDesempate: (() => {
         const m = numeroOuNulo(item.margemDesempate ?? item.margem_desempate);
         return m !== null && m > 0 ? m : null;

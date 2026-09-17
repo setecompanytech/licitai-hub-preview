@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { agenteOpera, idDoPortal, nomeDoPortal } from '@/lib/robo/portais';
+import { estrategiaUnicaDe, estrategiasDoItem } from '@/lib/robo/estrategia-do-item';
 import type { LanceConfig } from '@/components/robo-lances/ConfigurarLanceDialog';
 import type { NivelAutomacao } from '@/components/robo-lances/NivelAutomacaoSelector';
 import type { EstadoDoRoboDaEmpresa } from '@/components/robo-lances/cliente/useRoboDaEmpresa';
@@ -109,8 +110,10 @@ export function useEnviarAoRobo({ empresaId, estadoDoRobo, relerLigado, portaisS
             // `null` viaja como `null`: piso ausente é decisão que ninguém tomou,
             // e o agente precisa distinguir isso de zero.
             valor_minimo: i.valorMinimo ?? null,
-            // Vazio viaja vazio: o agente trata como melhor preço.
-            estrategia: i.estrategia ?? null,
+            // Cumulativas desde 17/09: a lista, e a mais ampla marcada para o
+            // agente que ainda lê só uma. Nada escolhido = melhor preço.
+            estrategias: estrategiasDoItem(i),
+            estrategia: estrategiaUnicaDe(estrategiasDoItem(i)) ?? null,
             margem_desempate: i.margemDesempate ?? null,
             lance_final_fechado: i.lanceFinalFechado ?? null,
             origem: i.origem ?? null,
