@@ -20,7 +20,8 @@ type Relatorio = {
 };
 type Modulo = {
   lerCentral: (page: unknown, opcoes?: Record<string, unknown>) => Promise<Relatorio>;
-  escolherLinkDaAreaNova: (links: Array<{ texto: string; href: string }>) => { texto: string; href: string; motivo: string } | null;
+  escolherLinkDaAreaNova: (links: Array<{ texto: string; href: string; onclick?: string }>) => { texto: string; href: string; motivo: string } | null;
+  enderecoDoClique: (onclick: string) => string;
   tokenDaRequisicao: (url: string, cab: Record<string, string>) => string | null;
   notificacaoResumida: (bruta: Record<string, unknown>) => Resumida;
 };
@@ -59,6 +60,25 @@ describe('escolha do link e do token', () => {
     expect(porTexto?.motivo).toBe('texto do menu');
     expect(porTexto?.texto).toBe('Compras Eletrônicas');
     expect(central.escolherLinkDaAreaNova([{ texto: 'Sair', href: 'https://www.comprasnet.gov.br/sair.asp' }])).toBeNull();
+  });
+
+  it('menu feito por script: o endereço do onclick vale como link (Área de Trabalho do Fornecedor, 17/09)', () => {
+    expect(central.enderecoDoClique("window.open('https://cnetmobile.estaleiro.serpro.gov.br/comprasnet-web/iniciar-sessao;x=1','_blank')"))
+      .toBe('https://cnetmobile.estaleiro.serpro.gov.br/comprasnet-web/iniciar-sessao;x=1');
+    expect(central.enderecoDoClique("location.href='/intro/compras_eletronicas.asp?t=2'")).toBe('/intro/compras_eletronicas.asp?t=2');
+    expect(central.enderecoDoClique('mostraMenu(3)')).toBe('');
+    const escolhido = central.escolherLinkDaAreaNova([
+      { texto: 'Dados Cadastrais', href: '', onclick: 'mostraMenu(1)' },
+      { texto: 'Compras Eletrônicas', href: '', onclick: "window.open('https://cnetmobile.estaleiro.serpro.gov.br/comprasnet-web/iniciar-sessao;id=9')" },
+    ]);
+    expect(escolhido).toMatchObject({ motivo: 'endereco de iniciar-sessao', texto: 'Compras Eletrônicas' });
+  });
+
+  it('o endereço do menu "Dispensa/Licitação Eletrônica" da Área de Trabalho vale (reconhecimento de 17/09, 02:15)', () => {
+    expect(central.escolherLinkDaAreaNova([
+      { texto: '', href: '/ConsultaLicitacoes/AcessoRestrito.asp' },
+      { texto: '', href: '/assinadas/dispensa_eletronica.asp' },
+    ])).toMatchObject({ motivo: 'endereco do menu Dispensa/Licitacao Eletronica', href: '/assinadas/dispensa_eletronica.asp' });
   });
 
   it('token só de chamada da API do portal, e só Bearer', () => {
@@ -114,7 +134,9 @@ function chrome(over: { links?: Array<{ texto: string; href: string }>; semToken
   const intro = {
     on: () => {},
     url: () => 'https://www.comprasnet.gov.br/intro.htm',
-    frames: () => [{ evaluate: async () => over.links ?? LINKS }],
+    frames: () => [{
+      evaluate: async () => ({ url: 'https://www.comprasnet.gov.br/intro.htm', ancoras: over.links ?? LINKS, cliques: [], enderecos: [], scripts: [], itensDeMenu: [] }),
+    }],
     browser: () => navegador,
   };
   const navegador = {
@@ -125,6 +147,70 @@ function chrome(over: { links?: Array<{ texto: string; href: string }>; semToken
   };
   return { intro, registro };
 }
+
+/** A Área de Trabalho real: o menu leva a /assinadas/dispensa_eletronica.asp e abre no quadro "main2". */
+function areaDeTrabalho() {
+  const registro = { navegouPara: '' as string, novasAbas: 0, pedidoDaLista: '', pelo: '' };
+  const ouvintes: Array<(x: unknown) => void> = [];
+  let enderecoDoQuadro = 'https://www.comprasnet.gov.br/main2.asp';
+  const disparar = (endereco: string) => {
+    registro.navegouPara = endereco;
+    enderecoDoQuadro = AREA;
+    for (const cb of ouvintes) cb({ url: () => 'https://cnetmobile.estaleiro.serpro.gov.br/comprasnet-usuario/v1/usuario', headers: () => ({ authorization: 'Bearer SEGREDO' }) });
+  };
+  const menu = {
+    url: () => 'https://www.comprasnet.gov.br/t_top.asp',
+    name: () => 'nav',
+    evaluate: async (_fn: unknown, arg?: string) => arg !== undefined ? (registro.pelo = 'menu', disparar(arg)) : ({
+      url: 'https://www.comprasnet.gov.br/t_top.asp', ancoras: [], cliques: [], enderecos: [], scripts: [],
+      itensDeMenu: [
+        { texto: 'Pregão e Concorrência (legado)', href: '/assinadas/pregao.asp', menu: true },
+        { texto: 'Licitação e Dispensa (novo)', href: '/assinadas/dispensa_eletronica.asp', menu: true },
+      ],
+    }),
+  };
+  const quadro = {
+    url: () => enderecoDoQuadro,
+    name: () => 'main2',
+    evaluate: async (_fn: unknown, arg?: string) => {
+      if (arg === undefined) return { url: enderecoDoQuadro, ancoras: [], cliques: [], enderecos: [], scripts: [], itensDeMenu: [] };
+      if (String(arg).startsWith('https://www.comprasnet.gov.br/')) {
+        registro.pelo = 'quadro';
+        disparar(String(arg));
+        return undefined;
+      }
+      registro.pedidoDaLista = String(arg);
+      return { lista: { status: 404, corpo: null } };
+    },
+  };
+  const pagina = {
+    on: (ev: string, cb: (x: unknown) => void) => { if (ev === 'request') ouvintes.push(cb); },
+    url: () => 'https://www.comprasnet.gov.br/intro.htm',
+    frames: () => [menu, quadro],
+    browser: () => navegador,
+    screenshot: async () => {},
+  };
+  const navegador = {
+    on: () => {}, off: () => {},
+    newPage: async () => { registro.novasAbas += 1; return pagina; },
+    pages: async () => [pagina],
+  };
+  return { pagina, registro };
+}
+
+describe('lerCentral — Área de Trabalho do Fornecedor (reconhecimento de 17/09)', () => {
+  it('dispara a navegação do quadro do menu para o main2, como o GoTo do menu, e acha o Compras.gov novo no quadro', async () => {
+    const { pagina, registro } = areaDeTrabalho();
+    const r = await central.lerCentral(pagina, { esperar: async () => {} });
+    expect(registro.pelo).toBe('menu');
+    expect(registro.navegouPara).toBe('/assinadas/dispensa_eletronica.asp');
+    expect(registro.novasAbas).toBe(0); // em aba nova o portal responde accessdenied.htm
+    expect(r.link).toBe('Licitação e Dispensa (novo) (endereco do menu Dispensa/Licitacao Eletronica)');
+    expect(r).toMatchObject({ ok: true, total_nao_lidas: 0, endereco: AREA });
+    expect(registro.pedidoDaLista).toBe('Bearer SEGREDO');
+    expect(JSON.stringify(r)).not.toContain('SEGREDO');
+  });
+});
 
 describe('lerCentral', () => {
   it('abre a área nova, lista só as não lidas e não deixa o token sair da leitura', async () => {

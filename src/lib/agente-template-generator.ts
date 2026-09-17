@@ -2521,13 +2521,27 @@ function semParametros(url) {
   return String(url || '').split('?')[0].split('#')[0].split(';')[0];
 }
 
+/** O endereco escrito num onclick (window.open, location.href...), ou ''. */
+function enderecoDoClique(onclick) {
+  const m = String(onclick || '').match(/(https?:\\/\\/[^'"\\s)]+|\\/[A-Za-z0-9_\\-\\/.]+\\.(?:asp|aspx|htm|html)[^'"\\s)]*)/i);
+  return m ? m[1] : '';
+}
+
 /** O link da area do fornecedor que leva ao Compras.gov novo, ou null. */
 function escolherLinkDaAreaNova(links) {
-  const lista = (Array.isArray(links) ? links : []).filter((l) => l && (l.href || l.texto));
+  // Menu feito por script (17/09/2026: a Area de Trabalho do Fornecedor nao usa
+  // <a> no menu): o endereco do onclick vale como href.
+  const lista = (Array.isArray(links) ? links : [])
+    .map((l) => (l && !l.href && l.onclick ? Object.assign({}, l, { href: enderecoDoClique(l.onclick) }) : l))
+    .filter((l) => l && (l.href || l.texto));
   const navegavel = (l) => /^https?:/i.test(String(l.href || ''));
   const criterios = [
     ['endereco de iniciar-sessao', (l) => /iniciar-sessao/i.test(String(l.href || ''))],
     ['endereco do Compras.gov novo', (l) => AREA_NOVA.test(String(l.href || ''))],
+    // Visto no reconhecimento de 17/09/2026, 02:15: o menu da Area de Trabalho
+    // do Fornecedor (t_top.asp) leva a /assinadas/dispensa_eletronica.asp — o
+    // "Dispensa/Licitacao Eletronica (Novo)" do manual.
+    ['endereco do menu Dispensa/Licitacao Eletronica', (l) => /\\/assinadas\\/dispensa_eletronica\\.asp/i.test(String(l.href || ''))],
     ['texto do menu', (l) => /compras\\s+eletr[oô]nicas|dispensa\\s*\\/\\s*licita[cç][aã]o\\s+eletr[oô]nica|licita[cç][oõ]es\\s+eletr[oô]nicas|[aá]rea de trabalho/i.test(String(l.texto || ''))],
   ];
   for (const [motivo, casa] of criterios) {
@@ -2640,14 +2654,47 @@ async function lerCentral(page, opcoes = {}) {
   try {
     // 1. Os links da area do fornecedor, em todos os frames (a area e um frameset).
     const links = [];
+    const frames = [];
     for (const frame of page.frames()) {
-      const doFrame = await frame.evaluate(() => [...document.querySelectorAll('a')].map((a) => ({
-        texto: String(a.textContent || '').replace(/\\s+/g, ' ').trim().slice(0, 80),
-        href: String(a.href || ''),
-      }))).catch(() => []);
-      links.push(...doFrame);
+      const doFrame = await frame.evaluate(() => {
+        const limpo = (t) => String(t || '').replace(/\\s+/g, ' ').trim();
+        const ancoras = [...document.querySelectorAll('a')].map((a) => ({ texto: limpo(a.textContent).slice(0, 80), href: String(a.href || '') }));
+        // Menu sem <a>: itens com onclick, visiveis ou nao (submenu escondido ainda esta no DOM).
+        const cliques = [...document.querySelectorAll('[onclick]')].map((el) => ({
+          texto: limpo(el.textContent).slice(0, 80),
+          href: '',
+          onclick: String(el.getAttribute('onclick') || '').slice(0, 300),
+        }));
+        const html = document.documentElement ? document.documentElement.outerHTML : '';
+        const enderecos = [...new Set(html.match(/https?:\\/\\/[^"'\\s<>]+|\\/[A-Za-z0-9_\\-\\/.]+\\.(?:asp|aspx|htm|html|js)[^"'\\s<>]*/g) || [])]
+          .filter((u) => /iniciar-sessao|cnetmobile|comprasnet-web|compra|licita|dispensa|mensag|notifica|menu|fornecedor/i.test(u))
+          .slice(0, 60);
+        const scripts = [...document.querySelectorAll('script[src]')].map((sc) => String(sc.src || '')).slice(0, 30);
+        // Menu do "Ger Versluis" (menu132_com.js): os itens sao arrays no script da
+        // pagina — MenuN_M = new Array("texto", "endereco", ...).
+        const itensDeMenu = [];
+        const padraoDeMenu = /Menu[0-9_]+\\s*=\\s*new\\s+Array\\(\\s*"([^"]*)"\\s*,\\s*"([^"]*)"/g;
+        let m;
+        while ((m = padraoDeMenu.exec(html)) && itensDeMenu.length < 80) {
+          itensDeMenu.push({ texto: limpo(m[1].replace(/<[^>]+>/g, ' ')).slice(0, 80), href: m[2], menu: true });
+        }
+        return { url: String(location.href || ''), ancoras, cliques, enderecos, scripts, itensDeMenu };
+      }).catch(() => null);
+      if (!doFrame) continue;
+      links.push(...doFrame.itensDeMenu, ...doFrame.ancoras, ...doFrame.cliques, ...doFrame.enderecos.map((u) => ({ texto: '', href: u })));
+      frames.push(doFrame);
     }
-    if (reconhecer) relatorio.links_vistos = links.slice(0, 80).map((l) => l.texto + ' -> ' + semParametros(l.href));
+    if (reconhecer) {
+      relatorio.links_vistos = links.slice(0, 120).map((l) => (l.texto || '(sem texto)') + ' -> ' + (l.onclick ? 'onclick: ' + l.onclick.slice(0, 160) : semParametros(l.href)));
+      relatorio.frames = frames.map((f) => ({
+        endereco: semParametros(f.url),
+        ancoras: f.ancoras.length,
+        cliques: f.cliques.slice(0, 40).map((c) => c.texto + ' -> ' + c.onclick.slice(0, 160)),
+        menu: (f.itensDeMenu || []).map((i) => (i.texto || '(sem texto)') + ' -> ' + semParametros(i.href)),
+        enderecos: f.enderecos.map(semParametros),
+        scripts: f.scripts.map(semParametros),
+      }));
+    }
     await anexarFoto('central-1-area-do-fornecedor', page);
 
     const escolhido = escolherLinkDaAreaNova(links);
@@ -2661,15 +2708,37 @@ async function lerCentral(page, opcoes = {}) {
 
     // 2. A area nova numa aba propria — os cookies sao do navegador.
     let area = null;
-    if (/^https?:/i.test(String(escolhido.href || ''))) {
+    // Endereco relativo do menu (/algo.asp) e do portal antigo.
+    const destino = /^https?:/i.test(String(escolhido.href || ''))
+      ? escolhido.href
+      : /^\\//.test(String(escolhido.href || '')) ? 'https://www.comprasnet.gov.br' + escolhido.href : '';
+    const quadroDoMenu = page.frames().find((f) => typeof f.name === 'function' && f.name() === 'main2')
+      || page.frames().find((f) => /main2\\.asp/i.test(String(f.url ? f.url() : '')));
+    const quadroDeNavegacao = page.frames().find((f) => /t_top\\.asp/i.test(String(f.url ? f.url() : '')))
+      || page.frames().find((f) => typeof f.name === 'function' && f.name() === 'nav');
+    if (destino && /comprasnet\\.gov\\.br/i.test(destino) && quadroDoMenu) {
+      // Como o menu faz: o GoTo do menu132_com.js, rodando no quadro do menu
+      // (t_top.asp), escreve parent.frames["main2"].location.href = BaseHref +
+      // endereco. Numa aba nova (02:18) e com a navegacao partindo do proprio
+      // main2 (02:26) o portal respondeu accessdenied.htm — reconhecimento de
+      // 17/09/2026.
+      if (escolhido.menu && quadroDeNavegacao) {
+        await quadroDeNavegacao.evaluate((endereco) => {
+          const base = typeof BaseHref !== 'undefined' ? BaseHref : '';
+          parent.frames.main2.location.href = base + endereco;
+        }, escolhido.href).catch(() => {});
+      } else {
+        await quadroDoMenu.evaluate((u) => { window.location.href = u; }, destino).catch(() => {});
+      }
+    } else if (destino) {
       area = await browser.newPage();
       if (abertas.indexOf(area) < 0) abertas.push(area);
       acompanhar(area);
-      await area.goto(escolhido.href, { waitUntil: 'networkidle2', timeout: 45000 }).catch(() => {});
+      await area.goto(destino, { waitUntil: 'networkidle2', timeout: 45000 }).catch(() => {});
     } else {
       for (const frame of page.frames()) {
         const clicou = await frame.evaluate((texto) => {
-          const a = [...document.querySelectorAll('a')]
+          const a = [...document.querySelectorAll('a, [onclick]')]
             .find((el) => String(el.textContent || '').replace(/\\s+/g, ' ').trim().slice(0, 80) === texto);
           if (!a) return false;
           a.click();
@@ -2678,24 +2747,37 @@ async function lerCentral(page, opcoes = {}) {
         if (clicou) break;
       }
     }
+    const enderecoDe = (alvo) => { try { return String(alvo.url()); } catch (e) { return ''; } };
     // Ate 40 esperas de 1 s: o iniciar-sessao troca a sessao por token e so
-    // entao a aplicacao faz a primeira chamada autenticada.
+    // entao a aplicacao faz a primeira chamada autenticada. A area nova pode
+    // abrir numa aba ou dentro de um quadro da area antiga.
     for (let tentativa = 0; tentativa < 40; tentativa++) {
-      if (!area) {
+      if (!area || !AREA_NOVA.test(enderecoDe(area))) {
         const todas = await browser.pages();
-        area = todas.slice().reverse().find((p) => AREA_NOVA.test(p.url())) || null;
+        const aba = todas.slice().reverse().find((p) => AREA_NOVA.test(enderecoDe(p)));
+        let quadro = null;
+        if (!aba) {
+          for (const p of todas) {
+            quadro = (typeof p.frames === 'function' ? p.frames() : []).find((f) => AREA_NOVA.test(enderecoDe(f))) || null;
+            if (quadro) break;
+          }
+        }
+        area = aba || quadro || area;
       }
-      if (area && AREA_NOVA.test(area.url()) && !/iniciar-sessao/i.test(area.url()) && token) break;
+      if (area && AREA_NOVA.test(enderecoDe(area)) && !/iniciar-sessao/i.test(enderecoDe(area)) && token) break;
       await esperar(1000);
     }
-    if (!area || !AREA_NOVA.test(area.url())) {
+    if (quadroDoMenu && !(area && AREA_NOVA.test(enderecoDe(area)))) relatorio.endereco_do_quadro = semParametros(enderecoDe(quadroDoMenu));
+    if (!area || !AREA_NOVA.test(enderecoDe(area))) {
       relatorio.etapa = 'area-nova';
-      relatorio.motivo = 'O link foi aberto e a aba do Compras.gov novo nao apareceu' + (area ? ' (ficou em ' + semParametros(area.url()) + ')' : '');
+      relatorio.motivo = 'O link foi aberto e o Compras.gov novo nao apareceu' + (area ? ' (ficou em ' + semParametros(enderecoDe(area)) + ')' : '');
+      await anexarFoto('central-2-sem-area-nova', page);
       return relatorio;
     }
-    relatorio.endereco = semParametros(area.url());
-    await anexarFoto('central-2-area-nova', area);
-    if (/acesso-nao-autorizado/i.test(area.url())) {
+    relatorio.endereco = semParametros(enderecoDe(area));
+    const abaDaArea = typeof area.screenshot === 'function' ? area : typeof area.page === 'function' ? area.page() : page;
+    await anexarFoto('central-2-area-nova', abaDaArea);
+    if (/acesso-nao-autorizado/i.test(enderecoDe(area))) {
       relatorio.etapa = 'acesso-nao-autorizado';
       relatorio.motivo = 'O Compras.gov novo respondeu "acesso nao autorizado" ao abrir a area do fornecedor';
       return relatorio;
@@ -2703,7 +2785,8 @@ async function lerCentral(page, opcoes = {}) {
     if (!token) {
       // A aplicacao pede o contador de notificacoes ao carregar; se a chamada
       // passou antes de o robo ouvir, recarregar a faz de novo.
-      await area.reload({ waitUntil: 'networkidle2', timeout: 45000 }).catch(() => {});
+      if (typeof area.reload === 'function') await area.reload({ waitUntil: 'networkidle2', timeout: 45000 }).catch(() => {});
+      else await area.evaluate(() => { window.location.reload(); }).catch(() => {});
       await esperar(2000);
     }
     if (!token) {
@@ -2756,7 +2839,7 @@ async function lerCentral(page, opcoes = {}) {
   }
 }
 
-module.exports = { lerCentral, escolherLinkDaAreaNova, tokenDaRequisicao, notificacaoResumida, textoSemHtml, semParametros };
+module.exports = { lerCentral, escolherLinkDaAreaNova, enderecoDoClique, tokenDaRequisicao, notificacaoResumida, textoSemHtml, semParametros };
 `,
 
   'src/interacao-humana.js': `/**
