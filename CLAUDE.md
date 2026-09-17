@@ -158,6 +158,12 @@ delas precisa passar por ele:
   disputa: a sessão passada leva a "Conferir alterações", o gatilho do processo
   só avisa, e o webhook tira o lance do robô quando a licitação mudou desde o
   cadastro (`_shared/robo-alteracoes-da-licitacao.ts` + espelho em `lib/robo`).
+- **Sininho do robô guarda 24 horas; o histórico, 12 meses.** Aviso do robô
+  (link `/robo-lances…` ou `/admin/robo-lances…`) é apagado do sininho depois
+  de 24 horas, só se já estiver em `robo_historico`, a tabela da plataforma
+  lida só por admin da plataforma em Admin › Configurações do Robô de Lances ›
+  Histórico do robô (migration `20260917000004`). Não esconder: apagar. Não
+  liberar leitura por empresa: há aviso só da equipe, com a tela remota.
 - **Nome de botão é do produto, não do portal.** "Conferir alterações", não
   "Conferir no Compras.gov": a mesma tela precisa servir aos próximos portais.
 

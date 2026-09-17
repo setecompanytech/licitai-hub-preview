@@ -1030,6 +1030,26 @@ O que foi feito:
    - O `callback.js` difere só num comentário desde 02/09 e não entra.
    - A ordem não quebra nada: o cadastro grava também a estratégia única que o robô atual lê.
 
+#### 17/09, tarde — nome no admin e histórico do robô
+
+Pedidos do Ian, olhando a tela publicada (`2026-09-17.14`). **Sem commit.** Versão `2026-09-17.15`.
+
+- [x] **"Configurações do Robô de Lances"** no admin: o título da página (`paginas.ts`) e o item do menu Admin (`menu.ts`) diziam "Robô de Lances", igual ao módulo do cliente no mesmo menu. Rota e ícone não mudam. O `menu.ts` é território do Caio, e a troca ficou anotada em `docs/rebranding-front-end.md`. As mensagens do webhook que citam "área admin do Robô de Lances" ficaram como estão, para não exigir deploy.
+- [x] **Tutorial**: o Ian procurou no admin; ele está na tela do cliente (Ferramentas › Robô de lances, o "?" ao lado de "Exportar"), publicado na `.14`.
+- [x] **Histórico do robô** (decisões do Ian: o sininho **apaga** o aviso do robô depois de 24 horas, e o histórico guarda **12 meses**):
+  - **Banco** (migration `20260917000004`, SQL para o Ian colar): tabela `robo_historico`, lida **só por admin da plataforma**, porque há aviso só da equipe com a tela remota.
+    - Gatilhos copiam cada aviso do robô de `notificacoes` (o mesmo aviso para várias pessoas vira uma linha, com `destinatarios`) e cada evento de `robo_eventos_sessao`.
+    - A carga inicial traz o que já existe.
+    - A rotina `robo-limpeza-sininho-e-historico` roda de hora em hora: apaga do sininho o aviso do robô com mais de 24 horas **só se já estiver no histórico**, e apaga do histórico o que passou de 12 meses.
+  - **Tela**: a aba "Auditoria e eventos" virou **"Histórico do robô"**. O valor na URL continua `auditoria`, então links antigos funcionam.
+    - `HistoricoDoRobo` lista data e hora de Brasília, empresa pelo nome (`nomes_de_empresas_para_plataforma`), disputa com link, selo (aviso urgente, alerta, aviso, lance, evento), título e mensagem.
+    - Filtros: período (24 h, 7 dias, 30 dias, 12 meses), empresa, tipo (avisos ou eventos) e busca por edital, título ou mensagem, todos aplicados no banco.
+    - "Carregar mais", de 50 em 50. Sem a migration, diz qual arquivo colar.
+    - A trilha de auditoria e o tempo real da própria conta continuam embaixo.
+  - **Regras** em `lib/robo/historico-do-robo.ts` (5 testes); componente com 3 testes; página de admin atualizada.
+- [x] **SQL `20260917000004` aplicado pelo Ian em 17/09 às 14:32.** A conferência mostrou **21 avisos** (agrupados por aviso, não por pessoa) e **15 eventos** na carga inicial, **14 avisos do robô** com mais de 24 horas prontos para sair do sininho na próxima passagem da rotina (minuto 23 de cada hora) e **rotina ativa**. Até o Publish, a aba "Histórico do robô" ainda não aparece na tela.
+- **Conferido**: `tsc` sem erro, eslint limpo, **745 testes** (robô, lib, páginas, workspace, gestão, admin-robo, navegação). O SQL não roda localmente: a conferência no fim do arquivo mostra as quantidades da carga inicial e se a rotina ficou ativa.
+
 #### O que depende de alguém
 
 | O quê | De quem |

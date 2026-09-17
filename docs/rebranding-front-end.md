@@ -359,6 +359,11 @@ começar.** Uma linha a mais custa dez segundos; um conflito no
 | As outras 12 telas da seção 11 | **livre** — nenhuma reservada | |
 | _(anote aqui ao pegar uma)_ | | |
 
+> **17/09/2026 — Ian trocou um rótulo em `menu.ts`** (território do Caio): no grupo
+> Admin, "Robô de Lances" virou **"Configurações do Robô de Lances"**, e o título
+> em `paginas.ts` mudou junto (a regra é o mesmo título nos dois). O nome repetia o
+> módulo do cliente no mesmo menu. Só o rótulo; rota e ícone ficaram iguais.
+
 > **Ian tocou em `index.css`, `menu.ts`, `AppTopNav.tsx` e `AppSidebar.tsx` em
 > 04/09, que são território do Caio.** Está tudo enviado, então basta um `pull`
 > para receber. O que entrou: a classe `.eleva` e o bloco `.aurelia-fab` no
