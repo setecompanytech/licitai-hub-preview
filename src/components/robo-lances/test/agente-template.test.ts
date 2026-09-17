@@ -72,6 +72,25 @@ describe('template do agente de lances', () => {
     expect(registradas).toContain('POST /api/proposta/enviar');
   });
 
+  it('cadastro de proposta PAUSADO: a rota responde 501 antes de abrir o navegador, e as duas listas estão vazias', () => {
+    const index = ler('src/index.js');
+    const rota = index.slice(index.indexOf("app.post('/api/proposta/enviar'"));
+    const trava = rota.indexOf('if (!podeCadastrarProposta(portal))');
+    expect(trava).toBeGreaterThan(0);
+    // Nada de Chrome, login ou portal antes da trava (17/09/2026: um clique na
+    // tela antiga não pode levar o robô a uma compra real).
+    expect(rota.indexOf('launchBrowser(')).toBeGreaterThan(trava);
+    expect(rota.indexOf('.login()')).toBeGreaterThan(trava);
+
+    const mod = { exports: {} as { PORTAIS_COM_PROPOSTA_EM_TESTE: string[]; PORTAIS_COM_PROPOSTA_LIBERADA: string[]; podeCadastrarProposta: (p: string) => boolean; podeSalvarProposta: (p: string) => boolean } };
+    new vm.Script(ler('src/estrategia.js')).runInNewContext({ module: mod, exports: mod.exports });
+    expect(mod.exports.PORTAIS_COM_PROPOSTA_EM_TESTE).toEqual([]);
+    expect(mod.exports.PORTAIS_COM_PROPOSTA_LIBERADA).toEqual([]);
+    expect(mod.exports.podeCadastrarProposta('comprasgov')).toBe(false);
+    expect(mod.exports.podeSalvarProposta('comprasgov')).toBe(false);
+    expect(index).toContain('portais_com_proposta_liberada: PORTAIS_COM_PROPOSTA_LIBERADA');
+  });
+
   it('carimba a mesma versão no package.json, no /health e no log de boot', () => {
     const versao = JSON.parse(ler('package.json')).version;
     const index = ler('src/index.js');

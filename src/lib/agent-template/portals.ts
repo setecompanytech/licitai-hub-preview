@@ -1818,6 +1818,368 @@ class ComprasGovPortal extends BasePortal {
     return 'sem confirmacao do portal — a proxima leitura da sala mostra se o lance entrou';
   }
 
+  // ─── CADASTRO DA PROPOSTA (17/09/2026) ─────────────────────────────────────
+  //
+  // Escrito a partir do passo a passo oficial do Compras.gov (PDF do Senado,
+  // "Cadastramento de proposta no Compras.gov.br", PE 53/2023) e do FAQ do
+  // pregao eletronico (gov.br/compras) — NAO de uma tela vista pelo robo.
+  // Caminho do manual: area do fornecedor > "Dispensa/Licitacao Eletronica
+  // (Novo)" > "Compras eletronicas" > "Todas as compras" > pesquisa (Abertas
+  // para participacao, UASG, numero) > "Acompanhar compra" > "Cadastrar
+  // propostas": o Termo de Aceitacao e, por item, "Valor unitario (R$)",
+  // "Marca/Fabricante", "Modelo/Versao" e "Salvar".
+  //
+  // Tres niveis:
+  //   reconhecer — chega a tela, le e tira foto; nao digita, nao marca, nao salva
+  //   ensaio     — preenche item a item e confere o que ficou no campo; marca o
+  //                Termo so se a empresa marcou na conferencia; nao salva
+  //   salvar     — so em portal de PORTAIS_COM_PROPOSTA_LIBERADA (vazia)
+  //
+  // Recusa em vez de arriscar: proposta por grupo (o grupo exige todos os
+  // itens, FAQ 5.1.1), item em percentual (maior desconto, FAQ 4.1), item com
+  // proposta ja cadastrada (so se troca excluindo e mandando outra, FAQ 1.25),
+  // campo que nao se acha pelo rotulo, valor que nao ficou igual no campo.
+  async enviarProposta(dados) {
+    const pedido = dados && dados.modo;
+    const modo = pedido === 'ensaio' || pedido === 'salvar' ? pedido : 'reconhecer';
+    if (modo === 'salvar') {
+      let liberado = false;
+      try { liberado = require('../estrategia').podeSalvarProposta(this.nome) === true; } catch (e) { liberado = false; }
+      if (!liberado) {
+        const e = new Error('Salvar a proposta no portal ainda nao esta liberado — use o ensaio');
+        e.codigo = 'salvar-travado';
+        e.semRetry = true;
+        throw e;
+      }
+    }
+    const declaracoes = (dados && dados.declaracoes) || {};
+    const itensPedidos = (Array.isArray(dados && dados.itens) ? dados.itens : [])
+      .map((i) => Object.assign({}, i, { numero: Number(i && i.numero) }))
+      .filter((i) => Number.isFinite(i.numero) && i.numero > 0)
+      .sort((a, b) => a.numero - b.numero);
+
+    console.log('📄 Proposta (' + modo + ') — compra ' + (dados && dados.numero_pregao) + ', ' + itensPedidos.length + ' item(ns)');
+    await this.abrirCadastroDaProposta(dados && dados.numero_pregao, { uasg: dados && dados.uasg });
+
+    const tela = await this.lerTelaDaProposta();
+    await this.screenshot('proposta-tela');
+    const resultado = { modo, salvo: false, bloqueio: null, avisos: [], tela, termo_marcado_pelo_robo: false, itens: [] };
+    if (!tela.emCadastro) {
+      const e = new Error('A tela "Cadastrar propostas" nao apareceu depois de abrir a compra — o prazo de propostas pode ter terminado, ou o caminho do portal mudou');
+      e.codigo = 'sem-tela-de-proposta';
+      e.semRetry = true;
+      throw e;
+    }
+    if (modo === 'reconhecer') {
+      console.log('🔎 Proposta: tela reconhecida (' + tela.itensNaTela.length + ' item(ns) nesta pagina, termo '
+        + (tela.termo.existe ? (tela.termo.marcado ? 'marcado' : 'desmarcado') : 'nao visto') + ') — nada digitado');
+      return resultado;
+    }
+
+    if (tela.porGrupo) {
+      resultado.bloqueio = 'Proposta por grupo (lote): o portal exige todos os itens do grupo numa janela propria — o robo ainda nao preenche esse formato';
+      return resultado;
+    }
+    if (tela.meEpp) {
+      if (declaracoes.me_epp !== true && declaracoes.me_epp !== false) {
+        resultado.bloqueio = 'A tela pede a declaracao de ME/EPP e a conferencia nao respondeu — o robo nao escolhe por conta propria';
+        return resultado;
+      }
+      resultado.avisos.push('A tela tem a declaracao de ME/EPP; o robo ainda nao a marca — confira na tela antes de salvar');
+      if (modo === 'salvar') {
+        resultado.bloqueio = 'Declaracao de ME/EPP na tela: salvar espera o robo saber marca-la';
+        return resultado;
+      }
+    }
+    if (tela.termo.existe && !tela.termo.marcado) {
+      if (declaracoes.termo_de_aceitacao !== true) {
+        resultado.bloqueio = 'O portal pede o Termo de Aceitacao e a conferencia nao o marcou — o robo nao marca declaracao sozinho';
+        return resultado;
+      }
+      const marcou = await this.page.evaluate(() => {
+        const caixas = [...document.querySelectorAll('input[type="checkbox"], [role="checkbox"]')];
+        const doTermo = caixas.filter((c) => {
+          let el = c;
+          for (let i = 0; i < 4 && el; i++, el = el.parentElement) {
+            if (/termo de aceita/i.test(el.innerText || '')) return true;
+          }
+          return false;
+        });
+        if (doTermo.length !== 1) return false;
+        doTermo[0].click();
+        return true;
+      });
+      if (!marcou) {
+        resultado.bloqueio = 'Nao achei uma unica caixa do Termo de Aceitacao para marcar';
+        return resultado;
+      }
+      resultado.termo_marcado_pelo_robo = true;
+      console.log('☑️  Termo de Aceitacao marcado, conforme a conferencia da empresa');
+      await this.delayHumano(600, 1000);
+    }
+
+    for (const item of itensPedidos) {
+      resultado.itens.push(await this.preencherItemDaProposta(item, modo));
+    }
+    resultado.salvo = modo === 'salvar' && resultado.itens.length > 0 && resultado.itens.every((i) => i.situacao === 'salvo');
+    return resultado;
+  }
+
+  /**
+   * Da area do fornecedor ate "Cadastrar propostas", pelo caminho do manual.
+   * O primeiro clique (o menu da area do fornecedor) NUNCA foi visto pelo robo:
+   * o menu gravado em 10/09/2026 era "Dados Cadastrais | Compras | SICAF |
+   * Contratos", e o do manual de 2023, "Servicos ao Fornecedor". Procura o
+   * texto do item em todos os frames (a area e um frameset) e diz no erro o
+   * que achou, para o primeiro teste acompanhado corrigir com a tela real.
+   */
+  async abrirCadastroDaProposta(edital, alvo) {
+    if (!this.numeroDaCompra(edital)) {
+      const e = new Error('O numero "' + edital + '" nao tem numero e ano de compra (ex.: 90012/2024)');
+      e.codigo = 'numero-invalido';
+      e.semRetry = true;
+      throw e;
+    }
+    await this.adotarAbaViva('antes da proposta', { urlDeRetorno: this.portaLogin });
+    let clicou = null;
+    const menus = [];
+    for (const frame of this.page.frames()) {
+      const lido = await frame.evaluate(() => {
+        const re = /dispensa\\s*\\/\\s*licita[cç][aã]o\\s+eletr[oô]nica|compras\\s+eletr[oô]nicas/i;
+        const links = [...document.querySelectorAll('a, button, [role="menuitem"]')];
+        const alvo = links.find((l) => re.test((l.textContent || '').replace(/\\s+/g, ' ')));
+        if (alvo) { alvo.click(); return { clicou: (alvo.textContent || '').replace(/\\s+/g, ' ').trim() }; }
+        return { menus: links.map((l) => (l.textContent || '').replace(/\\s+/g, ' ').trim()).filter((t) => t && t.length < 60).slice(0, 40) };
+      }).catch(() => null);
+      if (lido && lido.clicou) { clicou = lido.clicou; break; }
+      if (lido && lido.menus) menus.push(...lido.menus);
+    }
+    if (!clicou) {
+      await this.screenshot('proposta-sem-menu');
+      const e = new Error('Nao achei "Dispensa/Licitacao Eletronica" nem "Compras eletronicas" na area do fornecedor. Menus vistos: '
+        + (menus.length ? menus.slice(0, 20).join(' | ') : 'nenhum'));
+      e.codigo = 'sem-menu-de-compras';
+      e.semRetry = true;
+      throw e;
+    }
+    console.log('📂 Proposta: cliquei em "' + clicou + '"');
+    await new Promise((r) => setTimeout(r, 4000));
+    await this.adotarAbaViva('ao abrir compras eletronicas');
+    // "Todas as compras" (o manual): a aba padrao pode ser "Minhas participacoes".
+    await this.page.evaluate(() => {
+      const aba = [...document.querySelectorAll('a, button, [role="tab"], li')]
+        .find((el) => /^todas as compras$/i.test((el.textContent || '').replace(/\\s+/g, ' ').trim()));
+      if (aba) aba.click();
+    }).catch(() => {});
+    await this.delayHumano(600, 1000);
+    // Daqui para frente e a mesma pesquisa da disputa, na pagina em que o robo
+    // esta (a logada), ate "Acompanhar compra".
+    await this.navegarParaDisputa(edital, Object.assign({}, alvo, { naPaginaAtual: true }));
+    const limite = Date.now() + 20000;
+    while (Date.now() < limite) {
+      const pronto = await this.page.evaluate(() => /cadastrar propostas?/i.test(document.body.innerText || '')).catch(() => false);
+      if (pronto) break;
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+  }
+
+  /** O que a tela de cadastro de proposta mostra, sem mexer em nada. */
+  async lerTelaDaProposta() {
+    return this.page.evaluate(() => {
+      const texto = (document.body.innerText || '').replace(/\\s+/g, ' ');
+      const emCadastro = /cadastrar propostas?/i.test(texto) && /valor unit[aá]rio/i.test(texto);
+      const caixas = [...document.querySelectorAll('input[type="checkbox"], [role="checkbox"]')];
+      const doTermo = caixas.filter((c) => {
+        let el = c;
+        for (let i = 0; i < 4 && el; i++, el = el.parentElement) {
+          if (/termo de aceita/i.test(el.innerText || '')) return true;
+        }
+        return false;
+      });
+      const termo = {
+        existe: doTermo.length > 0,
+        marcado: doTermo.length > 0 && (doTermo[0].checked === true || doTermo[0].getAttribute('aria-checked') === 'true'),
+        exigido: /necess[aá]rio o aceite do termo/i.test(texto),
+      };
+      const conta = (t) => (String(t || '').match(/quantidade solicitada/gi) || []).length;
+      const comecaComNumero = (el) => /^(?:item\\s*)?\\d+\\s/i.test(String(el.innerText || '').trim());
+      const itensNaTela = [...document.querySelectorAll('div, li, section, article')]
+        .filter((el) => conta(el.innerText) === 1 && comecaComNumero(el)
+          && (!el.parentElement || conta(el.parentElement.innerText) !== 1 || !comecaComNumero(el.parentElement)))
+        .map((el) => Number((String(el.innerText || '').trim().match(/^(?:item\\s*)?(\\d+)/i) || [])[1]));
+      const tempo = texto.match(/tempo restante para entrega de propostas:?\\s*([0-9][^A-Za-z]{0,30})/i);
+      return {
+        emCadastro,
+        termo,
+        porGrupo: /\\bgrupo\\s*\\d+/i.test(texto),
+        meEpp: /\\bME\\s*\\/\\s*EPP\\b|microempresa|lei complementar[^.]{0,20}123/i.test(texto) && emCadastro,
+        tempoRestante: tempo ? tempo[1].trim() : null,
+        itensNaTela,
+        endereco: String(location.href || '').split('?')[0],
+      };
+    });
+  }
+
+  /**
+   * Marca (data-praefectus-proposta) os campos do cartao DE UM ITEM: valor,
+   * marca/fabricante, modelo/versao e o botao Salvar. Campo acha-se pelo que o
+   * descreve (rotulo antes dele, placeholder, aria-label), nunca pela posicao.
+   */
+  async marcarCamposDoItem(numero) {
+    return this.page.evaluate((numero) => {
+      document.querySelectorAll('[data-praefectus-proposta],[data-praefectus-proxima],[data-praefectus-abrir]').forEach((el) => {
+        el.removeAttribute('data-praefectus-proposta');
+        el.removeAttribute('data-praefectus-proxima');
+        el.removeAttribute('data-praefectus-abrir');
+      });
+      const limpo = (t) => String(t || '').replace(/\\s+/g, ' ').trim();
+      const conta = (t) => (String(t || '').match(/quantidade solicitada/gi) || []).length;
+      const comecaComNumero = (el) => /^(?:item\\s*)?\\d+\\s/i.test(limpo(el.innerText));
+      const cartoes = [...document.querySelectorAll('div, li, section, article')]
+        .filter((el) => conta(el.innerText) === 1 && comecaComNumero(el)
+          && (!el.parentElement || conta(el.parentElement.innerText) !== 1 || !comecaComNumero(el.parentElement)));
+      const numeroDoCartao = (el) => Number((limpo(el.innerText).match(/^(?:item\\s*)?(\\d+)/i) || [])[1]);
+
+      const proxima = [...document.querySelectorAll('button, a')].find((b) => {
+        const r = [b.getAttribute('aria-label'), b.getAttribute('title'), String(b.className || '')].join(' ').toLowerCase();
+        return !b.disabled && b.getAttribute('aria-disabled') !== 'true' && /(pr[oó]xima|next)/.test(r);
+      });
+      if (proxima) proxima.setAttribute('data-praefectus-proxima', '1');
+
+      const doItem = cartoes.filter((c) => numeroDoCartao(c) === numero);
+      if (doItem.length === 0) return { achou: false, temProxima: !!proxima };
+      if (doItem.length > 1) return { achou: true, motivo: 'mais de um cartao para o item ' + numero };
+      const cartao = doItem[0];
+      const texto = limpo(cartao.innerText);
+      const cadastrada = /proposta cadastrada/i.test(texto) && !/proposta n[aã]o cadastrada/i.test(texto);
+      const campos = [...cartao.querySelectorAll('input, textarea')]
+        .filter((i) => ['hidden', 'checkbox', 'radio'].indexOf(String(i.type || '').toLowerCase()) < 0);
+      if (campos.length === 0) {
+        const abrir = [...cartao.querySelectorAll('button, a, [role="button"]')].find((b) => b.getAttribute('aria-expanded') === 'false'
+          || /(expandir|mostrar|detalh|abrir)/i.test([b.getAttribute('aria-label'), b.getAttribute('title')].join(' ')));
+        if (abrir) abrir.setAttribute('data-praefectus-abrir', '1');
+        return { achou: true, cadastrada, fechado: true, podeAbrir: !!abrir };
+      }
+      const rotuloAntes = (campo) => {
+        let el = campo;
+        for (let nivel = 0; el && el !== cartao && nivel < 4; nivel++, el = el.parentElement) {
+          for (let irmao = el.previousElementSibling; irmao; irmao = irmao.previousElementSibling) {
+            const t = limpo(irmao.innerText || irmao.textContent);
+            if (t) return t;
+          }
+        }
+        return '';
+      };
+      const descreve = (c) => [c.getAttribute('aria-label'), c.placeholder, c.name, c.id, c.getAttribute('formcontrolname'),
+        c.labels && c.labels[0] ? c.labels[0].textContent : '', rotuloAntes(c)].join(' ').toLowerCase();
+      const acha = (padrao) => campos.filter((c) => padrao.test(descreve(c)));
+      const valor = acha(/valor unit|pre[cç]o unit/);
+      const marca = acha(/marca|fabricante/);
+      const modelo = acha(/modelo|vers[aã]o/);
+      if (valor.length === 1) valor[0].setAttribute('data-praefectus-proposta', 'valor');
+      if (marca.length === 1) marca[0].setAttribute('data-praefectus-proposta', 'marca');
+      if (modelo.length === 1) modelo[0].setAttribute('data-praefectus-proposta', 'modelo');
+      const salvar = [...cartao.querySelectorAll('button')].filter((b) => /^salvar$/i.test(limpo(b.textContent)) && !b.disabled);
+      if (salvar.length === 1) salvar[0].setAttribute('data-praefectus-proposta', 'salvar');
+      return {
+        achou: true,
+        cadastrada,
+        fechado: false,
+        percentual: /desconto|percentual|%/.test(valor.map(descreve).join(' ')) || /maior desconto/i.test(texto),
+        campos: { valor: valor.length, marca: marca.length, modelo: modelo.length, salvar: salvar.length },
+        bloqueado: valor.length === 1 && (valor[0].disabled === true || valor[0].readOnly === true),
+      };
+    }, numero);
+  }
+
+  /** "R$ 4.999,70" / "4999,70" -> 4999.7; texto sem numero -> null. */
+  static valorDoCampo(texto) {
+    const t = String(texto || '').replace(/[^0-9,.]/g, '');
+    if (!t) return null;
+    const n = t.indexOf(',') >= 0 ? Number(t.replace(/\\./g, '').replace(',', '.')) : Number(t);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  /** Um item: acha, preenche, confere — e so salva no modo salvar. */
+  async preencherItemDaProposta(item, modo) {
+    const numero = item.numero;
+    const marcaPedida = [item.marca, item.fabricante].map((v) => String(v || '').trim()).filter(Boolean)
+      .filter((v, i, todos) => todos.findIndex((o) => o.toLowerCase() === v.toLowerCase()) === i)
+      .join(' / ');
+    const modeloPedido = String(item.modelo || '').trim();
+    const valorPedido = Number(item.valor_unitario);
+    const saida = {
+      numero,
+      situacao: null,
+      motivo: null,
+      pedido: { valor_unitario: Number.isFinite(valorPedido) ? valorPedido : null, marca: marcaPedida, modelo: modeloPedido },
+      na_tela: null,
+      foto: null,
+    };
+    const falha = (situacao, motivo) => {
+      saida.situacao = situacao;
+      saida.motivo = motivo;
+      console.log('⚠️ Proposta, item ' + numero + ': ' + motivo);
+      return saida;
+    };
+    if (!(valorPedido > 0)) return falha('sem-valor', 'item sem valor unitario na conferencia');
+
+    let alvo = await this.marcarCamposDoItem(numero);
+    for (let pagina = 0; alvo && !alvo.achou && alvo.temProxima && pagina < 30; pagina++) {
+      await this.page.click('[data-praefectus-proxima="1"]');
+      await this.delayHumano(900, 1400);
+      alvo = await this.marcarCamposDoItem(numero);
+    }
+    if (!alvo || !alvo.achou) return falha('nao-encontrado', 'o item ' + numero + ' nao esta na lista da tela de proposta');
+    if (alvo.motivo) return falha('ambiguo', alvo.motivo);
+    if (alvo.cadastrada) {
+      return falha('ja-cadastrada', 'o portal ja mostra proposta cadastrada para este item — trocar exige excluir e mandar outra; o robo nao mexe');
+    }
+    if (alvo.fechado) {
+      if (!alvo.podeAbrir) return falha('fechado', 'os campos do item estao recolhidos e nao achei como abrir');
+      await this.page.click('[data-praefectus-abrir="1"]');
+      await this.delayHumano(700, 1100);
+      alvo = await this.marcarCamposDoItem(numero);
+      if (!alvo || !alvo.achou || alvo.fechado) return falha('fechado', 'abri o item e os campos nao apareceram');
+    }
+    if (alvo.percentual) return falha('percentual', 'item cotado em percentual (maior desconto) — o robo so preenche valor em reais');
+    if (alvo.campos.valor !== 1) {
+      return falha('sem-campo-de-valor', alvo.campos.valor ? 'mais de um campo de valor no item' : 'campo "Valor unitario" nao encontrado no item');
+    }
+    if (alvo.bloqueado) return falha('bloqueado', 'o campo de valor esta bloqueado — o portal pode exigir o Termo de Aceitacao');
+    if (marcaPedida && alvo.campos.marca !== 1) return falha('sem-campo-de-marca', 'campo "Marca/Fabricante" nao encontrado, ou repetido, no item');
+    if (modeloPedido && alvo.campos.modelo !== 1) return falha('sem-campo-de-modelo', 'campo "Modelo/Versao" nao encontrado, ou repetido, no item');
+
+    const lidoValor = await this.digitarConferindo('[data-praefectus-proposta="valor"]', this.formatarMoeda(valorPedido));
+    const lidoMarca = marcaPedida ? await this.digitarConferindo('[data-praefectus-proposta="marca"]', marcaPedida) : null;
+    const lidoModelo = modeloPedido ? await this.digitarConferindo('[data-praefectus-proposta="modelo"]', modeloPedido) : null;
+    const valorNaTela = ComprasGovPortal.valorDoCampo(lidoValor);
+    saida.na_tela = { valor_unitario: valorNaTela, marca: lidoMarca, modelo: lidoModelo };
+    saida.foto = await this.screenshot('proposta-item-' + numero);
+
+    const igual = (a, b) => String(a || '').replace(/\\s+/g, ' ').trim().toLowerCase() === String(b || '').replace(/\\s+/g, ' ').trim().toLowerCase();
+    const confere = valorNaTela !== null && Math.round(valorNaTela * 100) === Math.round(valorPedido * 100)
+      && (!marcaPedida || igual(lidoMarca, marcaPedida))
+      && (!modeloPedido || igual(lidoModelo, modeloPedido));
+    if (!confere) return falha('divergente', 'o que ficou na tela nao confere com o pedido — nada foi salvo');
+
+    if (modo !== 'salvar') {
+      saida.situacao = 'preenchido';
+      console.log('✍️  Proposta, item ' + numero + ': preenchido e conferido, sem salvar');
+      return saida;
+    }
+    if (alvo.campos.salvar !== 1) return falha('sem-botao-salvar', 'nao achei um unico botao "Salvar" no item');
+    await this.page.click('[data-praefectus-proposta="salvar"]');
+    await this.delayHumano(1200, 1800);
+    const depois = await this.marcarCamposDoItem(numero);
+    if (depois && depois.cadastrada) {
+      saida.situacao = 'salvo';
+      console.log('💾 Proposta, item ' + numero + ': salva');
+      return saida;
+    }
+    return falha('sem-confirmacao', 'cliquei em Salvar e o item nao passou a mostrar proposta cadastrada');
+  }
+
   /**
    * Monitora a sala de disputa em tempo real.
    */

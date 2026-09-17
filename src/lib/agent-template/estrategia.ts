@@ -51,6 +51,42 @@ function podeEnviarLance(portalId) {
   return PORTAIS_COM_LANCE_LIBERADO.includes(portalId);
 }
 
+/**
+ * PORTAIS EM QUE O ROBO PODE CLICAR EM "SALVAR" NA PROPOSTA (17/09/2026).
+ *
+ * Vazia de proposito, como a do lance ficou ate ser conferida. O cadastro da
+ * proposta no Compras.gov foi escrito a partir do passo a passo oficial (PDF
+ * do Senado, PE 53/2023) e do FAQ do Compras.gov — nao da tela vista pelo
+ * robo. Ate o primeiro teste acompanhado numa compra escolhida pelo Rafael e
+ * pela Izabelle, o robo so RECONHECE a tela ou faz o ENSAIO (preenche e
+ * confere, sem salvar). Proposta salva e compromisso da empresa, e so se troca
+ * excluindo e mandando outra (FAQ 1.25).
+ */
+const PORTAIS_COM_PROPOSTA_LIBERADA = [];
+
+/** Este portal pode salvar proposta? */
+function podeSalvarProposta(portalId) {
+  return PORTAIS_COM_PROPOSTA_LIBERADA.includes(portalId);
+}
+
+/**
+ * PORTAIS EM QUE O ROBO PODE SEQUER ABRIR O CADASTRO DE PROPOSTA — reconhecer
+ * ou ensaio (17/09/2026). Vazia: o cadastro de proposta pelo robo esta
+ * PAUSADO por decisao do Ian. O Rafael nao pediu essa automacao (a queixa dele
+ * foi o robo ser uma ilha); a esteira com proposta veio do Giovanny (D6,
+ * WhatsApp 15/09); e o proprio ConLicitacao nao cobre o Compras.gov no robo
+ * web. O foco passou a ser a disputa: lance, iminencia e chat na sala logada.
+ * Com a lista vazia a rota /api/proposta/enviar responde 501 ANTES de abrir o
+ * navegador — o codigo escrito fica guardado sem risco de abrir uma compra
+ * real por um clique na tela antiga.
+ */
+const PORTAIS_COM_PROPOSTA_EM_TESTE = [];
+
+/** O robo pode abrir o cadastro de proposta deste portal (reconhecer/ensaio)? */
+function podeCadastrarProposta(portalId) {
+  return PORTAIS_COM_PROPOSTA_EM_TESTE.includes(portalId);
+}
+
 /** Nunca dar lance sem saber contra quem. */
 const AGUARDAR = (motivo) => ({ acao: 'aguardar', valor: null, motivo });
 /**
@@ -553,6 +589,10 @@ module.exports = {
   ESTRATEGIAS,
   FASES,
   PORTAIS_COM_LANCE_LIBERADO,
+  PORTAIS_COM_PROPOSTA_LIBERADA,
+  podeSalvarProposta,
+  PORTAIS_COM_PROPOSTA_EM_TESTE,
+  podeCadastrarProposta,
 };
 `,
 };
