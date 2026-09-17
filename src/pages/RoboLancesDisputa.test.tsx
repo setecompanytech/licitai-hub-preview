@@ -176,6 +176,7 @@ vi.mock('@/components/robo-lances/AutorizacaoLanceDialog', () => ({
 import RoboLancesDisputa from './RoboLancesDisputa';
 import { toast } from 'sonner';
 import fixtureDaCompra from '@/components/robo-lances/test/fixtures/compra-comprasgov-7-2026.json';
+import { chamadaAtual, fecharChamadaDaTelaRemota } from '@/lib/robo/chamada-da-tela-remota';
 import { compraDoComprasGov } from '../../supabase/functions/_shared/compra-comprasgov';
 
 function LocalAtual() {
@@ -356,7 +357,12 @@ describe('RoboLancesDisputa — a ação principal é escolhida pelo estado', ()
     expect(await screen.findByText(/Com o Modo Automático ligado, ele pode dar lance/)).toBeInTheDocument();
     fireEvent.click(screen.getByText('Entrar agora'));
 
+    // A chamada da tela remota sai NO CLIQUE, sem esperar o robô (Ian, 17/09).
+    expect(chamadaAtual()).toMatchObject({ motivo: 'entrando', disputaId: 'disputa-1' });
+    expect(chamadaAtual()?.titulo).toContain('PE 90001/2026');
+
     await waitFor(() => expect(invoke).toHaveBeenCalledWith('robo-lances-webhook/enviar-sessao', expect.anything()));
+    fecharChamadaDaTelaRemota();
   });
 
   it('com o robô operando: "Parar robô nesta disputa" — e "solicitada" nunca vira "Parado"', async () => {

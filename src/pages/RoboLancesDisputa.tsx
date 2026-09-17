@@ -20,6 +20,7 @@ import AcompanhamentoDaDisputa from '@/components/robo-lances/disputa/Acompanham
 import CabecalhoDaDisputa from '@/components/robo-lances/disputa/CabecalhoDaDisputa';
 import CompraDaDisputa from '@/components/robo-lances/disputa/CompraDaDisputa';
 import ConferirAlteracoesDialog from '@/components/robo-lances/disputa/ConferirAlteracoesDialog';
+import { chamadaDaEntrada, chamarTelaRemota, fecharChamadaDaTelaRemota } from '@/lib/robo/chamada-da-tela-remota';
 import FaixaDaEntrada from '@/components/robo-lances/disputa/FaixaDaEntrada';
 import ContextoDaDisputa from '@/components/robo-lances/disputa/ContextoDaDisputa';
 import EstrategiaDaDisputa from '@/components/robo-lances/disputa/EstrategiaDaDisputa';
@@ -280,7 +281,19 @@ function TelaDaDisputa() {
             aoRemover={() => navigate(voltarPara)}
             entrarAgora={
               podeOperar && !sessaoEmAndamento(leituraDaParada)
-                ? { enviando: envio.enviando, aoEntrar: () => void envio.enviar(lance) }
+                ? {
+                    enviando: envio.enviando,
+                    aoEntrar: () => {
+                      // A chamada da tela remota sai NO CLIQUE, antes de o robô
+                      // responder (Ian, 17/09/2026); se o envio for recusado, some.
+                      const chamada = chamarTelaRemota(
+                        chamadaDaEntrada({ disputaId: lance.id, edital: lance.edital, portal: nomeDoPortal(lance.portal), agora: new Date() }),
+                      );
+                      void envio.enviar(lance).then((aceito) => {
+                        if (!aceito) fecharChamadaDaTelaRemota(chamada);
+                      });
+                    },
+                  }
                 : null
             }
             conferirAlteracoes={podeOperar ? () => setConferindo(true) : null}
