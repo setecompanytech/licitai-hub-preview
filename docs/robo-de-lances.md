@@ -844,7 +844,7 @@ portais seguem por API (D1, D2).
 | Robô integrado ao processo: itens, lote, piso por item, origem do valor | ✅ |
 | Vários processos ao mesmo tempo | ✅ uma aba por pregão, todos os itens, até 6 pregões, provado às 16:45 |
 | Do cadastramento à homologação | ✅ Em Disputa e Homologada automáticos; Vencida e Perdida ficam com a equipe |
-| Alerta quando a empresa é convocada | ❌ **no Compras.gov, ainda não**: o caminho do aviso existe, mas o módulo do Compras.gov não lê o chat — os seletores só existem na sala logada |
+| Alerta quando a empresa é convocada | ⏳ **17/09: escrito pela central de notificações do fornecedor, falta instalar e o reconhecimento** (seção abaixo). Antes: ❌ **no Compras.gov, ainda não**: o caminho do aviso existe, mas o módulo do Compras.gov não lê o chat — os seletores só existem na sala logada |
 | Gestão de contratos | ✅ já existia |
 | D1, D4, D10 — automação de navegador, rodando por trás, tela remota só na administração | ✅ |
 | D2 — o máximo automatizado | ✅ agendamento, sessão guardada, vigia, entrada antecipada e nova tentativa; o captcha ainda pode pedir clique quando a sessão do gov.br vence |
@@ -880,6 +880,35 @@ portais seguem por API (D1, D2).
 - [x] **"Detalhes da licitação" com os dados da compra** — o diálogo do menu Ações dizia "Disputa sem processo vinculado" no órgão e "Não apurado" no SRP mesmo com a compra lida no Compras.gov. Agora, em disputa do Compras.gov com UASG, completa órgão (quando o processo não tem), modalidade e modo de disputa, objeto, SRP, prazo de propostas e o link do PNCP, da mesma consulta do cartão da página (`useCompraDaDisputa`, `detalhesDaCompra`)
 
 **O que continua dependendo de outros:** pregão escolhido pelo Rafael e pela Izabelle (sala logada: campo de lance, fase, tempo restante, elegibilidade, chat; formulário de proposta), Publish no Lovable, build do preview da Cloudflare, fuso do PNCP e WhatsApp.
+
+#### 17/09 — alerta de convocação pela central de notificações do Compras.gov
+
+> Pedido do Ian: "tem como fazer o alerta de convocação?". Requisito central
+> (Giovanny; tela do ConLicitação): o fornecedor não pode perder prazo de anexo,
+> proposta ajustada ou habilitação por não estar com a tela aberta.
+
+**O que foi descoberto, no código público do portal** (`cnetmobile.estaleiro.serpro.gov.br/comprasnet-web`, lido em 17/09 — não em tela vista pelo robô):
+
+| O quê | Como é |
+| --- | --- |
+| Página pública da compra | tem o botão "Mensagens da compra" (`app-botao-mensagens-da-compra`, com contador) e, por fornecedor, "proposta, anexo e chat" — visto nas gravações do robô de 16/09 |
+| **Central de notificações do fornecedor** | o sininho da área logada nova: `GET /comprasnet-mensagem/v1/mensagens?page&size&filtro=nao-lidas` (total no cabeçalho `Register-Count`; 404 = nenhuma), `…/quantidade-nao-lidas` e os tipos em `…/v1/destinatarios/notificacoes`. O próprio portal escreve que "as mensagens estarão disponíveis no chat da compra e no quadro informativo" e remete ao aplicativo Compras.gov.br |
+| Campos de cada notificação | `id`, `lida`, `texto` (HTML), `dataHoraPublicacao`, `categoria`, `tipoContexto`, `numeroUasg`, `codigoModalidade`, `numeroCompra`, `anoCompra`, `numeroCompraFormatado`, `descricaoModalidade`, `identificadorItem` |
+| **Listar não marca como lida** | só `GET …/v1/mensagens/{id}` marca — o robô nunca chama |
+| Autenticação | a área nova abre por `iniciar-sessao` (a sessão do portal antigo vira token) e a aplicação manda `Authorization: Bearer` e o cabeçalho `bloqueio-desabilitado` |
+| Sala logada | `/seguro/fornecedor/disputa?compra=<id>`; item logado `/seguro/fornecedor/acompanhamento-compra/item/N?compra=<id>` |
+| Custo | nenhum. **Não é API pública oficial**: é a API interna do site, com o login da empresa — pode mudar sem aviso, como a tela. A pública (`dadosabertos`) não tem mensagens |
+
+**O que foi escrito** (commits locais de 17/09, **não instalado**):
+- [x] **Robô — `src/central-notificacoes.js`**: da área do fornecedor até a lista de não lidas. Acha o link do Compras.gov novo (endereço de `iniciar-sessao`, host novo ou texto do menu), abre numa aba, captura o token das chamadas da própria aplicação (nunca vai para log, arquivo ou resposta), lista as não lidas e resume cada uma sem HTML e com o id da compra (UASG + modalidade + número + ano). 8 testes, inclusive "nunca chama a URL que marca como lida" e "o token não sai da leitura"
+- [x] **Vigia**: com a sessão logada, lê a central na mesma volta de 20 minutos — **desligado por padrão**; `LER_CENTRAL_NOTIFICACOES=true` no `.env` da VPS liga, depois do reconhecimento. Falha na leitura nunca derruba a conferência da sessão. 5 testes
+- [x] **Rotas com chave** (a central é dado da empresa; o `/health` é público): `GET /notificacoes-portal` (a última leitura por perfil) e `POST /reconhecer/central-notificacoes` (reconhecimento acompanhado: abre o perfil na tela remota, faz o caminho e devolve links vistos, endereço, chamadas da API sem cabeçalhos, tipos de notificação, total e fotos — não clica em notificação nem abre compra)
+- [x] **Webhook — a cada 5 minutos** (`avisarNotificacoesDoPortal`, regra em `_shared/robo-notificacoes-portal.ts`, 6 testes): o que é novo vira aviso para o dono da credencial e para admin/operador da empresa da disputa daquela compra (achada por UASG + número/ano), com link para a disputa. **Urgente** — convocação, anexo, prazo, proposta ajustada, diligência, habilitação, recurso, negociação, desclassificação, suspensão — vai também por e-mail e aparece 15 s no canto da tela. Só o publicado nas últimas 48 h (a primeira leitura traz o acumulado), sem data não avisa, e a marca `notificacao-portal` no `webhook_log` impede o repetido
+- [x] **Script do reconhecimento**: `bash scripts/reconhecer-central-notificacoes.sh` (lê a chave do agente no `.env` da VPS sem imprimi-la)
+- [ ] **Instalar** o agente na VPS (`index.js`, `vigia-sessao.js`, `central-notificacoes.js`; 0 sessões antes do `pm2 restart`) e publicar o webhook — com OK do Ian
+- [ ] **Reconhecimento acompanhado** — o primeiro clique (da área do fornecedor ao Compras.gov novo) nunca foi visto; é a conta da empresa, não uma compra
+- [ ] Ligar `LER_CENTRAL_NOTIFICACOES=true` e ver o primeiro aviso chegar
+- **Enquanto isso, sem código**: o aplicativo oficial Compras.gov.br avisa no celular — o próprio portal indica
 
 #### O que depende de alguém
 
