@@ -135,23 +135,31 @@ const TRILHA_BASE = trilhaDaRota('/kanban')
  *  linhas separadas por "|" — que não embrulhavam em tela estreita e pintavam
  *  o separador com a cor da borda. */
 function Campo({ rotulo, children, largo }: { rotulo: string; children: ReactNode; largo?: boolean }) {
+  // Valor em texto puro passa pelo expansível: duas linhas, e o clique em cima
+  // abre. Valor já montado (link, selo, número tabular) entra como veio.
+  const valor = typeof children === 'string'
+    ? <TextoExpansivel texto={children} linhas={2} modo="texto" limiarPorLinha={40} />
+    : children;
   return (
-    <div className={cn('min-w-0', largo && 'col-span-2')}>
+    <div className={cn('flex min-w-[7rem] flex-col', largo ? 'max-w-[36rem]' : 'max-w-[22rem]')}>
       <dt className="g-meta text-muted-foreground">{rotulo}</dt>
-      <dd className="g-corpo mt-0.5 break-words text-foreground">{children}</dd>
+      <dd className="g-corpo mt-0.5 min-w-0 break-words text-foreground">{valor}</dd>
     </div>
   );
 }
 
 /**
- * A grade da ficha do Resumo. Eram três colunas num cartão de 1.600 px — cada
- * coluna com 500 px para um valor de 150, e o cartão passava de 600 px de
- * altura para dezesseis campos (print de 17/09). Seis colunas na tela larga,
- * quatro no notebook, três no tablet, duas no celular; campo longo (órgão,
- * unidade compradora, amparo legal) ocupa duas, para não sobrar buraco ao
- * lado dos curtos.
+ * A ficha do Resumo: os campos correm em fluxo, cada um com a largura do
+ * próprio conteúdo (até um teto), com 32 px entre eles.
+ *
+ * Duas versões anteriores no mesmo dia (17/09): três colunas iguais deixavam
+ * 500 px para valores de 150; seis colunas iguais deixavam faixas vazias ao
+ * lado de "Sim" e "Edital". Colunas iguais servem a tabela, não a ficha — na
+ * ficha o que se lê é rótulo + valor, e a distância entre eles é que precisa
+ * ser constante. Campo longo (órgão, unidade compradora, amparo legal) tem
+ * teto maior; texto que passa de duas linhas abre ao clicar.
  */
-const GRADE_DA_FICHA = 'grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6';
+const GRADE_DA_FICHA = 'flex flex-wrap gap-x-8 gap-y-3';
 
 /** Tom do selo de situação no cabeçalho — só apresentação; o texto continua o
  *  status bruto do processo, e a cor é reforço (SeloSituacao leva ícone junto). */
@@ -650,7 +658,7 @@ export default function ProcessoWorkspace() {
                 <div>
                   <h3 className="g-meta mb-1 uppercase tracking-wide text-muted-foreground">Objeto</h3>
                   {lic.objeto
-                    ? <TextoExpansivel texto={objetoLegivel(lic.objeto)} linhas={3} />
+                    ? <TextoExpansivel texto={objetoLegivel(lic.objeto)} linhas={2} modo="texto" />
                     : <p className="g-corpo text-muted-foreground">—</p>}
                 </div>
 

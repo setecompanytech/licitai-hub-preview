@@ -1764,18 +1764,22 @@ export default function MonitoramentoEditais() {
               />
             ) : (
               <div className="overflow-x-auto rounded-lg border border-border bg-card shadow-sm">
-                <Table>
+                <Table className="[&_td]:px-3 [&_th]:px-3">
                   <TableHeader>
                     <TableRow>
                       {/* Chip "Pregão Eletrônico nº 37/2026" (~250 px) + selo SRP/Em gestão
                           ao lado, sem quebrar para baixo: menos que isto, a linha da
                           tabela ganha uma altura a mais só por causa do selo. */}
-                      <TableHead className="min-w-[344px]">Identificação</TableHead>
-                      <TableHead className="min-w-[200px]">Órgão</TableHead>
-                      <TableHead className="min-w-[236px]">Prazo</TableHead>
+                      {/* As larguras mínimas somam 1.339 px com o respiro de 12 px
+                          por lado — abaixo dos 1.376 px do contêiner (1.440 − 2×32).
+                          A soma anterior passava disso e a coluna Ações saía cortada
+                          ("Aç…") atrás da rolagem interna da tabela (print de 17/09). */}
+                      <TableHead className="min-w-[336px]">Identificação</TableHead>
+                      <TableHead className="min-w-[216px]">Órgão</TableHead>
+                      <TableHead className="min-w-[228px]">Prazo</TableHead>
                       <TableHead>Situação</TableHead>
                       <TableHead className="text-right">Valor estimado</TableHead>
-                      <TableHead className="w-[208px] text-right">Ações</TableHead>
+                      <TableHead className="w-[200px] text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -2265,7 +2269,7 @@ function EditalLinha({ edital, favoritado, onFavoritar, licitacaoId, compromisso
             cima, com o nome inteiro; as secundárias viram uma fileira de
             ícones com nome acessível e dica — o texto continua chegando ao
             leitor de tela e ao mouse parado. */}
-        <TableCell className="w-[208px] align-top">
+        <TableCell className="w-[200px] align-top">
           <div className="flex flex-col gap-1.5">
             <Button
               variant={emGestao ? 'outline' : 'default'}

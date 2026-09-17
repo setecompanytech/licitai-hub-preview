@@ -304,10 +304,14 @@ describe('ProcessoWorkspace — o dossiê do processo', () => {
     expect(cabecalho!.textContent).toContain('PNCP');
     await waitFor(() => expect(cabecalho!.textContent).toContain('Ana Souza'));
 
-    // E o objeto continua legível — no Resumo, com expansão de verdade.
+    // E o objeto continua legível — no Resumo, com expansão de verdade. Desde
+    // 17/09 o próprio texto é o botão (duas linhas; o clique em cima abre), em
+    // vez de um botão "Ver descrição completa" abaixo dele.
     expect(screen.getByText('Resumo')).toBeTruthy();
-    expect(screen.getByText(OBJETO_EXTENSO)).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Ver descrição completa' })).toBeTruthy();
+    const objeto = screen.getByText(OBJETO_EXTENSO).closest('button');
+    expect(objeto).toBeTruthy();
+    expect(objeto).toHaveAttribute('aria-expanded', 'false');
+    expect(objeto).toHaveAttribute('title', 'Clique para ler o texto inteiro');
   });
 
   it('distingue falha de carga de processo inexistente', async () => {
