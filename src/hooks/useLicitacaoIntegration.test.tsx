@@ -128,6 +128,47 @@ describe('iniciarProcesso', () => {
   });
 });
 
+/**
+ * 17/09: o processo chegava ao Kanban e a pasta não nascia. Três dos quatro
+ * caminhos de entrada não chamavam `criarCompromisso` — na O S eram 31
+ * processos no quadro e 2 pastas na aba. A pasta passa a nascer com o processo.
+ */
+describe('iniciarProcesso cria a pasta em Compromissos', () => {
+  it('grava o compromisso com a empresa ativa, junto do processo', async () => {
+    const { iniciarProcesso } = montar();
+    await iniciarProcesso(EDITAL);
+
+    const [compromisso] = inseridos('processos_interesse');
+    expect(compromisso).toMatchObject({
+      user_id: 'u1',
+      empresa_id: 'e1',
+      licitacao_id: 'lic-novo',
+      numero: 'DE 12/2026',
+      status: 'interessado',
+      alerta_sistema: true,
+    });
+  });
+
+  it('processo que já existe na empresa ganha a pasta de quem chegou agora', async () => {
+    estado.respostas['licitacoes:select'] = { data: { id: 'lic-do-colega' }, error: null };
+    const { iniciarProcesso } = montar();
+    await iniciarProcesso(EDITAL);
+
+    // Nenhum processo novo…
+    expect(inseridos('licitacoes')).toHaveLength(0);
+    // …e a pasta do processo do colega, para esta pessoa.
+    expect(inseridos('processos_interesse')[0]).toMatchObject({ licitacao_id: 'lic-do-colega', user_id: 'u1' });
+  });
+
+  it('não duplica: com pasta existente, reaproveita e não insere', async () => {
+    estado.respostas['processos_interesse:select'] = { data: { id: 'comp-que-ja-existe' }, error: null };
+    const { iniciarProcesso } = montar();
+    await iniciarProcesso(EDITAL);
+
+    expect(inseridos('processos_interesse')).toHaveLength(0);
+  });
+});
+
 describe('criarCompromisso', () => {
   it('usa a data da sessão quando existe e o prazo quando não', async () => {
     const { criarCompromisso } = montar();

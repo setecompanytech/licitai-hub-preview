@@ -44,6 +44,70 @@ export type OpcoesIniciarProcesso = {
   aoFalhar?: (mensagem: string) => void;
 };
 
+/**
+ * Cria — ou reaproveita — a pasta do processo em Compromissos.
+ *
+ * Mora fora do hook porque `iniciarProcesso` precisa dela: como `const` do
+ * corpo do hook, ela só existiria depois, e a lista de dependências do
+ * `useCallback` estouraria em tempo de render.
+ *
+ * É idempotente por (usuário, licitação): quem já tem a pasta recebe o id
+ * existente, e nenhuma linha nova é criada.
+ */
+async function garantirCompromisso(params: {
+  userId: string;
+  empresaId: string | null;
+  edital: EditalData;
+  licitacaoId: string;
+}): Promise<string | null> {
+  const { userId, empresaId, edital, licitacaoId } = params;
+  try {
+    const { data: existente } = await supabase
+      .from('processos_interesse')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('licitacao_id', licitacaoId)
+      .maybeSingle();
+    if (existente?.id) return existente.id;
+
+    const { data, error } = await supabase
+      .from('processos_interesse')
+      .insert({
+        user_id: userId,
+        // Sem empresa a pasta nasce órfã: 68 das 70 linhas da base estavam
+        // assim, porque o modal do monitoramento chamava sem este dado.
+        empresa_id: empresaId,
+        licitacao_id: licitacaoId,
+        numero: edital.numero,
+        orgao: edital.orgao,
+        objeto: edital.objeto,
+        modalidade: edital.modalidade || 'Pregão',
+        valor_estimado: edital.valor_estimado,
+        uf: edital.uf,
+        municipio: edital.municipio,
+        // A sessão, quando quem criou informou; senão o prazo, como sempre foi.
+        data_abertura: edital.data_abertura ?? edital.data_encerramento,
+        data_encerramento: edital.data_encerramento,
+        portal: edital.portal,
+        url: edital.url,
+        status: 'interessado',
+        alerta_sistema: true,
+        alerta_email: true,
+        alerta_whatsapp: false,
+        alerta_7dias: true,
+        alerta_3dias: true,
+        alerta_1dia: true,
+      })
+      .select('id')
+      .single();
+    if (error) throw error;
+    return data?.id || null;
+  } catch (err) {
+    console.error('[garantirCompromisso]', err);
+    return null;
+  }
+}
+
 export function useLicitacaoIntegration() {
   const { user } = useAuth();
   const { empresaAtiva } = useEmpresa();
@@ -84,6 +148,15 @@ export function useLicitacaoIntegration() {
 
       if (existing) {
         toast.info('Esta licitação já está na gestão da empresa.');
+        // A pasta é de quem acompanha: quando o colega já criou o processo,
+        // quem chega agora ganha a própria, senão a aba Compromissos fica sem
+        // a pasta que o Kanban mostra.
+        await garantirCompromisso({
+          userId: user.id,
+          empresaId: empresaAtiva?.id ?? null,
+          edital,
+          licitacaoId: existing.id,
+        });
         if (navigateTo) navigate(navigateTo);
         return existing.id;
       }
@@ -123,6 +196,21 @@ export function useLicitacaoIntegration() {
         .single();
 
       if (error) throw error;
+
+      /* A pasta em Compromissos nasce junto do processo: é por ela que se
+         chega ao edital, aos documentos e aos anexos. Três dos quatro caminhos
+         que criam processo não a criavam — daí os 31 processos no quadro da O S
+         com 2 pastas na aba. Falhar aqui não desfaz o processo, mas também não
+         passa em silêncio (princípio 3). */
+      const compromissoId = await garantirCompromisso({
+        userId: user.id,
+        empresaId: empresaAtiva?.id ?? null,
+        edital,
+        licitacaoId: data.id,
+      });
+      if (!compromissoId) {
+        toast.warning('Processo criado, mas a pasta em Compromissos não foi gerada. Abra o processo para tentar de novo.');
+      }
 
       await registrar({
         acao: 'processo_iniciado',
@@ -199,51 +287,15 @@ export function useLicitacaoIntegration() {
     empresaId?: string | null,
   ): Promise<string | null> => {
     if (!user) return null;
-    try {
-      // Reuse existing compromisso if same licitacao+user
-      const { data: existing } = await supabase
-        .from('processos_interesse')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('licitacao_id', licitacaoId)
-        .maybeSingle();
-      if (existing?.id) return existing.id;
-
-      const { data, error } = await supabase
-        .from('processos_interesse')
-        .insert({
-          user_id: user.id,
-          empresa_id: empresaId || null,
-          licitacao_id: licitacaoId,
-          numero: edital.numero,
-          orgao: edital.orgao,
-          objeto: edital.objeto,
-          modalidade: edital.modalidade || 'Pregão',
-          valor_estimado: edital.valor_estimado,
-          uf: edital.uf,
-          municipio: edital.municipio,
-          // A sessão, quando quem criou informou; senão o prazo, como sempre foi.
-          data_abertura: edital.data_abertura ?? edital.data_encerramento,
-          data_encerramento: edital.data_encerramento,
-          portal: edital.portal,
-          url: edital.url,
-          status: 'interessado',
-          alerta_sistema: true,
-          alerta_email: true,
-          alerta_whatsapp: false,
-          alerta_7dias: true,
-          alerta_3dias: true,
-          alerta_1dia: true,
-        })
-        .select('id')
-        .single();
-      if (error) throw error;
-      return data?.id || null;
-    } catch (err) {
-      console.error('[criarCompromisso]', err);
-      return null;
-    }
-  }, [user]);
+    // Sem empresa explícita, a ativa — o compromisso órfão de empresa era a
+    // regra, não a exceção, porque este parâmetro quase nunca era passado.
+    return garantirCompromisso({
+      userId: user.id,
+      empresaId: empresaId ?? empresaAtiva?.id ?? null,
+      edital,
+      licitacaoId,
+    });
+  }, [user, empresaAtiva]);
 
   /**
    * Espelha o arquivamento no compromisso vinculado. O Kanban e a aba

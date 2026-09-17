@@ -8,32 +8,15 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import EstadoVazio from '@/components/shared/EstadoVazio';
 import { cn } from '@/lib/utils';
-import { ListChecks, Brain, Bell, Mail, MessageSquare, Building2, ArrowRight, Loader2, Clock, FolderOpen, Archive, ArchiveRestore, Folder, List, LayoutGrid } from 'lucide-react';
+import { ListChecks, Brain, Bell, Mail, MessageSquare, Building2, ArrowRight, Loader2, Clock, FolderOpen, Archive, ArchiveRestore, Folder, List, LayoutGrid, AlertTriangle, RefreshCw } from 'lucide-react';
 import { identidadeDoEdital } from '@/lib/licitacao/identidade-edital';
+import { montarPastas, type CompromissoPessoal, type Pasta, type ProcessoDaEmpresa } from '@/lib/processo/pastas';
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
 import { toast } from 'sonner';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import ArquivarProcessoDialog, { type DesfechoArquivamento } from '@/components/gestao/ArquivarProcessoDialog';
 import RegistrarPerdaDialog, { type PerdaAlvo } from '@/components/metas/RegistrarPerdaDialog';
 import NovaPastaManualDialog, { BotaoNovaPastaManual } from '@/components/gestao/NovaPastaManualDialog';
-
-type Item = {
-  id: string;
-  numero: string;
-  orgao: string;
-  objeto: string;
-  modalidade: string | null;
-  valor_estimado: number | null;
-  uf: string | null;
-  municipio: string | null;
-  data_encerramento: string | null;
-  status: string;
-  ia_score: number | null;
-  alerta_sistema: boolean | null;
-  alerta_email: boolean | null;
-  alerta_whatsapp: boolean | null;
-  licitacao_id: string | null;
-};
 
 const fmtCurrency = (v: number | null) =>
   v ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v) : '—';
@@ -69,8 +52,21 @@ function lerVista(): Vista {
 }
 
 /**
- * Lista compacta de compromissos (processos_interesse) embarcada na aba
- * Compromissos da Gestão. Mostra prazos, score IA e atalho para a página completa.
+ * As pastas do processo, na aba Compromissos da Gestão.
+ *
+ * ── DE ONDE VEM A LISTA ──────────────────────────────────────────────────
+ *
+ * Do QUADRO DA EMPRESA (`licitacoes`), o mesmo universo do Kanban, com o
+ * compromisso pessoal (`processos_interesse`) por cima. Antes a lista saía
+ * só da tabela pessoal, e o resultado medido em 17/09 na O S foi 31
+ * processos no quadro contra 2 pastas aqui: as demais eram de um colega, e
+ * cinco processos não tinham pasta nenhuma.
+ *
+ * Isso importa porque é pela pasta que se chega ao edital, aos documentos e
+ * aos anexos — pasta que não aparece é processo fora de alcance.
+ *
+ * O que continua pessoal: a decisão de acompanhar, o score da IA e os
+ * canais de alerta. A junção mora em `lib/processo/pastas.ts`, com teste.
  */
 function ListaDeCompromissos({
   aoNovaPasta,
@@ -83,8 +79,9 @@ function ListaDeCompromissos({
   const navigate = useNavigate();
   const { iniciarProcesso, arquivarProcesso, registrarPerda } = useLicitacaoIntegration();
   const { empresaAtiva } = useEmpresa();
-  const [items, setItems] = useState<Item[]>([]);
+  const [items, setItems] = useState<Pasta[]>([]);
   const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
   const [opening, setOpening] = useState<string | null>(null);
   const [arquivando, setArquivando] = useState<string | null>(null);
   const [verArquivados, setVerArquivados] = useState(false);
@@ -94,18 +91,18 @@ function ListaDeCompromissos({
     try { localStorage.setItem(VISTA_CHAVE, JSON.stringify(nova)); } catch { /* sem storage */ }
   }, []);
   // Arquivar deixou de ser um gesto mudo: sem desfecho registrado, pergunta.
-  const [aArquivar, setAArquivar] = useState<Item | null>(null);
+  const [aArquivar, setAArquivar] = useState<Pasta | null>(null);
   const [perdaAlvo, setPerdaAlvo] = useState<PerdaAlvo | null>(null);
   const [salvandoPerda, setSalvandoPerda] = useState(false);
 
-  const abrirPasta = useCallback(async (p: Item) => {
-    if (p.licitacao_id) { navigate(`/processo/${p.licitacao_id}`); return; }
+  const abrirPasta = useCallback(async (p: Pasta) => {
+    if (p.licitacaoId) { navigate(`/processo/${p.licitacaoId}`); return; }
     setOpening(p.id);
     try {
       const lid = await iniciarProcesso({
-        numero: p.numero,
-        orgao: p.orgao,
-        objeto: p.objeto,
+        numero: p.numero || '',
+        orgao: p.orgao || '',
+        objeto: p.objeto || '',
         modalidade: p.modalidade || undefined,
         valor_estimado: p.valor_estimado,
         uf: p.uf,
@@ -113,7 +110,9 @@ function ListaDeCompromissos({
         data_encerramento: p.data_encerramento,
       });
       if (!lid) { toast.error('Não foi possível abrir a Pasta.'); return; }
-      await supabase.from('processos_interesse').update({ licitacao_id: lid }).eq('id', p.id);
+      if (p.compromissoId) {
+        await supabase.from('processos_interesse').update({ licitacao_id: lid }).eq('id', p.compromissoId);
+      }
       navigate(`/processo/${lid}`);
     } finally {
       setOpening(null);
@@ -123,30 +122,49 @@ function ListaDeCompromissos({
   const carregar = useCallback(async () => {
     if (!user) return;
     setLoading(true);
-    const { data } = await supabase
-      .from('processos_interesse')
-      .select('id, numero, orgao, objeto, modalidade, valor_estimado, uf, municipio, data_encerramento, status, ia_score, alerta_sistema, alerta_email, alerta_whatsapp, licitacao_id')
-      .eq('user_id', user.id)
-      .order('data_encerramento', { ascending: true })
-      .limit(50);
-    setItems((data || []) as Item[]);
+
+    // O universo é o do quadro. O RLS já limita às empresas de que a pessoa é
+    // membro; o filtro por empresa ativa espelha o Kanban.
+    let consultaProcessos = supabase
+      .from('licitacoes')
+      .select('id, numero, orgao, objeto, modalidade, ano_compra, valor_estimado, uf, municipio, data_encerramento, status, arquivado_em');
+    if (empresaAtiva) consultaProcessos = consultaProcessos.eq('empresa_id', empresaAtiva.id);
+
+    const [processos, compromissos] = await Promise.all([
+      consultaProcessos.order('data_encerramento', { ascending: true }),
+      supabase
+        .from('processos_interesse')
+        .select('id, licitacao_id, numero, orgao, objeto, modalidade, valor_estimado, uf, municipio, data_encerramento, status, ia_score, alerta_sistema, alerta_email, alerta_whatsapp, created_at')
+        .eq('user_id', user.id),
+    ]);
+
+    /* Erro não pode virar lista vazia: a aba diria "nenhum processo" para uma
+       empresa com 31 no quadro, e ninguém saberia que a consulta falhou
+       (princípio 3 do CLAUDE.md). A lista anterior fica na tela. */
+    const falha = processos.error || compromissos.error;
+    setErro(falha ? (falha.message || 'Não foi possível carregar as pastas.') : null);
+    if (processos.error) { setLoading(false); return; }
+
+    setItems(montarPastas(
+      (processos.data || []) as ProcessoDaEmpresa[],
+      (compromissos.data || []) as CompromissoPessoal[],
+    ));
     setLoading(false);
-  }, [user]);
+  }, [user, empresaAtiva]);
 
   /** Arquivar aqui também move o card no Kanban, quando há licitação vinculada. */
-  /** Arquiva de fato — chamado depois de o desfecho estar resolvido. */
-  const alternarArquivo = useCallback(async (p: Item) => {
-    const restaurar = p.status === 'arquivado';
+  const alternarArquivo = useCallback(async (p: Pasta) => {
+    const restaurar = p.arquivada;
     setArquivando(p.id);
     try {
-      if (p.licitacao_id) {
-        const ok = await arquivarProcesso(p.licitacao_id, !restaurar);
+      if (p.licitacaoId) {
+        const ok = await arquivarProcesso(p.licitacaoId, !restaurar);
         if (!ok) return;
-      } else {
+      } else if (p.compromissoId) {
         const { error } = await supabase
           .from('processos_interesse')
           .update({ status: restaurar ? 'interessado' : 'arquivado' })
-          .eq('id', p.id);
+          .eq('id', p.compromissoId);
         if (error) { toast.error('Erro ao arquivar compromisso.'); return; }
       }
       toast.success(restaurar ? 'Compromisso restaurado.' : 'Compromisso arquivado.');
@@ -172,18 +190,18 @@ function ListaDeCompromissos({
       // O fluxo de perda é o mesmo do Kanban: motivo obrigatório, e o gatilho
       // do banco recusa a mudança sem registro em comercial_perdas.
       setPerdaAlvo({
-        licitacaoId: p.licitacao_id!,
-        numero: p.numero,
-        orgao: p.orgao,
+        licitacaoId: p.licitacaoId!,
+        numero: p.numero || '',
+        orgao: p.orgao || '',
         modalidade: p.modalidade,
         valorEstimado: p.valor_estimado,
       });
       return;
     }
 
-    if (desfecho === 'vencida' && p.licitacao_id) {
+    if (desfecho === 'vencida' && p.licitacaoId) {
       const { error } = await supabase
-        .from('licitacoes').update({ status: 'Vencida' }).eq('id', p.licitacao_id);
+        .from('licitacoes').update({ status: 'Vencida' }).eq('id', p.licitacaoId);
       if (error) { toast.error(error.message || 'Erro ao registrar o desfecho.'); return; }
     }
     await alternarArquivo(p);
@@ -198,7 +216,7 @@ function ListaDeCompromissos({
     });
     setSalvandoPerda(false);
     if (!ok) return;
-    const alvo = items.find((i) => i.licitacao_id === perdaAlvo.licitacaoId);
+    const alvo = items.find((i) => i.licitacaoId === perdaAlvo.licitacaoId);
     setPerdaAlvo(null);
     if (alvo) await alternarArquivo(alvo);
   }, [perdaAlvo, empresaAtiva, registrarPerda, items, alternarArquivo]);
@@ -207,12 +225,22 @@ function ListaDeCompromissos({
 
   useEffect(() => {
     if (!user) return;
+    /* Duas fontes, um canal: o processo muda no Kanban (status, arquivamento,
+       processo novo) e o compromisso muda aqui. Sem ouvir `licitacoes`, a pasta
+       criada no monitoramento só apareceria ao recarregar a página. */
     const ch = supabase
       .channel('compromissos-resumo')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'processos_interesse', filter: `user_id=eq.${user.id}` }, () => carregar())
+      .on(
+        'postgres_changes',
+        empresaAtiva
+          ? { event: '*', schema: 'public', table: 'licitacoes', filter: `empresa_id=eq.${empresaAtiva.id}` }
+          : { event: '*', schema: 'public', table: 'licitacoes' },
+        () => carregar(),
+      )
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [user, carregar]);
+  }, [user, empresaAtiva, carregar]);
 
   if (loading) {
     return (
@@ -232,47 +260,60 @@ function ListaDeCompromissos({
     );
   }
 
-  const arquivados = items.filter((p) => p.status === 'arquivado');
-  const visiveis = verArquivados ? arquivados : items.filter((p) => p.status !== 'arquivado');
+  const arquivados = items.filter((p) => p.arquivada);
+  const visiveis = verArquivados ? arquivados : items.filter((p) => !p.arquivada);
+
+  const avisoDeFalha = erro && (
+    <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-destructive-line bg-destructive-tint p-3">
+      <AlertTriangle className="h-5 w-5 shrink-0 text-destructive-ink" aria-hidden="true" />
+      <p className="min-w-0 flex-1 text-sm leading-5 text-destructive-ink">
+        Lista incompleta — {erro} O que está abaixo pode não ser tudo.
+      </p>
+      <Button type="button" variant="outline" size="sm" className="gap-2" onClick={() => carregar()}>
+        <RefreshCw className="h-4 w-4" aria-hidden="true" />
+        Tentar novamente
+      </Button>
+    </div>
+  );
 
   if (items.length === 0) {
     return (
-      <Card>
-        <EstadoVazio
-          icone={<ListChecks />}
-          titulo="Nenhum compromisso ativo"
-          descricao={
-            <>
-              Inicie um processo no <strong>Monitoramento de Editais</strong> para gerar prazos e alertas automáticos.
-              Processo que não passa pelo PNCP (como dispensas em sistemas estaduais) entra por uma pasta manual.
-            </>
-          }
-          acao={
-            <>
-              <Button asChild variant="outline">
-                <Link to="/monitoramento-editais">Ir para Monitoramento</Link>
-              </Button>
-              <BotaoNovaPastaManual rotulo="Criar pasta manual" aoAbrir={aoNovaPasta} />
-            </>
-          }
-        />
-      </Card>
+      <>
+        {avisoDeFalha}
+        <Card>
+          <EstadoVazio
+            icone={<ListChecks />}
+            titulo="Nenhum processo na gestão"
+            descricao={
+              <>
+                Inicie um processo no <strong>Monitoramento de Editais</strong> — a pasta nasce junto, com prazos e alertas.
+                Processo que não passa pelo PNCP (como dispensas em sistemas estaduais) entra por uma pasta manual.
+              </>
+            }
+            acao={
+              <>
+                <Button asChild variant="outline">
+                  <Link to="/monitoramento-editais">Ir para Monitoramento</Link>
+                </Button>
+                <BotaoNovaPastaManual rotulo="Criar pasta manual" aoAbrir={aoNovaPasta} />
+              </>
+            }
+          />
+        </Card>
+      </>
     );
   }
 
   return (
     <>
     <div className="space-y-4">
-      {/* A barra de "processo ativo" saiu junto com a memória entre telas:
-          ela servia para eleger um processo que acompanharia a pessoa pelos
-          módulos, e é justamente isso que deixou de existir. Abrir a pasta é
-          o caminho. */}
+      {avisoDeFalha}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="g-corpo text-muted-foreground">
           {verArquivados
-            ? `${arquivados.length} compromisso(s) arquivado(s)`
-            : `${visiveis.length} compromissos ativos — exibindo prazos críticos primeiro`}
+            ? `${arquivados.length} pasta(s) arquivada(s)`
+            : `${visiveis.length} pasta(s) ativa(s) — exibindo prazos críticos primeiro`}
         </p>
         <div className="flex flex-wrap items-center gap-2">
           {/* Vista: lista detalhada ou pastas (grade estilo Finder). Na grade,
@@ -340,8 +381,8 @@ function ListaDeCompromissos({
           <EstadoVazio
             tamanho="compacto"
             icone={verArquivados ? <Archive /> : <ListChecks />}
-            titulo={verArquivados ? 'Nenhum compromisso arquivado' : 'Nenhum compromisso ativo'}
-            descricao={verArquivados ? 'Arquive um compromisso para vê-lo aqui.' : 'Todos os compromissos estão arquivados.'}
+            titulo={verArquivados ? 'Nenhuma pasta arquivada' : 'Nenhuma pasta ativa'}
+            descricao={verArquivados ? 'Arquive uma pasta para vê-la aqui.' : 'Todas as pastas estão arquivadas.'}
           />
         </Card>
       )}
@@ -359,7 +400,7 @@ function ListaDeCompromissos({
             const dias = diasAte(p.data_encerramento);
             const urgencia = dias === null ? 'normal' : dias <= 1 ? 'danger' : dias <= 3 ? 'warning' : 'normal';
             const corPasta = { danger: 'text-destructive', warning: 'text-warning', normal: 'text-primary' }[urgencia];
-            const identidade = identidadeDoEdital({ numeroCompra: p.numero, modalidade: p.modalidade });
+            const identidade = identidadeDoEdital({ numeroCompra: p.numero, modalidade: p.modalidade, anoCompra: p.ano_compra });
             return (
               <div
                 key={p.id}
@@ -393,12 +434,12 @@ function ListaDeCompromissos({
                     size="icon"
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (p.status === 'arquivado') { alternarArquivo(p); return; }
+                      if (p.arquivada) { alternarArquivo(p); return; }
                       setAArquivar(p);
                     }}
                     disabled={arquivando === p.id}
-                    title={p.status === 'arquivado' ? 'Restaurar' : 'Arquivar'}
-                    aria-label={p.status === 'arquivado' ? 'Restaurar compromisso' : 'Arquivar compromisso'}
+                    title={p.arquivada ? 'Restaurar' : 'Arquivar'}
+                    aria-label={p.arquivada ? 'Restaurar compromisso' : 'Arquivar compromisso'}
                     className={cn(
                       'h-8 w-8 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100',
                       arquivando === p.id && 'opacity-100',
@@ -406,7 +447,7 @@ function ListaDeCompromissos({
                   >
                     {arquivando === p.id
                       ? <Loader2 className="animate-spin" aria-hidden="true" />
-                      : p.status === 'arquivado'
+                      : p.arquivada
                       ? <ArchiveRestore aria-hidden="true" />
                       : <Archive aria-hidden="true" />}
                   </Button>
@@ -423,14 +464,14 @@ function ListaDeCompromissos({
           : dias <= 1 ? 'danger'
           : dias <= 3 ? 'warning'
           : 'normal';
-        const identidade = identidadeDoEdital({ numeroCompra: p.numero, modalidade: p.modalidade });
+        const identidade = identidadeDoEdital({ numeroCompra: p.numero, modalidade: p.modalidade, anoCompra: p.ano_compra });
         return (
           <Card key={p.id} className="p-4">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <div className="mb-1 flex flex-wrap items-center gap-2">
                   <Badge variant="muted" className="gap-1">
-                    <ListChecks className="h-3 w-3" aria-hidden="true" />{p.status}
+                    <ListChecks className="h-3 w-3" aria-hidden="true" />{p.situacao}
                   </Badge>
                   <span
                     className="cursor-help g-corpo font-semibold"
@@ -460,11 +501,18 @@ function ListaDeCompromissos({
                   </span>
                   {p.uf && <span>{p.municipio ? `${p.municipio}/${p.uf}` : p.uf}</span>}
                   <span className="font-medium text-foreground tabular-nums">{fmtCurrency(p.valor_estimado)}</span>
-                  <span className="flex items-center gap-1">
-                    {p.alerta_sistema && <Bell className="h-4 w-4 text-primary" aria-label="Alerta no sistema" />}
-                    {p.alerta_email && <Mail className="h-4 w-4 text-info" aria-label="Alerta por e-mail" />}
-                    {p.alerta_whatsapp && <MessageSquare className="h-4 w-4 text-success" aria-label="Alerta por WhatsApp" />}
-                  </span>
+                  {/* Pasta do colega: a pessoa alcança o processo, mas os
+                      alertas de prazo são de quem acompanha — dizer isso evita
+                      confiar num aviso que não vai chegar. */}
+                  {p.semCompromissoProprio ? (
+                    <span>Sem alertas seus</span>
+                  ) : (
+                    <span className="flex items-center gap-1">
+                      {p.alerta_sistema && <Bell className="h-4 w-4 text-primary" aria-label="Alerta no sistema" />}
+                      {p.alerta_email && <Mail className="h-4 w-4 text-info" aria-label="Alerta por e-mail" />}
+                      {p.alerta_whatsapp && <MessageSquare className="h-4 w-4 text-success" aria-label="Alerta por WhatsApp" />}
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="flex shrink-0 flex-col gap-2">
@@ -480,18 +528,18 @@ function ListaDeCompromissos({
                   className="text-muted-foreground"
                   onClick={() => {
                     // Restaurar não precisa de pergunta; arquivar precisa.
-                    if (p.status === 'arquivado') { alternarArquivo(p); return; }
+                    if (p.arquivada) { alternarArquivo(p); return; }
                     setAArquivar(p);
                   }}
                   disabled={arquivando === p.id}
-                  title={p.licitacao_id ? 'Sincroniza com o Kanban' : undefined}
+                  title={p.licitacaoId ? 'Sincroniza com o Kanban' : undefined}
                 >
                   {arquivando === p.id
                     ? <Loader2 className="animate-spin" aria-hidden="true" />
-                    : p.status === 'arquivado'
+                    : p.arquivada
                     ? <ArchiveRestore aria-hidden="true" />
                     : <Archive aria-hidden="true" />}
-                  {p.status === 'arquivado' ? 'Restaurar' : 'Arquivar'}
+                  {p.arquivada ? 'Restaurar' : 'Arquivar'}
                 </Button>
               </div>
             </div>
@@ -519,8 +567,7 @@ function ListaDeCompromissos({
 }
 
 /**
- * Lista compacta de compromissos (processos_interesse) embarcada na aba
- * Compromissos da Gestão, com a entrada da pasta manual.
+ * A aba Compromissos da Gestão, com a entrada da pasta manual.
  *
  * O diálogo mora aqui, FORA da lista, de propósito: a lista troca de árvore
  * inteira entre carregando, vazia e preenchida — e o compromisso que o próprio

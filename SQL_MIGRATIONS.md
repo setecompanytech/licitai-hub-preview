@@ -13896,3 +13896,31 @@ Reversão:
 DROP TRIGGER IF EXISTS trg_robo_processo_remarcado ON public.licitacoes;
 DROP FUNCTION IF EXISTS public.robo_processo_remarcado_move_disputa();
 ```
+
+---
+
+## 20260917000001 — a pasta existe para todo processo do quadro
+
+Arquivo: `supabase/migrations/20260917000001_pasta_do_processo_em_compromissos.sql`
+
+O Kanban lê `licitacoes`, que é da empresa; a aba Compromissos lia
+`processos_interesse`, que é pessoal. Medição de 17/09 na O S DISTRIBUIDORA:
+**31 processos no quadro e 2 pastas na aba** — 22 eram de um colega e 5
+processos não tinham pasta nenhuma. Como é pela pasta que se chega ao edital,
+aos documentos e aos anexos, quem não a tem não alcança o processo.
+
+A tela passou a listar o quadro da empresa com o compromisso pessoal por cima
+(`src/lib/processo/pastas.ts`). Este SQL acerta o que já estava gravado:
+
+1. **empresa nos compromissos órfãos** — 68 das 70 linhas tinham `empresa_id`
+   nulo, porque `criarCompromisso` era chamado sem o terceiro parâmetro;
+2. **duplicata (usuário, licitação)** — 1 caso, resolvido mantendo a linha mais
+   antiga, que é a que carrega o histórico de alertas;
+3. **índice único parcial** `uq_processos_interesse_user_licitacao`, deixando
+   livres os compromissos ainda sem processo;
+4. **backfill** da pasta faltante para o DONO de cada processo — 29 linhas. Não
+   cria para os demais membros: encheria a aba de cada colega com decisões que
+   ninguém tomou. Processo arquivado entra como `arquivado`, para o backfill
+   não trazer de volta o que já saiu da mesa.
+
+Idempotente. Reversão no cabeçalho do arquivo.
