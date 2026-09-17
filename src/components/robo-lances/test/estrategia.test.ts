@@ -273,6 +273,82 @@ describe('estratégia por item', () => {
   });
 });
 
+describe('estratégias cumulativas — marcar 1, 2 ou as 3 (Rafael, 17/09)', () => {
+  beforeAll(() => {
+    if (!liberados.includes('__teste__')) liberados.push('__teste__');
+  });
+  // cenario(): nosso lance 100, 1º colocado 90 → distância de R$ 10.
+  const marcadas = (estrategias: unknown, over: Record<string, unknown> = {}) => cenario({ estrategias, ...over });
+
+  it('a lista vale mais que o formato de antes', () => {
+    const d = decidirLance(marcadas(['iminencia'], { estrategia: 'melhor_preco', fase: 'aberta', segundosRestantes: 300 }));
+    expect(d.acao).toBe('aguardar');
+    expect(d.motivo).toMatch(/iminencia/);
+  });
+
+  it('só uma marcada age como a estratégia sozinha', () => {
+    expect(decidirLance(marcadas(['melhor_preco'])).valor).toBe(85);
+    expect(decidirLance(marcadas(['iminencia'], { fase: 'aberta', segundosRestantes: 300 })).acao).toBe('aguardar');
+    expect(decidirLance(marcadas(['desempatar_1o'], { margemDesempate: 5 })).acao).toBe('aguardar');
+  });
+
+  it('com melhor preço marcado, cobre a qualquer momento e a qualquer distância', () => {
+    for (const lista of [
+      ['melhor_preco', 'iminencia'],
+      ['melhor_preco', 'desempatar_1o'],
+      ['melhor_preco', 'iminencia', 'desempatar_1o'],
+    ]) {
+      const d = decidirLance(marcadas(lista, { margemDesempate: 5, fase: 'aberta', segundosRestantes: 300 }));
+      expect(d.acao).toBe('lance');
+      expect(d.valor).toBe(85);
+      expect(d.motivo).toMatch(/estrategia: melhor preco/);
+    }
+  });
+
+  it('iminência + desempatar: antes da iminência, só perto do 1º', () => {
+    const perto = decidirLance(marcadas(['iminencia', 'desempatar_1o'], { margemDesempate: 10, fase: 'aberta', segundosRestantes: 300 }));
+    expect(perto.acao).toBe('lance');
+    expect(perto.motivo).toMatch(/desempatar no 1o lugar/);
+
+    const longe = decidirLance(marcadas(['iminencia', 'desempatar_1o'], { margemDesempate: 5, fase: 'aberta', segundosRestantes: 300 }));
+    expect(longe.acao).toBe('aguardar');
+    expect(longe.motivo).toMatch(/nao persegue/);
+    expect(longe.motivo).toMatch(/faltam 300 s/);
+  });
+
+  it('iminência + desempatar: na iminência, cobre a qualquer distância', () => {
+    const d = decidirLance(marcadas(['desempatar_1o', 'iminencia'], { margemDesempate: 5, fase: 'aberta', segundosRestantes: 60 }));
+    expect(d.acao).toBe('lance');
+    expect(d.valor).toBe(85);
+    expect(d.motivo).toMatch(/estrategia: iminencia/);
+  });
+
+  it('as guardas continuam valendo com as três marcadas: liderança, leitura e piso', () => {
+    const todas = ['melhor_preco', 'iminencia', 'desempatar_1o'];
+    expect(decidirLance(marcadas(todas, { souLider: true })).acao).toBe('aguardar');
+    expect(decidirLance(marcadas(todas, { melhorLance: null })).acao).toBe('aguardar');
+    expect(decidirLance(marcadas(todas, { melhorLance: 54 })).acao).toBe('encerrar');
+  });
+
+  it('lista vazia NÃO vira melhor preço: aguarda e diz por quê', () => {
+    const d = decidirLance(marcadas([]));
+    expect(d.acao).toBe('aguardar');
+    expect(d.motivo).toMatch(/Nenhuma estrategia marcada/);
+  });
+
+  it('nome desconhecido na lista aguarda, mesmo com uma conhecida junto', () => {
+    const d = decidirLance(marcadas(['melhor_preco', 'inventada']));
+    expect(d.acao).toBe('aguardar');
+    expect(d.motivo).toMatch(/inventada/);
+  });
+
+  it('desempate de ME/EPP: a margem só vale quando desempatar é a única marcada', () => {
+    const base = { fase: 'desempate_me_epp', elegivel: true, margemDesempate: 5 };
+    expect(decidirLance(marcadas(['desempatar_1o'], base)).acao).toBe('aguardar');
+    expect(decidirLance(marcadas(['iminencia', 'desempatar_1o'], base)).acao).toBe('lance');
+  });
+});
+
 describe('desempatar no 1º lugar — a margem é a distância máxima até o 1º', () => {
   beforeAll(() => {
     if (!liberados.includes('__teste__')) liberados.push('__teste__');

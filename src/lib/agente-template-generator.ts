@@ -785,7 +785,7 @@ app.listen(PORT, BIND_HOST, () => {
   'src/session-manager.js': `const { launchBrowser } = require('./browser');
 const { sendCallback } = require('./callback');
 const { getPortal } = require('./portals');
-const { decidirLance, conferirItens, proximaLeituraMs, itensParaLer, faseDeLancesEncerrada } = require('./estrategia');
+const { decidirLance, conferirItens, proximaLeituraMs, itensParaLer, faseDeLancesEncerrada, estrategiasDoItem } = require('./estrategia');
 
 // De quanto em quanto tempo o laco confere a situacao dos itens na pagina da compra.
 const MS_ENTRE_LEITURAS_DE_SITUACAO = 3 * 60 * 1000;
@@ -1643,6 +1643,8 @@ class SessionManager {
         decrementoPercentual: session.decremento_percentual,
         intervaloMinimo: detalhes.intervalo_minimo,
         intervaloMinimoPercentual: detalhes.intervalo_minimo_percentual,
+        // Cumulativas desde 17/09 (lista); \`estrategia\` e o formato de antes.
+        estrategias: item.estrategias,
         estrategia: item.estrategia,
         margemDesempate: Number(item.margem_desempate),
         fase: sala.fase,
@@ -1687,7 +1689,7 @@ class SessionManager {
         intervalo_minimo: Number.isFinite(detalhes.intervalo_minimo) ? detalhes.intervalo_minimo : null,
         fase: sala.fase || null,
         segundos_restantes: Number.isFinite(sala.segundosRestantes) ? sala.segundosRestantes : null,
-        estrategia: item.estrategia || 'melhor_preco',
+        estrategia: estrategiasDoItem(item.estrategias, item.estrategia).join('+'),
         decisao: { acao: decisaoParaTela.acao, valor: decisaoParaTela.valor, motivo: decisaoParaTela.motivo },
         lances_enviados: session.lances_enviados,
         rodada: session.rodada,
@@ -1770,7 +1772,7 @@ class SessionManager {
         resultado,
         motivo: decisao.motivo,
         lances_enviados: session.lances_enviados,
-        metadata: { timestamp: new Date().toISOString(), estrategia: item.estrategia || 'melhor_preco', item: numero },
+        metadata: { timestamp: new Date().toISOString(), estrategia: estrategiasDoItem(item.estrategias, item.estrategia).join('+'), item: numero },
       });
 
       console.log(

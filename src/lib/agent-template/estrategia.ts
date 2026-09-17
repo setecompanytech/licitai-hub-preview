@@ -95,6 +95,42 @@ const NOME_DA_ESTRATEGIA = {
 };
 
 /**
+ * AS ESTRATEGIAS SOMAM (17/09/2026). O Rafael, dono do produto, na tela do
+ * cadastro: "sao as 3 opcoes que o usuario escolhe — ele pode escolher as 3 ou
+ * somente 2 ou somente 1", como no ConLicitacao. O item passa a trazer
+ * \`estrategias\` (lista); \`estrategia\` (uma so) e o formato de antes e continua
+ * valendo para a disputa cadastrada antes.
+ *
+ * Cada estrategia marcada e um gatilho, e o robo cobre o 1o colocado quando
+ * QUALQUER um deles autoriza:
+ * - melhor_preco autoriza sempre (e as outras nada acrescentam a ela);
+ * - iminencia autoriza nos 2 minutos finais, a qualquer distancia do 1o;
+ * - desempatar_1o autoriza a qualquer momento, mas so com o 1o dentro da margem.
+ * Com iminencia e desempatar_1o juntas: antes da iminencia, so perto do 1o;
+ * nela, a qualquer distancia.
+ *
+ * Nada informado (nem lista, nem estrategia) = melhor preco, como sempre foi.
+ * Lista VAZIA informada nao vira melhor preco: a tela nao deixa salvar assim,
+ * e se chegar, o robo aguarda — dar lance por uma estrategia que ninguem
+ * marcou seria decidir preco no chute.
+ *
+ * @returns {string[]} as estrategias, sem repeticao, na ordem de ESTRATEGIAS
+ */
+function estrategiasDoItem(estrategias, estrategia) {
+  if (Array.isArray(estrategias)) {
+    const marcadas = estrategias.map((e) => String(e === null || e === undefined ? '' : e).trim()).filter(Boolean);
+    const unicas = marcadas.filter((e, i) => marcadas.indexOf(e) === i);
+    return unicas.sort((a, b) => {
+      const ia = ESTRATEGIAS.indexOf(a);
+      const ib = ESTRATEGIAS.indexOf(b);
+      return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+    });
+  }
+  const uma = estrategia === null || estrategia === undefined ? '' : String(estrategia).trim();
+  return [uma || 'melhor_preco'];
+}
+
+/**
  * Modo aberto: 10 minutos, e cada lance nos 2 minutos finais prorroga mais 2
  * (Lei 14.133/2021; IN SEGES/ME 73/2022). E essa a janela da iminencia.
  */
@@ -139,7 +175,8 @@ function emIminencia(fase, segundosRestantes) {
  * @param {number}      [estado.decrementoPercentual] alternativa, em % (0-100)
  * @param {number}      [estado.intervaloMinimo] intervalo minimo entre lances do edital, em reais
  * @param {number}      [estado.intervaloMinimoPercentual] o mesmo, quando o edital o da em %
- * @param {string}      [estado.estrategia]      uma de ESTRATEGIAS; vazio = melhor_preco
+ * @param {string[]}    [estado.estrategias]     as marcadas no item, cumulativas (ver estrategiasDoItem)
+ * @param {string}      [estado.estrategia]      formato de antes: uma de ESTRATEGIAS; vazio = melhor_preco
  * @param {number}      [estado.margemDesempate] desempatar_1o: distancia maxima ate o 1o colocado, em reais
  * @param {string|null} [estado.fase]            uma de FASES; null = nao lida
  * @param {number|null} [estado.segundosRestantes] da etapa aberta; null = nao lido
@@ -162,6 +199,7 @@ function decidirLance(estado) {
     decrementoPercentual,
     intervaloMinimo,
     intervaloMinimoPercentual,
+    estrategias,
     estrategia,
     margemDesempate,
     fase,
@@ -207,11 +245,17 @@ function decidirLance(estado) {
     return AGUARDAR('Sem valor minimo (piso) definido para o item — o robo nao disputa sem piso');
   }
 
-  const qual = estrategia === null || estrategia === undefined || estrategia === '' ? 'melhor_preco' : estrategia;
-  if (!ESTRATEGIAS.includes(qual)) {
-    return AGUARDAR(\`Estrategia "\${qual}" nao e conhecida por esta versao do robo\`);
+  const marcadas = estrategiasDoItem(estrategias, estrategia);
+  if (marcadas.length === 0) {
+    return AGUARDAR('Nenhuma estrategia marcada neste item: o robo acompanha e nao da lance');
   }
-  const porMargem = qual === 'desempatar_1o';
+  const desconhecida = marcadas.find((e) => !ESTRATEGIAS.includes(e));
+  if (desconhecida) {
+    return AGUARDAR(\`Estrategia "\${desconhecida}" nao e conhecida por esta versao do robo\`);
+  }
+  const comMelhorPreco = marcadas.includes('melhor_preco');
+  const comIminencia = marcadas.includes('iminencia');
+  const comDesempate = marcadas.includes('desempatar_1o');
 
   const faseLida = fase === null || fase === undefined || fase === '' ? null : fase;
   if (faseLida !== null && !FASES.includes(faseLida)) {
@@ -263,9 +307,13 @@ function decidirLance(estado) {
   /**
    * Cobrir o 1o colocado. Um caminho so para todas as ocasioes, com as
    * mesmas guardas: sem leitura nao ha lance, nunca cobrir o proprio lance,
-   * so perto do 1o na estrategia desempatar_1o, nunca chegar no piso.
+   * so perto do 1o quando quem autoriza e a desempatar_1o, nunca chegar no piso.
+   *
+   * @param {string|null} ocasiao  texto extra do motivo
+   * @param {string} porQual       a estrategia que autorizou este lance
    */
-  const cobrirOPrimeiro = (ocasiao) => {
+  const cobrirOPrimeiro = (ocasiao, porQual) => {
+    const porMargem = porQual === 'desempatar_1o';
     // Sem leitura confiável não há estratégia. O código antigo caía em
     // \`melhorLance || valorAtual\` e dava lance às cegas partindo do próprio
     // valor — cobrindo a si mesmo com um número inventado.
@@ -314,7 +362,7 @@ function decidirLance(estado) {
     return LANCE(
       conta.valor,
       \`Cobrindo \${REAIS(melhorLance)} com passo de \${REAIS(conta.passo)} \` +
-      \`(\${conta.origem}; estrategia: \${NOME_DA_ESTRATEGIA[qual]}\${ocasiao ? '; ' + ocasiao : ''})\`
+      \`(\${conta.origem}; estrategia: \${NOME_DA_ESTRATEGIA[porQual]}\${ocasiao ? '; ' + ocasiao : ''})\`
     );
   };
 
@@ -336,12 +384,14 @@ function decidirLance(estado) {
 
   // DESEMPATE DE ME/EPP: o portal convoca a pequena empresa com lance ate 5%
   // acima do 1o colocado a cobri-lo, uma vez. Qualquer estrategia aproveita a
-  // convocacao, com as mesmas guardas — inclusive a margem da desempatar_1o.
+  // convocacao, com as mesmas guardas — a margem so vale quando a desempatar_1o
+  // e a unica marcada (melhor preco e iminencia cobrem a qualquer distancia).
   if (faseLida === 'desempate_me_epp') {
     if (elegivel === false) return AGUARDAR('O portal nao convocou a empresa para o desempate');
     if (elegivel !== true) return AGUARDAR('Nao foi possivel saber se a empresa foi convocada para o desempate');
     if (lanceDesempateEnviado) return AGUARDAR('O lance de desempate ja foi dado — o portal aceita um so');
-    return cobrirOPrimeiro('desempate de ME/EPP');
+    const porQual = comMelhorPreco ? 'melhor_preco' : comIminencia ? 'iminencia' : 'desempatar_1o';
+    return cobrirOPrimeiro('desempate de ME/EPP', porQual);
   }
 
   // Modo fechado e aberto: so passam para a etapa aberta a melhor proposta e
@@ -367,16 +417,30 @@ function decidirLance(estado) {
     return AGUARDAR('O melhor lance não é melhor que o nosso — nada a cobrir');
   }
 
-  // Iminencia: a leitura acima ja rodou, para que um defeito de leitura
-  // apareca durante a etapa inteira, e nao so nos dois minutos que importam.
-  if (qual === 'iminencia' && !emIminencia(faseLida, segundosRestantes)) {
+  // Os gatilhos marcados, do mais amplo ao mais restrito (ver estrategiasDoItem).
+  // A leitura acima ja rodou, para que um defeito de leitura apareca durante a
+  // etapa inteira, e nao so nos dois minutos da iminencia.
+  if (comMelhorPreco) return cobrirOPrimeiro(null, 'melhor_preco');
+  if (comIminencia && emIminencia(faseLida, segundosRestantes)) return cobrirOPrimeiro(null, 'iminencia');
+
+  const esperaDaIminencia = () => {
     if (!Number.isFinite(segundosRestantes) && faseLida !== 'encerramento_aleatorio') {
-      return AGUARDAR('Estrategia de iminencia: o tempo restante nao foi lido, e sem ele o robo nao sabe quando agir');
+      return 'Estrategia de iminencia: o tempo restante nao foi lido, e sem ele o robo nao sabe quando agir';
     }
-    return AGUARDAR(\`Estrategia de iminencia: faltam \${Math.round(segundosRestantes)} s; o robo age nos \${SEGUNDOS_DE_IMINENCIA / 60} minutos finais\`);
+    return \`Estrategia de iminencia: faltam \${Math.round(segundosRestantes)} s; o robo age nos \${SEGUNDOS_DE_IMINENCIA / 60} minutos finais\`;
+  };
+
+  if (comDesempate) {
+    const porMargem = cobrirOPrimeiro(null, 'desempatar_1o');
+    // Com a iminencia marcada junto, quem le o motivo precisa saber que a
+    // espera e so ate os minutos finais.
+    if (porMargem.acao === 'aguardar' && comIminencia) {
+      return AGUARDAR(porMargem.motivo + '. ' + esperaDaIminencia());
+    }
+    return porMargem;
   }
 
-  return cobrirOPrimeiro(null);
+  return AGUARDAR(esperaDaIminencia());
 }
 
 /**
@@ -559,6 +623,7 @@ module.exports = {
   conferirItens,
   proximaLeituraMs,
   emIminencia,
+  estrategiasDoItem,
   ESTRATEGIAS,
   FASES,
   PORTAIS_COM_LANCE_LIBERADO,

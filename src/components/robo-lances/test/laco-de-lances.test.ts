@@ -312,6 +312,25 @@ describe('laço de lances', () => {
     s.status = 'encerrado';
   });
 
+  it('as estratégias marcadas (lista, 17/09) chegam à decisão e ao estado da sala', async () => {
+    const { gerente, chamadas } = montar(true);
+    const { portal, enviados } = portalFalso();
+    // A lista vale mais que o formato de antes: com só a iminência marcada e o
+    // tempo restante não lido, o robô aguarda — mesmo com estrategia antiga.
+    const s = sessao(portal, {
+      itens: [{ numero: 1, valor_minimo: 60, estrategia: 'melhor_preco', estrategias: ['iminencia', 'desempatar_1o'] }],
+    });
+    gerente.sessions.set('s1', s);
+    gerente._startBiddingLoop(s);
+
+    await vi.advanceTimersByTimeAsync(30_000);
+
+    expect(enviados).toEqual([]);
+    const estado = chamadas.find((c) => c.tipo === 'estado-da-sala');
+    expect(estado?.dados.estrategia).toBe('iminencia+desempatar_1o');
+    s.status = 'encerrado';
+  });
+
   it('a margem de desempate do item chega à decisão', async () => {
     // Nosso lance no portal: 100; 1º colocado: 90 — distância de R$ 10.
     const perto = montar(true);
