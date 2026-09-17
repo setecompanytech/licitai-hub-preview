@@ -24,6 +24,7 @@
  * Por isso a fase carrega sempre QUEM a informou: o agente (que está na sala
  * do portal) ou uma marcação manual. A tela mostra a diferença; não a apaga.
  */
+import { portalDoAgente } from './portais';
 
 export type AbaDoPainel = 'cadastradas' | 'configuradas' | 'em_disputa' | 'encerradas';
 
@@ -83,7 +84,7 @@ export interface SessaoParaProjecao {
 
 export interface OpcoesDaProjecao {
   agora: Date;
-  /** Portais em que o envio de lance está liberado (hoje: nenhum). */
+  /** Portais em que o envio de lance está liberado, com os ids do agente (desde 16/09/2026: `comprasgov`). */
   portaisComLanceLiberado: readonly string[];
   /** Sem sinal há mais que isto, "operando" vira "sem atualização recente". */
   limiteDoSinalSegundos?: number;
@@ -154,10 +155,42 @@ export function resumirErroParaCliente(erro: string | null | undefined): ErroPar
   return { texto: 'O robô não conseguiu concluir a operação no portal.', acao: 'Falar com o suporte' };
 }
 
+/**
+ * O portal da disputa está na lista de lance liberado do agente?
+ *
+ * A lista vem com os ids DO AGENTE (`comprasgov`), e a disputa guarda o id da
+ * tela (`compras-gov`) ou o nome ("Compras.gov.br"). Comparar só o texto
+ * normalizado nunca casava "Compras.gov.br" com `comprasgov`: com o lance
+ * liberado em 16/09/2026, a tela seguia dizendo "somente monitoramento"
+ * (achado pelo Ian em 17/09). Casa pelo texto e pelo id do agente.
+ */
 export function lanceLiberadoNoPortal(portal: string | null, liberados: readonly string[]): boolean {
   const alvo = normalizarPortal(portal);
   if (!alvo) return false;
-  return liberados.some((l) => normalizarPortal(l) === alvo);
+  const doAgente = normalizarPortal(portalDoAgente(portal));
+  return liberados.some((l) => {
+    const n = normalizarPortal(l);
+    return n === alvo || (!!doAgente && n === doAgente);
+  });
+}
+
+/**
+ * A lista `portais_com_lance_liberado` que o agente declarou, lida da coluna
+ * `agente_externo_config.capacidades`.
+ *
+ * O webhook guarda o `/health` inteiro em `capacidades.saude` (ver
+ * `saudeParaGuardar`), e a tela lia só o nível de cima — onde a lista nunca
+ * foi gravada. Lê os dois; `null` quando nenhum dos dois declara.
+ */
+export function portaisLiberadosDeclarados(capacidades: unknown): string[] | null {
+  if (!capacidades || typeof capacidades !== 'object') return null;
+  const c = capacidades as { portais_com_lance_liberado?: unknown; saude?: { portais_com_lance_liberado?: unknown } | null };
+  const lista = Array.isArray(c.portais_com_lance_liberado)
+    ? c.portais_com_lance_liberado
+    : Array.isArray(c.saude?.portais_com_lance_liberado)
+      ? c.saude?.portais_com_lance_liberado
+      : null;
+  return lista ? (lista as unknown[]).map(String) : null;
 }
 
 export function estadoDoRobo(

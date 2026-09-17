@@ -26,6 +26,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import {
+  portaisLiberadosDeclarados,
   projetarParticipacao,
   type DisputaParaProjecao,
   type Participacao,
@@ -207,10 +208,10 @@ export function useParticipacoesDoRobo({
       // "não verificada", que já bloqueia envio.
       let capacidade = SEM_CAPACIDADE;
       const { data: agentes } = await tabela('agente_externo_config').select('capacidades, updated_at');
-      const declarados: string[] = (agentes ?? []).flatMap((a: { capacidades?: Record<string, unknown> }) => {
-        const lista = a?.capacidades?.portais_com_lance_liberado;
-        return Array.isArray(lista) ? lista.map(String) : [];
-      });
+      // A lista vive em `capacidades.saude` (o /health guardado pelo webhook).
+      const declarados: string[] = (agentes ?? []).flatMap(
+        (a: { capacidades?: unknown }) => portaisLiberadosDeclarados(a?.capacidades) ?? [],
+      );
       if ((agentes ?? []).some((a: { capacidades?: unknown }) => a?.capacidades && typeof a.capacidades === 'object')) {
         const maisRecente = (agentes as Array<{ updated_at?: string }>)
           .map((a) => a.updated_at ?? '')

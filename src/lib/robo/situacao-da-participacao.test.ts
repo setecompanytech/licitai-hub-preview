@@ -3,6 +3,7 @@ import {
   resumirErroParaCliente,
   estadoDoRobo,
   lanceLiberadoNoPortal,
+  portaisLiberadosDeclarados,
   projetarParticipacao,
   type DisputaParaProjecao,
   type SessaoParaProjecao,
@@ -145,6 +146,21 @@ describe('capacidade do portal', () => {
   it('casa o portal ignorando acento, caixa e pontuação', () => {
     expect(lanceLiberadoNoPortal('Compras.gov.br', ['comprasgovbr'])).toBe(true);
     expect(lanceLiberadoNoPortal(null, ['comprasgovbr'])).toBe(false);
+  });
+
+  it('casa o nome ou o id da tela com o id do agente (17/09: a tela dizia "somente monitoramento" com o lance liberado)', () => {
+    expect(lanceLiberadoNoPortal('Compras.gov.br', ['comprasgov'])).toBe(true);
+    expect(lanceLiberadoNoPortal('compras-gov', ['comprasgov'])).toBe(true);
+    expect(lanceLiberadoNoPortal('Portal de Compras Públicas', ['comprasgov'])).toBe(false);
+    expect(lanceLiberadoNoPortal('Compras.gov.br', [])).toBe(false);
+  });
+
+  it('a lista declarada é lida do /health guardado em capacidades.saude, ou do nível de cima', () => {
+    expect(portaisLiberadosDeclarados({ saude: { portais_com_lance_liberado: ['comprasgov'] }, kill_switch: {} })).toEqual(['comprasgov']);
+    expect(portaisLiberadosDeclarados({ portais_com_lance_liberado: ['bll'] })).toEqual(['bll']);
+    expect(portaisLiberadosDeclarados({ saude: { portais_com_lance_liberado: [] } })).toEqual([]);
+    expect(portaisLiberadosDeclarados({ saude: null })).toBeNull();
+    expect(portaisLiberadosDeclarados(null)).toBeNull();
   });
 });
 
