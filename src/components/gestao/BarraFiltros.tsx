@@ -48,7 +48,11 @@ export default function BarraFiltros({
 
   return (
     <div className={cn('flex flex-col gap-3', className)}>
-      <div className="flex flex-wrap items-center gap-3">
+      {/* `items-end`, não `items-center`: a busca e a ação não têm rótulo, os
+          filtros têm (rótulo em cima do campo). Centralizados, busca e botão
+          ficavam 10 px acima da base dos campos — o desalinhamento apontado
+          na tela de Documentos em 17/09. Pela base, tudo assenta na mesma linha. */}
+      <div className="flex flex-wrap items-end gap-3">
         {aoBuscar && (
           <div className="relative min-w-0 flex-1 basis-64">
             <Search
@@ -65,7 +69,7 @@ export default function BarraFiltros({
         )}
 
         {/* Fila de filtros — visível a partir de md; no celular vive no painel. */}
-        {temFiltros && <div className="hidden flex-wrap items-center gap-3 md:flex">{children}</div>}
+        {temFiltros && <div className="hidden flex-wrap items-end gap-3 md:flex">{children}</div>}
 
         {temFiltros && (
           <Button
