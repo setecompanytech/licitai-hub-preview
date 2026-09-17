@@ -13,6 +13,7 @@ import PainelDeParticipacoes from '@/components/robo-lances/painel/PainelDeParti
 import CabecalhoDoRobo from '@/components/robo-lances/cliente/CabecalhoDoRobo';
 import FaixaDaEmpresa from '@/components/robo-lances/cliente/FaixaDaEmpresa';
 import AvisosDosPortais from '@/components/robo-lances/cliente/AvisosDosPortais';
+import TutorialDoRobo from '@/components/robo-lances/cliente/TutorialDoRobo';
 import DialogoModoDeOperacao from '@/components/robo-lances/cliente/DialogoModoDeOperacao';
 import { useRoboDaEmpresa, type LinhaDoRoboDaEmpresa } from '@/components/robo-lances/cliente/useRoboDaEmpresa';
 import { useSituacaoDoRobo } from '@/components/robo-lances/cliente/useSituacaoDoRobo';
@@ -140,6 +141,8 @@ export default function RoboLances() {
         modo={<DialogoModoDeOperacao nivel={modo.nivel} podeAlterar={modo.podeAlterar} aoAlterar={modo.alterarNivel} />}
         acoes={
           <>
+            {/* O "?" discreto no canto: tutorial de como o robô funciona. */}
+            <TutorialDoRobo />
             <ExportarResultados lances={lances} />
             {podeOperar && (
               <ConfigurarLanceDialog
