@@ -109,6 +109,11 @@ describe('Admin › Robô de Lances', () => {
     expect(screen.queryByTestId('vnc')).toBeNull();
   });
 
+  it('?tela=abrir (aviso "Assistir o robô ao vivo") já pede a tela remota ao chegar', () => {
+    renderizar('/admin/robo-lances?aba=sessoes&tela=abrir');
+    expect(screen.getByTestId('vnc')).toHaveAttribute('data-abrir-em', '1');
+  });
+
   it('Sessões e tela remota: libera a tela remota e o pedido do robô a abre', () => {
     renderizar('/admin/robo-lances?aba=sessoes');
     const pedido = screen.getByTestId('pedido-do-robo');

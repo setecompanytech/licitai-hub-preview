@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   anteriorDoItem,
   avisoDoPrimeiroLance,
+  avisoParaAssistirAoVivo,
   eventosDoEstado,
   mesclarEstadoDoItem,
   motivoParaPessoas,
@@ -166,5 +167,16 @@ describe('avisoDoPrimeiroLance', () => {
   it('sem número de item, o aviso não inventa um', () => {
     expect(avisoDoPrimeiroLance({ edital: '07/2026', item: null, valor: 85, lancesAnterioresDoItem: 0, formatar })?.mensagem)
       .toBe('O portal aceitou o lance de R$ 85,00. Os próximos lances deste item ficam na linha do tempo da disputa.');
+  });
+});
+
+describe('avisoParaAssistirAoVivo', () => {
+  it('leva direto à tela remota do admin, e diz que é aviso só da equipe', () => {
+    const a = avisoParaAssistirAoVivo({ edital: '90025/2026', portal: 'Compras.gov.br' });
+    expect(a.titulo).toBe('📺 Assistir o robô ao vivo — 90025/2026');
+    expect(a.link).toBe('/admin/robo-lances?aba=sessoes&tela=abrir');
+    expect(a.mensagem).toContain('em Compras.gov.br');
+    expect(a.mensagem).toMatch(/não é mostrada a clientes/);
+    expect(avisoParaAssistirAoVivo({ edital: '', portal: null }).titulo).toBe('📺 Assistir o robô ao vivo — disputa sem número');
   });
 });

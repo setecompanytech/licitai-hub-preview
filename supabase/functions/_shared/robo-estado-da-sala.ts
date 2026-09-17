@@ -248,3 +248,27 @@ export function avisoDoPrimeiroLance(e: {
     mensagem: `O portal aceitou o lance de R$ ${e.formatar(e.valor)}${doItem}. Os próximos lances deste item ficam na linha do tempo da disputa.`,
   };
 }
+
+/** Onde a tela remota abre direto: aba de sessões do admin, já pedindo a tela. */
+export const LINK_DA_TELA_REMOTA = "/admin/robo-lances?aba=sessoes&tela=abrir";
+
+/**
+ * O aviso "assistir ao vivo" (17/09/2026, pedido do Ian): junto com o "Robô na
+ * sala", um segundo aviso que leva direto à tela remota — SÓ para os
+ * administradores da plataforma. A tela remota é compartilhada entre todas as
+ * empresas e nunca é mostrada a cliente; por isso quem recebe é decidido pelo
+ * papel, não pela disputa.
+ */
+export function avisoParaAssistirAoVivo(e: { edital: string | null | undefined; portal: string | null | undefined }): {
+  titulo: string;
+  mensagem: string;
+  link: string;
+} {
+  const edital = String(e.edital || "").trim() || "disputa sem número";
+  const portal = String(e.portal || "").trim();
+  return {
+    titulo: `📺 Assistir o robô ao vivo — ${edital}`,
+    mensagem: `O robô entrou na disputa${portal ? ` em ${portal}` : ""}. Abra a tela remota para ver o navegador dele trabalhando. Aviso só da equipe Praefectus: a tela remota não é mostrada a clientes.`,
+    link: LINK_DA_TELA_REMOTA,
+  };
+}

@@ -59,19 +59,26 @@ function gravarDispensados(userId: string, ids: Set<string>) {
  * Some sozinho depois de `ms`, com pausa: `pausar` guarda o que falta e
  * `retomar` conta só o restante — quem parou para ler não perde a caixinha
  * no meio da frase.
+ *
+ * Aba escondida também pausa (17/09/2026): o Ian estava na tela remota, em
+ * outra aba, quando o robô entrou no Portal de Compras Públicas, e o aviso
+ * "Robô na sala" sumiu antes de ele voltar. Só conta o tempo em que a pessoa
+ * pode ver a caixinha.
  */
 function useSomeSozinho(ms: number, aoSumir: () => void) {
   const restante = useRef(ms);
   const inicio = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const aoSumirRef = useRef(aoSumir);
+  // Por que está parado: o mouse em cima, a aba escondida. Só conta sem nenhum.
+  const motivos = useRef(new Set<'mouse' | 'aba'>());
 
   useEffect(() => {
     aoSumirRef.current = aoSumir;
   }, [aoSumir]);
 
-  const retomar = useCallback(() => {
-    if (timer.current !== null) return;
+  const contar = useCallback(() => {
+    if (timer.current !== null || motivos.current.size > 0) return;
     inicio.current = Date.now();
     timer.current = setTimeout(() => {
       timer.current = null;
@@ -79,21 +86,40 @@ function useSomeSozinho(ms: number, aoSumir: () => void) {
     }, restante.current);
   }, []);
 
-  const pausar = useCallback(() => {
+  const parar = useCallback(() => {
     if (timer.current === null) return;
     clearTimeout(timer.current);
     timer.current = null;
     restante.current = Math.max(0, restante.current - (Date.now() - inicio.current));
   }, []);
 
+  const pausarPor = useCallback((motivo: 'mouse' | 'aba') => {
+    motivos.current.add(motivo);
+    parar();
+  }, [parar]);
+
+  const retomarPor = useCallback((motivo: 'mouse' | 'aba') => {
+    motivos.current.delete(motivo);
+    contar();
+  }, [contar]);
+
   useEffect(() => {
-    retomar();
+    const aoMudarVisibilidade = () => {
+      if (document.hidden) pausarPor('aba');
+      else retomarPor('aba');
+    };
+    if (document.hidden) motivos.current.add('aba');
+    contar();
+    document.addEventListener('visibilitychange', aoMudarVisibilidade);
     return () => {
+      document.removeEventListener('visibilitychange', aoMudarVisibilidade);
       if (timer.current !== null) clearTimeout(timer.current);
       timer.current = null;
     };
-  }, [retomar]);
+  }, [contar, pausarPor, retomarPor]);
 
+  const pausar = useCallback(() => pausarPor('mouse'), [pausarPor]);
+  const retomar = useCallback(() => retomarPor('mouse'), [retomarPor]);
   return { pausar, retomar };
 }
 

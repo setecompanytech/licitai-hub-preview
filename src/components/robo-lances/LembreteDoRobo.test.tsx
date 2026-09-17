@@ -103,6 +103,28 @@ describe('LembreteDoRobo — aparece e some sozinho', () => {
     expect(screen.queryByText('Aviso a2')).not.toBeInTheDocument();
   });
 
+  it('com a aba escondida o tempo não corre — o aviso espera a pessoa voltar', async () => {
+    let escondida = true;
+    const original = Object.getOwnPropertyDescriptor(Document.prototype, 'hidden');
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => escondida });
+    try {
+      estado.notificacoes = [aviso('h1')];
+      await montar();
+      passar(60_000);
+      expect(screen.getByText('Aviso h1')).toBeInTheDocument();
+
+      escondida = false;
+      act(() => { document.dispatchEvent(new Event('visibilitychange')); });
+      passar(7_900);
+      expect(screen.getByText('Aviso h1')).toBeInTheDocument();
+      passar(200);
+      expect(screen.queryByText('Aviso h1')).not.toBeInTheDocument();
+    } finally {
+      delete (document as unknown as { hidden?: boolean }).hidden;
+      if (original) Object.defineProperty(Document.prototype, 'hidden', original);
+    }
+  });
+
   it('ao abrir o sistema com vários avisos, mostra só os 3 mais recentes; os outros ficam no sininho', async () => {
     estado.notificacoes = [1, 2, 3, 4, 5].map((i) =>
       aviso(`v${i}`, { created_at: new Date(Date.now() - (10 - i) * 60_000).toISOString() }),

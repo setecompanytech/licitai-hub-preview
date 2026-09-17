@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { credencialEmClaro } from "../_shared/credenciais-cifra.ts";
 import { portalDoAgente, idDeArmazenamento } from "../_shared/robo-portais.ts";
 import { autorizadoComoCron } from "../_shared/cron-auth.ts";
-import { anteriorDoItem, avisoDoPrimeiroLance, eventosDoEstado, mesclarEstadoDoItem, motivoParaPessoas, situacaoDoItem, type EstadoDaSala, type EstadoGravado, type EventoDaSala } from "../_shared/robo-estado-da-sala.ts";
+import { anteriorDoItem, avisoDoPrimeiroLance, avisoParaAssistirAoVivo, eventosDoEstado, mesclarEstadoDoItem, motivoParaPessoas, situacaoDoItem, type EstadoDaSala, type EstadoGravado, type EventoDaSala } from "../_shared/robo-estado-da-sala.ts";
 import {
   documentosQueVencemAteASessao,
   deveDespacharAgora,
@@ -1297,6 +1297,21 @@ serve(async (req) => {
               `${payload.itens ? ` ${payload.itens} item(ns)` : ""}.`,
             link: linkDaDisputa(sessao),
           });
+          // ASSISTIR AO VIVO (17/09/2026): um segundo aviso, que leva direto à
+          // tela remota — só para os administradores da plataforma, porque a
+          // tela é compartilhada entre as empresas e não se mostra a cliente.
+          try {
+            const { data: admins } = await supabase.from("user_roles").select("user_id").eq("role", "admin");
+            const idsAdmin = [...new Set((admins || []).map((a: { user_id: string }) => a.user_id))] as string[];
+            if (idsAdmin.length) {
+              const aoVivo = avisoParaAssistirAoVivo({ edital: sessao.edital, portal: sessao.portal_nome });
+              await supabase.from("notificacoes").insert(
+                idsAdmin.map((uid) => ({ user_id: uid, tipo: "info", titulo: aoVivo.titulo, mensagem: aoVivo.mensagem, link: aoVivo.link })),
+              );
+            }
+          } catch (e) {
+            console.error("robo-lances-webhook: aviso de assistir ao vivo falhou:", textoDoErro(e));
+          }
           await registrarEventos(supabase, sessao, userId, [{
             tipo: "entrou",
             mensagem: `Robô entrou na compra ${sessao.edital}` +

@@ -1,4 +1,5 @@
-import { useCallback, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Info } from 'lucide-react';
 import AppLayout from '@/components/layout/AppLayout';
 import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
@@ -74,6 +75,19 @@ export default function AdminRoboLances() {
   // um pedido para abrir, e o segundo pedido seguido também precisa abrir.
   const [pedidoDeTelaRemota, setPedidoDeTelaRemota] = useState(0);
   const abrirTelaRemota = useCallback(() => setPedidoDeTelaRemota((n) => n + 1), []);
+
+  // `?tela=abrir` (17/09/2026): o aviso "Assistir o robô ao vivo" chega aqui já
+  // pedindo a tela remota. O parâmetro sai da URL depois de usado, para um F5
+  // não reabrir a tela sem ninguém pedir.
+  const [parametros, definirParametros] = useSearchParams();
+  const pedeTela = parametros.get('tela') === 'abrir';
+  useEffect(() => {
+    if (!pedeTela) return;
+    abrirTelaRemota();
+    const sem = new URLSearchParams(parametros);
+    sem.delete('tela');
+    definirParametros(sem, { replace: true });
+  }, [pedeTela, parametros, definirParametros, abrirTelaRemota]);
 
   return (
     <AppLayout>
