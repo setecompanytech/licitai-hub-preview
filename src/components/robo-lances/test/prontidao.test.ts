@@ -106,14 +106,32 @@ describe('pendenciasDaDisputa', () => {
     ];
     const p = pendenciasDaDisputa({ ...PRONTA, itens, portalSemTempoRestante: true, modoAutomatico: true });
     expect(p.map((x) => [x.chave, x.grave])).toEqual([['iminencia-sem-tempo', false]]);
-    expect(p[0].texto).toContain('2 itens em "Iminência"');
-    expect(p[0].texto).toContain('use "Melhor preço"');
+    expect(p[0].texto).toContain('2 itens com "Iminência" sem "Melhor preço"');
+    expect(p[0].texto).toContain('marque também "Melhor preço"');
 
     expect(pendenciasDaDisputa({ ...PRONTA, itens, portalSemTempoRestante: false })).toEqual([]);
     expect(pendenciasDaDisputa({ ...PRONTA, itens, portalSemTempoRestante: true, modoAutomatico: false }).map((x) => x.chave))
       .toEqual(['modo-automatico-desligado']);
     expect(pendenciasDaDisputa({ ...PRONTA, itens, portalSemTempoRestante: true, lanceLiberado: false }).map((x) => x.chave))
       .toEqual(['lance-travado']);
+  });
+
+  it('estratégias cumulativas (17/09): iminência com melhor preço não avisa; lista vazia avisa', () => {
+    const p = pendenciasDaDisputa({
+      ...PRONTA,
+      itens: [
+        { valorMinimo: 100, estrategias: ['melhor_preco', 'iminencia'] },
+        { valorMinimo: 100, estrategias: ['iminencia', 'desempatar_1o'], margemDesempate: 10 },
+        { valorMinimo: 100, estrategias: [] },
+        // A lista vale mais que o formato de antes.
+        { valorMinimo: 100, estrategia: 'iminencia', estrategias: ['melhor_preco'] },
+      ],
+      portalSemTempoRestante: true,
+      modoAutomatico: true,
+    });
+    expect(p.map((x) => x.chave)).toEqual(['sem-estrategia', 'iminencia-sem-tempo']);
+    expect(p[0].texto).toBe('1 item está sem estratégia marcada — o robô só acompanha');
+    expect(p[1].texto).toContain('1 item com "Iminência" sem "Melhor preço"');
   });
 
   it('quem cadastrou saiu da empresa: grave, porque o agendador não despacha', () => {

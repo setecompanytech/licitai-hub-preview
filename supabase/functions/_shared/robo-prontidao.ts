@@ -12,6 +12,7 @@
  * quando lembrar, o que está pendente e o texto. Buscar os dados e gravar a
  * notificação fica no webhook.
  */
+import { estrategiasDoItem } from "./robo-estrategias.ts";
 
 export type QualLembrete = "vespera" | "uma-hora";
 
@@ -110,7 +111,13 @@ export type Pendencia = {
 export type SessaoGovBr = "logado" | "vencida" | "sem-conferencia" | "robo-sem-resposta" | "nao-se-aplica";
 
 export type EntradaDaProntidao = {
-  itens: ReadonlyArray<{ valorMinimo?: number | string | null; estrategia?: string | null; margemDesempate?: number | string | null }>;
+  itens: ReadonlyArray<{
+    valorMinimo?: number | string | null;
+    /** Cumulativas desde 17/09/2026; `estrategia` é o formato de antes. */
+    estrategias?: readonly string[] | null;
+    estrategia?: string | null;
+    margemDesempate?: number | string | null;
+  }>;
   /** Piso geral da disputa: vale para o item que não tem o seu. */
   valorMinimoGeral?: number | string | null;
   roboDaEmpresa: "ligado" | "desligado" | "indeterminado";
@@ -183,16 +190,20 @@ export function pendenciasDaDisputa(e: EntradaDaProntidao): Pendencia[] {
   const pisoGeral = positivo(e.valorMinimoGeral);
   const semPiso = pisoGeral ? 0 : e.itens.filter((i) => !positivo(i.valorMinimo)).length;
   if (semPiso) add("itens-sem-piso", false, `${semPiso} ${semPiso === 1 ? "item está" : "itens estão"} sem piso — o robô não disputa item sem valor mínimo`);
-  const semMargem = e.itens.filter((i) => i.estrategia === "desempatar_1o" && !positivo(i.margemDesempate)).length;
-  if (semMargem) add("desempate-sem-margem", false, `${semMargem} ${semMargem === 1 ? "item" : "itens"} em "Desempatar no 1º lugar" sem margem`);
+  const marcadas = e.itens.map((i) => estrategiasDoItem(i));
+  const semEstrategia = marcadas.filter((m) => m.length === 0).length;
+  if (semEstrategia) add("sem-estrategia", false, `${semEstrategia} ${semEstrategia === 1 ? "item está" : "itens estão"} sem estratégia marcada — o robô só acompanha`);
+  const semMargem = e.itens.filter((i, idx) => marcadas[idx].includes("desempatar_1o") && !positivo(i.margemDesempate)).length;
+  if (semMargem) add("desempate-sem-margem", false, `${semMargem} ${semMargem === 1 ? "item" : "itens"} com "Desempatar no 1º lugar" sem margem`);
   // Com lance travado ou modo automático desligado o robô já só acompanha — o
-  // aviso da iminência seria repetição.
-  const iminencia = e.itens.filter((i) => i.estrategia === "iminencia").length;
+  // aviso da iminência seria repetição. Com "Melhor preço" marcado junto, a
+  // iminência não faz falta: o item disputa do mesmo jeito.
+  const iminencia = marcadas.filter((m) => m.includes("iminencia") && !m.includes("melhor_preco")).length;
   if (iminencia && e.portalSemTempoRestante && e.lanceLiberado !== false && e.modoAutomatico !== false) {
     add(
       "iminencia-sem-tempo",
       false,
-      `${iminencia} ${iminencia === 1 ? "item" : "itens"} em "Iminência": neste portal o robô ainda não lê o tempo restante da sala, então nesses itens ele só acompanha — para disputar, use "Melhor preço"`,
+      `${iminencia} ${iminencia === 1 ? "item" : "itens"} com "Iminência" sem "Melhor preço": neste portal o robô ainda não lê o tempo restante da sala, então a iminência não dá lance — para disputar, marque também "Melhor preço"`,
     );
   }
   if (e.roboDaEmpresa === "indeterminado") add("ligado-indeterminado", false, "não foi possível confirmar se o robô da empresa está ligado");

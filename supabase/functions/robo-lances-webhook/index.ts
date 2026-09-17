@@ -23,6 +23,7 @@ import {
   type SessaoGovBr,
 } from "../_shared/robo-prontidao.ts";
 import { instalarCertificadoNoAgente } from "../_shared/certificado-agente.ts";
+import { estrategiaParaAgenteAntigo, estrategiasDoItem } from "../_shared/robo-estrategias.ts";
 import { buscarComprasNosDadosAbertos, lerNumeroEAno, uasgDoEspelho, uasgValida } from "../_shared/compra-comprasgov.ts";
 import { processoViraHomologada, resultadoDaDisputa, textoDoResultado, STATUS_HOMOLOGADA, STATUS_QUE_VIRAM_HOMOLOGADA } from "../_shared/robo-resultado.ts";
 import { posicoesFinais, processoEntraEmDisputa, textoDoProcessoEmDisputa, STATUS_EM_DISPUTA, STATUS_QUE_ENTRAM_EM_DISPUTA } from "../_shared/robo-kanban.ts";
@@ -608,8 +609,10 @@ serve(async (req) => {
               valor_estimado_orgao: i.valor_estimado_orgao,
               valor_minimo: i.valor_minimo,
               // Não é coluna de `sessao_lance_itens`: vai só ao agente, lida do
-              // item como veio da tela. Vazio = melhor preço.
-              estrategia: (itens[idx] as Record<string, unknown>)?.estrategia ?? null,
+              // item como veio da tela. Cumulativas desde 17/09 (`estrategias`);
+              // `estrategia` segue para o agente que ainda não lê a lista.
+              estrategias: estrategiasDoItem(itens[idx] as Record<string, unknown>),
+              estrategia: estrategiaParaAgenteAntigo(estrategiasDoItem(itens[idx] as Record<string, unknown>)),
               margem_desempate: (itens[idx] as Record<string, unknown>)?.margem_desempate ?? null,
               lance_final_fechado: (itens[idx] as Record<string, unknown>)?.lance_final_fechado ?? null,
             })),
@@ -991,7 +994,8 @@ serve(async (req) => {
               // Estratégia e margem não são colunas de `sessao_lance_itens`: entram só aqui.
               itens: itensParaSessao.map((i, idx) => ({
                 ...i,
-                estrategia: itensCadastrados[idx]?.estrategia ?? null,
+                estrategias: estrategiasDoItem(itensCadastrados[idx]),
+                estrategia: estrategiaParaAgenteAntigo(estrategiasDoItem(itensCadastrados[idx])),
                 margem_desempate: itensCadastrados[idx]?.margemDesempate ?? null,
                 lance_final_fechado: itensCadastrados[idx]?.lanceFinalFechado ?? null,
               })),
