@@ -204,14 +204,17 @@ export default function HabilitacaoChecklist({ licitacaoId }: { licitacaoId: str
               Conferi — aceitar checklist
             </Button>
           )}
-          <Button size="sm" onClick={gerar} disabled={gerando}>
-            {gerando
-              ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-              : linhas.length
-                ? <RefreshCw className="w-4 h-4" aria-hidden="true" />
-                : <Sparkles className="w-4 h-4" aria-hidden="true" />}
-            {linhas.length ? 'Regerar com a Aurélia' : 'Gerar com a Aurélia'}
-          </Button>
+          {/* Só com checklist: antes dele, quem chama a Aurélia é o estado
+              vazio logo abaixo. Com os dois, a tela mostrava "Gerar com a
+              Aurélia" duas vezes, uma em cima da outra (print de 17/09). */}
+          {linhas.length > 0 && (
+            <Button size="sm" onClick={gerar} disabled={gerando}>
+              {gerando
+                ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                : <RefreshCw className="w-4 h-4" aria-hidden="true" />}
+              Regerar com a Aurélia
+            </Button>
+          )}
         </div>
       </div>
 
