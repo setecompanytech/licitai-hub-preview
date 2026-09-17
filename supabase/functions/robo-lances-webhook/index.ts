@@ -24,6 +24,7 @@ import {
 } from "../_shared/robo-prontidao.ts";
 import { instalarCertificadoNoAgente } from "../_shared/certificado-agente.ts";
 import { estrategiaParaAgenteAntigo, estrategiasDoItem } from "../_shared/robo-estrategias.ts";
+import { alteracoesDaLicitacao, alteracoesTravamLances, resumoDasAlteracoes, type ItemCadastrado } from "../_shared/robo-alteracoes-da-licitacao.ts";
 import { buscarComprasNosDadosAbertos, lerNumeroEAno, uasgDoEspelho, uasgValida } from "../_shared/compra-comprasgov.ts";
 import { processoViraHomologada, resultadoDaDisputa, textoDoResultado, STATUS_HOMOLOGADA, STATUS_QUE_VIRAM_HOMOLOGADA } from "../_shared/robo-resultado.ts";
 import { posicoesFinais, processoEntraEmDisputa, textoDoProcessoEmDisputa, STATUS_EM_DISPUTA, STATUS_QUE_ENTRAM_EM_DISPUTA } from "../_shared/robo-kanban.ts";
@@ -563,6 +564,29 @@ serve(async (req) => {
         }
       }
 
+      // A LICITAÇÃO MUDOU? (Rafael, 17/09/2026) Pregão remarcado costuma voltar
+      // com itens, quantidades e unidades diferentes. Mudou: o robô entra, mas
+      // só acompanha, e quem cadastrou e a equipe são avisados. Só com o Modo
+      // Automático ligado — desligado, ele já não dá lance.
+      if (modoAutomatico && portalAgente === "comprasgov") {
+        const conferencia = await conferirLicitacaoAntesDeEntrar(supabase, user.id, {
+          disputaId: ehUuid(sessaoData.lance_config_id) ? String(sessaoData.lance_config_id) : null,
+          edital: String(sessaoData.edital ?? ""),
+          uasg: body.uasg ?? null,
+          itens,
+          origem: "manual",
+        });
+        if (conferencia?.travar) {
+          modoAutomatico = false;
+          await avisarQueALicitacaoMudou(supabase, {
+            donoId: user.id,
+            disputaId: ehUuid(sessaoData.lance_config_id) ? String(sessaoData.lance_config_id) : null,
+            edital: String(sessaoData.edital ?? ""),
+            resumo: conferencia.resumo,
+          });
+        }
+      }
+
       // Forward to external agent
       try {
         const agentResp = await fetch(`${agente.url_base}/sessao/iniciar`, {
@@ -974,6 +998,23 @@ serve(async (req) => {
           await registrarNoLog(supabase, donoId, "itens-da-sessao-nao-gravados", { sessao_id: sessao.id, origem: "agendador" }, { erro: itensErr.message });
         }
 
+        const uasgDoEnvio = portalAgente === "comprasgov" ? await uasgDaDisputa(supabase, d) : (d.uasg ?? null);
+        // A LICITAÇÃO MUDOU? (Rafael, 17/09/2026) — ver o caminho manual acima.
+        let modoAutomaticoDoEnvio = d.modo_automatico === true;
+        if (modoAutomaticoDoEnvio && portalAgente === "comprasgov") {
+          const conferencia = await conferirLicitacaoAntesDeEntrar(supabase, donoId, {
+            disputaId: d.id,
+            edital: String(d.edital ?? ""),
+            uasg: uasgDoEnvio,
+            itens: itensCadastrados,
+            origem: "agendador",
+          });
+          if (conferencia?.travar) {
+            modoAutomaticoDoEnvio = false;
+            await avisarQueALicitacaoMudou(supabase, { donoId, disputaId: d.id, edital: String(d.edital ?? ""), resumo: conferencia.resumo });
+          }
+        }
+
         try {
           const resp = await fetch(`${agente.url_base}/sessao/iniciar`, {
             method: "POST",
@@ -987,10 +1028,11 @@ serve(async (req) => {
               ...sessaoData,
               portal_id: portalAgente,
               credenciais_portal: credenciais,
-              uasg: portalAgente === "comprasgov" ? await uasgDaDisputa(supabase, d) : (d.uasg ?? null),
+              uasg: uasgDoEnvio,
               cnpj_empresa: cnpjDaEmpresa,
-              // Com o lance liberado, o interruptor da disputa decide (16/09/2026).
-              modo_automatico: d.modo_automatico === true,
+              // Com o lance liberado, o interruptor da disputa decide (16/09/2026);
+              // licitação mudada desde o cadastro desliga (17/09/2026).
+              modo_automatico: modoAutomaticoDoEnvio,
               // Estratégia e margem não são colunas de `sessao_lance_itens`: entram só aqui.
               itens: itensParaSessao.map((i, idx) => ({
                 ...i,
@@ -3464,6 +3506,75 @@ async function enviarLembretesDeProntidao(
     feitos.push({ disputa: d.id, qual, pendencias: pendencias.map((p) => p.chave), avisados: destinatarios.size, emails: email, chamou_equipe: chamaEquipe });
   }
   return feitos;
+}
+
+/**
+ * A LICITAÇÃO MUDOU DESDE O CADASTRO? — antes de o robô entrar (17/09/2026).
+ *
+ * O Rafael, dono do produto: pregão cancelado ou suspenso "pra mudar algo no
+ * edital e no TR" volta, "na maioria dos casos", com quantidade, unidade e
+ * descrição diferentes. Os itens da disputa são uma cópia do cadastro, e o robô
+ * do Compras.gov não confere itens: sem esta leitura ele disputaria com o piso
+ * do item antigo. A regra é `_shared/robo-alteracoes-da-licitacao.ts`, a mesma
+ * da tela "Conferir alterações".
+ *
+ * Devolve nulo quando não dá para conferir (sem UASG ou número, dados abertos
+ * fora do ar, mais de uma compra com o número): segue como antes, com rastro no
+ * log — uma consulta pública fora do ar não pode tirar o robô de um pregão.
+ */
+async function conferirLicitacaoAntesDeEntrar(
+  supabase: any,
+  donoId: string,
+  e: { disputaId: string | null; edital: string; uasg: string | null; itens: ReadonlyArray<Record<string, unknown>>; origem: "manual" | "agendador" },
+): Promise<{ travar: boolean; resumo: string } | null> {
+  const numeroEAno = lerNumeroEAno(e.edital);
+  const uasg = uasgValida(e.uasg);
+  if (!numeroEAno || !uasg || !e.itens.length) return null;
+  try {
+    const { compras, falhas } = await buscarComprasNosDadosAbertos(uasg, numeroEAno.numero, numeroEAno.ano);
+    if (compras.length !== 1) {
+      await registrarNoLog(supabase, donoId, "conferencia-da-licitacao-sem-compra", {
+        disputa_id: e.disputaId, origem: e.origem, encontradas: compras.length, falhas,
+      });
+      return null;
+    }
+    const alteracoes = alteracoesDaLicitacao({
+      itens: e.itens as ReadonlyArray<ItemCadastrado>,
+      // A data não entra aqui: quem decide QUANDO entrar é o agendamento.
+      inicioSessaoMs: null,
+      licitacao: compras[0],
+      agora: new Date(),
+    });
+    const travar = alteracoesTravamLances(alteracoes);
+    if (travar) {
+      await registrarNoLog(supabase, donoId, "licitacao-mudou-robo-sem-lance", {
+        disputa_id: e.disputaId, origem: e.origem, resultado: alteracoes.resultado, itens: alteracoes.itens,
+      });
+    }
+    return { travar, resumo: resumoDasAlteracoes(alteracoes) };
+  } catch (err) {
+    await registrarNoLog(supabase, donoId, "conferencia-da-licitacao-falhou", { disputa_id: e.disputaId, origem: e.origem }, { erro: textoDoErro(err) });
+    return null;
+  }
+}
+
+/** Aviso urgente a quem cadastrou e à equipe: o robô entrou sem lance porque a licitação mudou. */
+async function avisarQueALicitacaoMudou(
+  supabase: any,
+  e: { donoId: string; disputaId: string | null; edital: string; resumo: string },
+): Promise<void> {
+  const link = e.disputaId ? `/robo-lances/disputa/${e.disputaId}` : "/robo-lances";
+  const titulo = `⚠️ A licitação mudou — ${e.edital}`;
+  const mensagem =
+    `Desde o cadastro da disputa: ${e.resumo}. O robô entra só acompanhando, sem dar lance. ` +
+    `Na página da disputa, "Conferir alterações" atualiza os itens — revise os pisos e ligue o Modo Automático de novo.`;
+  const { data: admins } = await supabase.from("user_roles").select("user_id").eq("role", "admin");
+  const destinatarios = [...new Set([e.donoId, ...((admins || []) as Array<{ user_id: string }>).map((a) => a.user_id)])];
+  const { error } = await supabase.from("notificacoes").insert(
+    destinatarios.map((id) => ({ user_id: id, tipo: "urgente", titulo, mensagem, link })),
+  );
+  if (error) await registrarNoLog(supabase, e.donoId, "aviso-licitacao-mudou-nao-gravado", { disputa_id: e.disputaId }, { erro: error.message });
+  emSegundoPlano(avisarPorEmail(supabase, destinatarios, { titulo, mensagem, link }, `licitacao-mudou:${e.disputaId ?? e.edital}:${new Date().toISOString().slice(0, 10)}`));
 }
 
 /**
