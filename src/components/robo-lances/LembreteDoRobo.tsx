@@ -2,6 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, Bot, Clock, X, ArrowRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import {
+  MINUTOS_DA_CHAMADA_NA_ABERTURA, chamadaDoAviso, chamarTelaRemota, ehChamadaDaTelaRemota,
+} from '@/lib/robo/chamada-da-tela-remota';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import {
@@ -199,7 +202,18 @@ export default function LembreteDoRobo() {
         .order('created_at', { ascending: false })
         .limit(50);
       if (!vivo) return;
-      const { mostrar, jaVistos } = avisosDaAbertura((data as NotificacaoDoRobo[]) ?? [], dispensadosRef.current, new Date(), VISIVEIS);
+      const lidos = (data as NotificacaoDoRobo[]) ?? [];
+      // O aviso que leva à tela remota (captcha, "assistir ao vivo") não vira
+      // caixinha: vira a chamada grande embaixo (`ChamadaDaTelaRemota`) — só o
+      // mais novo, e só se for recente; o captcha de meia hora atrás já expirou.
+      const chamadas = lidos.filter((n) => ehChamadaDaTelaRemota(n) && !dispensadosRef.current.has(n.id));
+      const recente = chamadas.find((n) => Date.now() - new Date(n.created_at).getTime() <= MINUTOS_DA_CHAMADA_NA_ABERTURA * 60_000);
+      if (recente) chamarTelaRemota(chamadaDoAviso(recente));
+      if (chamadas.length) {
+        chamadas.forEach((n) => dispensadosRef.current.add(n.id));
+        gravarDispensados(user.id, dispensadosRef.current);
+      }
+      const { mostrar, jaVistos } = avisosDaAbertura(lidos.filter((n) => !ehChamadaDaTelaRemota(n)), dispensadosRef.current, new Date(), VISIVEIS);
       if (jaVistos.length) {
         jaVistos.forEach((id) => dispensadosRef.current.add(id));
         gravarDispensados(user.id, dispensadosRef.current);
@@ -215,6 +229,12 @@ export default function LembreteDoRobo() {
         (payload) => {
           const nova = payload.new as NotificacaoDoRobo;
           if (!ehAvisoDoRobo(nova) || dispensadosRef.current.has(nova.id)) return;
+          if (ehChamadaDaTelaRemota(nova)) {
+            dispensadosRef.current.add(nova.id);
+            gravarDispensados(user.id, dispensadosRef.current);
+            chamarTelaRemota(chamadaDoAviso(nova));
+            return;
+          }
           setAvisos((atual) => [nova, ...atual.filter((a) => a.id !== nova.id)]);
         },
       )

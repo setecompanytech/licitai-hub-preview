@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import type { NotificacaoDoRobo } from '@/lib/robo/avisos-do-robo';
+import { chamadaAtual, fecharChamadaDaTelaRemota } from '@/lib/robo/chamada-da-tela-remota';
 
 /**
  * A caixinha do robô aparece e some sozinha (pedido do Ian, 17/09): 8 s o
@@ -123,6 +124,35 @@ describe('LembreteDoRobo — aparece e some sozinho', () => {
       delete (document as unknown as { hidden?: boolean }).hidden;
       if (original) Object.defineProperty(Document.prototype, 'hidden', original);
     }
+  });
+
+  it('aviso que leva à tela remota (captcha) não vira caixinha: vira a chamada grande, uma vez só', async () => {
+    fecharChamadaDaTelaRemota();
+    estado.notificacoes = [
+      aviso('captcha', {
+        titulo: '🧑 Robô esperando uma pessoa — 07/2026',
+        mensagem: 'O robô parou esperando o clique no captcha do gov.br. Tela remota: https://agente.exemplo/vnc/',
+        tipo: 'urgente',
+        link: '/admin/robo-lances',
+      }),
+    ];
+    await montar();
+
+    expect(screen.queryByText('🧑 Robô esperando uma pessoa — 07/2026')).not.toBeInTheDocument();
+    expect(chamadaAtual()).toMatchObject({ motivo: 'captcha', titulo: 'Robô esperando uma pessoa — 07/2026' });
+    expect(chamadaAtual()?.mensagem).not.toMatch(/https/);
+    expect(dispensados()).toContain('captcha');
+    fecharChamadaDaTelaRemota();
+  });
+
+  it('pedido de captcha de meia hora atrás não chama ao abrir o sistema: já expirou', async () => {
+    fecharChamadaDaTelaRemota();
+    estado.notificacoes = [
+      aviso('velho', { link: '/admin/robo-lances', tipo: 'urgente', created_at: new Date(Date.now() - 30 * 60_000).toISOString() }),
+    ];
+    await montar();
+    expect(chamadaAtual()).toBeNull();
+    expect(screen.queryByText('Aviso velho')).not.toBeInTheDocument();
   });
 
   it('ao abrir o sistema com vários avisos, mostra só os 3 mais recentes; os outros ficam no sininho', async () => {
