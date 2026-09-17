@@ -831,8 +831,14 @@ export default function ProcessoWorkspace() {
                             <table className="w-full">
                               <thead>
                                 <tr className="border-b border-border bg-muted">
-                                  <th className="g-meta w-16 px-3 py-2 text-left font-semibold">Número</th>
+                                  {/* 96 px, sem quebra: o PNCP numera itens como 10001, 10002
+                                      (há item de sete dígitos na base) e, com 64 px, o número
+                                      saía "1000/1" e o título "Númer/o" (print de 17/09). */}
+                                  <th className="g-meta w-24 whitespace-nowrap px-3 py-2 text-left font-semibold">Número</th>
                                   <th className="g-meta px-3 py-2 text-left font-semibold">Descrição</th>
+                                  {/* Unidade em coluna própria, como o PNCP a publica — antes era
+                                      um selo colado ao fim da descrição, e caía em linha nova. */}
+                                  <th className="g-meta w-24 whitespace-nowrap px-3 py-2 text-left font-semibold" title="Unidade de medida">Und</th>
                                   <th className="g-meta w-28 px-3 py-2 text-right font-semibold">Quantidade</th>
                                   <th className="g-meta w-36 px-3 py-2 text-right font-semibold">Valor unitário estimado</th>
                                   <th className="g-meta w-36 px-3 py-2 text-right font-semibold">Valor total estimado</th>
@@ -846,14 +852,12 @@ export default function ProcessoWorkspace() {
                                     ?? (vUnit != null && qtd != null ? vUnit * qtd : null);
                                   return (
                                     <tr key={item.numero ?? item.numeroItem ?? i} className="transition-colors hover:bg-muted/50">
-                                      <td className="g-corpo px-3 py-2 tabular-nums text-muted-foreground">{item.numero ?? item.numeroItem ?? i + 1}</td>
+                                      <td className="g-corpo whitespace-nowrap px-3 py-2 tabular-nums text-muted-foreground">{item.numero ?? item.numeroItem ?? i + 1}</td>
                                       <td className="g-corpo px-3 py-2 text-foreground">
                                         {item.descricao || item.descricaoItem || '—'}
-                                        {(item.unidade_medida || item.unidadeMedida) && (
-                                          <Badge variant="muted" className="ml-2">
-                                            {item.unidade_medida || item.unidadeMedida}
-                                          </Badge>
-                                        )}
+                                      </td>
+                                      <td className="g-corpo whitespace-nowrap px-3 py-2 text-muted-foreground">
+                                        {item.unidade_medida || item.unidadeMedida || '—'}
                                       </td>
                                       <td className="g-corpo whitespace-nowrap px-3 py-2 text-right tabular-nums">{qtd?.toLocaleString('pt-BR') ?? '—'}</td>
                                       <td className="g-corpo whitespace-nowrap px-3 py-2 text-right tabular-nums text-muted-foreground">{vUnit != null ? fmt(vUnit) : '—'}</td>
