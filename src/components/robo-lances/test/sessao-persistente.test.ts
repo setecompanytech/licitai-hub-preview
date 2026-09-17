@@ -460,3 +460,110 @@ describe('vigia da sessão', () => {
     expect(await g.esperarVigiaSoltar('perfis/comprasgov-bbbb', 600)).toBe(false);
   });
 });
+
+/**
+ * A central de notificações do Compras.gov lida pelo vigia (17/09/2026):
+ * desligada por padrão até o reconhecimento acompanhado; ligada, a leitura
+ * nunca derruba a conferência da sessão; o reconhecimento respeita o perfil em
+ * uso e a sessão vencida.
+ */
+describe('vigia: central de notificações', () => {
+  type Leitura = { ok: boolean; etapa?: string | null; motivo?: string | null; total_nao_lidas?: number | null; notificacoes?: unknown[] };
+  type VigiaComCentral = {
+    rodada: () => Promise<Array<[string, string]>>;
+    notificacoes: () => Array<{ perfil: string; ok: boolean; etapa: string | null; total_nao_lidas: number | null; itens: unknown[] }>;
+    reconhecerCentral: (perfil?: string) => Promise<Record<string, unknown>>;
+    lendoNotificacoes: () => boolean;
+  };
+  type Gerente = { perfisEmUso: Set<string>; perfisDoVigia: Set<string> };
+
+  function montarComCentral(over: {
+    destino?: 'logado' | 'login';
+    lerNotificacoes?: boolean;
+    lerCentral?: (page: unknown, o: Record<string, unknown>) => Promise<Leitura>;
+    env?: Record<string, string>;
+  }) {
+    const chamadas: Array<Record<string, unknown>> = [];
+    let fechou = 0;
+    const gerente: Gerente = { perfisEmUso: new Set(), perfisDoVigia: new Set() };
+    const { criarVigia } = carregar<{ criarVigia: (g: Gerente, o: Record<string, unknown>) => VigiaComCentral }>(
+      'src/vigia-sessao.js',
+      {
+        fs: {
+          readdirSync: () => ['comprasgov-aaaa'],
+          statSync: () => ({ mtimeMs: 0 }),
+          mkdirSync: () => {},
+          appendFileSync: () => {},
+        },
+        path: nodePath,
+      },
+      over.env ?? {},
+    );
+    const opcoes: Record<string, unknown> = {
+      minutos: 20,
+      dir: 'perfis',
+      launchBrowser: async (_c: unknown, o: { perfil: string }) => ({ browser: { close: async () => { fechou += 1; } }, page: {}, perfil: o.perfil }),
+      getPortal: () => ({
+        aplicarAntiDeteccao: async () => {},
+        loginUrl: 'https://sso.acesso.gov.br/authorize',
+        page: { goto: async () => {}, url: () => 'https://www.comprasnet.gov.br/intro.htm' },
+        destinoDoSso: async () => over.destino ?? 'logado',
+      }),
+      lerCentral: async (page: unknown, o: Record<string, unknown>) => {
+        chamadas.push(o);
+        return over.lerCentral ? over.lerCentral(page, o) : { ok: true, total_nao_lidas: 1, notificacoes: [{ id: '987', texto: 'Convocação para anexo' }] };
+      },
+    };
+    if (over.lerNotificacoes !== undefined) opcoes.lerNotificacoes = over.lerNotificacoes;
+    return { vigia: criarVigia(gerente, opcoes), gerente, chamadas, fechou: () => fechou };
+  }
+
+  it('desligada por padrão: o vigia confere a sessão e não abre a central', async () => {
+    const m = montarComCentral({});
+    expect(m.vigia.lendoNotificacoes()).toBe(false);
+    expect(await m.vigia.rodada()).toEqual([['comprasgov-aaaa', 'logado']]);
+    expect(m.chamadas).toHaveLength(0);
+    expect(m.vigia.notificacoes()).toEqual([]);
+  });
+
+  it('LER_CENTRAL_NOTIFICACOES=true liga; com a sessão logada, guarda as não lidas do perfil', async () => {
+    const m = montarComCentral({ env: { LER_CENTRAL_NOTIFICACOES: 'true' } });
+    expect(m.vigia.lendoNotificacoes()).toBe(true);
+    await m.vigia.rodada();
+    expect(m.chamadas).toEqual([{}]);
+    expect(m.vigia.notificacoes()).toEqual([
+      expect.objectContaining({ perfil: 'comprasgov-aaaa', ok: true, total_nao_lidas: 1, itens: [{ id: '987', texto: 'Convocação para anexo' }] }),
+    ]);
+  });
+
+  it('sessão vencida não abre a central; leitura que falha não derruba a conferência', async () => {
+    const vencida = montarComCentral({ lerNotificacoes: true, destino: 'login' });
+    expect(await vencida.vigia.rodada()).toEqual([['comprasgov-aaaa', 'vencida']]);
+    expect(vencida.chamadas).toHaveLength(0);
+
+    const quebrada = montarComCentral({ lerNotificacoes: true, lerCentral: async () => { throw new Error('aba morreu'); } });
+    expect(await quebrada.vigia.rodada()).toEqual([['comprasgov-aaaa', 'logado']]);
+    expect(quebrada.vigia.notificacoes()[0]).toMatchObject({ ok: false, etapa: 'excecao' });
+    expect(quebrada.fechou()).toBe(1);
+  });
+
+  it('reconhecimento: pede fotos e o modo reconhecer, e fecha o Chrome e solta o perfil', async () => {
+    const m = montarComCentral({});
+    const r = await m.vigia.reconhecerCentral();
+    expect(r).toMatchObject({ perfil: 'comprasgov-aaaa', ok: true, total_nao_lidas: 1 });
+    expect(m.chamadas[0]).toMatchObject({ reconhecer: true });
+    expect(typeof m.chamadas[0].foto).toBe('function');
+    expect(m.fechou()).toBe(1);
+    expect(m.gerente.perfisDoVigia.size).toBe(0);
+  });
+
+  it('reconhecimento recusa perfil em uso e sessão vencida, dizendo por quê', async () => {
+    const emUso = montarComCentral({});
+    emUso.gerente.perfisEmUso.add('perfis/comprasgov-aaaa');
+    expect(await emUso.vigia.reconhecerCentral()).toMatchObject({ ok: false, etapa: 'perfil' });
+
+    const vencida = montarComCentral({ destino: 'login' });
+    expect(await vencida.vigia.reconhecerCentral()).toMatchObject({ ok: false, etapa: 'sessao' });
+    expect(vencida.chamadas).toHaveLength(0);
+  });
+});

@@ -238,6 +238,8 @@ const ROTAS = [
   'POST /sessao/focar',
   'GET /sessao/:id/inspecionar',
   'GET /sessao/:id/gravacoes',
+  'GET /notificacoes-portal',
+  'POST /reconhecer/central-notificacoes',
 ];
 
 // A primeira versao conferia se a VARIAVEL CERT_PATH estava preenchida, nunca se
@@ -265,6 +267,26 @@ function authMiddleware(req, res, next) {
   next();
 }
 
+
+// ─── GET /notificacoes-portal ───
+//
+// As notificacoes nao lidas da central do fornecedor no Compras.gov, na ultima
+// leitura do vigia (17/09/2026). Com chave, e nao no /health: sao dados da
+// empresa (compras, prazos, convocacoes), e o /health e publico.
+app.get('/notificacoes-portal', authMiddleware, (req, res) => {
+  res.json({ ligada: vigiaSessao.lendoNotificacoes(), perfis: vigiaSessao.notificacoes() });
+});
+
+// ─── POST /reconhecer/central-notificacoes ───
+//
+// Reconhecimento ACOMPANHADO do caminho ate a central (17/09/2026): roda agora,
+// na tela remota, e devolve links vistos, endereco, chamadas da API (sem
+// cabecalhos), tipos de notificacao, total de nao lidas e fotos. Nao clica em
+// notificacao — abrir uma a marcaria como lida.
+app.post('/reconhecer/central-notificacoes', authMiddleware, async (req, res) => {
+  const relatorio = await vigiaSessao.reconhecerCentral(req.body && req.body.perfil);
+  res.json(relatorio);
+});
 
 // ─── POST /sessao/responder ───
 //
@@ -2177,6 +2199,7 @@ module.exports = { launchBrowser, getCertConfig };
 const path = require('path');
 const { launchBrowser } = require('./browser');
 const { getPortal } = require('./portals');
+const central = require('./central-notificacoes');
 
 /**
  * VIGIA DA SESSAO DO COMPRAS.GOV (16/09/2026).
@@ -2204,6 +2227,12 @@ const { getPortal } = require('./portals');
  * chegar enquanto o vigia confere espera ele terminar (ver session-manager).
  *
  * VIGIA_SESSAO_MIN no .env (padrao 20); 0 desliga.
+ *
+ * CENTRAL DE NOTIFICACOES (17/09/2026): com a sessao logada, o vigia tambem le
+ * as notificacoes nao lidas do fornecedor (src/central-notificacoes.js) e as
+ * guarda para o Praefectus buscar em GET /notificacoes-portal — convocacao e
+ * prazo de anexo viram aviso urgente. Desligada ate o reconhecimento
+ * acompanhado confirmar o caminho: LER_CENTRAL_NOTIFICACOES=true no .env liga.
  */
 
 function registrar(linha) {
@@ -2221,7 +2250,14 @@ function criarVigia(sessionManager, opcoes = {}) {
   const dir = opcoes.dir || process.env.PERFIS_DIR || './perfis';
   const abrir = opcoes.launchBrowser || launchBrowser;
   const portalDe = opcoes.getPortal || getPortal;
+  const lerCentral = opcoes.lerCentral || central.lerCentral;
+  const lendoNotificacoes = opcoes.lerNotificacoes !== undefined
+    ? opcoes.lerNotificacoes === true
+    : String(process.env.LER_CENTRAL_NOTIFICACOES || 'false') === 'true';
   const estado = new Map();
+  // Ultima leitura da central por perfil. Em memoria de proposito: o Praefectus
+  // busca a cada 5 minutos e deduplica pelo id da notificacao.
+  const notificacoesPorPerfil = new Map();
   let rodando = false;
   let timer = null;
 
@@ -2257,6 +2293,27 @@ function criarVigia(sessionManager, opcoes = {}) {
     return ('tela: ' + endereco + (titulo ? ' ("' + String(titulo).slice(0, 60) + '")' : '') + (captcha ? ' · com captcha' : '')).slice(0, 200);
   }
 
+  /** Le a central e guarda; falha na leitura nunca derruba a conferencia da sessao. */
+  async function guardarCentral(pasta, page, opcoesDaLeitura) {
+    let lido;
+    try {
+      lido = await lerCentral(page, opcoesDaLeitura);
+    } catch (e) {
+      lido = { ok: false, etapa: 'excecao', motivo: String((e && e.message) || e).slice(0, 200), total_nao_lidas: null, notificacoes: [] };
+    }
+    notificacoesPorPerfil.set(pasta, {
+      em: Date.now(),
+      ok: lido.ok === true,
+      etapa: lido.etapa || null,
+      motivo: lido.motivo || null,
+      total_nao_lidas: lido.total_nao_lidas === undefined ? null : lido.total_nao_lidas,
+      itens: Array.isArray(lido.notificacoes) ? lido.notificacoes : [],
+    });
+    console.log('🔔 Central do Compras.gov (' + path.basename(pasta) + '): '
+      + (lido.ok ? (lido.total_nao_lidas || 0) + ' nao lida(s)' : 'nao li — ' + (lido.etapa || '?') + ': ' + (lido.motivo || '')));
+    return lido;
+  }
+
   async function conferir(pasta) {
     const anterior = estado.get(pasta);
     if (anterior && anterior.resultado === 'vencida' && !usadaDepoisDe(pasta, anterior.em)) {
@@ -2280,6 +2337,7 @@ function criarVigia(sessionManager, opcoes = {}) {
         await portal.page.goto(portal.loginUrl, { waitUntil: 'networkidle2', timeout: 45000 });
         const destino = await portal.destinoDoSso();
         resultado = destino === 'logado' ? 'logado' : destino === 'login' ? 'vencida' : 'indefinido';
+        if (resultado === 'logado' && lendoNotificacoes) await guardarCentral(pasta, portal.page, {});
         // INDEFINIDO SEM PISTA NAO SERVE (16/09/2026, 17:21): a conferencia
         // nao chegou nem ao login nem a area logada, e a linha nao dizia em
         // que tela parou. Endereco sem a parte de parametros (pode levar
@@ -2342,6 +2400,71 @@ function criarVigia(sessionManager, opcoes = {}) {
     timer = null;
   }
 
+  /**
+   * RECONHECIMENTO ACOMPANHADO da central (17/09/2026): abre o perfil guardado
+   * — na tela remota, para quem acompanha —, confirma a sessao, faz o caminho ate
+   * a central e devolve o que viu, com fotos. Nao clica em notificacao nenhuma.
+   */
+  async function reconhecerCentral(perfil) {
+    const pastas = pastasDoComprasGov();
+    const pasta = perfil ? pastas.find((p) => path.basename(p) === perfil) : pastas[0];
+    if (!pasta) return { ok: false, etapa: 'perfil', motivo: 'Nenhum perfil guardado do Compras.gov neste servidor' };
+    if (sessionManager.perfisEmUso.has(pasta) || sessionManager.perfisDoVigia.has(pasta)) {
+      return { ok: false, etapa: 'perfil', motivo: 'O perfil esta em uso agora (disputa ou conferencia do vigia) — tente de novo em alguns minutos' };
+    }
+    sessionManager.perfisDoVigia.add(pasta);
+    let browser = null;
+    try {
+      const aberto = await abrir(null, { perfil: pasta });
+      browser = aberto.browser;
+      if (!aberto.perfil) return { ok: false, etapa: 'perfil', motivo: 'O Chrome nao abriu com o perfil guardado' };
+      const portal = portalDe('comprasgov', aberto.page, {});
+      await portal.aplicarAntiDeteccao();
+      await portal.page.goto(portal.loginUrl, { waitUntil: 'networkidle2', timeout: 45000 });
+      const destino = await portal.destinoDoSso();
+      if (destino !== 'logado') {
+        return {
+          ok: false,
+          etapa: 'sessao',
+          motivo: destino === 'login'
+            ? 'A sessao do gov.br venceu — o reconhecimento precisa dela ativa (uma disputa ou o clique no captcha renovam)'
+            : 'A conferencia nao chegou a area logada (' + (await telaOndeParou(portal.page)) + ')',
+        };
+      }
+      const pastaDasFotos = path.join('.', 'logs', 'screenshots');
+      try { fs.mkdirSync(pastaDasFotos, { recursive: true }); } catch (e) { /* segue sem foto */ }
+      const foto = async (nome, aba) => {
+        const arquivo = path.join(pastaDasFotos, nome + '-' + Date.now() + '.png');
+        try {
+          await (aba || portal.page).screenshot({ path: arquivo });
+          return arquivo;
+        } catch (e) {
+          return null;
+        }
+      };
+      const lido = await guardarCentral(pasta, portal.page, { reconhecer: true, foto });
+      return Object.assign({ perfil: path.basename(pasta) }, lido);
+    } catch (e) {
+      return { ok: false, etapa: 'excecao', motivo: String((e && e.message) || e).slice(0, 200) };
+    } finally {
+      if (browser) await browser.close().catch(() => {});
+      sessionManager.perfisDoVigia.delete(pasta);
+    }
+  }
+
+  /** O que a central mostrou na ultima leitura, por perfil — para GET /notificacoes-portal. */
+  function notificacoes() {
+    return [...notificacoesPorPerfil.entries()].map(([pasta, e]) => ({
+      perfil: path.basename(pasta),
+      em: new Date(e.em).toISOString(),
+      ok: e.ok,
+      etapa: e.etapa,
+      motivo: e.motivo,
+      total_nao_lidas: e.total_nao_lidas,
+      itens: e.itens,
+    }));
+  }
+
   function resumo() {
     return {
       ligado: !!timer,
@@ -2354,10 +2477,286 @@ function criarVigia(sessionManager, opcoes = {}) {
     };
   }
 
-  return { iniciar, parar, rodada, conferir, resumo };
+  return {
+    iniciar, parar, rodada, conferir, resumo, reconhecerCentral, notificacoes,
+    lendoNotificacoes: () => lendoNotificacoes,
+  };
 }
 
 module.exports = { criarVigia };
+`,
+
+  'src/central-notificacoes.js': `/**
+ * CENTRAL DE NOTIFICACOES DO FORNECEDOR NO COMPRAS.GOV (17/09/2026).
+ *
+ * O aviso de convocacao (anexo, proposta ajustada, habilitacao) e requisito
+ * central: o fornecedor nao pode perder prazo por nao estar com a tela aberta
+ * (Giovanny; tela do ConLicitacao). Em vez de ler o chat pela sala de cada
+ * pregao, o robo le a CENTRAL DE NOTIFICACOES do fornecedor — o sininho da area
+ * logada nova do Compras.gov —, que cobre todas as compras da empresa.
+ *
+ * Mapeado do codigo publico do portal (cnetmobile.estaleiro.serpro.gov.br, em
+ * 17/09/2026), NAO de tela vista pelo robo — o reconhecimento acompanhado
+ * (POST /reconhecer/central-notificacoes) e o que confirma:
+ *   - a area nova abre por "iniciar-sessao", que troca a sessao do portal
+ *     antigo por um token (Authorization: Bearer);
+ *   - GET /comprasnet-mensagem/v1/mensagens?page=0&size=20&filtro=nao-lidas
+ *     lista as notificacoes; o total vem no cabecalho Register-Count; 404 e
+ *     "nenhuma";
+ *   - campos: id, lida, texto (HTML), dataHoraPublicacao, categoria,
+ *     tipoContexto, numeroUasg, codigoModalidade, numeroCompra, anoCompra,
+ *     numeroCompraFormatado, descricaoModalidade, identificadorItem;
+ *   - GET /comprasnet-mensagem/v1/mensagens/{id} MARCA COMO LIDA — o robo nunca
+ *     chama. Listar nao marca.
+ *
+ * O token nunca vai para log, arquivo ou resposta: vive so dentro da leitura.
+ */
+
+const LISTA = '/comprasnet-mensagem/v1/mensagens?page=0&size=20&filtro=nao-lidas';
+const TIPOS = '/comprasnet-mensagem/v1/destinatarios/notificacoes';
+const API_DO_PORTAL = /\\/comprasnet-(mensagem|usuario|area-trabalho|fase-externa|consultas|disputa)\\//;
+const AREA_NOVA = /cnetmobile\\.estaleiro\\.serpro\\.gov\\.br\\/comprasnet-web/i;
+
+function semParametros(url) {
+  return String(url || '').split('?')[0].split('#')[0].split(';')[0];
+}
+
+/** O link da area do fornecedor que leva ao Compras.gov novo, ou null. */
+function escolherLinkDaAreaNova(links) {
+  const lista = (Array.isArray(links) ? links : []).filter((l) => l && (l.href || l.texto));
+  const navegavel = (l) => /^https?:/i.test(String(l.href || ''));
+  const criterios = [
+    ['endereco de iniciar-sessao', (l) => /iniciar-sessao/i.test(String(l.href || ''))],
+    ['endereco do Compras.gov novo', (l) => AREA_NOVA.test(String(l.href || ''))],
+    ['texto do menu', (l) => /compras\\s+eletr[oô]nicas|dispensa\\s*\\/\\s*licita[cç][aã]o\\s+eletr[oô]nica|licita[cç][oõ]es\\s+eletr[oô]nicas|[aá]rea de trabalho/i.test(String(l.texto || ''))],
+  ];
+  for (const [motivo, casa] of criterios) {
+    const achados = lista.filter(casa);
+    if (achados.length) return Object.assign({}, achados.find(navegavel) || achados[0], { motivo });
+  }
+  return null;
+}
+
+/** O cabecalho Authorization de uma chamada da API do portal, ou null. */
+function tokenDaRequisicao(url, cabecalhos) {
+  if (!API_DO_PORTAL.test(String(url || ''))) return null;
+  const valor = cabecalhos ? cabecalhos.authorization || cabecalhos.Authorization : null;
+  return typeof valor === 'string' && /^Bearer\\s+\\S+/.test(valor) ? valor : null;
+}
+
+function textoSemHtml(html) {
+  return String(html || '')
+    .replace(/<br\\s*\\/?>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\\s+/g, ' ')
+    .trim();
+}
+
+/** A notificacao como vai ao Praefectus: sem HTML, com o id da compra montado. */
+function notificacaoResumida(bruta) {
+  const n = bruta || {};
+  const digitos = (v) => String(v === undefined || v === null ? '' : v).replace(/\\D/g, '');
+  const uasg = digitos(n.numeroUasg);
+  const modalidade = digitos(n.codigoModalidade);
+  const numero = digitos(n.numeroCompra);
+  const ano = digitos(n.anoCompra);
+  const idCompra = uasg.length === 6 && modalidade && numero && ano.length === 4
+    ? uasg + modalidade.padStart(2, '0').slice(-2) + numero.padStart(5, '0').slice(-5) + ano
+    : null;
+  const item = digitos(n.identificadorItem);
+  return {
+    id: n.id === undefined || n.id === null ? null : String(n.id),
+    lida: n.lida === true,
+    texto: textoSemHtml(n.texto).slice(0, 1000),
+    publicada_em: n.dataHoraPublicacao || null,
+    categoria: n.categoria === undefined || n.categoria === null ? null : String(n.categoria),
+    contexto: n.tipoContexto || null,
+    uasg: uasg || null,
+    numero_compra: n.numeroCompraFormatado || (numero && ano ? Number(numero) + '/' + ano : null),
+    modalidade: n.descricaoModalidade || null,
+    id_compra: idCompra,
+    item: item ? Number(item) : null,
+  };
+}
+
+/**
+ * Da area do fornecedor (ja logada) ate a lista de notificacoes nao lidas.
+ *
+ * \`reconhecer\` junta o que foi visto no caminho — links, endereco, chamadas da
+ * API (metodo, endereco sem parametros e status; nunca cabecalhos) e os tipos
+ * de notificacao — e tira fotos com \`foto(nome, aba)\`. Nada e clicado dentro da
+ * central: abrir uma notificacao a marcaria como lida.
+ */
+async function lerCentral(page, opcoes = {}) {
+  const reconhecer = opcoes.reconhecer === true;
+  const foto = typeof opcoes.foto === 'function' ? opcoes.foto : async () => null;
+  const esperar = typeof opcoes.esperar === 'function' ? opcoes.esperar : (ms) => new Promise((r) => setTimeout(r, ms));
+  const relatorio = {
+    ok: false, etapa: null, motivo: null, link: null, endereco: null,
+    fotos: [], links_vistos: [], chamadas: [], tipos: null, total_nao_lidas: null, notificacoes: [],
+  };
+  const browser = page.browser();
+  const abertas = [];
+  let token = null;
+  const ouvir = (req) => {
+    try {
+      const t = tokenDaRequisicao(req.url(), req.headers());
+      if (t) token = t;
+    } catch (e) { /* pedido ilegivel: segue */ }
+  };
+  const anotar = (resp) => {
+    try {
+      if (reconhecer && API_DO_PORTAL.test(resp.url()) && relatorio.chamadas.length < 40) {
+        relatorio.chamadas.push(resp.request().method() + ' ' + semParametros(resp.url()) + ' -> ' + resp.status());
+      }
+    } catch (e) { /* resposta ilegivel: segue */ }
+  };
+  const acompanhar = (p) => {
+    if (!p || typeof p.on !== 'function') return;
+    p.on('request', ouvir);
+    p.on('response', anotar);
+  };
+  const aoCriarAba = async (alvo) => {
+    try {
+      const p = await alvo.page();
+      if (p) {
+        acompanhar(p);
+        abertas.push(p);
+      }
+    } catch (e) { /* aba que nao e pagina */ }
+  };
+  const anexarFoto = async (nome, aba) => {
+    const arquivo = await Promise.resolve(foto(nome, aba)).catch(() => null);
+    if (arquivo) relatorio.fotos.push(arquivo);
+  };
+  browser.on('targetcreated', aoCriarAba);
+  acompanhar(page);
+  try {
+    // 1. Os links da area do fornecedor, em todos os frames (a area e um frameset).
+    const links = [];
+    for (const frame of page.frames()) {
+      const doFrame = await frame.evaluate(() => [...document.querySelectorAll('a')].map((a) => ({
+        texto: String(a.textContent || '').replace(/\\s+/g, ' ').trim().slice(0, 80),
+        href: String(a.href || ''),
+      }))).catch(() => []);
+      links.push(...doFrame);
+    }
+    if (reconhecer) relatorio.links_vistos = links.slice(0, 80).map((l) => l.texto + ' -> ' + semParametros(l.href));
+    await anexarFoto('central-1-area-do-fornecedor', page);
+
+    const escolhido = escolherLinkDaAreaNova(links);
+    if (!escolhido) {
+      relatorio.etapa = 'link-da-area-nova';
+      relatorio.motivo = 'Nenhum link da area do fornecedor leva ao Compras.gov novo (' + links.length + ' links vistos)';
+      if (!reconhecer) relatorio.links_vistos = links.slice(0, 30).map((l) => l.texto);
+      return relatorio;
+    }
+    relatorio.link = escolhido.texto + ' (' + escolhido.motivo + ')';
+
+    // 2. A area nova numa aba propria — os cookies sao do navegador.
+    let area = null;
+    if (/^https?:/i.test(String(escolhido.href || ''))) {
+      area = await browser.newPage();
+      if (abertas.indexOf(area) < 0) abertas.push(area);
+      acompanhar(area);
+      await area.goto(escolhido.href, { waitUntil: 'networkidle2', timeout: 45000 }).catch(() => {});
+    } else {
+      for (const frame of page.frames()) {
+        const clicou = await frame.evaluate((texto) => {
+          const a = [...document.querySelectorAll('a')]
+            .find((el) => String(el.textContent || '').replace(/\\s+/g, ' ').trim().slice(0, 80) === texto);
+          if (!a) return false;
+          a.click();
+          return true;
+        }, escolhido.texto).catch(() => false);
+        if (clicou) break;
+      }
+    }
+    // Ate 40 esperas de 1 s: o iniciar-sessao troca a sessao por token e so
+    // entao a aplicacao faz a primeira chamada autenticada.
+    for (let tentativa = 0; tentativa < 40; tentativa++) {
+      if (!area) {
+        const todas = await browser.pages();
+        area = todas.slice().reverse().find((p) => AREA_NOVA.test(p.url())) || null;
+      }
+      if (area && AREA_NOVA.test(area.url()) && !/iniciar-sessao/i.test(area.url()) && token) break;
+      await esperar(1000);
+    }
+    if (!area || !AREA_NOVA.test(area.url())) {
+      relatorio.etapa = 'area-nova';
+      relatorio.motivo = 'O link foi aberto e a aba do Compras.gov novo nao apareceu' + (area ? ' (ficou em ' + semParametros(area.url()) + ')' : '');
+      return relatorio;
+    }
+    relatorio.endereco = semParametros(area.url());
+    await anexarFoto('central-2-area-nova', area);
+    if (/acesso-nao-autorizado/i.test(area.url())) {
+      relatorio.etapa = 'acesso-nao-autorizado';
+      relatorio.motivo = 'O Compras.gov novo respondeu "acesso nao autorizado" ao abrir a area do fornecedor';
+      return relatorio;
+    }
+    if (!token) {
+      // A aplicacao pede o contador de notificacoes ao carregar; se a chamada
+      // passou antes de o robo ouvir, recarregar a faz de novo.
+      await area.reload({ waitUntil: 'networkidle2', timeout: 45000 }).catch(() => {});
+      await esperar(2000);
+    }
+    if (!token) {
+      relatorio.etapa = 'token';
+      relatorio.motivo = 'A area nova abriu, mas nenhuma chamada autenticada da API do portal foi vista';
+      return relatorio;
+    }
+
+    // 3. A lista de nao lidas. Listar NAO marca como lida.
+    const lido = await area.evaluate(async (auth, lista, tipos, comTipos) => {
+      const pedir = async (url) => {
+        const r = await fetch(url, {
+          headers: { Authorization: auth, Accept: 'application/json', 'bloqueio-desabilitado': 'true' },
+          credentials: 'include',
+        });
+        let corpo = null;
+        try { corpo = await r.json(); } catch (e) { corpo = null; }
+        return { status: r.status, total: r.headers.get('Register-Count'), corpo };
+      };
+      const saida = { lista: await pedir(lista) };
+      if (comTipos) saida.tipos = await pedir(tipos);
+      return saida;
+    }, token, LISTA, TIPOS, reconhecer);
+
+    if (lido.lista.status === 404) {
+      relatorio.ok = true;
+      relatorio.total_nao_lidas = 0;
+    } else if (lido.lista.status >= 200 && lido.lista.status < 300) {
+      const corpo = lido.lista.corpo;
+      const itens = Array.isArray(corpo) ? corpo : corpo && Array.isArray(corpo.content) ? corpo.content : [];
+      relatorio.ok = true;
+      relatorio.notificacoes = itens.map(notificacaoResumida).filter((n) => n.id && !n.lida).slice(0, 20);
+      const total = Number(lido.lista.total);
+      relatorio.total_nao_lidas = lido.lista.total !== null && lido.lista.total !== '' && Number.isFinite(total) ? total : relatorio.notificacoes.length;
+    } else {
+      relatorio.etapa = 'lista';
+      relatorio.motivo = 'A lista de notificacoes respondeu HTTP ' + lido.lista.status;
+    }
+    if (reconhecer && lido.tipos) {
+      relatorio.tipos = Array.isArray(lido.tipos.corpo)
+        ? lido.tipos.corpo.map((t) => ({ chave: t && t.chave, descricao: t && (t.descricao || t.nome || t.titulo || null), habilitada: t ? t.habilitada : null }))
+        : { status: lido.tipos.status };
+    }
+    return relatorio;
+  } finally {
+    if (typeof browser.off === 'function') browser.off('targetcreated', aoCriarAba);
+    for (const p of abertas) {
+      if (p !== page) await Promise.resolve(p.close()).catch(() => {});
+    }
+  }
+}
+
+module.exports = { lerCentral, escolherLinkDaAreaNova, tokenDaRequisicao, notificacaoResumida, textoSemHtml, semParametros };
 `,
 
   'src/interacao-humana.js': `/**
