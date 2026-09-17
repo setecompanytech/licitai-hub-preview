@@ -260,6 +260,16 @@ function CampoDecimal({
  * neste mesmo módulo a lista de portais chegou a ter 10 num arquivo e 23 no
  * outro, e ninguém percebeu até um portal sumir da tela.
  */
+/**
+ * A grade de itens da disputa tem dez colunas, três delas campos de 112 px.
+ * Sem largura mínima, o navegador a espremia à largura do diálogo e as
+ * células de texto viravam uma letra por linha ("Q/t/d", "1/./4/7/0"),
+ * print de 17/09. Com o mínimo, em tela estreita a grade rola dentro do
+ * quadro (`overflow-auto`); o respiro de 8 px por lado é o que faz ela
+ * caber inteira no diálogo de 6xl.
+ */
+const GRADE_DE_ITENS = 'min-w-[1040px] [&_td]:px-2 [&_th]:px-2 [&_th]:whitespace-nowrap';
+
 function LinhaDeItem({
   item,
   larguraDescricao,
@@ -334,8 +344,8 @@ function LinhaDeItem({
           </div>
         )}
       </TableCell>
-      <TableCell className="text-sm text-center tabular-nums">{item.quantidade}</TableCell>
-      <TableCell className="text-sm text-center">{item.unidade}</TableCell>
+      <TableCell className="whitespace-nowrap text-sm text-center tabular-nums">{item.quantidade}</TableCell>
+      <TableCell className="whitespace-nowrap text-sm text-center">{item.unidade}</TableCell>
       <TableCell className="text-right">
         {/* Editável: com orçamento sigiloso o item chega sem valor, e a disputa
             não salva com referência zero. Quem digita assume o número. */}
@@ -356,7 +366,7 @@ function LinhaDeItem({
           }`}
         />
       </TableCell>
-      <TableCell className="text-sm text-right tabular-nums font-semibold">
+      <TableCell className="whitespace-nowrap text-sm text-right tabular-nums font-semibold">
         {item.valorReferencia > 0 ? paraBRL(item.valorReferencia * item.quantidade) : '—'}
       </TableCell>
       <TableCell className="text-right">
@@ -1284,7 +1294,11 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
           (nowrap) — um órgão de nome longo forçava a coluna do modal a
           ~1150px e aparecia uma barra de rolagem horizontal no rodapé. Com
           flex-col e `min-w-0` no corpo, o texto é que se corta, não o modal. */}
-      <DialogContent className="max-w-5xl w-[calc(100vw-2rem)] max-h-[90vh] p-0 gap-0 flex flex-col overflow-hidden">
+      {/* 6xl, não 5xl: a grade de itens tem dez colunas (três delas campos de
+          112 px) e somava mais que a largura útil do 5xl — o navegador espremia
+          as células de texto até uma letra por linha ("Q/t/d", "1/./4/7/0"),
+          print de 17/09. Em tela menor a grade rola dentro do próprio quadro. */}
+      <DialogContent className="max-w-6xl w-[calc(100vw-2rem)] max-h-[90vh] p-0 gap-0 flex flex-col overflow-hidden">
         <DialogHeader className="px-6 pt-6 pb-4 border-b border-border shrink-0 space-y-3">
           <div className="space-y-1.5">
             <DialogTitle className="flex items-center gap-2.5">
@@ -1962,8 +1976,10 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                     {lotes.map((lote) => {
                       const loteItens = itens.filter(i => i.lote === lote);
                       const loteTotal = loteItens.reduce((s, i) => s + (i.valorReferencia * i.quantidade), 0);
+                      // overflow-x-auto, não hidden: com a largura mínima da grade,
+                      // hidden cortaria as últimas colunas em tela estreita.
                       return (
-                        <div key={lote} className="border border-border rounded-lg overflow-hidden">
+                        <div key={lote} className="border border-border rounded-lg overflow-x-auto">
                           <div className="flex flex-wrap items-center justify-between gap-2 bg-muted px-3 py-2 border-b border-border">
                             <div className="flex flex-wrap items-center gap-2">
                               <Layers className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
@@ -1980,11 +1996,11 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                               <Trash2 className="w-4 h-4" aria-hidden="true" /> Remover Lote
                             </Button>
                           </div>
-                          <Table>
+                          <Table className={GRADE_DE_ITENS}>
                             <TableHeader>
                               <TableRow className="bg-muted/30">
                                 <TableHead className="w-10 text-center">Nº</TableHead>
-                                <TableHead>Descrição</TableHead>
+                                <TableHead className="min-w-[10rem]">Descrição</TableHead>
                                 <TableHead title="Marca e modelo ofertados. Em item do processo, vêm da Proposta">Marca / Modelo</TableHead>
                                 <TableHead className="text-center">Qtd</TableHead>
                                 <TableHead className="text-center">Unid.</TableHead>
@@ -2020,11 +2036,11 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                 ) : (
                   /* Flat item view */
                   <div className="border border-border rounded-lg max-h-56 overflow-auto">
-                    <Table>
+                    <Table className={GRADE_DE_ITENS}>
                       <TableHeader>
                         <TableRow className="bg-muted/50">
                           <TableHead className="w-10 text-center">Nº</TableHead>
-                          <TableHead>Descrição</TableHead>
+                          <TableHead className="min-w-[10rem]">Descrição</TableHead>
                           <TableHead title="Marca e modelo ofertados. Em item do processo, vêm da Proposta">Marca / Modelo</TableHead>
                           <TableHead className="text-center">Qtd</TableHead>
                           <TableHead className="text-center">Unid.</TableHead>
