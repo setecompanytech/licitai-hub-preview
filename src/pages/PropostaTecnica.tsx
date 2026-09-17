@@ -346,7 +346,7 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
     const { data: editalItens } = await supabase
       .from('licitacao_itens')
       .select('numero, descricao, quantidade, unidade, valor_unitario, valor_total, marca')
-      .eq('user_id', user.id)
+      // Itens são do processo (empresa); o RLS decide quem lê.
       .eq('licitacao_id', lid)
       .order('numero', { ascending: true });
 

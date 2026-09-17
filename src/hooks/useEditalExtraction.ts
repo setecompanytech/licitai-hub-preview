@@ -101,17 +101,54 @@ function buildItemDedupKey(item: ExtractedItemPayload): string {
   ].join('|');
 }
 
+/**
+ * Itens de outra pessoa da empresa: lidos por todos, substituídos só por quem
+ * os extraiu ou pelo administrador (opção 3, decidida em 17/09).
+ */
+const AVISO_ITENS_DE_OUTRO =
+  'Estes itens foram extraídos por outra pessoa da empresa. Só ela ou o administrador podem substituí-los.';
+
+/**
+ * Apaga os itens do processo e CONFERE o que sobrou.
+ *
+ * Desde 17/09 os itens são lidos pela empresa inteira, mas o DELETE continua
+ * restrito a quem extraiu (ou ao administrador) — e o RLS filtra o que não
+ * pode em SILÊNCIO, sem erro. Se a rotina confiasse no "sem erro", a
+ * re-extração feita por um colega gravaria o conjunto novo por cima do
+ * antigo, e a planilha mostraria os dois. O que decide é a contagem depois.
+ */
+async function removerItensDoProcesso(
+  licitacaoId: string,
+  lote?: string,
+): Promise<{ restantes: number; erro: string | null }> {
+  let remocao = supabase.from('licitacao_itens').delete().eq('licitacao_id', licitacaoId);
+  if (lote) remocao = remocao.eq('lote', lote);
+  const { error } = await remocao;
+  if (error) return { restantes: -1, erro: error.message };
+
+  let contagem = supabase
+    .from('licitacao_itens')
+    .select('id', { count: 'exact', head: true })
+    .eq('licitacao_id', licitacaoId);
+  if (lote) contagem = contagem.eq('lote', lote);
+  const { count, error: erroContagem } = await contagem;
+  if (erroContagem) return { restantes: -1, erro: erroContagem.message };
+  return { restantes: count ?? 0, erro: null };
+}
+
 export function useEditalExtraction() {
   const { user } = useAuth();
 
   const fetchItens = useCallback(async (licitacaoId: string): Promise<LicitacaoItem[]> => {
     if (!user) return [];
     const [{ data, error }, { data: licitacaoMeta, error: licitacaoError }] = await Promise.all([
+      // Sem `user_id`: os itens são do processo, que é da empresa. O RLS
+      // (20260917000002) decide quem lê — filtrar por usuário aqui escondia
+      // do colega os itens que a outra pessoa já extraiu.
       supabase
         .from('licitacao_itens')
         .select('*')
         .eq('licitacao_id', licitacaoId)
-        .eq('user_id', user.id)
         .order('numero', { ascending: true }),
       supabase
         .from('licitacoes')
@@ -138,14 +175,14 @@ export function useEditalExtraction() {
         totalItens: itens.length,
       });
 
-      const { error: cleanupError } = await supabase
-        .from('licitacao_itens')
-        .delete()
-        .eq('licitacao_id', licitacaoId)
-        .eq('user_id', user.id);
+      const { restantes, erro: cleanupError } = await removerItensDoProcesso(licitacaoId);
 
       if (cleanupError) {
         console.error('Erro ao limpar itens incoerentes:', cleanupError);
+      } else if (restantes > 0) {
+        // Pertencem a outra pessoa: não foram descartados, e dizer que foram
+        // seria mentir. Quem pode é quem extraiu, ou o administrador.
+        toast.warning(`Itens incompatíveis com este processo continuam gravados. ${AVISO_ITENS_DE_OUTRO}`);
       } else {
         toast.warning('Itens incompatíveis com este processo foram descartados. Faça uma nova extração do edital.');
       }
@@ -220,28 +257,28 @@ export function useEditalExtraction() {
 
   const deleteLote = useCallback(async (licitacaoId: string, lote: string): Promise<boolean> => {
     if (!user) return false;
-    const { error } = await supabase
-      .from('licitacao_itens')
-      .delete()
-      .eq('licitacao_id', licitacaoId)
-      .eq('user_id', user.id)
-      .eq('lote', lote);
-    if (error) {
-      console.error('Erro ao excluir lote:', error);
+    const { restantes, erro } = await removerItensDoProcesso(licitacaoId, lote);
+    if (erro) {
+      console.error('Erro ao excluir lote:', erro);
+      return false;
+    }
+    if (restantes > 0) {
+      toast.warning(AVISO_ITENS_DE_OUTRO);
       return false;
     }
     return true;
   }, [user]);
 
+  /** `false` quando os itens ficaram — quem chama NÃO pode gravar por cima. */
   const deleteAllItens = useCallback(async (licitacaoId: string): Promise<boolean> => {
     if (!user) return false;
-    const { error } = await supabase
-      .from('licitacao_itens')
-      .delete()
-      .eq('licitacao_id', licitacaoId)
-      .eq('user_id', user.id);
-    if (error) {
-      console.error('Erro ao excluir itens:', error);
+    const { restantes, erro } = await removerItensDoProcesso(licitacaoId);
+    if (erro) {
+      console.error('Erro ao excluir itens:', erro);
+      return false;
+    }
+    if (restantes > 0) {
+      toast.warning(AVISO_ITENS_DE_OUTRO);
       return false;
     }
     return true;

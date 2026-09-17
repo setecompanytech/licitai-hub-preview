@@ -87,8 +87,8 @@ export default function HistoricoExtracoes() {
         supabase
           .from('licitacao_itens')
           .select('licitacao_id, descricao')
-          .in('licitacao_id', ids)
-          .eq('user_id', user.id),
+          // Itens são do processo (empresa); o RLS decide quem lê.
+          .in('licitacao_id', ids),
         supabase
           .from('catalogo_itens_precificados')
           .select('licitacao_id')

@@ -199,8 +199,8 @@ export default function LicitacaoSelector({
       supabase
         .from('licitacao_itens')
         .select('descricao, quantidade, unidade, valor_unitario, valor_total, lote, origem')
+        // Itens são do processo (empresa); o RLS decide quem lê.
         .eq('licitacao_id', targetLicitacaoId)
-        .eq('user_id', user.id)
         .order('numero', { ascending: true }),
       fetchItens(targetLicitacaoId),
     ]);
@@ -222,8 +222,9 @@ export default function LicitacaoSelector({
     const shouldPurgeStaleAiItems = rawExistingItens.length > 0 && existingAreOnlyAi && !hasLinkedDocument;
     const shouldPurgeMismatchedItems = isItemsLikelyMismatched(lic.objeto, rawExistingItens.map((item) => item.descricao));
 
-    if (shouldPurgeStaleAiItems || shouldPurgeMismatchedItems) {
-      await deleteAllItens(targetLicitacaoId);
+    // Itens de outra pessoa não saem daqui (o aviso é do próprio deleteAllItens);
+    // sem a limpeza, o fluxo segue com o que existe em vez de fingir que limpou.
+    if ((shouldPurgeStaleAiItems || shouldPurgeMismatchedItems) && (await deleteAllItens(targetLicitacaoId))) {
       setItensCount(0);
       onItensLoaded?.([]);
       toast.warning(
@@ -283,7 +284,9 @@ export default function LicitacaoSelector({
               origem: fonte === 'PNCP_API' ? 'pncp' : 'ia',
             }));
 
-            await deleteAllItens(targetLicitacaoId);
+            // Gravar por cima de itens que não puderam ser apagados (são de
+            // outra pessoa) duplicaria a planilha. O aviso já foi dado.
+            if (!(await deleteAllItens(targetLicitacaoId))) return;
             const { data: savedItens } = await supabase
               .from('licitacao_itens')
               .insert(itemsToSave)

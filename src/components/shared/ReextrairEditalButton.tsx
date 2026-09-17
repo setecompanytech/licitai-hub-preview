@@ -36,11 +36,13 @@ export default function ReextrairEditalButton({ licitacaoId, label, size = 'sm',
   const handleClick = async () => {
     if (!licitacaoId || !user) return;
     // Verifica itens existentes
+    // Conta os itens do PROCESSO, de quem quer que sejam: se o colega já
+    // extraiu, a pergunta "substituir?" precisa aparecer — e a substituição
+    // é a edge que decide (quem extraiu ou o administrador).
     const { count } = await supabase
       .from('licitacao_itens')
       .select('id', { count: 'exact', head: true })
-      .eq('licitacao_id', licitacaoId)
-      .eq('user_id', user.id);
+      .eq('licitacao_id', licitacaoId);
     if ((count ?? 0) > 0) {
       setExistingCount(count ?? 0);
       setConfirming(true);

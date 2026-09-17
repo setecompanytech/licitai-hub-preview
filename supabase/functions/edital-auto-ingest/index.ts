@@ -332,11 +332,29 @@ Deno.serve(async (req) => {
   // Carrega licitação com coordenadas PNCP quando disponíveis
   const { data: lic } = await admin
     .from("licitacoes")
-    .select("id, user_id, numero, orgao, objeto, observacoes, url_edital, valor_estimado, cnpj_orgao, ano_compra, sequencial_compra, numero_controle_pncp")
+    .select("id, user_id, empresa_id, numero, orgao, objeto, observacoes, url_edital, valor_estimado, cnpj_orgao, ano_compra, sequencial_compra, numero_controle_pncp")
     .eq("id", body.licitacao_id)
-    .eq("user_id", user.id)
     .maybeSingle();
   if (!lic) return new Response(JSON.stringify({ error: "licitacao not found" }), { status: 404, headers: corsHeaders });
+
+  // O processo é da empresa (CLAUDE.md, princípio 2). Havia `.eq("user_id",
+  // user.id)` na consulta acima: o colega que abria a pasta e pedia a leitura
+  // do edital recebia 404 — o mesmo `user_id !== userId → 404` que o princípio
+  // registra. O service role não passa pelo RLS, então a filiação é conferida
+  // aqui. Processo sem empresa (legado) continua só do dono.
+  const { data: membro } = lic.empresa_id
+    ? await admin
+        .from("empresa_membros")
+        .select("papel")
+        .eq("user_id", user.id)
+        .eq("empresa_id", lic.empresa_id)
+        .maybeSingle()
+    : { data: null };
+  const ehDono = lic.user_id === user.id;
+  const ehAdmin = membro?.papel === "admin";
+  if (!ehDono && !membro) {
+    return new Response(JSON.stringify({ error: "sem acesso a este processo" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
 
   // upsert status running
   const updateStatus = async (patch: Record<string, any>) => {
@@ -627,7 +645,17 @@ Deno.serve(async (req) => {
   await updateStatus({ etapa: "persist" });
 
   if (body.replace) {
-    await admin.from("licitacao_itens").delete().eq("licitacao_id", lic.id).eq("user_id", user.id);
+    // Itens são lidos pela empresa inteira; SUBSTITUIR é de quem os extraiu
+    // ou do administrador (opção 3, 17/09). Apagar só "os meus" e gravar o
+    // conjunto novo deixaria os dois na planilha do colega.
+    const { data: donos } = await admin.from("licitacao_itens").select("user_id").eq("licitacao_id", lic.id);
+    const deOutrem = (donos ?? []).some((d: { user_id: string | null }) => d.user_id !== user.id);
+    if (deOutrem && !ehAdmin) {
+      const motivo = "Estes itens foram extraídos por outra pessoa da empresa. Só ela ou o administrador podem substituí-los.";
+      await updateStatus({ status: "failed", etapa: "done", finalizado_em: new Date().toISOString(), erro: motivo });
+      return new Response(JSON.stringify({ success: false, error: motivo }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    await admin.from("licitacao_itens").delete().eq("licitacao_id", lic.id);
   }
 
   const rows = itens.map((it: any, idx: number) => ({

@@ -13924,3 +13924,36 @@ A tela passou a listar o quadro da empresa com o compromisso pessoal por cima
    não trazer de volta o que já saiu da mesa.
 
 Idempotente. Reversão no cabeçalho do arquivo.
+
+---
+
+## 20260917000002 — o conteúdo da pasta é lido pela empresa
+
+Arquivo: `supabase/migrations/20260917000002_conteudo_da_pasta_lido_pela_empresa.sql`
+
+Decisão do dono em 17/09 (**opção 3**): edital e anexos, itens extraídos e
+documentos do processo passam a ser **lidos por qualquer membro da empresa**;
+**alterar e apagar** continua com quem gravou e passa a valer também para o
+**administrador da empresa**.
+
+Antes, as três tabelas (`processo_anexos`, `licitacao_itens`,
+`processo_documentos`) e o bucket `processo-arquivos` eram `auth.uid() =
+user_id`: o colega abria a pasta e a encontrava vazia, e extraía de novo — a
+O S tinha 3 processos com itens de duas pessoas.
+
+Aditivo: nenhuma política existente sai. Entram, por tabela, SELECT por
+`is_empresa_member` e UPDATE/DELETE por `is_empresa_admin`, sempre chegando à
+empresa pela licitação; no bucket, SELECT por membro e DELETE por admin,
+aceitando o id da licitação no 2º segmento (`usuário/licitação/…`) ou no 3º
+(`usuário/zip-extraido/licitação/…`). Índice novo em
+`licitacao_itens (licitacao_id)`, que só tinha a chave primária.
+
+Impacto medido em 17/09: O S (8 anexos, 614 itens, 4 membros) e Santa Rosa
+(6 anexos, 140 itens, 5 membros); as demais empresas têm um membro só.
+
+O service role não passa pelo RLS: a regra de substituição de itens está
+repetida na edge `edital-auto-ingest`, que precisa ser **publicada junto**
+(`npx supabase functions deploy edital-auto-ingest --project-ref
+uwtyuwktxalnpgrcbbgk`).
+
+Conferência no rodapé do arquivo (11 políticas). Reversão: os `DROP POLICY`.

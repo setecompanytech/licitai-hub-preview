@@ -90,7 +90,18 @@ export function useEditalAutoIngest(licitacaoId: string | null) {
       }
     } catch (err: any) {
       console.error('[auto-ingest]', err);
-      if (!opts?.silent) toast.error('Falha na leitura automática.');
+      if (!opts?.silent) {
+        /* A edge responde 403 com o motivo quando os itens são de outra
+           pessoa da empresa (opção 3, 17/09). O `invoke` embrulha isso num
+           FunctionsHttpError cujo corpo fica em `context`; sem lê-lo, a tela
+           dizia só "Falha na leitura automática" — e a pessoa tentaria de
+           novo. Princípio 3: a mensagem real, ou a genérica quando não há. */
+        const corpo = typeof err?.context?.json === 'function'
+          ? await err.context.json().catch(() => null)
+          : null;
+        const motivo: string | null = corpo?.error || corpo?.motivo || null;
+        toast.error(motivo ?? 'Falha na leitura automática.', motivo ? { duration: 10000 } : undefined);
+      }
       return false;
     } finally {
       setRunning(false);

@@ -178,7 +178,8 @@ export default function PlanilhaCustosEdital({
   const persistReferenceItems = useCallback(async (parsed: Array<any>) => {
     if (!licitacaoId || parsed.length === 0) return;
 
-    await deleteAllItens(licitacaoId);
+    // Itens de outra pessoa não puderam ser apagados: gravar por cima duplicaria.
+    if (!(await deleteAllItens(licitacaoId))) return;
     await saveItensManual(licitacaoId, parsed.map((item, idx) => ({
       numero: parseInt(String(item.item ?? idx + 1), 10) || (idx + 1),
       descricao: item.descricao || '',

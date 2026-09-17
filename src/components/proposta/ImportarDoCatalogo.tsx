@@ -126,7 +126,7 @@ export default function ImportarDoCatalogo({ onImport, licitacaoNumero, licitaca
       const { data: editalItens } = await supabase
         .from('licitacao_itens')
         .select('id, numero, descricao, quantidade, unidade, valor_unitario, valor_total, marca, fabricante, modelo, lote')
-        .eq('user_id', user.id)
+        // Itens são do processo (empresa); o RLS decide quem lê.
         .eq('licitacao_id', effectiveLicId)
         .order('numero', { ascending: true });
 
