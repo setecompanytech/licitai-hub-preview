@@ -1,12 +1,13 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import AppLayout from '@/components/layout/AppLayout';
+import { cn } from '@/lib/utils';
 import {
   Search, ExternalLink,
   MapPin, Building2, Calendar as CalendarIcon, Clock, CheckCircle2, XCircle,
   PauseCircle, ChevronLeft, ChevronRight,
   Bookmark, BookmarkCheck, Info, Loader2, RefreshCw, AlertCircle, FileText,
-  Rocket, ArrowRight, CheckCircle, ListChecks, ChevronDown, ChevronUp, X, Eraser
+  Rocket, ArrowRight, CheckCircle, ListChecks, ChevronDown, ChevronUp, X, Eraser, Globe
 } from 'lucide-react';
 import EditalActionsModal, { type EditalSeed } from '@/components/monitoramento/EditalActionsModal';
 import { identidadeDoEdital } from '@/lib/licitacao/identidade-edital';
@@ -1766,12 +1767,15 @@ export default function MonitoramentoEditais() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="min-w-[240px]">Identificação</TableHead>
+                      {/* Chip "Pregão Eletrônico nº 37/2026" (~250 px) + selo SRP/Em gestão
+                          ao lado, sem quebrar para baixo: menos que isto, a linha da
+                          tabela ganha uma altura a mais só por causa do selo. */}
+                      <TableHead className="min-w-[344px]">Identificação</TableHead>
                       <TableHead className="min-w-[200px]">Órgão</TableHead>
-                      <TableHead className="min-w-[180px]">Prazo</TableHead>
+                      <TableHead className="min-w-[236px]">Prazo</TableHead>
                       <TableHead>Situação</TableHead>
                       <TableHead className="text-right">Valor estimado</TableHead>
-                      <TableHead className="text-right">Ações</TableHead>
+                      <TableHead className="w-[208px] text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -2208,18 +2212,21 @@ function EditalLinha({ edital, favoritado, onFavoritar, licitacaoId, compromisso
           </p>
         </TableCell>
 
-        {/* Prazo: abertura, encerramento e a contagem regressiva */}
+        {/* Prazo: abertura, encerramento e a contagem regressiva.
+            Cada data numa linha só: com a coluna estreita, "dd/mm/aaaa às
+            hh:mm" quebrava ao meio e a célula virava cinco linhas — era ela,
+            junto com as ações, que esticava a linha da tabela (17/09). */}
         <TableCell className="align-top text-sm">
           {edital.dataAbertura && (
-            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <CalendarIcon className="w-3 h-3" aria-hidden="true" />
-              Abertura: <span className="text-foreground">{formatData(edital.dataAbertura)}</span>
+            <p className="flex items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground">
+              <CalendarIcon className="w-3 h-3 shrink-0" aria-hidden="true" />
+              Abertura: <span className="text-foreground tabular-nums">{formatData(edital.dataAbertura)}</span>
             </p>
           )}
           {edital.dataEncerramento && (
-            <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Clock className="w-3 h-3" aria-hidden="true" />
-              Encerramento: <span className="text-foreground">{formatData(edital.dataEncerramento)}</span>
+            <p className="mt-1 flex items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground">
+              <Clock className="w-3 h-3 shrink-0" aria-hidden="true" />
+              Encerramento: <span className="text-foreground tabular-nums">{formatData(edital.dataEncerramento)}</span>
             </p>
           )}
           {!edital.dataAbertura && !edital.dataEncerramento && (
@@ -2250,52 +2257,80 @@ function EditalLinha({ edital, favoritado, onFavoritar, licitacaoId, compromisso
             : <span className="font-normal text-muted-foreground">Não informado</span>}
         </TableCell>
 
-        {/* Ações da linha */}
-        <TableCell className="align-top">
-          <div className="flex flex-wrap items-center justify-end gap-1.5">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setExpandido(!expandido)}
-              aria-expanded={expandido}
-            >
-              {expandido ? <ChevronUp aria-hidden="true" /> : <ChevronDown aria-hidden="true" />}
-              {expandido ? 'Menos detalhes' : 'Ver detalhes'}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onFavoritar}
-              aria-pressed={favoritado}
-              className={favoritado ? 'text-primary' : undefined}
-            >
-              {favoritado ? <BookmarkCheck aria-hidden="true" /> : <Bookmark aria-hidden="true" />}
-              {favoritado ? 'Salvo' : 'Salvar'}
-            </Button>
-            {edital.link && (
-              <Button variant="ghost" size="sm" asChild>
-                <a href={edital.link} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink aria-hidden="true" />
-                  Sistema origem
-                </a>
-              </Button>
-            )}
-            {edital.linkPncp && (
-              <Button variant="ghost" size="sm" asChild>
-                <a href={edital.linkPncp} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink aria-hidden="true" />
-                  PNCP
-                </a>
-              </Button>
-            )}
+        {/* Ações da linha — duas alturas, não cinco.
+
+            Eram cinco botões de texto num `flex-wrap`, numa coluna sem largura:
+            quebravam em quatro linhas e esticavam a linha inteira da tabela
+            até o dobro do conteúdo (print de 17/09). A ação principal fica em
+            cima, com o nome inteiro; as secundárias viram uma fileira de
+            ícones com nome acessível e dica — o texto continua chegando ao
+            leitor de tela e ao mouse parado. */}
+        <TableCell className="w-[208px] align-top">
+          <div className="flex flex-col gap-1.5">
             <Button
               variant={emGestao ? 'outline' : 'default'}
               size="sm"
+              className="w-full"
               onClick={onIniciarProcesso}
             >
               {emGestao ? <ArrowRight aria-hidden="true" /> : <Rocket aria-hidden="true" />}
               {emGestao ? 'Abrir processo' : 'Iniciar processo'}
             </Button>
+            <div className="flex items-center justify-between gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="px-2"
+                onClick={() => setExpandido(!expandido)}
+                aria-expanded={expandido}
+              >
+                {expandido ? <ChevronUp aria-hidden="true" /> : <ChevronDown aria-hidden="true" />}
+                {expandido ? 'Menos' : 'Detalhes'}
+              </Button>
+              <TooltipProvider>
+                <div className="flex items-center">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn('h-8 w-8', favoritado && 'text-primary')}
+                        onClick={onFavoritar}
+                        aria-pressed={favoritado}
+                        aria-label={favoritado ? 'Remover dos salvos' : 'Salvar edital'}
+                      >
+                        {favoritado ? <BookmarkCheck aria-hidden="true" /> : <Bookmark aria-hidden="true" />}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{favoritado ? 'Salvo — clique para remover' : 'Salvar'}</TooltipContent>
+                  </Tooltip>
+                  {edital.link && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                          <a href={edital.link} target="_blank" rel="noopener noreferrer" aria-label="Abrir no sistema de origem">
+                            <ExternalLink aria-hidden="true" />
+                          </a>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Sistema de origem</TooltipContent>
+                    </Tooltip>
+                  )}
+                  {edital.linkPncp && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                          <a href={edital.linkPncp} target="_blank" rel="noopener noreferrer" aria-label="Abrir no PNCP">
+                            <Globe aria-hidden="true" />
+                          </a>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>PNCP</TooltipContent>
+                    </Tooltip>
+                  )}
+                </div>
+              </TooltipProvider>
+            </div>
           </div>
         </TableCell>
       </TableRow>
