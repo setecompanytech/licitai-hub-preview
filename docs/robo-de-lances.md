@@ -919,6 +919,23 @@ portais seguem por API (D1, D2).
 - [ ] Ligar `LER_CENTRAL_NOTIFICACOES=true` e ver o primeiro aviso chegar — só depois de o caminho passar do `accessdenied.htm`
 - **Enquanto isso, sem código**: o aplicativo oficial Compras.gov.br avisa no celular — o próprio portal indica
 
+#### 17/09, madrugada — o teste do Ian na tela e os ajustes que ele pediu
+
+**Os testes** (log do agente):
+- **02:45 — 002/2026, Portal de Compras Públicas.** Login em 7 s, processo achado em "Seus Processos", página "Dados do Processo" aberta — o ponto até onde o robô vai nesse portal. Rodadas "sem lance": a conta está sem plano desde 17/04/2026 (0 créditos), o lance só está liberado no Compras.gov, o item não tinha piso e o processo está "Encerrado para Operação". Parada pelo painel às 02:50
+- **02:48 e 02:54 — 90025/2026, Compras.gov (UASG 925448), por Ações › Entrar agora.** Login reaproveitado em 2–3 s sem captcha, compra localizada na pesquisa (o portal a marca como **"COMPRA SUSPENSA"**), "Acompanhar compra" aberto, sessão ativa em 9–11 s, aviso "Robô na sala" na tela, selos "Em disputa · Monitorando". Paradas pelo painel
+- **02:48:23 — o vigia continuou "logado"** depois dos reconhecimentos da central: a sessão do gov.br não caiu
+
+**Achado no log**: nas rodadas do 90025/2026 o robô releu o portal **uma vez por segundo** (02:49:31–34, 02:50:07–14). Nenhum portal lê o tempo restante ainda, então o ritmo vinha só do intervalo da disputa — que estava baixo. Recarregar a página do Compras.gov nesse ritmo é o que leva o portal a pedir captcha.
+
+**O que foi feito** (versão `2026-09-17.5`; commits locais):
+- [x] **Piso de 10 s entre leituras fora da iminência** (`SEGUNDOS_MINIMOS_ENTRE_LEITURAS`, `estrategia.js`; na iminência a leitura rápida de 3 s continua), com teste; o campo "Intervalo" da disputa passa a ter mínimo 10. **Precisa instalar na VPS**
+- [x] **O aviso do canto não some com a aba escondida**: o "Robô na sala" do 002/2026 foi criado, mas o Ian estava na tela remota, em outra aba, e a caixinha de 8 s sumiu sem ser vista. O tempo agora só corre com a aba visível; teste
+- [x] **"📺 Assistir o robô ao vivo"** (pedido do Ian): junto do "Robô na sala", um segundo aviso **só para os administradores da plataforma** (a tela remota é compartilhada entre as empresas e não se mostra a cliente), que leva a `/admin/robo-lances?aba=sessoes&tela=abrir` — a página abre a tela remota sozinha e tira o parâmetro da URL. Webhook + `avisoParaAssistirAoVivo`, com testes. **Precisa publicar o webhook**
+- [x] **Faixa "Ligando o robô…" na página da disputa** (o Ian: "a tela não tem muita reação e deixa o usuário ocioso"): só estados reais — "Enviando ao robô…", "Ligando o robô · há 23 s" com o que ele está fazendo, "Ainda entrando…" depois de 2 minutos, "O robô está esperando o clique no captcha do gov.br" quando há pedido humano, e "Robô na sala" nos primeiros 90 s, com atalho para o Acompanhamento. Enquanto o robô entra, a página relê a cada 4 s em vez de 15 (`faixaDaEntrada`, 7 testes)
+- [x] **"Definir data da sessão" abre o diálogo já no campo da data** (rola e foca); a faixa verde do diálogo dizia "1 itens extraídos do edital por IA" para item que não veio de IA — agora diz "1 item cadastrado nesta disputa", e só fala de IA quando os itens vieram dela
+- [x] **Selos do topo da disputa maiores** (`SeloSituacao tamanho="grande"`), e o aviso do admin "Abra esta tela ANTES de enviar ao robô" com o fluxo novo
+
 #### O que depende de alguém
 
 | O quê | De quem |
