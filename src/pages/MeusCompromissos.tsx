@@ -27,10 +27,11 @@ import {
   Clock, Building2, Bell, Mail, MessageSquare, Zap,
   CheckCircle2, XCircle, Trash2, ExternalLink, AlertTriangle,
   Loader2, RefreshCw, ListChecks, Brain, Shield,
-  Archive, ArchiveRestore, FolderOpen,
+  Archive, ArchiveRestore, FolderOpen, BellPlus,
 } from 'lucide-react';
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
 import NovaPastaManualDialog, { BotaoNovaPastaManual } from '@/components/gestao/NovaPastaManualDialog';
+import { montarPastas, type CompromissoPessoal, type Pasta, type ProcessoDaEmpresa } from '@/lib/processo/pastas';
 import { identidadeDoEdital } from '@/lib/licitacao/identidade-edital';
 import { padraoDaRota } from '@/lib/navegacao/paginas';
 import { useAbaNaUrl } from '@/lib/navegacao/aba-na-url';
@@ -41,33 +42,21 @@ import { toast } from 'sonner';
 import { streamAIChat } from '@/lib/ai-stream';
 import ReactMarkdown from 'react-markdown';
 
-type ProcessoInteresse = {
-  id: string;
-  empresa_id: string;
-  numero: string;
-  orgao: string;
-  objeto: string;
-  modalidade: string;
-  valor_estimado: number | null;
-  uf: string | null;
-  municipio: string | null;
-  data_abertura: string | null;
-  data_encerramento: string | null;
-  portal: string | null;
-  url: string | null;
-  status: string;
-  aprovado_usuario: boolean;
-  auto_cadastro: boolean;
-  preco_validado: boolean;
-  alerta_email: boolean;
-  alerta_whatsapp: boolean;
-  alerta_sistema: boolean;
-  ia_recomendacao: string | null;
-  ia_score: number | null;
-  notas: string | null;
-  licitacao_id: string | null;
-  created_at: string;
-};
+/**
+ * ── DE ONDE VEM A LISTA ──────────────────────────────────────────────────
+ *
+ * Do QUADRO DA EMPRESA (`licitacoes`) com o compromisso pessoal
+ * (`processos_interesse`) por cima — a mesma junção da aba Compromissos da
+ * Gestão (`lib/processo/pastas.ts`). Até 17/09 esta página lia só a tabela
+ * pessoal: "Abrir página completa" saía de 19 pastas na aba e chegava a 2
+ * aqui, porque as outras eram de um colega. A pasta é onde o processo é
+ * montado; pasta que não aparece é processo fora de alcance.
+ *
+ * O que continua pessoal — e só existe depois de a pessoa ACOMPANHAR o
+ * processo: a decisão de participar, o score da IA e os canais de alerta.
+ * Sem compromisso próprio, a linha aparece, abre o processo, arquiva; as
+ * ações de decisão esperam o "Acompanhar".
+ */
 
 type ExclusaoLog = {
   id: string;
@@ -168,7 +157,19 @@ function Countdown({ targetDate }: { targetDate: string }) {
 }
 
 /** Os três canais de aviso do compromisso, sempre com rótulo acessível. */
-function CanaisDeAlerta({ processo }: { processo: ProcessoInteresse }) {
+function CanaisDeAlerta({ processo }: { processo: Pasta }) {
+  // Pasta que a pessoa ainda não acompanha: os avisos de prazo são de quem
+  // acompanha — dizer isso evita confiar num aviso que não vai chegar.
+  if (processo.semCompromissoProprio) {
+    return (
+      <span
+        className="g-meta text-muted-foreground"
+        title="Você ainda não acompanha este processo; os avisos de prazo são de quem acompanha."
+      >
+        Sem alertas seus
+      </span>
+    );
+  }
   const nenhum = !processo.alerta_sistema && !processo.alerta_email && !processo.alerta_whatsapp;
   if (nenhum) return <span className="g-meta text-muted-foreground">Sem alerta</span>;
   return (
@@ -189,10 +190,10 @@ function CanaisDeAlerta({ processo }: { processo: ProcessoInteresse }) {
  * prazo" não é "vence primeiro". Sem score vai para `-1` pelo mesmo motivo, e
  * é só ordenação: na célula o ausente continua sendo `ValorIndisponivel`.
  */
-const CHAVE_ORDENACAO: Record<string, (p: ProcessoInteresse) => string | number> = {
+const CHAVE_ORDENACAO: Record<string, (p: Pasta) => string | number> = {
   processo: (p) => (p.numero || '').toLowerCase(),
   orgao: (p) => (p.orgao || '').toLowerCase(),
-  decisao: (p) => DECISOES[p.status]?.label ?? p.status,
+  decisao: (p) => DECISOES[p.situacao]?.label ?? p.situacao,
   score: (p) => p.ia_score ?? -1,
   prazo: (p) => (p.data_encerramento ? new Date(p.data_encerramento).getTime() : Number.POSITIVE_INFINITY),
 };
@@ -200,8 +201,11 @@ const CHAVE_ORDENACAO: Record<string, (p: ProcessoInteresse) => string | number>
 export default function MeusCompromissos() {
   const { user } = useAuth();
   const { empresas } = useEmpresa();
-  const [processos, setProcessos] = useState<ProcessoInteresse[]>([]);
+  const [processos, setProcessos] = useState<Pasta[]>([]);
   const [loading, setLoading] = useState(true);
+  // Falha de consulta não vira lista vazia (princípio 3): fica dita na tela.
+  const [erro, setErro] = useState<string | null>(null);
+  const [acompanhando, setAcompanhando] = useState<string | null>(null);
   const [filtroEmpresa, setFiltroEmpresa] = useState<string>('all');
   const [busca, setBusca] = useState('');
   // A aba mora em `?aba=` para o Voltar do navegador e o F5 caírem onde a
@@ -213,7 +217,7 @@ export default function MeusCompromissos() {
   const [analisandoIA, setAnalisandoIA] = useState<string | null>(null);
   const [iaResult, setIaResult] = useState<Record<string, string>>({});
   const [arquivando, setArquivando] = useState<string | null>(null);
-  const { arquivarProcesso } = useLicitacaoIntegration();
+  const { arquivarProcesso, criarCompromisso } = useLicitacaoIntegration();
   const qc = useQueryClient();
   // Aba "Removidos": o log de exclusões sempre existiu (processos_exclusao_log,
   // com o motivo digitado em cada remoção) — só não tinha tela. Sem esta
@@ -222,7 +226,7 @@ export default function MeusCompromissos() {
   const [removidosCarregado, setRemovidosCarregado] = useState(false);
 
   // State for rejection/removal dialog
-  const [acaoDialog, setAcaoDialog] = useState<{ tipo: 'rejeitar' | 'remover'; processo: ProcessoInteresse } | null>(null);
+  const [acaoDialog, setAcaoDialog] = useState<{ tipo: 'rejeitar' | 'remover'; processo: Pasta } | null>(null);
   // Remover sempre foi só o acompanhamento — a licitação em gestão ficava viva e
   // reaparecia depois, parecendo "erro no sistema" (aconteceu duas vezes com os
   // mesmos processos). Default ligado: quem remove quase sempre quer tirar o
@@ -253,17 +257,34 @@ export default function MeusCompromissos() {
     // Semente da última visita: pinta já e atualiza em silêncio. Também
     // desliga o spinner das recargas por realtime — piscava a tela inteira a
     // cada mudança de linha.
-    const semente = qc.getQueryData<ProcessoInteresse[]>(['compromissos-semente', user.id]);
+    const semente = qc.getQueryData<Pasta[]>(['pastas-semente', user.id]);
     if (semente && semente.length > 0) { setProcessos(semente); setLoading(false); }
     else setLoading(true);
-    const { data } = await supabase
-      .from('processos_interesse')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('data_encerramento', { ascending: true });
-    const linhas = (data || []) as ProcessoInteresse[];
+
+    // O universo é o do quadro: o RLS já limita `licitacoes` às empresas de
+    // que a pessoa é membro, e o filtro "Empresa" da barra escolhe entre elas.
+    const [quadro, compromissos] = await Promise.all([
+      supabase
+        .from('licitacoes')
+        .select('id, empresa_id, numero, orgao, objeto, modalidade, ano_compra, valor_estimado, uf, municipio, data_abertura, data_encerramento, portal, url_edital, status, arquivado_em')
+        .order('data_encerramento', { ascending: true }),
+      supabase
+        .from('processos_interesse')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('data_encerramento', { ascending: true }),
+    ]);
+
+    const falha = quadro.error || compromissos.error;
+    setErro(falha ? (falha.message || 'Não foi possível carregar as pastas.') : null);
+    if (quadro.error) { setLoading(false); return; }
+
+    const linhas = montarPastas(
+      (quadro.data || []) as ProcessoDaEmpresa[],
+      (compromissos.data || []) as CompromissoPessoal[],
+    );
     setProcessos(linhas);
-    qc.setQueryData(['compromissos-semente', user.id], linhas);
+    qc.setQueryData(['pastas-semente', user.id], linhas);
     setLoading(false);
   }, [user, qc]);
 
@@ -277,29 +298,71 @@ export default function MeusCompromissos() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'processos_interesse', filter: `user_id=eq.${user.id}` }, () => {
         carregarProcessos();
       })
+      // Duas fontes, um canal: o processo muda no Kanban (status, arquivamento,
+      // processo novo) e o compromisso muda aqui — como na aba da Gestão.
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'licitacoes' }, () => {
+        carregarProcessos();
+      })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [user, carregarProcessos]);
 
-  const handleAprovar = async (id: string) => {
-    await supabase.from('processos_interesse').update({ aprovado_usuario: true, status: 'aprovado' }).eq('id', id);
+  const handleAprovar = async (p: Pasta) => {
+    if (!p.compromissoId) return;
+    const { error } = await supabase
+      .from('processos_interesse')
+      .update({ aprovado_usuario: true, status: 'aprovado' })
+      .eq('id', p.compromissoId);
+    if (error) { toast.error(error.message || 'Erro ao aprovar o processo.'); return; }
     toast.success('Processo aprovado!');
     carregarProcessos();
   };
 
+  /**
+   * Cria o compromisso próprio numa pasta do quadro que a pessoa ainda não
+   * acompanha. É idempotente por (usuário, licitação) no hook; depois da
+   * recarga a pasta troca de chave (`licitacao:<id>` → id do compromisso), e
+   * a seleção segue junto para o painel não fechar no meio do gesto.
+   */
+  const acompanhar = async (p: Pasta) => {
+    if (!p.licitacaoId) return;
+    setAcompanhando(p.id);
+    try {
+      const id = await criarCompromisso({
+        numero: p.numero || '',
+        orgao: p.orgao || '',
+        objeto: p.objeto || '',
+        modalidade: p.modalidade || undefined,
+        valor_estimado: p.valor_estimado,
+        uf: p.uf,
+        municipio: p.municipio,
+        data_abertura: p.data_abertura,
+        data_encerramento: p.data_encerramento,
+        portal: p.portal,
+        url: p.url,
+      }, p.licitacaoId, p.empresa_id);
+      if (!id) { toast.error('Não foi possível criar o seu acompanhamento.'); return; }
+      toast.success('Agora você acompanha este processo — os avisos de prazo passam a chegar para você.');
+      await carregarProcessos();
+      setSelecionadoId(id);
+    } finally {
+      setAcompanhando(null);
+    }
+  };
+
   /** Arquivar aqui move o card para "Arquivada" no Kanban quando há vínculo. */
-  const handleArquivar = async (p: ProcessoInteresse) => {
-    const restaurar = p.status === 'arquivado';
+  const handleArquivar = async (p: Pasta) => {
+    const restaurar = p.arquivada || p.situacao === 'arquivado';
     setArquivando(p.id);
     try {
-      if (p.licitacao_id) {
-        const ok = await arquivarProcesso(p.licitacao_id, !restaurar);
+      if (p.licitacaoId) {
+        const ok = await arquivarProcesso(p.licitacaoId, !restaurar);
         if (!ok) return;
-      } else {
+      } else if (p.compromissoId) {
         const { error } = await supabase
           .from('processos_interesse')
           .update({ status: restaurar ? 'interessado' : 'arquivado' })
-          .eq('id', p.id);
+          .eq('id', p.compromissoId);
         if (error) { toast.error('Erro ao arquivar processo.'); return; }
       }
       toast.success(restaurar ? 'Processo restaurado.' : 'Processo arquivado.');
@@ -325,11 +388,14 @@ export default function MeusCompromissos() {
     }
     setExecutandoAcao(true);
     const { tipo, processo } = acaoDialog;
+    // Rejeitar e remover agem sobre o compromisso próprio; sem ele não há o
+    // que rejeitar nem remover (o painel nem oferece os botões).
+    if (!processo.compromissoId) return;
     try {
       // Log the action with reason
       await supabase.from('processos_exclusao_log').insert({
         user_id: user.id,
-        processo_interesse_id: processo.id,
+        processo_interesse_id: processo.compromissoId,
         processo_numero: processo.numero,
         processo_orgao: processo.orgao,
         processo_objeto: processo.objeto,
@@ -339,12 +405,12 @@ export default function MeusCompromissos() {
       });
 
       if (tipo === 'rejeitar') {
-        await supabase.from('processos_interesse').update({ status: 'rejeitado' }).eq('id', processo.id);
+        await supabase.from('processos_interesse').update({ status: 'rejeitado' }).eq('id', processo.compromissoId);
         toast.info('Processo rejeitado.');
       } else {
-        await supabase.from('processos_interesse').delete().eq('id', processo.id);
-        if (arquivarJunto && processo.licitacao_id) {
-          const ok = await arquivarProcesso(processo.licitacao_id, true);
+        await supabase.from('processos_interesse').delete().eq('id', processo.compromissoId);
+        if (arquivarJunto && processo.licitacaoId) {
+          const ok = await arquivarProcesso(processo.licitacaoId, true);
           toast.success(ok
             ? 'Removido da lista e arquivado na gestão.'
             : 'Removido da lista — mas não foi possível arquivar na gestão.');
@@ -362,7 +428,9 @@ export default function MeusCompromissos() {
     }
   };
 
-  const handleAnaliseIA = async (p: ProcessoInteresse) => {
+  const handleAnaliseIA = async (p: Pasta) => {
+    if (!p.compromissoId) return;
+    const compromissoId = p.compromissoId;
     setAnalisandoIA(p.id);
     let content = '';
     await streamAIChat({
@@ -411,7 +479,7 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
           ia_recomendacao: content,
           ia_score: score,
           status: 'analisando',
-        }).eq('id', p.id);
+        }).eq('id', compromissoId);
       },
       onError: () => {
         setAnalisandoIA(null);
@@ -451,8 +519,10 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
     // Arquivados só aparecem na aba própria — inclusive em "Todos".
     // Regra antiga e silenciosa: quem abria "Todos" não tinha como saber que
     // faltava gente. O rodapé da tabela agora diz quantos ficaram de fora.
-    if (filtroStatus === 'all') return p.status !== 'arquivado';
-    return p.status === filtroStatus;
+    // (`situacao` já é 'arquivado' quando o PROCESSO foi arquivado — o
+    // arquivamento vem do quadro, como na aba.)
+    if (filtroStatus === 'all') return p.situacao !== 'arquivado';
+    return p.situacao === filtroStatus;
   }), [baseDosNumeros, filtroStatus]);
 
   const ordenados = useMemo(() => {
@@ -468,11 +538,11 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
   }, [filtrados, ordenacao]);
 
   const stats = {
-    total: baseDosNumeros.filter(p => p.status !== 'arquivado').length,
-    interessados: baseDosNumeros.filter(p => p.status === 'interessado').length,
-    aprovados: baseDosNumeros.filter(p => p.status === 'aprovado').length,
-    cadastrados: baseDosNumeros.filter(p => p.status === 'cadastrado').length,
-    arquivados: baseDosNumeros.filter(p => p.status === 'arquivado').length,
+    total: baseDosNumeros.filter(p => p.situacao !== 'arquivado').length,
+    interessados: baseDosNumeros.filter(p => p.situacao === 'interessado').length,
+    aprovados: baseDosNumeros.filter(p => p.situacao === 'aprovado').length,
+    cadastrados: baseDosNumeros.filter(p => p.situacao === 'cadastrado').length,
+    arquivados: baseDosNumeros.filter(p => p.situacao === 'arquivado').length,
     urgentes: baseDosNumeros.filter(p => {
       if (!p.data_encerramento) return false;
       const diff = new Date(p.data_encerramento).getTime() - Date.now();
@@ -529,7 +599,7 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
     },
   ];
 
-  const colunas: ColunaGestao<ProcessoInteresse>[] = [
+  const colunas: ColunaGestao<Pasta>[] = [
     {
       chave: 'processo',
       titulo: 'Processo',
@@ -540,7 +610,7 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
         // Identidade padronizada: cada portal grava o número do seu jeito
         // ("P.E. 044", "6", "Pregão Eletrônico SRP Nº 014") — aqui todos leem
         // igual, e o hover preserva a forma original.
-        const identidade = identidadeDoEdital({ numeroCompra: p.numero, modalidade: p.modalidade });
+        const identidade = identidadeDoEdital({ numeroCompra: p.numero, modalidade: p.modalidade, anoCompra: p.ano_compra });
         return (
           <div className="flex min-w-0 flex-col gap-0.5">
             <span className="flex flex-wrap items-center gap-1.5">
@@ -578,12 +648,14 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
       prioridade: 'sempre',
       ordenavel: true,
       render: (p) => {
-        const d = DECISOES[p.status] ?? DECISOES.interessado;
+        const d = DECISOES[p.situacao] ?? DECISOES.interessado;
         return (
           <SeloSituacao
             tom={d.tom}
             icone={d.icone}
-            explicacao="Decisão de participação. O andamento do processo na empresa fica no Kanban."
+            explicacao={p.semCompromissoProprio
+              ? 'Você ainda não acompanha este processo — a decisão é sua quando acompanhar. O andamento na empresa fica no Kanban.'
+              : 'Decisão de participação. O andamento do processo na empresa fica no Kanban.'}
           >
             {d.label}
           </SeloSituacao>
@@ -633,9 +705,9 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
       // também selecione a linha.
       render: (p) => (
         <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-          {p.licitacao_id && (
+          {p.licitacaoId && (
             <Button asChild size="sm" variant="ghost" title="Abrir o processo na gestão">
-              <Link to={`/processo/${p.licitacao_id}`} aria-label={`Abrir o processo ${p.numero} na gestão`}>
+              <Link to={`/processo/${p.licitacaoId}`} aria-label={`Abrir o processo ${p.numero} na gestão`}>
                 <FolderOpen aria-hidden="true" />
               </Link>
             </Button>
@@ -705,14 +777,14 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
   ];
 
   const identidadeSelecionada = selecionado
-    ? identidadeDoEdital({ numeroCompra: selecionado.numero, modalidade: selecionado.modalidade })
+    ? identidadeDoEdital({ numeroCompra: selecionado.numero, modalidade: selecionado.modalidade, anoCompra: selecionado.ano_compra })
     : null;
 
   const camposDoPainel: Campo[] = selecionado ? [
     { rotulo: 'Órgão', valor: selecionado.orgao, largo: true },
     {
       rotulo: 'Empresa',
-      valor: empresaMap[selecionado.empresa_id] ?? <ValorIndisponivel razao="Sem empresa vinculada" />,
+      valor: (selecionado.empresa_id && empresaMap[selecionado.empresa_id]) || <ValorIndisponivel razao="Sem empresa vinculada" />,
     },
     {
       rotulo: 'Valor estimado',
@@ -744,7 +816,13 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
         ? <ValorIndisponivel razao="Sem análise" />
         : `${selecionado.ia_score}%`,
     },
-    { rotulo: 'Na sua lista desde', valor: formatData(selecionado.created_at), numerico: true },
+    {
+      rotulo: 'Na sua lista desde',
+      numerico: true,
+      valor: selecionado.acompanhadaDesde
+        ? formatData(selecionado.acompanhadaDesde)
+        : <ValorIndisponivel razao="Você ainda não acompanha" />,
+    },
   ] : [];
 
   const analiseVisivel = selecionado
@@ -762,7 +840,7 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
         )}
         <div className="flex flex-wrap items-center gap-2">
           {(() => {
-            const d = DECISOES[selecionado.status] ?? DECISOES.interessado;
+            const d = DECISOES[selecionado.situacao] ?? DECISOES.interessado;
             return <SeloSituacao tom={d.tom} icone={d.icone}>{d.label}</SeloSituacao>;
           })()}
           {identidadeSelecionada.srpNoTexto && <Badge variant="muted">SRP</Badge>}
@@ -786,7 +864,9 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
         <div className="flex flex-col gap-1">
           <CanaisDeAlerta processo={selecionado} />
           <p className="g-meta text-muted-foreground">
-            Por onde este compromisso avisa quando o prazo se aproxima.
+            {selecionado.semCompromissoProprio
+              ? 'Este processo está no quadro da empresa, mas você ainda não o acompanha: os avisos de prazo não chegam para você.'
+              : 'Por onde este compromisso avisa quando o prazo se aproxima.'}
           </p>
         </div>
       </BlocoDoPainel>
@@ -801,21 +881,33 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
 
       <BlocoDoPainel titulo="Ações">
         <div className="flex flex-wrap gap-2">
-          {selecionado.status === 'interessado' && (
-            <>
-              <Button size="sm" variant="outline" onClick={() => handleAnaliseIA(selecionado)} disabled={analisandoIA === selecionado.id}>
-                <Brain aria-hidden="true" />
-                {analisandoIA === selecionado.id ? 'Analisando...' : 'IA Analisar'}
-              </Button>
-              <Button size="sm" onClick={() => handleAprovar(selecionado.id)}>
-                <CheckCircle2 aria-hidden="true" /> Aprovar
-              </Button>
-            </>
-          )}
-          {selecionado.status === 'analisando' && (
-            <Button size="sm" onClick={() => handleAprovar(selecionado.id)}>
-              <CheckCircle2 aria-hidden="true" /> Aprovar
+          {selecionado.semCompromissoProprio ? (
+            // Sem compromisso próprio não há decisão nem análise para agir:
+            // primeiro a pessoa acompanha, depois decide.
+            <Button
+              size="sm"
+              onClick={() => acompanhar(selecionado)}
+              disabled={acompanhando === selecionado.id || !selecionado.licitacaoId}
+            >
+              {acompanhando === selecionado.id
+                ? <Loader2 className="animate-spin" aria-hidden="true" />
+                : <BellPlus aria-hidden="true" />}
+              Acompanhar
             </Button>
+          ) : (
+            <>
+              {selecionado.situacao === 'interessado' && (
+                <Button size="sm" variant="outline" onClick={() => handleAnaliseIA(selecionado)} disabled={analisandoIA === selecionado.id}>
+                  <Brain aria-hidden="true" />
+                  {analisandoIA === selecionado.id ? 'Analisando...' : 'IA Analisar'}
+                </Button>
+              )}
+              {(selecionado.situacao === 'interessado' || selecionado.situacao === 'analisando') && (
+                <Button size="sm" onClick={() => handleAprovar(selecionado)}>
+                  <CheckCircle2 aria-hidden="true" /> Aprovar
+                </Button>
+              )}
+            </>
           )}
           <Button
             size="sm"
@@ -823,16 +915,16 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
             className="text-muted-foreground"
             onClick={() => handleArquivar(selecionado)}
             disabled={arquivando === selecionado.id}
-            title={selecionado.licitacao_id ? 'Sincroniza com o Kanban' : undefined}
+            title={selecionado.licitacaoId ? 'Sincroniza com o Kanban' : undefined}
           >
             {arquivando === selecionado.id
               ? <Loader2 className="animate-spin" aria-hidden="true" />
-              : selecionado.status === 'arquivado'
+              : selecionado.situacao === 'arquivado'
               ? <ArchiveRestore aria-hidden="true" />
               : <Archive aria-hidden="true" />}
-            {selecionado.status === 'arquivado' ? 'Restaurar' : 'Arquivar'}
+            {selecionado.situacao === 'arquivado' ? 'Restaurar' : 'Arquivar'}
           </Button>
-          {selecionado.status !== 'rejeitado' && (
+          {!selecionado.semCompromissoProprio && selecionado.situacao !== 'rejeitado' && (
             <Button
               size="sm"
               variant="ghost"
@@ -842,7 +934,7 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
               <XCircle aria-hidden="true" /> Rejeitar
             </Button>
           )}
-          {selecionado.status !== 'rejeitado' && (
+          {!selecionado.semCompromissoProprio && selecionado.situacao !== 'rejeitado' && (
             <Button size="sm" variant="ghost" onClick={() => setAcaoDialog({ tipo: 'remover', processo: selecionado })}>
               <Trash2 aria-hidden="true" /> Remover
             </Button>
@@ -850,9 +942,9 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
         </div>
 
         <div className="mt-2 flex flex-wrap gap-2">
-          {selecionado.licitacao_id ? (
+          {selecionado.licitacaoId ? (
             <Button asChild size="sm" variant="outline">
-              <Link to={`/processo/${selecionado.licitacao_id}`}>
+              <Link to={`/processo/${selecionado.licitacaoId}`}>
                 <FolderOpen aria-hidden="true" /> Abrir processo
               </Link>
             </Button>
@@ -901,6 +993,18 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
             cada um conta um estado diferente.
           </p>
         </div>
+
+        {erro && (
+          <div className="flex flex-wrap items-center gap-3 rounded-lg border border-destructive-line bg-destructive-tint p-3">
+            <AlertTriangle className="h-5 w-5 shrink-0 text-destructive-ink" aria-hidden="true" />
+            <p className="min-w-0 flex-1 text-sm leading-5 text-destructive-ink">
+              Lista incompleta — {erro} O que está abaixo pode não ser tudo.
+            </p>
+            <Button type="button" variant="outline" size="sm" onClick={carregarProcessos}>
+              <RefreshCw aria-hidden="true" /> Tentar novamente
+            </Button>
+          </div>
+        )}
 
         <BarraFiltros
           busca={busca}
@@ -960,8 +1064,8 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
               vazio={
                 <EstadoVazio
                   icone={<ListChecks />}
-                  titulo="Nenhum processo na lista"
-                  descricao="Marque interesse em editais no Monitoramento para adicioná-los aqui. Processo que não passa pelo PNCP (como dispensas em sistemas estaduais) entra por uma pasta manual."
+                  titulo="Nenhum processo na gestão"
+                  descricao="Inicie um processo no Monitoramento de Editais — a pasta nasce junto, com prazos e alertas. Processo que não passa pelo PNCP (como dispensas em sistemas estaduais) entra por uma pasta manual."
                   acao={
                     <>
                       <Button asChild variant="outline">
@@ -974,7 +1078,7 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
               }
               rodape={
                 <>
-                  <span className="tabular-nums">{ordenados.length} compromisso(s)</span>
+                  <span className="tabular-nums">{ordenados.length} pasta(s)</span>
                   {/* A exclusão dos arquivados em "Todos" era invisível: a aba
                       dizia "Todos" e escondia gente. Agora diz quantos, e onde. */}
                   {filtroStatus === 'all' && (
@@ -1005,14 +1109,14 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
                 {acaoDialog?.tipo === 'rejeitar' ? 'Rejeitar processo' : 'Remover processo'}
               </DialogTitle>
               <DialogDescription>
-                Processo <strong>{acaoDialog ? identidadeDoEdital({ numeroCompra: acaoDialog.processo.numero, modalidade: acaoDialog.processo.modalidade }).rotulo : ''}</strong> — {acaoDialog?.processo.orgao}
+                Processo <strong>{acaoDialog ? identidadeDoEdital({ numeroCompra: acaoDialog.processo.numero, modalidade: acaoDialog.processo.modalidade, anoCompra: acaoDialog.processo.ano_compra }).rotulo : ''}</strong> — {acaoDialog?.processo.orgao}
               </DialogDescription>
               {acaoDialog?.tipo === 'remover' && (
                 <p className="g-corpo text-muted-foreground">
-                  Remover tira o processo <strong>da sua lista de acompanhamento</strong>.
-                  {acaoDialog?.processo.licitacao_id
-                    ? ' O processo em gestão (Kanban/Painel) continua existindo — marque abaixo para arquivá-lo junto.'
-                    : ''}
+                  Remover desfaz <strong>o seu acompanhamento</strong> (decisão e alertas).
+                  {acaoDialog?.processo.licitacaoId
+                    ? ' O processo continua no quadro da empresa e nesta lista — marque abaixo para arquivá-lo junto.'
+                    : ' A pasta manual sai da sua lista.'}
                 </p>
               )}
             </DialogHeader>
@@ -1030,7 +1134,7 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
                 />
                 <p className="g-meta text-right text-muted-foreground tabular-nums">{motivoTexto.length}/500</p>
               </div>
-              {acaoDialog?.tipo === 'remover' && acaoDialog?.processo.licitacao_id && (
+              {acaoDialog?.tipo === 'remover' && acaoDialog?.processo.licitacaoId && (
                 <div className="flex items-start gap-2">
                   <Checkbox
                     id="arquivar-junto"

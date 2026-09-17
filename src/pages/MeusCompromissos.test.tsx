@@ -74,7 +74,52 @@ const COMPROMISSOS = [
   },
 ];
 
+/**
+ * O quadro da empresa (17/09: a página passou a listar o quadro, como a aba
+ * Compromissos da Gestão). `lic-1` é o processo do compromisso p1; `lic-3` é
+ * de um colega — está no quadro e a pessoa ainda não o acompanha.
+ */
+const QUADRO = [
+  {
+    id: 'lic-1',
+    empresa_id: 'e1',
+    numero: '044/2026',
+    orgao: 'Prefeitura de Ananindeua',
+    objeto: 'Aquisição de material de expediente para as unidades administrativas',
+    modalidade: 'Pregão Eletrônico',
+    ano_compra: null,
+    valor_estimado: 125000,
+    uf: 'PA',
+    municipio: 'Ananindeua',
+    data_abertura: null,
+    data_encerramento: DAQUI_A_DEZ_DIAS,
+    portal: 'PNCP',
+    url_edital: 'https://exemplo.gov.br/edital',
+    status: 'Em Análise',
+    arquivado_em: null,
+  },
+  {
+    id: 'lic-3',
+    empresa_id: 'e1',
+    numero: '077/2026',
+    orgao: 'Ministério da Saúde',
+    objeto: 'Água mineral natural, sem gás, em embalagem plástica descartável',
+    modalidade: 'Pregão Eletrônico',
+    ano_compra: null,
+    valor_estimado: 834820.8,
+    uf: 'DF',
+    municipio: 'Brasília',
+    data_abertura: null,
+    data_encerramento: DAQUI_A_DEZ_DIAS,
+    portal: 'Compras.gov',
+    url_edital: null,
+    status: 'Monitorando',
+    arquivado_em: null,
+  },
+];
+
 const dadosPorTabela: Record<string, unknown[]> = {
+  licitacoes: QUADRO,
   processos_interesse: COMPROMISSOS,
   processos_exclusao_log: [],
 };
@@ -220,6 +265,22 @@ describe('MeusCompromissos — tabela, abas e painel', () => {
     expect(
       screen.getAllByText('Aquisição de material de expediente para as unidades administrativas').length,
     ).toBeGreaterThan(0);
+  });
+
+  it('a pasta do colega entra na lista, sem alertas seus, e o painel oferece Acompanhar em vez de Remover', async () => {
+    montar();
+    const rotulo = await screen.findByText('Pregão Eletrônico nº 77/2026');
+
+    // A linha existe (o universo é o quadro) e diz que os alertas não são desta pessoa.
+    expect(screen.getByText('Ministério da Saúde')).toBeTruthy();
+    expect(screen.getByText('Sem alertas seus')).toBeTruthy();
+
+    fireEvent.click(rotulo);
+    expect(screen.getByRole('button', { name: /Acompanhar/ })).toBeTruthy();
+    // Decisão, rejeição e remoção são do compromisso próprio — que ainda não existe.
+    expect(screen.queryByRole('button', { name: /^Remover$/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Rejeitar$/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Aprovar$/ })).toBeNull();
   });
 
   it('o diálogo de remover exige motivo antes de confirmar', async () => {

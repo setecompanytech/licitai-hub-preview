@@ -38,6 +38,11 @@ export type ProcessoDaEmpresa = {
   data_encerramento: string | null;
   status: string | null;
   arquivado_em: string | null;
+  /** Colunas a mais que a página completa usa; a aba não precisa delas. */
+  empresa_id?: string | null;
+  data_abertura?: string | null;
+  portal?: string | null;
+  url_edital?: string | null;
 };
 
 /** Compromisso pessoal — a camada de acompanhamento de quem está olhando. */
@@ -58,6 +63,12 @@ export type CompromissoPessoal = {
   alerta_email: boolean | null;
   alerta_whatsapp: boolean | null;
   created_at?: string | null;
+  empresa_id?: string | null;
+  data_abertura?: string | null;
+  portal?: string | null;
+  url?: string | null;
+  auto_cadastro?: boolean | null;
+  ia_recomendacao?: string | null;
 };
 
 export type Pasta = {
@@ -87,6 +98,16 @@ export type Pasta = {
    * compromisso próprio nela — logo, não recebe os alertas de prazo.
    */
   semCompromissoProprio: boolean;
+  empresa_id: string | null;
+  data_abertura: string | null;
+  portal: string | null;
+  /** Link do edital no portal de origem. */
+  url: string | null;
+  /** Compromisso criado pelo monitoramento automático, não por decisão da pessoa. */
+  auto_cadastro: boolean;
+  ia_recomendacao: string | null;
+  /** Desde quando esta pessoa acompanha — `null` para quem ainda não acompanha. */
+  acompanhadaDesde: string | null;
 };
 
 /** Ordenação: prazo mais apertado primeiro; sem prazo, no fim. */
@@ -143,6 +164,15 @@ export function montarPastas(
       alerta_email: c?.alerta_email ?? null,
       alerta_whatsapp: c?.alerta_whatsapp ?? null,
       semCompromissoProprio: !c,
+      // O processo manda no que é do edital; o compromisso completa o que o
+      // processo não tem (a pasta manual gravava só na tabela pessoal).
+      empresa_id: p.empresa_id ?? c?.empresa_id ?? null,
+      data_abertura: p.data_abertura ?? c?.data_abertura ?? null,
+      portal: p.portal ?? c?.portal ?? null,
+      url: p.url_edital ?? c?.url ?? null,
+      auto_cadastro: !!c?.auto_cadastro,
+      ia_recomendacao: c?.ia_recomendacao ?? null,
+      acompanhadaDesde: c?.created_at ?? null,
     };
   });
 
@@ -168,6 +198,13 @@ export function montarPastas(
       alerta_email: c.alerta_email,
       alerta_whatsapp: c.alerta_whatsapp,
       semCompromissoProprio: false,
+      empresa_id: c.empresa_id ?? null,
+      data_abertura: c.data_abertura ?? null,
+      portal: c.portal ?? null,
+      url: c.url ?? null,
+      auto_cadastro: !!c.auto_cadastro,
+      ia_recomendacao: c.ia_recomendacao ?? null,
+      acompanhadaDesde: c.created_at ?? null,
     });
   }
 

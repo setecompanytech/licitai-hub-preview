@@ -126,4 +126,45 @@ describe('montarPastas', () => {
 
     expect(pastas.map((p) => p.licitacaoId)).toEqual(['perto', 'longe', 'sem', 'arq']);
   });
+
+  it('carrega o que a página completa precisa: empresa, portal, URL e desde quando acompanha', () => {
+    const [minha, doColega, manual] = montarPastas(
+      [
+        processo({
+          id: 'l1', empresa_id: 'e1', portal: 'PNCP', url_edital: 'https://pncp.gov.br/edital/1',
+          data_abertura: '2026-09-20T13:00:00Z', data_encerramento: '2026-09-20T09:00:00Z',
+        }),
+        processo({ id: 'l2', empresa_id: 'e1', portal: null, url_edital: null, data_encerramento: '2026-09-21T09:00:00Z' }),
+      ],
+      [
+        compromisso({
+          id: 'c1', licitacao_id: 'l1', empresa_id: 'e1', portal: 'Compras.gov', url: 'https://outro',
+          auto_cadastro: true, ia_recomendacao: 'Parecer', created_at: '2026-09-01T10:00:00Z',
+        }),
+        compromisso({
+          id: 'c9', licitacao_id: null, empresa_id: 'e1', portal: 'SIGA', url: 'https://siga',
+          data_encerramento: '2026-09-22T09:00:00Z', created_at: '2026-09-03T10:00:00Z',
+        }),
+      ],
+    );
+
+    // O processo manda no que é do edital; o compromisso só completa.
+    expect(minha.portal).toBe('PNCP');
+    expect(minha.url).toBe('https://pncp.gov.br/edital/1');
+    expect(minha.data_abertura).toBe('2026-09-20T13:00:00Z');
+    expect(minha.empresa_id).toBe('e1');
+    expect(minha.auto_cadastro).toBe(true);
+    expect(minha.ia_recomendacao).toBe('Parecer');
+    expect(minha.acompanhadaDesde).toBe('2026-09-01T10:00:00Z');
+
+    // Quem ainda não acompanha não tem "desde quando" — e não é auto-cadastro.
+    expect(doColega.acompanhadaDesde).toBeNull();
+    expect(doColega.auto_cadastro).toBe(false);
+    expect(doColega.portal).toBeNull();
+
+    // Pasta manual: tudo vem do compromisso.
+    expect(manual.portal).toBe('SIGA');
+    expect(manual.url).toBe('https://siga');
+    expect(manual.acompanhadaDesde).toBe('2026-09-03T10:00:00Z');
+  });
 });

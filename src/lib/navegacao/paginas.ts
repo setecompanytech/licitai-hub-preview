@@ -130,7 +130,9 @@ export const paginasPadrao: PaginaPadrao[] = [
   },
   {
     rota: '/meus-compromissos', grupo: 'Gestão de Processos', titulo: 'Meus compromissos', icone: ListChecks,
-    descricao: 'O que é seu para fazer, por processo e por prazo',
+    // A lista é o quadro da empresa (como a aba Compromissos da Gestão); o que
+    // é "seu" nela é a decisão e os alertas de cada pasta.
+    descricao: 'As pastas da empresa, com a sua decisão e os seus alertas em cada uma',
     padrao: 'cartoes', abas: ['Ativos', 'Removidos'],
   },
   {
