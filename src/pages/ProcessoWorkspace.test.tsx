@@ -250,10 +250,18 @@ describe('ProcessoWorkspace — o dossiê do processo', () => {
     // Visão geral: desfecho, ficha e os atalhos da antiga aba Módulos.
     expect(screen.getByTestId('desfecho')).toBeTruthy();
     expect(screen.getByText('Abrir nos módulos')).toBeTruthy();
-    // Os oito atalhos, todos levando o processo junto em `?lid=`.
+    // Sete atalhos de módulo levam o processo junto em `?lid=`. O do edital não
+    // é link para fora: desde 17/09 abre a aba Documentos do próprio prontuário
+    // (antes mandava para a aba de extração da Precificação).
     const atalhos = screen.getAllByRole('link').filter((a) =>
       (a.getAttribute('href') ?? '').includes('lid=lic-1'));
-    expect(atalhos).toHaveLength(8);
+    expect(atalhos).toHaveLength(7);
+    expect(screen.queryByText('Edital / Itens')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /Edital e anexos/ }));
+    await waitFor(() =>
+      expect(screen.getByRole('tab', { name: /Documentos/ }).getAttribute('aria-selected')).toBe('true'));
+    clicarNaAba(/Visão geral/);
+    await screen.findByText('Abrir nos módulos');
 
     clicarNaAba(/Documentos/);
     // Edital original, documentos editáveis e o antigo conteúdo de Anexos.

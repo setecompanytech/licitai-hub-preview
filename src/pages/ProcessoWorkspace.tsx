@@ -58,8 +58,26 @@ interface Licitacao {
   operador_id: string | null;
 }
 
-const ATALHOS = [
-  { label: 'Edital / Itens', path: '/precificacao?tab=extracao-itens', icon: FileText, descricao: 'Visualizar itens extraídos do edital' },
+/**
+ * Um atalho leva a um MÓDULO fora do prontuário (`path`, que abre já apontado
+ * para o processo com `?lid=`) ou a uma ABA do próprio prontuário (`aba`).
+ *
+ * A segunda forma existe por causa do "Edital / Itens": ele mandava para a
+ * aba de extração da Precificação — destino de antes de o prontuário ter a
+ * aba Documentos, onde o edital e os anexos moram hoje. Quem clica em
+ * "Edital" quer o edital, não uma planilha (17/09).
+ */
+type Atalho = {
+  label: string;
+  icon: typeof FileText;
+  descricao: string;
+} & (
+  | { path: string; aba?: undefined }
+  | { aba: string; path?: undefined }
+);
+
+const ATALHOS: Atalho[] = [
+  { label: 'Edital e anexos', aba: 'documentos', icon: FileText, descricao: 'Edital original, anexos e documentos do processo' },
   { label: 'Precificação', path: '/precificacao', icon: Calculator, descricao: 'Calcular preços e composição de custos' },
   { label: 'Proposta Comercial', path: '/proposta-tecnica', icon: FileText, descricao: 'Editar proposta técnica e gerar PDF' },
   { label: 'AURÉLIA (IA)', path: '/aurelia', icon: Sparkles, descricao: 'Análise jurídica/contábil com IA' },
@@ -881,23 +899,43 @@ export default function ProcessoWorkspace() {
                 inteira para oito links escondia a ficha atrás de um clique. */}
             <SecaoGestao titulo="Abrir nos módulos">
               <ul className="g-cartao divide-y divide-border">
-                {ATALHOS.map((a) => (
-                  <li key={a.label}>
-                    {/* `?lid=` leva o processo junto: o módulo abre já
-                        apontado para ele, em vez de numa tela em branco. */}
-                    <Link
-                      to={`${a.path}${a.path.includes('?') ? '&' : '?'}lid=${lic.id}`}
-                      className="flex min-h-[44px] items-center gap-3 px-4 py-2 transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-                    >
+                {ATALHOS.map((a) => {
+                  const classe = 'flex min-h-[44px] w-full items-center gap-3 px-4 py-2 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring';
+                  const conteudo = (
+                    <>
                       <a.icon className="w-4 h-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                       <span className="flex min-w-0 flex-1 flex-col sm:flex-row sm:items-baseline sm:gap-2">
                         <span className="g-corpo shrink-0 font-medium text-foreground">{a.label}</span>
                         <span className="g-meta min-w-0 text-muted-foreground sm:truncate">{a.descricao}</span>
                       </span>
                       <ChevronRight className="w-4 h-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                    </Link>
-                  </li>
-                ))}
+                    </>
+                  );
+                  return (
+                    <li key={a.label}>
+                      {a.aba !== undefined ? (
+                        /* Aba do próprio prontuário: troca a aba e volta ao topo,
+                           onde ela está — a lista fica no pé da ficha. */
+                        <button
+                          type="button"
+                          className={classe}
+                          onClick={() => {
+                            definirAba(a.aba);
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }}
+                        >
+                          {conteudo}
+                        </button>
+                      ) : (
+                        /* `?lid=` leva o processo junto: o módulo abre já
+                           apontado para ele, em vez de numa tela em branco. */
+                        <Link to={`${a.path}${a.path.includes('?') ? '&' : '?'}lid=${lic.id}`} className={classe}>
+                          {conteudo}
+                        </Link>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             </SecaoGestao>
           </div>
