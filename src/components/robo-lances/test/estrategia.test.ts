@@ -476,6 +476,14 @@ describe('proximaLeituraMs — ritmo da leitura', () => {
     expect(proximaLeituraMs({ intervaloSegundos: 30, fase: 'suspensa', segundosRestantes: 60 })).toBe(30000);
   });
 
+  it('intervalo configurado abaixo de 10 s vira 10 s fora da iminência — nunca reler o portal a cada segundo', () => {
+    expect(proximaLeituraMs({ intervaloSegundos: 1 })).toBe(10000);
+    expect(proximaLeituraMs({ intervaloSegundos: 5, fase: 'aberta', segundosRestantes: 500 })).toBe(10000);
+    expect(proximaLeituraMs({ intervaloSegundos: 45 })).toBe(45000);
+    // Na iminência a leitura rápida continua.
+    expect(proximaLeituraMs({ intervaloSegundos: 1, fase: 'aberta', segundosRestantes: 90 })).toBe(3000);
+  });
+
   it('intervalo inválido cai em 30 s, nunca em zero', () => {
     for (const i of [0, -5, null, undefined, NaN]) {
       expect(proximaLeituraMs({ intervaloSegundos: i })).toBe(30000);

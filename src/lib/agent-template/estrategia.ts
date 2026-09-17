@@ -389,8 +389,17 @@ function decidirLance(estado) {
  * proxima leitura cai no inicio dela, e nao depois.
  */
 const SEGUNDOS_DE_LEITURA_RAPIDA = 3;
+/**
+ * PISO DO RITMO FORA DA IMINENCIA (17/09/2026). Cada rodada recarrega a pagina
+ * da compra no portal; uma disputa cadastrada com intervalo de 1 s fez o robo
+ * reler o Compras.gov uma vez por segundo (sessao f4adbbe6, 02:49). Acesso
+ * nesse ritmo e o que leva o portal a pedir captcha. Na iminencia a leitura
+ * rapida continua valendo.
+ */
+const SEGUNDOS_MINIMOS_ENTRE_LEITURAS = 10;
 function proximaLeituraMs({ intervaloSegundos, fase, segundosRestantes } = {}) {
-  const base = Number.isFinite(intervaloSegundos) && intervaloSegundos > 0 ? intervaloSegundos : 30;
+  const configurado = Number.isFinite(intervaloSegundos) && intervaloSegundos > 0 ? intervaloSegundos : 30;
+  const base = Math.max(SEGUNDOS_MINIMOS_ENTRE_LEITURAS, configurado);
   if (emIminencia(fase, segundosRestantes) || fase === 'fechada') {
     return Math.min(base, SEGUNDOS_DE_LEITURA_RAPIDA) * 1000;
   }
