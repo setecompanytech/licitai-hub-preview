@@ -77,6 +77,17 @@ export default function RoboLances() {
   const { processoId } = useProcessoAtivo();
 
   const [lances, setLances] = useState<LanceConfig[]>([]);
+  // `?nova=1` abre "Nova sessão" — é por onde a página da disputa manda quem
+  // precisa recadastrar um pregão remarcado num portal sem leitura da licitação.
+  const [novaAberta, setNovaAberta] = useState(false);
+  useEffect(() => {
+    const params = new URLSearchParams(search);
+    if (params.get('nova') !== '1') return;
+    setNovaAberta(true);
+    params.delete('nova');
+    const resto = params.toString();
+    navigate({ search: resto ? `?${resto}` : '' }, { replace: true });
+  }, [search, navigate]);
   // Contador de gravações que afetam as participações. O painel tem a própria
   // leitura; quando algo muda aqui, ele relê em vez de esperar 30 s.
   const [versaoDasDisputas, setVersaoDasDisputas] = useState(0);
@@ -148,6 +159,8 @@ export default function RoboLances() {
               <ConfigurarLanceDialog
                 processoAtivoId={processoId}
                 onSave={criarDisputa}
+                aberto={novaAberta}
+                aoMudarAberto={setNovaAberta}
                 trigger={
                   <Button>
                     <Plus className="h-4 w-4" aria-hidden="true" /> Nova sessão

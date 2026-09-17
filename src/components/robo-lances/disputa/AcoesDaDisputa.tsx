@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  AlertTriangle, ArrowDown, Bot, Building2, CalendarDays, ChevronDown, Clock, ExternalLink, FileText, Gavel, Globe, Hand,
+  AlertTriangle, ArrowDown, Bot, Building2, CalendarDays, ChevronDown, Clock, ExternalLink, FileSearch, FileText, Gavel, Globe, Hand,
   Hash, Info, ListChecks, Send, Settings, Shield, Target, Trash2, TrendingDown, Trophy, XCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -49,6 +49,11 @@ type Props = {
    * principal da página. `null` com o robô já na sala ou sem papel de operador.
    */
   entrarAgora?: { enviando: boolean; aoEntrar: () => void } | null;
+  /**
+   * "Conferir alterações da licitação" (17/09/2026): pregão remarcado antes de a
+   * data cadastrada passar também precisa ser conferido. `null` sem papel de operador.
+   */
+  conferirAlteracoes?: (() => void) | null;
 };
 
 /**
@@ -63,7 +68,7 @@ type Props = {
  * Os rótulos são os honestos desta semana: "Marcar como … (manual)" só grava a
  * fase — não inicia nem para o robô —, e o aviso depois do clique repete isso.
  */
-export default function AcoesDaDisputa({ lance, nivel, aoAlterar, aoEncerrar, aoRemover, entrarAgora = null }: Props) {
+export default function AcoesDaDisputa({ lance, nivel, aoAlterar, aoEncerrar, aoRemover, entrarAgora = null, conferirAlteracoes = null }: Props) {
   const { user } = useAuth();
   const { empresaAtiva } = useEmpresa();
   const { registrarResultadoDisputa, registrarPerda } = useLicitacaoIntegration();
@@ -230,6 +235,16 @@ export default function AcoesDaDisputa({ lance, nivel, aoAlterar, aoEncerrar, ao
           <DropdownMenuItem onClick={() => setDetalhesAbertos(true)}>
             <Info className="mr-2 h-4 w-4" aria-hidden="true" /> Detalhes da licitação
           </DropdownMenuItem>
+          {conferirAlteracoes && (
+            <DropdownMenuItem onClick={conferirAlteracoes} className="group flex-col items-start gap-0.5">
+              <span className="inline-flex items-center">
+                <FileSearch className="mr-2 h-4 w-4" aria-hidden="true" /> Conferir alterações da licitação
+              </span>
+              <span className="pl-6 text-xs text-muted-foreground group-focus:text-accent-foreground/85">
+                Pregão remarcado? Compara data, itens, quantidades e unidades com o cadastro.
+              </span>
+            </DropdownMenuItem>
+          )}
           {/* Ícone de mão, não de play/pause: play e pause prometiam ligar e
               desligar o robô. Some com a disputa encerrada — ali o clique não
               fazia nada. */}

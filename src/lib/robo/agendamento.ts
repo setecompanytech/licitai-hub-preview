@@ -84,8 +84,15 @@ export type AcaoPrincipalDaAgenda =
   | { tipo: 'robo-desligado'; texto: string }
   /** Já passou a hora de entrar e a sessão ainda pode ser alcançada. */
   | { tipo: 'hora-de-entrar'; texto: string }
-  /** Sem data e hora (ou a sessão já passou): o destaque leva a definir. */
-  | { tipo: 'definir-data'; rotulo: string };
+  /** Sem data e hora: o destaque leva a definir. */
+  | { tipo: 'definir-data'; rotulo: string }
+  /**
+   * A sessão já passou. NÃO leva a "definir nova data" (Rafael, 17/09/2026):
+   * pregão remarcado quase sempre volta com itens, quantidades e unidades
+   * diferentes, e trocar só a data deixava o robô disputar com os pisos do
+   * edital antigo. O destaque leva a conferir as alterações da licitação.
+   */
+  | { tipo: 'sessao-passou'; texto: string };
 
 const diaCurto = (d: Date) => `${doisDigitos(d.getDate())}/${doisDigitos(d.getMonth() + 1)}`;
 
@@ -100,11 +107,20 @@ const diaCurto = (d: Date) => `${doisDigitos(d.getDate())}/${doisDigitos(d.getMo
  * @param roboLigado o interruptor da empresa; leitura não confirmada conta como
  *        ligado — a tela não acusa o que não leu.
  */
+/**
+ * A sessão agendada já passou — além da janela em que o agendador ainda tenta
+ * entrar. É a mesma régua do botão principal e da linha do cabeçalho.
+ */
+export function sessaoJaPassou(agenda: AgendamentoDaDisputa, agora: Date): boolean {
+  return agenda.tipo === 'agendada' &&
+    agora.getTime() > agenda.sessaoEm.getTime() + MINUTOS_EM_QUE_O_AGENDADOR_AINDA_TENTA * 60_000;
+}
+
 export function acaoPrincipalDaAgenda(agenda: AgendamentoDaDisputa, agora: Date, roboLigado: boolean): AcaoPrincipalDaAgenda {
   if (agenda.tipo !== 'agendada') return { tipo: 'definir-data', rotulo: 'Definir data da sessão' };
   const agoraMs = agora.getTime();
-  if (agoraMs > agenda.sessaoEm.getTime() + MINUTOS_EM_QUE_O_AGENDADOR_AINDA_TENTA * 60_000) {
-    return { tipo: 'definir-data', rotulo: 'Definir nova data' };
+  if (sessaoJaPassou(agenda, agora)) {
+    return { tipo: 'sessao-passou', texto: `A sessão de ${agenda.texto} já passou` };
   }
   const entrada = `${diaCurto(agenda.roboEntraEm)} às ${hora(agenda.roboEntraEm)}`;
   if (!roboLigado) return { tipo: 'robo-desligado', texto: `Robô da empresa desligado — não entra ${entrada}` };

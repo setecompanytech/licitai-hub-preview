@@ -1,13 +1,13 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, Bot, Building2, CalendarDays, FolderOpen, Globe, PowerOff } from 'lucide-react';
+import { AlertTriangle, Bot, Building2, CalendarDays, FileSearch, FolderOpen, Globe, PowerOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import SeloSituacao from '@/components/gestao/SeloSituacao';
 import type { LanceConfig } from '@/components/robo-lances/ConfigurarLanceDialog';
 import type { NivelAutomacao } from '@/components/robo-lances/NivelAutomacaoSelector';
 import { TOM_DO_ESTADO_DO_ROBO, aberturaEmBrasilia } from '@/components/robo-lances/painel/participacoes-no-painel';
 import type { ParticipacaoCarregada } from '@/hooks/useParticipacoesDoRobo';
-import { acaoPrincipalDaAgenda, agendamentoDaDisputa } from '@/lib/robo/agendamento';
+import { acaoPrincipalDaAgenda, agendamentoDaDisputa, sessaoJaPassou } from '@/lib/robo/agendamento';
 import { nomeDoPortal } from '@/lib/robo/portais';
 import { ROTULO_DA_ABA, ROTULO_DO_ESTADO_DO_ROBO } from '@/lib/robo/situacao-da-participacao';
 import FonteDaFaseTexto from './FonteDaFase';
@@ -37,6 +37,8 @@ interface Props {
   roboLigado: boolean;
   /** Abre "Editar parâmetros" — é onde a data e o horário da sessão são definidos. */
   aoDefinirData: () => void;
+  /** Sessão já passou: abre "Conferir alterações da licitação". */
+  aoConferirAlteracoes: () => void;
   /** "Editar parâmetros" — o diálogo é montado pela página, que grava. */
   editar: ReactNode;
   /** O menu "Ações", já com os handlers da disputa. */
@@ -77,6 +79,7 @@ export default function CabecalhoDaDisputa({
   nivel,
   roboLigado,
   aoDefinirData,
+  aoConferirAlteracoes,
   editar,
   acoes,
 }: Props) {
@@ -87,8 +90,13 @@ export default function CabecalhoDaDisputa({
   // o robô entra sozinho, e é ele que precisa estar à vista quando a disputa
   // foi cadastrada com meses de antecedência.
   const agenda = agendamentoDaDisputa({ dataSessao: lance.dataSessao, horario: lance.horario });
+  const agora = new Date();
+  // Sessão passada não "entra sozinho" em nada (print do Rafael, 17/09/2026:
+  // "Sessão 30/07/2026 às 09:30 · o robô entra sozinho às 09:15").
   const quando = agenda.tipo === 'agendada'
-    ? `Sessão ${agenda.texto} · o robô entra sozinho ${agenda.textoEntrada}`
+    ? sessaoJaPassou(agenda, agora)
+      ? `Sessão ${agenda.texto} — já passou`
+      : `Sessão ${agenda.texto} · o robô entra sozinho ${agenda.textoEntrada}`
     : abertura
       ? abertura.temHorario
         ? `Abertura ${abertura.texto} (Brasília)`
@@ -128,10 +136,22 @@ export default function CabecalhoDaDisputa({
 
   const manual = participacao?.projecao.faseInformadaPor === 'marcacao_manual';
 
-  const acaoDaAgenda = acaoPrincipalDaAgenda(agenda, new Date(), roboLigado);
+  const acaoDaAgenda = acaoPrincipalDaAgenda(agenda, agora, roboLigado);
   const principal = emAndamento ? (
     <BotaoDePararRobo parada={parada} />
-  ) : !podeOperar ? null : acaoDaAgenda.tipo === 'definir-data' ? (
+  ) : !podeOperar ? null : acaoDaAgenda.tipo === 'sessao-passou' ? (
+    // Não "Definir nova data" (Rafael, 17/09/2026): pregão remarcado costuma
+    // voltar com itens, quantidades e unidades diferentes. O nome é do
+    // produto, não do portal — ver `ConferirAlteracoesDialog`.
+    <Button
+      type="button"
+      onClick={aoConferirAlteracoes}
+      className="g-controle"
+      title={`${acaoDaAgenda.texto}. Se a licitação foi remarcada, confira o que mudou — data, itens, quantidades e unidades — antes de atualizar a disputa.`}
+    >
+      <FileSearch className="h-4 w-4" aria-hidden="true" /> Conferir alterações
+    </Button>
+  ) : acaoDaAgenda.tipo === 'definir-data' ? (
     <Button
       type="button"
       onClick={aoDefinirData}

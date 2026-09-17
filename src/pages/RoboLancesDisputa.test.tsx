@@ -319,6 +319,16 @@ describe('RoboLancesDisputa — abas na URL', () => {
 });
 
 describe('RoboLancesDisputa — a ação principal é escolhida pelo estado', () => {
+  it('sessão já passou: "Conferir alterações", nunca "Definir nova data", e o cabeçalho não promete entrada (Rafael, 17/09)', async () => {
+    respostas.robo_lances_disputas = { data: { ...DISPUTA, inicio_sessao: '2026-07-30T12:00:00Z' }, error: null };
+    renderizar();
+
+    expect(await screen.findByRole('button', { name: /Conferir alterações/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Definir nova data|Definir data da sessão/ })).not.toBeInTheDocument();
+    expect(screen.getByText(/já passou/)).toBeInTheDocument();
+    expect(screen.queryByText(/o robô entra sozinho/)).not.toBeInTheDocument();
+  });
+
   it('sem data da sessão: "Definir data da sessão" — nada de "Enviar ao robô" nem botão de parar', async () => {
     renderizar();
 

@@ -1,0 +1,211 @@
+/**
+ * O que mudou na licitação desde que a disputa foi cadastrada (17/09/2026).
+ *
+ * O Rafael, dono do produto, sobre o "Definir nova data": "Tem processos que
+ * podem ser cancelados, suspensos, etc pra mudar algo no edital e no TR. Mas
+ * acaba sendo um risco pro usuário porque na maioria dos casos, muda tudo, não
+ * só a data, mas a quantidade, unidade, descrição." Lei 14.133, art. 55 §1º:
+ * alteração que afeta as propostas reabre a divulgação — a compra republicada é
+ * outra disputa. Trocar só a data deixava o robô disputar com o piso calculado
+ * para o item antigo.
+ *
+ * Uma regra, dois usos: a tela "Conferir alterações" (o que mostrar e o que
+ * oferecer) e o webhook antes de o robô entrar (licitação mudada = entra sem
+ * lance e avisa). Função pura, sem rede.
+ *
+ * ESPELHO: `src/lib/robo/alteracoes-da-licitacao.ts` (o front não importa código
+ * do Deno). O teste `alteracoes-da-licitacao.test.ts` roda os mesmos casos nas
+ * duas e exige a mesma resposta.
+ *
+ * ─── O QUE CONTA COMO MUDANÇA, E POR QUÊ ─────────────────────────────────────
+ * - Quantidade: sempre, venha o item de onde vier — número é número.
+ * - Descrição e unidade: só em item que veio da própria busca na licitação
+ *   (`origem: 'comprasgov'`). Item extraído do edital ou importado do processo
+ *   escreve "UN" onde o portal escreve "Unidade", e um texto resumido onde o
+ *   portal publica o detalhado: comparar esses textos acusaria mudança em toda
+ *   disputa do Kanban, e o robô deixaria de dar lance em todas.
+ * - Item cadastrado que sumiu da licitação, ou foi cancelado/deserto/fracassado.
+ * - Item da licitação que a disputa não tem NÃO é mudança: escolher 3 de 60 é
+ *   decisão da empresa. Vira só uma contagem.
+ * - A data de atualização do item no portal não entra: ela muda também quando
+ *   sai o resultado, e acusaria mudança em toda disputa depois da sessão.
+ */
+
+export type CampoDoItem = "descricao" | "quantidade" | "unidade";
+
+export type ItemCadastrado = {
+  numero: number | string | null | undefined;
+  descricao?: string | null;
+  quantidade?: number | string | null;
+  unidade?: string | null;
+  origem?: string | null;
+};
+
+export type ItemPublicado = {
+  numero: number;
+  descricao: string;
+  quantidade: number;
+  unidade: string;
+  situacao: string | null;
+};
+
+export type LicitacaoPublicada = {
+  situacao: string | null;
+  /** Fim das propostas (ISO): no Compras.gov a sessão abre em seguida. */
+  encerramentoPropostas: string | null;
+  itens: ReadonlyArray<ItemPublicado>;
+};
+
+export type AlteracaoDoItem = {
+  numero: number;
+  tipo: "alterado" | "removido" | "cancelado" | "suspenso";
+  campos: Array<{ campo: CampoDoItem; antes: string; depois: string }>;
+  /** A situação publicada, para cancelado e suspenso. */
+  situacao: string | null;
+};
+
+export type ResultadoDaConferencia = "revogada" | "suspensa" | "itens-mudaram" | "so-data" | "sem-mudanca";
+
+export type AlteracoesDaLicitacao = {
+  resultado: ResultadoDaConferencia;
+  situacaoDaLicitacao: string | null;
+  itens: AlteracaoDoItem[];
+  /** Itens publicados que a disputa não tem (escolha da empresa, não mudança). */
+  foraDaDisputa: number;
+  /** Instante publicado da sessão (ISO), quando há. */
+  sessaoPublicada: string | null;
+  dataMudou: boolean;
+  sessaoPublicadaPassou: boolean;
+};
+
+/** A sessão abre logo depois do fim das propostas; até 1 hora depois é "a mesma". */
+const MINUTOS_ENTRE_PROPOSTAS_E_SESSAO = 60;
+
+const REVOGADA = /revogad|anulad|cancelad/i;
+const SUSPENSA = /suspens/i;
+const ITEM_SEM_DISPUTA = /cancelad|desert|fracassad|anulad|revogad/i;
+
+const semAcento = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "");
+const normalizar = (s: unknown) =>
+  semAcento(String(s ?? "")).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+/** O cadastro acrescenta "(Cota reservada…)" à descrição publicada — não é mudança. */
+const semBeneficio = (s: unknown) => String(s ?? "").replace(/\s*\([^)]*(cota|exclusiva)[^)]*\)\s*$/i, "");
+
+const numeroOuNulo = (v: unknown): number | null => {
+  const n = typeof v === "number" ? v : Number(String(v ?? "").replace(",", "."));
+  return Number.isFinite(n) ? n : null;
+};
+
+const formatarQuantidade = (n: number) => String(n).replace(".", ",");
+
+export function alteracoesDaLicitacao(e: {
+  itens: ReadonlyArray<ItemCadastrado>;
+  /** Início da sessão da disputa (ms), ou nulo sem data. */
+  inicioSessaoMs: number | null;
+  licitacao: LicitacaoPublicada;
+  agora: Date;
+}): AlteracoesDaLicitacao {
+  const situacao = e.licitacao.situacao ? String(e.licitacao.situacao) : null;
+  const publicados = new Map(e.licitacao.itens.map((i) => [Number(i.numero), i]));
+  const cadastrados = new Set<number>();
+  const itens: AlteracaoDoItem[] = [];
+
+  // Sem itens publicados não há com o que comparar: não acusar "sumiu" em todos.
+  if (publicados.size > 0) {
+    for (const cad of e.itens) {
+      const numero = numeroOuNulo(cad.numero);
+      if (numero === null) continue;
+      cadastrados.add(numero);
+      const pub = publicados.get(numero);
+      if (!pub) {
+        itens.push({ numero, tipo: "removido", campos: [], situacao: null });
+        continue;
+      }
+      if (pub.situacao && ITEM_SEM_DISPUTA.test(pub.situacao)) {
+        itens.push({ numero, tipo: "cancelado", campos: [], situacao: pub.situacao });
+        continue;
+      }
+      if (pub.situacao && SUSPENSA.test(pub.situacao)) {
+        itens.push({ numero, tipo: "suspenso", campos: [], situacao: pub.situacao });
+        continue;
+      }
+      const campos: AlteracaoDoItem["campos"] = [];
+      const qtdAntes = numeroOuNulo(cad.quantidade);
+      if (qtdAntes !== null && Math.abs(qtdAntes - Number(pub.quantidade)) > 1e-9) {
+        campos.push({ campo: "quantidade", antes: formatarQuantidade(qtdAntes), depois: formatarQuantidade(Number(pub.quantidade)) });
+      }
+      if (cad.origem === "comprasgov") {
+        if (normalizar(semBeneficio(cad.descricao)) !== normalizar(pub.descricao)) {
+          campos.push({ campo: "descricao", antes: String(cad.descricao ?? ""), depois: pub.descricao });
+        }
+        if (normalizar(cad.unidade) !== normalizar(pub.unidade)) {
+          campos.push({ campo: "unidade", antes: String(cad.unidade ?? ""), depois: pub.unidade });
+        }
+      }
+      if (campos.length) itens.push({ numero, tipo: "alterado", campos, situacao: null });
+    }
+  }
+  itens.sort((a, b) => a.numero - b.numero);
+
+  const foraDaDisputa = [...publicados.keys()].filter((n) => !cadastrados.has(n)).length;
+
+  const fim = e.licitacao.encerramentoPropostas ? Date.parse(e.licitacao.encerramentoPropostas) : NaN;
+  const temFim = Number.isFinite(fim);
+  let dataMudou = false;
+  if (temFim) {
+    if (e.inicioSessaoMs === null) {
+      dataMudou = true;
+    } else {
+      const minutos = (e.inicioSessaoMs - fim) / 60000;
+      dataMudou = !(minutos >= 0 && minutos <= MINUTOS_ENTRE_PROPOSTAS_E_SESSAO);
+    }
+  }
+  const sessaoPublicadaPassou = temFim && fim < e.agora.getTime();
+
+  let resultado: ResultadoDaConferencia;
+  if (situacao && REVOGADA.test(situacao)) resultado = "revogada";
+  else if (situacao && SUSPENSA.test(situacao)) resultado = "suspensa";
+  else if (itens.length > 0) resultado = "itens-mudaram";
+  else if (dataMudou && !sessaoPublicadaPassou) resultado = "so-data";
+  else resultado = "sem-mudanca";
+
+  return {
+    resultado,
+    situacaoDaLicitacao: situacao,
+    itens,
+    foraDaDisputa,
+    sessaoPublicada: temFim ? new Date(fim).toISOString() : null,
+    dataMudou,
+    sessaoPublicadaPassou,
+  };
+}
+
+/** O robô não dá lance nesta disputa até alguém conferir? */
+export function alteracoesTravamLances(a: AlteracoesDaLicitacao): boolean {
+  return a.resultado === "revogada" || a.resultado === "suspensa" || a.resultado === "itens-mudaram";
+}
+
+const NOME_DO_CAMPO: Record<CampoDoItem, string> = { descricao: "descrição", quantidade: "quantidade", unidade: "unidade" };
+
+/** Uma linha por item, para a tela e para o aviso. */
+export function linhasDasAlteracoes(a: AlteracoesDaLicitacao): string[] {
+  return a.itens.map((i) => {
+    if (i.tipo === "removido") return `Item ${i.numero}: não existe mais na licitação`;
+    if (i.tipo === "cancelado") return `Item ${i.numero}: ${String(i.situacao).toLowerCase()}`;
+    if (i.tipo === "suspenso") return `Item ${i.numero}: ${String(i.situacao).toLowerCase()}`;
+    const partes = i.campos.map((c) =>
+      c.campo === "descricao" ? "descrição mudou" : `${NOME_DO_CAMPO[c.campo]} ${c.antes} → ${c.depois}`
+    );
+    return `Item ${i.numero}: ${partes.join("; ")}`;
+  });
+}
+
+/** O resumo curto do aviso de "o robô entrou sem lance". */
+export function resumoDasAlteracoes(a: AlteracoesDaLicitacao): string {
+  if (a.resultado === "revogada") return `a licitação consta como "${a.situacaoDaLicitacao}"`;
+  if (a.resultado === "suspensa") return `a licitação consta como "${a.situacaoDaLicitacao}"`;
+  const linhas = linhasDasAlteracoes(a);
+  const mostradas = linhas.slice(0, 3).join(" · ");
+  return linhas.length > 3 ? `${mostradas} · e mais ${linhas.length - 3}` : mostradas;
+}

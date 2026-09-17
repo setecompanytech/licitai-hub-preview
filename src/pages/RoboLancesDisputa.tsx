@@ -19,6 +19,7 @@ import AcoesDaDisputa from '@/components/robo-lances/disputa/AcoesDaDisputa';
 import AcompanhamentoDaDisputa from '@/components/robo-lances/disputa/AcompanhamentoDaDisputa';
 import CabecalhoDaDisputa from '@/components/robo-lances/disputa/CabecalhoDaDisputa';
 import CompraDaDisputa from '@/components/robo-lances/disputa/CompraDaDisputa';
+import ConferirAlteracoesDialog from '@/components/robo-lances/disputa/ConferirAlteracoesDialog';
 import FaixaDaEntrada from '@/components/robo-lances/disputa/FaixaDaEntrada';
 import ContextoDaDisputa from '@/components/robo-lances/disputa/ContextoDaDisputa';
 import EstrategiaDaDisputa from '@/components/robo-lances/disputa/EstrategiaDaDisputa';
@@ -104,6 +105,8 @@ function TelaDaDisputa() {
   // "Editar parâmetros" também abre pelo "Definir data da sessão" do cabeçalho.
   const [editando, setEditando] = useState(false);
   const [focoDaEdicao, setFocoDaEdicao] = useState<'data' | undefined>(undefined);
+  // Sessão passada: "Conferir alterações", e não "Definir nova data" (Rafael, 17/09/2026).
+  const [conferindo, setConferindo] = useState(false);
 
   const modo = useModoDeOperacao();
   const roboDaEmpresa = useRoboDaEmpresa(empresaId);
@@ -245,6 +248,7 @@ function TelaDaDisputa() {
         nivel={modo.nivel}
         roboLigado={roboDaEmpresa.estado.ligado || !roboDaEmpresa.estado.confirmado}
         aoDefinirData={() => { setFocoDaEdicao('data'); setEditando(true); }}
+        aoConferirAlteracoes={() => setConferindo(true)}
         editar={
           podeOperar ? (
             <ConfigurarLanceDialog
@@ -279,9 +283,22 @@ function TelaDaDisputa() {
                 ? { enviando: envio.enviando, aoEntrar: () => void envio.enviar(lance) }
                 : null
             }
+            conferirAlteracoes={podeOperar ? () => setConferindo(true) : null}
           />
         }
       />
+
+      {podeOperar && (
+        <ConferirAlteracoesDialog
+          lance={lance}
+          aberto={conferindo}
+          aoMudarAberto={setConferindo}
+          aoSalvar={aoSalvar}
+          aoAlterar={() => void recarregar()}
+          // Portal sem leitura da licitação: a disputa nova começa na lista.
+          aoCadastrarNova={() => navigate('/robo-lances?nova=1')}
+        />
+      )}
 
       <FaixaDaEntrada
         estado={leituraDaParada.estado}

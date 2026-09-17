@@ -68,8 +68,14 @@ describe('acaoPrincipalDaAgenda', () => {
     expect(a.tipo === 'hora-de-entrar' && a.texto).toMatch(/Ações › Entrar agora/);
   });
 
-  it('a sessão já passou (mais de 20 min): "Definir nova data"', () => {
-    expect(acaoPrincipalDaAgenda(agenda, as('09:51'), true)).toEqual({ tipo: 'definir-data', rotulo: 'Definir nova data' });
+  it('a sessão já passou (mais de 20 min): conferir alterações, e NÃO "Definir nova data" (Rafael, 17/09)', () => {
+    // Pregão remarcado volta com itens, quantidades e unidades diferentes:
+    // trocar só a data deixava o robô disputar com os pisos do edital antigo.
+    const a = acaoPrincipalDaAgenda(agenda, as('09:51'), true);
+    expect(a.tipo).toBe('sessao-passou');
+    expect(a.tipo === 'sessao-passou' && a.texto).toMatch(/já passou/);
+    expect(JSON.stringify(a)).not.toMatch(/nova data/i);
+    expect(acaoPrincipalDaAgenda(agenda, as('09:49'), true).tipo).not.toBe('sessao-passou');
   });
 
   it('sem data ou sem horário: "Definir data da sessão"', () => {

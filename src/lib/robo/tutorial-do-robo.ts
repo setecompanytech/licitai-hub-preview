@@ -97,6 +97,7 @@ export const BOM_SABER: readonly string[] = [
   'Modo Automático desligado: o robô entra e só acompanha, sem lance.',
   'Lembretes chegam na véspera e 1 hora antes, conferindo robô ligado, acesso, UASG, valor mínimo e documentos de habilitação.',
   'Com a disputa ligada a um processo, o funil acompanha: Em Disputa quando o robô vê a proposta da empresa, Homologada quando o Compras.gov publica a vitória.',
+  'Pregão remarcado não muda a disputa sozinho: em Ações › Conferir alterações da licitação, a tela mostra o que mudou (data, itens, quantidades, unidades) antes de atualizar. Se a licitação mudou e ninguém conferiu, o robô entra sem dar lance e avisa.',
 ];
 
 export const ABAS_DA_LISTA: readonly { nome: string; texto: string }[] = [
