@@ -43,6 +43,7 @@ import {
 } from '@/lib/robo/compra-comprasgov';
 import { lerValorDigitado, valorParaDigitar } from '@/lib/robo/valor-digitado';
 import TextoExpansivel from '@/components/gestao/TextoExpansivel';
+import { pisoUnitarioDoItemUnico } from '@/lib/robo/piso-do-item';
 import { buscarUasgDoProcesso } from '@/lib/robo/uasg-do-processo';
 import { cn } from '@/lib/utils';
 
@@ -287,6 +288,7 @@ function LinhaDeItem({
   aoMudarEstrategia,
   aoMudarMargem,
   mostrarLanceFinal,
+  mostrarPiso,
   aoMudarLanceFinal,
   aoRemover,
 }: {
@@ -298,6 +300,12 @@ function LinhaDeItem({
   aoMudarEstrategia: (id: string, estrategia: EstrategiaDoItem) => void;
   aoMudarMargem: (id: string, valor: number | null) => void;
   mostrarLanceFinal: boolean;
+  /**
+   * Coluna "Piso" só com dois ou mais itens (decisão de 17/09): com um item, o
+   * piso dele é o do cartão "Valor mínimo (piso)" — total ÷ quantidade — e a
+   * coluna repetia o mesmo número ao lado.
+   */
+  mostrarPiso: boolean;
   aoMudarLanceFinal: (id: string, valor: number | null) => void;
   aoRemover: (id: string) => void;
 }) {
@@ -380,23 +388,25 @@ function LinhaDeItem({
       <TableCell className="whitespace-nowrap text-sm text-right tabular-nums font-semibold">
         {item.valorReferencia > 0 ? paraBRL(item.valorReferencia * item.quantidade) : '—'}
       </TableCell>
-      <TableCell className="text-right">
-        <CampoDecimal
-          valor={item.valorMinimo}
-          aoMudar={(v) => aoMudarPiso(item.id, v)}
-          placeholder="definir"
-          inputMode="decimal"
-          aria-label={`Piso do item ${item.numero}`}
-          title={
-            item.custoUnitario !== null && item.custoUnitario !== undefined
-              ? `Sugerido a partir do custo da Precificação: ${paraBRL(item.custoUnitario)}`
-              : 'Sem custo conhecido para sugerir — defina o piso deste item'
-          }
-          className={`h-9 w-[7.75rem] text-sm text-right tabular-nums px-2 ml-auto ${
-            semPiso ? 'border-warning-line placeholder:text-warning-ink' : ''
-          }`}
-        />
-      </TableCell>
+      {mostrarPiso && (
+        <TableCell className="text-right">
+          <CampoDecimal
+            valor={item.valorMinimo}
+            aoMudar={(v) => aoMudarPiso(item.id, v)}
+            placeholder="definir"
+            inputMode="decimal"
+            aria-label={`Piso do item ${item.numero}`}
+            title={
+              item.custoUnitario !== null && item.custoUnitario !== undefined
+                ? `Sugerido a partir do custo da Precificação: ${paraBRL(item.custoUnitario)}`
+                : 'Sem custo conhecido para sugerir — defina o piso deste item'
+            }
+            className={`h-9 w-[7.75rem] text-sm text-right tabular-nums px-2 ml-auto ${
+              semPiso ? 'border-warning-line placeholder:text-warning-ink' : ''
+            }`}
+          />
+        </TableCell>
+      )}
       <TableCell>
         <Select
           value={item.estrategia ?? 'melhor_preco'}
@@ -1236,7 +1246,12 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
       dataSessao: dataSessao || undefined,
       meuLance: editingLance?.meuLance || 0,
       valorAtual: somaReferencia,
-      itens, tipoDisputa,
+      // Com um item só, a grade não mostra a coluna Piso: o piso do item é o
+      // do cartão "Valor mínimo (piso)", total ÷ quantidade (decisão de 17/09).
+      itens: itens.length === 1
+        ? itens.map(i => ({ ...i, valorMinimo: pisoUnitarioDoItemUnico(valorMinimo, i.quantidade) }))
+        : itens,
+      tipoDisputa,
       licitacaoId: licitacaoIdRef,
       uasg: ehComprasGov && uasg ? uasg : undefined,
     };
@@ -1250,6 +1265,8 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
   const formatCurrency = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   const lotes = [...new Set(itens.map(i => i.lote))].filter(Boolean);
+  // Coluna Piso só com dois ou mais itens; com um, o cartão já é o piso.
+  const mostrarPiso = itens.length > 1;
 
   const handleRemoveLote = (lote: string) => {
     setItens(prev => prev.filter(i => i.lote !== lote).map((item, idx) => ({ ...item, numero: idx + 1 })));
@@ -2017,7 +2034,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                                 <TableHead className="text-center">Unid.</TableHead>
                                 <TableHead className="text-right">Vlr Unit.</TableHead>
                                 <TableHead className="text-right">Vlr Total</TableHead>
-                                <TableHead className="text-right" title="Piso deste item — o robô não desce abaixo dele">Piso</TableHead>
+                                {mostrarPiso && <TableHead className="text-right" title="Piso deste item — o robô não desce abaixo dele">Piso</TableHead>}
                                 <TableHead title="Melhor preço: cobre o 1º lugar sempre. Iminência: só nos 2 minutos finais da etapa aberta.">Estratégia</TableHead>
                                 <TableHead className="w-10"><span className="sr-only">Ações</span></TableHead>
                               </TableRow>
@@ -2033,7 +2050,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                                   aoMudarPiso={handlePisoItem}
                                   aoMudarEstrategia={handleEstrategiaItem}
                                   aoMudarMargem={handleMargemItem}
-                                  mostrarLanceFinal={mostrarLanceFinal}
+                                  mostrarLanceFinal={mostrarLanceFinal} mostrarPiso={mostrarPiso}
                                   aoMudarLanceFinal={handleLanceFinalItem}
                                   aoRemover={handleRemoveItem}
                                 />
@@ -2057,7 +2074,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                           <TableHead className="text-center">Unid.</TableHead>
                           <TableHead className="text-right">Vlr Unit.</TableHead>
                           <TableHead className="text-right">Vlr Total</TableHead>
-                          <TableHead className="text-right" title="Piso deste item — o robô não desce abaixo dele">Piso</TableHead>
+                          {mostrarPiso && <TableHead className="text-right" title="Piso deste item — o robô não desce abaixo dele">Piso</TableHead>}
                                 <TableHead title="Melhor preço: cobre o 1º lugar sempre. Iminência: só nos 2 minutos finais da etapa aberta.">Estratégia</TableHead>
                           <TableHead className="w-10"><span className="sr-only">Ações</span></TableHead>
                         </TableRow>
@@ -2073,7 +2090,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                                   aoMudarPiso={handlePisoItem}
                             aoMudarEstrategia={handleEstrategiaItem}
                             aoMudarMargem={handleMargemItem}
-                            mostrarLanceFinal={mostrarLanceFinal}
+                            mostrarLanceFinal={mostrarLanceFinal} mostrarPiso={mostrarPiso}
                             aoMudarLanceFinal={handleLanceFinalItem}
                             aoRemover={handleRemoveItem}
                           />
