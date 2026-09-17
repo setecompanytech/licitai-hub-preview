@@ -255,8 +255,10 @@ export const navGroups: NavGroup[] = [
       { icon: Send, label: 'Distribuição', path: '/admin/distribuicao' },
       { icon: ShieldCheck, label: 'Auditoria', path: '/admin/auditoria' },
       /* A operação do robô (agente, tela remota, erro técnico, avisos) — o que
-         saiu da tela do cliente em 14/09/2026. Mesmo título do paginas.ts. */
-      { icon: Crosshair, label: 'Robô de Lances', path: '/admin/robo-lances' },
+         saiu da tela do cliente em 14/09/2026. Mesmo título do paginas.ts:
+         "Configurações do…" desde 17/09, para não repetir o "Robô de Lances"
+         do cliente no mesmo menu. */
+      { icon: Crosshair, label: 'Configurações do Robô de Lances', path: '/admin/robo-lances' },
       { icon: BarChart3, label: 'Métricas SaaS', path: '/admin/metricas-saas' },
     ],
   },
