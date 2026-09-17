@@ -26,6 +26,7 @@ import { instalarCertificadoNoAgente } from "../_shared/certificado-agente.ts";
 import { buscarComprasNosDadosAbertos, lerNumeroEAno, uasgDoEspelho, uasgValida } from "../_shared/compra-comprasgov.ts";
 import { processoViraHomologada, resultadoDaDisputa, textoDoResultado, STATUS_HOMOLOGADA, STATUS_QUE_VIRAM_HOMOLOGADA } from "../_shared/robo-resultado.ts";
 import { posicoesFinais, processoEntraEmDisputa, textoDoProcessoEmDisputa, STATUS_EM_DISPUTA, STATUS_QUE_ENTRAM_EM_DISPUTA } from "../_shared/robo-kanban.ts";
+import { avisoDaNotificacaoDoPortal, disputaDaNotificacao, notificacoesParaAvisar, type LeituraDoPerfil } from "../_shared/robo-notificacoes-portal.ts";
 import {
   resolverAcao,
   erroDeColunaAusente,
@@ -1066,6 +1067,19 @@ serve(async (req) => {
         }
       }
 
+      // CENTRAL DE NOTIFICAÇÕES DO COMPRAS.GOV (17/09/2026): o vigia lê as não
+      // lidas do fornecedor de 20 em 20 minutos; a cada 5, o que é novo vira
+      // aviso — convocação e prazo como urgentes, com e-mail.
+      let portal: Record<string, unknown> | null = null;
+      if (new Date(agora).getUTCMinutes() % 5 === 0) {
+        try {
+          portal = await avisarNotificacoesDoPortal(supabase, ambiente, agora);
+        } catch (e) {
+          portal = { erro: textoDoErro(e) };
+          console.error("robo-lances-webhook: notificações do Compras.gov falharam:", textoDoErro(e));
+        }
+      }
+
       // RESULTADO DA COMPRA (16/09/2026): de hora em hora, em segundo plano —
       // são consultas aos dados abertos, e o agendador não pode esperar por elas.
       let resultados = "fora-da-hora";
@@ -1079,7 +1093,7 @@ serve(async (req) => {
         );
       }
 
-      return jsonResponse({ ok: true, janela: { desde, ate }, encontradas: (pendentes || []).length, relatorio, lembretes, vigia, resultados });
+      return jsonResponse({ ok: true, janela: { desde, ate }, encontradas: (pendentes || []).length, relatorio, lembretes, vigia, portal, resultados });
     }
 
     // ─── CALLBACKS FROM THE EXTERNAL AGENT ───
@@ -3708,6 +3722,124 @@ async function avisarSessoesVencidas(
     }
   }
   return feitos;
+}
+
+/**
+ * As notificações da central do fornecedor no Compras.gov viram aviso
+ * (17/09/2026). O robô lê a central junto com o vigia da sessão e guarda as não
+ * lidas; aqui elas são buscadas em `GET /notificacoes-portal` (com a chave do
+ * agente — são dados da empresa) e o que é novo vira aviso para o dono da
+ * credencial e para quem opera a empresa da disputa daquela compra. Urgente
+ * (convocação, anexo, prazo, habilitação, recurso) também vai por e-mail. A
+ * marca `notificacao-portal` no `webhook_log` impede o aviso repetido.
+ */
+async function avisarNotificacoesDoPortal(
+  supabase: any,
+  ambiente: { AGENTE_URL_BASE: string | null },
+  agoraMs: number,
+): Promise<Record<string, unknown>> {
+  const url = ambiente.AGENTE_URL_BASE?.trim().replace(/\/+$/, "");
+  const chave = Deno.env.get("AGENTE_API_KEY");
+  if (!url || !chave) return { lida: false, motivo: "sem agente gerenciado" };
+
+  let corpo: { ligada?: boolean; perfis?: LeituraDoPerfil[] } | null = null;
+  try {
+    const r = await fetch(`${url}/notificacoes-portal`, { headers: { "X-Agent-Key": chave }, signal: AbortSignal.timeout(8000) });
+    // 404: agente instalado antes da central — não há o que ler ainda.
+    if (r.status === 404) return { lida: false, motivo: "agente sem a rota /notificacoes-portal" };
+    corpo = r.ok ? await r.json() : null;
+  } catch {
+    corpo = null;
+  }
+  if (!corpo) return { lida: false, motivo: "o agente não respondeu" };
+  if (!corpo.ligada) return { lida: false, motivo: "leitura da central desligada no agente" };
+
+  const { data: avisadas } = await supabase
+    .from("webhook_log")
+    .select("payload")
+    .eq("tipo", "notificacao-portal")
+    .gte("created_at", new Date(agoraMs - 14 * 86_400_000).toISOString());
+  const jaAvisadas = new Set<string>(
+    (avisadas || []).map((l: { payload?: { chave?: string } }) => l.payload?.chave).filter(Boolean) as string[],
+  );
+  const pendentes = notificacoesParaAvisar(corpo.perfis, jaAvisadas, new Date(agoraMs));
+  const leiturasComFalha = (corpo.perfis || []).filter((p) => !p.ok).map((p) => ({ perfil: p.perfil, etapa: p.etapa ?? null }));
+  if (!pendentes.length) return { lida: true, avisos: 0, leituras_com_falha: leiturasComFalha };
+
+  const donos = new Map<string, string>();
+  const { data: creds } = await supabase.from("credenciais_portais").select("user_id, login, status").eq("portal_id", "compras-gov");
+  for (const c of creds || []) {
+    if (!c.login || (c.status && c.status !== "ativo")) continue;
+    donos.set(await perfilDoComprasGov(String(c.login)), c.user_id);
+  }
+
+  const feitos: Array<Record<string, unknown>> = [];
+  for (const p of pendentes) {
+    const dono = donos.get(p.perfil) ?? null;
+    let disputa: { id: string; empresa_id: string | null } | null = null;
+    if (dono && p.notificacao.uasg) {
+      const { data: vinculos } = await supabase.from("empresa_membros").select("empresa_id").eq("user_id", dono);
+      const empresas = new Set((vinculos || []).map((v: { empresa_id: string }) => v.empresa_id));
+      const { data: candidatas } = await supabase
+        .from("robo_lances_disputas")
+        .select("id, empresa_id, user_id, uasg, edital")
+        .eq("uasg", p.notificacao.uasg);
+      // Processo é da empresa (princípio 2): vale disputa de colega da mesma empresa.
+      type Candidata = { id: string; empresa_id: string | null; user_id: string; uasg: string | null; edital: string | null };
+      const daConta = ((candidatas || []) as Candidata[]).filter((d) => d.user_id === dono || (!!d.empresa_id && empresas.has(d.empresa_id)));
+      disputa = disputaDaNotificacao<Candidata>(p.notificacao, daConta);
+    }
+
+    const destinatarios = new Set<string>(dono ? [dono] : []);
+    if (disputa?.empresa_id) {
+      const { data: membros } = await supabase
+        .from("empresa_membros")
+        .select("user_id, papel")
+        .eq("empresa_id", disputa.empresa_id)
+        .in("papel", ["admin", "operador"]);
+      for (const m of membros || []) if (m.user_id) destinatarios.add(m.user_id);
+    }
+    if (!destinatarios.size) {
+      // Sem dono conhecido, o aviso não pode sumir: vai à equipe da plataforma.
+      const { data: admins } = await supabase.from("user_roles").select("user_id").eq("role", "admin");
+      for (const a of admins || []) if (a.user_id) destinatarios.add(a.user_id);
+    }
+
+    const aviso = avisoDaNotificacaoDoPortal(p.notificacao, p.gravidade);
+    const link = disputa ? `/robo-lances/disputa/${disputa.id}` : "/robo-lances";
+    const { error: erroAviso } = destinatarios.size
+      ? await supabase.from("notificacoes").insert(
+        [...destinatarios].map((uid) => ({ user_id: uid, tipo: aviso.tipo, titulo: aviso.titulo, mensagem: aviso.mensagem, link })),
+      )
+      : { error: null };
+    const email = p.gravidade === "urgente" && destinatarios.size
+      ? await avisarPorEmail(supabase, [...destinatarios], { titulo: aviso.titulo, mensagem: aviso.mensagem, link }, `portal:${p.chave}`)
+      : null;
+
+    const quemRegistra = dono ?? [...destinatarios][0] ?? null;
+    if (quemRegistra) {
+      await registrarNoLog(
+        supabase,
+        quemRegistra,
+        "notificacao-portal",
+        {
+          chave: p.chave,
+          perfil: p.perfil,
+          id: p.notificacao.id,
+          gravidade: p.gravidade,
+          compra: p.notificacao.numero_compra,
+          uasg: p.notificacao.uasg,
+          disputa_id: disputa?.id ?? null,
+          avisados: destinatarios.size,
+        },
+        erroAviso ? { erro: erroAviso.message } : {},
+      );
+    } else {
+      console.error("robo-lances-webhook: notificação do Compras.gov sem ninguém para avisar:", p.chave);
+    }
+    feitos.push({ chave: p.chave, gravidade: p.gravidade, avisados: destinatarios.size, email: email ? email.enviados : null });
+  }
+  return { lida: true, avisos: feitos.length, feitos, leituras_com_falha: leiturasComFalha };
 }
 
 /** Trabalho que continua depois da resposta (`EdgeRuntime.waitUntil`); sem ele, espera. */
