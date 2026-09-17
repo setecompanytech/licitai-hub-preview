@@ -7,10 +7,11 @@ import { cn } from '@/lib/utils';
 import {
   JANELA_DOS_AVISOS_HORAS,
   acaoDoAviso,
-  avisosParaMostrar,
+  avisosDaAbertura,
   ehAvisoDoRobo,
   gravidadeDoAviso,
   quandoDoAviso,
+  segundosNaTela,
   type NotificacaoDoRobo,
 } from '@/lib/robo/avisos-do-robo';
 
@@ -18,11 +19,14 @@ import {
  * Os avisos do robô no canto da tela, em qualquer página — o mesmo desenho dos
  * lembretes de certidão e de convocação (Fase 8, 16/09/2026).
  *
- * É um ACRÉSCIMO ao sininho, não um substituto: dispensar a caixinha não marca
- * a notificação como lida. A regra do que aparece (do robô, não lida, das
- * últimas 24 horas, não dispensada) está em `lib/robo/avisos-do-robo`, com
- * teste. O som continua sendo o do `AppLayout`, que já toca para toda
- * notificação nova — tocar aqui também seria eco.
+ * É um ACRÉSCIMO ao sininho, não um substituto: a caixinha aparece, fica alguns
+ * segundos e some sozinha (17/09, pedido do Ian — "aparece e depois
+ * desaparece", para não empilhar com os lembretes de certidão). O mouse em cima
+ * ou o foco do teclado seguram a caixinha enquanto a pessoa lê. Sumir ou
+ * dispensar não marca a notificação como lida. A regra do que aparece e por
+ * quanto tempo está em `lib/robo/avisos-do-robo`, com teste. O som continua
+ * sendo o do `AppLayout`, que já toca para toda notificação nova — tocar aqui
+ * também seria eco.
  */
 
 const VISIVEIS = 3;
@@ -51,6 +55,100 @@ function gravarDispensados(userId: string, ids: Set<string>) {
   }
 }
 
+/**
+ * Some sozinho depois de `ms`, com pausa: `pausar` guarda o que falta e
+ * `retomar` conta só o restante — quem parou para ler não perde a caixinha
+ * no meio da frase.
+ */
+function useSomeSozinho(ms: number, aoSumir: () => void) {
+  const restante = useRef(ms);
+  const inicio = useRef(0);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const aoSumirRef = useRef(aoSumir);
+
+  useEffect(() => {
+    aoSumirRef.current = aoSumir;
+  }, [aoSumir]);
+
+  const retomar = useCallback(() => {
+    if (timer.current !== null) return;
+    inicio.current = Date.now();
+    timer.current = setTimeout(() => {
+      timer.current = null;
+      aoSumirRef.current();
+    }, restante.current);
+  }, []);
+
+  const pausar = useCallback(() => {
+    if (timer.current === null) return;
+    clearTimeout(timer.current);
+    timer.current = null;
+    restante.current = Math.max(0, restante.current - (Date.now() - inicio.current));
+  }, []);
+
+  useEffect(() => {
+    retomar();
+    return () => {
+      if (timer.current !== null) clearTimeout(timer.current);
+      timer.current = null;
+    };
+  }, [retomar]);
+
+  return { pausar, retomar };
+}
+
+function CaixaDoAviso({
+  aviso,
+  agora,
+  aoDispensar,
+  aoAbrir,
+}: {
+  aviso: NotificacaoDoRobo;
+  agora: Date;
+  aoDispensar: (id: string) => void;
+  aoAbrir: (aviso: NotificacaoDoRobo) => void;
+}) {
+  const { caixa, texto, Icone } = ESTILO[gravidadeDoAviso(aviso.tipo)];
+  const sumir = useCallback(() => aoDispensar(aviso.id), [aoDispensar, aviso.id]);
+  const { pausar, retomar } = useSomeSozinho(segundosNaTela(aviso.tipo) * 1000, sumir);
+
+  return (
+    <div
+      onMouseEnter={pausar}
+      onMouseLeave={retomar}
+      onFocus={pausar}
+      onBlur={retomar}
+      className={cn('animate-fade-in rounded-lg border border-border border-l-[3px] bg-card px-4 py-3 shadow-md', caixa)}
+    >
+      <div className="flex items-start gap-3">
+        <Icone className={cn('mt-0.5 h-4 w-4 shrink-0', texto)} aria-hidden="true" />
+        <div className="min-w-0 flex-1">
+          <p className="line-clamp-2 text-sm font-semibold text-foreground">{aviso.titulo || 'Aviso do robô'}</p>
+          <p className={cn('text-xs font-medium', texto)}>Robô de Lances · {quandoDoAviso(aviso.created_at, agora)}</p>
+          {aviso.mensagem && <p className="mt-1 line-clamp-4 text-xs text-muted-foreground">{aviso.mensagem}</p>}
+          {aviso.link && (
+            <button
+              onClick={() => aoAbrir(aviso)}
+              className="mt-2 inline-flex items-center gap-1 rounded text-xs font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              {acaoDoAviso(aviso.link)} <ArrowRight className="h-3 w-3" aria-hidden="true" />
+            </button>
+          )}
+        </div>
+        <button
+          onClick={() => aoDispensar(aviso.id)}
+          // O sininho continua com a notificação: o × só tira a caixinha da tela.
+          title="Dispensar (continua no sininho)"
+          aria-label={`Dispensar o aviso: ${aviso.titulo || 'aviso do robô'}`}
+          className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <X className="h-4 w-4" aria-hidden="true" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function LembreteDoRobo() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -75,7 +173,12 @@ export default function LembreteDoRobo() {
         .order('created_at', { ascending: false })
         .limit(50);
       if (!vivo) return;
-      setAvisos(avisosParaMostrar((data as NotificacaoDoRobo[]) ?? [], dispensadosRef.current, new Date()));
+      const { mostrar, jaVistos } = avisosDaAbertura((data as NotificacaoDoRobo[]) ?? [], dispensadosRef.current, new Date(), VISIVEIS);
+      if (jaVistos.length) {
+        jaVistos.forEach((id) => dispensadosRef.current.add(id));
+        gravarDispensados(user.id, dispensadosRef.current);
+      }
+      setAvisos(mostrar);
     })();
 
     const channel = supabase
@@ -108,6 +211,11 @@ export default function LembreteDoRobo() {
     setAvisos((atual) => atual.filter((a) => a.id !== id));
   }, [user]);
 
+  const abrir = useCallback((aviso: NotificacaoDoRobo) => {
+    dispensar(aviso.id);
+    if (aviso.link) navigate(aviso.link);
+  }, [dispensar, navigate]);
+
   if (!user || avisos.length === 0) return null;
 
   const mostrados = tudo ? avisos : avisos.slice(0, VISIVEIS);
@@ -115,41 +223,9 @@ export default function LembreteDoRobo() {
 
   return (
     <div role="status" aria-live="polite" className="flex flex-col gap-2.5">
-      {mostrados.map((a) => {
-        const { caixa, texto, Icone } = ESTILO[gravidadeDoAviso(a.tipo)];
-        return (
-          <div
-            key={a.id}
-            className={cn('animate-fade-in rounded-lg border border-border border-l-[3px] bg-card px-4 py-3 shadow-md', caixa)}
-          >
-            <div className="flex items-start gap-3">
-              <Icone className={cn('mt-0.5 h-4 w-4 shrink-0', texto)} aria-hidden="true" />
-              <div className="min-w-0 flex-1">
-                <p className="line-clamp-2 text-sm font-semibold text-foreground">{a.titulo || 'Aviso do robô'}</p>
-                <p className={cn('text-xs font-medium', texto)}>Robô de Lances · {quandoDoAviso(a.created_at, agora)}</p>
-                {a.mensagem && <p className="mt-1 line-clamp-4 text-xs text-muted-foreground">{a.mensagem}</p>}
-                {a.link && (
-                  <button
-                    onClick={() => { dispensar(a.id); navigate(a.link as string); }}
-                    className="mt-2 inline-flex items-center gap-1 rounded text-xs font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  >
-                    {acaoDoAviso(a.link)} <ArrowRight className="h-3 w-3" aria-hidden="true" />
-                  </button>
-                )}
-              </div>
-              <button
-                onClick={() => dispensar(a.id)}
-                // O sininho continua com a notificação: o × só tira a caixinha da tela.
-                title="Dispensar (continua no sininho)"
-                aria-label={`Dispensar o aviso: ${a.titulo || 'aviso do robô'}`}
-                className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <X className="h-4 w-4" aria-hidden="true" />
-              </button>
-            </div>
-          </div>
-        );
-      })}
+      {mostrados.map((a) => (
+        <CaixaDoAviso key={a.id} aviso={a} agora={agora} aoDispensar={dispensar} aoAbrir={abrir} />
+      ))}
 
       {ocultos > 0 && (
         <button

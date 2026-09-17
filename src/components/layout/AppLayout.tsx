@@ -112,8 +112,8 @@ const AppLayout = forwardRef<HTMLDivElement, AppLayoutProps>(function AppLayout(
           if (isSoundEnabled()) {
             playNotificationSound(tipo === 'alerta' ? 'alert' : tipo === 'sucesso' ? 'success' : 'message');
           }
-          // Aviso do robô vira caixinha no canto (`LembreteDoRobo`), que fica
-          // até ser dispensada; o toast simples aqui seria o mesmo aviso duas vezes.
+          // Aviso do robô vira caixinha no canto (`LembreteDoRobo`), que aparece
+          // e some sozinha; o toast simples aqui seria o mesmo aviso duas vezes.
           if (!ehAvisoDoRobo(payload.new)) {
             toast(payload.new.titulo || 'Nova notificação', {
               description: payload.new.mensagem || undefined,

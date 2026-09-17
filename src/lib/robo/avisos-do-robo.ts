@@ -3,13 +3,16 @@
  *
  * O robô já avisava pelo sininho (`notificacoes`), e a notificação que chega
  * com a tela aberta vira um toast simples que some em segundos. Pedido do Ian:
- * além do sininho — sem substituí-lo —, o aviso do robô fica no canto, no mesmo
- * desenho dos lembretes de certidão e de convocação, até a pessoa dispensar.
- * Também aparece para quem abre o sistema depois: o lembrete de "pregão em 1
- * hora" não pode depender de a pessoa estar olhando no minuto em que saiu.
+ * além do sininho — sem substituí-lo —, o aviso do robô aparece no canto, no
+ * mesmo desenho dos lembretes de certidão e de convocação. Também aparece para
+ * quem abre o sistema depois: o lembrete de "pregão em 1 hora" não pode
+ * depender de a pessoa estar olhando no minuto em que saiu.
  *
- * Dispensar a caixinha NÃO marca a notificação como lida: o sininho continua
- * sendo o registro.
+ * Desde 17/09 a caixinha **some sozinha** depois de alguns segundos (pedido do
+ * Ian: "aparece e depois desaparece", para não empilhar com os lembretes de
+ * certidão e regularidade, que continuam fixos). O mouse em cima segura a
+ * caixinha enquanto a pessoa lê. Sumir ou dispensar NÃO marca a notificação
+ * como lida: o sininho continua sendo o registro.
  */
 
 export type NotificacaoDoRobo = {
@@ -69,6 +72,35 @@ export function avisosParaMostrar(
   return lista
     .filter((n) => ehAvisoDoRobo(n) && !n.lida && !dispensados.has(n.id) && new Date(n.created_at).getTime() >= desde)
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+}
+
+/**
+ * Quanto tempo a caixinha fica na tela antes de sumir sozinha. O urgente (robô
+ * não entrou, lance recusado, pedido de captcha) fica mais: é o que pede ação.
+ */
+export const SEGUNDOS_NA_TELA: Readonly<Record<GravidadeDoAviso, number>> = {
+  informativo: 8,
+  atencao: 8,
+  urgente: 15,
+};
+
+export function segundosNaTela(tipo: string | null | undefined): number {
+  return SEGUNDOS_NA_TELA[gravidadeDoAviso(tipo)];
+}
+
+/**
+ * Ao abrir o sistema: só os avisos mais recentes viram caixinha; os mais
+ * antigos já contam como vistos — continuam no sininho, sem virar uma fila de
+ * caixinhas aparecendo uma atrás da outra.
+ */
+export function avisosDaAbertura(
+  lista: ReadonlyArray<NotificacaoDoRobo>,
+  dispensados: ReadonlySet<string>,
+  agora: Date,
+  limite: number,
+): { mostrar: NotificacaoDoRobo[]; jaVistos: string[] } {
+  const todos = avisosParaMostrar(lista, dispensados, agora);
+  return { mostrar: todos.slice(0, limite), jaVistos: todos.slice(limite).map((n) => n.id) };
 }
 
 /**

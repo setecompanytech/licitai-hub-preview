@@ -1,10 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import {
   acaoDoAviso,
+  avisosDaAbertura,
   avisosParaMostrar,
   ehAvisoDoRobo,
   gravidadeDoAviso,
   quandoDoAviso,
+  segundosNaTela,
   sininhoDeveChamar,
   type NotificacaoDoRobo,
 } from '@/lib/robo/avisos-do-robo';
@@ -86,5 +88,22 @@ describe('sininhoDeveChamar', () => {
 
   it('notificação lida ou que não é do robô não faz o sininho chamar', () => {
     expect(sininhoDeveChamar([n('a', { lida: true }), n('b', { link: '/documentos' })], null)).toBe(false);
+  });
+});
+
+describe('a caixinha some sozinha (17/09)', () => {
+  it('urgente fica 15 s; lembrete e informativo, 8 s', () => {
+    expect(segundosNaTela('urgente')).toBe(15);
+    expect(segundosNaTela('alerta')).toBe(15);
+    expect(segundosNaTela('lembrete')).toBe(8);
+    expect(segundosNaTela('info')).toBe(8);
+    expect(segundosNaTela(null)).toBe(8);
+  });
+
+  it('ao abrir o sistema, só os mais recentes viram caixinha; os outros já contam como vistos', () => {
+    const lista = [1, 2, 3, 4, 5].map((i) => n(`a${i}`, { created_at: `2026-09-16T18:4${i}:00Z` }));
+    const { mostrar, jaVistos } = avisosDaAbertura([...lista, n('documento', { link: '/documentos' })], new Set(['a4']), AGORA, 3);
+    expect(mostrar.map((x) => x.id)).toEqual(['a5', 'a3', 'a2']);
+    expect(jaVistos).toEqual(['a1']);
   });
 });
