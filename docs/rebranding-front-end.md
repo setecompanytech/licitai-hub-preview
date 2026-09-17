@@ -364,6 +364,17 @@ começar.** Uma linha a mais custa dez segundos; um conflito no
 > em `paginas.ts` mudou junto (a regra é o mesmo título nos dois). O nome repetia o
 > módulo do cliente no mesmo menu. Só o rótulo; rota e ícone ficaram iguais.
 
+> **17/09/2026, noite — Ian acrescentou uma animação em `tailwind.config.ts` e um
+> bloco em `index.css`** (território do Caio), os dois só para o toast do Robô de
+> Lances: o keyframe/animação **`piscar-verde`** (halo `primary`, quatro batidas e
+> para — sem `infinite`) e o `@media (prefers-reduced-motion: reduce)` que a
+> desliga. Nada existente mudou; ambos são entradas novas no fim das listas.
+>
+> Decisão de cor que vale como precedente: o dono do produto viu o toast na
+> superfície navy (família `sidebar`) e pediu **branco com verde**, "as cores
+> predominantes do sistema". Aviso temporário sobre conteúdo claro nasce em `card`
+> + `primary`; o navy segue na navegação e nos heróis.
+
 > **Ian tocou em `index.css`, `menu.ts`, `AppTopNav.tsx` e `AppSidebar.tsx` em
 > 04/09, que são território do Caio.** Está tudo enviado, então basta um `pull`
 > para receber. O que entrou: a classe `.eleva` e o bloco `.aurelia-fab` no

@@ -1057,13 +1057,36 @@ Pedido do Ian testando o 07/2026: "eu só não vi o toast com o botão pra o usu
 **Por que ele não viu:** o aviso "📺 Assistir o robô ao vivo" só nasce quando o robô ENTRA na sala, e no teste o robô ainda esperava o captcha. O que chegou foi "🧑 Robô esperando uma pessoa" — uma caixinha de 316 px no canto de cima, 15 s na tela, que abria o admin na primeira aba, e não na tela remota.
 
 - [x] **`ChamadaDaTelaRemota`** (novo): toast largo (672 px), embaixo e no centro, com título e texto grandes, botão **"Abrir a tela remota"** (leva a `/admin/robo-lances?aba=sessoes&tela=abrir`, que abre a tela sozinha), "Agora não", × e barra de contagem.
-  - **Cores** da superfície navy do rebranding — a família `sidebar`, que tem contraste definido nos dois temas —, com o verde da marca no botão e o verde claro da logo no rótulo. Nenhuma cor escrita à mão.
+  - **Cores** da superfície navy do rebranding — a família `sidebar`, que tem contraste definido nos dois temas —, com o verde da marca no botão e o verde claro da logo no rótulo. Nenhuma cor escrita à mão. *(Trocado no mesmo dia por branco com verde, e o toast diminuiu — ver a seção seguinte.)*
   - **Aparece no clique** de "Entrar agora", antes de o robô responder; envio recusado fecha a chamada.
   - **Aparece de novo** quando chega o pedido de captcha ou o "assistir ao vivo" (esses avisos deixam de virar caixinha no canto: viram a chamada). Ao abrir o sistema, só se o aviso tiver menos de 15 minutos.
   - **Some** quando a sessão da disputa acaba (`encerrado`, `erro` ou parada confirmada, conferido a cada 5 s), depois de 45 s na tela, ou no fechar. O mouse em cima e a aba escondida seguram a contagem.
   - **Só a equipe Praefectus vê** (`useUserRole().isSystemAdmin`): a tela remota é compartilhada entre as empresas. A mensagem do aviso perde o endereço do VNC, que o botão já sabe.
   - Regras em `lib/robo/chamada-da-tela-remota.ts` (6 testes), componente com 5, caixinha com 2 e a página da disputa com 1 — **787 testes** no total, com `tsc` e eslint limpos.
   - **Visto em tela** (Chrome headless, tema claro e escuro, 1440 px e 520 px): no celular o "Agora não" saía desalinhado ao quebrar linha, e os dois botões passaram a ocupar a linha inteira.
+
+#### 17/09, noite — o caminho de volta, e o toast em branco com verde
+
+Dois pedidos do Ian depois de usar a chamada da tela remota. **Sem commit.** Versão `2026-09-17.17`.
+
+> "apareceu o toast pra ir ver a tela VNC, mas aí chegando lá, se caso frear o robô ou outra coisa, o usuário teria que ir no menu e navegar novamente para a tela do robô" · "o toast que direciona o usuário para a tela VNC não deveria ser aquele azul, pode ser branco com verde mesmo, que são as cores predominantes do sistema" · "o toast ficou muito grande também"
+
+- [x] **Atalho de volta no topo do admin**, ao lado do título, em dois estados — a condicional que ele pediu:
+
+  | Como a pessoa chegou | Botão | Para onde vai |
+  | --- | --- | --- |
+  | Pela chamada da tela remota | **"Voltar para o robô"**, verde, com um halo que bate quatro vezes e para | a disputa de onde ela saiu |
+  | Pelo menu, ou numa visita nova | **"Ir para o Robô de Lances"**, discreto (`outline`) | a lista de disputas |
+
+  O destino viaja na URL (`?voltar=/robo-lances/disputa/<id>`), montado pelo próprio toast (`linkDaTelaRemotaDe`). Sair navegando por outro caminho e voltar depois ao admin pelo menu é uma URL nova, sem o parâmetro: o botão volta sozinho ao estado inicial — a regra que o Ian descreveu. O F5, o voltar do navegador e a troca de aba continuam na mesma visita e mantêm o atalho.
+
+  Nada de `localStorage` nem estado global: o "de onde vim" é um fato da navegação, e na URL ele morre junto com a visita. `destinoDaVolta` é a única porta de entrada do parâmetro e só aceita caminho relativo dentro de `/robo-lances` — `//outro-site`, `https://…` e `..` são recusados (um "voltar" que sai do app seria redirecionamento aberto com a nossa cara). `/admin/robo-lances` também não passa: o botão nunca aponta para a tela onde ele está.
+
+  Regras em `lib/robo/volta-para-o-robo.ts` (5 testes), página do admin com 4 novos e o toast com 1 — **2.251 testes na suíte inteira**, `tsc` limpo, eslint limpo nos arquivos tocados (o `require()` do `tailwind.config.ts` é antigo).
+
+- [x] **Toast em branco com verde e menor**: superfície `card` com texto `foreground`, faixa e rótulo `primary`, ícone em `primary-tint`, botão verde padrão do sistema, barra de contagem `primary`. Saiu a família `sidebar` (navy) e o dourado da logo. Largura de 672 → **576 px**, título 20 → 18 px, texto 16 → 14 px, botões 48 → 40 px de altura, e a legenda encurtou. Continua em token, então o tema escuro troca a superfície sozinho.
+- [x] **`animate-piscar-verde`** (novo, `tailwind.config.ts`): halo `primary` em quatro batidas, sem `infinite` — chama atenção na chegada e depois é um botão comum. Desligado em `prefers-reduced-motion` (`index.css`), onde a cor e o rótulo já dizem tudo.
+- **Visto em tela** (Chrome headless, claro e escuro, 1440 px e 520 px), com os dois estados do botão lado a lado.
 
 #### O que depende de alguém
 
