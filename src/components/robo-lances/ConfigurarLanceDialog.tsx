@@ -343,14 +343,14 @@ function LinhaDeItem({
               onChange={(e) => aoMudarMarcaModelo(item.id, 'marca', e.target.value)}
               placeholder="marca"
               aria-label={`Marca do item ${item.numero}`}
-              className="h-8 w-28 text-xs px-2"
+              className="h-8 w-24 text-xs px-2"
             />
             <Input
               value={item.modelo ?? ''}
               onChange={(e) => aoMudarMarcaModelo(item.id, 'modelo', e.target.value)}
               placeholder="modelo"
               aria-label={`Modelo do item ${item.numero}`}
-              className="h-8 w-28 text-xs px-2"
+              className="h-8 w-24 text-xs px-2"
             />
           </div>
         )}
@@ -372,7 +372,7 @@ function LinhaDeItem({
               ? `Estimado pelo órgão: ${paraBRL(item.valorEstimadoOrgao)}`
               : 'Valor unitário de referência deste item'
           }
-          className={`h-9 w-28 text-sm text-right tabular-nums px-2 ml-auto ${
+          className={`h-9 w-[7.75rem] text-sm text-right tabular-nums px-2 ml-auto ${
             item.valorReferencia > 0 ? '' : 'border-warning-line placeholder:text-warning-ink'
           }`}
         />
@@ -392,7 +392,7 @@ function LinhaDeItem({
               ? `Sugerido a partir do custo da Precificação: ${paraBRL(item.custoUnitario)}`
               : 'Sem custo conhecido para sugerir — defina o piso deste item'
           }
-          className={`h-9 w-28 text-sm text-right tabular-nums px-2 ml-auto ${
+          className={`h-9 w-[7.75rem] text-sm text-right tabular-nums px-2 ml-auto ${
             semPiso ? 'border-warning-line placeholder:text-warning-ink' : ''
           }`}
         />
