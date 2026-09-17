@@ -1050,6 +1050,21 @@ Pedidos do Ian, olhando a tela publicada (`2026-09-17.14`). **Sem commit.** Vers
 - [x] **SQL `20260917000004` aplicado pelo Ian em 17/09 às 14:32.** A conferência mostrou **21 avisos** (agrupados por aviso, não por pessoa) e **15 eventos** na carga inicial, **14 avisos do robô** com mais de 24 horas prontos para sair do sininho na próxima passagem da rotina (minuto 23 de cada hora) e **rotina ativa**. Até o Publish, a aba "Histórico do robô" ainda não aparece na tela.
 - **Conferido**: `tsc` sem erro, eslint limpo, **745 testes** (robô, lib, páginas, workspace, gestão, admin-robo, navegação). O SQL não roda localmente: a conferência no fim do arquivo mostra as quantidades da carga inicial e se a rotina ficou ativa.
 
+#### 17/09, fim da tarde — a chamada da tela remota (toast grande, embaixo)
+
+Pedido do Ian testando o 07/2026: "eu só não vi o toast com o botão pra o usuário apertar e ser levado até a tela VNC"; depois, "quando o botão pra rodar for clicado não pode demorar pra aparecer, independentemente se vai ter que passar pelo recaptcha ou não. Mas também não é pra esse toast ficar muito tempo no ar, ele tem que sumir após o robô parar ou até mesmo tem que ter o botão de fechar". **Sem commit.** Versão `2026-09-17.16`.
+
+**Por que ele não viu:** o aviso "📺 Assistir o robô ao vivo" só nasce quando o robô ENTRA na sala, e no teste o robô ainda esperava o captcha. O que chegou foi "🧑 Robô esperando uma pessoa" — uma caixinha de 316 px no canto de cima, 15 s na tela, que abria o admin na primeira aba, e não na tela remota.
+
+- [x] **`ChamadaDaTelaRemota`** (novo): toast largo (672 px), embaixo e no centro, com título e texto grandes, botão **"Abrir a tela remota"** (leva a `/admin/robo-lances?aba=sessoes&tela=abrir`, que abre a tela sozinha), "Agora não", × e barra de contagem.
+  - **Cores** da superfície navy do rebranding — a família `sidebar`, que tem contraste definido nos dois temas —, com o verde da marca no botão e o verde claro da logo no rótulo. Nenhuma cor escrita à mão.
+  - **Aparece no clique** de "Entrar agora", antes de o robô responder; envio recusado fecha a chamada.
+  - **Aparece de novo** quando chega o pedido de captcha ou o "assistir ao vivo" (esses avisos deixam de virar caixinha no canto: viram a chamada). Ao abrir o sistema, só se o aviso tiver menos de 15 minutos.
+  - **Some** quando a sessão da disputa acaba (`encerrado`, `erro` ou parada confirmada, conferido a cada 5 s), depois de 45 s na tela, ou no fechar. O mouse em cima e a aba escondida seguram a contagem.
+  - **Só a equipe Praefectus vê** (`useUserRole().isSystemAdmin`): a tela remota é compartilhada entre as empresas. A mensagem do aviso perde o endereço do VNC, que o botão já sabe.
+  - Regras em `lib/robo/chamada-da-tela-remota.ts` (6 testes), componente com 5, caixinha com 2 e a página da disputa com 1 — **787 testes** no total, com `tsc` e eslint limpos.
+  - **Visto em tela** (Chrome headless, tema claro e escuro, 1440 px e 520 px): no celular o "Agora não" saía desalinhado ao quebrar linha, e os dois botões passaram a ocupar a linha inteira.
+
 #### O que depende de alguém
 
 | O quê | De quem |
