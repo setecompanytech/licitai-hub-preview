@@ -937,6 +937,14 @@ portais seguem por API (D1, D2).
 - [x] **"Definir data da sessão" abre o diálogo já no campo da data** (rola e foca); a faixa verde do diálogo dizia "1 itens extraídos do edital por IA" para item que não veio de IA — agora diz "1 item cadastrado nesta disputa", e só fala de IA quando os itens vieram dela
 - [x] **Selos do topo da disputa maiores** (`SeloSituacao tamanho="grande"`), e o aviso do admin "Abra esta tela ANTES de enviar ao robô" com o fluxo novo
 
+#### 17/09, manhã — menu Ações, Detalhes da licitação e remoção com confirmação
+
+Pedidos do Ian olhando a `2026-09-17.4` publicada (versão `2026-09-17.7`; a `.6` é do Rafael, que subiu a pasta do processo às 08:50 e 09:18):
+- [x] **Menu "Ações" legível no realce.** O realce do item é o verde cheio de `--accent` com texto branco: a descrição de "Entrar agora" e de "Marcar como… (manual)" ficava cinza sobre o verde, e "Encerrar como Venceu/Perdeu" e "Remover disputa" ficavam verde e vermelho sobre verde. A descrição passa a acompanhar o texto do realce (`group-focus:text-accent-foreground/85`), e os itens coloridos usam o fundo claro da própria cor (`success-tint`/`destructive-tint` com a tinta `-ink`). Só neste menu; outros menus do app com `focus:text-destructive` sobre o mesmo `--accent` podem ter o mesmo efeito
+- [x] **"Detalhes da licitação" mais largo** — de `max-w-md` (448 px, o objeto da compra ocupava 15 linhas) para `max-w-2xl`, em duas colunas: campos curtos em pares (CNPJ e portal, licitação e UASG, modalidade e prazo das propostas, valores), empresa, órgão, objeto e data de abertura na linha inteira. No celular continua uma coluna
+- [x] **"Remover disputa" pede confirmação.** O clique apagava na hora — uma disputa foi apagada sem querer em 17/09 de manhã. `removerDisputa` é `delete` de verdade (a linha sai com itens, limites e agenda; as sessões do robô ficam em `sessoes_lance_real`, com `disputa_id` nulo). Agora o item abre "Remover a disputa X?", que diz que não dá para desfazer; o botão "Remover de vez" fica travado enquanto apaga, e o diálogo não fecha no meio. Teste na página: cancelar não apaga, e só "Remover de vez" chama a remoção
+- **Recuperar a disputa apagada**: não há lixeira nem auditoria dessa tabela. O caminho é cadastrar de novo pela Nova sessão (UASG + número/ano trazem itens e data do Compras.gov) e refazer valor mínimo e estratégia; os valores da última sessão do robô dela estão em `sessoes_lance_real`. Restaurar o backup do banco voltaria o banco inteiro, e não vale para uma disputa de teste
+
 #### O que depende de alguém
 
 | O quê | De quem |
