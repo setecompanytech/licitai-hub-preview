@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Info } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { ArrowLeft, Crosshair, Info } from 'lucide-react';
 import AppLayout from '@/components/layout/AppLayout';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { PARAMETRO_DA_VOLTA, botaoDaVolta } from '@/lib/robo/volta-para-o-robo';
 import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import AbasGestao, { type AbaGestao } from '@/components/gestao/AbasGestao';
 import { AvisoDeContexto } from '@/components/gestao/SeloSituacao';
@@ -83,6 +86,11 @@ export default function AdminRoboLances() {
   // não reabrir a tela sem ninguém pedir.
   const [parametros, definirParametros] = useSearchParams();
   const pedeTela = parametros.get('tela') === 'abrir';
+
+  // `?voltar=` fica na URL: é o que faz o botão do topo dizer "Voltar para o
+  // robô" nesta visita e voltar ao "Ir para o Robô de Lances" na próxima, se a
+  // pessoa chegar aqui pelo menu. Regra em `lib/robo/volta-para-o-robo.ts`.
+  const volta = botaoDaVolta(parametros.get(PARAMETRO_DA_VOLTA));
   useEffect(() => {
     if (!pedeTela) return;
     abrirTelaRemota();
@@ -93,7 +101,25 @@ export default function AdminRoboLances() {
 
   return (
     <AppLayout>
-      <CabecalhoPagina rota="/admin/robo-lances" denso />
+      <CabecalhoPagina
+        rota="/admin/robo-lances"
+        denso
+        acoes={
+          <Button
+            asChild
+            variant={volta.destacado ? 'default' : 'outline'}
+            title={volta.descricao}
+            className={cn('gap-2', volta.destacado && 'animate-piscar-verde')}
+          >
+            <Link to={volta.para}>
+              {volta.destacado
+                ? <ArrowLeft aria-hidden="true" />
+                : <Crosshair aria-hidden="true" />}
+              {volta.rotulo}
+            </Link>
+          </Button>
+        }
+      />
 
       <div className="flex min-w-0 flex-col gap-4">
         <AbasGestao abas={ABAS} valor={aba} aoMudar={definirAba} />

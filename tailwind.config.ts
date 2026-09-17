@@ -227,6 +227,13 @@ export default {
           from: { opacity: "0", transform: "translateY(10px)" },
           to: { opacity: "1", transform: "translateY(0)" },
         },
+        // "Voltar para o robô" no admin, quando a pessoa chegou pela chamada da
+        // tela remota (17/09/2026): um halo verde que bate e para. Sinaliza o
+        // atalho na chegada; depois disso o botão é um botão.
+        "piscar-verde": {
+          "0%, 100%": { boxShadow: "0 0 0 0 hsl(var(--primary) / 0)" },
+          "50%": { boxShadow: "0 0 0 6px hsl(var(--primary) / 0.3)" },
+        },
         // Sininho com aviso novo do robô: um balanço curto e leve, depois
         // quase 2 segundos parado — chama a atenção sem virar tremedeira.
         "sininho-tremer": {
@@ -245,6 +252,9 @@ export default {
         "slide-in-left": "slide-in-left 0.3s ease-out forwards",
         "pulse-glow": "pulse-glow 2s ease-in-out infinite",
         "count-up": "count-up 0.5s ease-out forwards",
+        // Quatro batidas e para (sem `infinite`): o atalho de volta chama a
+        // atenção na chegada e some do caminho depois.
+        "piscar-verde": "piscar-verde 1.4s ease-in-out 4",
         "sininho-tremer": "sininho-tremer 2.4s ease-in-out infinite",
       },
     },

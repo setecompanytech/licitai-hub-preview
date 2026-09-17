@@ -25,7 +25,11 @@ vi.mock('@/components/layout/AppLayout', () => ({
   default: ({ children }: { children?: ReactNode }) => <div data-testid="app-layout">{children}</div>,
 }));
 vi.mock('@/components/shared/CabecalhoPagina', () => ({
-  default: ({ rota }: { rota?: string }) => <header data-testid="cabecalho" data-rota={rota} />,
+  default: ({ rota, acoes }: { rota?: string; acoes?: ReactNode }) => (
+    <header data-testid="cabecalho" data-rota={rota}>
+      {acoes}
+    </header>
+  ),
 }));
 
 vi.mock('@/components/robo-lances/AgenteExternoConfig', () => ({
@@ -154,6 +158,46 @@ describe('Admin › Robô de Lances', () => {
   it('aba desconhecida na URL cai na primeira, em vez de tela vazia', () => {
     renderizar('/admin/robo-lances?aba=inexistente');
     expect(screen.getByTestId('agente-externo-config')).toBeInTheDocument();
+  });
+});
+
+/**
+ * O atalho de volta (Ian, 17/09/2026): quem chegou pela chamada da tela remota
+ * volta com um clique; quem abriu pelo menu vê o estado inicial.
+ */
+describe('atalho para o Robô de Lances', () => {
+  const botao = () => screen.getByRole('link', { name: /Robô de Lances|Voltar para o robô/ });
+
+  it('aberto pelo menu: "Ir para o Robô de Lances", discreto, para a lista', () => {
+    renderizar();
+    const link = botao();
+    expect(link).toHaveTextContent('Ir para o Robô de Lances');
+    expect(link).toHaveAttribute('href', '/robo-lances');
+    expect(link.className).not.toMatch(/piscar-verde/);
+  });
+
+  it('vindo da chamada da tela remota: "Voltar para o robô", piscando verde, para a disputa', () => {
+    renderizar('/admin/robo-lances?aba=sessoes&voltar=%2Frobo-lances%2Fdisputa%2Fd1');
+    const link = botao();
+    expect(link).toHaveTextContent('Voltar para o robô');
+    expect(link).toHaveAttribute('href', '/robo-lances/disputa/d1');
+    expect(link.className).toMatch(/piscar-verde/);
+  });
+
+  it('o atalho sobrevive a abrir a tela remota e a trocar de aba na mesma visita', () => {
+    renderizar('/admin/robo-lances?aba=sessoes&tela=abrir&voltar=%2Frobo-lances%2Fdisputa%2Fd1');
+    expect(screen.getByTestId('vnc')).toHaveAttribute('data-abrir-em', '1');
+    expect(botao()).toHaveTextContent('Voltar para o robô');
+
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Diagnóstico' }), { button: 0 });
+    expect(botao()).toHaveTextContent('Voltar para o robô');
+  });
+
+  it('endereço de fora na URL não vira botão de volta', () => {
+    renderizar('/admin/robo-lances?voltar=https%3A%2F%2Fevil.com');
+    const link = botao();
+    expect(link).toHaveTextContent('Ir para o Robô de Lances');
+    expect(link).toHaveAttribute('href', '/robo-lances');
   });
 });
 

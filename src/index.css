@@ -1048,6 +1048,12 @@
   .esteira-indices-faixa { animation: none; }
 }
 
+/* O halo verde do atalho "Voltar para o robô" (17/09/2026). A cor e o rótulo
+   já dizem o que o botão faz; quem pediu menos movimento não perde nada. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-piscar-verde { animation: none; }
+}
+
 /* ── Densidade do módulo Gestão ────────────────────────────────────────────
    O comando de 13/09 fixa uma escala própria para Gestão: título de página
    26/34 em 700, seção 18/26 em 600, corpo e controles 14/20, metadado 12/16.
