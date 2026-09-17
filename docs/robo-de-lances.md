@@ -1017,11 +1017,15 @@ O que foi feito:
 **Conferido**: `tsc` sem erro, eslint limpo (só os dois `any` antigos do diálogo de cadastro), **677 testes** nas pastas do robô, lib, páginas, workspace e gestão. Tela não vista em navegador.
 
 **Para ir ao ar — nada disto feito, cada passo espera o OK do Ian:**
-1. Commit e push (origin e sete).
+1. ~~Commit~~ — **9 commits locais em 17/09 (13:2x), separados por alteração; push ainda não**, por pedido do Ian. Os intermediários foram conferidos: o da grade (`b263634b`) passa em `tsc` e nos 12 testes da grade e do diálogo; o do webhook com estratégias (`72d5b937`) tem os mesmos 6 erros antigos no `deno check`.
 2. Publish no Lovable (`2026-09-17.14`).
-3. `robo-lances-webhook` deploy: estratégias, barreira e aviso.
+3. ~~`robo-lances-webhook` deploy~~ — **v59 no ar em 17/09 às 13:33**: estratégias, barreira e aviso. Conferido: `disparar-agendadas` sem segredo responde 401, e o agendador seguiu chamando o `/health` do robô às 13:40, 13:45 e 13:50.
 4. ~~SQL `20260917000003`~~ — **aplicado pelo Ian em 17/09 às 13:11**. A conferência devolveu `so_avisa = true`: o gatilho do processo já só avisa. Até o Publish, o aviso aponta para "Ações › Conferir alterações da licitação", que ainda não está na tela publicada.
-5. VPS: `estrategia.js` (`4fdc9e00`) e `session-manager.js` (`05848651`).
+5. ~~VPS~~ — **instalado em 17/09 às 13:53**: `estrategia.js` (`4fdc9e00`) e `session-manager.js` (`05848651`).
+   - Antes: md5 do template conferido, backups `.bak-20260917-1353` e `node --check` numa pasta temporária.
+   - No reinício: 0 sessões, 0 Chrome e ninguém aguardando confirmados logo antes; `pm2 restart` às 13:53:47, sem `--update-env`.
+   - Depois: `/health` online (16 rotas, lance `['comprasgov']`, certificado carregado, vigia ligado), nenhum erro novo, 0 Chrome.
+   - Conferido no servidor: melhor preço + iminência dá lance; iminência + desempatar com o 1º longe aguarda, e na iminência dá lance; formato antigo dá lance; lista vazia aguarda.
    - Conferido que a única diferença para o instalado é a de hoje.
    - O `callback.js` difere só num comentário desde 02/09 e não entra.
    - A ordem não quebra nada: o cadastro grava também a estratégia única que o robô atual lê.

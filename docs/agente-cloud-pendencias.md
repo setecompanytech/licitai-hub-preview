@@ -1290,12 +1290,12 @@ o contrato do agente.
 - No desempate de ME/EPP, a margem só vale com desempatar sozinho.
 - O estado da sala passa a mandar `estrategia` como `"iminencia+desempatar_1o"`.
 
-**Instalação pendente, esperando o OK do Ian:**
+**Instalado em 17/09/2026 às 13:53**, com o OK do Ian: backups `.bak-20260917-1353`, 0 sessões e 0 Chrome antes do `pm2 restart`, md5 igual ao template e `/health` online depois. A tabela abaixo é o registro do que entrou:
 
 | Arquivo | md5 | Situação |
 | --- | --- | --- |
-| `src/estrategia.js` | `4fdc9e00` | instalar |
-| `src/session-manager.js` | `05848651` | instalar |
+| `src/estrategia.js` | `4fdc9e00` | instalado 13:53 |
+| `src/session-manager.js` | `05848651` | instalado 13:53 |
 | `src/callback.js` | — | diferente do template só num comentário, desde 02/09; **não** entra |
 
 Diferença para o instalado conferida por `diff`: é só a mudança de hoje.
