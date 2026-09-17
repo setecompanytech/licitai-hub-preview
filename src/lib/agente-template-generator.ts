@@ -195,7 +195,7 @@ const cors = require('cors');
 const { SessionManager } = require('./session-manager');
 const { PORTALS, getPortal } = require('./portals');
 const { launchBrowser } = require('./browser');
-const { PORTAIS_COM_LANCE_LIBERADO, PORTAIS_COM_PROPOSTA_LIBERADA, podeCadastrarProposta } = require('./estrategia');
+const { PORTAIS_COM_LANCE_LIBERADO } = require('./estrategia');
 const certificado = require('./certificado');
 const interacaoHumana = require('./interacao-humana');
 const fs = require('fs');
@@ -321,9 +321,6 @@ app.get('/health', (req, res) => {
     // Quais portais podem ENVIAR lance. Lista vazia = o agente le e calcula,
     // mas nao submete nada. O painel precisa poder mostrar isso.
     portais_com_lance_liberado: PORTAIS_COM_LANCE_LIBERADO,
-    // Onde o robo pode clicar em "Salvar" na proposta. Vazia; e o cadastro de
-    // proposta inteiro esta pausado (podeCadastrarProposta, 17/09/2026).
-    portais_com_proposta_liberada: PORTAIS_COM_PROPOSTA_LIBERADA,
     certificado: certificadoInstalado(),
     // O ultimo resultado do vigia para cada perfil do Compras.gov: logado,
     // vencida, em uso. E o que diz, sem abrir log, se a proxima disputa vai
@@ -619,19 +616,6 @@ app.post('/api/proposta/enviar', authMiddleware, async (req, res) => {
       error: \`O portal "\${portal}" ainda não automatiza o envio de proposta neste agente\`,
       portal,
       implementado: false,
-    });
-  }
-
-  // PAUSADO (17/09/2026, decisão do Ian): o cadastro de proposta do Compras.gov
-  // está escrito, mas o robô não abre compra nenhuma para isso enquanto o
-  // portal não estiver em PORTAIS_COM_PROPOSTA_EM_TESTE. Checado antes do
-  // navegador: um clique na tela antiga não pode levar o robô a uma compra real.
-  if (!podeCadastrarProposta(portal)) {
-    return res.status(501).json({
-      error: \`O cadastro de proposta pelo robô está pausado para o portal "\${portal}" — a proposta segue feita no portal pela equipe\`,
-      portal,
-      implementado: false,
-      pausado: true,
     });
   }
 
