@@ -8,6 +8,7 @@ import { ProvedorDeTrilha } from './contexto-trilha';
 import LembreteDeVencimento from '@/components/documentos/LembreteDeVencimento';
 import LembreteDeConvocacao from '@/components/monitoramento/LembreteDeConvocacao';
 import LembreteDoRobo from '@/components/robo-lances/LembreteDoRobo';
+import ChamadaDaTelaRemota from '@/components/robo-lances/ChamadaDaTelaRemota';
 import { ehAvisoDoRobo, gravarSininhoAbertoEm, lerSininhoAbertoEm, sininhoDeveChamar } from '@/lib/robo/avisos-do-robo';
 import AlertaVencimentoBanner from './AlertaVencimentoBanner';
 import NotificationCenter from '@/components/notifications/NotificationCenter';
@@ -195,6 +196,9 @@ const AppLayout = forwardRef<HTMLDivElement, AppLayoutProps>(function AppLayout(
           <LembreteDoRobo />
           <LembreteDeVencimento />
         </div>
+        {/* A chamada grande da tela remota, embaixo e no centro — só para a
+            equipe Praefectus (ver `ChamadaDaTelaRemota`). */}
+        <ChamadaDaTelaRemota />
         {/* Uma vez aqui, vale para as 56 telas que usam este layout. */}
         {/* Carimbo invisível, para conferir o que está publicado. */}
         <span data-versao={VERSAO_APP} className="hidden" />
