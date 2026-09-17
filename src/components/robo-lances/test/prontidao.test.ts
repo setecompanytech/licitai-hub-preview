@@ -98,6 +98,24 @@ describe('pendenciasDaDisputa', () => {
     expect(p[0].texto).toBe('1 item está sem piso — o robô não disputa item sem valor mínimo');
   });
 
+  it('iminência no Compras.gov avisa que o robô só acompanha, e não repete quando ele já só acompanha', () => {
+    const itens = [
+      { valorMinimo: 100, estrategia: 'iminencia' },
+      { valorMinimo: 100, estrategia: 'iminencia' },
+      { valorMinimo: 100, estrategia: 'melhor_preco' },
+    ];
+    const p = pendenciasDaDisputa({ ...PRONTA, itens, portalSemTempoRestante: true, modoAutomatico: true });
+    expect(p.map((x) => [x.chave, x.grave])).toEqual([['iminencia-sem-tempo', false]]);
+    expect(p[0].texto).toContain('2 itens em "Iminência"');
+    expect(p[0].texto).toContain('use "Melhor preço"');
+
+    expect(pendenciasDaDisputa({ ...PRONTA, itens, portalSemTempoRestante: false })).toEqual([]);
+    expect(pendenciasDaDisputa({ ...PRONTA, itens, portalSemTempoRestante: true, modoAutomatico: false }).map((x) => x.chave))
+      .toEqual(['modo-automatico-desligado']);
+    expect(pendenciasDaDisputa({ ...PRONTA, itens, portalSemTempoRestante: true, lanceLiberado: false }).map((x) => x.chave))
+      .toEqual(['lance-travado']);
+  });
+
   it('quem cadastrou saiu da empresa: grave, porque o agendador não despacha', () => {
     const p = pendenciasDaDisputa({ ...PRONTA, donoForaDaEmpresa: true });
     expect(p.map((x) => [x.chave, x.grave])).toEqual([['dono-fora-da-empresa', true]]);

@@ -226,3 +226,25 @@ export function mesclarEstadoDoItem(gravado: EstadoGravado | null | undefined, n
   base[chaveDoItem(novo.item)] = novo;
   return { ...novo, por_item: base };
 }
+
+/**
+ * O aviso do PRIMEIRO lance que o portal aceitou, por item e por sessão (D7:
+ * "lance enviado" — auditoria de 16/09/2026). Só o primeiro: na iminência o
+ * robô chega a dar lance a cada poucos segundos, e um aviso por lance seria
+ * enxurrada; os seguintes ficam na linha do tempo e no histórico de lances.
+ * `null` quando o item já teve lance aceito nesta sessão.
+ */
+export function avisoDoPrimeiroLance(e: {
+  edital: string;
+  item: number | null | undefined;
+  valor: number;
+  lancesAnterioresDoItem: number;
+  formatar: (n: number) => string;
+}): { titulo: string; mensagem: string } | null {
+  if (e.lancesAnterioresDoItem > 0) return null;
+  const doItem = Number.isFinite(e.item as number) ? ` no item ${e.item}` : "";
+  return {
+    titulo: `💰 Primeiro lance do robô — ${e.edital}`,
+    mensagem: `O portal aceitou o lance de R$ ${e.formatar(e.valor)}${doItem}. Os próximos lances deste item ficam na linha do tempo da disputa.`,
+  };
+}

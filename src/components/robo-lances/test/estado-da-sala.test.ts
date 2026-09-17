@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   anteriorDoItem,
+  avisoDoPrimeiroLance,
   eventosDoEstado,
   mesclarEstadoDoItem,
   motivoParaPessoas,
@@ -145,5 +146,25 @@ describe('motivos do lance ligado (16/09/2026)', () => {
       .toBe('Modo automático desligado nesta disputa: o robô acompanha e não dá lance');
     expect(motivoParaPessoas({ decisao: { acao: 'aguardar', valor: 85, motivo: 'Lance de R$ 85.00 decidido, mas o campo de lance deste item nao esta na tela' } } as never))
       .toBe('Lance decidido, mas o campo de lance deste item não está na tela do robô — acompanhando');
+  });
+});
+
+describe('avisoDoPrimeiroLance', () => {
+  const formatar = (n: number) => n.toFixed(2).replace('.', ',');
+
+  it('o primeiro lance aceito do item avisa, com valor e item', () => {
+    expect(avisoDoPrimeiroLance({ edital: '07/2026', item: 3, valor: 85, lancesAnterioresDoItem: 0, formatar })).toEqual({
+      titulo: '💰 Primeiro lance do robô — 07/2026',
+      mensagem: 'O portal aceitou o lance de R$ 85,00 no item 3. Os próximos lances deste item ficam na linha do tempo da disputa.',
+    });
+  });
+
+  it('os lances seguintes do mesmo item não avisam', () => {
+    expect(avisoDoPrimeiroLance({ edital: '07/2026', item: 3, valor: 84.99, lancesAnterioresDoItem: 1, formatar })).toBeNull();
+  });
+
+  it('sem número de item, o aviso não inventa um', () => {
+    expect(avisoDoPrimeiroLance({ edital: '07/2026', item: null, valor: 85, lancesAnterioresDoItem: 0, formatar })?.mensagem)
+      .toBe('O portal aceitou o lance de R$ 85,00. Os próximos lances deste item ficam na linha do tempo da disputa.');
   });
 });

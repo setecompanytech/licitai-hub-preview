@@ -134,6 +134,12 @@ export type EntradaDaProntidao = {
    * — a habilitação vem logo depois dos lances (16/09/2026). Nulo = não lido.
    */
   documentosVencendo?: ReadonlyArray<{ nome: string; validade: string }> | null;
+  /**
+   * O robô ainda não lê o tempo restante da etapa neste portal (Compras.gov:
+   * só a sala logada mostra, e ela não foi mapeada). Sem ele, "Iminência" só
+   * acompanha — achado na auditoria de 16/09/2026.
+   */
+  portalSemTempoRestante?: boolean;
 };
 
 /**
@@ -179,6 +185,16 @@ export function pendenciasDaDisputa(e: EntradaDaProntidao): Pendencia[] {
   if (semPiso) add("itens-sem-piso", false, `${semPiso} ${semPiso === 1 ? "item está" : "itens estão"} sem piso — o robô não disputa item sem valor mínimo`);
   const semMargem = e.itens.filter((i) => i.estrategia === "desempatar_1o" && !positivo(i.margemDesempate)).length;
   if (semMargem) add("desempate-sem-margem", false, `${semMargem} ${semMargem === 1 ? "item" : "itens"} em "Desempatar no 1º lugar" sem margem`);
+  // Com lance travado ou modo automático desligado o robô já só acompanha — o
+  // aviso da iminência seria repetição.
+  const iminencia = e.itens.filter((i) => i.estrategia === "iminencia").length;
+  if (iminencia && e.portalSemTempoRestante && e.lanceLiberado !== false && e.modoAutomatico !== false) {
+    add(
+      "iminencia-sem-tempo",
+      false,
+      `${iminencia} ${iminencia === 1 ? "item" : "itens"} em "Iminência": neste portal o robô ainda não lê o tempo restante da sala, então nesses itens ele só acompanha — para disputar, use "Melhor preço"`,
+    );
+  }
   if (e.roboDaEmpresa === "indeterminado") add("ligado-indeterminado", false, "não foi possível confirmar se o robô da empresa está ligado");
   if (e.sessaoGovBr === "sem-conferencia") add("gov-br-sem-conferencia", false, "a sessão do gov.br ainda não foi conferida pelo robô");
   if (e.lanceLiberado === false) add("lance-travado", false, "o envio de lances ainda não foi liberado para este portal: o robô entra e só acompanha");

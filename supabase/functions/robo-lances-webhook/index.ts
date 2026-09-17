@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { credencialEmClaro } from "../_shared/credenciais-cifra.ts";
 import { portalDoAgente, idDeArmazenamento } from "../_shared/robo-portais.ts";
 import { autorizadoComoCron } from "../_shared/cron-auth.ts";
-import { anteriorDoItem, eventosDoEstado, mesclarEstadoDoItem, motivoParaPessoas, situacaoDoItem, type EstadoDaSala, type EstadoGravado, type EventoDaSala } from "../_shared/robo-estado-da-sala.ts";
+import { anteriorDoItem, avisoDoPrimeiroLance, eventosDoEstado, mesclarEstadoDoItem, motivoParaPessoas, situacaoDoItem, type EstadoDaSala, type EstadoGravado, type EventoDaSala } from "../_shared/robo-estado-da-sala.ts";
 import {
   documentosQueVencemAteASessao,
   deveDespacharAgora,
@@ -610,6 +610,7 @@ serve(async (req) => {
               // item como veio da tela. Vazio = melhor preço.
               estrategia: (itens[idx] as Record<string, unknown>)?.estrategia ?? null,
               margem_desempate: (itens[idx] as Record<string, unknown>)?.margem_desempate ?? null,
+              lance_final_fechado: (itens[idx] as Record<string, unknown>)?.lance_final_fechado ?? null,
             })),
           }),
           // 10s era MENOS que o trabalho pedido. O agente so responde depois
@@ -991,6 +992,7 @@ serve(async (req) => {
                 ...i,
                 estrategia: itensCadastrados[idx]?.estrategia ?? null,
                 margem_desempate: itensCadastrados[idx]?.margemDesempate ?? null,
+                lance_final_fechado: itensCadastrados[idx]?.lanceFinalFechado ?? null,
               })),
             }),
             signal: AbortSignal.timeout(60000),
@@ -1147,12 +1149,41 @@ serve(async (req) => {
               status: "ativo",
             })
             .eq("id", sessao_id);
+          // O primeiro lance aceito de cada item vira aviso (D7); os seguintes
+          // ficam só na linha do tempo. A contagem vem ANTES de gravar o evento
+          // deste lance, e uma leitura que falha não avisa — melhor calar que repetir.
+          const itemDoLance = Number.isFinite(Number(payload.item)) && payload.item !== null ? Number(payload.item) : null;
+          let anteriores = supabase
+            .from("robo_eventos_sessao")
+            .select("id", { count: "exact", head: true })
+            .eq("sessao_id", sessao_id)
+            .eq("tipo", "lance-enviado");
+          anteriores = itemDoLance === null ? anteriores.is("item", null) : anteriores.eq("item", itemDoLance);
+          const { count: lancesAnterioresDoItem, error: erroDaContagem } = await anteriores;
           await registrarEventos(supabase, sessao, userId, [{
             tipo: "lance-enviado",
-            mensagem: `Lance enviado: R$ ${formatarReais(valor)}`,
-            item: null,
+            mensagem: `Lance enviado${itemDoLance !== null ? ` no item ${itemDoLance}` : ""}: R$ ${formatarReais(valor)}`,
+            item: itemDoLance,
             dados: { valor, rodada, motivo: payload.motivo ?? null },
           }]);
+          const aviso = erroDaContagem
+            ? null
+            : avisoDoPrimeiroLance({
+              edital: sessao.edital,
+              item: itemDoLance,
+              valor: Number(valor),
+              lancesAnterioresDoItem: lancesAnterioresDoItem ?? 0,
+              formatar: formatarReais,
+            });
+          if (aviso) {
+            await supabase.from("notificacoes").insert({
+              user_id: userId,
+              tipo: "info",
+              titulo: aviso.titulo,
+              mensagem: aviso.mensagem,
+              link: linkDaDisputa(sessao),
+            });
+          }
           break;
         }
 
@@ -3351,6 +3382,7 @@ async function enviarLembretesDeProntidao(
       lanceLiberado,
       modoAutomatico: typeof d.modo_automatico === "boolean" ? d.modo_automatico : null,
       documentosVencendo,
+      portalSemTempoRestante: ehComprasGov,
     });
     const texto = textoDoLembrete({ qual, edital: d.edital, portalNome: d.portal, inicioSessao: inicio, agora, pendencias, sessaoGovBr, sessaoConferidaAs });
     const link = `/robo-lances/disputa/${d.id}`;
