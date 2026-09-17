@@ -332,7 +332,7 @@ export const paginasPadrao: PaginaPadrao[] = [
     rota: '/admin/robo-lances', grupo: 'Admin', titulo: 'Configurações do Robô de Lances', icone: Crosshair,
     descricao: 'Agente, sessões, diagnóstico e avisos do robô, operados pela equipe Praefectus',
     padrao: 'abas',
-    abas: ['Agente e infraestrutura', 'Sessões e tela remota', 'Diagnóstico', 'Avisos aos clientes', 'Auditoria e eventos'],
+    abas: ['Agente e infraestrutura', 'Sessões e tela remota', 'Diagnóstico', 'Avisos aos clientes', 'Histórico do robô'],
   },
   {
     rota: '/admin/metricas-saas', grupo: 'Admin', titulo: 'Métricas SaaS', icone: BarChart3,

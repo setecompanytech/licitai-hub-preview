@@ -11,15 +11,18 @@ import { MIGRATION_DA_SEPARACAO } from './leitura';
 export default function MigracaoPendente({
   assunto,
   detalhe,
+  arquivo = MIGRATION_DA_SEPARACAO,
 }: {
   /** O que ainda não existe, com a tabela entre parênteses. */
   assunto: string;
   detalhe?: string | null;
+  /** A migration que cria o que falta; a da separação da plataforma, sem outra. */
+  arquivo?: string;
 }) {
   return (
     <AvisoDeContexto titulo="Migração pendente">
       {assunto} ainda não existe neste banco. Cole{' '}
-      <code className="font-mono">{MIGRATION_DA_SEPARACAO}</code> no SQL Editor do Supabase e
+      <code className="font-mono">{arquivo}</code> no SQL Editor do Supabase e
       recarregue a tela.
       {detalhe && <span className="g-meta mt-1 block break-words">Resposta do banco: {detalhe}</span>}
     </AvisoDeContexto>

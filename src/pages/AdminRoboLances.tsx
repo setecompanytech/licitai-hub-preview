@@ -18,6 +18,7 @@ import DisputaRealtimePanel from '@/components/robo-lances/DisputaRealtimePanel'
 import DiagnosticoDeSessoes from '@/components/admin-robo/DiagnosticoDeSessoes';
 import RegistroDeChamadas from '@/components/admin-robo/RegistroDeChamadas';
 import GestorDeAvisos from '@/components/admin-robo/GestorDeAvisos';
+import HistoricoDoRobo from '@/components/admin-robo/HistoricoDoRobo';
 
 /**
  * Admin Praefectus › Robô de Lances — a operação do robô, fora da tela do cliente.
@@ -52,7 +53,8 @@ const ABAS: AbaGestao[] = [
   { valor: 'sessoes', rotulo: 'Sessões e tela remota' },
   { valor: 'diagnostico', rotulo: 'Diagnóstico' },
   { valor: 'avisos', rotulo: 'Avisos aos clientes' },
-  { valor: 'auditoria', rotulo: 'Auditoria e eventos' },
+  // O valor continua `auditoria`: links antigos (?aba=auditoria) caem na aba certa.
+  { valor: 'auditoria', rotulo: 'Histórico do robô' },
 ];
 
 const ABA_PADRAO = 'agente';
@@ -139,6 +141,9 @@ export default function AdminRoboLances() {
 
         {aba === 'auditoria' && (
           <div className="flex min-w-0 flex-col gap-4">
+            {/* O que o robô fez e avisou, em todas as empresas, por 12 meses —
+                o sininho guarda o aviso do robô só por 24 horas (17/09/2026). */}
+            <HistoricoDoRobo />
             <NotaDaPlataforma>
               A trilha de auditoria e os eventos em tempo real ainda leem só os registros da sua própria
               conta. A leitura de todas as empresas está na aba Diagnóstico.

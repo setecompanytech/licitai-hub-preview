@@ -68,6 +68,9 @@ vi.mock('@/components/admin-robo/RegistroDeChamadas', () => ({
 vi.mock('@/components/admin-robo/GestorDeAvisos', () => ({
   default: () => <div data-testid="gestor-avisos" />,
 }));
+vi.mock('@/components/admin-robo/HistoricoDoRobo', () => ({
+  default: () => <div data-testid="historico-do-robo" />,
+}));
 
 import AdminRoboLances from './AdminRoboLances';
 import AdminGuard from '@/components/auth/AdminGuard';
@@ -93,7 +96,7 @@ describe('Admin › Robô de Lances', () => {
       'Sessões e tela remota',
       'Diagnóstico',
       'Avisos aos clientes',
-      'Auditoria e eventos',
+      'Histórico do robô',
     ]);
     expect(screen.getByTestId('cabecalho')).toHaveAttribute('data-rota', '/admin/robo-lances');
   });
@@ -140,8 +143,9 @@ describe('Admin › Robô de Lances', () => {
     expect(screen.getByTestId('gestor-avisos')).toBeInTheDocument();
   });
 
-  it('Auditoria e eventos monta trilha e tempo real, e avisa que são da sua conta', () => {
+  it('Histórico do robô vem primeiro (link antigo ?aba=auditoria cai nele); trilha e tempo real seguem, avisando que são da sua conta', () => {
     renderizar('/admin/robo-lances?aba=auditoria');
+    expect(screen.getByTestId('historico-do-robo')).toBeInTheDocument();
     expect(screen.getByTestId('audit-trail')).toBeInTheDocument();
     expect(screen.getByTestId('disputa-realtime')).toBeInTheDocument();
     expect(screen.getByText(/ainda leem só os registros da sua própria conta/)).toBeInTheDocument();
