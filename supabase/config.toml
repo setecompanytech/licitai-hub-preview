@@ -39,6 +39,10 @@ project_id = "uwtyuwktxalnpgrcbbgk"
     verify_jwt = false
   [functions.envio-boletim]
     verify_jwt = false
+  # Como está no ar desde 09/09 (versão 30). Sem esta linha, um deploy pela
+  # CLI voltaria ao padrão (true) e mudaria o comportamento sem ninguém pedir.
+  [functions.extrair-contrato-pdf]
+    verify_jwt = false
   [functions.licitacoes-cleanup]
     verify_jwt = false
   [functions.process-email-queue]
