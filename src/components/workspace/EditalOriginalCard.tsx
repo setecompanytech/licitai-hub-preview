@@ -102,61 +102,63 @@ export default function EditalOriginalCard({ licitacaoId, urlEdital, onVerItens,
   const unavailable = !prepared && !running && !temItens;
 
   return (
-    <Card className="p-6">
-      <div className="flex flex-wrap items-center gap-3">
-        <h2 className="text-lg font-semibold">Preparação automática</h2>
+    // Uma linha só (18/09): o cartão de 86px gastava título de seção e respiro
+    // de parágrafo para dizer um selo e um botão. A faixa diz o mesmo na
+    // altura de um controle e sai da frente do que a aba existe para mostrar —
+    // a pasta do processo.
+    <Card className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2">
+      <h2 className="g-corpo font-semibold">Preparação automática</h2>
 
-        {temItens && (
-          <Badge variant="success">{itensProntos} itens prontos{pncpDisponivel ? ' · espelho PNCP' : ''}</Badge>
-        )}
-        {!pncpDisponivel && anexado === true && (
-          <Badge variant="outline">Edital anexado</Badge>
+      {temItens && (
+        <Badge variant="success">{itensProntos} itens prontos{pncpDisponivel ? ' · espelho PNCP' : ''}</Badge>
+      )}
+      {!pncpDisponivel && anexado === true && (
+        <Badge variant="outline">Edital anexado</Badge>
+      )}
+      {semEdital && (
+        <Badge variant="warning">Sem edital: envie o edital em Anexos</Badge>
+      )}
+      {!pncpDisponivel && erroVerificacao && (
+        <Badge variant="warning" title={erroVerificacao}>Não foi possível verificar o edital anexado</Badge>
+      )}
+      {!temItens && running && (
+        <Badge variant="info" className="gap-1">
+          <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Extraindo itens do edital…
+        </Badge>
+      )}
+      {!temItens && prepared && (
+        <Badge variant="success">
+          {totalItens != null && totalItens > 0 ? `${totalItens} itens extraídos` : 'Pronto'}
+        </Badge>
+      )}
+      {unavailable && !semEdital && (
+        <Badge variant="warning">Itens não extraídos</Badge>
+      )}
+
+      <div className="ml-auto flex flex-wrap items-center gap-1.5">
+        {(temItens || (prepared && totalItens != null && totalItens > 0)) && onVerItens && (
+          <Button size="sm" variant="outline" onClick={onVerItens}>
+            <Calculator className="w-4 h-4" aria-hidden="true" /> Ver na Precificação
+          </Button>
         )}
         {semEdital && (
-          <Badge variant="warning">Sem edital: envie o edital em Anexos</Badge>
+          <Button size="sm" variant="outline" onClick={irParaAnexos}>
+            <Upload className="w-4 h-4" aria-hidden="true" /> Enviar o edital
+          </Button>
         )}
-        {!pncpDisponivel && erroVerificacao && (
-          <Badge variant="warning" title={erroVerificacao}>Não foi possível verificar o edital anexado</Badge>
+        {unavailable && urlEdital && (
+          <Button asChild size="sm" variant="ghost">
+            <a href={urlEdital} target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="w-4 h-4" aria-hidden="true" /> Portal de origem
+            </a>
+          </Button>
         )}
-        {!temItens && running && (
-          <Badge variant="info" className="gap-1">
-            <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Extraindo itens do edital…
-          </Badge>
+        {!temItens && (
+          <Button size="sm" variant="ghost" onClick={handleReprocess} disabled={running}>
+            <RefreshCw className={`w-4 h-4 ${running ? 'animate-spin' : ''}`} aria-hidden="true" />
+            {prepared ? 'Reprocessar' : 'Tentar novamente'}
+          </Button>
         )}
-        {!temItens && prepared && (
-          <Badge variant="success">
-            {totalItens != null && totalItens > 0 ? `${totalItens} itens extraídos` : 'Pronto'}
-          </Badge>
-        )}
-        {unavailable && !semEdital && (
-          <Badge variant="warning">Itens não extraídos</Badge>
-        )}
-
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          {(temItens || (prepared && totalItens != null && totalItens > 0)) && onVerItens && (
-            <Button size="sm" variant="outline" onClick={onVerItens}>
-              <Calculator className="w-4 h-4" aria-hidden="true" /> Ver na Precificação
-            </Button>
-          )}
-          {semEdital && (
-            <Button size="sm" variant="outline" onClick={irParaAnexos}>
-              <Upload className="w-4 h-4" aria-hidden="true" /> Enviar o edital
-            </Button>
-          )}
-          {unavailable && urlEdital && (
-            <Button asChild size="sm" variant="ghost">
-              <a href={urlEdital} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="w-4 h-4" aria-hidden="true" /> Portal de origem
-              </a>
-            </Button>
-          )}
-          {!temItens && (
-            <Button size="sm" variant="ghost" onClick={handleReprocess} disabled={running}>
-              <RefreshCw className={`w-4 h-4 ${running ? 'animate-spin' : ''}`} aria-hidden="true" />
-              {prepared ? 'Reprocessar' : 'Tentar novamente'}
-            </Button>
-          )}
-        </div>
       </div>
     </Card>
   );

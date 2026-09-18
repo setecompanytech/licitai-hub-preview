@@ -3,7 +3,6 @@ import { useProcessoWorkspace, type ProcessoDocumento } from '@/hooks/useProcess
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import EstadoVazio from '@/components/shared/EstadoVazio';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -143,16 +142,23 @@ export default function DocumentosManager({ licitacaoId, numeroProcesso, orgao, 
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold">Documentos Editáveis</h2>
-          <p className="text-sm text-muted-foreground">Crie do zero, use modelos prontos ou exporte com assinatura eletrônica.</p>
+    <div className="space-y-2">
+      {/* Cabeçalho na altura de um controle (18/09): título e explicação em
+          duas linhas curtas, ações pequenas à direita. */}
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <div className="flex min-w-0 flex-col">
+          <h2 className="g-corpo font-semibold">
+            Documentos editáveis
+            {documentos.length > 0 && (
+              <span className="g-meta ml-2 font-normal text-muted-foreground tabular-nums">{documentos.length}</span>
+            )}
+          </h2>
+          <p className="g-meta text-muted-foreground">Crie do zero, use modelos prontos ou exporte com assinatura eletrônica.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Dialog open={modelosOpen} onOpenChange={setModelosOpen}>
             <DialogTrigger asChild>
-              <Button variant="outline"><Sparkles className="w-4 h-4" aria-hidden="true" /> Modelos Prontos</Button>
+              <Button variant="outline" size="sm"><Sparkles className="w-4 h-4" aria-hidden="true" /> Modelos prontos</Button>
             </DialogTrigger>
             <DialogContent className="max-w-3xl">
               <DialogHeader>
@@ -201,7 +207,7 @@ export default function DocumentosManager({ licitacaoId, numeroProcesso, orgao, 
 
           <Dialog open={novoOpen} onOpenChange={setNovoOpen}>
             <DialogTrigger asChild>
-              <Button><Plus className="w-4 h-4" aria-hidden="true" /> Novo Documento</Button>
+              <Button size="sm"><Plus className="w-4 h-4" aria-hidden="true" /> Novo documento</Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader><DialogTitle>Novo Documento (em branco)</DialogTitle></DialogHeader>
@@ -227,24 +233,24 @@ export default function DocumentosManager({ licitacaoId, numeroProcesso, orgao, 
       </div>
 
       {documentos.length === 0 ? (
-        <Card className="p-6">
-          <EstadoVazio
-            icone={<FileText />}
-            titulo="Nenhum documento criado ainda"
-            descricao="Crie do zero ou comece com um modelo pronto."
-            acao={
-              <Button variant="outline" onClick={() => setModelosOpen(true)}>
-                <Sparkles className="w-4 h-4" aria-hidden="true" /> Começar com um modelo pronto
-              </Button>
-            }
-          />
+        /* Vazio de uma linha (18/09): o estado vazio de 319px empurrava a
+           pasta de anexos — o que a pessoa veio ver — para fora da primeira
+           tela. Tracejado: é um lugar à espera, não um cartão de conteúdo. */
+        <Card role="status" className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-dashed px-4 py-2.5 shadow-none">
+          <p className="g-corpo flex items-center gap-2 text-muted-foreground">
+            <FileText className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+            Nenhum documento criado ainda — crie do zero ou comece com um modelo pronto.
+          </p>
+          <Button variant="outline" size="sm" onClick={() => setModelosOpen(true)}>
+            <Sparkles className="w-4 h-4" aria-hidden="true" /> Começar com um modelo pronto
+          </Button>
         </Card>
       ) : (
         <Card className="divide-y divide-border">
           {documentos.map(d => {
             const tipo = TIPOS.find(t => t.value === d.tipo);
             return (
-              <div key={d.id} className="flex items-center gap-3 p-3 transition-colors hover:bg-muted/50">
+              <div key={d.id} className="flex items-center gap-3 px-3 py-2 transition-colors hover:bg-muted/50">
                 <FileText className="w-5 h-5 shrink-0 text-primary" aria-hidden="true" />
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-medium">{d.titulo}</div>

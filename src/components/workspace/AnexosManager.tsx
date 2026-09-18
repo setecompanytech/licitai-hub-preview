@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Upload, Download, Trash2, FileText, Folder, Search, Eye, ExternalLink, Loader2, ArrowRight, ChevronDown } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
+import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ARTIGO_POR_GRUPO, LABEL_SEGMENTO, classificarTipo } from '@/lib/habilitacao/tipos';
 import { ROTULO_TIPO_EDITAL, avisarAnexosAlterados, tipoPeloNome, type TipoDocumentoEdital } from '@/lib/processo/edital-anexado';
@@ -68,6 +69,39 @@ function formatBytes(b: number | null) {
   if (b < 1024) return `${b} B`;
   if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
   return `${(b / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/**
+ * Pasta como chip (18/09): os oito azulejos de 90px quebravam em duas linhas
+ * (um órfão) e gastavam 230px para escolher um filtro. O chip cabe numa
+ * linha com a busca e o envio; a contagem fica ao lado do nome, e o detalhe
+ * (enviados × PNCP) no título, para quem passa o mouse.
+ */
+function BotaoPasta({ ativo, onClick, rotulo, contagem, titulo }: {
+  ativo: boolean;
+  onClick: () => void;
+  rotulo: string;
+  contagem: number;
+  titulo?: string;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={ativo}
+      onClick={onClick}
+      title={titulo}
+      className={cn(
+        'inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-sm transition-colors',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+        ativo
+          ? 'border-primary bg-primary-tint font-semibold text-primary'
+          : 'border-transparent text-muted-foreground hover:bg-muted hover:text-foreground',
+      )}
+    >
+      <span>{rotulo}</span>
+      <span className="text-xs tabular-nums">{contagem}</span>
+    </button>
+  );
 }
 
 export default function AnexosManager({ licitacaoId, editalViewer, pncpEditalCount }: { licitacaoId: string; editalViewer?: ReactNode; pncpEditalCount?: number }) {
@@ -180,15 +214,23 @@ export default function AnexosManager({ licitacaoId, editalViewer, pncpEditalCou
   );
 
   const grupos = CATEGORIAS.map(c => ({ ...c, count: anexos.filter(a => a.categoria === c.value).length }));
+  const pncp = pncpEditalCount ?? 0;
+  // "Todas" conta o PNCP também: dizia "0 arquivos" com a pasta Edital
+  // mostrando "1 do PNCP" logo ao lado.
+  const totalComPncp = anexos.length + pncp;
 
-  const classeTile = (ativo: boolean) =>
-    `h-auto flex-col items-start justify-start gap-1 whitespace-normal p-3 text-left ${ativo ? 'border-primary bg-primary-tint' : ''}`;
+  /** Abrir uma pasta também aponta o envio para ela — enviar é "para a pasta
+   *  aberta"; o seletor fica para quem está em "Todas" ou quer outra. */
+  const abrirPasta = (v: string) => {
+    setFiltroCat(v);
+    if (v !== 'todas') setCategoriaEscolhida(v as CategoriaAnexo);
+  };
 
   const renderAnexo = (a: ProcessoAnexo) => {
     const cat = CATEGORIAS.find(c => c.value === a.categoria);
     const meta = a.metadata as { segmento?: string | null; tipo?: string | null } | null;
     return (
-      <div key={a.id} className="flex items-center gap-3 p-3 transition-colors hover:bg-muted/50">
+      <div key={a.id} className="flex items-center gap-3 px-3 py-2 transition-colors hover:bg-muted/50">
         <FileText className="w-5 h-5 shrink-0 text-muted-foreground" aria-hidden="true" />
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-medium">{a.nome_arquivo}</div>
@@ -233,21 +275,30 @@ export default function AnexosManager({ licitacaoId, editalViewer, pncpEditalCou
 
   return (
     <div ref={raizRef} className="space-y-4">
-      {/* Toolbar */}
-      <Card className="p-4">
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="flex w-full flex-col gap-1 sm:w-[180px]">
-            <Label htmlFor="anexo-pasta">Pasta</Label>
-            <Select value={categoria} onValueChange={(v) => setCategoria(v as CategoriaAnexo)}>
-              <SelectTrigger id="anexo-pasta"><SelectValue /></SelectTrigger>
-              <SelectContent>{CATEGORIAS.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
-          {categoria === 'habilitacao' && (
-            <div className="flex w-full flex-col gap-1 sm:w-[280px]">
-              <Label htmlFor="anexo-grupo">Grupo da Lei</Label>
+      {/* Uma moldura só (18/09): a barra de envio, a grade de pastas e a lista
+          eram três blocos empilhados — 638px para dizer "nenhum arquivo". Agora
+          a linha de cima escolhe a pasta, busca e envia; o corpo é a lista. */}
+      <Card>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 pt-2">
+          <h2 className="g-corpo font-semibold">
+            Arquivos
+            <span className="g-meta ml-2 font-normal text-muted-foreground tabular-nums">{totalComPncp}</span>
+          </h2>
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+              <Input
+                id="anexo-busca"
+                aria-label="Buscar arquivo"
+                value={busca}
+                onChange={e => setBusca(e.target.value)}
+                placeholder="Buscar arquivo"
+                className="h-9 w-44 pl-8"
+              />
+            </div>
+            {categoria === 'habilitacao' && (
               <Select value={grupoHab} onValueChange={setGrupoHab}>
-                <SelectTrigger id="anexo-grupo"><SelectValue /></SelectTrigger>
+                <SelectTrigger id="anexo-grupo" aria-label="Grupo da Lei" className="h-9 w-[16rem]"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="auto">Detectar grupo pelo nome (automático)</SelectItem>
                   {GRUPOS_HABILITACAO.map(g => (
@@ -257,65 +308,54 @@ export default function AnexosManager({ licitacaoId, editalViewer, pncpEditalCou
                   ))}
                 </SelectContent>
               </Select>
+            )}
+            <div className="flex items-center gap-2">
+              <Label htmlFor="anexo-pasta" className="g-meta whitespace-nowrap text-muted-foreground">Enviar para</Label>
+              <Select value={categoria} onValueChange={(v) => setCategoria(v as CategoriaAnexo)}>
+                <SelectTrigger id="anexo-pasta" className="h-9 w-[9.5rem]"><SelectValue /></SelectTrigger>
+                <SelectContent>{CATEGORIAS.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
+              </Select>
             </div>
-          )}
-          <Button onClick={() => fileRef.current?.click()} disabled={uploading}>
-            <Upload className="w-4 h-4" aria-hidden="true" />
-            {uploading ? 'Enviando...' : 'Enviar Arquivo(s)'}
-          </Button>
-          <input ref={fileRef} type="file" multiple hidden onChange={handleFile} aria-label="Selecionar arquivos para enviar" />
-          <div className="flex w-full flex-col gap-1 sm:ml-auto sm:w-[240px]">
-            <Label htmlFor="anexo-busca">Buscar</Label>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-              <Input id="anexo-busca" value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar arquivo..." className="pl-9" />
-            </div>
+            <Button size="sm" onClick={() => fileRef.current?.click()} disabled={uploading}>
+              <Upload className="w-4 h-4" aria-hidden="true" />
+              {uploading ? 'Enviando...' : 'Enviar arquivo(s)'}
+            </Button>
+            <input ref={fileRef} type="file" multiple hidden onChange={handleFile} aria-label="Selecionar arquivos para enviar" />
           </div>
         </div>
-      </Card>
+        {/* Pastas como fila de abas, abaixo da barra: chips e controles na mesma
+            linha não cabiam em 1440, e a barra caía sozinha à direita. Um
+            ícone para o grupo, não um por pasta — oito iguais eram ruído. */}
+        <div role="group" aria-label="Pastas do processo" className="flex flex-wrap items-center gap-0.5 border-b border-border px-3 py-2">
+          <Folder className="mr-1 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <BotaoPasta
+            ativo={filtroCat === 'todas'}
+            onClick={() => abrirPasta('todas')}
+            rotulo="Todas"
+            contagem={totalComPncp}
+            titulo={pncp > 0 ? `${anexos.length} enviado(s) · ${pncp} do PNCP` : `${anexos.length} arquivo(s)`}
+          />
+          {grupos.map(g => (
+            <BotaoPasta
+              key={g.value}
+              ativo={filtroCat === g.value}
+              onClick={() => abrirPasta(g.value)}
+              rotulo={g.label}
+              /* O PNCP só entra na conta quando trouxe arquivo: processo fora
+                 do portal não pode exibir "do PNCP". */
+              contagem={g.value === 'edital' ? g.count + pncp : g.count}
+              titulo={g.value === 'edital' && pncp > 0 ? `${g.count} enviado(s) · ${pncp} do PNCP` : `${g.count} arquivo(s)`}
+            />
+          ))}
+        </div>
 
-      {/* Pastas */}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
-        <Button
-          type="button"
-          variant="outline"
-          aria-pressed={filtroCat === 'todas'}
-          onClick={() => setFiltroCat('todas')}
-          className={classeTile(filtroCat === 'todas')}
-        >
-          <Folder className="w-4 h-4 text-primary" aria-hidden="true" />
-          <span className="text-sm font-semibold">Todas</span>
-          <span className="text-xs font-normal text-muted-foreground">{anexos.length} arquivos</span>
-        </Button>
-        {grupos.map(g => (
-          <Button
-            key={g.value}
-            type="button"
-            variant="outline"
-            aria-pressed={filtroCat === g.value}
-            onClick={() => setFiltroCat(g.value)}
-            className={classeTile(filtroCat === g.value)}
-          >
-            <Folder className="w-4 h-4 text-primary" aria-hidden="true" />
-            <span className="text-sm font-semibold">{g.label}</span>
-            <span className="text-xs font-normal text-muted-foreground">
-              {/* O PNCP só entra na conta quando trouxe arquivo: processo fora
-                  do portal não pode exibir "+ PNCP". */}
-              {g.value === 'edital' && (pncpEditalCount ?? 0) > 0
-                ? `${g.count + (pncpEditalCount ?? 0)} arquivo(s) · ${pncpEditalCount} do PNCP`
-                : `${g.count} arquivos`}
-            </span>
-          </Button>
-        ))}
-      </div>
+        {/* Edital em tela — arquivos oficiais da contratação no PNCP. Fica sempre
+            montado (oculto fora da pasta) para a listagem carregar uma vez só e o
+            contador da pasta refletir os arquivos do PNCP desde o início. */}
+        {editalViewer && <div className={filtroCat === 'edital' ? 'p-3' : 'hidden'}>{editalViewer}</div>}
 
-      {/* Edital em tela — arquivos oficiais da contratação no PNCP. Fica sempre
-          montado (oculto fora da pasta) para a listagem carregar uma vez só e o
-          contador da pasta refletir os arquivos do PNCP desde o início. */}
-      {editalViewer && <div className={filtroCat === 'edital' ? '' : 'hidden'}>{editalViewer}</div>}
-
-      {/* Lista */}
-      <Card className="divide-y divide-border">
+        {/* Lista */}
+        <div className="divide-y divide-border">
         {loading && (
           <div role="status" aria-busy="true" className="space-y-4 p-4">
             <span className="sr-only">Carregando...</span>
@@ -330,39 +370,47 @@ export default function AnexosManager({ licitacaoId, editalViewer, pncpEditalCou
             ))}
           </div>
         )}
-        {!loading && filtrados.length === 0 && (
-          /* Pastas alimentadas por um módulo do processo apontam para ele —
-             a pasta e a aba que a produz são o mesmo trabalho. */
-          <EstadoVazio
-            icone={<Folder />}
-            titulo="Nenhum arquivo nesta pasta"
-            descricao={ORIGEM_DA_PASTA[filtroCat]?.texto ?? (filtroCat === 'edital'
-              ? 'Envie aqui o edital, o Termo de Referência e os anexos — é deles que o checklist, a proposta e o robô leem quando o processo não está no PNCP.'
-              : 'Envie o primeiro arquivo pela barra acima.')}
-            acao={
-              ORIGEM_DA_PASTA[filtroCat] ? (
-                <Button variant="outline" onClick={() => setSearchParams((prev) => {
-                  const next = new URLSearchParams(prev);
-                  next.set('aba', ORIGEM_DA_PASTA[filtroCat].aba);
-                  return next;
-                }, { replace: true })}>
-                  {ORIGEM_DA_PASTA[filtroCat].botao} <ArrowRight className="w-4 h-4" aria-hidden="true" />
-                </Button>
-              ) : (
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    // Enviar a partir de uma pasta vazia envia PARA essa pasta.
-                    if (filtroCat !== 'todas') setCategoriaEscolhida(filtroCat as CategoriaAnexo);
-                    fileRef.current?.click();
-                  }}
-                  disabled={uploading}
-                >
-                  <Upload className="w-4 h-4" aria-hidden="true" /> {uploading ? 'Enviando...' : 'Enviar Arquivo(s)'}
-                </Button>
-              )
-            }
-          />
+        {/* Vazio de uma linha (18/09), e honesto com o PNCP: "Todas" com
+            arquivo do PNCP não está vazia — o edital em tela mora na pasta
+            Edital; e a pasta Edital com PNCP não repete "nenhum arquivo"
+            embaixo do visualizador. Pastas alimentadas por um módulo do
+            processo apontam para ele — a pasta e a aba que a produz são o
+            mesmo trabalho. */}
+        {!loading && filtrados.length === 0 && pncp > 0 && filtroCat === 'todas' && (
+          <div role="status" className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2.5">
+            <p className="g-corpo flex items-center gap-2 text-muted-foreground">
+              <Folder className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+              {pncp} arquivo(s) do PNCP na pasta Edital; nenhum arquivo enviado ainda.
+            </p>
+            <Button variant="outline" size="sm" onClick={() => abrirPasta('edital')}>
+              Abrir a pasta Edital <ArrowRight className="w-4 h-4" aria-hidden="true" />
+            </Button>
+          </div>
+        )}
+        {!loading && filtrados.length === 0 && !(pncp > 0 && (filtroCat === 'todas' || filtroCat === 'edital')) && (
+          <div role="status" className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2.5">
+            <p className="g-corpo flex items-center gap-2 text-muted-foreground">
+              <Folder className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+              <span>
+                <span className="font-medium text-foreground">Nenhum arquivo nesta pasta.</span>{' '}
+                {ORIGEM_DA_PASTA[filtroCat]?.texto ?? (filtroCat === 'edital'
+                  ? 'Envie aqui o edital, o Termo de Referência e os anexos — é deles que o checklist, a proposta e o robô leem quando o processo não está no PNCP.'
+                  : 'Envie o primeiro arquivo pela barra acima.')}
+              </span>
+            </p>
+            {/* Sem um segundo "Enviar arquivo(s)": o da barra está logo acima,
+                e abrir a pasta já apontou o envio para ela. Pasta que nasce
+                em outra aba leva até lá. */}
+            {ORIGEM_DA_PASTA[filtroCat] && (
+              <Button variant="outline" size="sm" onClick={() => setSearchParams((prev) => {
+                const next = new URLSearchParams(prev);
+                next.set('aba', ORIGEM_DA_PASTA[filtroCat].aba);
+                return next;
+              }, { replace: true })}>
+                {ORIGEM_DA_PASTA[filtroCat].botao} <ArrowRight className="w-4 h-4" aria-hidden="true" />
+              </Button>
+            )}
+          </div>
         )}
         {filtroCat !== 'habilitacao' && filtrados.map((a: ProcessoAnexo) => renderAnexo(a))}
 
@@ -404,6 +452,7 @@ export default function AnexosManager({ licitacaoId, editalViewer, pncpEditalCou
             </div>
           );
         })}
+        </div>
       </Card>
 
       {/* Tipo do documento da pasta Edital — gravado em metadata.tipo. */}
