@@ -4,11 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import ListaDeCampos from '@/components/gestao/ListaDeCampos';
 import { supabase } from '@/integrations/supabase/client';
 import BotaoReanalisar from '@/components/contratos/BotaoReanalisar';
 import { toast } from 'sonner';
-import { Truck, Pencil, Check, X, Loader2, AlertTriangle } from 'lucide-react';
-import { ROTULO_DO_MARCO } from '@/lib/contratos/prazo-de-entrega';
+import { Truck, Pencil, Check, X, Loader2, AlertTriangle, Trash2 } from 'lucide-react';
+import { ROTULO_DO_MARCO, clausulaFalaDePrazo } from '@/lib/contratos/prazo-de-entrega';
 
 type Entrega = {
   prazo_entrega_dias: number | null;
@@ -42,6 +43,35 @@ const emDias = (d: number | null, u: string | null) =>
   d ? `${d} dia${d > 1 ? 's' : ''} ${u === 'uteis' ? 'úteis' : 'corridos'}` : null;
 
 /**
+ * Os três prazos do cartão, com as colunas de cada um. É a lista que desenha
+ * as linhas, confere a evidência e monta o "descartar" — uma fonte só, para
+ * o ateste e o pagamento não ficarem com regra diferente da entrega.
+ */
+type Prazo = {
+  chave: 'entrega' | 'recebimento' | 'pagamento';
+  rotulo: string;
+  dias: 'prazo_entrega_dias' | 'prazo_recebimento_dias' | 'prazo_pagamento_dias';
+  unidade: 'prazo_entrega_unidade' | 'prazo_recebimento_unidade' | 'prazo_pagamento_unidade';
+  clausula: 'prazo_entrega_clausula' | 'prazo_recebimento_clausula' | 'prazo_pagamento_clausula';
+};
+const PRAZOS: Prazo[] = [
+  { chave: 'entrega', rotulo: 'prazo de entrega', dias: 'prazo_entrega_dias', unidade: 'prazo_entrega_unidade', clausula: 'prazo_entrega_clausula' },
+  { chave: 'recebimento', rotulo: 'prazo de ateste', dias: 'prazo_recebimento_dias', unidade: 'prazo_recebimento_unidade', clausula: 'prazo_recebimento_clausula' },
+  { chave: 'pagamento', rotulo: 'prazo de pagamento', dias: 'prazo_pagamento_dias', unidade: 'prazo_pagamento_unidade', clausula: 'prazo_pagamento_clausula' },
+];
+
+/**
+ * Prazo com evidência que não fala em prazo.
+ *
+ * É o "481 dias corridos" de 18/09: a frase citada era uma linha de tabela de
+ * itens (481,79 kg × R$ 38,00), lida como se fosse dias. A leitura nova já
+ * recusa isso na entrada; o que JÁ está gravado precisa ser dito na tela, com
+ * a saída ao lado. Prazo preenchido à mão não tem cláusula e não entra aqui.
+ */
+const prazoSuspeito = (d: Entrega, p: Prazo): boolean =>
+  !!d[p.dias] && !!d[p.clausula] && !clausulaFalaDePrazo(d[p.clausula]);
+
+/**
  * O que o contrato exige na entrega — e onde corrigir quando a IA erra.
  *
  * Estes três dados vinham no PDF, eram lidos, e não tinham onde aparecer: o
@@ -57,6 +87,7 @@ export default function ContratoEntrega({ contratoId }: { contratoId: string }) 
   const [indisponivel, setIndisponivel] = useState(false);
   const [editando, setEditando] = useState(false);
   const [salvando, setSalvando] = useState(false);
+  const [descartando, setDescartando] = useState<Prazo['chave'] | null>(null);
   const [form, setForm] = useState<Entrega>(VAZIO);
 
   useEffect(() => {
@@ -105,8 +136,40 @@ export default function ContratoEntrega({ contratoId }: { contratoId: string }) 
     toast.success('Condições de entrega atualizadas.');
   };
 
+  /**
+   * Apaga um prazo cuja evidência não o sustenta — dias, unidade e a frase
+   * citada saem juntos (e o marco, no pagamento). O campo volta a "não fixado",
+   * que é a verdade: ninguém leu um prazo neste contrato ainda.
+   */
+  const descartarPrazo = async (p: Prazo) => {
+    setDescartando(p.chave);
+    const payload: Record<string, null> = { [p.dias]: null, [p.unidade]: null, [p.clausula]: null };
+    if (p.chave === 'pagamento') payload.prazo_pagamento_marco = null;
+    const { error } = await supabase.from('contratos').update(payload as never).eq('id', contratoId);
+    setDescartando(null);
+    if (error) { toast.error('Não foi possível descartar', { description: error.message }); return; }
+    setDados({ ...(dados ?? VAZIO), ...payload });
+    toast.success(`O ${p.rotulo} foi descartado.`, {
+      description: 'O campo volta a "não fixado". Preencha pelo lápis quando o contrato disser o prazo.',
+    });
+  };
+
   const semNada = !dados?.prazo_entrega_dias && !dados?.local_entrega
     && !dados?.prazo_recebimento_dias && !dados?.prazo_pagamento_dias;
+
+  const referencia = (texto: string) => (
+    <span className="g-meta whitespace-nowrap text-muted-foreground"> · {texto}</span>
+  );
+  const naoFixado = (tom: 'neutro' | 'aviso' = 'neutro') => (
+    <span className={`whitespace-nowrap font-normal ${tom === 'aviso' ? 'text-warning-ink' : 'text-muted-foreground'}`}>não fixado</span>
+  );
+
+  const evidencias: Array<[string, string]> = dados ? ([
+    ['Prazo de entrega', dados.prazo_entrega_clausula],
+    ['Local', dados.local_entrega_clausula],
+    ['Ateste', dados.prazo_recebimento_clausula],
+    ['Pagamento', dados.prazo_pagamento_clausula],
+  ] as Array<[string, string | null]>).filter((e): e is [string, string] => !!e[1]) : [];
 
   return (
     <Card className="p-4">
@@ -211,49 +274,78 @@ export default function ContratoEntrega({ contratoId }: { contratoId: string }) 
           <BotaoReanalisar />
         </div>
       ) : (
-        <div className="space-y-2">
-          {/* ── Três prazos, três donos ────────────────────────────────────
-              "Órgão recebe em" era um rótulo enganoso: lia-se como o momento
-              em que a mercadoria chega, que é o mesmo da entrega. O prazo é
-              outro — é o que o órgão tem para ATESTAR (art. 140), e é dele que
-              costuma correr o pagamento. Nomear quem deve o quê separa os três
-              sem precisar explicar. */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
-            <div>
-              <span className="text-muted-foreground">Você entrega em:</span>
-              <p className="font-medium">{emDias(dados!.prazo_entrega_dias, dados!.prazo_entrega_unidade) ?? '—'}</p>
-              <p className="text-xs text-muted-foreground">contado do marco da cláusula</p>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Órgão atesta em:</span>
-              <p className="font-medium">
-                {emDias(dados!.prazo_recebimento_dias, dados!.prazo_recebimento_unidade)
-                  ?? <span className="text-muted-foreground font-normal">não fixado</span>}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                recebimento definitivo — art. 140
-              </p>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Órgão paga em:</span>
-              <p className="font-medium">
-                {emDias(dados!.prazo_pagamento_dias, dados!.prazo_pagamento_unidade)
-                  ?? <span className="text-warning-ink font-normal">não fixado</span>}
-                {dados!.prazo_pagamento_marco && (
-                  <span className="text-muted-foreground font-normal">
-                    {' '}{ROTULO_DO_MARCO[dados!.prazo_pagamento_marco as keyof typeof ROTULO_DO_MARCO]}
+        <div className="space-y-3">
+          {/* ── Três prazos, três donos — em LINHAS, não em colunas ─────────
+              As três colunas de antes, num painel de 400px, quebravam cada
+              valor em quatro linhas, e "481 dias corridos contado do marco da
+              cláusula" escorria para debaixo de "Órgão atesta em" (18/09).
+              Uma linha por prazo, rótulo à esquerda e valor à direita, não
+              mistura nada. "Órgão recebe em" era rótulo enganoso: o prazo é o
+              que o órgão tem para ATESTAR (art. 140), e é dele que costuma
+              correr o pagamento. Nomear quem deve o quê separa os três. */}
+          <ListaDeCampos
+            campos={[
+              {
+                rotulo: 'Você entrega em',
+                valor: emDias(dados!.prazo_entrega_dias, dados!.prazo_entrega_unidade)
+                  ? (
+                    <span title="Contado do marco que a cláusula fixa — o pedido ou a ordem de fornecimento">
+                      {emDias(dados!.prazo_entrega_dias, dados!.prazo_entrega_unidade)}
+                    </span>
+                  )
+                  : naoFixado(),
+              },
+              {
+                rotulo: 'Órgão atesta em',
+                valor: (
+                  <span>
+                    {emDias(dados!.prazo_recebimento_dias, dados!.prazo_recebimento_unidade) ?? naoFixado()}
+                    {referencia('recebimento definitivo, art. 140')}
                   </span>
-                )}
+                ),
+              },
+              {
+                rotulo: 'Órgão paga em',
+                valor: (
+                  <span>
+                    {emDias(dados!.prazo_pagamento_dias, dados!.prazo_pagamento_unidade) ?? naoFixado('aviso')}
+                    {dados!.prazo_pagamento_dias && dados!.prazo_pagamento_marco && (
+                      <span className="font-normal text-muted-foreground">
+                        {' '}{ROTULO_DO_MARCO[dados!.prazo_pagamento_marco as keyof typeof ROTULO_DO_MARCO]}
+                      </span>
+                    )}
+                    {/* Cláusula necessária: art. 92, V (condições de pagamento) e
+                        VI (prazo para liquidação e para pagamento). */}
+                    {referencia('cláusula obrigatória, art. 92, VI')}
+                  </span>
+                ),
+              },
+              {
+                rotulo: 'Local de entrega',
+                largo: true,
+                valor: dados!.local_entrega ?? <span className="text-muted-foreground">não informado</span>,
+              },
+            ]}
+          />
+
+          {/* Prazo gravado com evidência que não fala em prazo: dito aqui, com a
+              saída ao lado — a leitura nova já recusa isso na entrada. */}
+          {PRAZOS.filter((p) => prazoSuspeito(dados!, p)).map((p) => (
+            <div key={p.chave} role="alert" className="space-y-1.5 rounded-md border border-warning-line bg-warning-tint p-2.5 text-xs text-warning-ink">
+              <p className="flex items-start gap-1.5">
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                <span>
+                  <strong>O {p.rotulo} de {dados![p.dias]} dias não tem cláusula que o sustente.</strong>{' '}
+                  A frase lida não fala em prazo — parece uma linha de tabela de itens (quantidade ou valor
+                  lidos como dias). Confira o documento: corrija pelo lápis, ou descarte.
+                </span>
               </p>
-              <p className="text-xs text-muted-foreground">
-                cláusula obrigatória — art. 92, V
-              </p>
+              <Button size="sm" variant="outline" className="nao-imprime" onClick={() => descartarPrazo(p)} disabled={descartando === p.chave}>
+                {descartando === p.chave ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                Descartar este prazo
+              </Button>
             </div>
-            <div className="col-span-1 sm:col-span-3">
-              <span className="text-muted-foreground">Local:</span>
-              <p className="font-medium">{dados!.local_entrega ?? '—'}</p>
-            </div>
-          </div>
+          ))}
 
           {/* O que a ausência custa, dita onde ela aparece. Um traço não
               informa que falta a cláusula que faz o Contas a Receber projetar,
@@ -271,21 +363,17 @@ export default function ContratoEntrega({ contratoId }: { contratoId: string }) 
             </p>
           )}
 
-          {/* A frase de onde o número saiu. Sem ela o prazo é um número que
-              ninguém consegue contestar — e prazo errado só se descobre no dia
-              em que já era. */}
-          {(dados!.prazo_entrega_clausula || dados!.local_entrega_clausula
-            || dados!.prazo_recebimento_clausula || dados!.prazo_pagamento_clausula) && (
+          {/* A frase de onde cada número saiu, com o nome do campo na frente.
+              Sem ela o prazo é um número que ninguém consegue contestar — e
+              prazo errado só se descobre no dia em que já era. */}
+          {evidencias.length > 0 && (
             <div className="pt-2 border-t space-y-1">
               <p className="text-xs text-muted-foreground">Conforme o documento:</p>
-              {[dados!.prazo_entrega_clausula, dados!.local_entrega_clausula,
-                dados!.prazo_recebimento_clausula, dados!.prazo_pagamento_clausula]
-                .filter(Boolean)
-                .map((c, i) => (
-                  <p key={i} className="text-xs text-muted-foreground italic border-l-2 border-border pl-2">
-                    “{c}”
-                  </p>
-                ))}
+              {evidencias.map(([rotulo, texto]) => (
+                <p key={rotulo} className="text-xs text-muted-foreground border-l-2 border-border pl-2">
+                  <span className="font-medium">{rotulo}:</span> <span className="italic">“{texto}”</span>
+                </p>
+              ))}
             </div>
           )}
         </div>

@@ -210,20 +210,15 @@ function normalizeContrato(data: DadosContrato) {
     // existem em contrato público brasileiro: qualquer outra coisa vira null,
     // porque unidade inventada faz o aviso cair no dia errado — e avisar no
     // dia errado é pior do que não avisar, já que quem confia perde o prazo
-    // confiando.
-    prazo_entrega_dias: prazoEmDias(data.prazo_entrega_dias),
-    prazo_entrega_unidade: unidadeDePrazo(data.prazo_entrega_unidade),
-    prazo_entrega_clausula: cleanString(data.prazo_entrega_clausula),
+    // confiando. E o número só sai COM a frase que o sustenta
+    // (`prazoComEvidencia`): sem cláusula que fale em prazo, null.
+    ...prazoComEvidencia("prazo_entrega", data.prazo_entrega_dias, data.prazo_entrega_unidade, data.prazo_entrega_clausula),
     local_entrega: cleanString(data.local_entrega),
     local_entrega_clausula: cleanString(data.local_entrega_clausula),
-    prazo_recebimento_dias: prazoEmDias(data.prazo_recebimento_dias),
-    prazo_recebimento_unidade: unidadeDePrazo(data.prazo_recebimento_unidade),
-    prazo_recebimento_clausula: cleanString(data.prazo_recebimento_clausula),
+    ...prazoComEvidencia("prazo_recebimento", data.prazo_recebimento_dias, data.prazo_recebimento_unidade, data.prazo_recebimento_clausula),
 
-    prazo_pagamento_dias: prazoEmDias(data.prazo_pagamento_dias),
-    prazo_pagamento_unidade: unidadeDePrazo(data.prazo_pagamento_unidade),
+    ...prazoComEvidencia("prazo_pagamento", data.prazo_pagamento_dias, data.prazo_pagamento_unidade, data.prazo_pagamento_clausula),
     prazo_pagamento_marco: marcoDoPagamento(data.prazo_pagamento_marco),
-    prazo_pagamento_clausula: cleanString(data.prazo_pagamento_clausula),
 
     // Os dois lados, como a IA os leu. A classificação é derivada disto no
     // front (`validateExtractedContract`), e não pedida à IA.
@@ -257,6 +252,42 @@ function prazoEmDias(v: unknown): number | null {
   if (n === null || !Number.isFinite(n)) return null;
   const inteiro = Math.round(n);
   return inteiro >= 1 && inteiro <= 1825 ? inteiro : null;
+}
+
+/**
+ * A frase citada sustenta um prazo? Espelho de `clausulaFalaDePrazo` em
+ * `src/lib/contratos/prazo-de-entrega.ts` — as duas cópias mudam juntas.
+ *
+ * Caso de 17/09 (contrato 17/2025): a leitura devolveu "481 dias" com a
+ * evidência "23/04/2026 Inclusão 481,78950 38,0000 18.308,00" — uma linha de
+ * tabela de itens (481,79 kg × R$ 38,00), sem a palavra "dia". Número sem
+ * cláusula que fale em prazo é quantidade, valor ou data lida no lugar errado.
+ */
+function clausulaFalaDePrazo(clausula: string | null): boolean {
+  if (!clausula) return false;
+  const semAcento = clausula.normalize("NFD").replace(/[̀-ͯ]/g, "");
+  return /\b(dias?|uteis|corridos?|prazos?|horas?|imediat[ao])\b/i.test(semAcento);
+}
+
+/**
+ * Dias, unidade e cláusula de um prazo — juntos, ou nada. Sem a frase que fala
+ * em prazo, os três saem null: o número sozinho não pode ser conferido e ia
+ * disparar aviso na tela de Pedidos.
+ */
+function prazoComEvidencia(
+  campo: "prazo_entrega" | "prazo_recebimento" | "prazo_pagamento",
+  dias: unknown,
+  unidade: unknown,
+  clausula: unknown,
+): Record<string, number | string | null> {
+  const texto = cleanString(clausula);
+  const n = prazoEmDias(dias);
+  const valido = n !== null && clausulaFalaDePrazo(texto);
+  return {
+    [`${campo}_dias`]: valido ? n : null,
+    [`${campo}_unidade`]: valido ? unidadeDePrazo(unidade) : null,
+    [`${campo}_clausula`]: valido ? texto : null,
+  };
 }
 
 /** De onde o prazo de pagamento conta. Fora da lista, null — não se supõe. */
@@ -427,7 +458,7 @@ serve(async (req) => {
 
     const model = hasImages && !hasText ? "gpt-4o" : "gpt-4o-mini";
     const systemPrompt = "Você é um extrator técnico de documentos públicos brasileiros (Contratos Administrativos, ATAs de Registro de Preços e Termos Aditivos). Extraia SOMENTE informações que aparecem literalmente no documento. Não invente, não estime, não complete lacunas. Se um campo não estiver explícito, retorne null. Preserve a descrição real dos itens exatamente como no documento. SEMPRE classifique o tipo de documento em tipo_documento_detectado: 'ata_srp', 'contrato', 'aditivo' ou 'outro'. SEMPRE classifique também a estrutura em tipo_estrutura_detectado: 'lotes' (quando o documento agrupa itens sob marcadores tipo 'LOTE 01', 'LOTE 02', 'GRUPO A', 'CATEGORIA') ou 'itens' (quando os itens são listados individualmente sem agrupamento). Forneça tipo_estrutura_confianca de 0.0 a 1.0 e uma justificativa curta. Quando o documento for aditivo, preencha 'aditivo' com os campos correspondentes.";
-    const promptText = `Arquivo: ${nome_arquivo || "documento"}\nDica do usuário sobre o tipo: ${tipo_arquivo || "desconhecido"}\nEstrutura informada pelo usuário: ${tipo_estrutura === "lotes" ? "LOTES" : tipo_estrutura === "itens" ? "ITENS" : "AUTO (não informada — você decide)"}\n\nClassifique o tipo do documento, classifique a estrutura (itens vs lotes) e extraia os dados pertinentes:\n\n1) Se for ATA SRP → preencha numero_ata, objeto, orgao, valor_global, validade_ata_meses, vigência, itens.\n2) Se for Contrato → preencha numero_contrato, objeto, valor_global, vigência, itens.\n3) Se for Aditivo → preencha 'aditivo' com tipo, valores, datas e referências.\n\nPara CADA item: se a estrutura for 'lotes', preencha 'numero_lote' e 'descricao_lote'. Itens do mesmo lote compartilham o mesmo numero_lote.\n\nREGRAS CRÍTICAS:\n- NÚMEROS SÃO TRANSCRITOS COMO TEXTO, exatamente como o documento os escreve: "100.800" (cem mil e oitocentos, ponto de milhar brasileiro), "15,80", "1.234.567,89". NUNCA os converta para número JSON — o literal 100.800 em JSON vale cem vírgula oito, e foi assim que uma quantidade de cem mil quilos virou cem.\n- O texto vem delimitado por '===== PÁGINA N ====='. Use os delimitadores para se orientar: a ata-alvo é um bloco CONTÍGUO de páginas; dados de páginas distantes entre si provavelmente pertencem a atas diferentes.\n- O documento pode ser um PROCESSO com ATAS DE VÁRIOS FORNECEDORES. Extraia SOMENTE a ata do fornecedor indicado no nome do arquivo: os itens do quadro OBJETO dela e o VALOR TOTAL dela. NUNCA use o total do processo, de outro fornecedor ou de um resumo geral como valor_global.\n- valor_global TEM de ser o VALOR TOTAL do quadro OBJETO desta ata — e tem de bater com a soma dos valor_total dos itens que você extraiu. Se os números que encontrou não fecham entre si, você pegou o total errado.\n- PRAZO E LOCAL DE ENTREGA: todo contrato e toda ata trazem, em cláusula própria (procure por "DA ENTREGA", "DO PRAZO DE ENTREGA", "DO LOCAL DE ENTREGA", "DO RECEBIMENTO", "DA EXECUÇÃO"), (a) em quantos dias entregar depois do pedido, (b) onde entregar, (c) em quantos dias o órgão recebe e atesta. Extraia os três, sempre com a FRASE LITERAL na cláusula correspondente — o número sozinho não pode ser conferido, e ele vai disparar aviso de prazo na tela de Pedidos. Distinga "dias úteis" de "dias corridos": não são a mesma coisa e a diferença passa de uma semana em dezembro. Se a cláusula não existir no documento, devolva null nos três — prazo inventado vira obrigação que ninguém pactuou.\n- PRAZO DE PAGAMENTO: procure a clausula "DO PAGAMENTO", "DAS CONDICOES DE PAGAMENTO" ou equivalente — e o art. 92, V da Lei 14.133/2021 a torna obrigatoria, entao ela existe. Extraia em quantos dias a Administracao paga, se sao uteis ou corridos, e sobretudo DE ONDE o prazo e contado: do ateste, da emissao da nota fiscal, do protocolo da nota no orgao, ou da entrega. Nao suponha o marco — contratos usam os quatro, e trocar um pelo outro desloca a previsao de entrada em semanas. Sempre com a frase literal.\n- FORMA DE FORNECIMENTO: na mesma cláusula de entrega/execução, o documento costuma dizer se a entrega é ÚNICA (integral, imediata, em parcela única — comum em dispensa de licitação) ou PARCELADA/CONTÍNUA (sob demanda, conforme requisição ou ordem de fornecimento). Preencha forma_fornecimento com 'unico' ou 'continuo' SOMENTE quando o documento disser isso com todas as letras; sem menção explícita, devolva null — a tela pergunta ao usuário, e uma suposição sua viraria regra de alerta que ninguém pactuou.\n- CLÁUSULA DE REAJUSTE: procure "DO REAJUSTE", "DO REAJUSTAMENTO", "DA ATUALIZAÇÃO DOS PREÇOS" ou equivalente — o art. 25, §7º da Lei 14.133/2021 obriga o edital a prever índice de reajustamento, então a cláusula costuma existir. Extraia (a) a SIGLA do índice (IPCA, IGP-M, INPC…), (b) a DATA-BASE de onde conta o interregno de 1 ano (a cláusula costuma dizer "contado da data da apresentação da proposta" ou "do orçamento estimado" — extraia a DATA se o documento a der; se a cláusula só nomear o marco sem data, devolva null na data), e (c) a FRASE LITERAL. Índice ou data inventados disparariam alerta de reajuste no dia errado — na dúvida, null.\n- ASSINATURAS: procure o bloco de assinaturas no fim, carimbos, certificados ICP-Brasil e frases como "Assinado eletronicamente por" ou "Documento assinado digitalmente". Preencha DOIS campos separados: assinatura_orgao com quem assinou pela ADMINISTRACAO (secretario, comandante, ordenador de despesa) e assinatura_contratada com quem assinou pela EMPRESA (socio, representante legal; costuma vir rotulado "Contratado", "Contratada" ou "Fornecedor"). O rotulo ao lado do nome diz de que lado ele esta — leia o rotulo, nao adivinhe pela ordem em que aparecem. Deixe null o lado que nao tiver assinatura. Nao classifique nada: so liste quem assinou de cada lado.\n- IDIOMA: todo texto extraído é TRANSCRIÇÃO do documento, no idioma em que ele está (português) — NUNCA traduza nem parafraseie em outro idioma. Uma observação vertida para o inglês foi parar no registro oficial de um empenho (08/09); objeto, cláusulas e observações saem como o documento escreve.\n- NUNCA invente itens. Se a tabela nao estiver legivel no texto recebido, devolva itens: [] e diga isso em observacoes. Uma lista plausivel de produtos ("Arroz", "Feijao", "Acucar") e MUITO PIOR que uma lista vazia: quem cadastra nao tem como desconfiar dela.
+    const promptText = `Arquivo: ${nome_arquivo || "documento"}\nDica do usuário sobre o tipo: ${tipo_arquivo || "desconhecido"}\nEstrutura informada pelo usuário: ${tipo_estrutura === "lotes" ? "LOTES" : tipo_estrutura === "itens" ? "ITENS" : "AUTO (não informada — você decide)"}\n\nClassifique o tipo do documento, classifique a estrutura (itens vs lotes) e extraia os dados pertinentes:\n\n1) Se for ATA SRP → preencha numero_ata, objeto, orgao, valor_global, validade_ata_meses, vigência, itens.\n2) Se for Contrato → preencha numero_contrato, objeto, valor_global, vigência, itens.\n3) Se for Aditivo → preencha 'aditivo' com tipo, valores, datas e referências.\n\nPara CADA item: se a estrutura for 'lotes', preencha 'numero_lote' e 'descricao_lote'. Itens do mesmo lote compartilham o mesmo numero_lote.\n\nREGRAS CRÍTICAS:\n- NÚMEROS SÃO TRANSCRITOS COMO TEXTO, exatamente como o documento os escreve: "100.800" (cem mil e oitocentos, ponto de milhar brasileiro), "15,80", "1.234.567,89". NUNCA os converta para número JSON — o literal 100.800 em JSON vale cem vírgula oito, e foi assim que uma quantidade de cem mil quilos virou cem.\n- O texto vem delimitado por '===== PÁGINA N ====='. Use os delimitadores para se orientar: a ata-alvo é um bloco CONTÍGUO de páginas; dados de páginas distantes entre si provavelmente pertencem a atas diferentes.\n- O documento pode ser um PROCESSO com ATAS DE VÁRIOS FORNECEDORES. Extraia SOMENTE a ata do fornecedor indicado no nome do arquivo: os itens do quadro OBJETO dela e o VALOR TOTAL dela. NUNCA use o total do processo, de outro fornecedor ou de um resumo geral como valor_global.\n- valor_global TEM de ser o VALOR TOTAL do quadro OBJETO desta ata — e tem de bater com a soma dos valor_total dos itens que você extraiu. Se os números que encontrou não fecham entre si, você pegou o total errado.\n- PRAZO E LOCAL DE ENTREGA: todo contrato e toda ata trazem, em cláusula própria (procure por "DA ENTREGA", "DO PRAZO DE ENTREGA", "DO LOCAL DE ENTREGA", "DO RECEBIMENTO", "DA EXECUÇÃO"), (a) em quantos dias entregar depois do pedido, (b) onde entregar, (c) em quantos dias o órgão recebe e atesta. Extraia os três, sempre com a FRASE LITERAL na cláusula correspondente — o número sozinho não pode ser conferido, e ele vai disparar aviso de prazo na tela de Pedidos. Distinga "dias úteis" de "dias corridos": não são a mesma coisa e a diferença passa de uma semana em dezembro. Se a cláusula não existir no documento, devolva null nos três — prazo inventado vira obrigação que ninguém pactuou.\n- PRAZO DE PAGAMENTO: procure a clausula "DO PAGAMENTO", "DAS CONDICOES DE PAGAMENTO" ou equivalente — e o art. 92, V e VI da Lei 14.133/2021 a torna obrigatoria (condicoes de pagamento; prazo para liquidacao e pagamento), entao ela existe. Extraia em quantos dias a Administracao paga, se sao uteis ou corridos, e sobretudo DE ONDE o prazo e contado: do ateste, da emissao da nota fiscal, do protocolo da nota no orgao, ou da entrega. Nao suponha o marco — contratos usam os quatro, e trocar um pelo outro desloca a previsao de entrada em semanas. Sempre com a frase literal.\n- FORMA DE FORNECIMENTO: na mesma cláusula de entrega/execução, o documento costuma dizer se a entrega é ÚNICA (integral, imediata, em parcela única — comum em dispensa de licitação) ou PARCELADA/CONTÍNUA (sob demanda, conforme requisição ou ordem de fornecimento). Preencha forma_fornecimento com 'unico' ou 'continuo' SOMENTE quando o documento disser isso com todas as letras; sem menção explícita, devolva null — a tela pergunta ao usuário, e uma suposição sua viraria regra de alerta que ninguém pactuou.\n- CLÁUSULA DE REAJUSTE: procure "DO REAJUSTE", "DO REAJUSTAMENTO", "DA ATUALIZAÇÃO DOS PREÇOS" ou equivalente — o art. 25, §7º da Lei 14.133/2021 (e o art. 92, V) obriga o CONTRATO a trazer o índice de reajustamento, então a cláusula costuma existir. Extraia (a) a SIGLA do índice (IPCA, IGP-M, INPC…), (b) a DATA-BASE de onde conta o interregno de 1 ano (a cláusula costuma dizer "contado da data da apresentação da proposta" ou "do orçamento estimado" — extraia a DATA se o documento a der; se a cláusula só nomear o marco sem data, devolva null na data), e (c) a FRASE LITERAL. Índice ou data inventados disparariam alerta de reajuste no dia errado — na dúvida, null.\n- ASSINATURAS: procure o bloco de assinaturas no fim, carimbos, certificados ICP-Brasil e frases como "Assinado eletronicamente por" ou "Documento assinado digitalmente". Preencha DOIS campos separados: assinatura_orgao com quem assinou pela ADMINISTRACAO (secretario, comandante, ordenador de despesa) e assinatura_contratada com quem assinou pela EMPRESA (socio, representante legal; costuma vir rotulado "Contratado", "Contratada" ou "Fornecedor"). O rotulo ao lado do nome diz de que lado ele esta — leia o rotulo, nao adivinhe pela ordem em que aparecem. Deixe null o lado que nao tiver assinatura. Nao classifique nada: so liste quem assinou de cada lado.\n- IDIOMA: todo texto extraído é TRANSCRIÇÃO do documento, no idioma em que ele está (português) — NUNCA traduza nem parafraseie em outro idioma. Uma observação vertida para o inglês foi parar no registro oficial de um empenho (08/09); objeto, cláusulas e observações saem como o documento escreve.\n- NUNCA invente itens. Se a tabela nao estiver legivel no texto recebido, devolva itens: [] e diga isso em observacoes. Uma lista plausivel de produtos ("Arroz", "Feijao", "Acucar") e MUITO PIOR que uma lista vazia: quem cadastra nao tem como desconfiar dela.
 - A soma dos valor_total dos itens TEM de bater com o valor_global do documento. Se nao bater, voce leu errado — confira antes de responder.
 - Liste TODOS os itens da tabela, um por linha do documento. Não resuma, não agrupe, não pare no meio: uma ATA SRP costuma ter dezenas de itens e a tabela inteira é a parte que mais importa.\n- NÃO invente campos\n- NÃO reescreva descrições com sinônimos\n- Use null quando o campo não existir\n- Datas no formato DD/MM/AAAA ou YYYY-MM-DD`;
 
@@ -486,15 +517,15 @@ serve(async (req) => {
                   // de entrega é inadimplemento (art. 137, II) e abre caminho
                   // para as sanções do art. 156.
                   prazo_entrega_dias: { type: "number", description: "Prazo de ENTREGA em dias, contado do pedido/ordem de fornecimento. Só o número." },
-                  prazo_entrega_unidade: { type: "string", enum: ["uteis", "corridos"], description: "A cláusula diz 'dias úteis' ou 'dias corridos'? Se ela não disser, use 'corridos' — é a regra supletiva do art. 132 da Lei 14.133/2021." },
-                  prazo_entrega_clausula: { type: "string", description: "A frase LITERAL de onde o prazo de entrega saiu, para conferência." },
+                  prazo_entrega_unidade: { type: "string", enum: ["uteis", "corridos"], description: "A cláusula diz 'dias úteis' ou 'dias corridos'? Se ela não disser, use 'corridos' — regra geral de contagem de prazos (Código Civil, art. 132)." },
+                  prazo_entrega_clausula: { type: "string", description: "A frase LITERAL de onde o prazo de entrega saiu, para conferência — ela precisa falar em dias/prazo. Sem essa frase o prazo é descartado; uma linha de tabela de itens (quantidade, valor) NÃO é prazo." },
                   local_entrega: { type: "string", description: "Onde entregar: endereço, unidade, almoxarifado, ou a regra ('nas unidades indicadas na ordem de fornecimento')." },
                   local_entrega_clausula: { type: "string", description: "A frase LITERAL de onde o local saiu." },
                   prazo_recebimento_dias: { type: "number", description: "Prazo do ÓRGÃO para receber e atestar o objeto, contado da entrega (art. 140). Só o número." },
                   prazo_recebimento_unidade: { type: "string", enum: ["uteis", "corridos"], description: "Unidade do prazo de recebimento." },
                   prazo_recebimento_clausula: { type: "string", description: "A frase LITERAL de onde o prazo de recebimento saiu." },
 
-                  // Prazo de PAGAMENTO — clausula obrigatoria do art. 92, V.
+                  // Prazo de PAGAMENTO — clausula obrigatoria do art. 92, V e VI.
                   // E o que alimenta a projecao de entrada no Contas a Receber.
                   prazo_pagamento_dias: { type: "number", description: "Prazo da Administração para PAGAR, em dias. Só o número." },
                   prazo_pagamento_unidade: { type: "string", enum: ["uteis", "corridos"], description: "A cláusula diz dias úteis ou corridos? Sem menção, 'corridos'." },

@@ -4,6 +4,8 @@
  * inválidos (datas inconsistentes, valores absurdos, strings vazias, etc.).
  */
 
+import { clausulaFalaDePrazo } from '@/lib/contratos/prazo-de-entrega';
+
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const BR_DATE = /^(\d{2})\/(\d{2})\/(\d{4})$/;
 
@@ -158,37 +160,50 @@ export function validateExtractedContract(raw: any): ValidationReport {
   // como corrido por omissão, e "10 dias" lido de uma cláusula que dizia
   // "10 dias úteis" põe a data-limite quatro dias antes da real. O CHECK do
   // banco recusaria a gravação, então o par tem de sair coerente daqui.
+  //
+  // E o número só entra COM a frase que o sustenta. Em 17/09 a leitura devolveu
+  // "481 dias" citando uma linha de tabela de itens ("23/04/2026 Inclusão
+  // 481,78950 38,0000 18.308,00" — 481,79 kg × R$ 38,00): número sem cláusula
+  // que fale em prazo é quantidade, valor ou data lida no lugar errado. Fica de
+  // fora, com o motivo na trilha (`*_sem_evidencia`).
+  const clEnt = toCleanString(raw.prazo_entrega_clausula, 900);
   const dEnt = toPositiveNumber(raw.prazo_entrega_dias, MAX_DIAS_DE_PRAZO);
-  if (dEnt !== null && Number.isInteger(dEnt)) {
+  if (dEnt !== null && Number.isInteger(dEnt) && !clausulaFalaDePrazo(clEnt)) {
+    rejected.push('prazo_entrega_sem_evidencia');
+  } else if (dEnt !== null && Number.isInteger(dEnt)) {
     out.prazo_entrega_dias = dEnt;
     const un = unidadeDePrazo(raw.prazo_entrega_unidade);
-    // Art. 132 da Lei 14.133/2021: sem menção expressa, o prazo é em dias
-    // corridos. É regra supletiva, não invenção nossa.
+    // Sem menção expressa, conta-se em dias corridos — regra geral de contagem
+    // de prazos (Código Civil, art. 132), não invenção nossa.
     out.prazo_entrega_unidade = un ?? 'corridos';
+    if (clEnt) out.prazo_entrega_clausula = clEnt;
   } else if (raw.prazo_entrega_dias) {
     rejected.push('prazo_entrega_dias');
   }
-  const clEnt = toCleanString(raw.prazo_entrega_clausula, 900);
-  if (clEnt) out.prazo_entrega_clausula = clEnt;
 
   const local = toCleanString(raw.local_entrega, 400);
   if (local) out.local_entrega = local;
   const clLocal = toCleanString(raw.local_entrega_clausula, 900);
   if (clLocal) out.local_entrega_clausula = clLocal;
 
+  const clRec = toCleanString(raw.prazo_recebimento_clausula, 900);
   const dRec = toPositiveNumber(raw.prazo_recebimento_dias, MAX_DIAS_DE_PRAZO);
-  if (dRec !== null && Number.isInteger(dRec)) {
+  if (dRec !== null && Number.isInteger(dRec) && !clausulaFalaDePrazo(clRec)) {
+    rejected.push('prazo_recebimento_sem_evidencia');
+  } else if (dRec !== null && Number.isInteger(dRec)) {
     out.prazo_recebimento_dias = dRec;
     out.prazo_recebimento_unidade = unidadeDePrazo(raw.prazo_recebimento_unidade) ?? 'corridos';
+    if (clRec) out.prazo_recebimento_clausula = clRec;
   } else if (raw.prazo_recebimento_dias) {
     rejected.push('prazo_recebimento_dias');
   }
-  const clRec = toCleanString(raw.prazo_recebimento_clausula, 900);
-  if (clRec) out.prazo_recebimento_clausula = clRec;
 
   // Pagamento. Um ano de teto: prazo maior que isso é data lida como prazo.
+  const clPag = toCleanString(raw.prazo_pagamento_clausula, 900);
   const dPag = toPositiveNumber(raw.prazo_pagamento_dias, 365);
-  if (dPag !== null && Number.isInteger(dPag)) {
+  if (dPag !== null && Number.isInteger(dPag) && !clausulaFalaDePrazo(clPag)) {
+    rejected.push('prazo_pagamento_sem_evidencia');
+  } else if (dPag !== null && Number.isInteger(dPag)) {
     out.prazo_pagamento_dias = dPag;
     out.prazo_pagamento_unidade = unidadeDePrazo(raw.prazo_pagamento_unidade) ?? 'corridos';
     const marco = toCleanString(raw.prazo_pagamento_marco, 20)?.toLowerCase();
@@ -197,11 +212,10 @@ export function validateExtractedContract(raw: any): ValidationReport {
     if (marco === 'ateste' || marco === 'nota_fiscal' || marco === 'protocolo' || marco === 'entrega') {
       out.prazo_pagamento_marco = marco;
     }
+    if (clPag) out.prazo_pagamento_clausula = clPag;
   } else if (raw.prazo_pagamento_dias) {
     rejected.push('prazo_pagamento_dias');
   }
-  const clPag = toCleanString(raw.prazo_pagamento_clausula, 900);
-  if (clPag) out.prazo_pagamento_clausula = clPag;
 
   // ── Validade do instrumento ───────────────────────────────────────────────
   //
@@ -250,50 +264,89 @@ export function validateExtractedContract(raw: any): ValidationReport {
 }
 
 /**
+ * O que cada arquivo tem autoridade para dizer sobre o contrato.
+ *
+ * O INSTRUMENTO (o contrato original; a própria ata, numa ata) responde por
+ * tudo: identificação, valor, datas, cláusulas e assinaturas. Um aditivo — e a
+ * ata de referência anexada a um contrato — responde só pelas CLÁUSULAS de
+ * entrega, ateste, pagamento e reajuste, e só em branco: as assinaturas, o
+ * valor e as datas dele são do aditivo, não do contrato. Empenho, ordem de
+ * fornecimento, publicação, nota fiscal e "outro" não respondem por NADA.
+ *
+ * O caso que fixou a regra (17/09, contrato 17/2025): uma nota de empenho
+ * relida pôs no contrato "481 dias" de prazo (quantidade de item) e "assinado
+ * só pelo órgão" (empenho não tem assinatura da contratada) — e o painel
+ * mandou não iniciar a execução de um contrato assinado pelos dois.
+ */
+export type AutoridadeDoArquivo = 'instrumento' | 'clausulas' | 'nenhuma';
+
+export function autoridadeDoArquivo(
+  tipoArquivo: string | null | undefined,
+  parentTipo: 'ata_srp' | 'contrato',
+): AutoridadeDoArquivo {
+  const t = (tipoArquivo ?? '').toLowerCase();
+  // Chamador que não diz o tipo (importação do PDF na criação): é o próprio
+  // instrumento que está sendo cadastrado — comportamento de sempre.
+  if (!t) return 'instrumento';
+  if (parentTipo === 'contrato' && t === 'contrato_original') return 'instrumento';
+  if (parentTipo === 'ata_srp' && t === 'ata_srp') return 'instrumento';
+  if (t === 'ata_srp' || /^(aditivo|ata_aditivo|prorrogacao|apostilamento)/.test(t)) return 'clausulas';
+  return 'nenhuma';
+}
+
+/**
  * Decide quais campos validados devem ser enviados ao UPDATE, respeitando
- * o princípio: nunca sobrescrever edições manuais já presentes no parent.
+ * o princípio: nunca sobrescrever edições manuais já presentes no parent —
+ * e o limite de autoridade do arquivo de onde a leitura veio.
  */
 export function buildParentUpdates(
   normalized: NormalizedExtraction,
   parent: any,
   parentTipo: 'ata_srp' | 'contrato',
+  tipoArquivo?: string | null,
 ): Record<string, any> {
   const u: Record<string, any> = {};
   if (!parent) return u;
 
-  // Identificadores
-  if (parentTipo === 'ata_srp') {
-    if (normalized.numero_ata && !parent.numero_ata) u.numero_ata = normalized.numero_ata;
-    if (normalized.validade_ata_meses && !parent.validade_ata_meses) {
-      u.validade_ata_meses = normalized.validade_ata_meses;
-    } else if (normalized.vigencia_meses && !parent.validade_ata_meses) {
-      u.validade_ata_meses = normalized.vigencia_meses;
+  const autoridade = autoridadeDoArquivo(tipoArquivo, parentTipo);
+  if (autoridade === 'nenhuma') return u;
+  const ehInstrumento = autoridade === 'instrumento';
+
+  if (ehInstrumento) {
+    // Identificadores
+    if (parentTipo === 'ata_srp') {
+      if (normalized.numero_ata && !parent.numero_ata) u.numero_ata = normalized.numero_ata;
+      if (normalized.validade_ata_meses && !parent.validade_ata_meses) {
+        u.validade_ata_meses = normalized.validade_ata_meses;
+      } else if (normalized.vigencia_meses && !parent.validade_ata_meses) {
+        u.validade_ata_meses = normalized.vigencia_meses;
+      }
     }
-  }
-  if (normalized.numero_contrato && (!parent.numero_contrato || /^(SEM|TBD|--)/i.test(parent.numero_contrato))) {
-    u.numero_contrato = normalized.numero_contrato;
-  }
+    if (normalized.numero_contrato && (!parent.numero_contrato || /^(SEM|TBD|--)/i.test(parent.numero_contrato))) {
+      u.numero_contrato = normalized.numero_contrato;
+    }
 
-  if (normalized.objeto && !parent.objeto) u.objeto = normalized.objeto;
-  // Coluna real é `orgao_contratante`
-  if (normalized.orgao_contratante && !parent.orgao_contratante) {
-    u.orgao_contratante = normalized.orgao_contratante;
-  }
-  if (normalized.modalidade && !parent.modalidade) u.modalidade = normalized.modalidade;
+    if (normalized.objeto && !parent.objeto) u.objeto = normalized.objeto;
+    // Coluna real é `orgao_contratante`
+    if (normalized.orgao_contratante && !parent.orgao_contratante) {
+      u.orgao_contratante = normalized.orgao_contratante;
+    }
+    if (normalized.modalidade && !parent.modalidade) u.modalidade = normalized.modalidade;
 
-  // Financeiro: jamais sobrescrever valor manual já gravado
-  if (normalized.valor_global && !(Number(parent.valor_global_original) > 0)) {
-    u.valor_global_original = normalized.valor_global;
-    if (!(Number(parent.valor_global) > 0)) u.valor_global = normalized.valor_global;
-  }
+    // Financeiro: jamais sobrescrever valor manual já gravado
+    if (normalized.valor_global && !(Number(parent.valor_global_original) > 0)) {
+      u.valor_global_original = normalized.valor_global;
+      if (!(Number(parent.valor_global) > 0)) u.valor_global = normalized.valor_global;
+    }
 
-  // Datas
-  if (normalized.data_assinatura && !parent.data_assinatura) u.data_assinatura = normalized.data_assinatura;
-  if (normalized.data_inicio && !parent.data_inicio) u.data_inicio = normalized.data_inicio;
-  if (normalized.data_fim && !parent.data_fim) u.data_fim = normalized.data_fim;
+    // Datas
+    if (normalized.data_assinatura && !parent.data_assinatura) u.data_assinatura = normalized.data_assinatura;
+    if (normalized.data_inicio && !parent.data_inicio) u.data_inicio = normalized.data_inicio;
+    if (normalized.data_fim && !parent.data_fim) u.data_fim = normalized.data_fim;
 
-  if (parentTipo === 'contrato' && normalized.vigencia_meses && !parent.vigencia_meses) {
-    u.vigencia_meses = normalized.vigencia_meses;
+    if (parentTipo === 'contrato' && normalized.vigencia_meses && !parent.vigencia_meses) {
+      u.vigencia_meses = normalized.vigencia_meses;
+    }
   }
 
   // ── Prazo e local de entrega ──────────────────────────────────────────────
@@ -323,8 +376,10 @@ export function buildParentUpdates(
   // ANEXADO é a fonte, e trocar o PDF por outro (a versão finalmente assinada
   // pelas duas partes) tem de refletir aqui. Manter o valor antigo faria o
   // sistema continuar dizendo "assinado por uma parte só" depois de o problema
-  // ter sido resolvido.
-  if (normalized.assinatura_situacao) {
+  // ter sido resolvido. Mas só o INSTRUMENTO fala por ela: a assinatura de um
+  // aditivo é do aditivo, e a de um empenho é do ordenador — nenhuma diz quem
+  // assinou o contrato.
+  if (ehInstrumento && normalized.assinatura_situacao) {
     u.assinatura_situacao = normalized.assinatura_situacao;
     // A observação guarda os DOIS lados como foram lidos. É o que permite
     // conferir a classificação sem reabrir o PDF — e foi lendo esse campo ao

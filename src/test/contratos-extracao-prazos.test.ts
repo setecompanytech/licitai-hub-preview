@@ -24,9 +24,14 @@ describe('validateExtractedContract — prazo e local de entrega', () => {
     expect(normalized.prazo_entrega_clausula).toMatch(/dez\) dias úteis/);
   });
 
-  it('sem unidade, aplica a regra supletiva do art. 132 — corridos', () => {
-    // Não é palpite: a lei diz que, sem menção expressa, o prazo é corrido.
-    const { normalized } = validateExtractedContract({ prazo_entrega_dias: 30 });
+  it('sem unidade, conta em dias corridos — regra geral de contagem (Código Civil, art. 132)', () => {
+    // Não é palpite: sem menção expressa, o prazo é corrido. A frase é
+    // obrigatória desde 18/09 — prazo sem cláusula que fale em prazo é recusado.
+    const { normalized } = validateExtractedContract({
+      prazo_entrega_dias: 30,
+      prazo_entrega_clausula: 'Prazo de entrega de 30 (trinta) dias, contados da ordem de fornecimento.',
+    });
+    expect(normalized.prazo_entrega_dias).toBe(30);
     expect(normalized.prazo_entrega_unidade).toBe('corridos');
   });
 
@@ -34,8 +39,18 @@ describe('validateExtractedContract — prazo e local de entrega', () => {
     const { normalized } = validateExtractedContract({
       prazo_entrega_dias: 5,
       prazo_entrega_unidade: 'semanas',
+      prazo_entrega_clausula: 'Prazo de entrega: 5 semanas contadas do pedido.',
     });
     expect(normalized.prazo_entrega_unidade).toBe('corridos');
+  });
+
+  it('prazo sem cláusula que fale em prazo é recusado — o caso 481 de 17/09', () => {
+    const { normalized, rejected } = validateExtractedContract({
+      prazo_entrega_dias: 481,
+      prazo_entrega_clausula: '23/04/2026 Inclusão 481,78950 38,0000 18.308,00',
+    });
+    expect(normalized.prazo_entrega_dias).toBeUndefined();
+    expect(rejected).toContain('prazo_entrega_sem_evidencia');
   });
 
   it('rejeita prazo fora da faixa plausível', () => {
@@ -56,6 +71,7 @@ describe('validateExtractedContract — prazo e local de entrega', () => {
       local_entrega: 'Almoxarifado Central — Av. Augusto Montenegro, 4000, Belém/PA',
       prazo_recebimento_dias: 15,
       prazo_recebimento_unidade: 'corridos',
+      prazo_recebimento_clausula: 'O recebimento definitivo ocorrerá em até 15 (quinze) dias após a entrega.',
     });
     expect(normalized.local_entrega).toMatch(/Almoxarifado Central/);
     expect(normalized.prazo_recebimento_dias).toBe(15);

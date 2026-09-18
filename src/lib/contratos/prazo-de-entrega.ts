@@ -20,6 +20,25 @@ export type PrazoDoContrato = {
   unidade: UnidadeDePrazo | null;
 };
 
+/**
+ * A frase citada sustenta um prazo?
+ *
+ * Caso de 17/09 (contrato 17/2025): a leitura devolveu "481 dias" com a
+ * evidência "23/04/2026 Inclusão 481,78950 38,0000 18.308,00" — uma linha de
+ * tabela de itens (481,79 kg × R$ 38,00), sem a palavra "dia". Número sem
+ * cláusula que fale em prazo não é prazo: é quantidade, valor ou data lida no
+ * lugar errado. A regra vale para entrega, ateste e pagamento, e tem espelho
+ * na função `extrair-contrato-pdf` (Deno) e na migration 20260918000001.
+ *
+ * Acentos saem antes do teste porque `\b` do JavaScript só conhece ASCII —
+ * "úteis" não teria fronteira de palavra.
+ */
+export function clausulaFalaDePrazo(clausula: string | null | undefined): boolean {
+  if (!clausula) return false;
+  const semAcento = clausula.normalize('NFD').replace(/[̀-ͯ]/g, '');
+  return /\b(dias?|uteis|corridos?|prazos?|horas?|imediat[ao])\b/i.test(semAcento);
+}
+
 /** Sábado ou domingo. Feriado não entra: ver `contarDiasUteis`. */
 const ehFimDeSemana = (d: Date) => d.getDay() === 0 || d.getDay() === 6;
 

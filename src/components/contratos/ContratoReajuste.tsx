@@ -344,9 +344,13 @@ Central do Brasil — apuração do índice pelo ${calculo.fonte.split('·')[0].
             <AlertTriangle className="w-3.5 h-3.5" /> Cláusula de reajuste não registrada
           </p>
           <p>
-            O edital é obrigado a prever índice de reajustamento (art. 25, §7º). Sem o índice e a
-            data-base, o sistema não vigia o aniversário anual — reanalise os documentos já
-            anexados, ou preencha aqui pelo lápis.
+            {/* Art. 25, §7º: "o contrato deverá conter cláusula que estabeleça o
+                índice de reajustamento de preço, com data-base…"; o art. 92, V
+                repete a exigência entre as cláusulas necessárias. A obrigação é
+                do CONTRATO — a frase anterior a punha no edital. */}
+            O contrato deve trazer a cláusula com o índice de reajustamento e a data-base
+            (art. 25, §7º; art. 92, V). Sem o índice e a data-base, o sistema não vigia o
+            aniversário anual — reanalise os documentos já anexados, ou preencha aqui pelo lápis.
           </p>
           <BotaoReanalisar />
         </div>

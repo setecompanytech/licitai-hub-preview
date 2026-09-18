@@ -48,6 +48,19 @@ type Visual = 'composto' | 'barras' | 'area';
 
 const MES_LABEL = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
+/** O número da variação — ou o traço, quando não há mês anterior para comparar. */
+function VariacaoMoM({ valor }: { valor: number | null }) {
+  if (valor === null) {
+    return <p className="text-xl font-bold text-muted-foreground" title="Só um mês com pedidos: não há mês anterior para comparar">—</p>;
+  }
+  return (
+    <p className={`text-xl font-bold tabular-nums flex items-center gap-1 ${valor >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>
+      {valor >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+      {valor.toFixed(1)}%
+    </p>
+  );
+}
+
 export default function EvolucaoMensalDashboard({ pedidos, podeVerCustos, valorGlobal = 0, dataInicio, dataFim }: Props) {
   const [periodo, setPeriodo] = useState<Periodo>('12m');
   const [visual, setVisual] = useState<Visual>('composto');
@@ -145,11 +158,14 @@ export default function EvolucaoMensalDashboard({ pedidos, podeVerCustos, valorG
     const ticketMedio = t.pedidos > 0 ? t.faturamento / t.pedidos : 0;
     const mesesAtivos = series.filter(s => s.pedidos > 0).length;
     const mediaMensal = mesesAtivos > 0 ? t.faturamento / mesesAtivos : 0;
-    // Variação último vs penúltimo mês com pedidos
+    // Variação último vs penúltimo mês com pedidos. Com UM mês só não há
+    // "mês anterior": o 0,0% de antes, verde e com seta para cima, afirmava
+    // estabilidade sobre uma comparação que não existe (contrato 17/2025,
+    // 18/09). Ausência é `null`, e a tela diz por quê.
     const comPedidos = series.filter(s => s.pedidos > 0);
     const ultimo = comPedidos[comPedidos.length - 1]?.faturamento || 0;
     const penultimo = comPedidos[comPedidos.length - 2]?.faturamento || 0;
-    const variacao = penultimo > 0 ? ((ultimo - penultimo) / penultimo) * 100 : 0;
+    const variacao: number | null = penultimo > 0 ? ((ultimo - penultimo) / penultimo) * 100 : null;
     return { ...t, lucro, margem, ticketMedio, mediaMensal, variacao, mesesAtivos };
   }, [series]);
 
@@ -245,21 +261,19 @@ export default function EvolucaoMensalDashboard({ pedidos, podeVerCustos, valorG
             </div>
             <div className="rounded-lg border border-border p-3 bg-muted/30">
               <p className="text-xs text-muted-foreground">Variação MoM</p>
-              <p className={`text-xl font-bold tabular-nums flex items-center gap-1 ${totais.variacao >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>
-                {totais.variacao >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
-                {totais.variacao.toFixed(1)}%
+              <VariacaoMoM valor={totais.variacao} />
+              <p className="text-xs text-muted-foreground">
+                {totais.variacao === null ? 'sem mês anterior para comparar' : 'vs mês anterior'}
               </p>
-              <p className="text-xs text-muted-foreground">vs mês anterior</p>
             </div>
           </>
         ) : (
           <div className="rounded-lg border border-border p-3 bg-muted/30 col-span-2">
             <p className="text-xs text-muted-foreground">Variação MoM</p>
-            <p className={`text-xl font-bold tabular-nums flex items-center gap-1 ${totais.variacao >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>
-              {totais.variacao >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
-              {totais.variacao.toFixed(1)}%
+            <VariacaoMoM valor={totais.variacao} />
+            <p className="text-xs text-muted-foreground">
+              {totais.variacao === null ? 'sem mês anterior para comparar' : 'Faturamento vs mês anterior'}
             </p>
-            <p className="text-xs text-muted-foreground">Faturamento vs mês anterior</p>
           </div>
         )}
       </div>

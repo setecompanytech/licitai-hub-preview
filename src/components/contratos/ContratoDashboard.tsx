@@ -40,6 +40,21 @@ const dataBr = (iso?: string | null) =>
   iso ? new Date(`${String(iso).slice(0, 10)}T12:00:00`).toLocaleDateString('pt-BR') : null;
 
 /**
+ * Saldo de item no alerta: "restam 0 KG" não é saldo baixo, é saldo ESGOTADO
+ * (o filé de pescada do 17/2025, 400 de 400 consumidos, saía como "baixo").
+ * Quem lê "baixo" ainda acha que dá para pedir; "esgotado" diz que não.
+ */
+type ItemComSaldo = {
+  saldo_quantitativo_efetivo?: number | string | null;
+  saldo_quantitativo?: number | string | null;
+  unidade?: string | null;
+};
+const saldoEsgotado = (i: ItemComSaldo) => Number(i.saldo_quantitativo_efetivo ?? i.saldo_quantitativo) <= 0;
+const fraseDoSaldo = (i: ItemComSaldo) => saldoEsgotado(i)
+  ? `saldo esgotado (0 ${i.unidade})`
+  : `saldo baixo (restam ${i.saldo_quantitativo_efetivo ?? i.saldo_quantitativo} ${i.unidade})`;
+
+/**
  * Uma ação pendente do contrato, do jeito que o cartão "Próximas ações" a
  * mostra: o que fazer, por quê, e para onde ir.
  *
@@ -533,10 +548,12 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
   if (alertasSaldoVisiveis.length > 0) {
     acoes.push({
       chave: 'saldo-de-itens',
-      titulo: `${alertasSaldoVisiveis.length} item(ns) com saldo baixo`,
+      titulo: alertasSaldoVisiveis.some(saldoEsgotado)
+        ? `${alertasSaldoVisiveis.length} item(ns) com saldo baixo ou esgotado`
+        : `${alertasSaldoVisiveis.length} item(ns) com saldo baixo`,
       detalhe: alertasSaldoVisiveis
         .slice(0, 3)
-        .map((i: any) => `${i.descricao} (restam ${i.saldo_quantitativo_efetivo ?? i.saldo_quantitativo} ${i.unidade})`)
+        .map((i: any) => `${i.descricao} (${fraseDoSaldo(i)})`)
         .join(' · '),
       tom: 'atencao',
       acao: (
@@ -1099,7 +1116,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
                       </p>
                     )}
                     {alertasSaldoVisiveis.map((i: any) => (
-                      <p key={i.id} className="g-meta text-warning-ink"><strong>{i.descricao}</strong>: saldo baixo (restam {i.saldo_quantitativo_efetivo ?? i.saldo_quantitativo} {i.unidade})</p>
+                      <p key={i.id} className="g-meta text-warning-ink"><strong>{i.descricao}</strong>: {fraseDoSaldo(i)}</p>
                     ))}
                   </div>
                 </SecaoRecolhivel>

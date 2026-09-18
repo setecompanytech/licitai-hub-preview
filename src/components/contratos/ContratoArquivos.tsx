@@ -24,7 +24,7 @@ import {
 import DocumentDetectionDialog, { type DetectionResult } from './DocumentDetectionDialog';
 import { confrontarContratoComAta, type ConfrontoComAta } from '@/lib/contratos/confronto';
 import { extractContractDataFromFile, motivoDaUltimaFalha } from './utils/extractContractData';
-import { validateExtractedContract, buildParentUpdates } from './utils/validateExtractedContract';
+import { validateExtractedContract, buildParentUpdates, autoridadeDoArquivo } from './utils/validateExtractedContract';
 import ContratoIaAuditoriaPanel from './ContratoIaAuditoriaPanel';
 import { createLogger } from '@/services/logger';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -56,6 +56,9 @@ const REJECTION_REASONS: Record<string, string> = {
   data_assinatura_posterior_a_inicio: 'Coerência: data_assinatura posterior a data_inicio — data_assinatura descartada.',
   vigencia_meses: 'vigencia_meses não inteiro positivo ou acima do teto (120 meses).',
   validade_ata_meses: 'validade_ata_meses não inteiro positivo ou acima do teto (120 meses).',
+  prazo_entrega_sem_evidencia: 'prazo_entrega_dias veio sem cláusula que fale em prazo — o número parece quantidade, valor ou data lida como dias (17/09: "481,78950" de uma linha de item virou 481 dias).',
+  prazo_recebimento_sem_evidencia: 'prazo_recebimento_dias veio sem cláusula que fale em prazo.',
+  prazo_pagamento_sem_evidencia: 'prazo_pagamento_dias veio sem cláusula que fale em prazo.',
 };
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
@@ -457,7 +460,7 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
           }
           // Matches expected type → upload AND auto-populate parent record fields
           const created = await doUpload(file, uploadTipo);
-          await applyExtractedToParent(detected, created);
+          await applyExtractedToParent(detected, created, uploadTipo);
           setPendingFile(null);
           return;
         }
@@ -489,7 +492,7 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
    * overwrites manual edits done by the user. Records every field filled into
    * the audit log table `contrato_ia_auditoria`, linking it to the source file.
    */
-  const applyExtractedToParent = async (d: any, sourceFile?: { id: string; nome: string } | null) => {
+  const applyExtractedToParent = async (d: any, sourceFile?: { id: string; nome: string } | null, tipoArquivo?: string) => {
     if (!d || !parentContrato || !parentTipoDocumento || !user) return;
 
     // 1) Validar e normalizar payload da IA (datas ISO, números finitos, strings limpas, coerência).
@@ -533,8 +536,9 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
       if (rejErr) logger.warn('Falha ao gravar trilha de rejeições', rejErr);
     }
 
-    // 2) Construir UPDATE respeitando edições manuais e mapeando para colunas reais.
-    const updates = buildParentUpdates(normalized, parentContrato, parentTipoDocumento);
+    // 2) Construir UPDATE respeitando edições manuais, a autoridade do arquivo
+    //    (aditivo não fala por assinatura nem valor do contrato) e as colunas reais.
+    const updates = buildParentUpdates(normalized, parentContrato, parentTipoDocumento, tipoArquivo);
 
     if (Object.keys(updates).length === 0) {
       const motivo = rejected.length > 0
@@ -775,6 +779,17 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
     arquivo: any,
     aoProgredir?: (msg: string) => void,
   ): Promise<void> => {
+    // Empenho, ordem de fornecimento, publicação e "outro" não falam pelo
+    // contrato: em 17/09 a releitura de uma nota de empenho pôs no 17/2025
+    // "481 dias" de prazo (quantidade de item) e "assinado só pelo órgão" —
+    // e o painel mandou não iniciar a execução de um contrato assinado pelos
+    // dois. A recusa vem ANTES do OCR: não se gasta leitura para descartar tudo.
+    if (autoridadeDoArquivo(arquivo?.tipo, parentTipoDocumento ?? 'contrato') === 'nenhuma') {
+      toast.info('Este documento não alimenta os dados do contrato.', {
+        description: 'Só o instrumento (contrato ou ata) e seus aditivos preenchem prazos, local, pagamento e assinaturas. Empenho, ordem de fornecimento e publicação ficam guardados como prova.',
+      });
+      return;
+    }
     // O leitor completo do importador, e não uma cópia local dele: OCR página
     // a página, reversão automática no 429 (que é o erro NORMAL logo depois do
     // OCR de um documento grande) e o motivo REAL da falha em vez de um null
@@ -795,6 +810,7 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
       normalized,
       parentContrato ?? {},
       parentTipoDocumento ?? 'contrato',
+      arquivo?.tipo,
     );
 
     if (Object.keys(updates).length === 0) {
@@ -1817,8 +1833,11 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
                                 registro do dossiê para reprocessar um arquivo que nunca
                                 saiu do lugar. */}
                             <Button size="icon" variant="ghost" className="h-8 w-8"
-                              onClick={() => handleReler(arq)} disabled={!!releituraDe(arq.id)}
-                              title="Reler com a IA e preencher os campos em branco do contrato">
+                              onClick={() => handleReler(arq)}
+                              disabled={!!releituraDe(arq.id) || autoridadeDoArquivo(arq.tipo, parentTipoDocumento ?? 'contrato') === 'nenhuma'}
+                              title={autoridadeDoArquivo(arq.tipo, parentTipoDocumento ?? 'contrato') === 'nenhuma'
+                                ? 'Empenho, ordem de fornecimento e publicação não alimentam os dados do contrato — só o instrumento e seus aditivos'
+                                : 'Reler com a IA e preencher os campos em branco do contrato'}>
                               {releituraDe(arq.id)
                                 ? <Loader2 className="w-4 h-4 animate-spin" />
                                 : <Sparkles className="w-4 h-4" />}
