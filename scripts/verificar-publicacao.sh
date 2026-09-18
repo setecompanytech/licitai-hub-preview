@@ -99,6 +99,12 @@ checar "forma de fornecimento no contrato"   "Entrega única (integral)"
 # verificado.
 checar "marca em SVG (BrandLogo)"             "M4 60 A44 44 0 0 1 90 49"
 
+# Leva 2026-09-18.1 — textos que só existem nas correções de 17–18/09.
+checar "Meus compromissos lê o quadro da empresa" "Você ainda não acompanha este processo"
+checar "aba Documentos compacta (fila de pastas)" "Pastas do processo"
+checar "prazo sem evidência tem saída (contratos)" "Descartar este prazo"
+checar "variação mensal sem mês anterior"        "sem mês anterior para comparar"
+
 # Navegação 13–14/09 — o cabeçalho horizontal e o diretório de ferramentas.
 checar "trilha na faixa do conteúdo"          "Trilha de navegação"
 checar "diretório de ferramentas"             "Todas as ferramentas (Ctrl+Shift+K)"
