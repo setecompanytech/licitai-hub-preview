@@ -24,7 +24,9 @@ CardHeader.displayName = "CardHeader";
 
 const CardTitle = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLHeadingElement>>(
   ({ className, ...props }, ref) => (
-    <h3 ref={ref} className={cn("text-base font-semibold leading-6 tracking-normal text-foreground", className)} {...props} />
+    /* 16/24 em peso 600 — o "título de cartão" do manual (§3). `text-base` é o
+       corpo de 14px; um cartão com título do tamanho do texto não tem hierarquia. */
+    <h3 ref={ref} className={cn("text-lg font-semibold leading-6 tracking-normal text-foreground", className)} {...props} />
   ),
 );
 CardTitle.displayName = "CardTitle";
