@@ -1,12 +1,12 @@
 import { SkeletonCorpo } from '@/components/shared/SkeletonPagina';
-import { cn } from '@/lib/utils';
 import EstadoVazio from '@/components/shared/EstadoVazio';
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import TelaGestao, { SecaoGestao } from '@/components/gestao/TelaGestao';
 import AbasGestao from '@/components/gestao/AbasGestao';
 import SeloSituacao, { type TomSituacao } from '@/components/gestao/SeloSituacao';
 import TextoExpansivel from '@/components/gestao/TextoExpansivel';
+import ListaDeCampos from '@/components/gestao/ListaDeCampos';
 import DesfechoDaDisputa from '@/components/workspace/DesfechoDaDisputa';
 import PropostaEnviadaCard from '@/components/workspace/PropostaEnviadaCard';
 import ContratoDoProcesso from '@/components/workspace/ContratoDoProcesso';
@@ -15,6 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -154,43 +155,30 @@ const TRILHA_BASE = trilhaDaRota('/kanban')
   .map((item, i, todos) => (i === todos.length - 1 ? { ...item, para: '/kanban' } : item))
   .slice(1);
 
-/** Campo da ficha do processo: rótulo em cima, valor embaixo. Substitui as
- *  linhas separadas por "|" — que não embrulhavam em tela estreita e pintavam
- *  o separador com a cor da borda. */
-function Campo({ rotulo, children, largo }: { rotulo: string; children: ReactNode; largo?: boolean }) {
-  // Valor em texto puro passa pelo expansível: duas linhas, e o clique em cima
-  // abre. Valor já montado (link, selo, número tabular) entra como veio.
-  const valor = typeof children === 'string'
-    ? <TextoExpansivel texto={children} linhas={2} modo="texto" limiarPorLinha={40} />
-    : children;
-  return (
-    <div className={cn('flex min-w-[7rem] flex-col', largo ? 'max-w-[36rem]' : 'max-w-[22rem]')}>
-      <dt className="g-meta text-muted-foreground">{rotulo}</dt>
-      <dd className="g-corpo mt-0.5 min-w-0 break-words text-foreground">{valor}</dd>
-    </div>
-  );
-}
-
 /**
- * A ficha do Resumo: os campos correm em fluxo, cada um com a largura do
- * próprio conteúdo (até um teto), com 32 px entre eles.
+ * A ficha do Resumo e o espelho do PNCP usam `ListaDeCampos` (Design System
+ * v3, 19/09): rótulo à esquerda, valor à direita, uma linha fina entre os
+ * pares — a mesma anatomia dos painéis de Gestão. Em duas colunas no desktop
+ * e uma no celular. Substitui o campo "rótulo em cima, valor embaixo" em
+ * fluxo, que passou por três versões em 17/09 sem alinhar.
  *
- * Duas versões anteriores no mesmo dia (17/09): três colunas iguais deixavam
- * 500 px para valores de 150; seis colunas iguais deixavam faixas vazias ao
- * lado de "Sim" e "Edital". Colunas iguais servem a tabela, não a ficha — na
- * ficha o que se lê é rótulo + valor, e a distância entre eles é que precisa
- * ser constante. Campo longo (órgão, unidade compradora, amparo legal) tem
- * teto maior; texto que passa de duas linhas abre ao clicar.
+ * Texto longo (órgão, unidade compradora, amparo legal) ocupa a linha inteira
+ * e continua passando pelo expansível: duas linhas, e o clique em cima abre.
  */
-const GRADE_DA_FICHA = 'flex flex-wrap gap-x-8 gap-y-3';
+const GRADE_DA_FICHA = 'grid gap-x-8 lg:grid-cols-2';
 
 /** Tom do selo de situação no cabeçalho — só apresentação; o texto continua o
- *  status bruto do processo, e a cor é reforço (SeloSituacao leva ícone junto). */
+ *  status bruto do processo, e a cor é reforço (SeloSituacao leva ícone junto).
+ *  O vocabulário de cor é o de `aparenciaStatus()`: âmbar para a análise, azul
+ *  para a disputa em curso, verde para proposta e ganho, vermelho para a perda,
+ *  cinza para monitorando e arquivada. */
 const tomDoStatus = (status: string): TomSituacao => {
   const n = normalizarStatus(status);
   if (n === 'Vencida' || n === 'Homologada') return 'sucesso';
   if (n === 'Perdida') return 'critico';
-  if (n === 'Arquivada') return 'neutro';
+  if (n === 'Arquivada' || n === 'Monitorando') return 'neutro';
+  if (n === 'Em Análise') return 'atencao';
+  if (n === 'Em Disputa') return 'info';
   return 'ativo';
 };
 
@@ -675,96 +663,84 @@ export default function ProcessoWorkspace() {
             <ContratoDoProcesso licitacaoId={lic.id} />
 
             <SecaoGestao titulo="Resumo">
-              <Card className="p-5 space-y-5">
+              <Card className="p-5">
                 {/* O objeto, que saiu do cabeçalho, chega aqui inteiro — em
                     três linhas, com botão real de expansão. */}
                 <div>
-                  <h3 className="g-meta mb-1 uppercase tracking-wide text-muted-foreground">Objeto</h3>
+                  <h3 className="g-meta mb-1 font-semibold uppercase tracking-wider text-muted-foreground">Objeto</h3>
                   {lic.objeto
                     ? <TextoExpansivel texto={objetoLegivel(lic.objeto)} linhas={2} modo="texto" />
                     : <p className="g-corpo text-muted-foreground">—</p>}
                 </div>
 
-                <dl className={cn(GRADE_DA_FICHA, 'border-t border-border pt-5')}>
-                  <Campo rotulo="Órgão" largo>{lic.orgao || '—'}</Campo>
-                  <Campo rotulo="Local">
-                    {lic.municipio && lic.uf ? `${lic.municipio}/${lic.uf}` : lic.municipio || lic.uf || '—'}
-                  </Campo>
-                  <Campo rotulo="Status">{lic.status || '—'}</Campo>
-                  <Campo rotulo="Modalidade">{lic.modalidade || '—'}</Campo>
-                  <Campo rotulo="Valor estimado">
-                    <span className="tabular-nums">{lic.valor_estimado != null ? fmt(lic.valor_estimado) : '—'}</span>
-                  </Campo>
-                  {lic.data_abertura && <Campo rotulo="Abertura">{dataHora(lic.data_abertura)}</Campo>}
-                  {lic.data_encerramento && <Campo rotulo="Encerramento">{dataHora(lic.data_encerramento)}</Campo>}
-                  {lic.portal && (
-                    <Campo rotulo="Portal">
-                      {lic.url_edital ? (
-                        <a href={lic.url_edital} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
-                          {lic.portal} <ExternalLink className="w-4 h-4" aria-hidden="true" />
-                        </a>
-                      ) : (
-                        lic.portal
-                      )}
-                    </Campo>
-                  )}
-                  {lic.resultado && (
-                    <Campo rotulo="Resultado" largo>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className={lic.vencedor ? 'font-semibold text-success-ink' : undefined}>{lic.resultado}</span>
-                        {/* O ponto verde dizia "vencemos" só pela cor, com o texto
-                            escondido no title. Selo com texto: a cor é reforço. */}
-                        {lic.vencedor && <Badge variant="success">Empresa vencedora</Badge>}
-                      </div>
-                    </Campo>
-                  )}
-                  {lic.valor_adjudicado != null && (
-                    <Campo rotulo="Valor adjudicado">
-                      <span className="tabular-nums">{fmt(lic.valor_adjudicado)}</span>
-                    </Campo>
-                  )}
-                  {lic.data_homologacao && (
-                    <Campo rotulo="Homologação">{new Date(lic.data_homologacao).toLocaleDateString('pt-BR')}</Campo>
-                  )}
-                </dl>
-
-                {temEspelho && (
-                  <div className="border-t border-border pt-5">
-                    <h3 className="g-titulo-secao mb-3">Espelho do PNCP</h3>
-                    <dl className={GRADE_DA_FICHA}>
-                      {espelho.unidadeCompradora && (
-                        <Campo rotulo="Unidade compradora" largo>{espelho.unidadeCompradora}</Campo>
-                      )}
-                      {espelho.amparoLegal && <Campo rotulo="Amparo legal" largo>{espelho.amparoLegal}</Campo>}
-                      {espelho.tipo && <Campo rotulo="Tipo">{espelho.tipo}</Campo>}
-                      {espelho.modoDisputa && <Campo rotulo="Modo de disputa">{espelho.modoDisputa}</Campo>}
-                      {espelho.srp != null && (
-                        <Campo rotulo="Registro de preço">{espelho.srp ? 'Sim' : 'Não'}</Campo>
-                      )}
-                      <Campo rotulo="Fonte orçamentária">{espelho.fonteOrcamentaria || 'Não informada'}</Campo>
-                      {espelho.divulgacaoPncp && (
-                        <Campo rotulo="Divulgação no PNCP">{dataSo(espelho.divulgacaoPncp)}</Campo>
-                      )}
-                      {espelho.situacao && <Campo rotulo="Situação">{espelho.situacao}</Campo>}
-                      {espelho.inicioPropostas && (
-                        <Campo rotulo="Início das propostas">{dataHora(espelho.inicioPropostas)}</Campo>
-                      )}
-                      {espelho.fimPropostas && (
-                        <Campo rotulo="Fim das propostas">{dataHora(espelho.fimPropostas)}</Campo>
-                      )}
-                      {espelho.idPncp && (
-                        <Campo rotulo="Id contratação PNCP" largo>
-                          <span className="tabular-nums">{espelho.idPncp}</span>
-                        </Campo>
-                      )}
-                      {espelho.fonte && <Campo rotulo="Fonte">{espelho.fonte}</Campo>}
-                    </dl>
-                  </div>
-                )}
+                {/* Identificação à esquerda; números e datas à direita. Campo que
+                    depende de dado só entra quando o dado existe, como antes. */}
+                <div className={`${GRADE_DA_FICHA} mt-5 border-t border-border pt-3`}>
+                  <ListaDeCampos
+                    campos={[
+                      {
+                        rotulo: 'Órgão',
+                        valor: lic.orgao
+                          ? <TextoExpansivel texto={lic.orgao} linhas={2} modo="texto" limiarPorLinha={60} />
+                          : '—',
+                        largo: true,
+                      },
+                      {
+                        rotulo: 'Local',
+                        valor: lic.municipio && lic.uf ? `${lic.municipio}/${lic.uf}` : lic.municipio || lic.uf || '—',
+                      },
+                      { rotulo: 'Status', valor: lic.status || '—' },
+                      { rotulo: 'Modalidade', valor: lic.modalidade || '—' },
+                      ...(lic.portal
+                        ? [{
+                            rotulo: 'Portal',
+                            valor: lic.url_edital ? (
+                              <a href={lic.url_edital} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
+                                {lic.portal} <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                              </a>
+                            ) : (
+                              lic.portal
+                            ),
+                          }]
+                        : []),
+                    ]}
+                  />
+                  <ListaDeCampos
+                    campos={[
+                      {
+                        rotulo: 'Valor estimado',
+                        valor: lic.valor_estimado != null ? fmt(lic.valor_estimado) : '—',
+                        numerico: true,
+                      },
+                      ...(lic.data_abertura ? [{ rotulo: 'Abertura', valor: dataHora(lic.data_abertura) }] : []),
+                      ...(lic.data_encerramento ? [{ rotulo: 'Encerramento', valor: dataHora(lic.data_encerramento) }] : []),
+                      ...(lic.resultado
+                        ? [{
+                            rotulo: 'Resultado',
+                            valor: (
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className={lic.vencedor ? 'font-semibold text-success-ink' : undefined}>{lic.resultado}</span>
+                                {/* O ponto verde dizia "vencemos" só pela cor, com o texto
+                                    escondido no title. Selo com texto: a cor é reforço. */}
+                                {lic.vencedor && <Badge variant="success">Empresa vencedora</Badge>}
+                              </div>
+                            ),
+                            largo: true,
+                          }]
+                        : []),
+                      ...(lic.valor_adjudicado != null
+                        ? [{ rotulo: 'Valor adjudicado', valor: fmt(lic.valor_adjudicado), numerico: true }]
+                        : []),
+                      ...(lic.data_homologacao
+                        ? [{ rotulo: 'Homologação', valor: new Date(lic.data_homologacao).toLocaleDateString('pt-BR') }]
+                        : []),
+                    ]}
+                  />
+                </div>
 
                 {lic.observacoes && (
-                  <div className="border-t border-border pt-5">
-                    <h3 className="g-meta mb-1 uppercase tracking-wide text-muted-foreground">Observações</h3>
+                  <div className="mt-5 border-t border-border pt-5">
+                    <h3 className="g-meta mb-1 font-semibold uppercase tracking-wider text-muted-foreground">Observações</h3>
                     <TextoExpansivel
                       texto={lic.observacoes}
                       linhas={3}
@@ -775,6 +751,48 @@ export default function ProcessoWorkspace() {
                   </div>
                 )}
               </Card>
+
+              {/* O espelho do PNCP em cartão próprio, na mesma lista de campos
+                  da ficha: o que o portal publicou, campo a campo. */}
+              {temEspelho && (
+                <Card className="p-5">
+                  <h3 className="text-base font-semibold leading-6 text-foreground">Espelho do PNCP</h3>
+                  <div className={`${GRADE_DA_FICHA} mt-2`}>
+                    <ListaDeCampos
+                      campos={[
+                        ...(espelho.unidadeCompradora
+                          ? [{
+                              rotulo: 'Unidade compradora',
+                              valor: <TextoExpansivel texto={espelho.unidadeCompradora} linhas={2} modo="texto" limiarPorLinha={60} />,
+                              largo: true,
+                            }]
+                          : []),
+                        ...(espelho.amparoLegal
+                          ? [{
+                              rotulo: 'Amparo legal',
+                              valor: <TextoExpansivel texto={espelho.amparoLegal} linhas={2} modo="texto" limiarPorLinha={60} />,
+                              largo: true,
+                            }]
+                          : []),
+                        ...(espelho.tipo ? [{ rotulo: 'Tipo', valor: espelho.tipo }] : []),
+                        ...(espelho.modoDisputa ? [{ rotulo: 'Modo de disputa', valor: espelho.modoDisputa }] : []),
+                        ...(espelho.srp != null ? [{ rotulo: 'Registro de preço', valor: espelho.srp ? 'Sim' : 'Não' }] : []),
+                        { rotulo: 'Fonte orçamentária', valor: espelho.fonteOrcamentaria || 'Não informada' },
+                      ]}
+                    />
+                    <ListaDeCampos
+                      campos={[
+                        ...(espelho.divulgacaoPncp ? [{ rotulo: 'Divulgação no PNCP', valor: dataSo(espelho.divulgacaoPncp) }] : []),
+                        ...(espelho.situacao ? [{ rotulo: 'Situação', valor: espelho.situacao }] : []),
+                        ...(espelho.inicioPropostas ? [{ rotulo: 'Início das propostas', valor: dataHora(espelho.inicioPropostas) }] : []),
+                        ...(espelho.fimPropostas ? [{ rotulo: 'Fim das propostas', valor: dataHora(espelho.fimPropostas) }] : []),
+                        ...(espelho.idPncp ? [{ rotulo: 'Id contratação PNCP', valor: espelho.idPncp, numerico: true, largo: true }] : []),
+                        ...(espelho.fonte ? [{ rotulo: 'Fonte', valor: espelho.fonte }] : []),
+                      ]}
+                    />
+                  </div>
+                </Card>
+              )}
             </SecaoGestao>
 
             {/* ── Dados completos do PNCP ── */}
@@ -801,7 +819,7 @@ export default function ProcessoWorkspace() {
                 na aba Documentos → pasta Edital, que é onde a Fase 1 os colocou. */}
             {((pncpCarregando && !temEspelho) || pncpDetalhe || itensEspelho.length > 0) && (
               <SecaoGestao titulo="Complementos do PNCP — itens">
-                <Card className="p-6">
+                <Card className="p-5">
                   {pncpCarregando && !itensEspelho.length ? (
                     <div role="status" aria-busy="true" className="space-y-3">
                       <span className="sr-only">Carregando dados completos do PNCP…</span>
@@ -814,7 +832,7 @@ export default function ProcessoWorkspace() {
                       {/* Informação complementar */}
                       {pncpDetalhe?.informacao_complementar && (
                         <div>
-                          <h3 className="g-titulo-secao mb-1">Informação complementar</h3>
+                          <h3 className="mb-1 text-base font-semibold leading-6 text-foreground">Informação complementar</h3>
                           <TextoExpansivel texto={String(pncpDetalhe.informacao_complementar)} linhas={4} />
                         </div>
                       )}
@@ -824,7 +842,7 @@ export default function ProcessoWorkspace() {
                           instabilidade, contratação sem itens ou extração pendente. */}
                       {!pncpCarregando && itensEspelho.length === 0 && (
                         <div className="border-t border-border pt-3 first:border-0 first:pt-0">
-                          <h3 className="g-titulo-secao mb-1">Itens</h3>
+                          <h3 className="mb-1 text-base font-semibold leading-6 text-foreground">Itens</h3>
                           <p className="g-corpo text-muted-foreground">
                             Nenhum item veio do PNCP nesta consulta — pode ser instabilidade do portal
                             ou contratação sem itens publicados.{' '}
@@ -847,49 +865,53 @@ export default function ProcessoWorkspace() {
                           propósito: é a cópia do que o portal publicou. */}
                       {itensEspelho.length > 0 && (
                         <div className="border-t border-border pt-3 first:border-0 first:pt-0">
-                          <h3 className="g-titulo-secao mb-2">
+                          <h3 className="mb-2 text-base font-semibold leading-6 text-foreground">
                             Itens ({itensEspelho.length})
                           </h3>
-                          <div className="overflow-x-auto rounded-[var(--g-raio)] border border-border">
-                            <table className="w-full">
-                              <thead>
-                                <tr className="border-b border-border bg-muted">
+                          {/* A tabela do Design System (`ui/table`): cabeçalho em
+                              superfície rebaixada, rótulos de 12px, linhas de 48px,
+                              números à direita com dígitos tabulares. A rolagem
+                              horizontal fica presa a este contêiner. */}
+                          <div className="overflow-hidden rounded-md border border-border">
+                            <Table>
+                              <TableHeader>
+                                <TableRow className="hover:bg-transparent">
                                   {/* 96 px, sem quebra: o PNCP numera itens como 10001, 10002
                                       (há item de sete dígitos na base) e, com 64 px, o número
                                       saía "1000/1" e o título "Númer/o" (print de 17/09). */}
-                                  <th className="g-meta w-24 whitespace-nowrap px-3 py-2 text-left font-semibold">Número</th>
-                                  <th className="g-meta px-3 py-2 text-left font-semibold">Descrição</th>
+                                  <TableHead className="w-24">Número</TableHead>
+                                  <TableHead>Descrição</TableHead>
                                   {/* Unidade em coluna própria, como o PNCP a publica — antes era
                                       um selo colado ao fim da descrição, e caía em linha nova. */}
-                                  <th className="g-meta w-24 whitespace-nowrap px-3 py-2 text-left font-semibold" title="Unidade de medida">Und</th>
-                                  <th className="g-meta w-28 px-3 py-2 text-right font-semibold">Quantidade</th>
-                                  <th className="g-meta w-36 px-3 py-2 text-right font-semibold">Valor unitário estimado</th>
-                                  <th className="g-meta w-36 px-3 py-2 text-right font-semibold">Valor total estimado</th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-border">
+                                  <TableHead className="w-24" title="Unidade de medida">Und</TableHead>
+                                  <TableHead className="w-28 text-right">Quantidade</TableHead>
+                                  <TableHead className="w-36 text-right">Valor unitário estimado</TableHead>
+                                  <TableHead className="w-36 text-right">Valor total estimado</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
                                 {itensEspelho.map((item, i) => {
                                   const qtd = item.quantidade ?? item.quantidadeItens;
                                   const vUnit = item.valor_unitario_estimado ?? item.valorUnitarioEstimado ?? item.valorUnitario;
                                   const vTotal = item.valor_total ?? item.valorTotal ?? item.valorTotalEstimado
                                     ?? (vUnit != null && qtd != null ? vUnit * qtd : null);
                                   return (
-                                    <tr key={item.numero ?? item.numeroItem ?? i} className="transition-colors hover:bg-muted/50">
-                                      <td className="g-corpo whitespace-nowrap px-3 py-2 tabular-nums text-muted-foreground">{item.numero ?? item.numeroItem ?? i + 1}</td>
-                                      <td className="g-corpo px-3 py-2 text-foreground">
+                                    <TableRow key={item.numero ?? item.numeroItem ?? i}>
+                                      <TableCell nowrap className="tabular-nums text-muted-foreground">{item.numero ?? item.numeroItem ?? i + 1}</TableCell>
+                                      <TableCell>
                                         {item.descricao || item.descricaoItem || '—'}
-                                      </td>
-                                      <td className="g-corpo whitespace-nowrap px-3 py-2 text-muted-foreground">
+                                      </TableCell>
+                                      <TableCell nowrap className="text-muted-foreground">
                                         {item.unidade_medida || item.unidadeMedida || '—'}
-                                      </td>
-                                      <td className="g-corpo whitespace-nowrap px-3 py-2 text-right tabular-nums">{qtd?.toLocaleString('pt-BR') ?? '—'}</td>
-                                      <td className="g-corpo whitespace-nowrap px-3 py-2 text-right tabular-nums text-muted-foreground">{vUnit != null ? fmt(vUnit) : '—'}</td>
-                                      <td className="g-corpo whitespace-nowrap px-3 py-2 text-right font-medium tabular-nums text-success-ink">{vTotal != null ? fmt(vTotal) : '—'}</td>
-                                    </tr>
+                                      </TableCell>
+                                      <TableCell nowrap className="text-right tabular-nums">{qtd?.toLocaleString('pt-BR') ?? '—'}</TableCell>
+                                      <TableCell nowrap className="text-right tabular-nums text-muted-foreground">{vUnit != null ? fmt(vUnit) : '—'}</TableCell>
+                                      <TableCell nowrap className="text-right font-medium tabular-nums">{vTotal != null ? fmt(vTotal) : '—'}</TableCell>
+                                    </TableRow>
                                   );
                                 })}
-                              </tbody>
-                            </table>
+                              </TableBody>
+                            </Table>
                           </div>
                         </div>
                       )}
@@ -905,7 +927,7 @@ export default function ProcessoWorkspace() {
             <SecaoGestao titulo="Abrir nos módulos">
               <ul className="g-cartao divide-y divide-border">
                 {ATALHOS.map((a) => {
-                  const classe = 'flex min-h-[44px] w-full items-center gap-3 px-4 py-2 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring';
+                  const classe = 'flex min-h-[44px] w-full items-center gap-3 px-4 py-2 text-left transition-colors duration-150 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring';
                   const conteudo = (
                     <>
                       <a.icon className="w-4 h-4 shrink-0 text-muted-foreground" aria-hidden="true" />
@@ -989,11 +1011,12 @@ export default function ProcessoWorkspace() {
           <AprovacaoDePrecificacao licitacaoId={lic.id} empresaId={lic.empresa_id} />
           <Tabs defaultValue="prec-historico" className="space-y-4">
             <TabsList>
-              <TabsTrigger value="prec-historico" className="gap-2">
-                <Calculator className="w-4 h-4" aria-hidden="true" /> Precificação
+              <TabsTrigger value="prec-historico">
+                <Calculator className="h-4 w-4" aria-hidden="true" /> Precificação
               </TabsTrigger>
-              <TabsTrigger value="prec-aurelia" className="gap-2">
-                <Sparkles className="w-4 h-4" aria-hidden="true" /> Nova Precificação
+              {/* A sub-aba da Aurélia leva o ícone de IA no teal do sistema. */}
+              <TabsTrigger value="prec-aurelia">
+                <Sparkles className="h-4 w-4 text-teal" aria-hidden="true" /> Nova Precificação
               </TabsTrigger>
             </TabsList>
 
@@ -1048,49 +1071,49 @@ export default function ProcessoWorkspace() {
                       const total = itens.reduce((s, i) => s + ((i.valorTotal ?? 0) || (i.valorUnitario ?? 0) * (i.quantidade ?? 1)), 0);
                       const updated = new Date(rascunhoPlanilha.updated_at);
                       return (
-                        <Card className="p-6">
+                        <Card className="p-5">
                           <div className="flex items-start gap-4">
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--g-raio)] bg-primary-tint text-primary">
-                              <TrendingUp className="w-5 h-5" aria-hidden="true" />
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary-tint text-primary">
+                              <TrendingUp className="h-4 w-4" aria-hidden="true" />
                             </div>
                             <div className="min-w-0 flex-1">
-                              <h3 className="g-titulo-secao">Planilha de Custos</h3>
+                              <h3 className="text-base font-semibold leading-6 text-foreground">Planilha de Custos</h3>
                               <div className="g-meta mt-1 flex flex-wrap gap-3 text-muted-foreground">
-                                <span className="inline-flex items-center gap-1"><Package className="w-4 h-4" aria-hidden="true" /> {itens.length} {itens.length === 1 ? 'item' : 'itens'} preenchidos</span>
-                                {total > 0 && <span className="inline-flex items-center gap-1"><DollarSign className="w-4 h-4" aria-hidden="true" /> Total: <strong className="text-foreground tabular-nums">{fmt(total)}</strong></span>}
-                                <span className="inline-flex items-center gap-1"><Clock className="w-4 h-4" aria-hidden="true" /> Atualizado em {updated.toLocaleDateString('pt-BR')} às {updated.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                                <span className="inline-flex items-center gap-1"><Package className="h-4 w-4" aria-hidden="true" /> {itens.length} {itens.length === 1 ? 'item' : 'itens'} preenchidos</span>
+                                {total > 0 && <span className="inline-flex items-center gap-1"><DollarSign className="h-4 w-4" aria-hidden="true" /> Total: <strong className="text-foreground tabular-nums">{fmt(total)}</strong></span>}
+                                <span className="inline-flex items-center gap-1"><Clock className="h-4 w-4" aria-hidden="true" /> Atualizado em {updated.toLocaleDateString('pt-BR')} às {updated.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
                               </div>
                               {itens.length > 0 && (
-                                <div className="mt-3 overflow-x-auto rounded-[var(--g-raio)] border border-border">
-                                  <table className="w-full">
-                                    <thead className="bg-muted">
-                                      <tr>
-                                        <th className="g-meta px-3 py-2 text-left font-semibold">Descrição</th>
-                                        <th className="g-meta w-16 px-3 py-2 text-right font-semibold">Qtde</th>
-                                        <th className="g-meta w-28 whitespace-nowrap px-3 py-2 text-right font-semibold">Vl. Unit.</th>
-                                        <th className="g-meta w-28 whitespace-nowrap px-3 py-2 text-right font-semibold">Total</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-border">
+                                <div className="mt-3 overflow-hidden rounded-md border border-border">
+                                  <Table>
+                                    <TableHeader>
+                                      <TableRow className="hover:bg-transparent">
+                                        <TableHead>Descrição</TableHead>
+                                        <TableHead className="w-16 text-right">Qtde</TableHead>
+                                        <TableHead className="w-28 text-right">Vl. Unit.</TableHead>
+                                        <TableHead className="w-28 text-right">Total</TableHead>
+                                      </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
                                       {itens.slice(0, 10).map((it, i) => (
-                                        <tr key={i} className="hover:bg-muted/50">
+                                        <TableRow key={i}>
                                           {/* `truncate` escondia a descrição do
                                               item sem dizer que havia mais — e
                                               item de edital é distinguido justo
                                               pelo fim do texto ("..., 500ml").
                                               Expansão com botão de verdade. */}
-                                          <td className="max-w-[320px] px-3 py-2 align-top">
+                                          <TableCell className="max-w-[320px] align-top">
                                             <TextoExpansivel texto={it.descricao} linhas={2} />
-                                          </td>
-                                          <td className="g-corpo px-3 py-2 text-right align-top tabular-nums">{it.quantidade}</td>
-                                          <td className="g-corpo whitespace-nowrap px-3 py-2 text-right align-top tabular-nums">{it.valorUnitario ? fmt(it.valorUnitario) : '—'}</td>
-                                          <td className="g-corpo whitespace-nowrap px-3 py-2 text-right align-top font-medium tabular-nums">{it.valorTotal ? fmt(it.valorTotal) : '—'}</td>
-                                        </tr>
+                                          </TableCell>
+                                          <TableCell className="text-right align-top tabular-nums">{it.quantidade}</TableCell>
+                                          <TableCell nowrap className="text-right align-top tabular-nums">{it.valorUnitario ? fmt(it.valorUnitario) : '—'}</TableCell>
+                                          <TableCell nowrap className="text-right align-top font-medium tabular-nums">{it.valorTotal ? fmt(it.valorTotal) : '—'}</TableCell>
+                                        </TableRow>
                                       ))}
-                                    </tbody>
-                                  </table>
+                                    </TableBody>
+                                  </Table>
                                   {itens.length > 10 && (
-                                    <p className="g-meta border-t border-border px-3 py-2 text-muted-foreground">
+                                    <p className="g-meta border-t border-border px-4 py-2 text-muted-foreground">
                                       + {itens.length - 10} itens adicionais — abra a Precificação para ver todos
                                     </p>
                                   )}
@@ -1101,7 +1124,7 @@ export default function ProcessoWorkspace() {
                         </Card>
                       );
                     })() : (
-                      <Card className="p-6">
+                      <Card className="p-5">
                         <EstadoVazio
                           icone={<TrendingUp />}
                           titulo="Nenhuma planilha de custos salva ainda"
@@ -1120,32 +1143,32 @@ export default function ProcessoWorkspace() {
                     {/* Itens do catálogo */}
                     {precItems.length > 0 && (
                       <div>
-                        <h3 className="g-titulo-secao mb-2">Itens precificados no catálogo ({precItems.length})</h3>
-                        <div className="overflow-x-auto rounded-[var(--g-raio)] border border-border">
-                          <table className="w-full">
-                            <thead className="bg-muted">
-                              <tr>
-                                <th className="g-meta px-3 py-2 text-left font-semibold">Descrição</th>
-                                <th className="g-meta w-28 whitespace-nowrap px-3 py-2 text-right font-semibold">Custo</th>
-                                <th className="g-meta w-28 whitespace-nowrap px-3 py-2 text-right font-semibold">Preço</th>
-                                <th className="g-meta w-20 whitespace-nowrap px-3 py-2 text-right font-semibold">Margem</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-border">
+                        <h3 className="mb-2 text-base font-semibold leading-6 text-foreground">Itens precificados no catálogo ({precItems.length})</h3>
+                        <div className="overflow-hidden rounded-md border border-border">
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="hover:bg-transparent">
+                                <TableHead>Descrição</TableHead>
+                                <TableHead className="w-28 text-right">Custo</TableHead>
+                                <TableHead className="w-28 text-right">Preço</TableHead>
+                                <TableHead className="w-20 text-right">Margem</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
                               {precItems.slice(0, 15).map(it => (
-                                <tr key={it.id} className="hover:bg-muted/50">
-                                  <td className="max-w-[360px] px-3 py-2 align-top">
+                                <TableRow key={it.id}>
+                                  <TableCell className="max-w-[360px] align-top">
                                     <TextoExpansivel texto={it.descricao} linhas={2} />
-                                  </td>
-                                  <td className="g-corpo whitespace-nowrap px-3 py-2 text-right align-top tabular-nums text-muted-foreground">{it.custo_unitario ? fmt(it.custo_unitario) : '—'}</td>
-                                  <td className="g-corpo whitespace-nowrap px-3 py-2 text-right align-top font-medium tabular-nums">{it.preco_unitario ? fmt(it.preco_unitario) : '—'}</td>
-                                  <td className="g-corpo whitespace-nowrap px-3 py-2 text-right align-top tabular-nums">{it.margem_lucro != null ? `${it.margem_lucro}%` : '—'}</td>
-                                </tr>
+                                  </TableCell>
+                                  <TableCell nowrap className="text-right align-top tabular-nums text-muted-foreground">{it.custo_unitario ? fmt(it.custo_unitario) : '—'}</TableCell>
+                                  <TableCell nowrap className="text-right align-top font-medium tabular-nums">{it.preco_unitario ? fmt(it.preco_unitario) : '—'}</TableCell>
+                                  <TableCell nowrap className="text-right align-top tabular-nums">{it.margem_lucro != null ? `${it.margem_lucro}%` : '—'}</TableCell>
+                                </TableRow>
                               ))}
-                            </tbody>
-                          </table>
+                            </TableBody>
+                          </Table>
                           {precItems.length > 15 && (
-                            <p className="g-meta border-t border-border px-3 py-2 text-muted-foreground">
+                            <p className="g-meta border-t border-border px-4 py-2 text-muted-foreground">
                               + {precItems.length - 15} itens adicionais
                             </p>
                           )}
@@ -1159,7 +1182,7 @@ export default function ProcessoWorkspace() {
 
             {/* sub-aba: AURÉLIA conversacional */}
             <TabsContent value="prec-aurelia">
-              <div className="overflow-hidden rounded-[var(--g-raio)] border border-border bg-card shadow-sm" style={{ height: 'calc(100vh - 280px)', minHeight: 480 }}>
+              <div className="g-cartao overflow-hidden" style={{ height: 'calc(100vh - 280px)', minHeight: 480 }}>
                 <AureliaPrecificacaoChat />
               </div>
             </TabsContent>

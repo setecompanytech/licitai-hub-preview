@@ -25,9 +25,11 @@ import { fontesDisponiveis, type ErroDoFormulario, type FormularioDasPremissas }
  * "7,20%" solto não é. E nenhum campo nasce com número de padrão: camada sem
  * origem aparece como "Configuração pendente" e trava a aprovação no cálculo.
  */
+/* Select nativo na anatomia do campo do Design System: 40px, raio 8px, borda
+   `input`, superfície branca (`card`), foco na cor de ação. */
 const CLASSE_DO_SELETOR =
-  'g-controle h-10 w-full rounded-[var(--g-raio)] border border-input bg-background px-3 text-foreground ' +
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50';
+  'g-controle h-10 w-full rounded-[var(--g-raio)] border border-input bg-card px-3 text-foreground shadow-sm transition-colors duration-150 ' +
+  'hover:border-foreground-tertiary focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:bg-muted disabled:opacity-60';
 
 const CLASSE_DO_LINK =
   'g-meta rounded font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';

@@ -5,6 +5,8 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import EstadoVazio from '@/components/shared/EstadoVazio';
 import { Loader2, Save, Calculator, ArrowRight, Search, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
@@ -166,16 +168,21 @@ export default function ItensEditalPrecificacao({
   };
 
   if (loading) {
+    // Espera na forma do conteúdo: título e três linhas da tabela de itens.
     return (
-      <Card className="flex items-center gap-2 p-6 text-sm text-muted-foreground" role="status" aria-busy="true">
-        <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Carregando itens do edital…
+      <Card className="space-y-3 p-5" role="status" aria-busy="true">
+        <span className="sr-only">Carregando itens do edital…</span>
+        <Skeleton className="h-5 w-64" />
+        <Skeleton className="h-12 w-full rounded-md" />
+        <Skeleton className="h-12 w-full rounded-md" />
+        <Skeleton className="h-12 w-5/6 rounded-md" />
       </Card>
     );
   }
 
   if (!itens.length) {
     return (
-      <Card className="p-6">
+      <Card className="p-5">
         <EstadoVazio
           tamanho="compacto"
           icone={<Calculator />}
@@ -188,10 +195,10 @@ export default function ItensEditalPrecificacao({
 
   return (
     <div className="space-y-4">
-    <Card className="space-y-4 p-6">
+    <Card className="space-y-4 p-5">
       <div className="flex flex-wrap items-center gap-2">
-        <Calculator className="w-5 h-5 text-primary" aria-hidden="true" />
-        <h2 className="text-lg font-semibold">Itens do edital — precificação rápida</h2>
+        <Calculator className="h-5 w-5 text-primary" aria-hidden="true" />
+        <h2 className="text-base font-semibold leading-6 text-foreground">Itens do edital — precificação rápida</h2>
         <span className="text-sm text-muted-foreground">
           {itens.length} item(ns) · edite o preço unitário e salve no catálogo
         </span>
@@ -216,28 +223,31 @@ export default function ItensEditalPrecificacao({
         </p>
       )}
 
-      <div className="overflow-x-auto rounded-md border border-border">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border bg-muted">
-              <th className="w-10 px-3 py-2 text-left text-sm font-semibold">Nº</th>
-              <th className="px-3 py-2 text-left text-sm font-semibold">Descrição</th>
-              <th className="w-20 px-3 py-2 text-right text-sm font-semibold">Qtd.</th>
-              <th className="w-28 px-3 py-2 text-right text-sm font-semibold">Ref. edital</th>
-              <th className="w-40 px-3 py-2 text-right text-sm font-semibold">Cotação internet</th>
-              <th className="w-32 px-3 py-2 text-right text-sm font-semibold">Preço unit. (R$)</th>
-              <th className="w-32 px-3 py-2 text-right text-sm font-semibold">Total</th>
-            </tr>
-          </thead>
-          <tbody>
+      {/* A tabela do Design System (`ui/table`): cabeçalho em superfície
+          rebaixada, rótulos de 12px, linhas de 48px, números à direita com
+          dígitos tabulares; a rolagem horizontal fica presa ao contêiner. */}
+      <div className="overflow-hidden rounded-md border border-border">
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="w-10">Nº</TableHead>
+              <TableHead>Descrição</TableHead>
+              <TableHead className="w-20 text-right">Qtd.</TableHead>
+              <TableHead className="w-28 text-right">Ref. edital</TableHead>
+              <TableHead className="w-40 text-right">Cotação internet</TableHead>
+              <TableHead className="w-32 text-right">Preço unit. (R$)</TableHead>
+              <TableHead className="w-32 text-right">Total</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {itens.map((it) => {
               const unit = parsePreco(precos[it.id] || '');
               const cot = cotacao.cotacoes[it.id];
               return (
                 <Fragment key={it.id}>
-                <tr className="border-b border-border hover:bg-muted/50">
-                  <td className="px-3 py-2 text-muted-foreground tabular-nums">{it.numero}</td>
-                  <td className="px-3 py-2">
+                <TableRow>
+                  <TableCell className="text-muted-foreground tabular-nums">{it.numero}</TableCell>
+                  <TableCell>
                     {it.descricao}
                     <Badge variant="muted" className="ml-2">{it.unidade}</Badge>
                     {it.marca && (
@@ -245,13 +255,13 @@ export default function ItensEditalPrecificacao({
                         Marca: <span className="font-medium text-foreground">{it.marca}</span>
                       </span>
                     )}
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums">{it.quantidade?.toLocaleString('pt-BR')}</td>
-                  <td className="px-3 py-2 text-right text-muted-foreground tabular-nums">
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">{it.quantidade?.toLocaleString('pt-BR')}</TableCell>
+                  <TableCell className="text-right text-muted-foreground tabular-nums">
                     {it.valor_unitario > 0 ? brl(it.valor_unitario) : '—'}
-                  </td>
-                  <td className="px-3 py-2 text-right">
-                    {cot?.status === 'cotando' && <Loader2 className="inline w-4 h-4 animate-spin text-muted-foreground" aria-hidden="true" />}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {cot?.status === 'cotando' && <Loader2 className="inline h-4 w-4 animate-spin text-muted-foreground" aria-hidden="true" />}
                     {cot?.status === 'erro' && <span className="text-sm text-muted-foreground">sem resultado</span>}
                     {cot?.status === 'cotado' && (
                       <Button
@@ -275,11 +285,13 @@ export default function ItensEditalPrecificacao({
                         onClick={() => cotarItens(licitacaoId, [it], opcoesCotacao)}
                         disabled={cotacao.rodando}
                       >
-                        <Search className="w-4 h-4" aria-hidden="true" /> cotar
+                        <Search className="h-4 w-4" aria-hidden="true" /> cotar
                       </Button>
                     )}
-                  </td>
-                  <td className="px-3 py-2">
+                  </TableCell>
+                  {/* Campo de 40px numa linha de 48: o respiro vertical encolhe
+                      para a linha não crescer. */}
+                  <TableCell className="py-1">
                     <Input
                       value={precos[it.id] ?? ''}
                       onChange={(e) => setPrecos((p) => ({ ...p, [it.id]: e.target.value }))}
@@ -287,15 +299,15 @@ export default function ItensEditalPrecificacao({
                       aria-label={`Preço unitário do item ${it.numero}`}
                       className="text-right tabular-nums"
                     />
-                  </td>
-                  <td className="px-3 py-2 text-right font-medium tabular-nums">
+                  </TableCell>
+                  <TableCell className="text-right font-medium tabular-nums">
                     {unit > 0 ? brl(unit * (it.quantidade || 1)) : '—'}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
                 {cot?.status === 'cotado' && fontesAbertas === it.id && (
-                  <tr className="border-b border-border bg-muted/50">
-                    <td />
-                    <td colSpan={6} className="px-3 py-3">
+                  <TableRow className="bg-secondary hover:bg-secondary">
+                    <TableCell />
+                    <TableCell colSpan={6} className="py-3">
                       <div className="mb-2 flex flex-wrap items-center gap-2">
                         <span className="text-sm font-semibold">Fontes da cotação</span>
                         {cot.marcaSugerida && (
@@ -416,14 +428,14 @@ export default function ItensEditalPrecificacao({
                           </div>
                         </div>
                       )}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 )}
                 </Fragment>
               );
             })}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">

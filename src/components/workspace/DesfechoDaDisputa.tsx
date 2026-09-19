@@ -90,15 +90,17 @@ export default function DesfechoDaDisputa({
 
   return (
     <>
-      <Card className={`p-6 border-l-4 ${perdeu ? 'border-l-destructive' : 'border-l-success'}`}>
+      {/* Cartão do Design System com a borda lateral semântica: vermelha na
+          perda, verde na vitória. Raio e sombra vêm do próprio `Card`. */}
+      <Card className={`border-l-4 p-5 ${perdeu ? 'border-l-destructive' : 'border-l-success'}`}>
         <div className="flex flex-wrap items-start gap-3">
           {perdeu
-            ? <XCircle className="w-5 h-5 shrink-0 mt-0.5 text-destructive" aria-hidden="true" />
-            : <Trophy className="w-5 h-5 shrink-0 mt-0.5 text-success" aria-hidden="true" />}
+            ? <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" aria-hidden="true" />
+            : <Trophy className="mt-0.5 h-5 w-5 shrink-0 text-success" aria-hidden="true" />}
 
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-lg font-semibold">
+              <h2 className="text-base font-semibold leading-6 text-foreground">
                 {perdeu ? 'Disputa encerrada — não vencemos' : 'Disputa vencida'}
               </h2>
               <Badge variant={perdeu ? 'danger' : 'success'}>{atual}</Badge>

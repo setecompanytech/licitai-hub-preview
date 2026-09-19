@@ -147,7 +147,7 @@ export default function DocumentosManager({ licitacaoId, numeroProcesso, orgao, 
           duas linhas curtas, ações pequenas à direita. */}
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <div className="flex min-w-0 flex-col">
-          <h2 className="g-corpo font-semibold">
+          <h2 className="text-base font-semibold leading-6 text-foreground">
             Documentos editáveis
             {documentos.length > 0 && (
               <span className="g-meta ml-2 font-normal text-muted-foreground tabular-nums">{documentos.length}</span>
@@ -162,7 +162,7 @@ export default function DocumentosManager({ licitacaoId, numeroProcesso, orgao, 
             </DialogTrigger>
             <DialogContent className="max-w-3xl">
               <DialogHeader>
-                <DialogTitle className="flex items-center gap-2"><Sparkles className="w-5 h-5 text-primary" aria-hidden="true" /> Modelos de Declarações</DialogTitle>
+                <DialogTitle className="flex items-center gap-2"><Sparkles className="h-5 w-5 text-primary" aria-hidden="true" /> Modelos de Declarações</DialogTitle>
                 <DialogDescription>
                   Modelos pré-formatados conforme a Lei nº 14.133/2021 e legislação correlata. Os campos da empresa serão preenchidos automaticamente quando disponíveis.
                 </DialogDescription>
@@ -182,16 +182,16 @@ export default function DocumentosManager({ licitacaoId, numeroProcesso, orgao, 
                     key={m.id}
                     role="button"
                     tabIndex={0}
-                    className="cursor-pointer p-4 transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    className="cursor-pointer p-4 transition-[border-color,box-shadow] duration-150 hover:border-primary/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     onClick={() => criarDoModelo(m.id)}
                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); criarDoModelo(m.id); } }}
                   >
                     <div className="flex items-start gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary-tint text-primary">
-                        <FileText className="w-5 h-5" aria-hidden="true" />
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary-tint text-primary">
+                        <FileText className="h-[18px] w-[18px]" aria-hidden="true" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="text-base font-semibold">{m.titulo}</div>
+                        <div className="text-base font-semibold leading-6 text-foreground">{m.titulo}</div>
                         <p className="mt-1 text-sm text-muted-foreground">{m.descricao}</p>
                         <div className="mt-2 flex flex-wrap items-center gap-2">
                           <Badge variant="muted">{m.categoria}</Badge>
@@ -212,14 +212,14 @@ export default function DocumentosManager({ licitacaoId, numeroProcesso, orgao, 
             <DialogContent>
               <DialogHeader><DialogTitle>Novo Documento (em branco)</DialogTitle></DialogHeader>
               <div className="space-y-4">
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-1.5">
                   <Label htmlFor="novo-doc-tipo">Tipo</Label>
                   <Select value={novoTipo} onValueChange={setNovoTipo}>
                     <SelectTrigger id="novo-doc-tipo"><SelectValue /></SelectTrigger>
                     <SelectContent>{TIPOS.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-1.5">
                   <Label htmlFor="novo-doc-titulo">Título</Label>
                   <Input id="novo-doc-titulo" value={novoTitulo} onChange={e => setNovoTitulo(e.target.value)} placeholder="Ex: Declaração específica" />
                 </div>
@@ -250,10 +250,10 @@ export default function DocumentosManager({ licitacaoId, numeroProcesso, orgao, 
           {documentos.map(d => {
             const tipo = TIPOS.find(t => t.value === d.tipo);
             return (
-              <div key={d.id} className="flex items-center gap-3 px-3 py-2 transition-colors hover:bg-muted/50">
-                <FileText className="w-5 h-5 shrink-0 text-primary" aria-hidden="true" />
+              <div key={d.id} className="flex min-h-[var(--g-linha)] items-center gap-3 px-3 py-2 transition-colors duration-150 hover:bg-muted/60">
+                <FileText className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
                 <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-medium">{d.titulo}</div>
+                  <div className="truncate text-sm font-medium text-foreground">{d.titulo}</div>
                   <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                     <Badge variant="muted">{tipo?.label || d.tipo}</Badge>
                     <Badge variant="outline">v{d.versao}</Badge>
@@ -262,11 +262,11 @@ export default function DocumentosManager({ licitacaoId, numeroProcesso, orgao, 
                   </div>
                 </div>
                 <Button variant="outline" size="sm" onClick={() => abrir(d)}>Editar</Button>
-                <Button variant="ghost" size="sm" onClick={() => setPdfDialog(d)} className="w-9 px-0" title="Exportar PDF" aria-label={`Exportar PDF de ${d.titulo}`}>
-                  <Download className="w-4 h-4" aria-hidden="true" />
+                <Button variant="ghost" size="icon-sm" onClick={() => setPdfDialog(d)} title="Exportar PDF" aria-label={`Exportar PDF de ${d.titulo}`}>
+                  <Download className="h-4 w-4" aria-hidden="true" />
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => { if (confirm(`Excluir "${d.titulo}"?`)) deleteDocumento(d.id); }} className="w-9 px-0 text-destructive" title="Excluir" aria-label={`Excluir ${d.titulo}`}>
-                  <Trash2 className="w-4 h-4" aria-hidden="true" />
+                <Button variant="ghost" size="icon-sm" onClick={() => { if (confirm(`Excluir "${d.titulo}"?`)) deleteDocumento(d.id); }} className="text-destructive" title="Excluir" aria-label={`Excluir ${d.titulo}`}>
+                  <Trash2 className="h-4 w-4" aria-hidden="true" />
                 </Button>
               </div>
             );
@@ -299,12 +299,12 @@ export default function DocumentosManager({ licitacaoId, numeroProcesso, orgao, 
       <Dialog open={!!pdfDialog} onOpenChange={(o) => !o && setPdfDialog(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><Download className="w-5 h-5" aria-hidden="true" /> Exportar PDF</DialogTitle>
+            <DialogTitle className="flex items-center gap-2"><Download className="h-5 w-5" aria-hidden="true" /> Exportar PDF</DialogTitle>
             <DialogDescription>{pdfDialog?.titulo}</DialogDescription>
           </DialogHeader>
-          <Card className="space-y-3 p-4">
+          <Card className="space-y-3 p-4 shadow-none">
             <div className="flex items-start gap-3">
-              <ShieldCheck className="mt-0.5 w-5 h-5 text-primary" aria-hidden="true" />
+              <ShieldCheck className="mt-0.5 h-5 w-5 text-primary" aria-hidden="true" />
               <div className="flex-1">
                 <div className="flex items-center justify-between gap-3">
                   <Label htmlFor="assinar" className="cursor-pointer text-sm font-semibold">Assinatura eletrônica</Label>
@@ -316,9 +316,9 @@ export default function DocumentosManager({ licitacaoId, numeroProcesso, orgao, 
               </div>
             </div>
             {assinar && (
-              <div className="space-y-1 rounded-md bg-muted p-3 text-sm">
-                <div><strong>Signatário:</strong> {representante.nome || <span className="text-destructive">— não cadastrado —</span>}</div>
-                <div><strong>Empresa:</strong> {empresa.razao_social || <span className="text-destructive">— não cadastrada —</span>}</div>
+              <div className="space-y-1 rounded-md bg-muted p-3 text-sm text-foreground">
+                <div><strong>Signatário:</strong> {representante.nome || <span className="text-destructive-ink">— não cadastrado —</span>}</div>
+                <div><strong>Empresa:</strong> {empresa.razao_social || <span className="text-destructive-ink">— não cadastrada —</span>}</div>
                 <div className="mt-1 text-xs text-muted-foreground">
                   Cadastre estes dados em <strong>Configurações → Empresa</strong> para que o selo seja completo.
                 </div>

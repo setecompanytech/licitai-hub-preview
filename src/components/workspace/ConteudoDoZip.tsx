@@ -102,9 +102,9 @@ export default function ConteudoDoZip({ url, nomeZip }: { url: string; nomeZip?:
   return (
     <div className="grid md:grid-cols-[minmax(0,260px)_1fr]">
       <div className="max-h-[600px] overflow-y-auto border-r border-border">
-        <div className="flex items-center gap-2 border-b border-border px-3 py-2">
-          <FolderOpen className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
-          <span className="text-sm font-medium">{entradas.length} arquivo(s) no pacote</span>
+        <div className="flex items-center gap-2 border-b border-border bg-secondary px-3 py-2">
+          <FolderOpen className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+          <span className="text-sm font-medium text-foreground">{entradas.length} arquivo(s) no pacote</span>
         </div>
         {entradas.map((e) => {
           const ativo = aberto?.nome === e.nome;
@@ -135,7 +135,7 @@ export default function ConteudoDoZip({ url, nomeZip }: { url: string; nomeZip?:
 
       <div className="min-w-0">
         {aberto && ehPdf(aberto.nome) ? (
-          <iframe src={aberto.url} title={aberto.nome} className="h-[600px] w-full border-0 bg-background" />
+          <iframe src={aberto.url} title={aberto.nome} className="h-[600px] w-full border-0 bg-card" />
         ) : aberto ? (
           <EstadoVazio
             tamanho="compacto"

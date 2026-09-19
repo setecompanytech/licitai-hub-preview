@@ -79,7 +79,7 @@ export default function PropostaEnviadaCard({
       <Card className="flex flex-wrap items-center gap-3 border-l-4 border-l-success p-4">
         <CheckCircle2 className="h-5 w-5 shrink-0 text-success" aria-hidden="true" />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold">Proposta enviada</p>
+          <p className="text-base font-semibold leading-5 text-foreground">Proposta enviada</p>
           <p className="text-sm text-muted-foreground">
             {dataPropostaEnviada
               ? `Registrada em ${format(new Date(dataPropostaEnviada), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`
@@ -96,7 +96,7 @@ export default function PropostaEnviadaCard({
       <Card className="flex flex-wrap items-center gap-3 border-l-4 border-l-warning p-4">
         <Send className="h-5 w-5 shrink-0 text-warning" aria-hidden="true" />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold">Proposta ainda não registrada como enviada</p>
+          <p className="text-base font-semibold leading-5 text-foreground">Proposta ainda não registrada como enviada</p>
           <p className="text-sm text-muted-foreground">
             Depois de enviar a proposta no portal, registre aqui: o processo sai de{' '}
             {rotuloStatus(status ?? '')} para Proposta Enviada, e a agenda deixa de cobrar a situação dele.

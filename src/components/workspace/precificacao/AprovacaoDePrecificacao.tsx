@@ -620,7 +620,7 @@ export default function AprovacaoDePrecificacao({
       {/* ── Ações ──────────────────────────────────────────────────────── */}
       <section
         aria-label="Ações da revisão"
-        className="sticky bottom-0 z-10 flex flex-col gap-3 rounded-[var(--g-raio)] border border-border bg-card p-4 shadow-sm"
+        className="g-cartao sticky bottom-0 z-10 flex flex-col gap-3 p-4"
       >
         {mensagemDaAcao && mensagemDaAcao !== dados.conflito && <AvisoDeFalha>{mensagemDaAcao}</AvisoDeFalha>}
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">

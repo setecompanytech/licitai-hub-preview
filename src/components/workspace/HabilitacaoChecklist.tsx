@@ -5,6 +5,7 @@ import { useActivityLog } from '@/hooks/useActivityLog';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import EstadoVazio from '@/components/shared/EstadoVazio';
 import { Loader2, Sparkles, ShieldCheck, AlertTriangle, XCircle, CheckCircle2, RefreshCw, FolderDown } from 'lucide-react';
 import { toast } from 'sonner';
@@ -155,18 +156,23 @@ export default function HabilitacaoChecklist({ licitacaoId }: { licitacaoId: str
   const grupos = [...new Set(linhas.map((l) => l.grupo || 'outro'))];
 
   if (loading) {
+    // Espera na forma do conteúdo: título e três linhas do checklist.
     return (
-      <Card className="flex items-center gap-2 p-6 text-sm text-muted-foreground" role="status" aria-busy="true">
-        <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Carregando checklist de habilitação…
+      <Card className="space-y-3 p-5" role="status" aria-busy="true">
+        <span className="sr-only">Carregando checklist de habilitação…</span>
+        <Skeleton className="h-5 w-56" />
+        <Skeleton className="h-12 w-full rounded-md" />
+        <Skeleton className="h-12 w-full rounded-md" />
+        <Skeleton className="h-12 w-5/6 rounded-md" />
       </Card>
     );
   }
 
   return (
-    <Card className="space-y-4 p-6">
+    <Card className="space-y-4 p-5">
       <div className="flex flex-wrap items-center gap-2">
-        <ShieldCheck className="w-5 h-5 text-primary" aria-hidden="true" />
-        <h2 className="text-lg font-semibold">Checklist de habilitação</h2>
+        <ShieldCheck className="h-5 w-5 text-primary" aria-hidden="true" />
+        <h2 className="text-base font-semibold leading-6 text-foreground">Checklist de habilitação</h2>
         {linhas.length > 0 && (
           <>
             <Badge variant="success">{resumo.ok} ok</Badge>
@@ -246,24 +252,31 @@ export default function HabilitacaoChecklist({ licitacaoId }: { licitacaoId: str
 
       {grupos.map((g) => (
         <div key={g} className="space-y-2">
-          <div className="flex flex-wrap items-center gap-2 pt-2 text-sm font-semibold text-muted-foreground">
+          <h3 className="flex flex-wrap items-center gap-2 pt-2 text-sm font-semibold text-muted-foreground">
             {GRUPOS[g] || g}
             {ARTIGO_POR_GRUPO[g] && (
               <Badge variant="muted">{ARTIGO_POR_GRUPO[g]} · Lei 14.133/21</Badge>
             )}
-          </div>
+          </h3>
           {linhas.filter((l) => (l.grupo || 'outro') === g).map((l) => {
             const est = ESTADOS[l.status];
             const Icone = est.icon;
             return (
               <div key={l.id} className={`flex items-start gap-3 rounded-md border px-3 py-2 ${l.conferido ? 'border-border' : 'border-dashed border-border'}`}>
-                <Icone className={`w-4 h-4 mt-1 shrink-0 ${est.tinta}`} aria-hidden="true" />
+                <Icone className={`mt-1 h-4 w-4 shrink-0 ${est.tinta}`} aria-hidden="true" />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     {l.referencia && <span className="shrink-0 text-sm font-semibold text-primary">{l.referencia}</span>}
-                    <span className="text-sm font-medium">{l.exigencia}</span>
+                    <span className="text-sm font-medium text-foreground">{l.exigencia}</span>
                     {!l.obrigatorio && <Badge variant="muted">facultativo</Badge>}
-                    {!l.conferido && <span className="text-xs text-muted-foreground">sugerido pela IA</span>}
+                    {/* Selo de IA do Design System: o que a Aurélia propôs e
+                        ninguém conferiu ainda. */}
+                    {!l.conferido && (
+                      <Badge variant="ia">
+                        <Sparkles className="h-3.5 w-3.5 text-teal" aria-hidden="true" />
+                        sugerido pela IA
+                      </Badge>
+                    )}
                   </div>
                   {/* Texto do órgão, literal. A linha acima é a leitura da IA;
                       esta é a fonte — quem confere não precisa abrir o PDF para

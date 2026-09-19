@@ -107,7 +107,7 @@ export default function EditalOriginalCard({ licitacaoId, urlEdital, onVerItens,
     // altura de um controle e sai da frente do que a aba existe para mostrar —
     // a pasta do processo.
     <Card className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2">
-      <h2 className="g-corpo font-semibold">Preparação automática</h2>
+      <h2 className="text-base font-semibold leading-6 text-foreground">Preparação automática</h2>
 
       {temItens && (
         <Badge variant="success">{itensProntos} itens prontos{pncpDisponivel ? ' · espelho PNCP' : ''}</Badge>
@@ -123,7 +123,7 @@ export default function EditalOriginalCard({ licitacaoId, urlEdital, onVerItens,
       )}
       {!temItens && running && (
         <Badge variant="info" className="gap-1">
-          <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Extraindo itens do edital…
+          <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> Extraindo itens do edital…
         </Badge>
       )}
       {!temItens && prepared && (
@@ -155,7 +155,7 @@ export default function EditalOriginalCard({ licitacaoId, urlEdital, onVerItens,
         )}
         {!temItens && (
           <Button size="sm" variant="ghost" onClick={handleReprocess} disabled={running}>
-            <RefreshCw className={`w-4 h-4 ${running ? 'animate-spin' : ''}`} aria-hidden="true" />
+            <RefreshCw className={`h-4 w-4 ${running ? 'animate-spin' : ''}`} aria-hidden="true" />
             {prepared ? 'Reprocessar' : 'Tentar novamente'}
           </Button>
         )}

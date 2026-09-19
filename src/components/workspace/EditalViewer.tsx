@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import EstadoVazio from '@/components/shared/EstadoVazio';
 import {
@@ -153,22 +154,36 @@ export default function EditalViewer({ licitacaoId, urlEdital, onArquivosPncp }:
   const podeExibirNoFrame = !!arquivoAberto && VISUALIZAVEL.includes(arquivoAberto.ext);
 
   return (
-    <Card className="p-6">
+    <Card className="p-5">
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <FileText className="w-5 h-5 text-primary" aria-hidden="true" />
-        <h2 className="text-lg font-semibold">Edital em tela</h2>
+        <FileText className="h-5 w-5 text-primary" aria-hidden="true" />
+        <h2 className="text-base font-semibold leading-6 text-foreground">Edital em tela</h2>
         {arquivos.length > 0 && (
           <Badge variant="muted">{arquivos.length} arquivos no PNCP</Badge>
         )}
         <Button size="sm" variant="ghost" className="ml-auto" onClick={carregarLista} disabled={carregandoLista}>
-          <RefreshCw className={`w-4 h-4 ${carregandoLista ? 'animate-spin' : ''}`} aria-hidden="true" />
+          <RefreshCw className={`h-4 w-4 ${carregandoLista ? 'animate-spin' : ''}`} aria-hidden="true" />
           Atualizar lista
         </Button>
       </div>
 
+      {/* Espera na forma do conteúdo (Design System v3): três linhas da lista
+          de arquivos, em vez de um ponto girando no centro. */}
       {carregandoLista && arquivos.length === 0 && (
-        <div role="status" aria-busy="true" className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
-          <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Consultando os arquivos no PNCP…
+        <div role="status" aria-busy="true" className="divide-y divide-border rounded-md border border-border">
+          <span className="sr-only">Consultando os arquivos no PNCP…</span>
+          <div className="flex items-start gap-2 p-3">
+            <Skeleton className="mt-0.5 h-4 w-4 rounded" />
+            <div className="flex-1 space-y-2"><Skeleton className="h-4 w-2/3" /><Skeleton className="h-3 w-1/3" /></div>
+          </div>
+          <div className="flex items-start gap-2 p-3">
+            <Skeleton className="mt-0.5 h-4 w-4 rounded" />
+            <div className="flex-1 space-y-2"><Skeleton className="h-4 w-1/2" /><Skeleton className="h-3 w-1/4" /></div>
+          </div>
+          <div className="flex items-start gap-2 p-3">
+            <Skeleton className="mt-0.5 h-4 w-4 rounded" />
+            <div className="flex-1 space-y-2"><Skeleton className="h-4 w-3/5" /><Skeleton className="h-3 w-1/3" /></div>
+          </div>
         </div>
       )}
 
@@ -180,12 +195,12 @@ export default function EditalViewer({ licitacaoId, urlEdital, onArquivosPncp }:
             <p>{erroLista}</p>
             <div className="flex flex-wrap gap-2">
               <Button size="sm" variant="outline" onClick={carregarLista}>
-                <RefreshCw className="w-4 h-4" aria-hidden="true" /> Tentar novamente
+                <RefreshCw className="h-4 w-4" aria-hidden="true" /> Tentar novamente
               </Button>
               {urlEdital && (
                 <Button asChild size="sm" variant="ghost">
                   <a href={urlEdital} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="w-4 h-4" aria-hidden="true" /> Abrir no PNCP
+                    <ExternalLink className="h-4 w-4" aria-hidden="true" /> Abrir no PNCP
                   </a>
                 </Button>
               )}
@@ -206,12 +221,12 @@ export default function EditalViewer({ licitacaoId, urlEdital, onArquivosPncp }:
                   type="button"
                   aria-pressed={ativo}
                   onClick={() => abrirArquivo(a)}
-                  className={`w-full p-3 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset ${ativo ? 'border-l-2 border-l-primary bg-primary-tint' : ''}`}
+                  className={`w-full p-3 text-left transition-colors duration-150 hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset ${ativo ? 'border-l-2 border-l-primary bg-primary-tint' : ''}`}
                 >
                   <div className="flex items-start gap-2">
-                    <FileText className={`w-4 h-4 mt-0.5 shrink-0 ${ativo ? 'text-primary' : 'text-muted-foreground'}`} aria-hidden="true" />
+                    <FileText className={`mt-0.5 h-4 w-4 shrink-0 ${ativo ? 'text-primary' : 'text-muted-foreground'}`} aria-hidden="true" />
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{a.titulo}</p>
+                      <p className="truncate text-sm font-medium text-foreground">{a.titulo}</p>
                       <div className="mt-1 flex flex-wrap items-center gap-2">
                         {a.extensao && (
                           <Badge variant="outline" className="uppercase">{a.extensao}</Badge>
@@ -234,7 +249,7 @@ export default function EditalViewer({ licitacaoId, urlEdital, onArquivosPncp }:
           {selecionado && (
           <div className="flex min-h-[420px] flex-col overflow-hidden rounded-md border border-border bg-muted">
             <div className="flex flex-wrap items-center gap-2 border-b border-border bg-card px-3 py-2">
-              <span className="min-w-0 flex-1 truncate text-sm font-medium">
+              <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
                 {selecionado.titulo}
               </span>
               <Button size="sm" variant="ghost" onClick={fecharLeitura} title="Recolher a leitura">
@@ -242,25 +257,24 @@ export default function EditalViewer({ licitacaoId, urlEdital, onArquivosPncp }:
               </Button>
               {signedUrl && (
                 <>
-                  <Button asChild size="sm" variant="ghost" className="w-9 px-0">
+                  <Button asChild size="icon-sm" variant="ghost">
                     <a href={signedUrl} target="_blank" rel="noopener noreferrer" title="Abrir em nova aba" aria-label="Abrir em nova aba">
-                      <Maximize2 className="w-4 h-4" aria-hidden="true" />
+                      <Maximize2 className="h-4 w-4" aria-hidden="true" />
                     </a>
                   </Button>
-                  <Button asChild size="sm" variant="ghost" className="w-9 px-0">
+                  <Button asChild size="icon-sm" variant="ghost">
                     <a href={signedUrl} download={arquivoAberto?.nome} title="Baixar" aria-label="Baixar arquivo">
-                      <Download className="w-4 h-4" aria-hidden="true" />
+                      <Download className="h-4 w-4" aria-hidden="true" />
                     </a>
                   </Button>
                   <Button
-                    size="sm"
+                    size="icon-sm"
                     variant="ghost"
-                    className="w-9 px-0"
                     title="Documento quebrado? Baixar novamente do PNCP"
                     aria-label="Baixar novamente do PNCP"
                     onClick={() => selecionado && abrirArquivo(selecionado, { force: true })}
                   >
-                    <RefreshCw className="w-4 h-4" aria-hidden="true" />
+                    <RefreshCw className="h-4 w-4" aria-hidden="true" />
                   </Button>
                 </>
               )}
@@ -269,7 +283,7 @@ export default function EditalViewer({ licitacaoId, urlEdital, onArquivosPncp }:
             <div className="relative flex-1">
               {abrindo && (
                 <div role="status" aria-busy="true" className="absolute inset-0 z-10 flex items-center justify-center gap-2 bg-background/60 text-sm text-muted-foreground">
-                  <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Baixando do PNCP…
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Baixando do PNCP…
                 </div>
               )}
 
@@ -283,7 +297,7 @@ export default function EditalViewer({ licitacaoId, urlEdital, onArquivosPncp }:
                       {urlEdital && (
                         <Button asChild size="sm" variant="outline">
                           <a href={urlEdital} target="_blank" rel="noopener noreferrer">
-                            <ExternalLink className="w-4 h-4" aria-hidden="true" /> Abrir no PNCP
+                            <ExternalLink className="h-4 w-4" aria-hidden="true" /> Abrir no PNCP
                           </a>
                         </Button>
                       )}
@@ -323,7 +337,7 @@ export default function EditalViewer({ licitacaoId, urlEdital, onArquivosPncp }:
                   acao={
                     <Button asChild variant="outline">
                       <a href={signedUrl} download={arquivoAberto?.nome}>
-                        <Download className="w-4 h-4" aria-hidden="true" />
+                        <Download className="h-4 w-4" aria-hidden="true" />
                         Baixar {arquivoAberto?.ext ? arquivoAberto.ext.toUpperCase() : 'arquivo'}
                       </a>
                     </Button>

@@ -52,10 +52,10 @@ export default function ContratoDoProcesso({ licitacaoId }: { licitacaoId: strin
   if (contratos.length === 0) return null;
 
   return (
-    <Card className="p-6">
-      <div className="mb-3 flex items-center gap-2">
-        <FileSignature className="w-5 h-5 text-primary" aria-hidden="true" />
-        <h2 className="text-lg font-semibold">
+    <Card className="p-5">
+      <div className="mb-2 flex items-center gap-2">
+        <FileSignature className="h-5 w-5 text-primary" aria-hidden="true" />
+        <h2 className="text-base font-semibold leading-6 text-foreground">
           {contratos.length === 1 ? 'Contrato deste processo' : 'Contratos deste processo'}
         </h2>
       </div>
@@ -64,8 +64,8 @@ export default function ContratoDoProcesso({ licitacaoId }: { licitacaoId: strin
         {contratos.map((c) => {
           const ehAta = c.tipo_documento === 'ata_srp';
           return (
-            <div key={c.id} className="flex flex-wrap items-center gap-3 py-3">
-              <span className="text-sm font-medium">
+            <div key={c.id} className="flex min-h-[var(--g-linha)] flex-wrap items-center gap-3 py-2.5">
+              <span className="text-base font-medium text-foreground">
                 {ehAta ? rotuloDaAta(c.numero_ata || c.numero_contrato) : rotuloDoContrato(c.numero_contrato)}
               </span>
               <Badge variant="info">{c.status}</Badge>
@@ -81,7 +81,7 @@ export default function ContratoDoProcesso({ licitacaoId }: { licitacaoId: strin
                 className="ml-auto"
                 onClick={() => navigate('/gestao-contratos')}
               >
-                Abrir <ArrowRight className="w-4 h-4" aria-hidden="true" />
+                Abrir <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Button>
             </div>
           );

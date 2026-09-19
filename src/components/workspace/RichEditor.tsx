@@ -38,9 +38,11 @@ export default function RichEditor({ value, onChange }: Props) {
     if (ref.current) onChange(ref.current.innerHTML);
   };
 
+  // Superfície de campo (branca, borda `input`, raio 8px); a barra de
+  // ferramentas fica na superfície rebaixada, como um cabeçalho de tabela.
   return (
-    <div className="overflow-hidden rounded-md border border-border bg-background">
-      <div role="toolbar" aria-label="Formatação do texto" className="flex flex-wrap items-center gap-1 border-b border-border bg-muted/50 p-2">
+    <div className="overflow-hidden rounded-md border border-input bg-card">
+      <div role="toolbar" aria-label="Formatação do texto" className="flex flex-wrap items-center gap-1 border-b border-border bg-secondary p-2">
         {FERRAMENTAS.map((grupo, gi) => (
           <div key={gi} className="flex items-center gap-1">
             {gi > 0 && <div className="mx-1 h-5 w-px bg-border" aria-hidden="true" />}
@@ -49,13 +51,12 @@ export default function RichEditor({ value, onChange }: Props) {
                 key={cmd}
                 type="button"
                 variant="ghost"
-                size="sm"
-                className="w-9 px-0"
+                size="icon-sm"
                 aria-label={rotulo}
                 title={rotulo}
                 onClick={() => exec(cmd)}
               >
-                <Icone className="w-4 h-4" aria-hidden="true" />
+                <Icone className="h-4 w-4" aria-hidden="true" />
               </Button>
             ))}
           </div>
@@ -66,7 +67,7 @@ export default function RichEditor({ value, onChange }: Props) {
         <select
           aria-label="Formato do bloco"
           onChange={(e) => exec('formatBlock', e.target.value)}
-          className="h-9 rounded-md border border-input bg-background px-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          className="h-9 rounded-md border border-input bg-card px-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           <option value="p">Parágrafo</option>
           <option value="h1">Título 1</option>
@@ -74,11 +75,11 @@ export default function RichEditor({ value, onChange }: Props) {
           <option value="h3">Título 3</option>
         </select>
         <div className="mx-1 h-5 w-px bg-border" aria-hidden="true" />
-        <Button type="button" variant="ghost" size="sm" className="w-9 px-0" aria-label="Desfazer" title="Desfazer" onClick={() => exec('undo')}>
-          <Undo className="w-4 h-4" aria-hidden="true" />
+        <Button type="button" variant="ghost" size="icon-sm" aria-label="Desfazer" title="Desfazer" onClick={() => exec('undo')}>
+          <Undo className="h-4 w-4" aria-hidden="true" />
         </Button>
-        <Button type="button" variant="ghost" size="sm" className="w-9 px-0" aria-label="Refazer" title="Refazer" onClick={() => exec('redo')}>
-          <Redo className="w-4 h-4" aria-hidden="true" />
+        <Button type="button" variant="ghost" size="icon-sm" aria-label="Refazer" title="Refazer" onClick={() => exec('redo')}>
+          <Redo className="h-4 w-4" aria-hidden="true" />
         </Button>
       </div>
       <div

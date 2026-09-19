@@ -77,7 +77,7 @@ export default function HistoricoProcesso({ licitacaoId }: { licitacaoId: string
 
   if (loading) {
     return (
-      <Card className="p-6" role="status" aria-busy="true">
+      <Card className="p-5" role="status" aria-busy="true">
         <span className="sr-only">Carregando histórico…</span>
         <div className="space-y-4">
           {[0, 1, 2].map((i) => (
@@ -94,7 +94,7 @@ export default function HistoricoProcesso({ licitacaoId }: { licitacaoId: string
 
   if (!eventos.length) {
     return (
-      <Card className="p-6">
+      <Card className="p-5">
         <EstadoVazio
           icone={<History />}
           titulo="Nenhuma movimentação registrada ainda"
@@ -105,27 +105,29 @@ export default function HistoricoProcesso({ licitacaoId }: { licitacaoId: string
   }
 
   return (
-    <Card className="p-6">
-      <ol className="relative ml-2 space-y-6 border-l border-border">
+    <Card className="p-5">
+      {/* Linha do tempo: fio de 1px na cor da borda, ponto neutro por evento,
+          selo semântico com texto — a cor é reforço, nunca a única pista. */}
+      <ol className="relative ml-2 space-y-5 border-l border-border">
         {eventos.map((ev) => {
           const rotulo = ROTULOS[ev.acao] || { texto: ev.acao, tom: 'muted' as TomRotulo };
           const de = ev.metadata?.de as string | undefined;
           const para = ev.metadata?.para as string | undefined;
           return (
             <li key={ev.id} className="ml-5">
-              <span className="absolute -left-[5px] mt-1.5 w-2.5 h-2.5 rounded-full bg-border" aria-hidden="true" />
+              <span className="absolute -left-[5px] mt-1.5 h-2.5 w-2.5 rounded-full border-2 border-card bg-border" aria-hidden="true" />
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant={rotulo.tom}>{rotulo.texto}</Badge>
                 {de && para && (
                   <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                    {de} <ArrowRight className="w-4 h-4" aria-hidden="true" /> <span className="font-medium text-foreground">{para}</span>
+                    {de} <ArrowRight className="h-4 w-4" aria-hidden="true" /> <span className="font-medium text-foreground">{para}</span>
                   </span>
                 )}
                 {!de && para && (
                   <span className="text-xs text-muted-foreground">para <span className="font-medium text-foreground">{para}</span></span>
                 )}
               </div>
-              {ev.descricao && <p className="mt-1 text-sm">{ev.descricao}</p>}
+              {ev.descricao && <p className="mt-1 text-base leading-5 text-foreground">{ev.descricao}</p>}
               <p className="mt-1 text-xs text-muted-foreground tabular-nums">
                 {new Date(ev.created_at).toLocaleString('pt-BR')}
                 {' · '}

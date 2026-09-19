@@ -230,10 +230,10 @@ export default function AnexosManager({ licitacaoId, editalViewer, pncpEditalCou
     const cat = CATEGORIAS.find(c => c.value === a.categoria);
     const meta = a.metadata as { segmento?: string | null; tipo?: string | null } | null;
     return (
-      <div key={a.id} className="flex items-center gap-3 px-3 py-2 transition-colors hover:bg-muted/50">
-        <FileText className="w-5 h-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+      <div key={a.id} className="flex min-h-[var(--g-linha)] items-center gap-3 px-3 py-2 transition-colors duration-150 hover:bg-muted/60">
+        <FileText className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
         <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-medium">{a.nome_arquivo}</div>
+          <div className="truncate text-sm font-medium text-foreground">{a.nome_arquivo}</div>
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <Badge variant="muted">{cat?.label}</Badge>
             {meta?.tipo === 'atestado_tecnico' && meta?.segmento && (
@@ -250,24 +250,24 @@ export default function AnexosManager({ licitacaoId, editalViewer, pncpEditalCou
           </div>
         </div>
         <Button
-          variant="ghost" size="sm" title="Visualizar" aria-label={`Visualizar ${a.nome_arquivo}`}
-          onClick={() => abrirVisualizacao(a)} disabled={abrindo === a.id} className="w-9 px-0"
+          variant="ghost" size="icon-sm" title="Visualizar" aria-label={`Visualizar ${a.nome_arquivo}`}
+          onClick={() => abrirVisualizacao(a)} disabled={abrindo === a.id}
         >
-          {abrindo === a.id ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Eye className="w-4 h-4" aria-hidden="true" />}
+          {abrindo === a.id ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
         </Button>
-        <Button variant="ghost" size="sm" title="Baixar" aria-label={`Baixar ${a.nome_arquivo}`} onClick={() => downloadAnexo(a)} className="w-9 px-0">
-          <Download className="w-4 h-4" aria-hidden="true" />
+        <Button variant="ghost" size="icon-sm" title="Baixar" aria-label={`Baixar ${a.nome_arquivo}`} onClick={() => downloadAnexo(a)}>
+          <Download className="h-4 w-4" aria-hidden="true" />
         </Button>
         <Button
-          variant="ghost" size="sm" title="Excluir" aria-label={`Excluir ${a.nome_arquivo}`}
+          variant="ghost" size="icon-sm" title="Excluir" aria-label={`Excluir ${a.nome_arquivo}`}
           onClick={async () => {
             if (!confirm(`Excluir "${a.nome_arquivo}"?`)) return;
             await deleteAnexo(a);
             avisarAnexosAlterados(licitacaoId);
           }}
-          className="w-9 px-0 text-destructive"
+          className="text-destructive"
         >
-          <Trash2 className="w-4 h-4" aria-hidden="true" />
+          <Trash2 className="h-4 w-4" aria-hidden="true" />
         </Button>
       </div>
     );
@@ -280,7 +280,7 @@ export default function AnexosManager({ licitacaoId, editalViewer, pncpEditalCou
           a linha de cima escolhe a pasta, busca e envia; o corpo é a lista. */}
       <Card>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 pt-2">
-          <h2 className="g-corpo font-semibold">
+          <h2 className="text-base font-semibold leading-6 text-foreground">
             Arquivos
             <span className="g-meta ml-2 font-normal text-muted-foreground tabular-nums">{totalComPncp}</span>
           </h2>
@@ -432,10 +432,10 @@ export default function AnexosManager({ licitacaoId, editalViewer, pncpEditalCou
                 onClick={() => alternarGrupo(key)}
                 aria-expanded={!fechado}
                 title={fechado ? 'Abrir o grupo' : 'Recolher o grupo'}
-                className="h-auto w-full justify-start gap-2 rounded-none bg-muted/50 px-3 py-2 text-left font-normal hover:bg-muted"
+                className="h-auto w-full justify-start gap-2 rounded-none bg-secondary px-3 py-2 text-left font-normal hover:bg-muted"
               >
                 <ChevronDown
-                  className={`w-4 h-4 shrink-0 text-muted-foreground transition-transform ${fechado ? '-rotate-90' : ''}`}
+                  className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${fechado ? '-rotate-90' : ''}`}
                   aria-hidden="true"
                 />
                 <span className="text-sm font-semibold text-muted-foreground">{label}</span>
@@ -465,9 +465,9 @@ export default function AnexosManager({ licitacaoId, editalViewer, pncpEditalCou
               depois o Termo de Referência e os anexos.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
+          <div className="space-y-4">
             {pendentesEdital?.map((p, i) => (
-              <div key={`${p.file.name}-${i}`} className="flex flex-col gap-1">
+              <div key={`${p.file.name}-${i}`} className="flex flex-col gap-1.5">
                 <Label htmlFor={`tipo-edital-${i}`} className="block truncate">{p.file.name}</Label>
                 <Select
                   value={p.tipo}
