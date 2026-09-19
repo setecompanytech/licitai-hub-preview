@@ -112,6 +112,11 @@ checar "top 5 despesas sem movimentação"         "sem transferências, aplica�
 checar "CFO sem BP diz indisponível"             "Requer Balanço Patrimonial publicado"
 checar "fluxo de caixa: vencidos em hoje"        "venceu e ainda não foi baixado"
 
+# Leva 2026-09-19.2 — fase do processo lida da operação, não do Kanban.
+checar "agenda: processo em jogo não é atrasado"  "Situação a atualizar"
+checar "aba Proposta registra o envio"            "Registrar proposta enviada"
+checar "agenda lê o espelho PNCP (revogada/anulada)" "Desfecho a registrar"
+
 # Navegação 13–14/09 — o cabeçalho horizontal e o diretório de ferramentas.
 checar "trilha na faixa do conteúdo"          "Trilha de navegação"
 checar "diretório de ferramentas"             "Todas as ferramentas (Ctrl+Shift+K)"

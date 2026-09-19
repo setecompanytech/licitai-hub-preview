@@ -94,6 +94,16 @@ vi.mock('@/hooks/useVencimentosDeDocumentos', async () => {
   };
 });
 
+/* O espelho PNCP da agenda também é react-query; o painel não monta QueryClient. */
+vi.mock('@/hooks/useSituacaoDoEspelhoPNCP', () => ({
+  useSituacaoDoEspelhoPNCP: () => ({
+    situacoes: {},
+    carregando: false,
+    erro: null,
+    recarregar: vi.fn(),
+  }),
+}));
+
 vi.mock('@/hooks/useMembroPermissoes', () => ({
   useMembroPermissoes: () => ({ canAccessRoute: () => true, isAdmin: true }),
 }));

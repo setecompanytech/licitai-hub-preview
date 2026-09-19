@@ -12,8 +12,10 @@ import EstadoVazio from '@/components/shared/EstadoVazio';
 import { cn } from '@/lib/utils';
 import { faixaDe, normalizarStatus, STATUS_DECIDIDOS } from '@/lib/licitacao/status';
 import { identidadeDoProcesso } from '@/lib/licitacao/identidade-do-processo';
+import { pendenciaDoEspelho } from '@/lib/licitacao/espelho-pncp';
 import { diaDaValidade, diasAteVencer, ROTULO_DA_SITUACAO } from '@/lib/documentos/situacao';
 import { useVencimentosDeDocumentos, ROTA_DA_ORIGEM } from '@/hooks/useVencimentosDeDocumentos';
+import { useSituacaoDoEspelhoPNCP } from '@/hooks/useSituacaoDoEspelhoPNCP';
 
 /**
  * Agenda e pendências — o que tem data, ordenado pelo que aperta primeiro.
@@ -59,6 +61,8 @@ export interface ProcessoDaAgenda {
   data_abertura: string | null;
   data_encerramento: string | null;
   arquivado_em?: string | null;
+  /** Chave do espelho PNCP — a situação da compra (revogada, anulada, suspensa) vem de lá. */
+  numero_controle_pncp?: string | null;
 }
 
 interface Props {
@@ -68,7 +72,7 @@ interface Props {
   aoRecarregarProcessos?: () => void;
 }
 
-type Urgencia = 'vencido' | 'sem_situacao' | 'hoje' | 'futuro' | 'andamento';
+type Urgencia = 'vencido' | 'espelho' | 'sem_situacao' | 'hoje' | 'futuro' | 'andamento';
 
 interface ItemDaAgenda {
   chave: string;
@@ -94,6 +98,9 @@ const DIAS_ATRAS = 30;
 
 const PELE: Record<Urgencia, { linha: string; selo: 'danger' | 'warning' | 'muted' | 'info'; rotulo: string }> = {
   vencido: { linha: 'border-destructive-line bg-destructive-tint', selo: 'danger', rotulo: 'Vencido' },
+  /* O órgão tirou a compra do ar (espelho PNCP): a pessoa precisa registrar o
+     desfecho ou conferir a suspensão. O selo da linha diz qual dos três. */
+  espelho: { linha: 'border-warning-line bg-warning-tint', selo: 'warning', rotulo: 'Situação no PNCP' },
   sem_situacao: { linha: 'border-warning-line bg-warning-tint', selo: 'warning', rotulo: 'Situação a atualizar' },
   hoje: { linha: 'border-warning-line bg-warning-tint', selo: 'warning', rotulo: 'Hoje' },
   futuro: { linha: 'border-border bg-card hover:bg-muted', selo: 'muted', rotulo: 'Programado' },
@@ -131,6 +138,20 @@ export default function AgendaPendencias({
   const { documentos, carregando: carregandoDocs, erro: erroDocs, recarregar: recarregarDocs } =
     useVencimentosDeDocumentos();
 
+  /* Só o espelho dos processos abertos interessa: decidido e arquivado já não
+     têm o que a agenda cobrar. Uma consulta em lote, não uma por processo. */
+  const numerosAbertos = useMemo(
+    () => processos
+      .filter((p) => {
+        const faixa = faixaDe(p.status ?? '', p.arquivado_em);
+        return faixa === 'radar' || faixa === 'em_jogo';
+      })
+      .map((p) => p.numero_controle_pncp),
+    [processos],
+  );
+  const { situacoes: espelho, erro: erroEspelho, recarregar: recarregarEspelho } =
+    useSituacaoDoEspelhoPNCP(numerosAbertos);
+
   const itens = useMemo(() => {
     const lista: ItemDaAgenda[] = [];
 
@@ -143,6 +164,29 @@ export default function AgendaPendencias({
       const faixa = faixaDe(p.status ?? '', p.arquivado_em);
       if (faixa === 'arquivo') return;
       const decidido = STATUS_DECIDIDOS.includes(situacao);
+
+      /* O espelho PNCP manda: compra revogada, anulada ou suspensa pelo órgão
+         não tem prazo a cumprir nem andamento — tem um desfecho a registrar
+         (ou uma suspensão a conferir). Entra no lugar das datas. Processo já
+         decidido não precisa do aviso: o desfecho foi registrado. */
+      const doEspelho = p.numero_controle_pncp ? espelho[p.numero_controle_pncp] : undefined;
+      const pendencia = decidido ? null : pendenciaDoEspelho(doEspelho?.situacao);
+      if (pendencia) {
+        const quando = doEspelho?.atualizadoEm ? new Date(doEspelho.atualizadoEm) : new Date();
+        lista.push({
+          chave: `${p.id}-espelho`,
+          titulo: identidadeDoProcesso(p),
+          contexto: p.orgao || 'Órgão não informado',
+          quando,
+          natureza: pendencia.natureza,
+          urgencia: 'espelho',
+          dias: diasDeCalendario(quando.toISOString()),
+          para: `/processo/${p.id}`,
+          icone: Gavel,
+          selo: pendencia.selo,
+        });
+        return;
+      }
 
       ([
         { campo: p.data_abertura, natureza: 'Sessão' },
@@ -190,14 +234,17 @@ export default function AgendaPendencias({
       });
     });
 
-    // O que pede ação primeiro: documento vencido, depois processo com situação
-    // a atualizar, depois hoje e o futuro em ordem de chegada; o que está em
-    // andamento fecha a lista — é informação, não pendência.
-    const ordem: Record<Urgencia, number> = { vencido: 0, sem_situacao: 1, hoje: 2, futuro: 3, andamento: 4 };
+    // O que pede ação primeiro: documento vencido, compra que o órgão tirou do
+    // ar, processo com situação a atualizar, depois hoje e o futuro em ordem
+    // de chegada; o que está em andamento fecha a lista — é informação, não
+    // pendência.
+    const ordem: Record<Urgencia, number> = {
+      vencido: 0, espelho: 1, sem_situacao: 2, hoje: 3, futuro: 4, andamento: 5,
+    };
     return lista.sort(
       (a, b) => ordem[a.urgencia] - ordem[b.urgencia] || a.quando.getTime() - b.quando.getTime(),
     );
-  }, [processos, documentos]);
+  }, [processos, documentos, espelho]);
 
   const carregando = carregandoProcessos || carregandoDocs;
 
@@ -208,6 +255,7 @@ export default function AgendaPendencias({
   const contar = (u: Urgencia) => naoListados.filter((i) => i.urgencia === u).length;
   const partesDoRodape = [
     contar('vencido') > 0 && `${contar('vencido')} vencido(s)`,
+    contar('espelho') > 0 && `${contar('espelho')} com situação no PNCP a tratar`,
     contar('sem_situacao') > 0 && `${contar('sem_situacao')} com situação a atualizar`,
     contar('hoje') + contar('futuro') > 0 && `${contar('hoje') + contar('futuro')} nos próximos 30 dias`,
     contar('andamento') > 0 && `${contar('andamento')} em andamento`,
@@ -228,6 +276,7 @@ export default function AgendaPendencias({
   const falhas: Falha[] = ([
     erroProcessos ? { rotulo: 'Processos', mensagem: erroProcessos, recarregar: aoRecarregarProcessos } : null,
     erroDocs ? { rotulo: 'Vencimentos de documentos', mensagem: erroDocs.message, recarregar: recarregarDocs } : null,
+    erroEspelho ? { rotulo: 'Espelho PNCP', mensagem: erroEspelho.message, recarregar: recarregarEspelho } : null,
   ] as (Falha | null)[]).filter((f): f is Falha => f !== null);
 
   return (

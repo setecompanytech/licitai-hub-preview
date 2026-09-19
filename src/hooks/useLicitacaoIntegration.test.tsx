@@ -185,3 +185,59 @@ describe('criarCompromisso', () => {
     expect(semSessao).toMatchObject({ data_abertura: '2026-09-19T20:00:00.000Z' });
   });
 });
+
+/**
+ * Promoção automática de fase (19/09): o ato da operação move o processo, só
+ * para a frente, pela mesma trilha da mudança manual.
+ */
+describe('promoverFase', () => {
+  const atualizacoes = () =>
+    estado.chamadas
+      .filter((c) => c.tabela === 'licitacoes' && c.metodo === 'update')
+      .map((c) => c.args[0] as Record<string, unknown>);
+
+  it('processo no radar vai para Em Disputa, com a trilha registrando de onde veio', async () => {
+    estado.respostas['licitacoes:select'] = { data: { status: 'Monitorando', arquivado_em: null }, error: null };
+    const { promoverFase } = montar();
+
+    const r = await promoverFase('lic-1', 'Em Disputa', 'Sessão cadastrada no Robô de Lances');
+
+    expect(r).toEqual({ promovido: true, de: 'Monitorando' });
+    expect(atualizacoes()).toEqual([{ status: 'Em Disputa' }]);
+    expect(estado.registrar).toHaveBeenCalledWith(
+      expect.objectContaining({ acao: 'status_alterado', de: 'Monitorando', para: 'Em Disputa' }),
+    );
+  });
+
+  it('não volta fase: Em Disputa não vira Proposta Enviada', async () => {
+    estado.respostas['licitacoes:select'] = { data: { status: 'Em Disputa', arquivado_em: null }, error: null };
+    const { promoverFase } = montar();
+
+    const r = await promoverFase('lic-1', 'Proposta Enviada');
+
+    expect(r).toEqual({ promovido: false, de: 'Em Disputa' });
+    expect(atualizacoes()).toEqual([]);
+  });
+
+  it('decidido e arquivado ficam como estão', async () => {
+    const { promoverFase } = montar();
+
+    estado.respostas['licitacoes:select'] = { data: { status: 'Perdida', arquivado_em: null }, error: null };
+    expect(await promoverFase('lic-1', 'Em Disputa')).toEqual({ promovido: false, de: 'Perdida' });
+
+    estado.respostas['licitacoes:select'] = { data: { status: 'Monitorando', arquivado_em: '2026-09-01T12:00:00Z' }, error: null };
+    expect(await promoverFase('lic-2', 'Em Disputa')).toEqual({ promovido: false, de: 'Monitorando' });
+
+    expect(atualizacoes()).toEqual([]);
+  });
+
+  it('devolve a mensagem real do banco quando a leitura falha', async () => {
+    estado.respostas['licitacoes:select'] = { data: null, error: { message: 'permission denied for table licitacoes' } };
+    const { promoverFase } = montar();
+
+    const r = await promoverFase('lic-1', 'Em Disputa');
+
+    expect(r).toEqual({ promovido: false, de: null, erro: 'permission denied for table licitacoes' });
+    expect(atualizacoes()).toEqual([]);
+  });
+});

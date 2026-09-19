@@ -166,6 +166,14 @@ delas precisa passar por ele:
   liberar leitura por empresa: há aviso só da equipe, com a tela remota.
 - **Nome de botão é do produto, não do portal.** "Conferir alterações", não
   "Conferir no Compras.gov": a mesma tela precisa servir aos próximos portais.
+- **A fase do processo é lida da operação, não do Kanban (19/09).** Sessão de
+  disputa cadastrada no robô move o processo para "Em Disputa"; proposta
+  registrada como enviada (aba Proposta) move para "Proposta Enviada". Só para
+  a frente, nunca sobre decidido/arquivado, e sessão de acompanhamento não
+  promove — a promoção carimba `data_proposta_enviada`, que as metas contam
+  como participação. Regra em `lib/licitacao/promocao-de-fase.ts`; gravação por
+  `useLicitacaoIntegration.promoverFase`. O espelho PNCP (Revogada/Anulada/
+  Suspensa) só PEDE desfecho na agenda; nunca decide por ninguém.
 
 ## Preview do rebranding — a branch tem DOIS remotos
 

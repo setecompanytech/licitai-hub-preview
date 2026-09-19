@@ -1097,6 +1097,35 @@ Dois pedidos do Ian depois de usar a chamada da tela remota. **Sem commit.** Ver
 | Confirmar se algum item do checklist do grupo é do Giovanny | Giovanny |
 | OK para trazer o remoto e publicar as três edge functions | Ian |
 
+#### 19/09 — cadastrar sessão de disputa move o processo para "Em Disputa"
+
+Origem: a agenda do painel cobrava "Atrasado" de processo em disputa, porque o
+status ficava em "Monitorando" até alguém mover o card no Kanban. O dono do
+produto decidiu que a fase é lida da operação ("implemento as três"):
+
+- [x] **"Nova sessão" promove o processo** (`useSalvarDisputa`, só com `nova: true`
+  e processo ligado): `useLicitacaoIntegration.promoverFase(id, 'Em Disputa')`
+  lê status e `arquivado_em`, aplica `podePromover` (`lib/licitacao/promocao-de-fase.ts`)
+  e grava por `atualizarStatus` — trilha de auditoria com "de → para", mensagem
+  de sistema e notificação, como a mudança manual. Só para a frente: Proposta
+  Enviada → Em Disputa sim; Em Disputa, decidido e arquivado ficam. Aviso
+  "Processo movido de Monitorando para Em Disputa" depois da gravação, sem
+  segurar a navegação; falha da promoção vira toast com o motivo, nunca silêncio.
+- [x] **Acompanhamento não promove.** `LanceConfig.soAcompanhamento` (gravado pelo
+  diálogo quando a sessão é de dia anterior, regra de 17/09) e a data da
+  própria sessão (`prazoDaDisputa`) são as duas travas em `sessaoDoRoboEhDisputa`.
+  Motivo: o gatilho `comercial_marcar_proposta_enviada` carimba
+  `data_proposta_enviada` na entrada em "Em Disputa", e as metas contam
+  participação a partir daí — acompanhar não é participar.
+- [x] **Aba Proposta ganhou "Registrar proposta enviada"** (`PropostaEnviadaCard`,
+  com confirmação): move do radar para "Proposta Enviada"; já em jogo, mostra a
+  data carimbada.
+- [x] **Espelho PNCP na agenda**: compra Revogada/Anulada pede "Desfecho a
+  registrar", Suspensa pede "Suspensão a conferir" — no lugar das datas do
+  processo. Só pede; ninguém é movido para Perdida automaticamente.
+- Testes: `promocao-de-fase.test.ts` (10), `espelho-pncp.test.ts` (3),
+  `useLicitacaoIntegration.test.tsx` (promoverFase, 4), `AgendaPendencias.test.tsx`.
+
 ---
 
 ## 2. A trava do lance — leia antes de mexer

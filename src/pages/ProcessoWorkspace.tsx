@@ -8,6 +8,7 @@ import AbasGestao from '@/components/gestao/AbasGestao';
 import SeloSituacao, { type TomSituacao } from '@/components/gestao/SeloSituacao';
 import TextoExpansivel from '@/components/gestao/TextoExpansivel';
 import DesfechoDaDisputa from '@/components/workspace/DesfechoDaDisputa';
+import PropostaEnviadaCard from '@/components/workspace/PropostaEnviadaCard';
 import ContratoDoProcesso from '@/components/workspace/ContratoDoProcesso';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -56,6 +57,10 @@ interface Licitacao {
   empresa_id: string | null;
   /** Responsável pelo processo — o nome vem de `profiles`, à parte. */
   operador_id: string | null;
+  /** Fora da mesa de trabalho: a aba Proposta não oferece registrar envio. */
+  arquivado_em: string | null;
+  /** Carimbo do gatilho `comercial_marcar_proposta_enviada` — o que a aba Proposta mostra. */
+  data_proposta_enviada: string | null;
 }
 
 /**
@@ -269,7 +274,7 @@ export default function ProcessoWorkspace() {
     setLoading(true);
     setErroCarga(null);
     supabase.from('licitacoes')
-      .select('id, numero, orgao, objeto, modalidade, status, valor_estimado, data_encerramento, uf, municipio, data_abertura, portal, url_edital, observacoes, resultado, valor_adjudicado, data_homologacao, vencedor, numero_controle_pncp, cnpj_orgao, ano_compra, sequencial_compra, empresa_id, operador_id')
+      .select('id, numero, orgao, objeto, modalidade, status, valor_estimado, data_encerramento, uf, municipio, data_abertura, portal, url_edital, observacoes, resultado, valor_adjudicado, data_homologacao, vencedor, numero_controle_pncp, cnpj_orgao, ano_compra, sequencial_compra, empresa_id, operador_id, arquivado_em, data_proposta_enviada')
       .eq('id', id).maybeSingle()  // sem user_id: a linha do painel abre processos de colegas (RLS protege)
       .then(({ data, error }) => {
         // `error` aqui é falha de transporte/permissão — não "linha ausente",
@@ -1170,7 +1175,20 @@ export default function ProcessoWorkspace() {
              rascunho, sem sair do processo. A identidade do documento gerado é
              a da empresa PROPONENTE, e isso é regra de negócio do gerador:
              não se decide aqui. */
-          <PropostaTecnica embedded licitacaoIdEmbed={lic.id} />
+          <div className="space-y-4">
+            {/* O envio acontece no portal; aqui a pessoa registra que aconteceu
+                e o processo sai do radar sem passar pelo Kanban (19/09). */}
+            <PropostaEnviadaCard
+              licitacaoId={lic.id}
+              status={lic.status}
+              arquivadoEm={lic.arquivado_em}
+              dataPropostaEnviada={lic.data_proposta_enviada}
+              aoRegistrar={(novo, quando) => setLic((atual) => (
+                atual ? { ...atual, status: novo, data_proposta_enviada: atual.data_proposta_enviada ?? quando } : atual
+              ))}
+            />
+            <PropostaTecnica embedded licitacaoIdEmbed={lic.id} />
+          </div>
         )}
 
         {/* Robô de Lances — só a participação deste processo, desta empresa.

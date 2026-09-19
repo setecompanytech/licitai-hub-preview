@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -26,7 +26,22 @@ vi.mock('@/hooks/useVencimentosDeDocumentos', () => ({
   },
 }));
 
+/** O espelho PNCP também vem de hook próprio; cada teste diz o que o órgão publicou. */
+const espelho = vi.hoisted(() => ({
+  situacoes: {} as Record<string, { situacao: string | null; atualizadoEm: string | null }>,
+}));
+
+vi.mock('@/hooks/useSituacaoDoEspelhoPNCP', () => ({
+  useSituacaoDoEspelhoPNCP: () => ({
+    situacoes: espelho.situacoes, carregando: false, erro: null, recarregar: vi.fn(),
+  }),
+}));
+
 import AgendaPendencias, { type ProcessoDaAgenda } from './AgendaPendencias';
+
+beforeEach(() => {
+  espelho.situacoes = {};
+});
 
 /** Data relativa ao dia de hoje — nada de data fixa, que expira com o tempo. */
 const emDias = (dias: number) => new Date(Date.now() + dias * 86400000).toISOString();
@@ -114,5 +129,41 @@ describe('AgendaPendencias', () => {
     // 6 cabem na lista (os 8 sem situação vêm primeiro); sobram 2 sem situação,
     // 2 programados e 1 em andamento.
     expect(screen.getByText('+5 com prazo · 2 com situação a atualizar · 2 nos próximos 30 dias · 1 em andamento')).toBeInTheDocument();
+  });
+
+  it('compra revogada no espelho PNCP pede desfecho — no lugar do prazo', () => {
+    espelho.situacoes = { 'PNCP-1': { situacao: 'Revogada', atualizadoEm: emDias(-1) } };
+    montar([processo({ id: 'p1', status: 'Monitorando', numero_controle_pncp: 'PNCP-1', data_encerramento: emDias(-3) })]);
+
+    expect(screen.getByText('Revogada no PNCP')).toBeInTheDocument();
+    expect(screen.getByText(/Desfecho a registrar ·/)).toBeInTheDocument();
+    // A linha do encerramento não aparece junto: seria cobrar prazo de compra que não existe mais.
+    expect(screen.queryByText('Situação a atualizar')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Propostas encerradas/)).not.toBeInTheDocument();
+  });
+
+  it('compra suspensa pede conferência, não desfecho — e vale também para processo em jogo', () => {
+    espelho.situacoes = { 'PNCP-2': { situacao: 'Suspensa', atualizadoEm: emDias(0) } };
+    montar([processo({ id: 'p1', status: 'Em Disputa', numero_controle_pncp: 'PNCP-2' })]);
+
+    expect(screen.getByText('Suspensa no PNCP')).toBeInTheDocument();
+    expect(screen.getByText(/Suspensão a conferir ·/)).toBeInTheDocument();
+    expect(screen.queryByText('Em andamento')).not.toBeInTheDocument();
+  });
+
+  it('espelho revogado de processo já decidido não entra: o desfecho já foi registrado', () => {
+    espelho.situacoes = { 'PNCP-3': { situacao: 'Revogada', atualizadoEm: emDias(-1) } };
+    montar([processo({ id: 'p1', status: 'Perdida', numero_controle_pncp: 'PNCP-3', data_encerramento: emDias(-5) })]);
+
+    expect(screen.queryByText('Revogada no PNCP')).not.toBeInTheDocument();
+    expect(screen.getByText('Nenhum prazo nos próximos 30 dias')).toBeInTheDocument();
+  });
+
+  it('situação normal do espelho ("Divulgada no PNCP") não muda nada', () => {
+    espelho.situacoes = { 'PNCP-4': { situacao: 'Divulgada no PNCP', atualizadoEm: emDias(-1) } };
+    montar([processo({ id: 'p1', status: 'Monitorando', numero_controle_pncp: 'PNCP-4', data_encerramento: emDias(-3) })]);
+
+    expect(screen.getByText('Situação a atualizar')).toBeInTheDocument();
+    expect(screen.queryByText(/no PNCP$/)).not.toBeInTheDocument();
   });
 });

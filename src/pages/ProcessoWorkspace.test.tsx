@@ -88,6 +88,7 @@ vi.mock('@/components/layout/AppLayout', () => ({
    dentro de um caso que mede a moldura. `vi.mock` é içado para o topo do
    arquivo, então a fábrica não pode chamar um ajudante declarado aqui fora. */
 vi.mock('@/components/workspace/DesfechoDaDisputa', () => ({ default: () => <div data-testid="desfecho" /> }));
+vi.mock('@/components/workspace/PropostaEnviadaCard', () => ({ default: () => <div data-testid="proposta-enviada" /> }));
 vi.mock('@/components/workspace/ContratoDoProcesso', () => ({ default: () => <div data-testid="contrato" /> }));
 vi.mock('@/components/workspace/HistoricoProcesso', () => ({ default: () => <div data-testid="historico" /> }));
 vi.mock('@/components/workspace/ItensEditalPrecificacao', () => ({ default: () => <div data-testid="itens-precificacao" /> }));

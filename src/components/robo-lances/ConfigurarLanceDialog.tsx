@@ -161,6 +161,12 @@ export type LanceConfig = {
   tipoDisputa: 'item' | 'lote';
   licitacaoId?: string;
   /**
+   * Sessão de dia anterior, cadastrada só para acompanhar (regra do dono em
+   * 17/09): o robô lê a sala, não dá lance — e o processo NÃO é promovido a
+   * "Em Disputa", porque acompanhar não é participar (19/09).
+   */
+  soAcompanhamento?: boolean;
+  /**
    * Código da unidade compradora (UASG), 6 dígitos — só faz sentido no
    * Compras.gov. Existe porque o número da compra NÃO é único lá: em
    * 10/09/2026 a busca "Em disputa" devolveu cinco "N° 1/2022", de cinco
@@ -1284,6 +1290,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
       maxLances: parseInt(maxLances) > 0 ? parseInt(maxLances) : null,
       // Sessão num dia anterior: só acompanhamento, confirmado na etapa de dados.
       modoAutomatico: prazoEncerrado ? false : modoAutomatico, status: 'aguardando', horario,
+      soAcompanhamento: prazoEncerrado,
       dataSessao: dataSessao || undefined,
       meuLance: editingLance?.meuLance || 0,
       valorAtual: somaReferencia,

@@ -3,6 +3,9 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useProcessoAtivo } from '@/hooks/useProcessoAtivo';
+import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
+import { sessaoDoRoboEhDisputa } from '@/lib/licitacao/promocao-de-fase';
+import { rotuloStatus } from '@/lib/licitacao/status';
 import type { LanceConfig } from '@/components/robo-lances/ConfigurarLanceDialog';
 import { gravarDisputa } from './disputa-do-robo';
 
@@ -17,11 +20,17 @@ import { gravarDisputa } from './disputa-do-robo';
  *
  * Devolve `true` só com a disputa gravada: é o que autoriza a lista a abrir a
  * página da disputa nova.
+ *
+ * Sessão de disputa NOVA, ligada a um processo, promove o processo a "Em
+ * Disputa" (19/09): a agenda e o Kanban passam a ler a fase certa sem ninguém
+ * mover o card. Acompanhamento de sessão passada não promove — acompanhar não
+ * é participar, e a promoção carimba a data de proposta enviada nas metas.
  */
 export function useSalvarDisputa() {
   const { user } = useAuth();
   const { empresaAtiva } = useEmpresa();
   const { processoId } = useProcessoAtivo();
+  const { promoverFase } = useLicitacaoIntegration();
   const empresaAtivaId = empresaAtiva?.id ?? null;
 
   return useCallback(
@@ -42,8 +51,23 @@ export function useSalvarDisputa() {
         return false;
       }
       toast.success(nova ? 'Nova disputa adicionada!' : 'Disputa atualizada!');
+
+      // O mesmo processo que a gravação usou (`gravarDisputa` grava
+      // `lance.licitacaoId ?? processoId`).
+      const licitacaoId = lance.licitacaoId ?? processoId ?? null;
+      if (nova && licitacaoId && sessaoDoRoboEhDisputa(lance, new Date())) {
+        // Não segura a navegação: a disputa já está gravada. O aviso chega
+        // quando a promoção terminar — e a falha também, nunca em silêncio.
+        void promoverFase(licitacaoId, 'Em Disputa', `Sessão cadastrada no Robô de Lances — ${lance.edital}`).then((r) => {
+          if (r.promovido) {
+            toast.info(`Processo movido de ${rotuloStatus(r.de ?? '')} para Em Disputa.`, { duration: 8000 });
+          } else if (r.erro) {
+            toast.error(`Disputa salva, mas o processo não mudou para Em Disputa: ${r.erro}`, { duration: 10000 });
+          }
+        });
+      }
       return true;
     },
-    [user, empresaAtivaId, processoId],
+    [user, empresaAtivaId, processoId, promoverFase],
   );
 }

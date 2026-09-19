@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { normalizarModalidade } from '@/lib/metas/modalidades';
 import { useActivityLog } from '@/hooks/useActivityLog';
+import { podePromover, type FaseAlvo } from '@/lib/licitacao/promocao-de-fase';
 
 export type EditalData = {
   numero: string;
@@ -318,13 +319,17 @@ export function useLicitacaoIntegration() {
     }
   }, [user]);
 
-  /** Update licitação status and create notification */
+  /**
+   * Update licitação status and create notification.
+   * Devolve `true` com o status gravado — a promoção automática de fase
+   * precisa saber se aconteceu para avisar quem cadastrou.
+   */
   const atualizarStatus = useCallback(async (
     licitacaoId: string,
     novoStatus: string,
     detalhes?: string
-  ) => {
-    if (!user) return;
+  ): Promise<boolean> => {
+    if (!user) return false;
 
     try {
       // Lê o valor anterior antes de sobrescrever: sem o "de", a trilha registra
@@ -381,11 +386,46 @@ export function useLicitacaoIntegration() {
         `/processo/${licitacaoId}`,
         novoStatus === 'Vencida' || novoStatus === 'Homologada' ? 'sucesso' : 'info'
       );
+      return true;
     } catch (err) {
       console.error(err);
       toast.error('Erro ao atualizar status.');
+      return false;
     }
   }, [user, sincronizarCompromisso, registrar]);
+
+  /**
+   * Avança a fase do processo a partir de um ato da operação — sessão de
+   * disputa cadastrada no robô, proposta registrada como enviada — e só para
+   * a frente. A regra (quem sobe, quem não) está em
+   * `lib/licitacao/promocao-de-fase.ts`; a gravação passa por `atualizarStatus`,
+   * então deixa a mesma trilha da mudança manual.
+   *
+   * Devolve o que aconteceu, para quem chamou avisar: `promovido` com o
+   * status anterior em `de`; `promovido: false` sem `erro` quer dizer que não
+   * havia o que promover (já na fase, decidido, arquivado).
+   */
+  const promoverFase = useCallback(async (
+    licitacaoId: string,
+    alvo: FaseAlvo,
+    detalhes?: string,
+  ): Promise<{ promovido: boolean; de: string | null; erro?: string }> => {
+    if (!user) return { promovido: false, de: null };
+
+    const { data, error } = await supabase
+      .from('licitacoes')
+      .select('status, arquivado_em')
+      .eq('id', licitacaoId)
+      .maybeSingle();
+    if (error) return { promovido: false, de: null, erro: error.message };
+    if (!data) return { promovido: false, de: null, erro: 'Processo não encontrado.' };
+    if (!podePromover(data.status, data.arquivado_em, alvo)) return { promovido: false, de: data.status };
+
+    const ok = await atualizarStatus(licitacaoId, alvo, detalhes);
+    return ok
+      ? { promovido: true, de: data.status }
+      : { promovido: false, de: data.status, erro: 'O banco recusou a mudança de status.' };
+  }, [user, atualizarStatus]);
 
   /**
    * Registra a perda e só então move o processo para "Perdida".
@@ -645,6 +685,7 @@ export function useLicitacaoIntegration() {
     iniciarProcesso,
     criarCompromisso,
     atualizarStatus,
+    promoverFase,
     registrarPerda,
     arquivarProcesso,
     excluirProcesso,

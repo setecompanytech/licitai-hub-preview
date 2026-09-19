@@ -110,6 +110,8 @@ type LicitacaoDeAnalytics = {
   ano_compra: string | null;
   /** Fora da mesa de trabalho. Sem esta coluna a agenda cobrava prazo de processo encerrado. */
   arquivado_em: string | null;
+  /** Chave do espelho PNCP: a agenda lê a situação da compra (revogada, anulada, suspensa). */
+  numero_controle_pncp: string | null;
   created_at: string;
   updated_at: string | null;
 };
@@ -131,7 +133,7 @@ export function useAnalyticsData() {
     // das quais o usuário é membro.
     let q = supabase
       .from('licitacoes')
-      .select('id, numero, orgao, objeto, modalidade, status, valor_estimado, valor_adjudicado, uf, municipio, data_abertura, data_encerramento, ano_compra, arquivado_em, created_at, updated_at');
+      .select('id, numero, orgao, objeto, modalidade, status, valor_estimado, valor_adjudicado, uf, municipio, data_abertura, data_encerramento, ano_compra, arquivado_em, numero_controle_pncp, created_at, updated_at');
 
     if (!todasSelecionadas && empresaAtiva) {
       q = q.eq('empresa_id', empresaAtiva.id);
