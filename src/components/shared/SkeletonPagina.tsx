@@ -1,4 +1,4 @@
-import BrandLogo from '@/components/shared/BrandLogo';
+import PraefectusLogo from '@/components/shared/PraefectusLogo';
 import { Skeleton } from '@/components/ui/skeleton';
 
 /**
@@ -39,18 +39,11 @@ export function SkeletonCorpo({ cartoes = 4 }: { cartoes?: number }) {
 }
 
 /**
- * @param moldura  Desenha a barra navy e a coluna lateral em volta do
- *                 esqueleto. Ligado por padrão: quem chama de fora do
- *                 `AppLayout` (`ProtectedRoute`, o `Suspense` das rotas,
- *                 a guarda de manutenção) precisa dela, senão a tela fica
- *                 branca de ponta a ponta.
- *
- * A moldura é a resposta ao "splash ou esqueleto": os dois, um de cada vez.
- * O splash cobre o vão entre o HTML chegar e o React montar — depois disso ele
- * sai e não volta, porque reexibi-lo a cada troca de rota faria o app parecer
- * que reinicia. Daí em diante quem espera é o esqueleto, e ele herda a
- * identidade do splash: mesma barra navy, mesma logo, mesmo dourado. A pessoa
- * vê o app montado desde o primeiro instante; o que falta é só o conteúdo.
+ * @param moldura  Tela cheia de espera, sem casca do app (`ProtectedRoute`,
+ *                 o `Suspense` das rotas, as guardas de plano/manutenção
+ *                 chamam com o padrão). Fundo desfocado, marca centralizada
+ *                 e um spinner — não finge navbar nem cartões que ainda não
+ *                 existem.
  */
 export default function SkeletonPagina({
   cartoes = 4,
@@ -66,35 +59,18 @@ export default function SkeletonPagina({
   }
 
   return (
-    <div role="status" aria-busy="true" className="min-h-screen bg-background flex flex-col">
+    <div
+      role="status"
+      aria-busy="true"
+      className="fixed inset-0 z-50 flex min-h-screen flex-col items-center justify-center gap-5 bg-background/80 backdrop-blur-md"
+    >
       <span className="sr-only">Carregando</span>
-
-      {/* A mesma faixa navy do AppLayout: marca, navegação no centro e as
-          ações à direita. Esqueleto de outra forma faz a moldura "corrigir"
-          a posição ao montar, e o olho lê isso como defeito. */}
+      <PraefectusLogo size="lg" />
       <div
         aria-hidden="true"
-        className="sticky top-0 z-40 h-16 md:h-[72px] bg-sidebar border-b border-sidebar-border flex items-center gap-2 px-5 md:px-8 xl:px-12 2xl:px-16"
-      >
-        <BrandLogo variant="dark" className="w-[164px] lg:w-[200px]" />
-        <div className="hidden md:flex flex-1 items-center justify-center gap-1">
-          {Array.from({ length: 6 }, (_, i) => (
-            <div key={i} className="h-8 rounded-md bg-sidebar-accent/60" style={{ width: `${74 + ((i * 17) % 38)}px` }} />
-          ))}
-        </div>
-        <div className="ml-auto flex items-center gap-1.5 md:ml-0">
-          <div className="w-8 h-8 rounded-lg bg-sidebar-accent/60" />
-          <div className="w-8 h-8 rounded-lg bg-sidebar-accent/60" />
-          <div className="hidden sm:block w-8 h-8 rounded-lg bg-sidebar-accent/60" />
-          <span className="hidden lg:block w-px h-6 bg-sidebar-border mx-1.5" />
-          <div className="hidden lg:block w-[168px] h-10 rounded-lg bg-sidebar-accent/60" />
-          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-sidebar-accent ring-1 ring-sidebar-border" />
-        </div>
-      </div>
-
-      <div className="flex-1 min-w-0 px-5 py-5 md:px-8 md:py-8 xl:px-12 2xl:px-16">
-        <SkeletonCorpo cartoes={cartoes} />
-      </div>
+        className="h-8 w-8 animate-spin rounded-full border-[3px] border-muted border-t-primary"
+      />
+      <p className="text-sm font-medium text-muted-foreground">Carregando...</p>
     </div>
   );
 }

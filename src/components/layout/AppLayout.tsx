@@ -2,6 +2,7 @@ import { ReactNode, useState, useEffect, forwardRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import AppHeader from './AppHeader';
+import CompactSidebar from './CompactSidebar';
 import MenuDeFerramentas from './MenuDeFerramentas';
 import TrilhaDoTopo, { type DegrauDaTrilha } from './TrilhaDoTopo';
 import { ProvedorDeTrilha } from './contexto-trilha';
@@ -141,6 +142,8 @@ const AppLayout = forwardRef<HTMLDivElement, AppLayoutProps>(function AppLayout(
     setMenuAberto(false);
   }, [location.pathname, location.search]);
 
+  const abrirBusca = () => window.dispatchEvent(new CustomEvent('praefectus:abrir-busca'));
+
   return (
     <ProvedorDeTrilha>
     <div className="flex min-h-screen flex-col bg-background">
@@ -153,20 +156,28 @@ const AppLayout = forwardRef<HTMLDivElement, AppLayoutProps>(function AppLayout(
         ferramentasAberto={menuAberto}
       />
 
-      {/* O diretório inteiro do sistema, chamado pelo cabeçalho. Monta aqui e
-          não dentro do cabeçalho porque é uma camada sobre a TELA, não um
-          pedaço da faixa — e porque assim o cabeçalho se testa sozinho.
+      {/* Sidebar compacta — visível apenas no desktop (md+). No mobile a
+          navegação continua via o botão hamburger do cabeçalho. */}
+      <div className="hidden md:block">
+        <CompactSidebar
+          aoAbrirFerramentas={() => setMenuAberto(true)}
+          aoAbrirBusca={abrirBusca}
+        />
+      </div>
 
-          Passar `aberto` já basta para o painel não desenhar o gatilho próprio
-          que ele traz: quem abre aqui é o item "Ferramentas" do cabeçalho, e no
-          celular o acionador de menu. Dois botões visíveis para a mesma
-          sobreposição seria a navegação duplicada que o comando proíbe. */}
       <MenuDeFerramentas aberto={menuAberto} aoFechar={() => setMenuAberto(false)} />
 
-      {/* Container central: teto de 1440px, 32px de margem no desktop e 16px
-          no celular, como manda o comando. A faixa acima usa o MESMO teto e as
-          MESMAS margens, então marca e conteúdo nascem na mesma linha vertical. */}
-      <main className="mx-auto w-full min-w-0 max-w-[var(--g-conteudo)] flex-1 px-4 py-4 md:px-8 md:py-6">
+      {/* Conteúdo principal: no desktop recebe ml-[62px] da sidebar fixa +
+          padding interno de 22px. No mobile sem sidebar.
+
+          `md:w-[calc(100%-62px)]` é o que faltava: `w-full` sozinho mede
+          100% do contêiner-pai e SÓ DEPOIS ganha os 62px de margem — a caixa
+          fica 62px mais larga que a viewport, e o excesso vaza à direita,
+          cortando (ou movendo pra fora da tela) qualquer coisa ancorada à
+          direita nela: botões de ação do cabeçalho, o link "Ver" dos
+          alertas, painéis laterais. O bug era sistêmico porque `AppLayout`
+          é comum a toda tela — daí "cortar à direita em todas as telas". */}
+      <main className="w-full min-w-0 flex-1 px-4 py-4 md:ml-[62px] md:w-[calc(100%-62px)] md:px-[22px] md:py-[18px]">
         {/* Banner de manutenção e aviso de vencimento são da sessão, não do
             documento: no papel viram ruído com data de validade. */}
         <div className="nao-imprime">

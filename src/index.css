@@ -7,6 +7,7 @@
    base): é a fonte de título da direção LICITA360 aprovada pelo dono. Ver o
    comentário de fontFamily.heading no tailwind.config.ts. */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import './styles/ds-app.css';
 
 @tailwind base;
 @tailwind components;
@@ -30,8 +31,8 @@
      dele, que é a versão legível que ele próprio já usava para texto.
      ========================================================================== */
   :root {
-    --background: 216 33% 97%;   /* #F5F7FA */
-    --foreground: 209 61% 16%;   /* #102A43 — texto primário é o navy (guia 12/09) */
+    --background: 30 10% 95%;    /* #f3f2f1 — cinza neutro Microsoft Fluent */
+    --foreground: 20 13% 13%;    /* #201f1e — texto primário quente/neutro */
 
     --card: 0 0% 100%;
     --card-foreground: 218 54% 20%;
@@ -102,14 +103,15 @@
     --map-5: 162 60% 42%;
     --map-6: 162 88% 26%;
 
-    --border: 212 27% 89%;   /* #DCE3EB */
-    --input: 212 27% 89%;
+    --border: 207 22% 84%;   /* #CBD6DF — mais próximo do prototype (--line:#ccd6df) */
+    --input: 207 22% 84%;
     /* O anel de foco segue a cor de ação. */
     --ring: 162 88% 30%;
 
-    /* 1rem no cartão (rounded-lg); botão e campo têm 10px fixos no
-       tailwind.config — a régua das referências novas. */
-    --radius: 1rem;
+    /* 0.375rem (6px) no cartão — ajuste ao estilo corporativo denso do prototype.
+       Botão e campo têm 10px fixos no tailwind.config; modal e popover usam
+       rounded-xl (12px padrão Tailwind), que também sobe 1 degrau de densidade. */
+    --radius: 0.25rem; /* 4px — igual ao prototype (border-radius:4px) */
 
     /* Navy da marca, em três passos — header, hover e tinta.
        O protótipo os separa de propósito: o botão escuro CLAREIA no hover
@@ -334,9 +336,11 @@
     @apply border-border;
   }
   body {
-    /* text-base = 17px/1.53 pela escala do tailwind.config — piso de leitura */
-    @apply bg-background text-foreground text-base antialiased;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    /* 13px/1.35 igual ao prototype — densidade visual corporativa */
+    @apply bg-background text-foreground antialiased;
+    font-family: "Segoe UI", Inter, Arial, sans-serif;
+    font-size: 13px;
+    line-height: 1.35;
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
     /* break-word, NUNCA anywhere — e hyphens manual, NUNCA auto: os dois são
@@ -386,9 +390,10 @@
   /* Escala dos títulos internos (guia 12/09): h1 28/36, h2 22/30, h3 18/26.
      Página que precisa de outro tamanho declara a classe; sem classe, é esta
      a régua — inclusive para DialogTitle/CardTitle do shadcn. */
-  h1 { font-size: 1.75rem; line-height: 2.25rem; font-weight: 700; }
-  h2 { font-size: 1.375rem; line-height: 1.875rem; font-weight: 700; }
-  h3 { font-size: 1.125rem; line-height: 1.625rem; font-weight: 600; }
+  /* Escala enterprise — page title 22px, section 16px, card 14px */
+  h1 { font-size: 1.375rem; line-height: 1.875rem; font-weight: 600; }
+  h2 { font-size: 1.0rem;   line-height: 1.5rem;   font-weight: 600; }
+  h3 { font-size: 0.9375rem; line-height: 1.375rem; font-weight: 600; }
 
   /* Conteúdo monoespaçado/código mantém integridade visual mas quebra se necessário */
   code, pre, kbd, samp {
@@ -1071,16 +1076,16 @@
    Medidas do comando, em token, para não se repetirem tela a tela.
    ========================================================================== */
 :root {
-  --g-raio: 8px;              /* raio predominante do módulo */
-  --g-controle: 40px;         /* altura de input e botão (piso da faixa 40–44) */
-  --g-linha: 44px;            /* altura mínima de linha de tabela e alvo de toque */
+  --g-raio: 4px;              /* raio — ajuste ao estilo corporativo do prototype (era 8px) */
+  --g-controle: 36px;         /* altura de input e botão (era 40px; prototype usa 34px) */
+  --g-linha: 40px;            /* altura de linha de tabela (era 44px; prototype usa 37px) */
   --g-painel: 384px;          /* painel lateral, meio da faixa 360–420 */
   /* A navegação voltou para o topo em 13/09 e a coluna navy de 240px saiu com
      o AppSidebar; `--g-barra-lateral` e `--g-barra-lateral-fechada` ficaram
      sem consumidor e foram REMOVIDAS aqui — token órfão envelhece divergente
      e depois alguém o usa achando que ainda descreve algo que existe. */
-  --g-topo: 64px;             /* cabeçalho horizontal, desktop */
-  --g-topo-celular: 56px;     /* o mesmo cabeçalho abaixo de 768px */
+  --g-topo: 54px;             /* cabeçalho horizontal, desktop (ref: prototype 54px) */
+  --g-topo-celular: 52px;     /* o mesmo cabeçalho abaixo de 768px */
   --g-conteudo: 1440px;       /* teto do container central do conteúdo */
 }
 

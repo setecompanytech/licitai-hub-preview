@@ -1,0 +1,853 @@
+/* ============================================================
+   Design System — componentes densos (praefectus-inteligencia-prototipo)
+   Complementa index.css sem substituir seus tokens.
+   Prefixo .ds- isola estes estilos do resto do app.
+   ============================================================ */
+
+/* ── Tokens de densidade ──────────────────────────────────── */
+:root {
+  --ds-linha:     37px;  /* linha de tabela */
+  --ds-th:        32px;  /* cabeçalho de tabela */
+  --ds-card-gap:  12px;  /* gap entre cards */
+  --ds-font-ui:   13px;  /* fonte base de UI densa */
+  --ds-font-th:   10px;  /* header de tabela */
+  --ds-font-badge:10px;  /* status badge */
+  --ds-sidebar:   62px;  /* largura da sidebar compacta */
+}
+
+/* Selo quadrado navy que carrega a marca — o "ícone da logo" em contextos
+   que pedem um badge, não a wordmark inteira. O símbolo em si é sempre o
+   `BrandLogo` oficial (SVG vetorizado); a aproximação em CSS puro que
+   existia aqui não batia com a marca real e saiu. */
+.brand-mark-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: hsl(var(--navy));
+  flex-shrink: 0;
+}
+
+/* ── Sidebar compacta (nav lateral icon-only) ─────────────── */
+.sidebar-nav-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 40px;
+  border-radius: 3px;
+  color: #d8e3ea;
+  background: transparent;
+  border: 0;
+  text-decoration: none;
+  transition: background 0.12s;
+}
+
+.sidebar-nav-item:hover {
+  background: #1a3a50;
+}
+
+.sidebar-nav-item--active {
+  background: #fff;
+  color: #173147;
+  box-shadow: inset 3px 0 0 hsl(var(--primary));
+}
+
+/* Tooltip via CSS — aparece à direita do ícone */
+.sidebar-nav-item::after {
+  content: attr(aria-label);
+  position: fixed;
+  left: 72px;
+  z-index: 70;
+  background: #132c40;
+  color: #fff;
+  border: 1px solid #345268;
+  padding: 6px 9px;
+  border-radius: 3px;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 600;
+  box-shadow: 0 5px 18px rgba(0,0,0,.22);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateX(-4px);
+  transition: opacity .12s, visibility .12s, transform .12s;
+}
+
+.sidebar-nav-item:hover::after {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+}
+
+.sidebar-shortcut {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 38px;
+  color: #bed0db;
+  background: transparent;
+  border: 0;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+
+.sidebar-shortcut:hover {
+  background: #1a3a50;
+  color: #fff;
+}
+
+/* Tooltip do shortcut */
+.sidebar-shortcut::after {
+  content: attr(aria-label);
+  position: fixed;
+  left: 72px;
+  z-index: 70;
+  background: #132c40;
+  color: #fff;
+  border: 1px solid #345268;
+  padding: 6px 9px;
+  border-radius: 3px;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 600;
+  box-shadow: 0 5px 18px rgba(0,0,0,.22);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateX(-4px);
+  transition: opacity .12s, visibility .12s, transform .12s;
+}
+
+.sidebar-shortcut:hover::after {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+}
+
+/* Empurra o conteúdo para o lado da sidebar */
+.ds-with-sidebar {
+  padding-left: var(--ds-sidebar);
+}
+
+/* ── KPI Strip ────────────────────────────────────────────── */
+.ds-kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 4px;
+  margin-bottom: var(--ds-card-gap);
+  box-shadow: var(--shadow-sm);
+}
+
+.ds-kpi {
+  padding: 11px 13px;
+  border-right: 1px solid hsl(var(--border) / 0.5);
+  min-width: 0;
+}
+
+.ds-kpi:last-child { border-right: 0; }
+
+.ds-kpi__label {
+  color: hsl(var(--muted-foreground));
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ds-kpi__value {
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1.25;
+  margin-top: 3px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: hsl(var(--foreground));
+}
+
+.ds-kpi__sub {
+  font-size: 10px;
+  color: hsl(var(--muted-foreground));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+}
+
+.ds-delta           { font-weight: 700; font-size: 11px; }
+.ds-delta--up       { color: hsl(var(--success-ink)); }
+.ds-delta--down     { color: hsl(var(--destructive-ink)); }
+.ds-delta--neutral  { color: hsl(var(--muted-foreground)); }
+
+/* ── Status Badge ─────────────────────────────────────────── */
+.ds-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 3px;
+  font-size: var(--ds-font-badge);
+  font-weight: 700;
+  border: 1px solid;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.ds-status::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+/* Cores exatas do prototype */
+.ds-status--green  { color: #087b62; background: #ecf8f3; border-color: #b9dfd0; }
+.ds-status--red    { color: #a52b22; background: #fff0ee; border-color: #efc2be; }
+.ds-status--yellow { color: #916018; background: #fff7e7; border-color: #ead39f; }
+.ds-status--blue   { color: #275f8b; background: #eef6fb; border-color: #c6dce9; }
+.ds-status--gray   { color: #647586; background: #f1f4f6; border-color: #d7dee4; }
+
+/* ── Tabela densa ─────────────────────────────────────────── */
+.ds-table-wrap { overflow: auto; }
+
+.ds-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--ds-font-ui);
+}
+
+.ds-table th {
+  background: #edf2f5;
+  color: #476176;
+  text-align: left;
+  font-size: var(--ds-font-th);
+  text-transform: uppercase;
+  letter-spacing: 0.035em;
+  height: var(--ds-th);
+  border-bottom: 1px solid #ccd6df;
+  padding: 6px 9px;
+  white-space: nowrap;
+  font-weight: 700;
+}
+
+.ds-table td {
+  height: var(--ds-linha);
+  border-bottom: 1px solid #dde4ea;
+  padding: 6px 9px;
+  vertical-align: middle;
+}
+
+.ds-table tbody tr:hover { background: #f4f8fa; }
+
+.ds-cell-main { font-weight: 600; color: hsl(var(--foreground)); }
+.ds-cell-sub  { font-size: 10px; color: hsl(var(--muted-foreground)); margin-top: 2px; }
+.ds-align-right { text-align: right; }
+
+/* ── Toolbar (faixa de filtros) ───────────────────────────── */
+.ds-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 4px;
+  padding: 8px;
+  margin-bottom: 12px;
+  box-shadow: var(--shadow-sm);
+  flex-wrap: wrap;
+}
+
+.ds-toolbar__spacer { flex: 1; }
+
+/* ── Card head ────────────────────────────────────────────── */
+.ds-card-head {
+  min-height: 42px;
+  border-bottom: 1px solid hsl(var(--border) / 0.5);
+  padding: 9px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ds-card-head h2,
+.ds-card-head h3 {
+  font-size: 14px;
+  margin: 0;
+  font-weight: 600;
+}
+
+.ds-card-head__meta {
+  margin-left: auto;
+  color: hsl(var(--muted-foreground));
+  font-size: 11px;
+}
+
+/* ── Progress ─────────────────────────────────────────────── */
+.ds-progress {
+  height: 7px;
+  background: hsl(var(--muted));
+  border-radius: 1px;
+  overflow: hidden;
+}
+
+.ds-progress > i {
+  display: block;
+  height: 100%;
+  background: hsl(var(--primary));
+  border-radius: 1px;
+}
+
+/* ── Grid 12 ──────────────────────────────────────────────── */
+.ds-grid-12 {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--ds-card-gap);
+}
+
+.ds-span-3, .ds-span-4, .ds-span-5, .ds-span-6,
+.ds-span-7, .ds-span-8, .ds-span-9, .ds-span-12 {
+  min-width: 0;
+}
+
+/* ── Overflow horizontal sistêmico ────────────────────────────
+   Filho de grid/flex herda `min-width: auto`: quando o conteúdo (número,
+   rótulo, gráfico) é mais largo que a coluna, o CSS alarga a coluna em vez
+   de encolher o texto — e a página inteira passa a rolar de lado, cortando
+   qualquer coisa fixa/ancorada à direita (o cabeçalho, os KPIs, o link "Ver"
+   dos alertas). `[class*=]` em vez de `.grid`/`.flex` porque cobre também
+   `md:flex`, `lg:grid-cols-3` e os contêineres `.ds-*` (ex.: `.ds-alert-grid`,
+   que é grid mas não carrega a classe literal do Tailwind) — não só a classe
+   exata "grid"/"flex" sem modificador. */
+[class*="grid"] > *,
+[class*="flex"] > * {
+  min-width: 0;
+}
+.ds-span-3  { grid-column: span 3; }
+.ds-span-4  { grid-column: span 4; }
+.ds-span-5  { grid-column: span 5; }
+.ds-span-6  { grid-column: span 6; }
+.ds-span-7  { grid-column: span 7; }
+.ds-span-8  { grid-column: span 8; }
+.ds-span-9  { grid-column: span 9; }
+.ds-span-12 { grid-column: span 12; }
+
+/* ── Tabs compactas ───────────────────────────────────────── */
+.ds-tabs {
+  height: 36px;
+  display: flex;
+  align-items: flex-end;
+  border-bottom: 1px solid hsl(var(--border));
+  margin-bottom: 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.ds-tabs::-webkit-scrollbar { display: none; }
+
+.ds-tab {
+  height: 36px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  padding: 0 13px;
+  color: hsl(var(--muted-foreground));
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  flex-shrink: 0;
+}
+
+.ds-tab.active,
+.ds-tab[aria-selected="true"] {
+  color: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+  background: hsl(var(--primary-tint));
+}
+
+.ds-tab:hover:not(.active):not([aria-selected="true"]) {
+  color: hsl(var(--foreground));
+}
+
+/* ── Insight list ─────────────────────────────────────────── */
+.ds-insight-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.ds-insight-list li {
+  padding: 10px 0;
+  border-bottom: 1px solid hsl(var(--border) / 0.5);
+  display: flex;
+  gap: 9px;
+  font-size: var(--ds-font-ui);
+}
+
+.ds-insight-list li:last-child { border: 0; }
+
+.ds-signal {
+  width: 4px;
+  background: hsl(var(--primary));
+  border-radius: 1px;
+  flex-shrink: 0;
+}
+
+.ds-signal--warn   { background: hsl(var(--warning-ink)); }
+.ds-signal--danger { background: hsl(var(--destructive-ink)); }
+
+/* ── Notice compacto ──────────────────────────────────────── */
+.ds-notice {
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--muted));
+  padding: 9px 11px;
+  border-radius: 4px;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.ds-notice--warning {
+  border-color: hsl(var(--warning-line));
+  background: hsl(var(--warning-tint));
+  color: hsl(var(--warning-ink));
+}
+
+.ds-notice--danger {
+  border-color: hsl(var(--destructive-line));
+  background: hsl(var(--destructive-tint));
+  color: hsl(var(--destructive-ink));
+}
+
+/* ── Botão padrão igual ao prototype ─────────────────────── */
+.ds-btn {
+  height: 34px;
+  border-radius: 3px;
+  border: 1px solid #ccd6df;
+  background: #fff;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-weight: 600;
+  font-size: 13px;
+  box-shadow: 0 1px 2px rgba(16,40,62,.07);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ds-btn:hover { background: #f5f8fa; }
+.ds-btn.primary { background: #087b62; border-color: #087b62; color: #fff; }
+.ds-btn.primary:hover { background: #066b56; }
+.ds-btn.danger { color: #b42318; border-color: #efc5c2; }
+.ds-btn.sm { height: 28px; padding: 0 9px; font-size: 12px; }
+.ds-btn.ghost { box-shadow: none; background: transparent; }
+
+/* ── Icon button (topbar / toolbar) ─────────────────────── */
+.ds-icon-btn {
+  height: 34px;
+  min-width: 34px;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 3px;
+  display: grid;
+  place-items: center;
+  position: relative;
+  cursor: pointer;
+  color: #647586;
+  padding: 0;
+  transition: background 0.12s, border-color 0.12s;
+}
+.ds-icon-btn:hover { background: #f7f9fb; border-color: #ccd6df; }
+
+/* ── Alerta / alert-line ─────────────────────────────────── */
+.ds-alert-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.ds-alert-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 9px 12px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font-size: 13px;
+}
+.ds-alert-line.red    { background: #fff0ee; border-color: #f0bbb6; color: #9e2c24; }
+.ds-alert-line.yellow { background: #fff7e2; border-color: #e9ce8b; color: #875b15; }
+.ds-alert-line strong { display: block; font-weight: 700; font-size: 13px; }
+.ds-alert-line span   { display: block; font-size: 11px; opacity: .85; margin-top: 1px; }
+.ds-alert-line a      { margin-left: auto; color: inherit; font-weight: 600; font-size: 12px; text-decoration: none; flex-shrink: 0; }
+.ds-alert-line a:hover { text-decoration: underline; }
+
+@media (max-width: 640px) {
+  .ds-alert-grid { grid-template-columns: 1fr; }
+}
+
+/* ── Overrides globais para shadcn Card → estilo prototype ── */
+/* Cards usados em todo o app: borda #ccd6df, radius 4px, sombra leve */
+.card, [data-slot="card"] {
+  border-color: #ccd6df !important;
+  border-radius: 4px !important;
+  box-shadow: 0 1px 2px rgba(16,40,62,.07) !important;
+}
+
+/* ── Overrides de texto — section titles e page head ──────── */
+/* No prototype: .section-title = 14px/700; .page-head h1 = 22px/650 */
+/* As seções do dashboard usam classes Tailwind; este override garante
+   que fiquem no tamanho correto sem precisar tocar cada arquivo .tsx */
+[data-secao] > h2,
+.ds-section-title {
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  margin-top: 18px !important;
+  margin-bottom: 8px !important;
+  line-height: 1.3 !important;
+}
+
+/* ── Responsividade ───────────────────────────────────────── */
+@media (max-width: 1100px) {
+  .ds-kpi-strip { grid-template-columns: repeat(3, 1fr); }
+  .ds-kpi:nth-child(3) { border-right: 0; }
+  .ds-kpi:nth-child(-n+3) { border-bottom: 1px solid hsl(var(--border) / 0.5); }
+}
+
+@media (max-width: 760px) {
+  .ds-kpi-strip { grid-template-columns: repeat(2, 1fr); }
+  .ds-kpi:nth-child(2n) { border-right: 0; }
+  .ds-kpi:nth-child(-n+4) { border-bottom: 1px solid hsl(var(--border) / 0.5); }
+  .ds-grid-12 { grid-template-columns: 1fr; }
+  .ds-span-3, .ds-span-4, .ds-span-5, .ds-span-6,
+  .ds-span-7, .ds-span-8, .ds-span-9 { grid-column: 1 / -1; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ENTERPRISE FLUENT DESIGN — Microsoft-style upgrade
+   Mantém toda a estrutura DS existente, eleva a linguagem visual
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Scrollbar Microsoft-style ──────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #c8c6c4; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #a19f9d; }
+
+/* ── Fundo de tela — cinza neutro Microsoft (#f3f2f1) ───────── */
+/* Override do --background que está em HSL no index.css */
+:root {
+  --fluent-neutral-bg:    #f3f2f1;
+  --fluent-card:          #ffffff;
+  --fluent-border:        #e1dfdd;
+  --fluent-border-strong: #c8c6c4;
+  --fluent-text:          #201f1e;
+  --fluent-text-sub:      #605e5c;
+  --fluent-text-muted:    #8a8886;
+  --fluent-hover-bg:      #f3f2f1;
+  --fluent-selected-bg:   #edebe9;
+  --fluent-shadow-card:   0 1.6px 3.6px rgba(0,0,0,.13), 0 .3px .9px rgba(0,0,0,.11);
+  --fluent-shadow-panel:  0 4.8px 14.4px rgba(0,0,0,.18), 0 2.4px 7.2px rgba(0,0,0,.15);
+  --fluent-focus:         #087b62;
+}
+
+/* ── Body e background global ───────────────────────────────── */
+html, body {
+  overflow-x: hidden;
+}
+body {
+  background-color: var(--fluent-neutral-bg) !important;
+  /* Herda para toda a árvore: string sem espaço (URL de endpoint, e-mail,
+     hash) não tem onde quebrar sozinha e vaza pra fora do card em vez de
+     respeitar a largura da coluna. `min-width:0` no grid/flex (acima)
+     resolve a COLUNA; isto resolve o TEXTO que mora dentro dela. */
+  overflow-wrap: break-word;
+}
+
+/* ── Todos os cards/painéis — shadow e border Fluent ────────── */
+.card,
+[data-slot="card"],
+.g-cartao {
+  background: var(--fluent-card) !important;
+  border: 1px solid var(--fluent-border) !important;
+  border-radius: 4px !important;
+  box-shadow: var(--fluent-shadow-card) !important;
+}
+
+/* ── Headings de seção — escala enterprise ──────────────────── */
+/* Seções de página: 15px bold */
+[data-secao] > h2,
+.ds-section-title {
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  color: var(--fluent-text) !important;
+  margin-top: 20px !important;
+  margin-bottom: 10px !important;
+  line-height: 1.3 !important;
+  letter-spacing: -0.01em !important;
+}
+
+/* Page title — 22px/700 */
+.g-titulo-pagina,
+h1.g-titulo-pagina {
+  font-size: 1.375rem !important;
+  line-height: 1.875rem !important;
+  letter-spacing: -0.02em !important;
+  color: var(--fluent-text) !important;
+}
+
+/* ── Botões — Fluent style ──────────────────────────────────── */
+.ds-btn {
+  height: 32px;
+  border-radius: 2px;
+  border: 1px solid var(--fluent-border-strong);
+  background: var(--fluent-card);
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 400;
+  box-shadow: none;
+  letter-spacing: 0;
+  color: var(--fluent-text);
+}
+.ds-btn:hover {
+  background: var(--fluent-hover-bg);
+  border-color: #8a8886;
+}
+.ds-btn:active {
+  background: var(--fluent-selected-bg);
+}
+.ds-btn.primary {
+  background: #087b62;
+  border-color: #087b62;
+  color: #fff;
+  font-weight: 600;
+}
+.ds-btn.primary:hover { background: #066b56; border-color: #066b56; }
+
+/* ── shadcn Button overrides — achatar para Fluent ──────────── */
+/* O padrão do shadcn usa rounded-md (6px). Fluent usa 2px. */
+[data-slot="button"],
+button[class*="rounded-"] {
+  border-radius: 2px !important;
+}
+/* Preserva modais e popovers (devem manter border-radius maior) */
+[data-slot="dialog-content"],
+[data-slot="popover-content"],
+[data-slot="dropdown-menu-content"],
+[data-slot="select-content"],
+[data-slot="command"] {
+  border-radius: 4px !important;
+}
+
+/* ── Input / Select — Fluent focus underline ────────────────── */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+select,
+textarea {
+  border-radius: 2px !important;
+  border-color: var(--fluent-border-strong) !important;
+  transition: border-color .15s !important;
+}
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--fluent-focus) !important;
+  outline: none !important;
+  box-shadow: 0 1px 0 0 var(--fluent-focus) !important;
+}
+
+/* ── Tabela — Fluent density ─────────────────────────────────── */
+.ds-table th {
+  background: #f8f7f6;
+  color: #484644;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+  height: 32px;
+  border-bottom: 1px solid var(--fluent-border-strong);
+}
+.ds-table td {
+  height: 36px;
+  border-bottom: 1px solid var(--fluent-border);
+  font-size: 13px;
+  color: var(--fluent-text);
+}
+.ds-table tbody tr:hover { background: var(--fluent-hover-bg); }
+.ds-table tbody tr:active { background: var(--fluent-selected-bg); }
+
+/* ── KPI strip — tipografia enterprise ──────────────────────── */
+.ds-kpi-strip {
+  background: var(--fluent-card);
+  border: 1px solid var(--fluent-border);
+  border-radius: 4px;
+  box-shadow: var(--fluent-shadow-card);
+}
+.ds-kpi {
+  border-right-color: var(--fluent-border);
+}
+.ds-kpi__label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fluent-text-muted);
+}
+.ds-kpi__value {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--fluent-text);
+  letter-spacing: -0.01em;
+}
+.ds-kpi__sub {
+  font-size: 11px;
+  color: var(--fluent-text-sub);
+}
+
+/* ── ds-card-head — enterprise header ───────────────────────── */
+.ds-card-head {
+  background: #faf9f8;
+  border-bottom: 1px solid var(--fluent-border);
+  min-height: 38px;
+  padding: 0 12px;
+}
+.ds-card-head h2,
+.ds-card-head h3 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fluent-text);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* ── Status badges — Fluent subtle ──────────────────────────── */
+.ds-status {
+  height: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 2px;
+  letter-spacing: 0.02em;
+}
+
+/* ── Toolbar — Fluent command bar ───────────────────────────── */
+.ds-toolbar {
+  background: var(--fluent-card);
+  border: 1px solid var(--fluent-border);
+  border-radius: 2px;
+  box-shadow: none;
+  padding: 6px 8px;
+}
+
+/* ── Alertas — Fluent message bar ───────────────────────────── */
+.ds-alert-line {
+  border-radius: 2px;
+  min-height: 48px;
+  font-size: 13px;
+}
+
+/* ── Sidebar nav items ── mantém navy mas refina hover ──────── */
+.sidebar-nav-item:hover {
+  background: rgba(255,255,255,.08);
+}
+.sidebar-nav-item--active {
+  background: rgba(255,255,255,.12);
+  color: #fff;
+  box-shadow: inset 3px 0 0 #087b62;
+}
+
+/* ── Skeleton shimmer — mais profissional ───────────────────── */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--fluent-border) 25%,
+    #f0eeed 50%,
+    var(--fluent-border) 75%
+  );
+  background-size: 400% 100%;
+  animation: fluent-shimmer 1.4s ease-in-out infinite;
+  border-radius: 2px;
+}
+.skeleton::after { display: none; }
+
+@keyframes fluent-shimmer {
+  0%   { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; background: var(--fluent-border); }
+}
+
+/* ── Notice / Alert — Fluent message bar ───────────────────── */
+.ds-notice {
+  border-radius: 2px;
+  font-size: 13px;
+  border-left-width: 3px;
+  border-left-style: solid;
+}
+.ds-notice--warning { border-left-color: #d97706; }
+.ds-notice--danger  { border-left-color: #b42318; }
+
+/* ── Tabs — Fluent pivot style ──────────────────────────────── */
+.ds-tab {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--fluent-text-sub);
+  padding: 0 12px;
+}
+.ds-tab.active,
+.ds-tab[aria-selected="true"] {
+  font-weight: 600;
+  color: var(--fluent-text);
+  border-color: #087b62;
+  background: transparent;
+}
+.ds-tab:hover:not(.active):not([aria-selected="true"]) {
+  color: var(--fluent-text);
+  background: var(--fluent-hover-bg);
+}
+
+/* ── Kanban cards — Fluent elevation ───────────────────────── */
+.kanban-card {
+  border-color: var(--fluent-border) !important;
+  border-radius: 2px !important;
+  box-shadow: var(--fluent-shadow-card) !important;
+}
+.kanban-card:hover {
+  box-shadow: var(--fluent-shadow-panel) !important;
+}
+
+/* ── Progress bar — Fluent style ───────────────────────────── */
+.ds-progress {
+  height: 4px;
+  border-radius: 0;
+  background: var(--fluent-border);
+}
+.ds-progress > i {
+  border-radius: 0;
+  background: #087b62;
+}
+
+/* ── Responsividade enterprise ──────────────────────────────── */
+@media (max-width: 900px) {
+  .ds-span-6 { grid-column: 1 / -1; }
+}
+@media (max-width: 600px) {
+  .ds-kpi__value { font-size: 17px; }
+  .ds-card-head { min-height: 34px; }
+}

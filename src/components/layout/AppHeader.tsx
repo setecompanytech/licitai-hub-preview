@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from 'next-themes';
-import { Bell, LogOut, Menu, Search, User } from 'lucide-react';
+import { Bell, LayoutGrid, LogOut, Menu, Search, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import BrandLogo from '@/components/shared/BrandLogo';
 import EmpresaSelector from '@/components/empresa/EmpresaSelector';
@@ -189,9 +189,9 @@ export default function AppHeader({
     />
   );
 
-  /** Botão de ícone da direita — 44px de alvo, como manda a régua. */
+  /** Botão de ícone — 34px igual ao prototype .icon-btn */
   const classeDoIcone =
-    'flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--g-raio)] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+    'relative flex h-[34px] min-w-[34px] shrink-0 items-center justify-center rounded-[3px] border border-transparent bg-transparent text-muted-foreground transition-colors hover:border-border hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
 
   return (
     /**
@@ -202,71 +202,87 @@ export default function AppHeader({
      * esquecerem de mudar. O comportamento visto é o mesmo: gruda no topo.
      */
     <header className="nao-imprime sticky top-0 z-40 shrink-0 border-b border-border bg-card">
-      <div className="mx-auto flex h-[var(--g-topo-celular)] w-full max-w-[var(--g-conteudo)] items-center gap-1 px-4 md:h-[var(--g-topo)] md:gap-2 md:px-8">
-        {/* Marca — leva ao painel. Proporção original preservada: só a largura
-            é declarada, a altura acompanha (o BrandLogo é `h-auto`). */}
+      <div className="flex h-[var(--g-topo-celular)] w-full items-center md:h-[var(--g-topo)]">
+
+        {/* Área da marca — 62px, alinhada com a sidebar. Borda direita separa
+            a zona de identidade da zona de conteúdo, como no prototype. */}
         <Link
           to="/dashboard"
           aria-label="Praefectus — página inicial"
-          className="flex shrink-0 items-center rounded-[var(--g-raio)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="hidden md:flex h-full shrink-0 items-center justify-center border-r border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+          style={{ width: 62 }}
         >
-          <BrandLogo variant={varianteDaMarca} mode="full" className="w-[132px] md:w-[152px]" />
+          {/* Marca compacta: o mesmo símbolo oficial (BrandLogo), não a
+              aproximação em CSS puro — a diferença é visível lado a lado.
+              `aria-hidden` no wrapper: o link já tem o nome acessível. */}
+          <span aria-hidden="true">
+            <BrandLogo variant={varianteDaMarca} mode="symbol" width={26} />
+          </span>
         </Link>
 
-        {/* Navegação — só no desktop. No celular ela vira o acionador de menu
-            lá na ponta direita: são a MESMA porta em duas larguras, nunca as
-            duas na tela ao mesmo tempo. */}
-        <nav
-          aria-label="Navegação principal"
-          className="ml-2 hidden min-w-0 items-center gap-1 md:flex"
+        {/* Marca full no mobile (sem sidebar) */}
+        <Link
+          to="/dashboard"
+          aria-label="Praefectus — página inicial"
+          className="flex md:hidden shrink-0 items-center px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          {podeVerPainel && (
-            <Link
-              to="/dashboard"
-              aria-current={painelAtivo ? 'page' : undefined}
-              className={classeDoItem(painelAtivo)}
-            >
-              Painel
-              <Sublinhado ativo={painelAtivo} />
-            </Link>
-          )}
+          <BrandLogo variant={varianteDaMarca} mode="full" className="w-[132px]" />
+        </Link>
 
+        {/* Nome do módulo ativo — contexto visível como no prototype */}
+        <div className="hidden md:flex min-w-0 flex-1 items-center gap-3 px-4">
+          <span className="font-semibold text-[13px] text-foreground">
+            {funcaoDaRota(pathname)?.nome ?? (painelAtivo ? 'Painel da empresa' : 'Praefectus')}
+          </span>
           <button
             type="button"
             onClick={aoAbrirFerramentas}
-            // O atalho só existe para quem souber dele; o `title` é onde se sabe.
             title="Todas as ferramentas (Ctrl+Shift+K)"
             aria-haspopup="dialog"
             aria-expanded={ferramentasAberto}
-            className={classeDoItem(ferramentasAtivo)}
+            className="text-[12px] text-muted-foreground hover:text-foreground transition-colors"
           >
-            Ferramentas
-            <Sublinhado ativo={ferramentasAtivo} />
+            / Todas as ferramentas
           </button>
-        </nav>
+        </div>
 
-        {/* Identidade e ações, à direita. `ml-auto` em vez de `flex-1` no meio:
-            o espaço sobrando fica entre a navegação e as ações, não dentro de
-            um item que poderia esticar e empurrar a marca. */}
-        <div className="ml-auto flex shrink-0 items-center gap-0.5 md:gap-1">
-          {/* A ÚNICA busca do sistema. Mesmo diálogo do Ctrl+K. */}
+        {/* Identidade e ações, à direita */}
+        <div className="ml-auto flex shrink-0 items-center gap-1 px-3">
+
+          {/* Todas as ferramentas (grid icon) — igual ao prototype #openToolsTop */}
+          <button
+            type="button"
+            onClick={aoAbrirFerramentas}
+            title="Todas as ferramentas"
+            aria-label="Todas as ferramentas"
+            aria-haspopup="dialog"
+            aria-expanded={ferramentasAberto}
+            className={cn(classeDoIcone, 'hidden md:flex')}
+          >
+            <LayoutGrid aria-hidden="true" className="h-[17px] w-[17px]" />
+          </button>
+
+          {/* Campo de busca — 310px no desktop, igual ao prototype .search */}
           <button
             type="button"
             onClick={abrirBusca}
             aria-label="Buscar no sistema"
             title="Buscar no sistema (Ctrl+K)"
-            className={cn(
-              classeDoIcone,
-              // A partir de lg vira campo com rótulo: em monitor grande sobra
-              // espaço, e a lupa sozinha esconde que existe busca no sistema.
-              'lg:w-auto lg:gap-2 lg:border lg:border-border lg:bg-muted/40 lg:px-3',
-            )}
+            className="hidden md:flex h-[34px] w-[310px] shrink-0 items-center gap-2 rounded-[3px] border border-border bg-muted/20 px-[10px] text-muted-foreground transition-colors hover:bg-muted/40"
           >
-            <Search aria-hidden="true" className="h-[18px] w-[18px] shrink-0" />
-            <span className="g-corpo hidden whitespace-nowrap lg:inline">Buscar no sistema...</span>
-            <kbd className="g-meta hidden shrink-0 rounded border border-border px-1.5 py-0.5 font-sans lg:inline">
-              ⌘K
-            </kbd>
+            <Search aria-hidden="true" className="h-[15px] w-[15px] shrink-0" />
+            <span className="flex-1 text-left text-[13px]">Buscar no sistema...</span>
+            <kbd className="rounded-[3px] border border-border bg-card px-[5px] py-[1px] text-[11px] font-sans leading-none">⌘K</kbd>
+          </button>
+
+          {/* Ícone de busca no mobile */}
+          <button
+            type="button"
+            onClick={abrirBusca}
+            aria-label="Buscar no sistema"
+            className={cn(classeDoIcone, 'md:hidden')}
+          >
+            <Search aria-hidden="true" className="h-[17px] w-[17px]" />
           </button>
 
           <button
@@ -278,36 +294,36 @@ export default function AppHeader({
             }
             title={sininhoChamando ? 'Aviso novo do robô' : 'Notificações'}
             data-chamando={sininhoChamando || undefined}
-            // Só com movimento permitido (motion-safe): quem desliga animação
-            // no sistema continua vendo o contador, sem o balanço.
-            className={cn(classeDoIcone, 'relative', sininhoChamando && 'motion-safe:animate-pulse-glow')}
+            className={cn(classeDoIcone, sininhoChamando && 'motion-safe:animate-pulse-glow')}
           >
             <Bell
               aria-hidden="true"
-              className={cn('h-[18px] w-[18px]', sininhoChamando && 'origin-top motion-safe:animate-sininho-tremer')}
+              className={cn('h-[17px] w-[17px]', sininhoChamando && 'origin-top motion-safe:animate-sininho-tremer')}
             />
             {naoLidas > 0 && (
-              <span
+              /* Badge igual ao prototype: right:-1px; top:-4px */
+              <b
                 aria-hidden="true"
-                className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground"
+                className="pointer-events-none absolute -right-px -top-1 flex min-w-[16px] items-center justify-center rounded-[10px] bg-destructive px-[3px] text-[10px] leading-[16px] font-bold text-white"
               >
                 {naoLidas > 99 ? '99+' : naoLidas}
-              </span>
+              </b>
             )}
           </button>
 
+          {/* Theme toggle — mantém funcionalidade, tamanho 34px */}
           <div className="hidden sm:block">
             <ThemeToggle />
           </div>
 
-          <span aria-hidden="true" className="mx-1 hidden h-6 w-px bg-border lg:block" />
+          <span aria-hidden="true" className="mx-1 hidden h-5 w-px bg-border md:block" />
 
-          {/* Seletor de empresa — a troca e a atualização contextual são dele. */}
-          <div className="hidden lg:block">
+          {/* Seletor de empresa */}
+          <div className="hidden md:block">
             <EmpresaSelector />
           </div>
 
-          {/* Perfil */}
+          {/* Avatar — 32px igual ao prototype */}
           <div className="relative shrink-0" ref={perfilRef}>
             <button
               type="button"
@@ -316,7 +332,7 @@ export default function AppHeader({
               aria-expanded={perfilAberto}
               aria-label="Minha conta"
               title="Minha conta"
-              className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-muted text-sm font-bold text-foreground ring-1 ring-border transition-all hover:ring-2 hover:ring-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-border bg-muted text-[13px] font-bold text-foreground transition-all hover:ring-2 hover:ring-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {avatarUrl ? (
                 <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
@@ -408,7 +424,6 @@ export default function AppHeader({
           <button
             type="button"
             onClick={aoAbrirFerramentas}
-            // O atalho só existe para quem souber dele; o `title` é onde se sabe.
             title="Todas as ferramentas (Ctrl+Shift+K)"
             aria-haspopup="dialog"
             aria-expanded={ferramentasAberto}

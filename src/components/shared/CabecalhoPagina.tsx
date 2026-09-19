@@ -87,14 +87,14 @@ export default function CabecalhoPagina({
   useRegistrarTrilha(trilha);
 
   return (
-    <header className={cn('mb-6 flex flex-col gap-4', className)}>
+    <header className={cn('mb-4 flex flex-col gap-2', className)}>
 
-      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-6">
+      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between md:gap-6">
         <div className="min-w-0 flex-1">
           <h1
             className={cn(
-              'flex items-center gap-3 font-bold text-foreground',
-              denso ? 'g-titulo-pagina' : 'text-[1.75rem] leading-9',
+              'flex items-center gap-2 font-semibold text-foreground',
+              denso ? 'g-titulo-pagina' : 'text-[1.15rem] leading-7',
             )}
           >
             {iconeFinal && (
@@ -104,7 +104,7 @@ export default function CabecalhoPagina({
                   'inline-flex flex-shrink-0 items-center justify-center bg-primary-tint text-primary',
                   denso
                     ? 'h-9 w-9 rounded-[var(--g-raio)] [&>svg]:h-[18px] [&>svg]:w-[18px]'
-                    : 'h-10 w-10 rounded-xl [&>svg]:h-5 [&>svg]:w-5',
+                    : 'h-7 w-7 rounded-lg [&>svg]:h-4 [&>svg]:w-4',
                 )}
               >
                 {iconeFinal}
@@ -115,8 +115,8 @@ export default function CabecalhoPagina({
           {descricaoFinal && (
             <p
               className={cn(
-                'mt-1 max-w-3xl text-muted-foreground',
-                denso ? 'g-corpo' : 'text-base leading-6',
+                'mt-0.5 max-w-3xl truncate text-muted-foreground',
+                denso ? 'g-corpo' : 'text-[13px] leading-5',
               )}
             >
               {descricaoFinal}

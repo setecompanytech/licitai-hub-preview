@@ -22,10 +22,19 @@ export default function EmpresaSelector() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="flex items-center gap-2 h-10 px-3 rounded-lg border border-sidebar-border bg-sidebar-accent/50 hover:bg-sidebar-accent transition-colors text-sm font-medium text-sidebar-foreground max-w-[280px]">
-          <Building2 className="w-4 h-4 text-sidebar-primary flex-shrink-0" />
+        <button
+          className="flex items-center gap-2 h-8 px-3 rounded-[3px] transition-colors text-[13px] font-medium max-w-[200px]"
+          style={{
+            background: 'hsl(var(--navy))',
+            border: '1px solid rgba(255,255,255,.18)',
+            color: '#fff',
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = 'hsl(var(--navy-hover))')}
+          onMouseLeave={(e) => (e.currentTarget.style.background = 'hsl(var(--navy))')}
+        >
+          <Building2 className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#8ec9b8' }} />
           <span className="truncate">{label}</span>
-          <ChevronDown className="w-3.5 h-3.5 text-sidebar-foreground/60 flex-shrink-0" />
+          <ChevronDown className="w-3 h-3 flex-shrink-0" style={{ color: 'rgba(255,255,255,.5)' }} />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64">

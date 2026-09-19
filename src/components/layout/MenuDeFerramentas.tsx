@@ -110,7 +110,7 @@ function ItemDeFerramenta({
         onClick={() => aoEscolher(f)}
         aria-current={ativo ? 'page' : undefined}
         className={cn(
-          'flex min-h-[var(--g-linha)] items-center gap-2.5 rounded-lg py-2 pl-3 pr-10 transition-colors',
+          'flex min-h-[30px] items-center gap-2.5 rounded-md py-1 pl-3 pr-10 transition-colors',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
           ativo ? 'bg-muted font-semibold text-foreground' : 'text-foreground/90 hover:bg-muted/60',
         )}
@@ -175,7 +175,7 @@ function Faixa({ titulo, funcoes, vazio, aoEscolher }: FaixaProps) {
               <Link
                 to={f.rota}
                 onClick={() => aoEscolher(f)}
-                className="flex min-h-[var(--g-linha)] items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 transition-colors hover:border-primary/40 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="flex min-h-[32px] items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 transition-colors hover:border-primary/40 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <f.icone aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <span className="g-corpo truncate">{f.nome}</span>
@@ -477,7 +477,7 @@ export default function MenuDeFerramentas({
               </div>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 md:px-6 md:py-5">
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 md:px-6 md:py-4">
               {buscando ? (
                 /* Buscando, o diretório dá lugar a uma lista única — categoria
                    recolhida não esconde resultado: o recolhimento organiza o
@@ -518,11 +518,11 @@ export default function MenuDeFerramentas({
                 )
               ) : (
                 <>
-                  <div className="mb-5 grid gap-5 md:grid-cols-2">
+                  <div className="mb-3 grid gap-3 md:grid-cols-2">
                     <Faixa
                       titulo="Recentes"
                       funcoes={funcoesRecentes}
-                      vazio="Nada aberto ainda — o que você usar aparece aqui."
+                      vazio="Nada aberto ainda. O que você usar aparece aqui."
                       aoEscolher={escolher}
                     />
                     <Faixa
@@ -533,7 +533,7 @@ export default function MenuDeFerramentas({
                     />
                   </div>
 
-                  <div className="grid gap-x-6 gap-y-5 border-t border-border pt-5 md:grid-cols-2 min-[1200px]:grid-cols-4">
+                  <div className="grid gap-x-6 gap-y-2 border-t border-border pt-3 md:grid-cols-2 min-[1200px]:grid-cols-4">
                     {colunasCompletas().map((categorias, i) => (
                       <div key={i} className="min-w-0">
                         {categorias.map((categoria) => {
@@ -546,7 +546,7 @@ export default function MenuDeFerramentas({
                           if (itens.length === 0) return null;
                           const recolhida = recolhidas[categoria] ?? false;
                           return (
-                            <section key={categoria} className="mb-5 last:mb-0">
+                            <section key={categoria} className="mb-2.5 last:mb-0">
                               <h3>
                                 <button
                                   type="button"
@@ -554,7 +554,7 @@ export default function MenuDeFerramentas({
                                     setRecolhidas((r) => ({ ...r, [categoria]: !recolhida }))
                                   }
                                   aria-expanded={!recolhida}
-                                  className="flex min-h-[var(--g-linha)] w-full items-center gap-2 rounded-lg px-1 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                  className="flex min-h-[28px] w-full items-center gap-2 rounded-md px-1 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                 >
                                   <span className="g-meta min-w-0 flex-1 truncate font-bold uppercase tracking-wider text-muted-foreground">
                                     {categoria}
