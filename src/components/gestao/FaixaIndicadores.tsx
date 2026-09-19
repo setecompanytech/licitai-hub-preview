@@ -5,7 +5,8 @@ import { cn } from '@/lib/utils';
  * FaixaIndicadores — os números do topo das telas de Gestão (cartão KPI).
  *
  * Anatomia do cartão do Design System v3: rótulo de 12px em cima, valor de
- * 24px em peso 600 com dígitos tabulares, ícone discreto no canto superior
+ * 24px (`text-3xl` na escala — `text-2xl` seria 20) em peso 600 com dígitos
+ * tabulares, ícone discreto no canto superior
  * direito e a linha de detalhe embaixo. Compacto: 96–110px, porque aqui o
  * número é a legenda da tabela que vem logo abaixo, não o assunto da tela.
  *
@@ -96,13 +97,13 @@ export default function FaixaIndicadores({
                   desce para a linha de baixo, inteira. */}
               {item.valor === null ? (
                 <>
-                  <span className="block text-2xl font-semibold leading-8 text-muted-foreground">—</span>
+                  <span className="block text-3xl font-semibold leading-8 text-muted-foreground">—</span>
                   <span className="g-meta line-clamp-2 block text-warning-ink">
                     {item.razaoIndisponivel ?? 'Apuração a validar'}
                   </span>
                 </>
               ) : (
-                <span className="block truncate text-2xl font-semibold leading-8 tabular-nums text-foreground">
+                <span className="block truncate text-3xl font-semibold leading-8 tabular-nums text-foreground">
                   {item.valor}
                 </span>
               )}
