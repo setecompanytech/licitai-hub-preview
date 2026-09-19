@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { dataLocal, hojeLocal } from '@/lib/financeiro/data-local';
 import { supabase } from '@/integrations/supabase/client';
+import ValorDeCartao from './ValorDeCartao';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -58,6 +59,8 @@ export default function FinPedidosAFaturar() {
 
   // Dialog de faturamento
   const [faturando, setFaturando] = useState<Row | null>(null);
+  /** Pedidos deixados de fora da lista por já terem título em Contas a Receber. */
+  const [jaLancados, setJaLancados] = useState<{ qtd: number; total: number }>({ qtd: 0, total: 0 });
   const [contaId, setContaId] = useState('');
   const [parcelas, setParcelas] = useState('1');
   const [saving, setSaving] = useState(false);
@@ -112,8 +115,31 @@ export default function FinPedidosAFaturar() {
         for (const k of (kRows ?? []) as any[]) kMap[k.id] = k.status;
       }
 
-      // 3. Filter: exclude faturado/cancelado/entrega in kanban
+      // 3. Pedidos que JÁ têm título em Contas a Receber não estão "aguardando
+      //    faturamento" — faturar de novo duplicaria o recebível. Em 19/09 os
+      //    dez pedidos do 068/2025 (R$ 11,1 mi) apareciam aqui com título
+      //    vinculado, criado pela extração de NF-e; o filtro de antes só olhava
+      //    `nf_quitada` e o Kanban, nunca `financeiro_lancamentos`.
+      const idsPedidos = all.map((r) => r.id);
+      const comTitulo = new Map<string, number>();
+      if (idsPedidos.length > 0) {
+        const { data: titulos, error: errTitulos } = await supabase
+          .from('financeiro_lancamentos')
+          .select('contrato_pedido_id, valor')
+          .in('contrato_pedido_id', idsPedidos)
+          .neq('status', 'cancelado');
+        if (errTitulos) throw errTitulos;
+        for (const t of titulos ?? []) {
+          if (!t.contrato_pedido_id) continue;
+          comTitulo.set(t.contrato_pedido_id, (comTitulo.get(t.contrato_pedido_id) ?? 0) + Number(t.valor ?? 0));
+        }
+      }
+      const jaLancados = all.filter((r) => comTitulo.has(r.id));
+      setJaLancados({ qtd: jaLancados.length, total: jaLancados.reduce((s, r) => s + Number(r.valor_total ?? 0), 0) });
+
+      // 4. Filter: exclude faturado/cancelado/entrega in kanban, e os que já têm título
       const filtered = all.filter(r => {
+        if (comTitulo.has(r.id)) return false;
         if (!r.pedido_id) return true; // sem kanban → mostrar
         const ks = kMap[r.pedido_id] ?? 'pedido';
         return !['faturado', 'cancelado', 'entrega'].includes(ks);
@@ -124,14 +150,17 @@ export default function FinPedidosAFaturar() {
 
       setRows(filtered);
 
-      // 4. Contas financeiras
-      const { data: contasData } = await supabase
-        .from('financeiro_contas' as never)
+      // 5. Contas financeiras. A coluna é `ativa`: com `ativo` a consulta
+      //    falhava em silêncio, a lista vinha vazia e o botão Faturar ficava
+      //    desativado — o que, por acaso, impedia a duplicação acima.
+      const { data: contasData, error: errContas } = await supabase
+        .from('financeiro_contas')
         .select('id, nome')
         .eq('empresa_id', empresaAtiva.id)
-        .eq('ativo', true)
-        .order('nome') as any;
-      setContas(contasData || []);
+        .eq('ativa', true)
+        .order('nome');
+      if (errContas) toast.error('Não foi possível carregar as contas: ' + errContas.message);
+      setContas((contasData as { id: string; nome: string }[] | null) || []);
     } finally {
       setLoading(false);
     }
@@ -205,6 +234,23 @@ export default function FinPedidosAFaturar() {
     if (!faturando || !contaId) return;
     setSaving(true);
     try {
+      // Guarda de idempotência: entre a lista carregar e o clique, outro
+      // caminho (extração de NF-e, outro usuário) pode ter criado o título.
+      const { data: existentes, error: errExistentes } = await supabase
+        .from('financeiro_lancamentos')
+        .select('id')
+        .eq('contrato_pedido_id', faturando.id)
+        .neq('status', 'cancelado')
+        .limit(1);
+      if (errExistentes) { toast.error('Não foi possível conferir títulos existentes: ' + errExistentes.message); return; }
+      if ((existentes ?? []).length > 0) {
+        toast.error('Este pedido já tem título em Contas a Receber — nada foi criado.', {
+          description: 'Abra Contas a Receber para ver o título vinculado ao pedido.',
+        });
+        setFaturando(null);
+        await load();
+        return;
+      }
       const nParcelas = Math.max(1, parseInt(parcelas) || 1);
       // A última parcela carrega a sobra do arredondamento: 10.000 em 3×
       // gravava 3.333,33 ×3 = 9.999,99 e um centavo sumia do contrato.
@@ -277,10 +323,16 @@ export default function FinPedidosAFaturar() {
     <div className="space-y-6">
       <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
         <p className="text-sm text-muted-foreground">Total pendente</p>
-        <p className="text-[2rem] leading-10 font-bold tabular-nums text-foreground">{fmt(total)}</p>
+        <ValorDeCartao valor={fmt(total)} className="text-foreground" />
         <p className="text-xs text-muted-foreground">
           {rows.length} pedido{rows.length === 1 ? '' : 's'} aguardando faturamento
         </p>
+        {jaLancados.qtd > 0 && (
+          <p className="mt-2 text-xs text-muted-foreground">
+            Fora da lista: {jaLancados.qtd} pedido{jaLancados.qtd === 1 ? '' : 's'} ({fmt(jaLancados.total)}) já
+            {jaLancados.qtd === 1 ? ' tem' : ' têm'} título em Contas a Receber — faturar de novo duplicaria o recebível.
+          </p>
+        )}
       </div>
 
       {loading ? (

@@ -105,6 +105,13 @@ checar "aba Documentos compacta (fila de pastas)" "Pastas do processo"
 checar "prazo sem evidência tem saída (contratos)" "Descartar este prazo"
 checar "variação mensal sem mês anterior"        "sem mês anterior para comparar"
 
+# Leva 2026-09-19.1 — Financeiro: sem nome de terceiro, números inteiros, cálculos.
+checar "importador sem nome de terceiro"         "Importar planilha (.xlsx)"
+checar "painel: títulos em aberto (não capital de giro)" "Títulos em aberto (líquido)"
+checar "top 5 despesas sem movimentação"         "sem transferências, aplicações e imobilizado"
+checar "CFO sem BP diz indisponível"             "Requer Balanço Patrimonial publicado"
+checar "fluxo de caixa: vencidos em hoje"        "venceu e ainda não foi baixado"
+
 # Navegação 13–14/09 — o cabeçalho horizontal e o diretório de ferramentas.
 checar "trilha na faixa do conteúdo"          "Trilha de navegação"
 checar "diretório de ferramentas"             "Todas as ferramentas (Ctrl+Shift+K)"

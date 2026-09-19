@@ -139,7 +139,9 @@ describe('montarDRE', () => {
       '2026-08',
     );
     expect(dre.receitaLiquida).toBe(0);
-    expect(dre.margemLiquida).toBe(0);
+    // Sem receita não há margem — `null`, não 0%: o zero saía num badge verde
+    // por cima de um prejuízo (19/09).
+    expect(dre.margemLiquida).toBeNull();
     expect(dre.resultadoLiquido).toBe(-800);
   });
 

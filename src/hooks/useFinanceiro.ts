@@ -1,6 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { montarDRE, type DRELinhaRaw, type DREResumo } from "@/lib/financeiro/dre";
 import { hojeLocal, somarDiasLocal, mesLocal, dataLocal, deDataLocal } from "@/lib/financeiro/data-local";
+import { ehMovimentacao } from "@/lib/financeiro/movimentacao";
+import { buscarTodos } from "@/lib/financeiro/paginar";
+import { acumularProjecao, type DiaProjetado, type LinhaDoFluxo } from "@/lib/financeiro/projecao-de-caixa";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { toast } from "sonner";
@@ -399,7 +402,7 @@ export function useLancamentos(filtro: LancamentoFiltro = {}) {
     queryFn: async () => {
       let q = supabase
         .from("financeiro_lancamentos")
-        .select("*, conta:financeiro_contas!financeiro_lancamentos_conta_id_fkey(id,nome), categoria:financeiro_categorias!financeiro_lancamentos_categoria_id_fkey(id,nome,natureza), pessoa:financeiro_pessoas(id,nome)")
+        .select("*, conta:financeiro_contas!financeiro_lancamentos_conta_id_fkey(id,nome), categoria:financeiro_categorias!financeiro_lancamentos_categoria_id_fkey(id,nome,natureza,grupo_dre), pessoa:financeiro_pessoas(id,nome)")
         .eq("empresa_id", empresaId!)
         .order("data_competencia", { ascending: false })
         .limit(500);
@@ -816,42 +819,55 @@ export function useResumoFinanceiro() {
       const hoje = new Date();
       const mesAtual = mesLocal(hoje);
       const inicio6m = dataLocal(new Date(hoje.getFullYear(), hoje.getMonth() - 5, 1));
+      type LinhaResumo = {
+        valor: number | null; tipo: string | null; status: string | null; natureza: string | null;
+        data_competencia: string | null; data_realizado: string | null;
+        categoria: { nome?: string | null; natureza?: string | null; grupo_dre?: string | null } | null;
+      };
+      const COLUNAS =
+        "valor, tipo, status, natureza, data_competencia, data_realizado, " +
+        "categoria:financeiro_categorias!financeiro_lancamentos_categoria_id_fkey(nome, natureza, grupo_dre)";
 
-      const [contasRes, lancRes] = await Promise.all([
+      // Dois universos, de propósito (19/09): a carteira em ABERTO é a carteira
+      // inteira — título de competência antiga continua em aberto até ser
+      // baixado —, e a série de realizado é a janela de seis meses. Um só
+      // `.gte(competência)` com `.limit(2000)` cortava os dois, e "A receber"
+      // dava 6,17 mi aqui e 8,28 mi na aba Executivo para a mesma carteira de
+      // 9,07 mi. A movimentação (transferência, aplicação, aporte) sai pela
+      // régua do DRE, `ehMovimentacao`.
+      const [contasRes, lancs, abertos] = await Promise.all([
         supabase.from("financeiro_contas").select("saldo_atual").eq("empresa_id", empresaId!).eq("ativa", true),
-        supabase
-          .from("financeiro_lancamentos")
-          .select("valor, tipo, status, natureza, data_competencia, data_realizado, categoria:financeiro_categorias!financeiro_lancamentos_categoria_id_fkey(nome)")
-          .eq("empresa_id", empresaId!)
-          .gte("data_competencia", inicio6m)
-          .limit(2000),
+        buscarTodos<LinhaResumo>((de, ate) =>
+          supabase.from("financeiro_lancamentos").select(COLUNAS).eq("empresa_id", empresaId!)
+            .gte("data_competencia", inicio6m).order("data_competencia").order("id").range(de, ate)),
+        buscarTodos<LinhaResumo>((de, ate) =>
+          supabase.from("financeiro_lancamentos").select(COLUNAS).eq("empresa_id", empresaId!)
+            .in("tipo", ["a_pagar", "a_receber"]).in("status", ["previsto", "em_atraso"])
+            .order("data_competencia").order("id").range(de, ate)),
       ]);
       if (contasRes.error) throw contasRes.error;
-      if (lancRes.error) throw lancRes.error;
 
       const saldoTotal = (contasRes.data ?? []).reduce((s, c) => s + Number(c.saldo_atual ?? 0), 0);
-      const lancs = lancRes.data ?? [];
+      const soma = (ls: LinhaResumo[]) => ls.reduce((s, l) => s + Number(l.valor ?? 0), 0);
 
-      const aPagar = lancs
-        .filter((l) => l.tipo === "a_pagar" && (l.status === "previsto" || l.status === "em_atraso"))
-        .reduce((s, l) => s + Number(l.valor ?? 0), 0);
-      const aReceber = lancs
-        .filter((l) => l.tipo === "a_receber" && (l.status === "previsto" || l.status === "em_atraso"))
-        .reduce((s, l) => s + Number(l.valor ?? 0), 0);
-      const realizadoMes = lancs
-        .filter((l) => {
-          if (l.status !== "realizado" && l.status !== "conciliado") return false;
-          const dataRef = l.data_realizado || l.data_competencia;
-          return (dataRef ?? "").startsWith(mesAtual);
-        })
-        .reduce((s, l) => s + (l.natureza === "receita" ? 1 : -1) * Number(l.valor ?? 0), 0);
+      const titulos = abertos.filter((l) => !ehMovimentacao(l));
+      const aPagar = soma(titulos.filter((l) => l.tipo === "a_pagar"));
+      const aReceber = soma(titulos.filter((l) => l.tipo === "a_receber"));
+      const realizados = lancs.filter(
+        (l) => (l.status === "realizado" || l.status === "conciliado") && !ehMovimentacao(l),
+      );
+      const realizadoMes = realizados
+        .filter((l) => ((l.data_realizado || l.data_competencia) ?? "").startsWith(mesAtual))
+        // Movimentação já saiu acima; o que não é receita nem despesa não conta.
+        .reduce((s, l) => s + (l.natureza === "receita" ? 1 : l.natureza === "despesa" ? -1 : 0) * Number(l.valor ?? 0), 0);
 
-      // Top 5 despesas (realizadas) por categoria
+      // Top 5 despesas realizadas (6 meses) por categoria — sem transferência,
+      // aplicação nem imobilizado, que abriam a lista com R$ 7,26 mi (19/09).
       const despesasMap = new Map<string, number>();
-      lancs
-        .filter((l) => l.natureza === "despesa" && ["realizado", "conciliado"].includes(l.status as string))
+      realizados
+        .filter((l) => l.natureza === "despesa")
         .forEach((l) => {
-          const nome = (l.categoria as { nome?: string } | null)?.nome ?? "Sem categoria";
+          const nome = l.categoria?.nome ?? "Sem categoria";
           despesasMap.set(nome, (despesasMap.get(nome) ?? 0) + Number(l.valor ?? 0));
         });
       const topDespesas = Array.from(despesasMap.entries())
@@ -865,9 +881,8 @@ export function useResumoFinanceiro() {
         const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
         fluxoMap.set(dataLocal(d).slice(0, 7), { entrada: 0, saida: 0 });
       }
-      lancs.forEach((l) => {
-        // "Fluxo de caixa" é o que aconteceu: previsto e cancelado ficam fora.
-        if (!["realizado", "conciliado"].includes(l.status as string)) return;
+      realizados.forEach((l) => {
+        // "Fluxo de caixa" é o que aconteceu: previsto, cancelado e movimentação ficam fora.
         const mes = (l.data_competencia ?? "").slice(0, 7);
         const bucket = fluxoMap.get(mes);
         if (!bucket) return;
@@ -1348,7 +1363,7 @@ export function useFluxoCaixa(diasFrente = 90) {
   return useQuery({
     queryKey: ["fin-fluxo-caixa", empresaId, diasFrente],
     enabled: !!empresaId,
-    queryFn: async (): Promise<{ saldoInicial: number; dias: FluxoDia[] }> => {
+    queryFn: async (): Promise<{ saldoInicial: number; hoje: string; linhas: LinhaDoFluxo[]; dias: DiaProjetado[] }> => {
       const hoje = new Date();
       const hojeStr = hojeLocal();
       const inicio = dataLocal(new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1));
@@ -1368,29 +1383,23 @@ export function useFluxoCaixa(diasFrente = 90) {
       if (fluxoRes.error) throw fluxoRes.error;
 
       const saldoInicial = (contasRes.data ?? []).reduce((s, c) => s + Number(c.saldo_atual ?? 0), 0);
-      const linhas = (fluxoRes.data ?? []) as unknown as Omit<FluxoDia, "saldo_dia" | "saldo_acumulado">[];
+      const brutas = (fluxoRes.data ?? []) as unknown as Array<Record<string, unknown>>;
+      const linhas: LinhaDoFluxo[] = brutas.map((l) => ({
+        data: String(l.data),
+        entradas_previstas: Number(l.entradas_previstas ?? 0),
+        saidas_previstas: Number(l.saidas_previstas ?? 0),
+        entradas_realizadas: Number(l.entradas_realizadas ?? 0),
+        saidas_realizadas: Number(l.saidas_realizadas ?? 0),
+      }));
 
-      // O saldo das contas JÁ contém tudo que se realizou: acumular de novo os
-      // dias passados contava o realizado uma segunda vez na projeção (A8).
-      // O passado aparece nas barras; o acumulado só anda com o futuro.
-      let acumulado = saldoInicial;
-      const dias: FluxoDia[] = linhas.map((l) => {
-        const entrada = Number(l.entradas_previstas ?? 0) + Number(l.entradas_realizadas ?? 0);
-        const saida = Number(l.saidas_previstas ?? 0) + Number(l.saidas_realizadas ?? 0);
-        const saldo_dia = entrada - saida;
-        if (l.data > hojeStr) acumulado += saldo_dia;
-        return {
-          data: l.data,
-          entradas_previstas: Number(l.entradas_previstas ?? 0),
-          saidas_previstas: Number(l.saidas_previstas ?? 0),
-          entradas_realizadas: Number(l.entradas_realizadas ?? 0),
-          saidas_realizadas: Number(l.saidas_realizadas ?? 0),
-          saldo_dia,
-          saldo_acumulado: acumulado,
-        };
-      });
+      // O saldo das contas JÁ contém tudo que se realizou. A fórmula do
+      // acumulado mora em `acumularProjecao` — UMA cópia, usada aqui e pela
+      // tela dos cenários: em 02/09 a correção A8 foi feita só aqui, e a tela
+      // seguiu re-somando o passado (19/09, "negativo em 32 dias, primeiro dia
+      // crítico 04/08").
+      const { dias } = acumularProjecao({ saldoInicial, linhas, hoje: hojeStr });
 
-      return { saldoInicial, dias };
+      return { saldoInicial, hoje: hojeStr, linhas, dias };
     },
   });
 }

@@ -93,7 +93,7 @@ function exportCSV(
   }
   // Margem líquida
   const margem = comparativa.atual.margemLiquida;
-  linhas.push(["Margem Líquida (%)", (margem * 100).toFixed(2)]);
+  linhas.push(["Margem Líquida (%)", margem === null ? "—" : (margem * 100).toFixed(2)]);
   const csv = linhas.map((l) => l.join(";")).join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
@@ -192,14 +192,16 @@ export default function FinDRE() {
                     <TableHead className="text-right whitespace-nowrap">
                       {competencia}
                     </TableHead>
-                    <TableHead className="text-right w-[80px]">AV %</TableHead>
+                    <TableHead className="text-right w-[90px] whitespace-nowrap">AV %</TableHead>
                     {modo !== "nenhum" && (
                       <>
                         <TableHead className="text-right whitespace-nowrap">
                           {competenciaComparada}
                         </TableHead>
-                        <TableHead className="text-right w-[110px]">AH R$</TableHead>
-                        <TableHead className="text-right w-[100px]">AH %</TableHead>
+                        {/* Sem largura fixa: "R$ 1.000,00" quebrava em "R$ 1.000,0 / 0"
+                            dentro de 110px (19/09). A coluna cresce com o número. */}
+                        <TableHead className="text-right whitespace-nowrap">AH R$</TableHead>
+                        <TableHead className="text-right w-[90px] whitespace-nowrap">AH %</TableHead>
                       </>
                     )}
                   </TableRow>
@@ -224,17 +226,23 @@ export default function FinDRE() {
                 <span className="text-sm text-muted-foreground">
                   Margem líquida (Lucro Líquido ÷ Receita Líquida)
                 </span>
-                <Badge
-                  variant={atual.margemLiquida >= 0 ? "success" : "danger"}
-                  className="gap-1 tabular-nums"
-                >
-                  {atual.margemLiquida >= 0 ? (
-                    <TrendingUp className="h-3 w-3" aria-hidden="true" />
-                  ) : (
-                    <TrendingDown className="h-3 w-3" aria-hidden="true" />
-                  )}
-                  {formatFracao(atual.margemLiquida)}
-                </Badge>
+                {atual.margemLiquida === null ? (
+                  <Badge variant="muted" className="tabular-nums" title="Sem receita líquida na competência não há margem a calcular">
+                    — sem receita líquida
+                  </Badge>
+                ) : (
+                  <Badge
+                    variant={atual.margemLiquida >= 0 ? "success" : "danger"}
+                    className="gap-1 tabular-nums"
+                  >
+                    {atual.margemLiquida >= 0 ? (
+                      <TrendingUp className="h-3 w-3" aria-hidden="true" />
+                    ) : (
+                      <TrendingDown className="h-3 w-3" aria-hidden="true" />
+                    )}
+                    {formatFracao(atual.margemLiquida)}
+                  </Badge>
+                )}
               </div>
             </div>
           )}
@@ -382,14 +390,16 @@ function LinhaDRE({
         </span>
         {label}
       </TableCell>
+      {/* Toda célula numérica em UMA linha: número partido ("R$ 1.000,0 / 0",
+          "100.0 / %") parece outro número. */}
       <TableCell
-        className={`text-right tabular-nums ${
+        className={`text-right tabular-nums whitespace-nowrap ${
           valorAtual < 0 ? "text-destructive" : ""
         }`}
       >
         {formatBRL(valorAtual)}
       </TableCell>
-      <TableCell className="text-right text-xs text-muted-foreground tabular-nums">
+      <TableCell className="text-right text-xs text-muted-foreground tabular-nums whitespace-nowrap">
         {valor.av != null && Math.abs(valor.av) > 0.0001
           ? `${(valor.av * 100).toFixed(1)}%`
           : "—"}
@@ -397,17 +407,17 @@ function LinhaDRE({
       {modo !== "nenhum" && (
         <>
           <TableCell
-            className={`text-right tabular-nums text-muted-foreground ${
+            className={`text-right tabular-nums whitespace-nowrap text-muted-foreground ${
               valorComp != null && valorComp < 0 ? "text-destructive" : ""
             }`}
           >
             {valorComp != null ? formatBRL(valorComp) : "—"}
           </TableCell>
-          <TableCell className={`text-right tabular-nums text-xs ${corVariacao}`}>
+          <TableCell className={`text-right tabular-nums text-xs whitespace-nowrap ${corVariacao}`}>
             <SetaVariacao valor={variacaoAbs} />
             {variacaoAbs != null ? formatBRL(variacaoAbs) : "—"}
           </TableCell>
-          <TableCell className={`text-right tabular-nums text-xs ${corVariacao}`}>
+          <TableCell className={`text-right tabular-nums text-xs whitespace-nowrap ${corVariacao}`}>
             {valor.variacaoPct != null
               ? `${(valor.variacaoPct * (isLinhaCusto ? -1 : 1) * 100).toFixed(1)}%`
               : "—"}

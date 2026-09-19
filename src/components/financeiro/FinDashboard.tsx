@@ -60,6 +60,12 @@ export default function FinDashboard() {
         <Card>
           <CardHeader>
             <CardTitle>Top 5 despesas por categoria</CardTitle>
+            {/* O período e o recorte, ditos: a lista abria com "Transferências
+                Recebidas Entre Contas" (R$ 7,26 mi) porque somava por categoria
+                sem olhar a natureza dela (19/09). */}
+            <p className="text-sm text-muted-foreground">
+              Realizadas nos últimos 6 meses · sem transferências, aplicações e imobilizado
+            </p>
           </CardHeader>
           <CardContent>
             {isLoading || !data ? (

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import ValorDeCartao from "./ValorDeCartao";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -67,10 +68,7 @@ function KpiCard({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-sm font-medium text-muted-foreground">{titulo}</p>
-            <p className={`mt-1 text-[2rem] leading-10 font-bold tabular-nums truncate ${cor}`}>
-              {valor}
-              {sufixo && <span className="text-base font-medium ml-1 text-muted-foreground">{sufixo}</span>}
-            </p>
+            <ValorDeCartao valor={valor} sufixo={sufixo} className={cor} />
             {hint && <p className="text-xs text-muted-foreground mt-1">{hint}</p>}
           </div>
           <span className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md ${caixa}`}>
@@ -110,12 +108,18 @@ export default function FinCFODashboard() {
 
   const semBP = !ind.tem_balanco;
 
-  function statusLiquidez(v: number): "good" | "warn" | "bad" {
+  // Indicador sem Balanço é `null`: traço neutro, nunca zero com semáforo.
+  type Status = "good" | "warn" | "bad" | "neutral";
+  const semBPHint = "Requer Balanço Patrimonial publicado";
+  const valorOuTraco = (v: number | null, casas: number) => (v === null ? "—" : v.toFixed(casas));
+  function statusLiquidez(v: number | null): Status {
+    if (v === null) return "neutral";
     if (v >= 1.5) return "good";
     if (v >= 1) return "warn";
     return "bad";
   }
-  function statusEndividamento(pct: number): "good" | "warn" | "bad" {
+  function statusEndividamento(pct: number | null): Status {
+    if (pct === null) return "neutral";
     if (pct < 50) return "good";
     if (pct < 70) return "warn";
     return "bad";
@@ -164,8 +168,8 @@ export default function FinCFODashboard() {
           <Info className="h-4 w-4" />
           <AlertTitle>Sem Balanço Patrimonial publicado</AlertTitle>
           <AlertDescription>
-            Indicadores de liquidez, endividamento e ROI/ROE estão usando estimativas. Publique um BP no
-            módulo <strong>Demonstrações</strong> para análise precisa.
+            Liquidez, endividamento e ROI/ROE não estão disponíveis — dependem de um BP. Publique-o no
+            módulo <strong>Demonstrações</strong> para estes indicadores aparecerem.
           </AlertDescription>
         </Alert>
       )}
@@ -179,7 +183,7 @@ export default function FinCFODashboard() {
             valor={formatBRL(ind.ebitda)}
             status={ind.ebitda > 0 ? "good" : "bad"}
             icon={TrendingUp}
-            hint="Receita − Custos − Despesas Op."
+            hint="Receita líquida − custos (CMV/CPS) − despesas operacionais, pelo grupo do DRE · realizado, sem movimentação"
           />
           <KpiCard
             titulo="Margem EBITDA"
@@ -193,6 +197,7 @@ export default function FinCFODashboard() {
             valor={formatBRL(ind.lucroLiquido)}
             status={ind.lucroLiquido > 0 ? "good" : "bad"}
             icon={ind.lucroLiquido > 0 ? TrendingUp : TrendingDown}
+            hint="EBITDA + resultado financeiro − estimativas: D&A 5% da receita e IR 15% do lucro"
           />
           <KpiCard
             titulo="Margem Líquida"
@@ -212,33 +217,33 @@ export default function FinCFODashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiCard
             titulo="Liquidez Corrente"
-            valor={ind.liquidezCorrente.toFixed(2)}
+            valor={valorOuTraco(ind.liquidezCorrente, 2)}
             status={statusLiquidez(ind.liquidezCorrente)}
             icon={Scale}
-            hint="AC / PC — ideal ≥ 1,5"
+            hint={ind.liquidezCorrente === null ? semBPHint : "AC / PC — ideal ≥ 1,5"}
           />
           <KpiCard
             titulo="Liquidez Seca"
-            valor={ind.liquidezSeca.toFixed(2)}
+            valor={valorOuTraco(ind.liquidezSeca, 2)}
             status={statusLiquidez(ind.liquidezSeca)}
             icon={Scale}
-            hint="(AC − Estoques) / PC"
+            hint={ind.liquidezSeca === null ? semBPHint : "(AC − Estoques) / PC"}
           />
           <KpiCard
             titulo="Endividamento Geral"
-            valor={ind.endividamentoGeral.toFixed(1)}
-            sufixo="%"
+            valor={valorOuTraco(ind.endividamentoGeral, 1)}
+            sufixo={ind.endividamentoGeral === null ? undefined : "%"}
             status={statusEndividamento(ind.endividamentoGeral)}
             icon={AlertTriangle}
-            hint="Passivo / Ativo Total"
+            hint={ind.endividamentoGeral === null ? semBPHint : "Passivo / Ativo Total"}
           />
           <KpiCard
             titulo="Composição Endiv."
-            valor={ind.composicaoEndividamento.toFixed(1)}
-            sufixo="%"
-            status={ind.composicaoEndividamento < 60 ? "good" : "warn"}
+            valor={valorOuTraco(ind.composicaoEndividamento, 1)}
+            sufixo={ind.composicaoEndividamento === null ? undefined : "%"}
+            status={ind.composicaoEndividamento === null ? "neutral" : ind.composicaoEndividamento < 60 ? "good" : "warn"}
             icon={AlertTriangle}
-            hint="PC / Passivo Total"
+            hint={ind.composicaoEndividamento === null ? semBPHint : "PC / Passivo Total"}
           />
         </div>
       </div>
@@ -251,17 +256,19 @@ export default function FinCFODashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiCard
             titulo="ROI (Ativo)"
-            valor={ind.roi.toFixed(2)}
-            sufixo="%"
-            status={ind.roi > 5 ? "good" : ind.roi > 0 ? "warn" : "bad"}
+            valor={valorOuTraco(ind.roi, 2)}
+            sufixo={ind.roi === null ? undefined : "%"}
+            status={ind.roi === null ? "neutral" : ind.roi > 5 ? "good" : ind.roi > 0 ? "warn" : "bad"}
             icon={Target}
+            hint={ind.roi === null ? semBPHint : undefined}
           />
           <KpiCard
             titulo="ROE (Patrimônio)"
-            valor={ind.roe.toFixed(2)}
-            sufixo="%"
-            status={ind.roe > 10 ? "good" : ind.roe > 0 ? "warn" : "bad"}
+            valor={valorOuTraco(ind.roe, 2)}
+            sufixo={ind.roe === null ? undefined : "%"}
+            status={ind.roe === null ? "neutral" : ind.roe > 10 ? "good" : ind.roe > 0 ? "warn" : "bad"}
             icon={Target}
+            hint={ind.roe === null ? semBPHint : undefined}
           />
           <KpiCard
             titulo="Caixa Disponível"

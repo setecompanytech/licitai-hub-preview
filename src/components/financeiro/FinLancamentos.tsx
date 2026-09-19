@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
+import ValorDeCartao from "./ValorDeCartao";
+import { ehMovimentacao } from "@/lib/financeiro/movimentacao";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -111,6 +113,9 @@ export default function FinLancamentos() {
     () =>
       lancs.filter((l) => {
         if (l.origem_tipo === "ignorado_conciliacao") return false;
+        // Cancelado não é entrada nem saída: entrava nos totais com o mesmo
+        // peso de um realizado (19/09).
+        if (l.status === "cancelado") return false;
         // Transferências: excluir dos totais globais (cancelam entre si),
         // mas incluir quando há filtro por conta específica (é fluxo real daquela conta)
         if (l.tipo === "transferencia" && !hasContaFiltro) return false;
@@ -118,6 +123,17 @@ export default function FinLancamentos() {
       }),
     [lancs, hasContaFiltro]
   );
+  // Movimentação patrimonial (aporte, aplicação, transferência com filtro de
+  // conta) mexe no caixa mas não é entrada nem saída de resultado: sai dos
+  // dois cartões e é declarada à parte — o "Aporte dos Sócios" de R$ 2.000
+  // entrava como Entrada e o DRE dizia outra receita (19/09, O S).
+  const lancsResultado = useMemo(() => lancsAtivos.filter((l) => !ehMovimentacao(l)), [lancsAtivos]);
+  const totalMovimentacao = useMemo(
+    () => lancsAtivos.filter((l) => ehMovimentacao(l)).reduce((s, l) => s + Number(l.valor), 0),
+    [lancsAtivos]
+  );
+  const regime = filtro.status && filtro.status !== "todos" ? filtro.status : "previsto e realizado";
+  const limiteAtingido = lancs.length >= 500;
 
   const sortedLancs = useMemo(() => {
     const lista = [...lancs];
@@ -143,12 +159,12 @@ export default function FinLancamentos() {
   );
 
   const totalEntradas = useMemo(
-    () => lancsAtivos.filter((l) => l.natureza === "receita").reduce((s, l) => s + Number(l.valor), 0),
-    [lancsAtivos]
+    () => lancsResultado.filter((l) => l.natureza === "receita").reduce((s, l) => s + Number(l.valor), 0),
+    [lancsResultado]
   );
   const totalSaidas = useMemo(
-    () => lancsAtivos.filter((l) => l.natureza !== "receita").reduce((s, l) => s + Number(l.valor), 0),
-    [lancsAtivos]
+    () => lancsResultado.filter((l) => l.natureza === "despesa").reduce((s, l) => s + Number(l.valor), 0),
+    [lancsResultado]
   );
   const resultado = totalEntradas - totalSaidas;
 
@@ -355,25 +371,30 @@ export default function FinLancamentos() {
         </CardContent>
       </Card>
 
-      {/* ── Faixa de KPIs ── */}
+      {/* ── Faixa de KPIs ──
+          Os números somam os lançamentos CARREGADOS (até 500, os mais recentes
+          por competência), sem cancelados e sem movimentação — e dizem isso,
+          em vez de "no período" (19/09). */}
       <Card>
         <CardContent className="grid grid-cols-1 divide-y divide-border p-0 sm:grid-cols-2 sm:divide-y-0 sm:divide-x lg:grid-cols-4">
           <StatCell
-            label="Entradas no período"
+            label="Entradas"
             value={formatBRL(totalEntradas)}
-            sub={`${lancsAtivos.filter((l) => l.natureza === "receita").length} lançamentos`}
+            sub={`${lancsResultado.filter((l) => l.natureza === "receita").length} lançamentos · ${regime}`}
             tone="success"
           />
           <StatCell
-            label="Saídas no período"
+            label="Saídas"
             value={formatBRL(totalSaidas)}
-            sub={`${lancsAtivos.filter((l) => l.natureza !== "receita").length} lançamentos`}
+            sub={`${lancsResultado.filter((l) => l.natureza === "despesa").length} lançamentos · ${regime}`}
             tone="default"
           />
           <StatCell
-            label="Resultado no período"
+            label="Entradas − Saídas"
             value={formatBRL(resultado)}
-            sub="Entradas menos saídas"
+            sub={totalMovimentacao > 0
+              ? `Fora: ${formatBRL(totalMovimentacao)} de movimentação (aporte, aplicação, transferência)`
+              : limiteAtingido ? "Sobre os 500 lançamentos carregados" : "Sobre os lançamentos carregados"}
             tone={resultado >= 0 ? "success" : "danger"}
           />
           <StatCell
@@ -391,7 +412,9 @@ export default function FinLancamentos() {
         <p className="text-sm text-muted-foreground">
           {isLoading
             ? "Carregando…"
-            : `${lancs.length} lançamento${lancs.length !== 1 ? "s" : ""} encontrado${lancs.length !== 1 ? "s" : ""}`}
+            : limiteAtingido
+              ? "500 lançamentos carregados — há mais; refine os filtros para ver e somar o restante"
+              : `${lancs.length} lançamento${lancs.length !== 1 ? "s" : ""} encontrado${lancs.length !== 1 ? "s" : ""}`}
         </p>
         {temAlgumFiltro && (
           <Button variant="outline" size="sm" onClick={limparTodosFiltros}>
@@ -475,8 +498,9 @@ export default function FinLancamentos() {
                     const isIgnorado = l.origem_tipo === "ignorado_conciliacao";
                     const isTransferencia = l.tipo === "transferencia";
                     const isReceita = l.natureza === "receita";
-                    const vencDiferente =
-                      l.data_vencimento && l.data_vencimento !== l.data_competencia;
+                    // Vencimento igual à competência é vencimento do mesmo jeito:
+                    // o travessão fazia parcela prevista parecer sem prazo (19/09).
+                    const vencDiferente = !!l.data_vencimento;
                     const isAtrasado = l.status === "em_atraso";
                     return (
                       <tr
@@ -768,8 +792,10 @@ function StatCell({
         {Icon && <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />}
         {label}
       </p>
-      <p className={cn("mt-1 whitespace-nowrap text-2xl font-bold tabular-nums", cor)}>{value}</p>
-      <p className="mt-0.5 truncate text-xs text-muted-foreground">{sub}</p>
+      {/* Encolhe com o comprimento em vez de estourar a célula: "R$ 11.136.165,18"
+          num quarto da faixa não cabe em text-2xl. */}
+      <ValorDeCartao valor={value} compacto className={cor} />
+      <p className="mt-0.5 text-xs text-muted-foreground">{sub}</p>
     </div>
   );
 }

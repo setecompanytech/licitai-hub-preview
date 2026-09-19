@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import ValorDeCartao from "./ValorDeCartao";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -86,8 +87,10 @@ function KpiCard({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium text-muted-foreground">{label}</p>
-            <p className={cn("mt-1 text-[2rem] leading-10 font-bold tabular-nums truncate", t.value)}>{value}</p>
-            {hint && <p className="text-xs text-muted-foreground mt-1 truncate">{hint}</p>}
+            <ValorDeCartao valor={value} className={t.value} />
+            {/* A dica quebra em duas linhas em vez de ser cortada: "Receita R$ 184,3K ·
+                Despesa R$ …" escondia justamente o número que explicava o resultado. */}
+            {hint && <p className="text-xs text-muted-foreground mt-1">{hint}</p>}
             {trend && (
               <div className="flex items-center gap-1 mt-1">
                 <TrendIcon
@@ -142,33 +145,46 @@ export default function FinDashboardExecutivo() {
     data.inadimplenciaPerc >= 10 ? "danger" : data.inadimplenciaPerc >= 5 ? "warning" : "success";
   const margemTone: KpiTone =
     data.margemLiquidaMes >= 15 ? "success" : data.margemLiquidaMes >= 5 ? "info" : data.margemLiquidaMes >= 0 ? "warning" : "danger";
-  const giroTone: KpiTone = data.capitalGiroLiquido >= 0 ? "success" : "danger";
+  const giroTone: KpiTone = data.titulosEmAbertoLiquido >= 0 ? "success" : "danger";
   const resultadoTone: KpiTone = data.resultadoMes >= 0 ? "success" : "danger";
 
   return (
     <div className="space-y-6">
       {/* Linha 1: Liquidez & Resultado */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard label="Saldo em contas" value={formatBRL(data.saldoTotal)} hint={`Disponível ${formatBRL(data.saldoDisponivel)}`} icon={Wallet} tone="info" />
+        {/* O mesmo "Saldo em contas" da aba Operacional: só contas ativas.
+            Somar as inativas aqui fazia o mesmo rótulo mostrar dois números. */}
+        <KpiCard
+          label="Saldo em contas"
+          value={formatBRL(data.saldoDisponivel)}
+          hint={data.saldoBloqueado !== 0 ? `Contas ativas · inativas somam ${formatBRL(data.saldoBloqueado)}` : "Contas ativas"}
+          icon={Wallet}
+          tone="info"
+        />
+        {/* Sem a seta de tendência: ela era a variação da RECEITA, não do
+            resultado — e a receita tem o próprio quadro de comparativos abaixo. */}
         <KpiCard
           label="Resultado do mês"
           value={formatBRL(data.resultadoMes)}
-          hint={`Receita ${formatBRLCompact(data.receitaMes)} · Despesa ${formatBRLCompact(data.despesaMes)}`}
+          hint={`Receita ${formatBRLCompact(data.receitaMes)} · Despesa ${formatBRLCompact(data.despesaMes)} · realizado${
+            data.movimentacaoMes > 0 ? ` · fora: ${formatBRLCompact(data.movimentacaoMes)} de movimentação` : ""
+          }`}
           icon={Target}
           tone={resultadoTone}
-          trend={{ value: data.variacaoReceitaMoM, positiveIsGood: true }}
         />
         <KpiCard
           label="Margem líquida"
           value={`${data.margemLiquidaMes.toFixed(1)}%`}
-          hint="Resultado / Receita do mês"
+          hint="Resultado / Receita do mês (realizado, sem movimentação)"
           icon={Percent}
           tone={margemTone}
         />
+        {/* "Capital de giro" é AC − PC, e isto não é: é o líquido dos títulos
+            em aberto. O nome passa a dizer o que o número é. */}
         <KpiCard
-          label="Capital de giro"
-          value={formatBRL(data.capitalGiroLiquido)}
-          hint="A receber − A pagar (em aberto)"
+          label="Títulos em aberto (líquido)"
+          value={formatBRL(data.titulosEmAbertoLiquido)}
+          hint="A receber − A pagar, carteira inteira em aberto"
           icon={giroTone === "success" ? ArrowUpRight : ArrowDownRight}
           tone={giroTone}
         />
@@ -179,28 +195,30 @@ export default function FinDashboardExecutivo() {
         <KpiCard
           label="A receber"
           value={formatBRL(data.aReceberTotal)}
-          hint={`Vencido ${formatBRL(data.aReceberVencido)}`}
+          hint={`Vencido ${formatBRL(data.aReceberVencido)} · carteira inteira em aberto`}
           icon={ArrowUpRight}
           tone="success"
         />
         <KpiCard
           label="A pagar"
           value={formatBRL(data.aPagarTotal)}
-          hint={`Vencido ${formatBRL(data.aPagarVencido)}`}
+          hint={`Vencido ${formatBRL(data.aPagarVencido)} · carteira inteira em aberto`}
           icon={ArrowDownRight}
           tone="danger"
         />
         <KpiCard
-          label="Inadimplência"
+          label="Inadimplência (recebíveis)"
           value={`${data.inadimplenciaPerc.toFixed(1)}%`}
-          hint={`Atraso médio ${data.diasMedioRecebimento.toFixed(0)} dias`}
+          hint={`PMR ${data.diasMedioRecebimento.toFixed(0)} dias (títulos já recebidos)`}
           icon={AlertTriangle}
           tone={inadimplenciaTone}
         />
+        {/* O denominador do ticket é o número de RECEITAS do mês — o "17
+            lançamentos" de antes contava despesas junto. */}
         <KpiCard
           label="Ticket médio (receita)"
           value={formatBRL(data.ticketMedioReceita)}
-          hint={`${data.qtdLancamentosMes} lançamentos no mês`}
+          hint={`${data.qtdReceitasMes} receita(s) realizada(s) · ${data.qtdLancamentosMes} lançamentos no mês`}
           icon={Receipt}
           tone="default"
         />

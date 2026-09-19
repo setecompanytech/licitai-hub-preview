@@ -92,6 +92,12 @@ export default function FinBaixaLote() {
       qc.invalidateQueries({ queryKey: ["fin-baixa-lote-pendentes"] });
       qc.invalidateQueries({ queryKey: ["fin-lancamentos"] });
       qc.invalidateQueries({ queryKey: ["fin-resumo-visor"] });
+      // A baixa mexe no saldo das contas e no resultado: sem estas, o painel
+      // e o DRE ficavam com o número de antes até outra ação qualquer.
+      qc.invalidateQueries({ queryKey: ["fin-contas"] });
+      qc.invalidateQueries({ queryKey: ["fin-resumo"] });
+      qc.invalidateQueries({ queryKey: ["fin-dashboard-executivo"] });
+      qc.invalidateQueries({ queryKey: ["fin-dre"] });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro ao baixar em lote");
     } finally {
@@ -211,8 +217,15 @@ export default function FinBaixaLote() {
                           <p className="truncate text-sm" title={l.descricao}>{l.descricao}</p>
                           {atrasado && <Badge variant="danger" className="mt-1">Em atraso</Badge>}
                         </TableCell>
+                        {/* Título sem vencimento (NF-e sem duplicata): a competência
+                            no lugar, marcada — o traço deixava a coluna inteira em
+                            branco em Contas a Receber (19/09). */}
                         <TableCell className="py-3 text-right text-sm tabular-nums text-muted-foreground" nowrap>
-                          {l.data_vencimento ? format(new Date(l.data_vencimento + "T00:00:00"), "dd/MM/yyyy") : "—"}
+                          {l.data_vencimento
+                            ? format(new Date(l.data_vencimento + "T00:00:00"), "dd/MM/yyyy")
+                            : l.data_competencia
+                              ? <span title="Sem vencimento registrado — data de competência">{format(new Date(l.data_competencia + "T00:00:00"), "dd/MM/yyyy")} <span className="text-xs">(comp.)</span></span>
+                              : "—"}
                         </TableCell>
                         <TableCell className="py-3 text-right text-sm font-medium tabular-nums" nowrap>
                           {formatBRL(Number(l.valor))}

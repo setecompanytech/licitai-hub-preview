@@ -161,8 +161,16 @@ export default function FinDREporCentroCusto() {
               label="Resultado"
               value={formatBRL(resultado.liquido)}
               accent={resultado.liquido >= 0 ? "positive" : "negative"}
-              hint={`Margem ${margem.toFixed(2)}%`}
+              hint={resultado.receita > 0 ? `Margem ${margem.toFixed(2)}%` : "Sem receita no centro: margem não se aplica"}
             />
+            {/* Quatro zeros afirmam "este centro não custou nada"; o que há é
+                ausência de vínculo. Dito com todas as letras (19/09). */}
+            {resultado.receita === 0 && resultado.custo === 0 && resultado.despesa === 0 && resultado.rateado === 0 && (
+              <p className="sm:col-span-2 md:col-span-4 text-xs text-warning-ink">
+                Nenhum lançamento vinculado a este centro de custo no período — nem direto, nem por rateio.
+                O vínculo hoje é feito pelo rateio do lançamento (aba Rateio, em lançamentos já salvos).
+              </p>
+            )}
             {resultado.rateado > 0 && (
               <div className="sm:col-span-2 md:col-span-4 text-xs text-muted-foreground flex flex-wrap items-center gap-2">
                 <Badge variant="info">Rateio</Badge>

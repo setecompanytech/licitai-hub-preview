@@ -59,7 +59,8 @@ export type DREResumo = {
   resultadoFinanceiro: number;
   outrosResultados: number;
   resultadoLiquido: number;
-  margemLiquida: number;
+  /** Fração; `null` quando não há receita líquida para dividir. */
+  margemLiquida: number | null;
   grupos: DREGrupo[];
   semClassificacao: { receita: number; despesa: number; linhas: number };
   movimentacaoExcluida: { total: number; linhas: number };
@@ -142,7 +143,9 @@ export function montarDRE(linhas: DRELinhaRaw[], competencia: string): DREResumo
   const resultadoFinanceiro = sumGrupo("receita_financeira") - sumGrupo("desp_financeira");
   const outrosResultados = resultadoFinanceiro;
   const resultadoLiquido = resultadoOperacional + outrosResultados;
-  const margemLiquida = receitaLiquida > 0 ? resultadoLiquido / receitaLiquida : 0;
+  // Sem receita líquida não há margem — `null`, não 0%: o zero saía num badge
+  // verde por cima de um prejuízo (19/09).
+  const margemLiquida = receitaLiquida > 0 ? resultadoLiquido / receitaLiquida : null;
 
   // O que não tem grupo fica FORA das linhas do resultado e é declarado à
   // parte, para a tela poder dizer quanto ficou de fora e por quê.

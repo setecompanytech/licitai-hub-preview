@@ -3,6 +3,7 @@ import { TrendingUp, TrendingDown, Wallet, ArrowDownCircle, ArrowUpCircle } from
 import { formatBRL } from "@/lib/financeiro/formatters";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useResumoFinanceiro } from "@/hooks/useFinanceiro";
+import ValorDeCartao from "./ValorDeCartao";
 
 const Item = ({
   label,
@@ -32,7 +33,7 @@ const Item = ({
       <CardContent className="p-6 flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm font-medium text-muted-foreground">{label}</p>
-          <p className={`mt-1 text-[2rem] leading-10 font-bold tabular-nums truncate ${toneClass}`}>{value}</p>
+          <ValorDeCartao valor={value} className={toneClass} />
         </div>
         <span className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md ${iconBox}`}>
           <Icon className="w-5 h-5" aria-hidden="true" />
