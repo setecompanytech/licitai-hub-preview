@@ -131,9 +131,14 @@ mais de três; rolagem horizontal presa ao contêiner (`overflow-x-auto`).
 
 **Status:** `Badge` com variante semântica (`success` ganha/ativo, `info` em
 disputa/andamento, `warning` pendente/aguardando, `danger` perdida/vencida,
-`muted` encerrada/arquivada) ou `SeloSituacao` (`tom`). Sempre com TEXTO. Para
-status de processo, `aparenciaStatus()` de `lib/licitacao/status.ts` já traz
-as classes certas.
+`muted` encerrada/arquivada) ou `SeloSituacao` (`tom`: neutro, ativo, info,
+sucesso, atencao, critico, indisponivel). Sempre com TEXTO. Para status de
+processo, `aparenciaStatus()` de `lib/licitacao/status.ts` já traz as classes
+certas. `FaixaIndicadores` e `LinhaKpis` têm o mesmo vocabulário de tom no
+ladrilho do ícone (`neutro/ok/info/aviso/critico`).
+
+**Busca com nome acessível:** `BarraFiltros` aceita `rotuloBusca` (vira o
+`aria-label` do campo); sem ele, o nome acessível é o placeholder.
 
 **Formulário:** `Label` acima do campo, `Input`/`Select`/`Textarea` de 40px,
 campos em grade `grid gap-4 sm:grid-cols-2`, seções agrupadas por assunto com
