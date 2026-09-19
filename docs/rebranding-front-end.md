@@ -10,12 +10,31 @@
 
 | | |
 | --- | --- |
-| Direção visual | `prototype-praefectus/index.html` — aprovada pelo Rafael |
+| Direção visual | **Design System v3** (comando do dono, 19/09/2026) — manual em `docs/design-system-praefectus.md`; o protótipo `prototype-praefectus/index.html` ficou como referência histórica |
 | Frente | Ian + Caio Gabriel (`gabrielcgm-web`) |
 | Onde | branch única `feature/rebrand-ui-ux`, compartilhada pelos dois; **é ela que o Lovable publica desde 10/09/2026** (ver abaixo) |
 | Status | **em produção desde 10/09**, com o robô de lances dentro |
 | Última revisão | 10/09/2026 |
 
+> ### ⚠️ 19/09/2026 — Design System v3, por comando do dono do produto
+>
+> O dono pediu um **redesign visual completo, só na camada de apresentação**:
+> plataforma SaaS B2B corporativa, sidebar navy (#0F1E35) recolhível + topbar
+> branca, verde da marca (#087F5B) como única cor de ação, azul (#2563EB) só
+> como informação, fundo #F5F7FA, Inter como família única, cartões de 10px,
+> botões/campos de 8px, densidade operacional (corpo 14px). Isto substitui a
+> direção "Fluent" de 18/09 e a paleta do protótipo nas seções abaixo (que
+> ficam como histórico). O manual de aplicação é
+> **`docs/design-system-praefectus.md`** — leia-o antes de qualquer tela.
+>
+> Frentes que rodaram em 19/09 (Claude, autorizado pelo dono), por arquivo:
+> `index.css` · `tailwind.config.ts` · `styles/ds-app.css` · `components/ui/*` ·
+> `components/layout/*` (AppSidebar novo; CompactSidebar removido) ·
+> `shared/CabecalhoPagina` · `gestao/*` · `dashboard/*` · `pages/Index.tsx` ·
+> e, módulo a módulo, as telas listadas no relatório de entrega. Quem tinha
+> reserva nesta tabela (Caio: tokens, `ui/`, navegação) precisa puxar antes de
+> continuar — o conteúdo desses arquivos mudou inteiro.
+>
 > ### ⚠️ Desde 10/09/2026, produção é ESTA branch — não a `main`
 >
 > Decisão do Giovanny: o Praefectus vai ao ar com a marca nova **sem mesclar na

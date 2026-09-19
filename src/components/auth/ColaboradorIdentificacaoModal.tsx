@@ -83,7 +83,7 @@ export default function ColaboradorIdentificacaoModal() {
       <DialogContent className="sm:max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg">
-            <UserCircle className="w-5 h-5 text-accent" />
+            <UserCircle className="h-5 w-5 text-primary" aria-hidden="true" />
             Identificação Individual
           </DialogTitle>
           <DialogDescription>

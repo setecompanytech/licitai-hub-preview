@@ -67,14 +67,14 @@ export default function AlertaVencimentoBanner() {
   return (
     <div
       className={cn(
-        'relative flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg mb-4 animate-fade-in',
-        severity === 'expired' && 'bg-destructive/15 text-destructive border border-destructive/30',
-        severity === 'critical' && 'bg-destructive/10 text-destructive border border-destructive/20',
-        severity === 'warning' && 'bg-warning/15 text-warning border border-warning/30',
-        severity === 'info' && 'bg-info/15 text-info border border-info/30'
+        'relative mb-4 flex items-center gap-3 rounded-lg border px-4 py-3 text-sm font-medium animate-fade-in',
+        severity === 'expired' && 'border-destructive-line bg-destructive-tint text-destructive-ink',
+        severity === 'critical' && 'border-destructive-line bg-destructive-tint text-destructive-ink',
+        severity === 'warning' && 'border-warning-line bg-warning-tint text-warning-ink',
+        severity === 'info' && 'border-info-line bg-info-tint text-info-ink'
       )}
     >
-      <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+      <AlertTriangle className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
       <div className="flex-1">
         {expirado ? (
           <span>
@@ -94,7 +94,7 @@ export default function AlertaVencimentoBanner() {
           navigate('/configuracoes?scroll=planos');
         }}
         className={cn(
-          'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors whitespace-nowrap',
+          'flex h-8 items-center gap-1.5 whitespace-nowrap rounded-md px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
           severity === 'expired' || severity === 'critical'
             ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
             : severity === 'warning'
@@ -102,11 +102,16 @@ export default function AlertaVencimentoBanner() {
             : 'bg-info text-info-foreground hover:bg-info/90'
         )}
       >
-        <CreditCard className="w-3.5 h-3.5" />
+        <CreditCard className="h-3.5 w-3.5" aria-hidden="true" />
         Renovar Agora
       </button>
-      <button onClick={() => setDismissed(true)} className="p-1 rounded hover:bg-foreground/10 transition-colors">
-        <X className="w-4 h-4" />
+      <button
+        type="button"
+        onClick={() => setDismissed(true)}
+        aria-label="Dispensar aviso"
+        className="rounded-md p-1 transition-colors hover:bg-foreground/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <X className="h-4 w-4" aria-hidden="true" />
       </button>
     </div>
   );

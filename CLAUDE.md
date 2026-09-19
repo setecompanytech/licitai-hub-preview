@@ -6,10 +6,11 @@ App de gestão de licitações. Vite + React 18 + TypeScript + Tailwind + shadcn
 > ⚠️ Este repo **também é editado pelo Lovable**, que commita direto no `main`. O remoto muda sem
 > ação local. Por isso: **sempre sincronizar antes de mexer e antes de qualquer push.**
 
-> 🎨 **Mexendo em aparência?** Há um rebranding em andamento, em branch separada, com paleta e
-> tipografia novas já definidas. Leia `docs/rebranding-front-end.md` **antes** de escolher
-> qualquer cor: ele traz a tabela de tradução do protótipo para os tokens do app, a fronteira
-> de arquivos entre as frentes, e a regra de que cor nunca é escrita à mão dentro de `.tsx`.
+> 🎨 **Mexendo em aparência?** O app segue o **Design System v3** (comando do dono, 19/09/2026):
+> leia `docs/design-system-praefectus.md` **antes** de escolher qualquer cor, raio ou tamanho —
+> ele traz os tokens, a tipografia (Inter), as anatomias (página, KPI, tabela, status, modal) e
+> o roteiro por tela. `docs/rebranding-front-end.md` guarda o histórico da frente, o fluxo de
+> git da branch compartilhada e a regra de que cor nunca é escrita à mão dentro de `.tsx`.
 
 ## Rotinas (slash commands em `.claude/commands/`)
 

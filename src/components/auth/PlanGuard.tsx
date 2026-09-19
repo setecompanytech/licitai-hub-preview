@@ -41,15 +41,15 @@ export default function PlanGuard({ children }: PlanGuardProps) {
     : 'Nenhum';
 
   return (
-    <div className="flex items-center justify-center min-h-[60vh] p-6">
-      <div className="max-w-md w-full text-center space-y-6">
-        <div className="mx-auto w-16 h-16 rounded-2xl bg-accent/10 flex items-center justify-center">
-          <Lock className="w-8 h-8 text-accent" />
+    <div className="flex min-h-[60vh] items-center justify-center p-6">
+      <div className="w-full max-w-md space-y-6 rounded-lg border border-border bg-card p-8 text-center shadow-sm">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-lg bg-primary-tint">
+          <Lock className="h-7 w-7 text-primary" aria-hidden="true" />
         </div>
 
         <div className="space-y-2">
-          <h1 className="text-2xl font-bold">Recurso do Plano {requiredPlanName}</h1>
-          <p className="text-muted-foreground text-sm">
+          <h1 className="text-2xl font-semibold text-foreground">Recurso do Plano {requiredPlanName}</h1>
+          <p className="text-sm text-muted-foreground">
             Esta funcionalidade requer o plano <strong>{requiredPlanName}</strong> ou superior.
             {subscription.planSlug && (
               <> Seu plano atual é <strong>{currentPlanName}</strong>.</>
@@ -60,12 +60,9 @@ export default function PlanGuard({ children }: PlanGuardProps) {
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <Button
-            onClick={() => navigate('/configuracoes?scroll=planos')}
-            className="bg-accent hover:bg-accent/90 text-accent-foreground"
-          >
-            <ArrowRight className="w-4 h-4 mr-2" />
+        <div className="flex flex-col justify-center gap-3 sm:flex-row">
+          <Button onClick={() => navigate('/configuracoes?scroll=planos')}>
+            <ArrowRight aria-hidden="true" />
             Ver Planos & Fazer Upgrade
           </Button>
           <Button variant="outline" onClick={() => navigate(-1)}>

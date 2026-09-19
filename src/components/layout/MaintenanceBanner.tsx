@@ -67,22 +67,24 @@ export default function MaintenanceBanner({ showModal = false }: { showModal?: b
       {visibleItems.map((m) => (
         <div
           key={m.id}
-          className="relative flex items-center gap-3 rounded-lg border border-warning/30 bg-warning/10 px-4 py-2.5 text-sm text-warning mb-3"
+          className="relative mb-4 flex items-center gap-3 rounded-lg border border-warning-line bg-warning-tint px-4 py-2.5 text-sm text-warning-ink"
         >
-          <AlertTriangle className="w-4 h-4 shrink-0 text-warning" />
-          <div className="flex-1 min-w-0">
+          <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <div className="min-w-0 flex-1">
             <span className="font-semibold">{m.titulo}</span>
             <span className="mx-1.5">—</span>
             <span>{m.mensagem}</span>
-            <span className="ml-2 text-xs opacity-70">
+            <span className="ml-2 text-xs opacity-80">
               ({fmt(m.data_inicio)} até {fmt(m.data_fim)})
             </span>
           </div>
           <button
+            type="button"
             onClick={() => setDismissed((s) => new Set(s).add(m.id))}
-            className="p-1 rounded hover:bg-warning/20 transition-colors"
+            aria-label="Dispensar aviso de manutenção"
+            className="rounded-md p-1 transition-colors hover:bg-warning-line/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <X className="w-3.5 h-3.5" />
+            <X className="h-3.5 w-3.5" aria-hidden="true" />
           </button>
         </div>
       ))}
@@ -90,8 +92,8 @@ export default function MaintenanceBanner({ showModal = false }: { showModal?: b
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-warning">
-              <AlertTriangle className="w-5 h-5" />
+            <DialogTitle className="flex items-center gap-2 text-warning-ink">
+              <AlertTriangle className="h-5 w-5" aria-hidden="true" />
               Manutenção Programada
             </DialogTitle>
             <DialogDescription>

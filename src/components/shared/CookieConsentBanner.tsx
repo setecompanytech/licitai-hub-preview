@@ -33,14 +33,14 @@ export default function CookieConsentBanner() {
 
   return (
     <div className="fixed bottom-0 inset-x-0 z-[9999] p-4 animate-in slide-in-from-bottom-4 duration-500">
-      <div className="max-w-3xl mx-auto bg-card border border-border rounded-2xl shadow-2xl p-5 md:p-6">
+      <div className="mx-auto max-w-3xl rounded-xl border border-border bg-card p-5 shadow-xl md:p-6">
         <div className="flex items-start gap-4">
-          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-            <Cookie className="w-5 h-5 text-primary" />
+          <div className="mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-md bg-primary-tint">
+            <Cookie className="h-5 w-5 text-primary" aria-hidden="true" />
           </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-bold text-foreground">Política de Cookies</h3>
+          <div className="min-w-0 flex-1">
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="text-base font-semibold text-foreground">Política de Cookies</h3>
               <button
                 onClick={() => accept('essential')}
                 className="text-muted-foreground hover:text-foreground transition-colors p-1 -m-1"
@@ -49,7 +49,7 @@ export default function CookieConsentBanner() {
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <p className="text-[13px] text-muted-foreground leading-relaxed mb-4">
+            <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
               Utilizamos cookies essenciais para o funcionamento da plataforma e cookies analíticos para melhorar sua experiência. 
               Ao clicar em "Aceitar todos", você concorda com o uso de todos os cookies conforme nossa{' '}
               <Link to="/politica-cookies" className="text-primary hover:underline font-medium">

@@ -45,24 +45,24 @@ export default function MaintenanceGuard({ children }: MaintenanceGuardProps) {
           <PraefectusLogo size="lg" />
         </div>
 
-        <div className="mx-auto w-20 h-20 rounded-2xl bg-warning/10 flex items-center justify-center">
-          <Wrench className="w-10 h-10 text-warning" />
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-lg bg-warning-tint">
+          <Wrench className="h-8 w-8 text-warning-ink" aria-hidden="true" />
         </div>
 
         <div className="space-y-3">
-          <h1 className="text-3xl font-bold text-foreground">
+          <h1 className="text-3xl font-semibold text-foreground">
             Em Manutenção
           </h1>
-          <p className="text-muted-foreground text-base leading-relaxed">
+          <p className="text-base leading-relaxed text-muted-foreground">
             Estamos realizando ajustes internos para melhorar sua experiência.
             O sistema estará disponível em breve.
           </p>
         </div>
 
-        <div className="p-4 rounded-xl bg-muted/50 border border-border">
+        <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
           <p className="text-sm text-muted-foreground">
             📧 Em caso de urgência, entre em contato pelo e-mail{' '}
-            <a href="mailto:suporte@praefectus.com.br" className="text-accent hover:underline font-medium">
+            <a href="mailto:suporte@praefectus.com.br" className="font-medium text-primary hover:underline">
               suporte@praefectus.com.br
             </a>
           </p>

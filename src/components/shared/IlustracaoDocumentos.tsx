@@ -20,7 +20,7 @@ export default function IlustracaoDocumentos({ className }: { className?: string
           <div
             key={pos}
             className={cn(
-              'absolute inset-0 origin-bottom rounded-2xl border border-border bg-card p-[12%] shadow-md grid content-start gap-[9%]',
+              'absolute inset-0 origin-bottom rounded-lg border border-border bg-card p-[12%] shadow-md grid content-start gap-[9%]',
               pos,
             )}
           >
