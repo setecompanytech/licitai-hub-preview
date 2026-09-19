@@ -823,7 +823,7 @@ export default function AtestadosCapacidadeTecnica() {
             onClick={() => setFiltroSegmento('todos')}
             aria-pressed={filtroSegmento === 'todos'}
             className={cn(
-              'g-controle inline-flex items-center gap-1.5 rounded-full border px-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+              'g-controle inline-flex items-center gap-1.5 rounded-md border px-3 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
               filtroSegmento === 'todos'
                 ? 'border-primary bg-primary-tint font-semibold text-foreground'
                 : 'border-border text-muted-foreground hover:bg-muted',
@@ -842,7 +842,7 @@ export default function AtestadosCapacidadeTecnica() {
                 onClick={() => setFiltroSegmento(seg.value)}
                 aria-pressed={ativo}
                 className={cn(
-                  'g-controle inline-flex items-center gap-1.5 rounded-full border px-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                  'g-controle inline-flex items-center gap-1.5 rounded-md border px-3 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                   ativo
                     ? 'border-primary bg-primary-tint font-semibold text-foreground'
                     : 'border-border text-muted-foreground hover:bg-muted',

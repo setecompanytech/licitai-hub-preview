@@ -3,6 +3,7 @@ import { useParams, useLocation } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
 import ProcessoContextoBanner from '@/components/shared/ProcessoContextoBanner';
 import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
+import SeloPraefectusIA from '@/components/shared/SeloPraefectusIA';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -68,7 +69,9 @@ export default function ApoioJuridico() {
         <ProcessoContextoBanner />
 
         {/* Identidade 12/09: a faixa navy com foto deu lugar ao cabeçalho
-            padrão de fundo claro — o martelo segue como ícone do módulo. */}
+            padrão de fundo claro — o martelo segue como ícone do módulo.
+            Design System v3 (19/09): o módulo é de IA e leva o selo
+            "Praefectus IA" no lugar do antigo chip "IA Jurídica". */}
         <CabecalhoPagina
           icone={<Scale />}
           titulo="Apoio Jurídico Especializado"
@@ -85,25 +88,21 @@ export default function ApoioJuridico() {
             <Badge variant="info" className="gap-1">
               <Shield className="w-3 h-3" aria-hidden="true" /> Lei 14.133/2021
             </Badge>
-            <Badge variant="info" className="gap-1">
-              <Sparkles className="w-3 h-3" aria-hidden="true" /> IA Jurídica
-            </Badge>
+            <SeloPraefectusIA />
           </div>
         </CabecalhoPagina>
 
-        {/* Main Tabs — faixa que ROLA, com o rótulo inteiro (sem abreviar
-            "Reequilíbrio" ou "Base Jurídica"). */}
+        {/* Main Tabs — fila sublinhada que ROLA quando não cabe, com o rótulo
+            inteiro (sem abreviar "Reequilíbrio" ou "Base Jurídica"). */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <div className="-mx-3 px-3 sm:mx-0 sm:px-0 overflow-x-auto">
-            <TabsList className="inline-flex w-auto h-auto gap-1">
-              {ABAS.map(({ v, ic: Icone, r }) => (
-                <TabsTrigger key={v} value={v} className="gap-2 py-2 px-3 text-sm whitespace-nowrap">
-                  <Icone className="w-4 h-4 shrink-0" aria-hidden="true" />
-                  {r}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </div>
+          <TabsList className="flex-nowrap overflow-x-auto [scrollbar-width:thin]">
+            {ABAS.map(({ v, ic: Icone, r }) => (
+              <TabsTrigger key={v} value={v} className="shrink-0">
+                <Icone className="h-4 w-4 shrink-0" aria-hidden="true" />
+                {r}
+              </TabsTrigger>
+            ))}
+          </TabsList>
 
           {/* Tab 1: Modelos + Templates com Gerador Integrado */}
           <TabsContent value="modelos" className="space-y-4">
@@ -127,17 +126,17 @@ export default function ApoioJuridico() {
 
           {/* Tab 5: Legislação */}
           <TabsContent value="legislacao">
-            <section className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-4">
+            <section className="rounded-lg border border-border bg-card p-5 shadow-sm space-y-4">
               <div className="flex items-center gap-2">
-                <BookOpen className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
-                <h2 className="text-lg font-semibold">Referências Legais</h2>
+                <BookOpen className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+                <h2 className="text-lg font-semibold leading-6 text-foreground">Referências Legais</h2>
               </div>
               <p className="text-sm text-muted-foreground">
                 Base normativa utilizada pela IA para fundamentação jurídica das petições e pareceres.
               </p>
               <ul className="space-y-2">
                 {LEGISLACAO_REFS.map((l) => (
-                  <li key={l.lei} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-background p-3 hover:bg-muted transition-colors">
+                  <li key={l.lei} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-card p-3 transition-colors duration-150 hover:bg-muted/60">
                     <div className="min-w-0">
                       <p className="text-sm font-medium">{l.lei}</p>
                       <p className="text-xs text-muted-foreground">{l.desc}</p>

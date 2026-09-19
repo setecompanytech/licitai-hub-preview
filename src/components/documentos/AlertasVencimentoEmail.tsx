@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -255,17 +256,20 @@ export default function AlertasVencimentoEmail() {
   };
 
   if (carregando) {
+    // Esqueleto na forma do bloco de configuração — nunca spinner no centro.
     return (
-      <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card p-6">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" aria-hidden="true" />
-        <span className="g-corpo text-muted-foreground">Carregando alertas de vencimento…</span>
+      <div role="status" className="flex flex-col gap-3 rounded-lg border border-border bg-card p-5 shadow-sm">
+        <Skeleton className="h-5 w-40" />
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-2/3" />
+        <span className="sr-only">Carregando alertas de vencimento…</span>
       </div>
     );
   }
 
   if (!empresaAtiva?.id) {
     return (
-      <div className="rounded-xl border border-border bg-card">
+      <div className="rounded-lg border border-border bg-card shadow-sm">
         <EstadoVazio
           icone={<Building2 />}
           titulo="Escolha uma empresa"
@@ -286,7 +290,7 @@ export default function AlertasVencimentoEmail() {
       {/* ══ BLOCO 1 — CONFIGURAÇÃO ═════════════════════════════════════ */}
       <section
         aria-labelledby="alertas-docs-config-titulo"
-        className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 sm:p-6"
+        className="flex flex-col gap-4 rounded-lg border border-border bg-card p-4 shadow-sm sm:p-5"
       >
         <div className="flex items-start gap-3">
           <BellRing className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
@@ -303,7 +307,7 @@ export default function AlertasVencimentoEmail() {
 
         {/* Horário: a âncora é UTC. Dizer só "7h" mente para quem está em
             outro fuso — e o app é multiempresa. */}
-        <p className="g-corpo flex items-start gap-2 rounded-[var(--g-raio)] bg-muted/50 px-3 py-2 text-muted-foreground">
+        <p className="g-corpo flex items-start gap-2 rounded-[var(--g-raio)] bg-secondary px-3 py-2 text-muted-foreground">
           <Clock aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
           <span>
             Disparo diário às{' '}
@@ -384,11 +388,7 @@ export default function AlertasVencimentoEmail() {
         </AvisoDeContexto>
 
         <div className="flex flex-wrap items-center gap-3">
-          <Button
-            onClick={salvarConfig}
-            disabled={salvando || !pendente}
-            className="min-h-[var(--g-linha)]"
-          >
+          <Button onClick={salvarConfig} disabled={salvando || !pendente}>
             {salvando ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Salvando…
@@ -409,7 +409,7 @@ export default function AlertasVencimentoEmail() {
       {/* ══ BLOCO 2 — DESTINATÁRIOS ════════════════════════════════════ */}
       <section
         aria-labelledby="alertas-docs-dest-titulo"
-        className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 sm:p-6"
+        className="flex flex-col gap-4 rounded-lg border border-border bg-card p-4 shadow-sm sm:p-5"
       >
         <div className="flex items-start gap-3">
           <Users className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
@@ -462,7 +462,7 @@ export default function AlertasVencimentoEmail() {
               </SelectContent>
             </Select>
           </div>
-          <Button onClick={adicionar} disabled={salvando} className="min-h-[var(--g-linha)]">
+          <Button onClick={adicionar} disabled={salvando}>
             <Plus className="h-4 w-4" aria-hidden="true" /> Adicionar
           </Button>
         </div>
@@ -499,7 +499,7 @@ export default function AlertasVencimentoEmail() {
                   size="icon"
                   variant="ghost"
                   onClick={() => remover(d)}
-                  className="h-11 w-11 text-destructive-ink hover:bg-destructive-tint hover:text-destructive-ink"
+                  className="text-destructive-ink hover:bg-destructive-tint hover:text-destructive-ink"
                   title="Remover destinatário"
                   aria-label={`Remover ${d.email} dos alertas`}
                 >
@@ -518,7 +518,7 @@ export default function AlertasVencimentoEmail() {
           "não está na lista" = "não havia o que enviar". */}
       <section
         aria-labelledby="alertas-docs-trilha-titulo"
-        className="flex flex-col gap-2 rounded-xl border border-border bg-card p-4 sm:p-6"
+        className="flex flex-col gap-2 rounded-lg border border-border bg-card p-4 shadow-sm sm:p-5"
       >
         <h3 id="alertas-docs-trilha-titulo" className="g-titulo-secao text-foreground">
           Últimos disparos

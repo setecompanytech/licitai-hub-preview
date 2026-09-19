@@ -163,7 +163,7 @@ export function ConformidadeDocumental({
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
           <h2 className="g-titulo-secao text-foreground">Conformidade documental</h2>
-          <p className={`mt-1 text-[1.875rem] font-semibold leading-9 tabular-nums ${tomDoNumero}`}>
+          <p className={`mt-1 text-[1.75rem] font-semibold leading-9 tabular-nums ${tomDoNumero}`}>
             {pct}%
           </p>
         </div>

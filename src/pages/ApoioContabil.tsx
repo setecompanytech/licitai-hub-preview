@@ -2,6 +2,7 @@ import { useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import EstadoVazio from '@/components/shared/EstadoVazio';
+import SeloPraefectusIA from '@/components/shared/SeloPraefectusIA';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -74,19 +75,20 @@ export default function ApoioContabil() {
             <Badge variant="info" className="gap-1">
               <BookOpen className="w-3 h-3" aria-hidden="true" /> NBC · CFC
             </Badge>
-            <Badge variant="info" className="gap-1">
-              <Sparkles className="w-3 h-3" aria-hidden="true" /> IA Contábil
-            </Badge>
+            {/* Módulo de IA (Design System v3): o selo "Praefectus IA" ocupa
+                o lugar do antigo chip "IA Contábil". */}
+            <SeloPraefectusIA />
           </div>
         </CabecalhoPagina>
 
+        {/* Fila sublinhada que rola quando não cabe — rótulos inteiros. */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="flex-wrap h-auto gap-1">
-            <TabsTrigger value="modelos">Modelos e Templates</TabsTrigger>
-            <TabsTrigger value="analise-balanco">Análise de Balanço IA</TabsTrigger>
-            <TabsTrigger value="gerador">Gerador IA</TabsTrigger>
-            <TabsTrigger value="legislacao">Legislação Contábil</TabsTrigger>
-            <TabsTrigger value="base-contabil">Base Contábil IA</TabsTrigger>
+          <TabsList className="flex-nowrap overflow-x-auto [scrollbar-width:thin]">
+            <TabsTrigger value="modelos" className="shrink-0">Modelos e Templates</TabsTrigger>
+            <TabsTrigger value="analise-balanco" className="shrink-0">Análise de Balanço IA</TabsTrigger>
+            <TabsTrigger value="gerador" className="shrink-0">Gerador IA</TabsTrigger>
+            <TabsTrigger value="legislacao" className="shrink-0">Legislação Contábil</TabsTrigger>
+            <TabsTrigger value="base-contabil" className="shrink-0">Base Contábil IA</TabsTrigger>
           </TabsList>
 
           <TabsContent value="modelos" className="space-y-6">
@@ -170,11 +172,11 @@ export default function ApoioContabil() {
           </TabsContent>
 
           <TabsContent value="legislacao">
-            <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-              <h2 className="text-lg font-semibold text-foreground mb-4">Referências Legais e Normativas</h2>
+            <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
+              <h2 className="mb-4 text-lg font-semibold leading-6 text-foreground">Referências Legais e Normativas</h2>
               <div className="space-y-3">
                 {referenciasLegais.map((l) => (
-                  <div key={l.lei} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border p-3">
+                  <div key={l.lei} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-card p-3 transition-colors duration-150 hover:bg-muted/60">
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-foreground">{l.lei}</p>
                       <p className="text-sm text-muted-foreground">{l.desc}</p>

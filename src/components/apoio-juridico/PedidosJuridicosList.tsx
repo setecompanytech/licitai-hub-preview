@@ -15,8 +15,12 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import EstadoVazio from '@/components/shared/EstadoVazio';
+import {
   FileText, Clock, History, Trash2, ArrowRight, Eye, CheckCircle2,
-  XCircle, AlertCircle, Loader2, Hash, FileEdit, Send, ShieldAlert,
+  XCircle, AlertCircle, Loader2, Hash, FileEdit, Send, ShieldAlert, MoreHorizontal,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
@@ -121,12 +125,13 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
 
   if (pedidos.length === 0) {
     return (
-      <div className="flex flex-col items-center text-center py-10 gap-3 rounded-lg border border-dashed border-border">
-        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
-          <FileText className="w-6 h-6" aria-hidden="true" />
-        </span>
-        <p className="text-base font-semibold">Nenhum pedido jurídico criado ainda</p>
-        <p className="text-sm text-muted-foreground max-w-md">Use o gerador acima para criar um pedido de Reajuste, Repactuação ou Revisão.</p>
+      <div className="rounded-lg border border-dashed border-border">
+        <EstadoVazio
+          tamanho="compacto"
+          icone={<FileText />}
+          titulo="Nenhum pedido jurídico criado ainda"
+          descricao="Use o gerador acima para criar um pedido de Reajuste, Repactuação ou Revisão."
+        />
       </div>
     );
   }
@@ -136,7 +141,7 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
       {pedidos.map(p => (
         <div
           key={p.id}
-          className="rounded-md border border-border bg-card p-3 hover:border-primary/40 transition-colors"
+          className="rounded-lg border border-border bg-card p-3 shadow-sm transition-colors duration-150 hover:border-primary/40"
         >
           <div className="flex items-center gap-3 flex-wrap">
             <Badge variant="info" className="gap-1 whitespace-nowrap tabular-nums">
@@ -156,53 +161,21 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
             <Badge variant="info" className="gap-1 whitespace-nowrap tabular-nums">
               <History className="w-3 h-3" aria-hidden="true" /> v{p.versoes_count || 0}
             </Badge>
-            <div className="flex gap-1 flex-shrink-0 flex-wrap justify-end">
+            {/* Sete ações numa linha viravam uma barra de botões cinzentos. O
+                Design System v3 pede: até três à vista, o resto num menu "⋯".
+                Ficam visíveis Enviar, Abrir e Continuar; Rascunho e os três
+                resultados do órgão moram no menu — mesmos handlers, mesmas
+                regras de habilitação, mesmos títulos explicativos. */}
+            <div className="flex flex-shrink-0 flex-wrap justify-end gap-1">
               <Button
                 size="sm" variant="ghost"
-                className="text-muted-foreground hover:text-foreground"
-                disabled={!podeMarcarRascunho(p)}
-                title={podeMarcarRascunho(p) ? 'Voltar para Rascunho' : 'Indisponível para este status'}
-                onClick={() => acaoRascunho(p)}
-              >
-                <FileEdit aria-hidden="true" /> Rascunho
-              </Button>
-              <Button
-                size="sm" variant="ghost"
-                className="text-primary hover:text-primary hover:bg-primary-tint disabled:text-muted-foreground"
+                className="text-primary hover:bg-primary-tint hover:text-primary disabled:text-muted-foreground"
                 disabled={!podeEnviar(p)}
                 title={podeEnviar(p) ? 'Registrar protocolo / envio ao órgão' : 'Gere uma versão e avance o status para enviar'}
                 onClick={() => acaoEnviar(p)}
               >
                 <Send aria-hidden="true" /> Enviar
               </Button>
-              <Button
-                size="sm" variant="ghost"
-                className="text-success hover:text-success hover:bg-success-tint disabled:text-muted-foreground"
-                disabled={!podeRegistrarResultado(p)}
-                title={podeRegistrarResultado(p) ? 'Registrar deferimento' : 'Disponível após protocolo'}
-                onClick={() => acaoResultado(p, 'deferido')}
-              >
-                <CheckCircle2 aria-hidden="true" /> Deferido
-              </Button>
-              <Button
-                size="sm" variant="ghost"
-                className="text-destructive hover:text-destructive hover:bg-destructive-tint disabled:text-muted-foreground"
-                disabled={!podeRegistrarResultado(p)}
-                title={podeRegistrarResultado(p) ? 'Registrar indeferimento' : 'Disponível após protocolo'}
-                onClick={() => acaoResultado(p, 'indeferido')}
-              >
-                <XCircle aria-hidden="true" /> Indeferido
-              </Button>
-              <Button
-                size="sm" variant="ghost"
-                className="text-warning hover:text-warning hover:bg-warning-tint disabled:text-muted-foreground"
-                disabled={!podeRegistrarResultado(p)}
-                title={podeRegistrarResultado(p) ? 'Deferimento parcial' : 'Disponível após protocolo'}
-                onClick={() => acaoResultado(p, 'parcialmente_deferido')}
-              >
-                <ShieldAlert aria-hidden="true" /> Parcial
-              </Button>
-
               <Button size="sm" variant="ghost" onClick={() => setDetalhe(p)}>
                 <Eye aria-hidden="true" /> Abrir
               </Button>
@@ -211,6 +184,47 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
                   Continuar <ArrowRight aria-hidden="true" />
                 </Button>
               )}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="icon-sm" variant="ghost"
+                    aria-label={`Mais ações do pedido ${p.numero_formatado || `${p.tipo}-${p.sequencial}`}`}
+                  >
+                    <MoreHorizontal aria-hidden="true" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    disabled={!podeMarcarRascunho(p)}
+                    title={podeMarcarRascunho(p) ? 'Voltar para Rascunho' : 'Indisponível para este status'}
+                    onSelect={() => acaoRascunho(p)}
+                  >
+                    <FileEdit aria-hidden="true" className="mr-2 h-4 w-4" /> Rascunho
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    disabled={!podeRegistrarResultado(p)}
+                    title={podeRegistrarResultado(p) ? 'Registrar deferimento' : 'Disponível após protocolo'}
+                    onSelect={() => acaoResultado(p, 'deferido')}
+                  >
+                    <CheckCircle2 aria-hidden="true" className="mr-2 h-4 w-4 text-success-ink" /> Deferido
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={!podeRegistrarResultado(p)}
+                    title={podeRegistrarResultado(p) ? 'Registrar indeferimento' : 'Disponível após protocolo'}
+                    onSelect={() => acaoResultado(p, 'indeferido')}
+                  >
+                    <XCircle aria-hidden="true" className="mr-2 h-4 w-4 text-destructive-ink" /> Indeferido
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={!podeRegistrarResultado(p)}
+                    title={podeRegistrarResultado(p) ? 'Deferimento parcial' : 'Disponível após protocolo'}
+                    onSelect={() => acaoResultado(p, 'parcialmente_deferido')}
+                  >
+                    <ShieldAlert aria-hidden="true" className="mr-2 h-4 w-4 text-warning-ink" /> Parcial
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>
@@ -236,7 +250,7 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
               </DialogHeader>
 
               {/* Ações rápidas de status */}
-              <div className="flex flex-wrap gap-2 items-center rounded-md border border-border bg-muted/50 p-3">
+              <div className="flex flex-wrap gap-2 items-center rounded-md border border-border bg-secondary p-3">
                 <Label htmlFor="pedido-status" className="text-sm text-muted-foreground">Avançar status:</Label>
                 <Select
                   value={detalhe.status}
@@ -265,7 +279,7 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
                 <div className="flex-1" />
                 <Button
                   size="sm" variant="ghost"
-                  className="text-destructive hover:text-destructive hover:bg-destructive-tint"
+                  className="text-destructive-ink hover:bg-destructive-tint hover:text-destructive-ink"
                   onClick={async () => {
                     if (!confirm(`Excluir o pedido ${detalhe.numero_formatado}? Esta ação não pode ser desfeita.`)) return;
                     const ok = await excluirPedido(detalhe.id);
@@ -277,15 +291,15 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
               </div>
 
               <Tabs defaultValue="documento" className="space-y-3">
-                <TabsList className="flex-wrap h-auto gap-1">
-                  <TabsTrigger value="documento" className="gap-1">
-                    <FileText className="w-4 h-4" aria-hidden="true" /> Documento (v{versaoSel?.versao ?? 0})
+                <TabsList>
+                  <TabsTrigger value="documento">
+                    <FileText className="h-4 w-4" aria-hidden="true" /> Documento (v{versaoSel?.versao ?? 0})
                   </TabsTrigger>
-                  <TabsTrigger value="versoes" className="gap-1">
-                    <History className="w-4 h-4" aria-hidden="true" /> Versões ({versoes.length})
+                  <TabsTrigger value="versoes">
+                    <History className="h-4 w-4" aria-hidden="true" /> Versões ({versoes.length})
                   </TabsTrigger>
-                  <TabsTrigger value="historico" className="gap-1">
-                    <Clock className="w-4 h-4" aria-hidden="true" /> Histórico ({historico.length})
+                  <TabsTrigger value="historico">
+                    <Clock className="h-4 w-4" aria-hidden="true" /> Histórico ({historico.length})
                   </TabsTrigger>
                 </TabsList>
 
@@ -295,7 +309,7 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
                       <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" aria-hidden="true" />
                     </div>
                   ) : versaoSel ? (
-                    <div className="rounded-lg border border-border bg-card p-6">
+                    <div className="rounded-lg border border-border bg-card p-5">
                       <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                         <Badge variant="info" className="tabular-nums">
                           v{versaoSel.versao} · {new Date(versaoSel.gerado_em).toLocaleString('pt-BR')}
@@ -418,9 +432,9 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              {retornoTipo === 'deferido' && <CheckCircle2 className="w-4 h-4 text-success" aria-hidden="true" />}
-              {retornoTipo === 'indeferido' && <XCircle className="w-4 h-4 text-destructive" aria-hidden="true" />}
-              {retornoTipo === 'parcialmente_deferido' && <AlertCircle className="w-4 h-4 text-warning" aria-hidden="true" />}
+              {retornoTipo === 'deferido' && <CheckCircle2 className="h-4 w-4 text-success-ink" aria-hidden="true" />}
+              {retornoTipo === 'indeferido' && <XCircle className="h-4 w-4 text-destructive-ink" aria-hidden="true" />}
+              {retornoTipo === 'parcialmente_deferido' && <AlertCircle className="h-4 w-4 text-warning-ink" aria-hidden="true" />}
               Resultado do órgão
             </DialogTitle>
             <DialogDescription>

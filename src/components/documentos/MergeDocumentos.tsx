@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -158,9 +159,7 @@ export default function MergeDocumentos() {
         <div className="flex min-w-0 items-center gap-3">
           <FileArchive className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
           <h3 className="g-titulo-secao text-foreground">Unir arquivos</h3>
-          <span className="g-meta rounded-full bg-muted px-2 py-0.5 text-muted-foreground">
-            {arquivos.length} na lista
-          </span>
+          <Badge variant="muted" className="tabular-nums">{arquivos.length} na lista</Badge>
         </div>
         {/* Dois estados, um só de cada vez — `aria-pressed` diz qual está
             escolhido a quem não enxerga a tinta. */}
@@ -176,7 +175,7 @@ export default function MergeDocumentos() {
               onClick={() => setFormato(f)}
               aria-pressed={formato === f}
               className={cn(
-                'g-corpo min-h-[var(--g-linha)] px-4 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+                'g-corpo h-10 px-4 font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
                 formato === f
                   ? 'bg-primary-tint font-semibold text-foreground'
                   : 'text-muted-foreground hover:bg-muted',
@@ -189,7 +188,7 @@ export default function MergeDocumentos() {
       </div>
 
       {/* ── O que esta aba faz e o que ela NÃO faz ──────────────────────── */}
-      <p className="g-corpo flex items-start gap-2 rounded-xl border border-border bg-muted/40 px-4 py-3 text-muted-foreground">
+      <p className="g-corpo flex items-start gap-2 rounded-lg border border-border bg-secondary px-4 py-3 text-muted-foreground">
         <Info aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
         <span>
           <b className="text-foreground">PDF</b> concatena as páginas de cada arquivo na ordem da
@@ -235,12 +234,12 @@ export default function MergeDocumentos() {
           adicionar(e.dataTransfer?.files ?? null);
         }}
         className={cn(
-          'rounded-xl border-2 border-dashed border-border transition-colors',
+          'rounded-lg border-2 border-dashed border-border transition-colors duration-150',
           arrastandoArquivos && 'border-primary bg-primary-tint',
         )}
       >
         <label className="flex cursor-pointer flex-col items-center justify-center gap-1 px-4 py-8 text-center focus-within:outline-none focus-within:ring-2 focus-within:ring-ring">
-          <FilePlus className="mb-1 h-8 w-8 text-muted-foreground" aria-hidden="true" />
+          <FilePlus className="mb-1 h-6 w-6 text-muted-foreground" aria-hidden="true" />
           <span className="g-corpo font-medium text-foreground">
             Clique ou arraste arquivos aqui
           </span>
@@ -265,7 +264,7 @@ export default function MergeDocumentos() {
       {recusados.length > 0 && (
         <div
           role="alert"
-          className="rounded-xl border border-destructive-line bg-destructive-tint px-4 py-3"
+          className="rounded-lg border border-destructive-line bg-destructive-tint px-4 py-3"
         >
           <p className="g-corpo font-semibold text-destructive-ink">
             {recusados.length === 1
@@ -291,8 +290,8 @@ export default function MergeDocumentos() {
 
       {/* ── Lista com a ORDEM de processamento ──────────────────────────── */}
       {arquivos.length > 0 && (
-        <div className="overflow-hidden rounded-xl border border-border bg-card">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted/40 px-4 py-2">
+        <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-secondary px-4 py-2">
             <p className="g-meta font-semibold uppercase tracking-wide text-muted-foreground">
               Ordem de processamento — de cima para baixo
             </p>
@@ -347,7 +346,6 @@ export default function MergeDocumentos() {
                       variant="ghost"
                       onClick={() => mover(index, index - 1)}
                       disabled={index === 0 || processando}
-                      className="h-11 w-11"
                       title="Mover para cima"
                       aria-label={`Mover ${arq.nome} para cima`}
                     >
@@ -358,7 +356,6 @@ export default function MergeDocumentos() {
                       variant="ghost"
                       onClick={() => mover(index, index + 1)}
                       disabled={index === arquivos.length - 1 || processando}
-                      className="h-11 w-11"
                       title="Mover para baixo"
                       aria-label={`Mover ${arq.nome} para baixo`}
                     >
@@ -369,7 +366,7 @@ export default function MergeDocumentos() {
                       variant="ghost"
                       onClick={() => remover(arq.id)}
                       disabled={processando}
-                      className="h-11 w-11 text-destructive-ink hover:bg-destructive-tint hover:text-destructive-ink"
+                      className="text-destructive-ink hover:bg-destructive-tint hover:text-destructive-ink"
                       title="Remover da lista"
                       aria-label={`Remover ${arq.nome} da lista`}
                     >
@@ -398,7 +395,7 @@ export default function MergeDocumentos() {
       )}
 
       {arquivos.length >= 2 && (
-        <Button onClick={gerar} disabled={processando} className="min-h-[var(--g-linha)] w-full">
+        <Button onClick={gerar} disabled={processando} className="w-full">
           {progresso ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -425,7 +422,7 @@ export default function MergeDocumentos() {
           a contagem de páginas — que é exatamente o número que a versão de
           capas falsificava. */}
       {resultado && (
-        <div className="flex flex-col gap-3 rounded-xl border border-success-line bg-success-tint px-4 py-3">
+        <div className="flex flex-col gap-3 rounded-lg border border-success-line bg-success-tint px-4 py-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="g-corpo font-semibold text-success-ink">{resultado.nomeFinal}</p>
@@ -441,7 +438,10 @@ export default function MergeDocumentos() {
             <a
               href={resultado.url}
               download={resultado.nomeFinal}
-              className="g-corpo inline-flex min-h-[var(--g-linha)] shrink-0 items-center gap-2 rounded-[var(--g-raio)] bg-primary px-4 font-medium text-primary-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:w-full max-sm:justify-center"
+              // Mesma anatomia do Button primário (40px, raio 8, hover na tinta
+              // escura): é um <a download>, não um <button>, e por isso não
+              // passa pelo componente.
+              className="inline-flex h-10 shrink-0 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition-colors duration-150 hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 max-sm:w-full max-sm:justify-center"
             >
               <Download className="h-4 w-4" aria-hidden="true" />
               Baixar

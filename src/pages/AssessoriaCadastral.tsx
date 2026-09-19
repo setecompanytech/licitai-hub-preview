@@ -98,8 +98,8 @@ export default function AssessoriaCadastral() {
 
         <Tabs defaultValue="cadastros" className="space-y-4">
           <TabsList>
-            <TabsTrigger value="cadastros"><Building2 className="w-4 h-4 mr-2" aria-hidden="true" /> Cadastros</TabsTrigger>
-            <TabsTrigger value="documentos"><FileText className="w-4 h-4 mr-2" aria-hidden="true" /> Documentos</TabsTrigger>
+            <TabsTrigger value="cadastros"><Building2 className="h-4 w-4" aria-hidden="true" /> Cadastros</TabsTrigger>
+            <TabsTrigger value="documentos"><FileText className="h-4 w-4" aria-hidden="true" /> Documentos</TabsTrigger>
           </TabsList>
 
           <TabsContent value="cadastros" className="space-y-4">
@@ -107,11 +107,11 @@ export default function AssessoriaCadastral() {
               const cfg = statusConfig[c.status];
               const Icon = cfg.icon;
               return (
-                <Card key={c.id} className="p-6">
+                <Card key={c.id} className="p-5">
                   <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                     <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2 mb-1">
-                        <span className="text-lg font-semibold">{c.sigla}</span>
+                      <div className="mb-1 flex flex-wrap items-center gap-2">
+                        <span className="text-base font-semibold leading-6 text-foreground">{c.sigla}</span>
                         <Badge variant={cfg.variante}>
                           <Icon className="w-3 h-3 mr-1" aria-hidden="true" /> {cfg.label}
                         </Badge>
@@ -164,13 +164,13 @@ export default function AssessoriaCadastral() {
           </TabsContent>
 
           <TabsContent value="documentos">
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-4">Documentos para habilitação</h3>
+            <Card className="p-5">
+              <h3 className="mb-4 text-base font-semibold leading-6 text-foreground">Documentos para habilitação</h3>
               <div className="space-y-2">
                 {documentosNecessarios.map((doc, i) => {
                   const cfg = docStatusConfig[doc.status];
                   return (
-                    <div key={i} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-muted p-3">
+                    <div key={i} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-card p-3 transition-colors duration-150 hover:bg-muted/60">
                       <div className="flex min-w-0 items-center gap-3">
                         <FileText className="w-4 h-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                         <div className="min-w-0">

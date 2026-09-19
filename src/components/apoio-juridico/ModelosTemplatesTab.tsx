@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { toast } from 'sonner';
 import { streamAIChat } from '@/lib/ai-stream';
 import ReactMarkdown from 'react-markdown';
@@ -793,8 +794,8 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
             <p className="text-xs text-muted-foreground tabular-nums">
               {(editalUploadFile.size / 1024).toFixed(0)} KB
               {editalExtracted && (
-                <span className="ml-2 inline-flex items-center gap-1 text-success">
-                  <CheckCircle className="w-3 h-3" aria-hidden="true" /> Extraído
+                <span className="ml-2 inline-flex items-center gap-1 text-success-ink">
+                  <CheckCircle className="h-3 w-3" aria-hidden="true" /> Extraído
                 </span>
               )}
               {extractingEdital && (
@@ -810,7 +811,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                 <Sparkles aria-hidden="true" /> Extrair
               </Button>
             )}
-            <Button variant="ghost" size="sm" className="h-9 w-9 p-0" onClick={removeEditalUpload} aria-label="Remover edital enviado">
+            <Button variant="ghost" size="icon-sm" onClick={removeEditalUpload} aria-label="Remover edital enviado">
               <X aria-hidden="true" />
             </Button>
           </div>
@@ -821,15 +822,12 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
       {showPedidos && (
         <div className="rounded-lg border border-border bg-card p-4 shadow-sm space-y-2">
           {pedidos.length === 0 ? (
-            <div className="flex flex-col items-center text-center py-6 gap-3">
-              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
-                <FileText className="w-6 h-6" aria-hidden="true" />
-              </span>
-              <p className="text-base font-semibold">Nenhum documento gerado ainda</p>
-              <p className="text-sm text-muted-foreground max-w-md">
-                Selecione um modelo abaixo para começar — cada documento recebe numeração híbrida e versionamento automático.
-              </p>
-            </div>
+            <EstadoVazio
+              tamanho="compacto"
+              icone={<FileText />}
+              titulo="Nenhum documento gerado ainda"
+              descricao="Selecione um modelo abaixo para começar — cada documento recebe numeração híbrida e versionamento automático."
+            />
           ) : (
             <PedidosJuridicosList
               onSelecionar={(p) => {
@@ -854,7 +852,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
           <span className="text-xs text-muted-foreground mr-1 hidden sm:inline">Tamanho da fonte</span>
           {isFontCapped && (
             <span
-              className="text-xs text-warning mr-1"
+              className="mr-1 text-xs text-warning-ink"
               title="O tamanho foi limitado para caber na tela atual"
             >
               limitado p/ tela
@@ -862,8 +860,8 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
           )}
           <Button
             variant="outline"
-            size="sm"
-            className="h-8 w-8 p-0 shrink-0"
+            size="icon-sm"
+            className="shrink-0"
             disabled={filterFontStep <= 0}
             onClick={() => setFilterFontStep(s => Math.max(0, s - 1))}
             title="Diminuir tamanho da fonte dos filtros"
@@ -876,8 +874,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
           </span>
           <Button
             variant="outline"
-            size="sm"
-            className="h-8 w-8 p-0"
+            size="icon-sm"
             disabled={filterFontStep >= FILTER_FONT_SCALES.length - 1}
             onClick={() => setFilterFontStep(s => Math.min(FILTER_FONT_SCALES.length - 1, s + 1))}
             title="Aumentar tamanho da fonte dos filtros"
@@ -888,8 +885,8 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
           {filterFontStep !== 1 && (
             <Button
               variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0 text-muted-foreground"
+              size="icon-sm"
+              className="text-muted-foreground"
               onClick={() => setFilterFontStep(1)}
               title="Restaurar tamanho padrão"
               aria-label="Restaurar tamanho padrão"
@@ -985,7 +982,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                 {cat} · {count}
                 {docCount > 0 && (
                   <span
-                    className={`inline-block px-1.5 rounded-full text-xs font-semibold tabular-nums ${ativo ? 'bg-primary-hover text-primary-foreground' : 'bg-muted text-foreground'}`}
+                    className={`inline-block rounded-sm px-1.5 text-xs font-semibold tabular-nums ${ativo ? 'bg-primary-hover text-primary-foreground' : 'bg-muted text-foreground'}`}
                     title={`${docCount} documento(s) emitido(s)`}
                   >
                     {docCount}
@@ -1017,7 +1014,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
 
         {/* Detalhes da modalidade (colapsável, opcional) */}
         {modalidade && showModalidadeInfo && (
-          <div className="p-4 rounded-md bg-muted/50 space-y-3 text-sm border border-border">
+          <div className="space-y-3 rounded-md border border-border bg-secondary p-4 text-sm">
             <div>
               <p className="font-semibold text-foreground">{modalidade.nome}</p>
               <p className="text-muted-foreground mt-1">{modalidade.descricao}</p>
@@ -1029,7 +1026,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                 <div className="space-y-1">
                   {modalidade.etapas.map(e => (
                     <div key={e.ordem} className={`flex items-start gap-2 p-2 rounded-md ${etapaFiltro === e.nome ? 'bg-primary-tint border border-primary/40' : ''}`}>
-                      <span className="w-5 h-5 rounded-full bg-muted text-foreground flex items-center justify-center flex-shrink-0 text-xs font-bold tabular-nums">{e.ordem}</span>
+                      <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md bg-muted text-xs font-semibold tabular-nums text-foreground">{e.ordem}</span>
                       <div>
                         <p className="font-medium text-sm">{e.nome}</p>
                         <p className="text-muted-foreground text-xs">{e.descricao}</p>
@@ -1082,7 +1079,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
       {inlineMode && activeModelo ? (
         <section
           aria-label={`Redigir: ${activeModelo.titulo}`}
-          className="bg-background border border-border rounded-lg shadow-sm overflow-hidden flex flex-col"
+          className="flex flex-col overflow-hidden rounded-lg border border-border bg-card shadow-sm"
           style={{ minHeight: 'calc(100vh - 180px)' }}
         >
           {activeModelo && (
@@ -1141,12 +1138,12 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
               <div className={`flex-1 grid grid-cols-1 overflow-hidden ${mostrarPreview ? 'lg:grid-cols-[minmax(0,420px)_1fr]' : ''}`}>
                 {/* Coluna esquerda: formulário com scroll. Sem preview, ocupa a
                     largura toda (centrado) — mais espaço para preencher o pedido. */}
-                <div className={`overflow-y-auto px-6 py-4 space-y-4 bg-muted/30 ${mostrarPreview ? 'border-r border-border' : 'w-full max-w-5xl mx-auto'}`}>
-                  <div className="rounded-lg border border-border bg-card p-6 space-y-4 shadow-sm">
+                <div className={`overflow-y-auto px-6 py-4 space-y-4 bg-secondary ${mostrarPreview ? 'border-r border-border' : 'w-full max-w-5xl mx-auto'}`}>
+                  <div className="space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div className="flex items-center gap-2 flex-wrap">
-              <Sparkles className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
-              <h3 className="text-lg font-semibold">Gerar: {activeModelo.titulo}</h3>
+              <Sparkles className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+              <h3 className="text-lg font-semibold leading-6 text-foreground">Gerar: {activeModelo.titulo}</h3>
               <Badge variant="info">{activeModelo.fundamentacao}</Badge>
               {modalidade && <Badge variant="muted">{modalidade.nome}</Badge>}
               {etapaFiltro && <Badge variant="muted">{etapaFiltro}</Badge>}
@@ -1158,13 +1155,13 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                 </Badge>
               )}
             </div>
-            <Button variant="ghost" size="sm" className="h-9 w-9 p-0" onClick={resetGeneration} aria-label="Fechar e voltar para a lista de modelos">
+            <Button variant="ghost" size="icon-sm" onClick={resetGeneration} aria-label="Fechar e voltar para a lista de modelos">
               <X aria-hidden="true" />
             </Button>
           </div>
 
           {/* Empresa & Representante Legal Selector */}
-          <div className="rounded-md border border-border bg-muted/50 p-4 space-y-3">
+          <div className="rounded-md border border-border bg-secondary p-4 space-y-3">
             <div className="flex items-center gap-2">
               <Building2 className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
               <h4 className="text-base font-semibold">Dados Cadastrais da Empresa</h4>
@@ -1213,7 +1210,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                 </div>
 
                 {selectedEmpresa && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-muted-foreground bg-background rounded-md p-3 border border-border">
+                  <div className="grid grid-cols-1 gap-3 rounded-md border border-border bg-card p-3 text-sm text-muted-foreground md:grid-cols-2">
                     {incluirDadosEmpresa && (
                       <div className="space-y-1">
                         <p className="font-semibold text-foreground text-sm flex items-center gap-1"><Building2 className="w-4 h-4 text-muted-foreground" aria-hidden="true" /> Empresa</p>
@@ -1240,7 +1237,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                             {selectedEmpresa.rep_nacionalidade && <p><strong>Nacionalidade:</strong> {selectedEmpresa.rep_nacionalidade}</p>}
                           </>
                         ) : (
-                          <p className="italic text-destructive">Representante não cadastrado. Acesse Configurações → Empresa.</p>
+                          <p className="italic text-destructive-ink">Representante não cadastrado. Acesse Configurações → Empresa.</p>
                         )}
                       </div>
                     )}
@@ -1270,11 +1267,11 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
               ) : (
                 <>
                   {fatosPeticao.length > 0 ? (
-                    <div className="rounded-md border border-border bg-muted/50 p-4 space-y-3">
+                    <div className="rounded-md border border-border bg-secondary p-4 space-y-3">
                       <div className="flex items-center justify-between gap-2 flex-wrap">
                         <div className="flex items-center gap-2">
-                          <CheckCircle className="w-4 h-4 text-success" aria-hidden="true" />
-                          <h4 className="text-base font-semibold">{fatosPeticao.length} fato(s)/irregularidade(s) extraído(s) dos documentos</h4>
+                          <CheckCircle className="h-4 w-4 text-success-ink" aria-hidden="true" />
+                          <h4 className="text-base font-semibold leading-6 text-foreground">{fatosPeticao.length} fato(s)/irregularidade(s) extraído(s) dos documentos</h4>
                         </div>
                         <Button variant="ghost" size="sm" onClick={() => setShowPeticaoUploader(true)} className="text-primary hover:text-primary">
                           Reanalisar documentos
@@ -1401,7 +1398,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
 
                 {/* Coluna direita: preview live ABNT — sob demanda */}
                 {mostrarPreview && (
-                <div className="flex flex-col overflow-hidden bg-background">
+                <div className="flex flex-col overflow-hidden bg-card">
                   <div className="flex items-center justify-between gap-3 px-6 py-3 border-b border-border shrink-0 flex-wrap">
                     <div className="flex items-center gap-2 min-w-0 flex-wrap">
                       <Eye className="w-5 h-5 text-muted-foreground shrink-0" aria-hidden="true" />
@@ -1524,23 +1521,26 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                     </div>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto bg-muted/30 p-6">
+                  <div className="flex-1 overflow-y-auto bg-secondary p-6">
                     {!resultado && !gerando && (
-                      <div className="h-full flex flex-col items-center justify-center text-center gap-3 max-w-md mx-auto">
-                        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
-                          <FileCode className="w-6 h-6" aria-hidden="true" />
-                        </span>
-                        <p className="text-base font-semibold">Preview do documento aparecerá aqui</p>
-                        <p className="text-sm text-muted-foreground">
-                          Preencha o contexto à esquerda e clique em <strong>Gerar</strong>.
-                          O texto é renderizado em tempo real conforme a IA escreve, com formatação ABNT
-                          (margens 3cm/2cm, espaçamento 1,5, citações recuadas).
-                        </p>
+                      <div className="flex h-full items-center justify-center">
+                        <EstadoVazio
+                          icone={<FileCode />}
+                          titulo="Preview do documento aparecerá aqui"
+                          descricao={
+                            <>
+                              Preencha o contexto à esquerda e clique em <strong>Gerar</strong>.
+                              O texto é renderizado em tempo real conforme a IA escreve, com formatação ABNT
+                              (margens 3cm/2cm, espaçamento 1,5, citações recuadas).
+                            </>
+                          }
+                        />
                       </div>
                     )}
 
                     {(resultado || gerando) && (
-                      <div className="bg-background mx-auto rounded-md shadow-md border border-border max-w-[210mm] min-h-[297mm] p-6 sm:p-12">
+                      /* A "folha" da prévia é branca sobre a área rebaixada. */
+                      <div className="mx-auto min-h-[297mm] max-w-[210mm] rounded-md border border-border bg-card p-6 shadow-md sm:p-12">
                         <div className="prose prose-sm max-w-none dark:prose-invert text-sm">
                           <ReactMarkdown>{resultado || ''}</ReactMarkdown>
                           {gerando && (
@@ -1551,7 +1551,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                     )}
                   </div>
 
-                  <div className="flex items-center gap-2 px-6 py-2 border-t border-border bg-muted/30 shrink-0">
+                  <div className="flex items-center gap-2 px-6 py-2 border-t border-border bg-secondary shrink-0">
                     <Info className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
                     <p className="text-xs text-muted-foreground truncate">
                       ABNT NBR 14724 · Times New Roman 12pt · Entrelinhas 1,5 · Citações recuadas 4cm · Margens 3cm/2cm
@@ -1596,20 +1596,22 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
       {!inlineMode && (<>
       {/* ── Acervo de Modelos – Layout Forense (estilo Vade Mecum) ── */}
       {filteredModelos.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border bg-card p-10 flex flex-col items-center text-center gap-3">
-          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
-            <Filter className="w-6 h-6" aria-hidden="true" />
-          </span>
-          <p className="text-base font-semibold">Nenhum modelo encontrado</p>
-          <p className="text-sm text-muted-foreground">Nenhum modelo corresponde aos filtros aplicados.</p>
-          <Button variant="outline" onClick={() => { setSearch(''); setCatFilter(null); }}>
-            Limpar filtros
-          </Button>
+        <div className="rounded-lg border border-dashed border-border bg-card">
+          <EstadoVazio
+            icone={<Filter />}
+            titulo="Nenhum modelo encontrado"
+            descricao="Nenhum modelo corresponde aos filtros aplicados."
+            acao={
+              <Button variant="outline" onClick={() => { setSearch(''); setCatFilter(null); }}>
+                Limpar filtros
+              </Button>
+            }
+          />
         </div>
       ) : (
         <div className="rounded-lg border border-border bg-card overflow-hidden shadow-sm">
           {/* Cabeçalho institucional */}
-          <div className="px-4 py-3 border-b-2 border-border bg-muted/50">
+          <div className="border-b border-border bg-secondary px-4 py-3">
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div className="min-w-0">
                 <p className="text-xs uppercase tracking-widest text-muted-foreground font-semibold">
@@ -1635,14 +1637,14 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
               const romano = ['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XIII','XIV','XV'][catIdx] || String(catIdx + 1);
 
               return (
-                <section key={cat} className="bg-background">
+                <section key={cat} className="bg-card">
                   {/* Cabeçalho do capítulo — faixa institucional
                       Tipografia e espaçamento uniformes em todos os breakpoints.
                       Contraste AA garantido: bg-secondary + text-secondary-foreground
-                      (par de tokens validado em light/dark). Fallback sólido antes
-                      do blur para navegadores sem backdrop-filter. O filete à
+                      (par de tokens validado em light/dark). Fundo sólido: o
+                      Design System v3 não usa vidro (blur/alfa). O filete à
                       esquerda é a primária (era hsl() literal em sombra inset). */}
-                  <header className="sticky top-0 z-[1] flex items-center justify-between gap-3 px-4 py-2 bg-secondary supports-[backdrop-filter]:bg-secondary/95 backdrop-blur-sm border-y border-border border-l-4 border-l-primary text-secondary-foreground">
+                  <header className="sticky top-0 z-[1] flex items-center justify-between gap-3 border-y border-border border-l-4 border-l-primary bg-secondary px-4 py-2 text-secondary-foreground">
                     <div className="flex items-baseline gap-2.5 min-w-0">
                       <span className="text-xs font-bold text-secondary-foreground tabular-nums tracking-wider shrink-0">
                         CAP. {romano}
@@ -1689,7 +1691,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
           </div>
 
           {/* Rodapé institucional */}
-          <div className="px-4 py-2 border-t border-border bg-muted/50 flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border bg-secondary px-4 py-2">
             <p className="text-xs text-muted-foreground">
               Documento gerado em conformidade com a NBR 14.724 · ABNT
             </p>
@@ -1732,7 +1734,7 @@ function DataSelector<T>({
           onChange={e => setSearchTerm(e.target.value)}
         />
       )}
-      <div className="flex flex-wrap gap-2 max-h-[120px] overflow-y-auto p-2 rounded-md bg-muted/50">
+      <div className="flex flex-wrap gap-2 max-h-[120px] overflow-y-auto p-2 rounded-md bg-secondary">
         {loading ? (
           <div className="flex flex-wrap gap-2" role="status" aria-label="Carregando">
             <Skeleton className="h-8 w-28 rounded-md" />

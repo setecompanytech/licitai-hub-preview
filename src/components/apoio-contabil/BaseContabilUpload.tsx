@@ -213,10 +213,10 @@ export default function BaseContabilUpload() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-4">
+      <section className="rounded-lg border border-border bg-card p-5 shadow-sm space-y-4">
         <div className="space-y-1">
-          <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-            <Upload className="w-5 h-5 text-primary" aria-hidden="true" />
+          <h2 className="flex items-center gap-2 text-lg font-semibold leading-6 text-foreground">
+            <Upload className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
             Alimentar Base Contábil da IA
           </h2>
           <p className="text-sm text-muted-foreground">
@@ -282,9 +282,9 @@ export default function BaseContabilUpload() {
         </Button>
       </section>
 
-      <section className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-4">
-        <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-          <BookOpen className="w-5 h-5 text-primary" aria-hidden="true" />
+      <section className="rounded-lg border border-border bg-card p-5 shadow-sm space-y-4">
+        <h2 className="flex items-center gap-2 text-lg font-semibold leading-6 text-foreground">
+          <BookOpen className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
           Documentos na Base ({docs.length})
         </h2>
 
@@ -345,7 +345,7 @@ export default function BaseContabilUpload() {
             {filtered.map(doc => {
               const Icon = TipoIcon(doc.tipo);
               return (
-                <div key={doc.id} className="flex items-start gap-3 rounded-md border border-border p-3">
+                <div key={doc.id} className="flex items-start gap-3 rounded-md border border-border bg-card p-3 transition-colors duration-150 hover:bg-muted/60">
                   <div className="w-10 h-10 rounded-md bg-primary-tint text-primary flex items-center justify-center flex-shrink-0">
                     <Icon className="w-5 h-5" aria-hidden="true" />
                   </div>
@@ -359,7 +359,7 @@ export default function BaseContabilUpload() {
                     {doc.tags && doc.tags.length > 0 && (
                       <div className="flex flex-wrap gap-2 mt-1">
                         {doc.tags.map((tag, i) => (
-                          <span key={i} className="inline-flex items-center gap-1 text-xs text-primary">
+                          <span key={i} className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                             <Tag className="w-3 h-3" aria-hidden="true" />{tag}
                           </span>
                         ))}
@@ -375,7 +375,7 @@ export default function BaseContabilUpload() {
                     variant="ghost"
                     onClick={() => handleDelete(doc.id)}
                     aria-label={`Remover ${doc.titulo}`}
-                    className="text-destructive hover:text-destructive"
+                    className="text-destructive-ink hover:bg-destructive-tint hover:text-destructive-ink"
                   >
                     <Trash2 aria-hidden="true" />
                   </Button>

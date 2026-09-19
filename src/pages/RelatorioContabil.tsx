@@ -3,6 +3,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -52,20 +53,19 @@ function KpiCard({ label, value, sub, icon: Icon, color }: {
   label: string; value: string; sub?: string; icon: React.ElementType; color: string;
 }) {
   return (
-    <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="text-sm text-muted-foreground font-medium truncate">{label}</p>
-          {/* Mesma régua do LinhaKpis compartilhado: 32/40 no desktop, um
-              degrau abaixo (2xl) até md para "R$ 1.118.000/mês" caber em
-              coluna de 4. `break-normal`: o valor só quebra no espaço após
-              "R$", nunca no meio do número. */}
-          <p className="mt-1 max-w-full break-normal text-2xl leading-8 md:text-[2rem] md:leading-10 font-bold tabular-nums">{value}</p>
-          {sub && <p className="text-xs text-muted-foreground mt-1 truncate">{sub}</p>}
-        </div>
-        <div className="p-2 rounded-md bg-muted flex-shrink-0">
-          <Icon className="w-4 h-4" style={{ color }} aria-hidden="true" />
-        </div>
+    <div className="flex min-h-[112px] flex-col justify-between gap-2 rounded-lg border border-border bg-card p-4 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <p className="min-w-0 truncate text-sm font-medium leading-5 text-muted-foreground">{label}</p>
+        <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted">
+          <Icon className="h-4 w-4" style={{ color }} />
+        </span>
+      </div>
+      <div className="min-w-0">
+        {/* Mesma régua do StatCard do painel: 28/36 em 600, dígitos tabulares.
+            `break-normal`: o valor só quebra no espaço após "R$", nunca no
+            meio do número. */}
+        <p className="max-w-full break-normal text-[1.75rem] font-semibold leading-9 tabular-nums text-foreground">{value}</p>
+        {sub && <p className="mt-0.5 truncate text-xs leading-4 text-muted-foreground">{sub}</p>}
       </div>
     </div>
   );
@@ -103,8 +103,8 @@ function ComparativoCenarios() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card className="p-6">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+        <Card className="p-5">
+          <h2 className="mb-4 flex items-center gap-2 text-base font-semibold leading-6 text-foreground">
             <BarChart3 className="w-5 h-5 text-muted-foreground" aria-hidden="true" /> Receita vs Custos vs Lucro (R$/mês)
           </h2>
           <ResponsiveContainer width="100%" height={280}>
@@ -121,8 +121,8 @@ function ComparativoCenarios() {
           </ResponsiveContainer>
         </Card>
 
-        <Card className="p-6">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+        <Card className="p-5">
+          <h2 className="mb-4 flex items-center gap-2 text-base font-semibold leading-6 text-foreground">
             <TrendingUp className="w-5 h-5 text-muted-foreground" aria-hidden="true" /> Margens e Composição de Custos (%)
           </h2>
           <ResponsiveContainer width="100%" height={280}>
@@ -141,17 +141,20 @@ function ComparativoCenarios() {
       </div>
 
       {/* Tabela consolidada */}
-      <Card className="p-6">
-        <h2 className="text-lg font-semibold mb-4">Tabela Consolidada — Todos os Cenários</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm border-collapse">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="text-left p-2 text-sm font-semibold text-muted-foreground">Indicador</th>
-                {cenarios.map(c => <th key={c.clientes} className="text-right p-2 text-sm font-semibold">{c.label}</th>)}
-              </tr>
-            </thead>
-            <tbody>
+      <Card className="p-5">
+        <h2 className="mb-4 text-base font-semibold leading-6 text-foreground">Tabela Consolidada — Todos os Cenários</h2>
+        {/* Tabela no padrão v3: cabeçalho rebaixado, rótulos de 12px, linhas
+            de 48px, números à direita com dígitos tabulares. A rolagem fica
+            presa ao contêiner. */}
+        <div className="overflow-hidden rounded-md border border-border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Indicador</TableHead>
+                {cenarios.map(c => <TableHead key={c.clientes} className="text-right">{c.label}</TableHead>)}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {[
                 { label: 'Receita Bruta/mês', fn: (c: CenarioClientes) => fmt(c.receitaBruta) },
                 { label: 'Equipe', fn: (c: CenarioClientes) => `${c.equipe} pessoas` },
@@ -164,15 +167,15 @@ function ComparativoCenarios() {
                 { label: 'Lucro Líquido/ano', fn: (c: CenarioClientes) => fmt(c.lucroAnual) },
                 { label: 'Custo por cliente', fn: (c: CenarioClientes) => fmt(c.custoCliente) },
               ].map((row) => (
-                <tr key={row.label} className="border-b border-border hover:bg-muted">
-                  <td className="p-2 font-medium text-muted-foreground">{row.label}</td>
+                <TableRow key={row.label}>
+                  <TableCell className="font-medium text-muted-foreground">{row.label}</TableCell>
                   {cenarios.map(c => (
-                    <td key={c.clientes} className="p-2 text-right tabular-nums">{row.fn(c)}</td>
+                    <TableCell key={c.clientes} className="text-right tabular-nums">{row.fn(c)}</TableCell>
                   ))}
-                </tr>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       </Card>
     </div>
@@ -237,8 +240,8 @@ function DREComparativa() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card className="p-6">
-          <h2 className="text-lg font-semibold mb-4">Tributos vs Lucro por Regime</h2>
+        <Card className="p-5">
+          <h2 className="mb-4 text-base font-semibold leading-6 text-foreground">Tributos vs Lucro por Regime</h2>
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={compData.filter((_, i) => i !== 0 || simplesDisponivel)}>
               <CartesianGrid strokeDasharray="3 3" stroke={COR_GRADE} />
@@ -252,8 +255,8 @@ function DREComparativa() {
           </ResponsiveContainer>
         </Card>
 
-        <Card className="p-6">
-          <h2 className="text-lg font-semibold mb-4">Carga Tributária Efetiva por Escala</h2>
+        <Card className="p-5">
+          <h2 className="mb-4 text-base font-semibold leading-6 text-foreground">Carga Tributária Efetiva por Escala</h2>
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={cargaEfetiva}>
               <CartesianGrid strokeDasharray="3 3" stroke={COR_GRADE} />
@@ -270,38 +273,38 @@ function DREComparativa() {
       </div>
 
       {/* DRE Table */}
-      <Card className="p-6">
-        <h2 className="text-lg font-semibold mb-4">DRE Comparativa — {cenario.label}</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm border-collapse">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="text-left p-2 text-sm font-semibold text-muted-foreground">Item</th>
+      <Card className="p-5">
+        <h2 className="mb-4 text-base font-semibold leading-6 text-foreground">DRE Comparativa — {cenario.label}</h2>
+        <div className="overflow-hidden rounded-md border border-border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Item</TableHead>
                 {regimeLabels.map((r, i) => (
-                  <th key={r} className="text-right p-2 text-sm font-semibold" style={{ color: regimeCores[i] }}>{r}</th>
+                  <TableHead key={r} className="text-right" style={{ color: regimeCores[i] }}>{r}</TableHead>
                 ))}
-              </tr>
-            </thead>
-            <tbody>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {dres[0].map((line, idx) => {
                 const isBold = line.grupo === 'receita' || line.grupo === 'resultado' || line.item === 'Total Tributos';
                 return (
-                  <tr key={line.item} className={`border-b border-border ${isBold ? 'bg-muted font-semibold' : ''} hover:bg-muted`}>
-                    <td className="p-2">{line.item}</td>
+                  <TableRow key={line.item} className={isBold ? 'bg-secondary font-semibold' : undefined}>
+                    <TableCell>{line.item}</TableCell>
                     {dres.map((dre, ri) => {
                       const disabled = ri === 0 && !simplesDisponivel;
                       const val = dre[idx];
                       return (
-                        <td key={ri} className={`p-2 text-right tabular-nums ${val.valor < 0 ? 'text-destructive' : ''}`}>
+                        <TableCell key={ri} className={`text-right tabular-nums ${val.valor < 0 ? 'text-destructive-ink' : ''}`}>
                           {disabled ? '—' : fmt(Math.abs(val.valor))}
-                        </td>
+                        </TableCell>
                       );
                     })}
-                  </tr>
+                  </TableRow>
                 );
               })}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       </Card>
     </div>
@@ -337,8 +340,8 @@ function ComposicaoCustos() {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card className="p-6">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+        <Card className="p-5">
+          <h2 className="mb-4 flex items-center gap-2 text-base font-semibold leading-6 text-foreground">
             <PieIcon className="w-5 h-5 text-muted-foreground" aria-hidden="true" /> Composição de Custos (500 clientes)
           </h2>
           <ResponsiveContainer width="100%" height={300}>
@@ -351,8 +354,8 @@ function ComposicaoCustos() {
           </ResponsiveContainer>
         </Card>
 
-        <Card className="p-6">
-          <h2 className="text-lg font-semibold mb-4">Eficiência de Infraestrutura por Escala</h2>
+        <Card className="p-5">
+          <h2 className="mb-4 text-base font-semibold leading-6 text-foreground">Eficiência de Infraestrutura por Escala</h2>
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={escalaInfra}>
               <defs>
@@ -371,8 +374,8 @@ function ComposicaoCustos() {
         </Card>
       </div>
 
-      <Card className="p-6">
-        <h2 className="text-lg font-semibold mb-4">Radar de Performance por Escala</h2>
+      <Card className="p-5">
+        <h2 className="mb-4 text-base font-semibold leading-6 text-foreground">Radar de Performance por Escala</h2>
         <ResponsiveContainer width="100%" height={320}>
           <RadarChart data={radarData}>
             <PolarGrid stroke={COR_GRADE} />
@@ -416,8 +419,8 @@ function MercadoRegional() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card className="p-6">
-          <h2 className="text-lg font-semibold mb-4">Penetração de Mercado — Pará</h2>
+        <Card className="p-5">
+          <h2 className="mb-4 text-base font-semibold leading-6 text-foreground">Penetração de Mercado — Pará</h2>
           <ResponsiveContainer width="100%" height={250}>
             <BarChart data={concData} layout="vertical">
               <CartesianGrid strokeDasharray="3 3" stroke={COR_GRADE} />
@@ -429,8 +432,8 @@ function MercadoRegional() {
           </ResponsiveContainer>
         </Card>
 
-        <Card className="p-6">
-          <h2 className="text-lg font-semibold mb-4">Projeção de Crescimento — Regional PA</h2>
+        <Card className="p-5">
+          <h2 className="mb-4 text-base font-semibold leading-6 text-foreground">Projeção de Crescimento — Regional PA</h2>
           <ResponsiveContainer width="100%" height={250}>
             <AreaChart data={projecaoData}>
               <defs>
@@ -450,8 +453,8 @@ function MercadoRegional() {
       </div>
 
       {/* Polos */}
-      <Card className="p-6">
-        <h2 className="text-lg font-semibold mb-4">Polos Econômicos Estratégicos — Pará</h2>
+      <Card className="p-5">
+        <h2 className="mb-4 text-base font-semibold leading-6 text-foreground">Polos Econômicos Estratégicos — Pará</h2>
         <div className="flex flex-wrap gap-2">
           {mercadoPara.polos.map(p => (
             <Badge key={p} variant="muted">{p}</Badge>
@@ -468,9 +471,9 @@ function MercadoRegional() {
 // ─── Parecer Técnico ───
 function ParecerTecnico() {
   return (
-    <Card className="p-6 space-y-6">
-      <h2 className="text-lg font-semibold flex items-center gap-2">
-        <FileText className="w-5 h-5 text-muted-foreground" aria-hidden="true" /> Parecer Técnico-Contábil
+    <Card className="space-y-6 p-5">
+      <h2 className="flex items-center gap-2 text-lg font-semibold leading-6 text-foreground">
+        <FileText className="h-5 w-5 text-muted-foreground" aria-hidden="true" /> Parecer Técnico-Contábil
       </h2>
 
       <div className="space-y-4 text-base text-foreground">
@@ -558,35 +561,38 @@ function ParecerTecnico() {
 export default function RelatorioContabil() {
   return (
     <AppLayout>
-      <div className="space-y-6 max-w-7xl mx-auto">
+      <div className="space-y-6">
         <CabecalhoPagina
           icone={<FileText />}
           titulo="Relatório Contábil e Tributário"
           descricao="Análise de viabilidade da plataforma Praefectus — SaaS B2B para licitações públicas. Elaborado conforme ABNT NBR 14724 · NBC TSP · Lei 14.133/2021 · Lei Complementar 123/2006."
         >
+          {/* Metadados do relatório: chips neutros — azul fica para informação
+              de estado, não para data e revisão. */}
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="info">Data: {new Date().toLocaleDateString('pt-BR')}</Badge>
-            <Badge variant="info">Classificação: Confidencial</Badge>
-            <Badge variant="info">Revisão: 1.0</Badge>
+            <Badge variant="muted">Data: {new Date().toLocaleDateString('pt-BR')}</Badge>
+            <Badge variant="muted">Classificação: Confidencial</Badge>
+            <Badge variant="muted">Revisão: 1.0</Badge>
           </div>
         </CabecalhoPagina>
 
+        {/* Fila sublinhada que rola quando não cabe — rótulos inteiros. */}
         <Tabs defaultValue="comparativo" className="w-full space-y-4">
-          <TabsList className="flex-wrap h-auto gap-1">
-            <TabsTrigger value="comparativo">
-              <BarChart3 className="w-4 h-4 mr-1" aria-hidden="true" /> Cenários
+          <TabsList className="flex-nowrap overflow-x-auto [scrollbar-width:thin]">
+            <TabsTrigger value="comparativo" className="shrink-0">
+              <BarChart3 className="h-4 w-4" aria-hidden="true" /> Cenários
             </TabsTrigger>
-            <TabsTrigger value="dre">
-              <Scale className="w-4 h-4 mr-1" aria-hidden="true" /> DRE Tributária
+            <TabsTrigger value="dre" className="shrink-0">
+              <Scale className="h-4 w-4" aria-hidden="true" /> DRE Tributária
             </TabsTrigger>
-            <TabsTrigger value="custos">
-              <PieIcon className="w-4 h-4 mr-1" aria-hidden="true" /> Custos
+            <TabsTrigger value="custos" className="shrink-0">
+              <PieIcon className="h-4 w-4" aria-hidden="true" /> Custos
             </TabsTrigger>
-            <TabsTrigger value="mercado">
-              <Building2 className="w-4 h-4 mr-1" aria-hidden="true" /> Mercado PA
+            <TabsTrigger value="mercado" className="shrink-0">
+              <Building2 className="h-4 w-4" aria-hidden="true" /> Mercado PA
             </TabsTrigger>
-            <TabsTrigger value="parecer">
-              <FileText className="w-4 h-4 mr-1" aria-hidden="true" /> Parecer
+            <TabsTrigger value="parecer" className="shrink-0">
+              <FileText className="h-4 w-4" aria-hidden="true" /> Parecer
             </TabsTrigger>
           </TabsList>
 

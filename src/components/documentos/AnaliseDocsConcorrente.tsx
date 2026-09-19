@@ -344,7 +344,7 @@ Este relatório possui finalidade meramente informativa e não substitui parecer
       {/* Header */}
       <div className="flex flex-wrap items-center gap-3">
         <Scale className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
-        <h3 className="text-lg font-semibold">Análise jurídico-contábil de concorrente</h3>
+        <h3 className="text-lg font-semibold leading-6 text-foreground">Análise jurídico-contábil de concorrente</h3>
         <Badge variant="muted">Lei 14.133/2021</Badge>
       </div>
 
@@ -407,7 +407,7 @@ Este relatório possui finalidade meramente informativa e não substitui parecer
           <button
             type="button"
             onClick={() => editalRef.current?.click()}
-            className="flex w-full items-center gap-3 rounded-lg border border-dashed border-border p-4 transition-colors hover:border-primary hover:bg-primary-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex w-full items-center gap-3 rounded-lg border border-dashed border-border p-4 transition-colors duration-150 hover:border-primary/40 hover:bg-primary-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <Upload className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
             <div className="text-left">
@@ -435,9 +435,9 @@ Este relatório possui finalidade meramente informativa e não substitui parecer
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
-          className="flex w-full flex-col items-center gap-2 rounded-lg border-2 border-dashed border-border p-6 transition-colors hover:border-primary hover:bg-primary-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="flex w-full flex-col items-center gap-2 rounded-lg border-2 border-dashed border-border p-6 transition-colors duration-150 hover:border-primary/40 hover:bg-primary-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <Upload className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
+          <Upload className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
           <span className="text-base font-medium text-foreground">
             Envie documentos do concorrente para análise
           </span>
@@ -519,7 +519,7 @@ Este relatório possui finalidade meramente informativa e não substitui parecer
       {resultado && (
         <div className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h4 className="text-lg font-semibold">Relatório de análise jurídico-contábil</h4>
+            <h4 className="text-lg font-semibold leading-6 text-foreground">Relatório de análise jurídico-contábil</h4>
             <div className="flex flex-wrap items-center gap-2">
               <Button size="sm" variant="outline" onClick={handleDownloadPDF}>
                 <Download className="h-4 w-4" aria-hidden="true" /> PDF
@@ -533,20 +533,24 @@ Este relatório possui finalidade meramente informativa e não substitui parecer
             </div>
           </div>
 
-          <div className="prose prose-sm dark:prose-invert max-h-[700px] max-w-none overflow-y-auto rounded-lg border border-border bg-card p-6 prose-p:mb-5 prose-p:leading-relaxed prose-li:mb-2 prose-headings:mb-4 prose-headings:mt-8 prose-headings:font-bold prose-ul:my-4 prose-ol:my-4 prose-h2:border-b prose-h2:border-border prose-h2:pb-2 prose-h2:text-base prose-h3:text-sm prose-strong:text-foreground [&_ul]:list-disc [&_ul]:pl-6 [&_p+p]:mt-5">
+          <div className="prose prose-sm dark:prose-invert max-h-[700px] max-w-none overflow-y-auto rounded-lg border border-border bg-card p-5 shadow-sm prose-p:mb-5 prose-p:leading-relaxed prose-li:mb-2 prose-headings:mb-4 prose-headings:mt-8 prose-headings:font-bold prose-ul:my-4 prose-ol:my-4 prose-h2:border-b prose-h2:border-border prose-h2:pb-2 prose-h2:text-base prose-h3:text-sm prose-strong:text-foreground [&_ul]:list-disc [&_ul]:pl-6 [&_p+p]:mt-5">
             <ReactMarkdown>{resultado}</ReactMarkdown>
           </div>
         </div>
       )}
 
       {analisando && !resultado && (
-        <div className="flex flex-col items-center gap-3 rounded-lg border border-border bg-card p-8 text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" aria-hidden="true" />
-          <p className="text-base font-medium">{progressMsg || 'Analisando documentos…'}</p>
-          <p className="max-w-xl text-sm text-muted-foreground">
-            A IA está realizando leitura integral dos documentos, extração de dados concretos e análise
-            de conformidade com a Lei 14.133/2021{editalFile ? ' e cruzamento com o edital' : ''}.
-          </p>
+        /* Espera em linha, alinhada à esquerda: nem spinner grande, nem texto
+           centralizado em tela operacional. */
+        <div role="status" className="flex items-start gap-3 rounded-lg border border-border bg-card p-5 shadow-sm">
+          <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-muted-foreground" aria-hidden="true" />
+          <div className="min-w-0">
+            <p className="text-base font-medium text-foreground">{progressMsg || 'Analisando documentos…'}</p>
+            <p className="mt-1 max-w-xl text-sm text-muted-foreground">
+              A IA está realizando leitura integral dos documentos, extração de dados concretos e análise
+              de conformidade com a Lei 14.133/2021{editalFile ? ' e cruzamento com o edital' : ''}.
+            </p>
+          </div>
         </div>
       )}
     </div>

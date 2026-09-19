@@ -774,12 +774,12 @@ export default function Documentos() {
               }
             >
               <div className="flex w-full flex-col gap-1 md:w-56">
-                {/* `text-[0.75rem] font-normal leading-4` repete o g-meta em
-                    utilitários: o Label traz `text-sm font-medium` como utilitário e
-                    vencia a classe de componente — "Categoria" saía maior que
-                    "Período de validade", que é um span (print de 17/09). É 0.75rem
-                    e não `text-xs` porque aqui `text-xs` vale 13 px. */}
-                <Label htmlFor="filtro-categoria" className="g-meta text-[0.75rem] font-normal leading-4 text-muted-foreground">Categoria</Label>
+                {/* `text-xs font-normal leading-4` repete o g-meta em utilitários:
+                    o Label traz `text-sm font-medium` como utilitário e vencia a
+                    classe de componente — "Categoria" saía maior que "Período de
+                    validade", que é um span (print de 17/09). Na escala v3,
+                    `text-xs` é 12 px, o mesmo degrau do g-meta. */}
+                <Label htmlFor="filtro-categoria" className="text-xs font-normal leading-4 text-muted-foreground">Categoria</Label>
                 <Select
                   value={filtroCategoria}
                   onValueChange={(v) => setFiltroCategoria(v as FiltroCategoria)}
@@ -797,7 +797,7 @@ export default function Documentos() {
               </div>
 
               <div className="flex w-full flex-col gap-1 md:w-56">
-                <Label htmlFor="filtro-situacao" className="g-meta text-[0.75rem] font-normal leading-4 text-muted-foreground">Situação</Label>
+                <Label htmlFor="filtro-situacao" className="text-xs font-normal leading-4 text-muted-foreground">Situação</Label>
                 <Select
                   value={filtroSituacao}
                   onValueChange={(v) => setFiltroSituacao(v as FiltroSituacao)}
@@ -942,7 +942,7 @@ export default function Documentos() {
         <Dialog open={!!visualizando} onOpenChange={(o) => !o && setVisualizando(null)}>
           <DialogContent className="max-w-4xl">
             <DialogHeader>
-              <DialogTitle className="g-titulo-secao">{visualizando?.nome}</DialogTitle>
+              <DialogTitle>{visualizando?.nome}</DialogTitle>
             </DialogHeader>
             {visualizando && (
               <iframe

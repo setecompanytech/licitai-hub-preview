@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import SeloPraefectusIA from '@/components/shared/SeloPraefectusIA';
 import { toast } from 'sonner';
 import { Sparkles, Loader2, BookOpen, Copy, Upload, FileText, Archive, X } from 'lucide-react';
 import { streamAIChat } from '@/lib/ai-stream';
@@ -152,11 +153,15 @@ export default function GeradorContabilIA() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-4">
-        <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-primary" aria-hidden="true" />
-          Gerador de Análises Contábeis com IA
-        </h2>
+      <section className="rounded-lg border border-border bg-card p-5 shadow-sm space-y-4">
+        {/* Recurso de IA: o selo "Praefectus IA" identifica o gerador. */}
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="flex items-center gap-2 text-lg font-semibold leading-6 text-foreground">
+            <Sparkles className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+            Gerador de Análises Contábeis com IA
+          </h2>
+          <SeloPraefectusIA />
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
@@ -176,7 +181,7 @@ export default function GeradorContabilIA() {
 
         <div className="rounded-md border border-dashed border-border p-4 space-y-3">
           <Label htmlFor="gc-arquivos" className="flex items-center gap-2">
-            <Upload className="w-4 h-4 text-primary" aria-hidden="true" />
+            <Upload className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
             Upload de Arquivos (PDF, TXT, CSV, XLS, ZIP)
           </Label>
           <Input
@@ -205,7 +210,7 @@ export default function GeradorContabilIA() {
                     size="sm"
                     onClick={() => removeFile(i)}
                     aria-label={`Remover ${f.name}`}
-                    className="ml-1 h-5 w-5 rounded-full p-0 text-muted-foreground hover:text-destructive [&_svg]:size-3"
+                    className="ml-1 h-5 w-5 rounded-sm p-0 text-muted-foreground hover:text-destructive-ink [&_svg]:size-3"
                   >
                     <X aria-hidden="true" />
                   </Button>
@@ -224,8 +229,8 @@ export default function GeradorContabilIA() {
 
         {docsBase.length > 0 && (
           <div className="space-y-2">
-            <p className="text-sm font-medium leading-none flex items-center gap-1">
-              <BookOpen className="w-4 h-4 text-primary" aria-hidden="true" />
+            <p className="flex items-center gap-1 text-sm font-medium leading-none">
+              <BookOpen className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
               Documentos da Base Contábil como referência ({selectedDocs.length} selecionados)
             </p>
             <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto rounded-md border border-border p-2">
@@ -238,7 +243,7 @@ export default function GeradorContabilIA() {
                     size="sm"
                     variant={selecionado ? 'default' : 'outline'}
                     aria-pressed={selecionado}
-                    className="h-8 rounded-full text-xs"
+                    className="h-8 px-3 text-xs font-medium"
                     onClick={() => toggleDoc(doc.id)}
                   >
                     {doc.titulo.slice(0, 40)}{doc.titulo.length > 40 ? '...' : ''}
@@ -256,9 +261,9 @@ export default function GeradorContabilIA() {
       </section>
 
       {resultado && (
-        <section className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-4">
+        <section className="rounded-lg border border-border bg-card p-5 shadow-sm space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-lg font-semibold text-foreground">Resultado da Análise</h2>
+            <h2 className="text-lg font-semibold leading-6 text-foreground">Resultado da Análise</h2>
             <Button variant="outline" onClick={() => { navigator.clipboard.writeText(resultado); toast.success('Copiado!'); }}>
               <Copy aria-hidden="true" /> Copiar
             </Button>

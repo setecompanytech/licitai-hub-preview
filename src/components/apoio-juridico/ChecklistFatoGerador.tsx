@@ -114,12 +114,12 @@ export function ChecklistFatoGerador({ tipoFato, onConfirm, onCancel, className 
   }, [checked, matriz]);
 
   return (
-    <Card className={cn('p-6 space-y-4', className)}>
+    <Card className={cn('space-y-4 p-5', className)}>
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="flex items-start gap-2">
-          <Scale className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" aria-hidden="true" />
+          <Scale className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
           <div>
-            <h4 className="text-lg font-semibold">Checklist de Validação Jurídica</h4>
+            <h4 className="text-base font-semibold leading-6 text-foreground">Checklist de Validação Jurídica</h4>
             <p className="text-sm text-muted-foreground">Confirme cada requisito antes de aceitar a classificação do fato gerador.</p>
           </div>
         </div>
@@ -130,21 +130,21 @@ export function ChecklistFatoGerador({ tipoFato, onConfirm, onCancel, className 
 
       {/* Matriz de enquadramento */}
       <dl className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-        <div className="rounded-md border border-border bg-background p-3">
+        <div className="rounded-md border border-border bg-secondary p-3">
           <dt className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-1">Origem do evento</dt>
           <dd>{matriz.origem}</dd>
         </div>
-        <div className="rounded-md border border-border bg-background p-3">
+        <div className="rounded-md border border-border bg-secondary p-3">
           <dt className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-1">Previsibilidade</dt>
           <dd>{matriz.previsibilidade}</dd>
         </div>
-        <div className="rounded-md border border-border bg-background p-3">
+        <div className="rounded-md border border-border bg-secondary p-3">
           <dt className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-1 flex items-center gap-1">
             <BookOpen className="w-3 h-3" aria-hidden="true" /> Dispositivo legal
           </dt>
           <dd>{matriz.dispositivo}</dd>
         </div>
-        <div className="rounded-md border border-border bg-background p-3">
+        <div className="rounded-md border border-border bg-secondary p-3">
           <dt className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-1 flex items-center gap-1">
             <ShieldCheck className="w-3 h-3" aria-hidden="true" /> Lei 14.133/2021
           </dt>
@@ -164,15 +164,15 @@ export function ChecklistFatoGerador({ tipoFato, onConfirm, onCancel, className 
           <label
             key={item.id}
             className={cn(
-              'flex items-start gap-3 rounded-md border p-3 cursor-pointer transition-colors',
-              checked[item.id] ? 'border-primary/40 bg-primary-tint' : 'border-border bg-background hover:bg-muted/50'
+              'flex cursor-pointer items-start gap-3 rounded-md border p-3 transition-colors duration-150',
+              checked[item.id] ? 'border-primary-line bg-primary-tint' : 'border-border bg-card hover:bg-muted/60'
             )}
           >
             <Checkbox checked={!!checked[item.id]} onCheckedChange={() => toggle(item.id)} className="mt-0.5" />
             <div className="flex-1 min-w-0">
               <div className="text-sm font-medium">
                 {item.label}
-                {item.obrigatorio && <span className="text-destructive ml-1" aria-label="obrigatório">*</span>}
+                {item.obrigatorio && <span className="ml-1 text-destructive-ink" aria-label="obrigatório">*</span>}
               </div>
               <div className="text-xs text-muted-foreground mt-0.5">{item.hint}</div>
             </div>
@@ -185,13 +185,13 @@ export function ChecklistFatoGerador({ tipoFato, onConfirm, onCancel, className 
         <div className="flex items-center gap-2 text-sm" role="status">
           {podeAceitar ? (
             <>
-              <CheckCircle2 className="w-4 h-4 text-success" aria-hidden="true" />
-              <span className="text-success font-medium">Enquadramento jurídico validado ({score}%)</span>
+              <CheckCircle2 className="h-4 w-4 text-success" aria-hidden="true" />
+              <span className="font-medium text-success-ink">Enquadramento jurídico validado ({score}%)</span>
             </>
           ) : (
             <>
-              <AlertTriangle className="w-4 h-4 text-warning" aria-hidden="true" />
-              <span className="text-warning">Marque todos os requisitos obrigatórios para aceitar</span>
+              <AlertTriangle className="h-4 w-4 text-warning" aria-hidden="true" />
+              <span className="text-warning-ink">Marque todos os requisitos obrigatórios para aceitar</span>
             </>
           )}
         </div>

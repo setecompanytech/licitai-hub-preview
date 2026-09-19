@@ -194,7 +194,7 @@ export default function IndicesRepactuacao() {
                 contínuo; a segunda cópia é decorativa para o leitor de tela. */}
             {indices.length > 0 && (
               <div className="esteira-indices flex items-stretch rounded-lg border border-border bg-muted overflow-hidden">
-                <span className="shrink-0 flex items-center px-3 py-2 text-xs font-semibold text-primary whitespace-nowrap border-r border-border bg-card">
+                <span className="flex shrink-0 items-center whitespace-nowrap border-r border-border bg-card px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   ÍNDICES OFICIAIS
                 </span>
                 <div className="relative flex-1 overflow-hidden flex items-center">
@@ -240,7 +240,7 @@ export default function IndicesRepactuacao() {
           <TabsContent value="indices" className="space-y-4">
             <div className="flex flex-wrap items-center gap-2">
               <Button onClick={atualizarIndices} disabled={atualizando}>
-                {atualizando ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                {atualizando ? <Loader2 className="animate-spin" aria-hidden="true" /> : <RefreshCw aria-hidden="true" />}
                 {atualizando ? 'Atualizando via IA...' : 'Atualizar Índices'}
               </Button>
               {/* Recorte por categoria: botões, não selos — quem filtra precisa
@@ -267,7 +267,7 @@ export default function IndicesRepactuacao() {
                   descricao="Busque as séries oficiais no Banco Central (SGS) para começar a acompanhar IPCA, INPC, IGP-M e os demais."
                   acao={
                     <Button onClick={atualizarIndices} disabled={atualizando}>
-                      {atualizando ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                      {atualizando ? <Loader2 className="animate-spin" aria-hidden="true" /> : <RefreshCw aria-hidden="true" />}
                       Atualizar Índices
                     </Button>
                   }
@@ -279,14 +279,14 @@ export default function IndicesRepactuacao() {
                   const Icon = categoriaIcons[idx.categoria] || TrendingUp;
                   const isPositive = (idx.variacao_mensal ?? 0) >= 0;
                   return (
-                    <Card key={idx.id} className="p-6 hover:shadow-md transition-shadow">
-                      <div className="flex items-start justify-between gap-2 mb-3">
+                    <Card key={idx.id} className="p-5">
+                      <div className="mb-3 flex items-start justify-between gap-2">
                         <div className="flex items-center gap-2">
-                          <div className="w-10 h-10 rounded-md bg-primary-tint text-primary flex items-center justify-center">
-                            <Icon className="w-5 h-5" aria-hidden="true" />
+                          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary-tint text-primary">
+                            <Icon className="h-5 w-5" aria-hidden="true" />
                           </div>
                           <div>
-                            <p className="text-lg font-semibold">{idx.sigla}</p>
+                            <p className="text-base font-semibold leading-6 text-foreground">{idx.sigla}</p>
                             <p className="text-sm text-muted-foreground">{idx.fonte}</p>
                           </div>
                         </div>
@@ -294,7 +294,7 @@ export default function IndicesRepactuacao() {
                       </div>
                       <p className="text-sm text-muted-foreground mb-2 line-clamp-1">{idx.nome}</p>
                       <div className="flex flex-wrap items-end justify-between gap-2">
-                        <p className="text-[2rem] leading-10 font-bold tabular-nums break-normal">
+                        <p className="break-normal text-[1.75rem] font-semibold leading-9 tabular-nums text-foreground">
                           {/* Só salário é dinheiro. INCC é VARIAÇÃO — "R$ 0,66"
                               afirmava um preço que não existe (print de 08/09). */}
                           {idx.categoria === 'salario'
@@ -344,43 +344,43 @@ export default function IndicesRepactuacao() {
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-base text-muted-foreground">Base de convenções coletivas para repactuação de serviços com mão de obra</p>
               <Button onClick={() => setShowCCTForm(!showCCTForm)}>
-                <Plus className="w-4 h-4 mr-2" /> Cadastrar CCT
+                <Plus aria-hidden="true" /> Cadastrar CCT
               </Button>
             </div>
 
             {showCCTForm && (
-              <Card className="p-6 space-y-4">
-                <h2 className="text-lg font-semibold">Nova Convenção Coletiva</h2>
+              <Card className="space-y-4 p-5">
+                <h2 className="text-lg font-semibold leading-6 text-foreground">Nova Convenção Coletiva</h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
+                  <div className="space-y-2">
                     <Label htmlFor="cct-categoria">Categoria Profissional *</Label>
                     <Input id="cct-categoria" placeholder="Ex: Vigilância, Limpeza..." value={cctForm.categoria_profissional} onChange={e => setCctForm(p => ({ ...p, categoria_profissional: e.target.value }))} />
                   </div>
-                  <div>
+                  <div className="space-y-2">
                     <Label htmlFor="cct-sindicato">Sindicato Laboral</Label>
                     <Input id="cct-sindicato" placeholder="Nome do sindicato" value={cctForm.sindicato_laboral} onChange={e => setCctForm(p => ({ ...p, sindicato_laboral: e.target.value }))} />
                   </div>
-                  <div>
+                  <div className="space-y-2">
                     <Label htmlFor="cct-mte">Nº Registro MTE</Label>
                     <Input id="cct-mte" placeholder="Ex: PA000123/2026" value={cctForm.numero_registro_mte} onChange={e => setCctForm(p => ({ ...p, numero_registro_mte: e.target.value }))} />
                   </div>
-                  <div>
+                  <div className="space-y-2">
                     <Label htmlFor="cct-inicio">Vigência Início</Label>
                     <Input id="cct-inicio" type="date" value={cctForm.vigencia_inicio} onChange={e => setCctForm(p => ({ ...p, vigencia_inicio: e.target.value }))} />
                   </div>
-                  <div>
+                  <div className="space-y-2">
                     <Label htmlFor="cct-fim">Vigência Fim</Label>
                     <Input id="cct-fim" type="date" value={cctForm.vigencia_fim} onChange={e => setCctForm(p => ({ ...p, vigencia_fim: e.target.value }))} />
                   </div>
-                  <div>
+                  <div className="space-y-2">
                     <Label htmlFor="cct-piso">Piso Salarial (R$)</Label>
                     <Input id="cct-piso" placeholder="0,00" value={cctForm.piso_salarial} onChange={e => setCctForm(p => ({ ...p, piso_salarial: e.target.value }))} />
                   </div>
-                  <div>
+                  <div className="space-y-2">
                     <Label htmlFor="cct-reajuste">Reajuste (%)</Label>
                     <Input id="cct-reajuste" placeholder="0,00" value={cctForm.reajuste_percentual} onChange={e => setCctForm(p => ({ ...p, reajuste_percentual: e.target.value }))} />
                   </div>
-                  <div>
+                  <div className="space-y-2">
                     <Label htmlFor="cct-indice">Índice Base</Label>
                     <Select value={cctForm.indice_reajuste} onValueChange={v => setCctForm(p => ({ ...p, indice_reajuste: v }))}>
                       <SelectTrigger id="cct-indice"><SelectValue /></SelectTrigger>
@@ -392,14 +392,15 @@ export default function IndicesRepactuacao() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div>
+                  <div className="space-y-2">
                     <Label htmlFor="cct-uf">UF Abrangência</Label>
                     <Input id="cct-uf" placeholder="Ex: PA" value={cctForm.abrangencia_uf} onChange={e => setCctForm(p => ({ ...p, abrangencia_uf: e.target.value }))} />
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-2 pt-2">
-                  <Button onClick={salvarCCT}><Save className="w-4 h-4 mr-2" /> Salvar</Button>
+                {/* Rodapé de formulário: ações à direita, a principal por último. */}
+                <div className="flex flex-wrap justify-end gap-2 pt-2">
                   <Button variant="outline" onClick={() => setShowCCTForm(false)}>Cancelar</Button>
+                  <Button onClick={salvarCCT}><Save aria-hidden="true" /> Salvar</Button>
                 </div>
               </Card>
             )}
@@ -418,14 +419,14 @@ export default function IndicesRepactuacao() {
             ) : (
               <div className="space-y-3">
                 {ccts.map(cct => (
-                  <Card key={cct.id} className="p-6">
+                  <Card key={cct.id} className="p-5">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-md bg-primary-tint text-primary flex items-center justify-center">
-                          <Users className="w-5 h-5" aria-hidden="true" />
+                        <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary-tint text-primary">
+                          <Users className="h-5 w-5" aria-hidden="true" />
                         </div>
                         <div>
-                          <p className="text-lg font-semibold">{cct.categoria_profissional}</p>
+                          <p className="text-base font-semibold leading-6 text-foreground">{cct.categoria_profissional}</p>
                           {cct.sindicato_laboral && <p className="text-sm text-muted-foreground">{cct.sindicato_laboral}</p>}
                         </div>
                       </div>
@@ -456,16 +457,16 @@ export default function IndicesRepactuacao() {
 
           {/* ═══ SIMULADOR DE REPACTUAÇÃO ═══ */}
           <TabsContent value="simulador" className="space-y-4">
-            <Card className="p-6 space-y-4">
-              <h2 className="text-lg font-semibold flex items-center gap-2">
-                <Calculator className="w-5 h-5 text-muted-foreground" aria-hidden="true" /> Simulador de Reajuste / Repactuação
+            <Card className="space-y-4 p-5">
+              <h2 className="flex items-center gap-2 text-lg font-semibold leading-6 text-foreground">
+                <Calculator className="h-5 w-5 text-muted-foreground" aria-hidden="true" /> Simulador de Reajuste / Repactuação
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="sim-valor">Valor Original do Contrato (R$)</Label>
                   <MoneyInput id="sim-valor" value={simValor} onValueChange={setSimValor} />
                 </div>
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="sim-indice">Índice de Reajuste</Label>
                   <Select value={simIndice} onValueChange={setSimIndice}>
                     <SelectTrigger id="sim-indice"><SelectValue /></SelectTrigger>
@@ -480,19 +481,19 @@ export default function IndicesRepactuacao() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="sim-perc">Percentual de Reajuste (%)</Label>
                   <Input id="sim-perc" placeholder="4,50" value={simPerc} onChange={e => setSimPerc(e.target.value)} />
                 </div>
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="sim-data-orig">Data-Base Original</Label>
                   <Input id="sim-data-orig" type="date" value={simDataOrig} onChange={e => setSimDataOrig(e.target.value)} />
                 </div>
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="sim-data-reaj">Data-Base do Reajuste</Label>
                   <Input id="sim-data-reaj" type="date" value={simDataReaj} onChange={e => setSimDataReaj(e.target.value)} />
                 </div>
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="sim-tipo">Tipo de Serviço</Label>
                   <Select value={simTipo} onValueChange={setSimTipo}>
                     <SelectTrigger id="sim-tipo"><SelectValue /></SelectTrigger>
@@ -506,7 +507,7 @@ export default function IndicesRepactuacao() {
                 </div>
               </div>
               <Button onClick={simular} disabled={simLoading}>
-                {simLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
+                {simLoading ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Sparkles aria-hidden="true" />}
                 {simLoading ? 'Calculando com IA...' : 'Simular Repactuação'}
               </Button>
             </Card>
@@ -514,17 +515,20 @@ export default function IndicesRepactuacao() {
             {simResult && (
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Card className="p-6 text-center">
-                    <p className="text-sm text-muted-foreground mb-1">Valor Original</p>
-                    <p className="text-[2rem] leading-10 font-bold tabular-nums break-normal">{fmtCur(simValor || 0)}</p>
+                  {/* Cartão KPI do Design System v3: rótulo em cima, valor 28/36
+                      em 600, alinhado à esquerda — nada centralizado em tela
+                      operacional. */}
+                  <Card className="flex min-h-[112px] flex-col justify-between gap-2 p-4">
+                    <p className="text-sm font-medium leading-5 text-muted-foreground">Valor Original</p>
+                    <p className="break-normal text-[1.75rem] font-semibold leading-9 tabular-nums text-foreground">{fmtCur(simValor || 0)}</p>
                   </Card>
-                  <Card className="p-6 text-center">
-                    <p className="text-sm text-muted-foreground mb-1">Valor Reajustado</p>
-                    <p className="text-[2rem] leading-10 font-bold text-foreground tabular-nums break-normal">{fmtCur(simResult.valor_reajustado)}</p>
+                  <Card className="flex min-h-[112px] flex-col justify-between gap-2 p-4">
+                    <p className="text-sm font-medium leading-5 text-muted-foreground">Valor Reajustado</p>
+                    <p className="break-normal text-[1.75rem] font-semibold leading-9 tabular-nums text-foreground">{fmtCur(simResult.valor_reajustado)}</p>
                   </Card>
-                  <Card className="p-6 text-center">
-                    <p className="text-sm text-muted-foreground mb-1">Diferença</p>
-                    <p className="text-[2rem] leading-10 font-bold text-success-ink tabular-nums break-normal">{fmtCur(simResult.diferenca)}</p>
+                  <Card className="flex min-h-[112px] flex-col justify-between gap-2 p-4">
+                    <p className="text-sm font-medium leading-5 text-muted-foreground">Diferença</p>
+                    <p className="break-normal text-[1.75rem] font-semibold leading-9 tabular-nums text-success-ink">{fmtCur(simResult.diferenca)}</p>
                   </Card>
                 </div>
 
@@ -544,18 +548,18 @@ export default function IndicesRepactuacao() {
                   </Alert>
                 )}
 
-                <Card className="p-6">
-                  <h2 className="text-lg font-semibold flex items-center gap-2 mb-3">
-                    <Scale className="w-5 h-5 text-muted-foreground" aria-hidden="true" /> Fundamentação Jurídica
+                <Card className="p-5">
+                  <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold leading-6 text-foreground">
+                    <Scale className="h-5 w-5 text-muted-foreground" aria-hidden="true" /> Fundamentação Jurídica
                   </h2>
                   <div className="prose prose-sm max-w-none dark:prose-invert text-sm">
                     <ReactMarkdown>{simResult.fundamentacao}</ReactMarkdown>
                   </div>
                 </Card>
 
-                <Card className="p-6">
-                  <h2 className="text-lg font-semibold flex items-center gap-2 mb-3">
-                    <FileText className="w-5 h-5 text-muted-foreground" aria-hidden="true" /> Parecer Técnico
+                <Card className="p-5">
+                  <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold leading-6 text-foreground">
+                    <FileText className="h-5 w-5 text-muted-foreground" aria-hidden="true" /> Parecer Técnico
                   </h2>
                   <div className="prose prose-sm max-w-none dark:prose-invert text-sm">
                     <ReactMarkdown>{simResult.parecer}</ReactMarkdown>
@@ -564,12 +568,12 @@ export default function IndicesRepactuacao() {
               </div>
             )}
 
-            <Card className="p-6">
+            <Card className="p-5">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-start gap-2">
-                  <Scale className="w-5 h-5 text-muted-foreground mt-0.5 shrink-0" aria-hidden="true" />
+                  <Scale className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
                   <div>
-                    <p className="text-lg font-semibold">Gerar Pedido de Reequilíbrio Formal</p>
+                    <p className="text-base font-semibold leading-6 text-foreground">Gerar Pedido de Reequilíbrio Formal</p>
                     <p className="text-sm text-muted-foreground">Vá ao Apoio Jurídico para gerar documentos completos com estes índices e CCTs como fundamentação</p>
                   </div>
                 </div>

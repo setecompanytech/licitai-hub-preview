@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import SeloPraefectusIA from '@/components/shared/SeloPraefectusIA';
 import { toast } from 'sonner';
 import { Sparkles, Loader2, Copy, BarChart3, Upload, FileText, Archive, X } from 'lucide-react';
 import { streamAIChat } from '@/lib/ai-stream';
@@ -145,12 +146,16 @@ Seja técnico, objetivo e cite as normas aplicáveis.`;
 
   return (
     <div className="space-y-6">
-      <section className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-4">
+      <section className="rounded-lg border border-border bg-card p-5 shadow-sm space-y-4">
         <div className="space-y-1">
-          <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-            <BarChart3 className="w-5 h-5 text-primary" aria-hidden="true" />
-            Análise de Balanço e Demonstrações Contábeis
-          </h2>
+          {/* Recurso de IA: o selo "Praefectus IA" identifica o gerador. */}
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="flex items-center gap-2 text-lg font-semibold leading-6 text-foreground">
+              <BarChart3 className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+              Análise de Balanço e Demonstrações Contábeis
+            </h2>
+            <SeloPraefectusIA />
+          </div>
           <p className="text-sm text-muted-foreground">
             Cole os dados do balanço patrimonial, DRE ou demonstrações contábeis para uma análise completa de divergências, conformidade legal e riscos.
           </p>
@@ -169,7 +174,7 @@ Seja técnico, objetivo e cite as normas aplicáveis.`;
 
         <div className="rounded-md border border-dashed border-border p-4 space-y-3">
           <Label htmlFor="ab-arquivos" className="flex items-center gap-2">
-            <Upload className="w-4 h-4 text-primary" aria-hidden="true" />
+            <Upload className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
             Upload de Arquivos (PDF, TXT, CSV, XLS, ZIP)
           </Label>
           <Input
@@ -198,7 +203,7 @@ Seja técnico, objetivo e cite as normas aplicáveis.`;
                     size="sm"
                     onClick={() => removeFile(i)}
                     aria-label={`Remover ${f.name}`}
-                    className="ml-1 h-5 w-5 rounded-full p-0 text-muted-foreground hover:text-destructive [&_svg]:size-3"
+                    className="ml-1 h-5 w-5 rounded-sm p-0 text-muted-foreground hover:text-destructive-ink [&_svg]:size-3"
                   >
                     <X aria-hidden="true" />
                   </Button>
@@ -233,9 +238,9 @@ Seja técnico, objetivo e cite as normas aplicáveis.`;
       </section>
 
       {resultado && (
-        <section className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-4">
+        <section className="rounded-lg border border-border bg-card p-5 shadow-sm space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-lg font-semibold text-foreground">Parecer da IA Contábil</h2>
+            <h2 className="text-lg font-semibold leading-6 text-foreground">Parecer da IA Contábil</h2>
             <Button variant="outline" onClick={() => { navigator.clipboard.writeText(resultado); toast.success('Copiado!'); }}>
               <Copy aria-hidden="true" /> Copiar
             </Button>

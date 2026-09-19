@@ -92,7 +92,7 @@ export default function ModeloCard({ modelo: m, pedidosCount = 0, index, onAbrir
       role="button"
       tabIndex={0}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); triggerNativeNewTab(); } }}
-      className="group relative grid grid-cols-[2rem_1fr_auto] items-start gap-3 px-3 py-2 border-b border-border last:border-b-0 hover:bg-muted/50 transition-colors cursor-pointer focus-visible:outline-none focus-visible:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+      className="group relative grid cursor-pointer grid-cols-[2rem_1fr_auto] items-start gap-3 border-b border-border px-3 py-2 transition-colors duration-150 last:border-b-0 hover:bg-muted/60 focus-visible:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
     >
       {/* Numeração forense */}
       <div className="flex flex-col items-center pt-0.5 shrink-0">
@@ -120,7 +120,7 @@ export default function ModeloCard({ modelo: m, pedidosCount = 0, index, onAbrir
             <span className="text-muted-foreground" aria-hidden="true">§</span> {m.fundamentacao}
           </span>
           {m.requisitosFiltro.map((req) => (
-            <span key={req} className="text-xs uppercase tracking-wider text-muted-foreground border-l border-border pl-2 whitespace-nowrap">
+            <span key={req} className="whitespace-nowrap border-l border-border pl-2 text-xs text-muted-foreground">
               {REQUISITO_ROTULO[req]}
             </span>
           ))}
@@ -130,9 +130,9 @@ export default function ModeloCard({ modelo: m, pedidosCount = 0, index, onAbrir
       {/* Ações */}
       <div className="flex items-center gap-1 shrink-0 self-center">
         <Button
-          size="sm"
+          size="icon-sm"
           variant="ghost"
-          className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
+          className="text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
           onClick={handleCopy}
           title="Copiar"
           aria-label={`Copiar modelo ${m.titulo}`}
@@ -143,7 +143,7 @@ export default function ModeloCard({ modelo: m, pedidosCount = 0, index, onAbrir
           asChild
           size="sm"
           variant="ghost"
-          className="h-8 px-2 text-xs uppercase tracking-wide font-semibold text-primary hover:text-primary hover:bg-primary-tint gap-1 shrink-0"
+          className="h-8 shrink-0 gap-1 px-2 text-xs font-semibold text-primary hover:bg-primary-tint hover:text-primary"
         >
           <a
             ref={cardLinkRef}

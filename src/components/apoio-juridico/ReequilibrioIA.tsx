@@ -9,6 +9,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import EstadoVazio from '@/components/shared/EstadoVazio';
+import SeloPraefectusIA from '@/components/shared/SeloPraefectusIA';
 import { streamAIChat } from '@/lib/ai-stream';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -516,10 +519,10 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
                 <p className="text-xs text-muted-foreground">{indice.nome}</p>
                 <div className="flex items-center gap-3 mt-2 flex-wrap tabular-nums">
                   <span className="text-xs font-medium">Valor: {indice.valor}</span>
-                  <span className={`text-xs font-medium ${(indice.variacao_mensal || 0) >= 0 ? 'text-destructive' : 'text-success'}`}>
+                  <span className={`text-xs font-medium ${(indice.variacao_mensal || 0) >= 0 ? 'text-destructive-ink' : 'text-success-ink'}`}>
                     Mensal: {fmtPerc(indice.variacao_mensal)}
                   </span>
-                  <span className={`text-xs font-medium ${(indice.acumulado_12m || 0) >= 0 ? 'text-destructive' : 'text-success'}`}>
+                  <span className={`text-xs font-medium ${(indice.acumulado_12m || 0) >= 0 ? 'text-destructive-ink' : 'text-success-ink'}`}>
                     12m: {fmtPerc(indice.acumulado_12m)}
                   </span>
                 </div>
@@ -530,13 +533,13 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
         );
       })}
       {filteredIndices.length === 0 && (
-        <div className="md:col-span-2 flex flex-col items-center text-center py-8 gap-3">
-          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
-            <TrendingUp className="w-6 h-6" aria-hidden="true" />
-          </span>
-          <p className="text-base font-semibold">Nenhum índice encontrado</p>
-          <Button variant="outline" onClick={() => navigate('/indices-repactuacao')}>Atualizar no Painel de Índices</Button>
-        </div>
+        <EstadoVazio
+          className="md:col-span-2"
+          tamanho="compacto"
+          icone={<TrendingUp />}
+          titulo="Nenhum índice encontrado"
+          acao={<Button variant="outline" onClick={() => navigate('/indices-repactuacao')}>Atualizar no Painel de Índices</Button>}
+        />
       )}
     </div>
   );
@@ -584,13 +587,13 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
         );
       })}
       {filteredCCTs.length === 0 && (
-        <div className="md:col-span-2 flex flex-col items-center text-center py-8 gap-3">
-          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
-            <Users className="w-6 h-6" aria-hidden="true" />
-          </span>
-          <p className="text-base font-semibold">Nenhuma CCT cadastrada</p>
-          <Button variant="outline" onClick={() => navigate('/indices-repactuacao')}>Cadastrar no Painel de Índices</Button>
-        </div>
+        <EstadoVazio
+          className="md:col-span-2"
+          tamanho="compacto"
+          icone={<Users />}
+          titulo="Nenhuma CCT cadastrada"
+          acao={<Button variant="outline" onClick={() => navigate('/indices-repactuacao')}>Cadastrar no Painel de Índices</Button>}
+        />
       )}
     </div>
   );
@@ -599,9 +602,11 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-2">
-          <Scale className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
-          <h3 className="text-lg font-semibold">Reajuste, Repactuação e Revisão com IA</h3>
+        {/* Recurso de IA: o selo "Praefectus IA" identifica o gerador. */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Scale className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+          <h3 className="text-lg font-semibold leading-6 text-foreground">Reajuste, Repactuação e Revisão com IA</h3>
+          <SeloPraefectusIA />
         </div>
         <div className="flex flex-wrap gap-2">
           <Button
@@ -647,10 +652,10 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
 
       {/* Lista de pedidos existentes */}
       {showLista && (
-        <div className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-4">
+        <div className="rounded-lg border border-border bg-card p-5 shadow-sm space-y-4">
           <div className="flex items-center gap-2">
-            <FolderOpen className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
-            <h4 className="text-lg font-semibold">Pedidos Jurídicos da Empresa</h4>
+            <FolderOpen className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+            <h4 className="text-base font-semibold leading-6 text-foreground">Pedidos Jurídicos da Empresa</h4>
           </div>
           <PedidosJuridicosList
             onSelecionar={(p) => {
@@ -672,15 +677,16 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
 
       {/* Tabs for 3 mechanisms */}
       <Tabs value={mecanismo} onValueChange={(v) => { setMecanismo(v as Mecanismo); setShowGenerator(false); setPedidoGerado(''); }}>
-        <TabsList className="w-full grid grid-cols-3 h-auto">
-          <TabsTrigger value="reajuste" className="gap-1">
-            <TrendingUp className="w-4 h-4" aria-hidden="true" /> Reajuste
+        {/* Fila sublinhada da ui — sem grade de três colunas iguais. */}
+        <TabsList>
+          <TabsTrigger value="reajuste">
+            <TrendingUp className="h-4 w-4" aria-hidden="true" /> Reajuste
           </TabsTrigger>
-          <TabsTrigger value="repactuacao" className="gap-1">
-            <Users className="w-4 h-4" aria-hidden="true" /> Repactuação
+          <TabsTrigger value="repactuacao">
+            <Users className="h-4 w-4" aria-hidden="true" /> Repactuação
           </TabsTrigger>
-          <TabsTrigger value="revisao" className="gap-1">
-            <Scale className="w-4 h-4" aria-hidden="true" /> Revisão
+          <TabsTrigger value="revisao">
+            <Scale className="h-4 w-4" aria-hidden="true" /> Revisão
           </TabsTrigger>
         </TabsList>
 
@@ -779,10 +785,10 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
 
             {/* REVISÃO TAB */}
             <TabsContent value="revisao" className="space-y-4 mt-4">
-              <div className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-4">
+              <div className="rounded-lg border border-border bg-card p-5 shadow-sm space-y-4">
                 <div className="flex items-center gap-2">
-                  <AlertTriangle className="w-5 h-5 text-warning" aria-hidden="true" />
-                  <h4 className="text-lg font-semibold">Fato Gerador da Revisão</h4>
+                  <AlertTriangle className="h-5 w-5 text-warning" aria-hidden="true" />
+                  <h4 className="text-base font-semibold leading-6 text-foreground">Fato Gerador da Revisão</h4>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="reeq-tipo-fato">Tipo do fato</Label>
@@ -807,12 +813,12 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
                 </div>
 
                 {/* Validação jurídica do enquadramento */}
-                <div className="flex items-center justify-between gap-3 flex-wrap rounded-md border border-border bg-muted/50 px-3 py-2">
+                <div className="flex items-center justify-between gap-3 flex-wrap rounded-md border border-border bg-secondary px-3 py-2">
                   <div className="flex items-center gap-2 text-sm" role="status">
                     {enquadramentoValidado ? (
                       <>
-                        <Scale className="w-4 h-4 text-success shrink-0" aria-hidden="true" />
-                        <span className="text-success font-medium">Enquadramento jurídico validado</span>
+                        <Scale className="h-4 w-4 shrink-0 text-success" aria-hidden="true" />
+                        <span className="font-medium text-success-ink">Enquadramento jurídico validado</span>
                       </>
                     ) : (
                       <>
@@ -885,19 +891,19 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
 
       {/* Generator panel */}
       {showGenerator && (
-        <section className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-4">
+        <section className="rounded-lg border border-border bg-card p-5 shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <MecIcon className={`w-5 h-5 ${info.cor}`} aria-hidden="true" />
-              <h3 className="text-lg font-semibold">Gerador: {info.titulo}</h3>
+              <MecIcon className={`h-5 w-5 ${info.cor}`} aria-hidden="true" />
+              <h3 className="text-lg font-semibold leading-6 text-foreground">Gerador: {info.titulo}</h3>
             </div>
-            <Button size="sm" variant="ghost" className="h-9 w-9 p-0" onClick={() => setShowGenerator(false)} aria-label="Fechar gerador">
+            <Button size="icon-sm" variant="ghost" onClick={() => setShowGenerator(false)} aria-label="Fechar gerador">
               <X aria-hidden="true" />
             </Button>
           </div>
 
           {/* Selected data summary */}
-          <div className="rounded-md border border-border bg-muted/50 p-4 space-y-2">
+          <div className="rounded-md border border-border bg-secondary p-4 space-y-2">
             <p className="text-sm text-muted-foreground">
               <strong>Fundamentação selecionada:</strong>
             </p>
@@ -927,13 +933,13 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
           </div>
 
           {/* Tipo de instrumento contratual */}
-          <div className="rounded-md border border-border bg-muted/50 p-4 space-y-3">
+          <div className="rounded-md border border-border bg-secondary p-4 space-y-3">
             <div className="flex items-center gap-2">
               <FileText className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
               <Label htmlFor="reeq-instrumento" className="text-sm font-semibold">Instrumento atacado</Label>
             </div>
             <Select value={instrumento} onValueChange={(v) => setInstrumento(v as Instrumento)}>
-              <SelectTrigger id="reeq-instrumento" className="bg-background">
+              <SelectTrigger id="reeq-instrumento">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -1005,7 +1011,7 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
           </div>
 
           {/* Tabela comparativa de preços — NF/cotação antes vs atual */}
-          <div className="rounded-md border border-border bg-muted/50 p-4 space-y-3">
+          <div className="rounded-md border border-border bg-secondary p-4 space-y-3">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-2 flex-wrap">
                 <Receipt className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
@@ -1020,46 +1026,49 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
               Informe NFs de entrada e/ou cotações para comprovar a variação de preço entre a época do certame e o momento atual. Esta tabela será reproduzida no pedido como prova documental do desequilíbrio.
             </p>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr className="border-b border-border text-muted-foreground">
-                    <th scope="col" className="text-left p-2 text-sm font-semibold whitespace-nowrap">Descrição</th>
-                    <th scope="col" className="text-left p-2 text-sm font-semibold whitespace-nowrap">Un.</th>
-                    <th scope="col" className="text-right p-2 text-sm font-semibold whitespace-nowrap">Qtd.</th>
-                    <th scope="col" className="text-right p-2 text-sm font-semibold whitespace-nowrap">Preço à época</th>
-                    <th scope="col" className="text-right p-2 text-sm font-semibold whitespace-nowrap">Preço atual</th>
-                    <th scope="col" className="text-right p-2 text-sm font-semibold whitespace-nowrap">Var. %</th>
-                    <th scope="col" className="text-left p-2 text-sm font-semibold whitespace-nowrap">NF/Cotação à época</th>
-                    <th scope="col" className="text-left p-2 text-sm font-semibold whitespace-nowrap">NF/Cotação atual</th>
-                    <th scope="col" className="p-2"><span className="sr-only">Ações</span></th>
-                  </tr>
-                </thead>
-                <tbody>
+            {/* Tabela editável no padrão v3 (cabeçalho rebaixado, rótulos de
+                12px, rolagem presa ao contêiner). As células levam campos de
+                40px, por isso o respiro é menor que o da célula de leitura. */}
+            <div className="overflow-hidden rounded-md border border-border bg-card">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead scope="col">Descrição</TableHead>
+                    <TableHead scope="col">Un.</TableHead>
+                    <TableHead scope="col" className="text-right">Qtd.</TableHead>
+                    <TableHead scope="col" className="text-right">Preço à época</TableHead>
+                    <TableHead scope="col" className="text-right">Preço atual</TableHead>
+                    <TableHead scope="col" className="text-right">Var. %</TableHead>
+                    <TableHead scope="col">NF/Cotação à época</TableHead>
+                    <TableHead scope="col">NF/Cotação atual</TableHead>
+                    <TableHead scope="col"><span className="sr-only">Ações</span></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {itensComp.map(it => {
                     const v = calcVariacao(it.precoAntes, it.precoAtual);
                     return (
-                      <tr key={it.id} className="border-b border-border">
-                        <td className="p-1"><Input aria-label="Descrição do item" className="min-w-[160px]" value={it.descricao} onChange={e => updItemComp(it.id, { descricao: e.target.value })} placeholder="Ex.: Cimento CP-II" /></td>
-                        <td className="p-1"><Input aria-label="Unidade" className="w-20" value={it.unidade} onChange={e => updItemComp(it.id, { unidade: e.target.value })} /></td>
-                        <td className="p-1"><Input aria-label="Quantidade" className="w-24 text-right tabular-nums" type="number" value={it.quantidade || ''} onChange={e => updItemComp(it.id, { quantidade: parseFloat(e.target.value) || 0 })} /></td>
-                        <td className="p-1"><Input aria-label="Preço à época" className="w-28 text-right tabular-nums" type="number" step="0.01" value={it.precoAntes || ''} onChange={e => updItemComp(it.id, { precoAntes: parseFloat(e.target.value) || 0 })} /></td>
-                        <td className="p-1"><Input aria-label="Preço atual" className="w-28 text-right tabular-nums" type="number" step="0.01" value={it.precoAtual || ''} onChange={e => updItemComp(it.id, { precoAtual: parseFloat(e.target.value) || 0 })} /></td>
-                        <td className={`p-1 text-right font-semibold whitespace-nowrap tabular-nums ${v >= 0 ? 'text-destructive' : 'text-success'}`}>
+                      <TableRow key={it.id}>
+                        <TableCell className="px-2 py-1.5"><Input aria-label="Descrição do item" className="min-w-[160px]" value={it.descricao} onChange={e => updItemComp(it.id, { descricao: e.target.value })} placeholder="Ex.: Cimento CP-II" /></TableCell>
+                        <TableCell className="px-2 py-1.5"><Input aria-label="Unidade" className="w-20" value={it.unidade} onChange={e => updItemComp(it.id, { unidade: e.target.value })} /></TableCell>
+                        <TableCell className="px-2 py-1.5"><Input aria-label="Quantidade" className="w-24 text-right tabular-nums" type="number" value={it.quantidade || ''} onChange={e => updItemComp(it.id, { quantidade: parseFloat(e.target.value) || 0 })} /></TableCell>
+                        <TableCell className="px-2 py-1.5"><Input aria-label="Preço à época" className="w-28 text-right tabular-nums" type="number" step="0.01" value={it.precoAntes || ''} onChange={e => updItemComp(it.id, { precoAntes: parseFloat(e.target.value) || 0 })} /></TableCell>
+                        <TableCell className="px-2 py-1.5"><Input aria-label="Preço atual" className="w-28 text-right tabular-nums" type="number" step="0.01" value={it.precoAtual || ''} onChange={e => updItemComp(it.id, { precoAtual: parseFloat(e.target.value) || 0 })} /></TableCell>
+                        <TableCell className={`whitespace-nowrap px-2 py-1.5 text-right font-semibold tabular-nums ${v >= 0 ? 'text-destructive-ink' : 'text-success-ink'}`}>
                           {it.precoAntes > 0 ? `${v >= 0 ? '+' : ''}${v.toFixed(1)}%` : '—'}
-                        </td>
-                        <td className="p-1"><Input aria-label="NF ou cotação à época" className="min-w-[160px]" value={it.fonteAntes} onChange={e => updItemComp(it.id, { fonteAntes: e.target.value })} placeholder="NF nº / Fornecedor / data" /></td>
-                        <td className="p-1"><Input aria-label="NF ou cotação atual" className="min-w-[160px]" value={it.fonteAtual} onChange={e => updItemComp(it.id, { fonteAtual: e.target.value })} placeholder="NF nº / Fornecedor / data" /></td>
-                        <td className="p-1">
-                          <Button size="sm" variant="ghost" className="h-9 w-9 p-0 text-destructive hover:text-destructive hover:bg-destructive-tint" onClick={() => rmItemComp(it.id)} disabled={itensComp.length === 1} aria-label="Remover item">
+                        </TableCell>
+                        <TableCell className="px-2 py-1.5"><Input aria-label="NF ou cotação à época" className="min-w-[160px]" value={it.fonteAntes} onChange={e => updItemComp(it.id, { fonteAntes: e.target.value })} placeholder="NF nº / Fornecedor / data" /></TableCell>
+                        <TableCell className="px-2 py-1.5"><Input aria-label="NF ou cotação atual" className="min-w-[160px]" value={it.fonteAtual} onChange={e => updItemComp(it.id, { fonteAtual: e.target.value })} placeholder="NF nº / Fornecedor / data" /></TableCell>
+                        <TableCell className="px-2 py-1.5">
+                          <Button size="icon-sm" variant="ghost" className="text-destructive-ink hover:bg-destructive-tint hover:text-destructive-ink" onClick={() => rmItemComp(it.id)} disabled={itensComp.length === 1} aria-label="Remover item">
                             <Trash2 aria-hidden="true" />
                           </Button>
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     );
                   })}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           </div>
 
@@ -1085,7 +1094,7 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
             <Textarea id="reeq-observacoes" placeholder="Informações complementares..." className="min-h-[60px]" value={observacoes} onChange={e => setObservacoes(e.target.value)} />
           </div>
 
-          <div className="rounded-md border border-border bg-muted/50 p-4">
+          <div className="rounded-md border border-border bg-secondary p-4">
             <p className="text-sm text-muted-foreground">
               <strong className="text-foreground">Fundamentação automática:</strong> {info.fundamento}
             </p>
@@ -1101,9 +1110,9 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
           </Button>
 
           {pedidoGerado && (
-            <div className="rounded-lg border border-border bg-card p-6 space-y-4">
+            <div className="space-y-4 rounded-lg border border-border bg-card p-5">
               <div className="flex items-center justify-between flex-wrap gap-3">
-                <h4 className="text-lg font-semibold">Pedido Gerado pela IA</h4>
+                <h4 className="text-base font-semibold leading-6 text-foreground">Pedido Gerado pela IA</h4>
                 <div className="flex flex-wrap gap-2">
                   <Button variant="outline" onClick={copyToClipboard}>Copiar</Button>
                   <Button variant="outline" onClick={exportarWord} disabled={!!exporting}>

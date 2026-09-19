@@ -232,7 +232,7 @@ export default function HistoricoDocumentos() {
   /* ── Autorização ────────────────────────────────────────────────────── */
   if (autorizacaoCarregando) {
     return (
-      <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-4">
+      <div className="flex flex-col gap-2 rounded-lg border border-border bg-card shadow-sm p-4">
         <Skeleton className="h-5 w-48" />
         <Skeleton className="h-4 w-full" />
         <Skeleton className="h-4 w-2/3" />
@@ -243,7 +243,7 @@ export default function HistoricoDocumentos() {
   if (!isCompanyAdmin) {
     // Tabela vazia diria "não aconteceu nada"; a recusa tem que dizer o que é.
     return (
-      <div className="rounded-xl border border-border bg-card">
+      <div className="rounded-lg border border-border bg-card shadow-sm">
         <EstadoVazio
           icone={<Lock />}
           titulo="Acesso não autorizado"
@@ -255,7 +255,7 @@ export default function HistoricoDocumentos() {
 
   if (!empresaId) {
     return (
-      <div className="rounded-xl border border-border bg-card">
+      <div className="rounded-lg border border-border bg-card shadow-sm">
         <EstadoVazio
           icone={<History />}
           titulo="Escolha uma empresa"

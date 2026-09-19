@@ -8,6 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import {
   Loader2, Sparkles, Upload, FileText, X, Plus, Trash2,
   AlertTriangle, CheckCircle, ChevronRight, ChevronLeft, Scale
@@ -226,7 +227,7 @@ ${truncated}`
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-2">
-          <span className="flex items-center justify-center w-7 h-7 rounded-full bg-primary-tint text-primary text-xs font-bold" aria-hidden="true">1</span>
+          <span className="flex items-center justify-center h-7 w-7 rounded-md bg-primary-tint text-primary text-xs font-semibold" aria-hidden="true">1</span>
           <h4 className="text-base font-semibold">Etapa 1 — Envio do Edital para Análise</h4>
         </div>
 
@@ -247,16 +248,15 @@ ${truncated}`
         {/* File upload */}
         <div className="space-y-2">
           {editalFile ? (
-            <div className="flex items-center gap-3 rounded-md border border-border bg-muted/50 p-3">
-              <FileText className="w-5 h-5 text-muted-foreground shrink-0" aria-hidden="true" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{editalFile.name}</p>
+            <div className="flex items-center gap-3 rounded-md border border-border bg-secondary p-3">
+              <FileText className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">{editalFile.name}</p>
                 <p className="text-xs text-muted-foreground tabular-nums">{(editalFile.size / 1024).toFixed(0)} KB</p>
               </div>
               <Button
                 variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0"
+                size="icon-sm"
                 onClick={() => { setEditalFile(null); setEditalText(''); }}
                 aria-label="Remover arquivo do edital"
               >
@@ -315,7 +315,7 @@ ${truncated}`
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <span className="flex items-center justify-center w-7 h-7 rounded-full bg-primary-tint text-primary text-xs font-bold" aria-hidden="true">2</span>
+          <span className="flex items-center justify-center h-7 w-7 rounded-md bg-primary-tint text-primary text-xs font-semibold" aria-hidden="true">2</span>
           <h4 className="text-base font-semibold">Etapa 2 — Revisão e Complemento</h4>
         </div>
         <Button variant="ghost" size="sm" onClick={() => setStep(1)}>
@@ -346,7 +346,7 @@ ${truncated}`
           <div
             key={item.id}
             className={`rounded-md border p-3 space-y-2 transition-colors ${
-              item.selecionada ? 'bg-card border-border' : 'bg-muted/50 border-border opacity-60'
+              item.selecionada ? 'bg-card border-border' : 'bg-muted border-border opacity-60'
             }`}
           >
             <div className="flex items-start gap-3">
@@ -378,8 +378,8 @@ ${truncated}`
               </div>
               <Button
                 variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0 shrink-0 text-muted-foreground hover:text-destructive hover:bg-destructive-tint"
+                size="icon-sm"
+                className="shrink-0 text-muted-foreground hover:bg-destructive-tint hover:text-destructive-ink"
                 onClick={() => removeIrregularidade(item.id)}
                 aria-label="Remover irregularidade"
               >
@@ -390,24 +390,23 @@ ${truncated}`
         ))}
 
         {irregularidades.length === 0 && (
-          <div className="flex flex-col items-center text-center py-8 gap-3">
-            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
-              <AlertTriangle className="w-6 h-6" aria-hidden="true" />
-            </span>
-            <p className="text-base font-semibold">Nenhuma irregularidade encontrada</p>
-            <p className="text-sm text-muted-foreground">Adicione manualmente abaixo.</p>
-          </div>
+          <EstadoVazio
+            tamanho="compacto"
+            icone={<AlertTriangle />}
+            titulo="Nenhuma irregularidade encontrada"
+            descricao="Adicione manualmente abaixo."
+          />
         )}
       </div>
 
       {/* Manual add */}
       {showManualForm ? (
-        <div className="rounded-md border border-border bg-muted/50 p-4 space-y-3">
+        <div className="rounded-md border border-border bg-secondary p-4 space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <h5 className="text-base font-semibold flex items-center gap-1">
-              <Plus className="w-4 h-4" aria-hidden="true" /> Adicionar Irregularidade Manual
+            <h5 className="flex items-center gap-1 text-base font-semibold leading-6 text-foreground">
+              <Plus className="h-4 w-4" aria-hidden="true" /> Adicionar Irregularidade Manual
             </h5>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setShowManualForm(false)} aria-label="Fechar formulário manual">
+            <Button variant="ghost" size="icon-sm" onClick={() => setShowManualForm(false)} aria-label="Fechar formulário manual">
               <X aria-hidden="true" />
             </Button>
           </div>

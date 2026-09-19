@@ -97,11 +97,11 @@ REGRAS:
   };
 
   return (
-    <section className="rounded-lg border border-border bg-card p-6 space-y-4">
+    <section className="space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2 min-w-0 flex-wrap">
-          <FileSearch className="w-5 h-5 text-muted-foreground shrink-0" aria-hidden="true" />
-          <h4 className="text-lg font-semibold">Pré-visualização da estrutura</h4>
+          <FileSearch className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <h4 className="text-base font-semibold leading-6 text-foreground">Pré-visualização da estrutura</h4>
           {preview && (
             <Badge variant="success" className="gap-1 shrink-0">
               <CheckCircle className="w-3 h-3" aria-hidden="true" /> Estrutura pronta
@@ -168,7 +168,7 @@ REGRAS:
 
 function Bloco({ titulo, itens, accent, warn }: { titulo: string; itens: string[]; accent?: boolean; warn?: boolean }) {
   return (
-    <div className={`rounded-md border p-3 ${warn ? 'border-warning-line bg-warning-tint' : accent ? 'border-l-2 border-l-primary border-border bg-muted/50' : 'border-border bg-muted/50'}`}>
+    <div className={`rounded-md border p-3 ${warn ? 'border-warning-line bg-warning-tint' : accent ? 'border-l-2 border-l-primary border-border bg-secondary' : 'border-border bg-secondary'}`}>
       <p className={`font-semibold mb-1 ${warn ? 'text-warning-ink' : ''}`}>{titulo}</p>
       <ul className="space-y-1 list-disc pl-4">
         {itens.map((t, i) => <li key={i} className={warn ? 'text-warning-ink' : 'text-muted-foreground'}>{t}</li>)}

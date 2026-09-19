@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import SeloPraefectusIA from '@/components/shared/SeloPraefectusIA';
 import { toast } from 'sonner';
 import { Sparkles, Loader2, BookOpen, Copy, TrendingUp, Download, FileText } from 'lucide-react';
 import { streamAIChat } from '@/lib/ai-stream';
@@ -331,10 +332,12 @@ Linguagem técnica, formal, objetiva e impessoal. Cite artigos, incisos e parág
 
   return (
     <div className="space-y-4">
-      <section className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-4">
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
-          <h3 className="text-lg font-semibold">Gerador de Documentos com IA</h3>
+      <section className="rounded-lg border border-border bg-card p-5 shadow-sm space-y-4">
+        {/* Recurso de IA: o selo "Praefectus IA" identifica o gerador. */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Sparkles className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+          <h3 className="text-lg font-semibold leading-6 text-foreground">Gerador de Documentos com IA</h3>
+          <SeloPraefectusIA />
         </div>
 
         {/* Doc type selector */}
@@ -372,10 +375,10 @@ Linguagem técnica, formal, objetiva e impessoal. Cite artigos, incisos e parág
             ) : (
               <>
                 {irregularidades.length > 0 ? (
-                  <div className="rounded-md border border-border bg-muted/50 p-4 space-y-3">
+                  <div className="rounded-md border border-border bg-secondary p-4 space-y-3">
                     <div className="flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-2">
-                        <span className="flex items-center justify-center w-7 h-7 rounded-full bg-primary-tint text-primary text-xs font-bold" aria-hidden="true">3</span>
+                        <span className="flex items-center justify-center h-7 w-7 rounded-md bg-primary-tint text-primary text-xs font-semibold" aria-hidden="true">3</span>
                         <h4 className="text-base font-semibold">Etapa 3 — Geração do Documento</h4>
                       </div>
                       <Button variant="ghost" size="sm" onClick={() => setShowExtractor(true)} className="text-primary hover:text-primary">
@@ -422,10 +425,10 @@ Linguagem técnica, formal, objetiva e impessoal. Cite artigos, incisos e parág
             ) : (
               <>
                 {fatosPeticao.length > 0 ? (
-                  <div className="rounded-md border border-border bg-muted/50 p-4 space-y-3">
+                  <div className="rounded-md border border-border bg-secondary p-4 space-y-3">
                     <div className="flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-2">
-                        <span className="flex items-center justify-center w-7 h-7 rounded-full bg-primary-tint text-primary text-xs font-bold" aria-hidden="true">3</span>
+                        <span className="flex items-center justify-center h-7 w-7 rounded-md bg-primary-tint text-primary text-xs font-semibold" aria-hidden="true">3</span>
                         <h4 className="text-base font-semibold">Etapa 3 — Geração do {tipoDoc}</h4>
                       </div>
                       <Button variant="ghost" size="sm" onClick={() => setShowPeticaoUploader(true)} className="text-primary hover:text-primary">
@@ -466,9 +469,9 @@ Linguagem técnica, formal, objetiva e impessoal. Cite artigos, incisos e parág
 
         {/* Reequilibrio indices */}
         {isReequilibrio && (
-          <div className="rounded-md border border-border bg-muted p-4 space-y-2">
+          <div className="rounded-md border border-border bg-secondary p-4 space-y-2">
             <div className="flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+              <TrendingUp className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
               <span className="text-sm font-semibold text-foreground">Dados econômicos sincronizados automaticamente</span>
             </div>
             {loadingIndices ? (
@@ -524,7 +527,7 @@ Linguagem técnica, formal, objetiva e impessoal. Cite artigos, incisos e parág
               <BookOpen className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
               Documentos da Base Jurídica como referência ({selectedDocs.length} selecionados)
             </legend>
-            <div className="flex flex-wrap gap-2 max-h-[120px] overflow-y-auto p-2 rounded-md bg-muted/50">
+            <div className="flex flex-wrap gap-2 max-h-[120px] overflow-y-auto p-2 rounded-md bg-secondary">
               {docsBase.map(doc => {
                 const selecionado = selectedDocs.includes(doc.id);
                 return (
@@ -555,9 +558,9 @@ Linguagem técnica, formal, objetiva e impessoal. Cite artigos, incisos e parág
 
       {/* Result */}
       {resultado && (
-        <section className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-4">
+        <section className="rounded-lg border border-border bg-card p-5 shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <h3 className="text-lg font-semibold">Documento Gerado</h3>
+            <h3 className="text-lg font-semibold leading-6 text-foreground">Documento Gerado</h3>
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" onClick={copyToClipboard}>
                 <Copy aria-hidden="true" /> Copiar

@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { toast } from 'sonner';
 import {
   Upload, FileText, Trash2, Sparkles, Loader2, Search,
@@ -245,10 +246,10 @@ export default function BaseJuridicaUpload() {
   return (
     <div className="space-y-6">
       {/* Upload Form */}
-      <section className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-4">
+      <section className="rounded-lg border border-border bg-card p-5 shadow-sm space-y-4">
         <div className="flex items-center gap-2">
-          <Upload className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
-          <h3 className="text-lg font-semibold">Alimentar Base Jurídica da IA</h3>
+          <Upload className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+          <h3 className="text-lg font-semibold leading-6 text-foreground">Alimentar Base Jurídica da IA</h3>
         </div>
         <p className="text-sm text-muted-foreground">
           Faça upload de decisões, acórdãos, doutrinas, súmulas e pareceres para enriquecer as respostas da IA.
@@ -331,10 +332,10 @@ export default function BaseJuridicaUpload() {
       </section>
 
       {/* Documents List */}
-      <section className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-4">
+      <section className="rounded-lg border border-border bg-card p-5 shadow-sm space-y-4">
         <div className="flex items-center gap-2">
-          <BookOpen className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
-          <h3 className="text-lg font-semibold">Documentos na Base ({docs.length})</h3>
+          <BookOpen className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+          <h3 className="text-lg font-semibold leading-6 text-foreground">Documentos na Base ({docs.length})</h3>
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -373,21 +374,18 @@ export default function BaseJuridicaUpload() {
             {[1, 2, 3].map(i => <Skeleton key={i} className="h-20 w-full rounded-md" />)}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center text-center py-8 gap-3">
-            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
-              <BookOpen className="w-6 h-6" aria-hidden="true" />
-            </span>
-            <p className="text-base font-semibold">Nenhum documento na base jurídica</p>
-            <p className="text-sm text-muted-foreground max-w-md">
-              Faça upload de decisões, acórdãos e doutrinas para enriquecer a IA.
-            </p>
-          </div>
+          <EstadoVazio
+            tamanho="compacto"
+            icone={<BookOpen />}
+            titulo="Nenhum documento na base jurídica"
+            descricao="Faça upload de decisões, acórdãos e doutrinas para enriquecer a IA."
+          />
         ) : (
           <ul className="space-y-3">
             {filtered.map(doc => {
               const Icon = TipoIcon(doc.tipo);
               return (
-                <li key={doc.id} className="flex items-start gap-3 rounded-md border border-border bg-background p-3 hover:bg-muted/50 transition-colors">
+                <li key={doc.id} className="flex items-start gap-3 rounded-md border border-border bg-card p-3 transition-colors duration-150 hover:bg-muted/60">
                   <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center flex-shrink-0">
                     <Icon className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
                   </div>
@@ -419,7 +417,7 @@ export default function BaseJuridicaUpload() {
                     size="sm"
                     variant="ghost"
                     onClick={() => handleDelete(doc.id)}
-                    className="text-destructive hover:text-destructive hover:bg-destructive-tint"
+                    className="text-destructive-ink hover:bg-destructive-tint hover:text-destructive-ink"
                     aria-label={`Remover ${doc.titulo} da base`}
                     title="Remover da base"
                   >
