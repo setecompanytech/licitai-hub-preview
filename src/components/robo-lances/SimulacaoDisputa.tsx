@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
   Play, Pause, RotateCcw, TrendingDown, Clock, Hash, DollarSign, Info,
 } from 'lucide-react';
@@ -201,7 +202,7 @@ export default function SimulacaoDisputa({ lance }: Props) {
             Simulação de Disputa
           </h4>
           {running && (
-            <Badge variant="success" className="animate-pulse">
+            <Badge variant="success">
               Em andamento
             </Badge>
           )}
@@ -236,32 +237,43 @@ export default function SimulacaoDisputa({ lance }: Props) {
         </span>
       </div>
 
-      {/* Stats row */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
-        <div className="bg-muted rounded-lg p-3 text-center">
-          <DollarSign className="w-4 h-4 mx-auto text-muted-foreground mb-1" aria-hidden="true" />
-          <p className="text-xs text-muted-foreground">Valor Atual</p>
-          <p className="text-base font-bold text-foreground tabular-nums">{formatCurrency(valorAtual)}</p>
+      {/* Stats row — ladrilhos densos, rótulo em cima e número embaixo, à
+          esquerda (Design System v3: nada centralizado em tela operacional). */}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
+        <div className="rounded-md bg-muted p-3">
+          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <DollarSign className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            Valor Atual
+          </p>
+          <p className="mt-1 text-base font-semibold tabular-nums text-foreground">{formatCurrency(valorAtual)}</p>
         </div>
-        <div className="bg-muted rounded-lg p-3 text-center">
-          <TrendingDown className="w-4 h-4 mx-auto text-success mb-1" aria-hidden="true" />
-          <p className="text-xs text-muted-foreground">Economia</p>
-          <p className="text-base font-bold text-success-ink tabular-nums">{formatCurrency(economia)}</p>
+        <div className="rounded-md bg-muted p-3">
+          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <TrendingDown className="h-3.5 w-3.5 shrink-0 text-success-ink" aria-hidden="true" />
+            Economia
+          </p>
+          <p className="mt-1 text-base font-semibold tabular-nums text-success-ink">{formatCurrency(economia)}</p>
         </div>
-        <div className="bg-muted rounded-lg p-3 text-center">
-          <Hash className="w-4 h-4 mx-auto text-muted-foreground mb-1" aria-hidden="true" />
-          <p className="text-xs text-muted-foreground">Rodada</p>
-          <p className="text-base font-bold tabular-nums">{rodada} / {textoDoLimiteDeLances(lance.maxLances)}</p>
+        <div className="rounded-md bg-muted p-3">
+          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Hash className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            Rodada
+          </p>
+          <p className="mt-1 text-base font-semibold tabular-nums">{rodada} / {textoDoLimiteDeLances(lance.maxLances)}</p>
         </div>
-        <div className="bg-muted rounded-lg p-3 text-center">
-          <Clock className="w-4 h-4 mx-auto text-muted-foreground mb-1" aria-hidden="true" />
-          <p className="text-xs text-muted-foreground">Próximo em</p>
-          <p className="text-base font-bold tabular-nums">{running ? `${tempoRestante}s` : '—'}</p>
+        <div className="rounded-md bg-muted p-3">
+          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Clock className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            Próximo em
+          </p>
+          <p className="mt-1 text-base font-semibold tabular-nums">{running ? `${tempoRestante}s` : '—'}</p>
         </div>
-        <div className="bg-muted rounded-lg p-3 text-center">
-          <DollarSign className="w-4 h-4 mx-auto text-destructive mb-1" aria-hidden="true" />
-          <p className="text-xs text-muted-foreground">Piso</p>
-          <p className="text-base font-bold text-destructive-ink tabular-nums">{formatCurrency(lance.valorMinimo)}</p>
+        <div className="rounded-md bg-muted p-3">
+          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <DollarSign className="h-3.5 w-3.5 shrink-0 text-destructive-ink" aria-hidden="true" />
+            Piso
+          </p>
+          <p className="mt-1 text-base font-semibold tabular-nums text-destructive-ink">{formatCurrency(lance.valorMinimo)}</p>
         </div>
       </div>
 
@@ -276,43 +288,43 @@ export default function SimulacaoDisputa({ lance }: Props) {
 
       {/* History */}
       {historico.length > 0 && (
-        <div className="max-h-32 overflow-auto border border-border rounded-lg">
-          <table className="w-full text-sm">
-            <thead className="sticky top-0 bg-muted">
-              <tr>
-                <th className="text-left px-3 py-2 text-sm font-semibold">#</th>
-                <th className="text-left px-3 py-2 text-sm font-semibold">Tipo</th>
-                <th className="text-right px-3 py-2 text-sm font-semibold">Valor</th>
-                <th className="text-right px-3 py-2 text-sm font-semibold">Hora</th>
-              </tr>
-            </thead>
-            <tbody>
+        <div className="max-h-64 overflow-auto rounded-md border border-border">
+          <Table>
+            <TableHeader className="sticky top-0">
+              <TableRow>
+                <TableHead>#</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead className="text-right">Valor</TableHead>
+                <TableHead className="text-right">Hora</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {historico.map((h) => (
-                <tr key={h.rodada} className="border-t border-border">
-                  <td className="px-3 py-2 tabular-nums">{h.rodada}</td>
-                  <td className="px-3 py-2">
+                <TableRow key={h.rodada}>
+                  <TableCell className="tabular-nums">{h.rodada}</TableCell>
+                  <TableCell>
                     <Badge variant={h.tipo === 'meu' ? 'info' : 'warning'}>
                       {h.tipo === 'meu' ? 'Meu Lance' : 'Concorrente'}
                     </Badge>
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(h.valor)}</td>
-                  <td className="px-3 py-2 text-right text-muted-foreground tabular-nums">
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">{formatCurrency(h.valor)}</TableCell>
+                  <TableCell className="text-right tabular-nums text-muted-foreground">
                     {horaCurta(h.timestamp)}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       )}
 
       {/* Eventos — o que antes ia para o mural real, agora só aqui. */}
       {eventos.length > 0 && (
-        <div className="border border-border rounded-lg overflow-hidden">
-          <p className="px-3 py-2 text-xs font-semibold text-muted-foreground bg-muted">
+        <div className="overflow-hidden rounded-md border border-border">
+          <p className="bg-secondary px-3 py-2 text-xs font-semibold text-muted-foreground">
             Eventos da simulação (só nesta tela)
           </p>
-          <ul className="max-h-32 overflow-auto divide-y divide-border text-sm">
+          <ul className="max-h-48 divide-y divide-border overflow-auto text-sm">
             {eventos.map((e) => (
               <li key={e.id} className="px-3 py-2 flex gap-2">
                 <span className="text-muted-foreground tabular-nums shrink-0">{horaCurta(e.em)}</span>

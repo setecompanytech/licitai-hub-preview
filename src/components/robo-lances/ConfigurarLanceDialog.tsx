@@ -47,6 +47,7 @@ import {
 } from '@/lib/robo/compra-comprasgov';
 import { lerValorDigitado, valorParaDigitar } from '@/lib/robo/valor-digitado';
 import TextoExpansivel from '@/components/gestao/TextoExpansivel';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { pisoUnitarioDoItemUnico } from '@/lib/robo/piso-do-item';
 import { buscarUasgDoProcesso } from '@/lib/robo/uasg-do-processo';
 import { cn } from '@/lib/utils';
@@ -349,7 +350,7 @@ function LinhaDeItem({
         {rotulo && (
           <span
             title={rotulo.titulo}
-            className="inline-block mt-0.5 px-1.5 py-px rounded bg-muted text-xs text-muted-foreground"
+            className="mt-0.5 inline-block rounded-sm bg-muted px-1.5 py-px text-xs text-muted-foreground"
           >
             {rotulo.texto}
           </span>
@@ -370,14 +371,14 @@ function LinhaDeItem({
               onChange={(e) => aoMudarMarcaModelo(item.id, 'marca', e.target.value)}
               placeholder="marca"
               aria-label={`Marca do item ${item.numero}`}
-              className="h-8 w-24 text-xs px-2"
+              className="h-9 w-24 px-2 text-sm"
             />
             <Input
               value={item.modelo ?? ''}
               onChange={(e) => aoMudarMarcaModelo(item.id, 'modelo', e.target.value)}
               placeholder="modelo"
               aria-label={`Modelo do item ${item.numero}`}
-              className="h-8 w-24 text-xs px-2"
+              className="h-9 w-24 px-2 text-sm"
             />
           </div>
         )}
@@ -496,7 +497,7 @@ function LinhaDeItem({
         <Button
           variant="ghost"
           size="sm"
-          className="h-9 w-9 p-0 text-destructive hover:text-destructive"
+          className="h-9 w-9 p-0 text-destructive-ink hover:text-destructive-ink"
           aria-label={`Remover item ${item.numero}`}
           onClick={() => aoRemover(item.id)}
         >
@@ -1414,7 +1415,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                 {idx > 0 && <div className="w-6 h-px bg-border" aria-hidden="true" />}
                 <div
                   aria-current={currentStepIndex === idx ? 'step' : undefined}
-                  className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                  className={`flex items-center gap-1.5 rounded-sm px-3 py-1 text-xs font-medium transition-colors ${
                     currentStepIndex === idx ? 'bg-primary text-primary-foreground' :
                     currentStepIndex > idx ? 'bg-success-tint text-success-ink' : 'bg-muted text-muted-foreground'
                   }`}
@@ -1440,54 +1441,64 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
               <button
                 type="button"
                 onClick={() => setStep(1)}
-                className="flex flex-col items-center gap-3 p-6 rounded-lg border-2 border-border bg-card hover:border-primary/40 hover:bg-muted transition-colors text-center group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="group flex items-start gap-3 rounded-lg border border-border bg-card p-4 text-left transition-colors hover:border-primary/40 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
-                <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center group-hover:bg-primary-tint transition-colors">
-                  <Pencil className="w-5 h-5 text-muted-foreground group-hover:text-primary" aria-hidden="true" />
-                </div>
-                <div>
-                  <p className="text-base font-semibold text-foreground">Cadastro Manual</p>
-                  <p className="text-sm text-muted-foreground mt-1">Preencha todos os dados manualmente.</p>
-                </div>
+                <span
+                  aria-hidden="true"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground transition-colors group-hover:bg-primary-tint group-hover:text-primary"
+                >
+                  <Pencil className="h-5 w-5" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-base font-semibold leading-6 text-foreground">Cadastro Manual</span>
+                  <span className="mt-0.5 block text-sm text-muted-foreground">Preencha todos os dados manualmente.</span>
+                </span>
               </button>
               <button
                 type="button"
                 aria-pressed={!showEditalUpload}
                 onClick={() => setShowEditalUpload(false)}
-                className="relative flex flex-col items-center gap-3 p-6 rounded-lg border-2 border-primary/40 bg-primary-tint hover:border-primary transition-colors text-center group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="group relative flex items-start gap-3 rounded-lg border border-primary-line bg-primary-tint p-4 text-left transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
-                <span className="absolute top-3 right-3 text-xs font-semibold uppercase tracking-wider text-primary bg-card rounded px-1.5 py-0.5">
+                <span className="absolute right-3 top-3 rounded-sm bg-card px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wider text-primary">
                   Recomendado
                 </span>
-                <div className="w-12 h-12 rounded-full bg-card flex items-center justify-center">
-                  <FileSearch className="w-5 h-5 text-primary" aria-hidden="true" />
-                </div>
-                <div>
-                  <p className="text-base font-semibold text-foreground">Importar do Kanban</p>
-                  <p className="text-sm text-muted-foreground mt-1">Importe dados + itens precificados.</p>
-                </div>
+                <span
+                  aria-hidden="true"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-card text-primary"
+                >
+                  <FileSearch className="h-5 w-5" />
+                </span>
+                <span className="min-w-0 pr-24">
+                  <span className="block text-base font-semibold leading-6 text-foreground">Importar do Kanban</span>
+                  <span className="mt-0.5 block text-sm text-muted-foreground">Importe dados + itens precificados.</span>
+                </span>
               </button>
               <button
                 type="button"
                 aria-pressed={showEditalUpload}
                 onClick={() => setShowEditalUpload(true)}
-                className="flex flex-col items-center gap-3 p-6 rounded-lg border-2 border-border bg-card hover:border-primary/40 hover:bg-muted transition-colors text-center group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="group flex items-start gap-3 rounded-lg border border-border bg-card p-4 text-left transition-colors hover:border-primary/40 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
-                <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center group-hover:bg-primary-tint transition-colors">
-                  <Sparkles className="w-5 h-5 text-muted-foreground group-hover:text-primary" aria-hidden="true" />
-                </div>
-                <div>
-                  <p className="text-base font-semibold text-foreground">Extrair do Edital (IA)</p>
-                  <p className="text-sm text-muted-foreground mt-1">Envie o edital e a IA extrai itens e valores.</p>
-                </div>
+                {/* Teal só no ícone de IA (Design System v3, §5): nunca em texto. */}
+                <span
+                  aria-hidden="true"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-muted text-teal transition-colors group-hover:bg-primary-tint"
+                >
+                  <Sparkles className="h-5 w-5" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-base font-semibold leading-6 text-foreground">Extrair do Edital (IA)</span>
+                  <span className="mt-0.5 block text-sm text-muted-foreground">Envie o edital e a IA extrai itens e valores.</span>
+                </span>
               </button>
             </div>
 
             {/* AI Edital Upload area */}
             {showEditalUpload && (
-              <div className="space-y-3 border border-border rounded-lg bg-muted p-4">
+              <div className="space-y-3 rounded-md border border-border bg-muted p-4">
                 <div className="flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+                  <Sparkles className="h-5 w-5 text-teal" aria-hidden="true" />
                   <h4 className="text-base font-semibold text-foreground">Extração Inteligente do Edital</h4>
                 </div>
                 <p className="text-sm text-muted-foreground">
@@ -1498,14 +1509,14 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                   <button
                     type="button"
                     onClick={() => editalFileRef.current?.click()}
-                    className="w-full border-2 border-dashed border-border bg-card rounded-lg p-6 flex flex-col items-center gap-2 hover:border-primary/50 hover:bg-primary-tint transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    className="flex w-full flex-col items-center gap-2 rounded-md border border-dashed border-border bg-card p-6 transition-colors hover:border-primary/50 hover:bg-primary-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   >
                     <Upload className="w-6 h-6 text-muted-foreground" aria-hidden="true" />
                     <span className="text-sm font-medium text-foreground">Clique para enviar o arquivo</span>
                     <span className="text-xs text-muted-foreground">PDF, DOC, DOCX, TXT — Máx. 15MB</span>
                   </button>
                 ) : (
-                  <div className="bg-card rounded-lg p-4 border border-border flex flex-wrap items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-card p-4">
                     <FileText className="w-6 h-6 text-muted-foreground shrink-0" aria-hidden="true" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{editalFile.name}</p>
@@ -1548,7 +1559,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                 dispararia lances no pregão errado — então a lista de outros
                 processos exige um passo explícito. */}
             {!showEditalUpload && processoAtivoId && licitacaoIdRef === processoAtivoId && !trocarProcesso && (
-              <div className="rounded-lg border border-primary/30 bg-primary-tint px-4 py-3 flex items-center gap-2 flex-wrap">
+              <div className="flex flex-wrap items-center gap-2 rounded-md border border-primary-line bg-primary-tint px-4 py-3">
                 <Target className="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
                 <span className="text-sm text-muted-foreground">Disputa do processo aberto:</span>
                 <span className="text-sm font-semibold">{edital || '—'}</span>
@@ -1627,18 +1638,19 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                     ))}
                   </div>
                 ) : filteredLicitacoes.length === 0 ? (
-                  <div className="text-center py-8 border border-dashed border-border rounded-lg bg-muted">
-                    <div className="w-10 h-10 rounded-full bg-primary-tint text-primary flex items-center justify-center mx-auto mb-2">
-                      <Building2 className="w-5 h-5" aria-hidden="true" />
-                    </div>
-                    <p className="text-base font-semibold">Nenhum processo</p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {licitacoes.length === 0
-                        ? 'Nenhum processo na gestão. Inicie um processo pelo Monitoramento ou Kanban.'
-                        : licitacoesVisiveis.length === 0
-                          ? `Nenhum processo em aberto. ${quantosEncerrados} ${quantosEncerrados === 1 ? 'encerrado está escondido' : 'encerrados estão escondidos'} — use "Mostrar encerrados".`
-                          : 'Nenhum processo encontrado com os filtros selecionados.'}
-                    </p>
+                  <div className="rounded-lg border border-dashed border-border bg-card">
+                    <EstadoVazio
+                      tamanho="compacto"
+                      icone={<Building2 />}
+                      titulo="Nenhum processo"
+                      descricao={
+                        licitacoes.length === 0
+                          ? 'Nenhum processo na gestão. Inicie um processo pelo Monitoramento ou Kanban.'
+                          : licitacoesVisiveis.length === 0
+                            ? `Nenhum processo em aberto. ${quantosEncerrados} ${quantosEncerrados === 1 ? 'encerrado está escondido' : 'encerrados estão escondidos'} — use "Mostrar encerrados".`
+                            : 'Nenhum processo encontrado com os filtros selecionados.'
+                      }
+                    />
                   </div>
                 ) : (
                   <div
@@ -1667,7 +1679,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span
-                                  className="text-base font-bold text-foreground cursor-help"
+                                  className="cursor-help text-base font-semibold text-foreground"
                                   title={identidade.reescrito ? `Como o portal publica: ${identidade.bruto}` : undefined}
                                 >
                                   {identidade.rotulo}
@@ -1719,7 +1731,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
         {step === 1 && (
           <div className="space-y-5 py-2">
             {(licitacaoIdRef || itens.length > 0) && (
-              <div className="flex items-start gap-2 px-4 py-3 rounded-lg bg-success-tint border border-success-line text-sm text-success-ink">
+              <div className="flex items-start gap-2 rounded-md border border-success-line bg-success-tint px-4 py-3 text-sm text-success-ink">
                 <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
                 <div className="space-y-0.5">
                   <p className="font-semibold">
@@ -1824,7 +1836,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                     {compraEscolhida && (() => {
                       const resumo = resumoDaCompra(compraEscolhida);
                       return (
-                        <div className="rounded-lg border border-border bg-muted px-4 py-3 space-y-1" role="status">
+                        <div className="space-y-1 rounded-md border border-border bg-muted px-4 py-3" role="status">
                           <p className="text-sm font-semibold text-foreground flex items-center gap-2">
                             <CheckCircle2 className="w-4 h-4 text-success-ink shrink-0" aria-hidden="true" />
                             {resumo.titulo} encontrada no Compras.gov
@@ -1930,7 +1942,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                 acompanhamento, e com a pessoa marcando que é isso. Sessão de
                 hoje que já abriu só avisa: pode estar em andamento. */}
             {prazoEncerrado && (
-              <div className="space-y-3 rounded-lg border border-warning-line bg-warning-tint px-4 py-3" role="alert">
+              <div className="space-y-3 rounded-md border border-warning-line bg-warning-tint px-4 py-3" role="alert">
                 <p className="flex items-center gap-2 text-base font-semibold text-warning-ink">
                   <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />
                   Fase de lances encerrada
@@ -1991,7 +2003,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
               </div>
             </div>
 
-            <div className="flex items-center justify-between gap-4 bg-muted rounded-lg p-4 border border-border">
+            <div className="flex items-center justify-between gap-4 rounded-md border border-border bg-muted p-4">
               <div>
                 <Label htmlFor="disputa-modo-automatico" className="text-base font-medium">Modo Automático</Label>
                 <p className="text-sm text-muted-foreground mt-1">
@@ -2112,7 +2124,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                 </div>
 
                 {compraEscolhida && (
-                  <div className="flex flex-col gap-1.5 rounded-lg border border-border bg-muted px-3 py-2">
+                  <div className="flex flex-col gap-1.5 rounded-md border border-border bg-muted px-3 py-2">
                     <div className="flex flex-wrap items-center gap-2">
                       <Button type="button" variant="outline" size="sm" onClick={handleMarcaModeloDoTermo} disabled={lendoTermo}>
                         {lendoTermo
@@ -2144,14 +2156,14 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                           <div className="flex flex-wrap items-center justify-between gap-2 bg-muted px-3 py-2 border-b border-border">
                             <div className="flex flex-wrap items-center gap-2">
                               <Layers className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
-                              <span className="text-sm font-bold text-foreground">{lote}</span>
+                              <span className="text-sm font-semibold text-foreground">{lote}</span>
                               <Badge variant="muted">{loteItens.length} {loteItens.length === 1 ? 'item' : 'itens'}</Badge>
                               <span className="text-xs tabular-nums text-muted-foreground">{formatCurrency(loteTotal)}</span>
                             </div>
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="text-destructive hover:text-destructive"
+                              className="text-destructive-ink hover:text-destructive-ink"
                               onClick={() => handleRemoveLote(lote)}
                             >
                               <Trash2 className="w-4 h-4" aria-hidden="true" /> Remover Lote
@@ -2159,7 +2171,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                           </div>
                           <Table className={GRADE_DE_ITENS}>
                             <TableHeader>
-                              <TableRow className="bg-muted/30">
+                              <TableRow>
                                 <TableHead className="w-10 text-center">Nº</TableHead>
                                 <TableHead className="min-w-[10rem]">Descrição</TableHead>
                                 <TableHead title="Marca e modelo ofertados. Em item do processo, vêm da Proposta">Marca / Modelo</TableHead>
@@ -2199,7 +2211,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                   <div className="border border-border rounded-lg max-h-56 overflow-auto">
                     <Table className={GRADE_DE_ITENS}>
                       <TableHeader>
-                        <TableRow className="bg-muted/50">
+                        <TableRow>
                           <TableHead className="w-10 text-center">Nº</TableHead>
                           <TableHead className="min-w-[10rem]">Descrição</TableHead>
                           <TableHead title="Marca e modelo ofertados. Em item do processo, vêm da Proposta">Marca / Modelo</TableHead>
@@ -2236,57 +2248,58 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
             )}
 
             {itens.length === 0 && !isExtracting && (
-              <div className="text-center py-8 border border-dashed border-border rounded-lg bg-muted space-y-3">
-                <div className="w-12 h-12 rounded-full bg-primary-tint text-primary flex items-center justify-center mx-auto">
-                  <Package className="w-6 h-6" aria-hidden="true" />
-                </div>
-                <p className="text-base font-semibold">Nenhum item cadastrado ainda</p>
-                <p className="text-sm text-muted-foreground">
-                  Extraia automaticamente via IA ou preencha o formulário acima.
-                </p>
-                <div className="flex flex-col items-center gap-2">
-                  <div className="flex flex-wrap justify-center gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => editalFileRef.current?.click()}
-                    >
-                      <Upload className="w-4 h-4" aria-hidden="true" /> Enviar Edital (PDF/DOC)
-                    </Button>
-                    {editalFile && (
+              <div className="rounded-lg border border-dashed border-border bg-card">
+                <EstadoVazio
+                  tamanho="compacto"
+                  icone={<Package />}
+                  titulo="Nenhum item cadastrado ainda"
+                  descricao="Extraia automaticamente via IA ou preencha o formulário acima."
+                  acao={
+                    <>
                       <Button
-                        onClick={handleAutoExtractItems}
+                        variant="outline"
+                        onClick={() => editalFileRef.current?.click()}
                       >
-                        <Sparkles className="w-4 h-4" aria-hidden="true" /> Extrair Itens via IA
+                        <Upload className="w-4 h-4" aria-hidden="true" /> Enviar Edital (PDF/DOC)
                       </Button>
-                    )}
-                  </div>
-                  {editalFile && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <FileText className="w-4 h-4" aria-hidden="true" />
-                      <span className="truncate max-w-[200px]">{editalFile.name}</span>
-                      <Button
-                        type="button"
-                        variant="link"
-                        size="sm"
-                        className="h-auto p-0 text-destructive"
-                        onClick={() => { setEditalFile(null); if (editalFileRef.current) editalFileRef.current.value = ''; }}
-                      >
-                        remover
-                      </Button>
-                    </div>
-                  )}
-                </div>
+                      {editalFile && (
+                        <Button
+                          onClick={handleAutoExtractItems}
+                        >
+                          <Sparkles className="w-4 h-4" aria-hidden="true" /> Extrair Itens via IA
+                        </Button>
+                      )}
+                      {editalFile && (
+                        <div className="flex basis-full items-center justify-center gap-2 text-sm text-muted-foreground">
+                          <FileText className="w-4 h-4" aria-hidden="true" />
+                          <span className="max-w-[200px] truncate">{editalFile.name}</span>
+                          <Button
+                            type="button"
+                            variant="link"
+                            size="sm"
+                            className="h-auto p-0 text-destructive-ink"
+                            onClick={() => { setEditalFile(null); if (editalFileRef.current) editalFileRef.current.value = ''; }}
+                          >
+                            remover
+                          </Button>
+                        </div>
+                      )}
+                    </>
+                  }
+                />
                 <input ref={editalFileRef} type="file" accept=".pdf,.doc,.docx,.txt,.xlsx,.xls" className="hidden" onChange={handleEditalFileChange} />
               </div>
             )}
 
             {itens.length === 0 && isExtracting && (
-              <div className="text-center py-8 border border-border rounded-lg bg-muted space-y-3" role="status" aria-busy="true">
-                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground mx-auto" aria-hidden="true" />
-                <p className="text-base font-medium text-foreground">Extraindo itens automaticamente...</p>
-                <p className="text-sm text-muted-foreground">
-                  A IA está analisando o edital para identificar descrição, quantidade, unidade e valores de referência.
-                </p>
+              <div className="flex items-start gap-3 rounded-lg border border-border bg-muted p-4" role="status" aria-busy="true">
+                <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-muted-foreground" aria-hidden="true" />
+                <div className="min-w-0">
+                  <p className="text-base font-medium text-foreground">Extraindo itens automaticamente...</p>
+                  <p className="text-sm text-muted-foreground">
+                    A IA está analisando o edital para identificar descrição, quantidade, unidade e valores de referência.
+                  </p>
+                </div>
               </div>
             )}
 
@@ -2304,58 +2317,61 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                   Edite os valores em R$ abaixo. O percentual de desconto é calculado automaticamente com base no Valor de Referência.
                 </p>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Três cartões KPI (Design System v3, §5): rótulo em cima, valor
+                    28/36 com dígitos tabulares, contexto embaixo — alinhados à
+                    esquerda, como os demais indicadores do app. */}
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                   {/* Valor de Referência – read-only sum */}
-                  <div className="bg-card rounded-lg border border-border p-4 text-center">
-                    <p className="text-xs text-muted-foreground uppercase tracking-wider">Valor de Referência</p>
-                    <p className="text-[2rem] leading-10 font-bold text-foreground mt-1 tabular-nums">{formatCurrency(somaReferencia)}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Σ (Qtd × Vlr Unit.)</p>
+                  <div className="rounded-lg border border-border bg-card p-4">
+                    <p className="text-sm font-medium leading-5 text-muted-foreground">Valor de Referência</p>
+                    <p className="mt-1 whitespace-nowrap text-[1.75rem] font-semibold leading-9 tabular-nums text-foreground">{formatCurrency(somaReferencia)}</p>
+                    <p className="mt-0.5 text-xs leading-4 text-muted-foreground">Σ (Qtd × Vlr Unit.)</p>
                   </div>
 
                   {/* Valor Inicial – editable R$ */}
-                  <div className={`bg-card rounded-lg border p-4 text-center ${inexequibilidadeInicial ? 'border-destructive' : 'border-border'}`}>
-                    <Label htmlFor="disputa-valor-inicial" className="text-xs text-muted-foreground uppercase tracking-wider font-normal">Valor Inicial (1º lance)</Label>
-                    <div className="flex items-center justify-center gap-1 mt-2">
+                  <div className={`rounded-lg border bg-card p-4 ${inexequibilidadeInicial ? 'border-destructive' : 'border-border'}`}>
+                    <Label htmlFor="disputa-valor-inicial" className="text-sm font-medium leading-5 text-muted-foreground">Valor Inicial (1º lance)</Label>
+                    <div className="mt-2">
                       <MoneyInput
                         id="disputa-valor-inicial"
                         value={Number(valorInicialInput) || 0}
                         onValueChange={(v) => setValorInicialInput(String(v))}
                         placeholder="R$ 0,00"
-                        className="w-40 text-center tabular-nums font-bold"
+                        className="font-semibold tabular-nums"
                       />
                     </div>
-                    <p className={`text-xs font-semibold mt-2 ${inexequibilidadeInicial ? 'text-destructive' : 'text-foreground'}`}>
+                    <p className={`mt-2 text-xs font-semibold leading-4 ${inexequibilidadeInicial ? 'text-destructive-ink' : 'text-foreground'}`}>
                       {pctDescontoInicial >= 0 ? `↓ ${pctDescontoInicial.toFixed(2)}% de desconto` : `↑ ${Math.abs(pctDescontoInicial).toFixed(2)}% acima`}
                     </p>
                     {inexequibilidadeInicial && (
-                      <p className="text-xs text-destructive font-bold mt-0.5 animate-pulse">⚠️ INEXEQUÍVEL</p>
+                      <p className="mt-0.5 text-xs font-semibold leading-4 text-destructive-ink">⚠️ INEXEQUÍVEL</p>
                     )}
                   </div>
 
                   {/* Valor Mínimo – editable R$ */}
-                  <div className={`bg-card rounded-lg border p-4 text-center ${inexequibilidadeMinimo ? 'border-destructive' : 'border-destructive-line'}`}>
-                    <Label htmlFor="disputa-valor-minimo" className="text-xs text-muted-foreground uppercase tracking-wider font-normal">Valor Mínimo (piso)</Label>
-                    <div className="flex items-center justify-center gap-1 mt-2">
+                  <div className={`rounded-lg border bg-card p-4 ${inexequibilidadeMinimo ? 'border-destructive' : 'border-destructive-line'}`}>
+                    <Label htmlFor="disputa-valor-minimo" className="text-sm font-medium leading-5 text-muted-foreground">Valor Mínimo (piso)</Label>
+                    <div className="mt-2">
                       <MoneyInput
                         id="disputa-valor-minimo"
                         value={Number(valorMinimoInput) || 0}
                         onValueChange={(v) => setValorMinimoInput(String(v))}
                         placeholder="R$ 0,00"
-                        className="w-40 text-center tabular-nums font-bold"
+                        className="font-semibold tabular-nums"
                       />
                     </div>
-                    <p className={`text-xs font-semibold mt-2 ${inexequibilidadeMinimo ? 'text-destructive' : 'text-destructive-ink'}`}>
+                    <p className="mt-2 text-xs font-semibold leading-4 text-destructive-ink">
                       {pctDescontoMinimo >= 0 ? `↓ ${pctDescontoMinimo.toFixed(2)}% de desconto` : `↑ ${Math.abs(pctDescontoMinimo).toFixed(2)}% acima`}
                     </p>
                     {inexequibilidadeMinimo && (
-                      <p className="text-xs text-destructive font-bold mt-0.5 animate-pulse">⚠️ INEXEQUÍVEL</p>
+                      <p className="mt-0.5 text-xs font-semibold leading-4 text-destructive-ink">⚠️ INEXEQUÍVEL</p>
                     )}
                   </div>
                 </div>
 
                 {/* Inexequibilidade alert banner */}
                 {(inexequibilidadeInicial || inexequibilidadeMinimo) && (
-                  <div className="flex items-start gap-2 px-4 py-3 rounded-lg bg-destructive-tint border border-destructive-line text-sm text-destructive-ink" role="alert">
+                  <div className="flex items-start gap-2 rounded-md border border-destructive-line bg-destructive-tint px-4 py-3 text-sm text-destructive-ink" role="alert">
                     <span className="text-base leading-none mt-0.5" aria-hidden="true">🚨</span>
                     <div>
                       <p className="font-bold">Risco de Inexequibilidade (Art. 59, §4º da Lei 14.133/2021)</p>
@@ -2380,7 +2396,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
 
         {/* Rodapé fixo. A ação principal é o `default` verde do Button de ui;
             a trilha de passos usa o mesmo verde só para dizer "aqui". */}
-        <DialogFooter className="px-6 py-4 border-t border-border bg-muted shrink-0 flex-row flex-wrap items-center justify-between sm:justify-between gap-3">
+        <DialogFooter className="shrink-0 flex-row flex-wrap items-center justify-between gap-3 border-t border-border bg-secondary px-6 py-4 sm:justify-between">
           <div>
             {step > 0 && (
               <Button variant="outline" onClick={() => setStep((step - 1) as 0 | 1)}>

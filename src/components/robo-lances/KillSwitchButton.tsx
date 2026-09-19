@@ -134,7 +134,7 @@ export default function KillSwitchButton({ sessaoId, licitacaoId, onParada, disa
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+          <AlertDialogTitle className="flex items-center gap-2 text-destructive-ink">
             <OctagonX className="w-5 h-5" aria-hidden="true" />
             Confirmar parada emergencial
           </AlertDialogTitle>

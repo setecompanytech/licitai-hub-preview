@@ -239,7 +239,7 @@ export default function VncWebViewer({ abrirEm = 0 }: Props) {
   return (
     <div ref={caixaRef} className="rounded-lg border border-border bg-card shadow-sm overflow-hidden scroll-mt-4">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-2 bg-muted px-6 py-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 bg-secondary px-5 py-4">
         <div className="flex flex-wrap items-center gap-2">
           <Monitor className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
           <h3 className="text-lg font-semibold">Acesso Remoto — VNC Web</h3>
@@ -302,7 +302,7 @@ export default function VncWebViewer({ abrirEm = 0 }: Props) {
               <Button
                 size="icon"
                 variant="ghost"
-                className="text-destructive hover:text-destructive"
+                className="text-destructive-ink hover:text-destructive-ink"
                 onClick={handleClose}
                 title="Fechar"
                 aria-label="Fechar tela remota"
@@ -322,8 +322,8 @@ export default function VncWebViewer({ abrirEm = 0 }: Props) {
           Existe porque o agente aguenta 8 sessões simultâneas e a tela mostrava
           uma. Quem opera precisa saber quantas rodam antes de apertar o freio. */}
       {sessoesVivas.length > 1 && (
-        <div className="border-t border-border bg-card px-6 py-4">
-          <div className="flex flex-wrap items-center gap-2 mb-2">
+        <div className="border-t border-border bg-card px-5 py-4">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
             <span className="relative flex h-2 w-2" aria-hidden="true">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-70" />
               <span className="relative inline-flex rounded-full h-2 w-2 bg-success" />
@@ -409,21 +409,22 @@ export default function VncWebViewer({ abrirEm = 0 }: Props) {
 
       {/* Content */}
       {!showViewer ? (
-        <div className="p-6 space-y-4">
-          <div className="text-center space-y-3">
-            <div className="w-12 h-12 rounded-full bg-primary-tint text-primary flex items-center justify-center mx-auto">
-              <Monitor className="w-6 h-6" aria-hidden="true" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                Acesse a tela do servidor diretamente pelo navegador para resolver
-                desafios de <strong>2FA</strong>, <strong>Captcha</strong> ou <strong>código de acesso gov.br</strong>,
-                sem precisar instalar programas adicionais.
-              </p>
-            </div>
+        <div className="space-y-4 p-5">
+          <div className="flex items-start gap-3">
+            <span
+              aria-hidden="true"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary-tint text-primary"
+            >
+              <Monitor className="h-5 w-5" />
+            </span>
+            <p className="max-w-xl text-sm text-muted-foreground">
+              Acesse a tela do servidor diretamente pelo navegador para resolver
+              desafios de <strong>2FA</strong>, <strong>Captcha</strong> ou <strong>código de acesso gov.br</strong>,
+              sem precisar instalar programas adicionais.
+            </p>
           </div>
 
-          <div className="bg-warning-tint border border-warning-line rounded-lg p-4">
+          <div className="rounded-md border border-warning-line bg-warning-tint p-4">
             <div className="flex items-start gap-2">
               <AlertTriangle className="w-4 h-4 text-warning-ink shrink-0 mt-0.5" aria-hidden="true" />
               <div className="text-sm text-muted-foreground space-y-1">
@@ -467,20 +468,22 @@ export default function VncWebViewer({ abrirEm = 0 }: Props) {
             </Button>
           </div>
 
-          <div className="flex items-center gap-2 text-sm text-muted-foreground justify-center">
-            <ShieldCheck className="w-4 h-4 text-success" aria-hidden="true" />
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <ShieldCheck className="h-4 w-4 text-success-ink" aria-hidden="true" />
             <span>Conexão segura via HTTPS — sem necessidade de instalar software</span>
           </div>
         </div>
       ) : (
         /* Área escura de propósito: é a tela do servidor remoto, não uma
-           superfície do tema. Navy da marca no lugar de preto cru. */
+           superfície do tema. Navy da marca no lugar de preto cru, e o texto
+           sobre ele na tinta da navegação (`nav-foreground`), que é o token de
+           texto sobre navy nos dois temas. */
         <div className={`relative bg-navy ${expanded ? 'h-[600px]' : 'h-[400px]'} transition-all duration-300`}>
           {loading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-navy/80 z-10">
-              <div className="text-center space-y-2">
-                <Loader2 className="w-6 h-6 animate-spin text-white/90 mx-auto" aria-hidden="true" />
-                <p className="text-sm text-white/70">Conectando ao servidor VPS...</p>
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-navy/80">
+              <div className="space-y-2 text-center">
+                <Loader2 className="mx-auto h-6 w-6 animate-spin text-nav-foreground" aria-hidden="true" />
+                <p className="text-sm text-nav-foreground/80">Conectando ao servidor VPS...</p>
               </div>
             </div>
           )}
@@ -511,14 +514,14 @@ export default function VncWebViewer({ abrirEm = 0 }: Props) {
               atrapalhe quem precisa clicar no VNC para resolver um captcha. */}
           {!loading && sessoesAtivas === 0 && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="bg-navy/90 rounded-lg px-6 py-5 max-w-md text-center space-y-2">
-                <Monitor className="w-7 h-7 text-white/50 mx-auto" aria-hidden="true" />
-                <p className="text-base font-medium text-white/90">Nenhuma sessão ativa</p>
-                <p className="text-sm text-white/60">
+              <div className="max-w-md space-y-2 rounded-lg bg-navy/90 px-6 py-5 text-center">
+                <Monitor className="mx-auto h-6 w-6 text-nav-foreground/60" aria-hidden="true" />
+                <p className="text-base font-medium text-nav-foreground">Nenhuma sessão ativa</p>
+                <p className="text-sm text-nav-foreground/80">
                   A tela do servidor está vazia porque o robô não está operando agora.
                   Isso não é falha da conexão.
                 </p>
-                <p className="text-sm text-white/60">
+                <p className="text-sm text-nav-foreground/80">
                   Deixe esta tela aberta e use <strong>Ações › Entrar agora</strong> na página
                   da disputa — a janela dele aparece aqui em poucos segundos.
                 </p>

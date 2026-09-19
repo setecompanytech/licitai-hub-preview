@@ -1,6 +1,7 @@
 import { useId, useMemo, useState } from 'react';
-import { ChevronDown, ChevronRight, RefreshCw } from 'lucide-react';
+import { ChevronDown, ChevronRight, Inbox, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { Button } from '@/components/ui/button';
 import TabelaGestao, { type ColunaGestao } from '@/components/gestao/TabelaGestao';
 import { SecaoGestao } from '@/components/gestao/TelaGestao';
@@ -171,11 +172,7 @@ export default function RegistroDeChamadas() {
           chaveDoItem={(c) => c.id}
           carregando={leitura.estado === 'carregando'}
           descricao="Chamadas recentes entre o servidor e o agente do robô de lances"
-          vazio={
-            <p className="g-corpo px-4 py-8 text-center text-muted-foreground">
-              Nenhuma chamada registrada.
-            </p>
-          }
+          vazio={<EstadoVazio tamanho="compacto" icone={<Inbox />} titulo="Nenhuma chamada registrada." />}
         />
       )}
     </SecaoGestao>

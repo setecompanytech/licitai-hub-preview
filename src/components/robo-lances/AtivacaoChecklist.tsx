@@ -488,9 +488,9 @@ export default function AtivacaoChecklist({
 
   return (
     <>
-      <div className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <h3 className="text-lg font-semibold flex items-center gap-2">
+      <div className="space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm">
+        <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+          <h3 className="flex items-center gap-2 text-lg font-semibold">
             {cliente ? (
               <Key className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
             ) : (
@@ -536,7 +536,7 @@ export default function AtivacaoChecklist({
             return (
               <section key={eixo.id} className="space-y-2" aria-label={eixo.titulo}>
                 <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 border-b border-border pb-1.5">
-                  <h4 className="g-titulo-secao flex items-center gap-2 text-foreground">
+                  <h4 className="flex items-center gap-2 text-base font-semibold leading-6 text-foreground">
                     <IconeEixo className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
                     {eixo.titulo}
                   </h4>
@@ -606,17 +606,17 @@ export default function AtivacaoChecklist({
             empresa a confiar uma disputa real a um robô que só observa. */}
         {pronto && (
           cliente ? (
-            <div className="bg-success-tint border border-success-line rounded-lg p-4 text-center">
-              <p className="text-sm text-success-ink font-semibold">
+            <div className="rounded-md border border-success-line bg-success-tint p-4">
+              <p className="text-sm font-semibold text-success-ink">
                 Acesso aos portais e certificado digital conferidos.
               </p>
             </div>
           ) : (
-            <div className="bg-muted border border-border rounded-lg p-4 text-center">
-              <p className="text-sm text-foreground font-semibold">
+            <div className="rounded-md border border-border bg-muted p-4">
+              <p className="text-sm font-semibold text-foreground">
                 Todas as verificações passaram — isso não libera o envio de lances.
               </p>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="mt-1 text-xs text-muted-foreground">
                 As verificações medem agente, acesso e certificado. O envio é liberado portal a
                 portal, depois de validado em sessão real.
               </p>
@@ -664,7 +664,7 @@ export default function AtivacaoChecklist({
                 O certificado atual será invalidado e um <strong>novo link de upload</strong> será
                 gerado para a empresa <strong>{empresaAtiva?.razao_social}</strong>.
               </p>
-              <p className="text-destructive font-medium">
+              <p className="font-medium text-destructive-ink">
                 Utilize esta opção caso tenha enviado o certificado errado (outra empresa ou pessoa física).
               </p>
               <p>O novo link será enviado para seu e-mail cadastrado.</p>

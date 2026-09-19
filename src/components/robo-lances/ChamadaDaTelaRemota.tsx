@@ -110,7 +110,7 @@ function CaixaDaChamada({ chamada }: { chamada: Chamada }) {
         onMouseLeave={() => setComMouse(false)}
         onFocus={() => setComMouse(true)}
         onBlur={() => setComMouse(false)}
-        className="pointer-events-auto relative w-full max-w-xl overflow-hidden rounded-xl border border-primary/30 bg-card text-foreground shadow-xl animate-in fade-in-0 slide-in-from-bottom-4 duration-300"
+        className="pointer-events-auto relative w-full max-w-xl overflow-hidden rounded-lg border border-primary/30 bg-card text-foreground shadow-lg animate-in fade-in-0 slide-in-from-bottom-4 duration-300"
       >
         {/* A faixa verde na lateral: o toast é branco, e o verde é o que o
             identifica de longe. */}
@@ -118,14 +118,14 @@ function CaixaDaChamada({ chamada }: { chamada: Chamada }) {
         <div className="flex items-start gap-3 p-4 pl-5">
           <span
             aria-hidden="true"
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-primary-tint text-primary"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-primary-tint text-primary"
           >
             <MonitorPlay className="h-5 w-5" />
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold uppercase tracking-wide text-primary">{ROTULO_DO_MOTIVO[chamada.motivo]}</p>
-            <h2 className="mt-0.5 text-lg font-semibold leading-tight text-foreground">{chamada.titulo}</h2>
-            {chamada.mensagem && <p className="mt-1.5 text-sm leading-relaxed">{chamada.mensagem}</p>}
+            <h2 className="mt-0.5 text-lg font-semibold leading-6 text-foreground">{chamada.titulo}</h2>
+            {chamada.mensagem && <p className="mt-1.5 text-sm leading-5">{chamada.mensagem}</p>}
             {/* Em tela estreita os dois botões ocupam a linha inteira: o
                 "Agora não" quebrava com o recuo do próprio botão e saía
                 desalinhado do principal (print de 17/09). */}
@@ -146,7 +146,7 @@ function CaixaDaChamada({ chamada }: { chamada: Chamada }) {
             type="button"
             onClick={fechar}
             aria-label="Fechar o aviso da tela remota"
-            className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <X className="h-4 w-4" aria-hidden="true" />
           </button>

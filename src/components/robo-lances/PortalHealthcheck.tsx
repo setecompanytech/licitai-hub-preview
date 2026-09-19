@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import {
   CheckCircle2, XCircle, AlertTriangle, RefreshCw, Shield, Globe, Loader2,
 } from 'lucide-react';
@@ -74,11 +75,11 @@ export default function PortalHealthcheck() {
   const failCount = entries.filter(e => !e.seletores_ok).length;
 
   return (
-    <div className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+    <div className="space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm">
+      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
         <div className="space-y-1">
-          <h3 className="text-lg font-semibold flex items-center gap-2">
-            <Shield className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+          <h3 className="flex items-center gap-2 text-lg font-semibold">
+            <Shield className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
             Portais no ar
           </h3>
           <p className="text-sm text-muted-foreground max-w-xl">
@@ -121,15 +122,12 @@ export default function PortalHealthcheck() {
           ))}
         </div>
       ) : entries.length === 0 ? (
-        <div className="text-center py-6">
-          <div className="w-10 h-10 rounded-full bg-primary-tint text-primary flex items-center justify-center mx-auto mb-2">
-            <Globe className="w-5 h-5" aria-hidden="true" />
-          </div>
-          <p className="text-base font-semibold">Nenhum portal verificado ainda</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            Clique em "Verificar Agora" para executar o healthcheck em todos os portais.
-          </p>
-        </div>
+        <EstadoVazio
+          tamanho="compacto"
+          icone={<Globe />}
+          titulo="Nenhum portal verificado ainda"
+          descricao='Clique em "Verificar Agora" para executar o healthcheck em todos os portais.'
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
           {entries.map((entry) => {

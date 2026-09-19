@@ -33,7 +33,7 @@ export default function AcessoManualPortal() {
         type="button"
         onClick={() => setAberto(!aberto)}
         aria-expanded={aberto}
-        className="w-full flex items-center justify-between gap-3 px-6 py-4 text-left hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+        className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
       >
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
           <Route className="w-5 h-5 text-muted-foreground shrink-0" aria-hidden="true" />
@@ -49,7 +49,7 @@ export default function AcessoManualPortal() {
       </button>
 
       {aberto && (
-        <div className="border-t border-border p-6 space-y-4">
+        <div className="space-y-4 border-t border-border p-5">
           <div>
             <p className="text-base font-medium mb-2">Compras.gov.br — o caminho que funciona</p>
             <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
@@ -73,7 +73,7 @@ export default function AcessoManualPortal() {
           </div>
 
           {/* O erro que a intuição comete: ir pelo endereço que parece o certo. */}
-          <div className="bg-muted border border-border rounded-lg p-4">
+          <div className="rounded-md border border-border bg-muted p-4">
             <p className="text-sm text-muted-foreground">
               <strong className="text-foreground">Não vá por <code>compras.gov.br</code>.</strong>{' '}
               Aquele endereço leva ao site institucional, que é conteúdo — não ao sistema onde se
@@ -81,7 +81,7 @@ export default function AcessoManualPortal() {
             </p>
           </div>
 
-          <div className="bg-warning-tint border border-warning-line rounded-lg p-4">
+          <div className="rounded-md border border-warning-line bg-warning-tint p-4">
             <div className="flex items-start gap-2">
               <ShieldAlert className="w-4 h-4 text-warning-ink shrink-0 mt-0.5" aria-hidden="true" />
               <div className="text-sm text-muted-foreground space-y-2">

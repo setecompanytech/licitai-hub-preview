@@ -540,7 +540,7 @@ export default function PainelDeParticipacoes({ empresaId, licitacaoId = null, s
               <SlidersHorizontal aria-hidden="true" className="mr-2 h-4 w-4" />
               Filtros
               {aplicados > 0 && (
-                <span className="ml-2 rounded-full bg-primary px-1.5 py-0.5 text-[11px] font-semibold leading-none text-primary-foreground">
+                <span className="ml-2 rounded-sm bg-primary px-1.5 py-0.5 text-xs font-semibold leading-none text-primary-foreground">
                   {aplicados}
                 </span>
               )}

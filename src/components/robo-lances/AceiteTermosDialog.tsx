@@ -216,7 +216,7 @@ export default function AceiteTermosDialog({ open, onOpenChange, nivel, sessaoId
 
           {/* Confirmação por digitação — Nível 3 */}
           {precisaConfirmacao && (
-            <div className="border border-destructive-line rounded-lg p-4 bg-destructive-tint space-y-3">
+            <div className="space-y-3 rounded-md border border-destructive-line bg-destructive-tint p-4">
               <div className="flex items-center gap-2">
                 <Key className="w-4 h-4 text-destructive-ink" aria-hidden="true" />
                 <span className="text-sm font-semibold text-destructive-ink">
@@ -276,7 +276,7 @@ export default function AceiteTermosDialog({ open, onOpenChange, nivel, sessaoId
           </div>
 
           {nivel >= 2 && (
-            <div className="flex items-start gap-2 px-3 py-2 bg-warning-tint rounded-lg border border-warning-line">
+            <div className="flex items-start gap-2 rounded-md border border-warning-line bg-warning-tint px-3 py-2">
               <AlertTriangle className="w-4 h-4 text-warning-ink shrink-0 mt-0.5" aria-hidden="true" />
               <p className="text-sm text-warning-ink">
                 {nivel === 2

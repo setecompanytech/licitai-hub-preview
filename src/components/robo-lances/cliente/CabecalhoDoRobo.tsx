@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
-import { Power, PowerOff } from 'lucide-react';
+import { Bot, Power, PowerOff } from 'lucide-react';
 import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
+import { Badge } from '@/components/ui/badge';
 import SeloSituacao from '@/components/gestao/SeloSituacao';
 import LigarDesligarRobo from './LigarDesligarRobo';
 import SituacaoDoRoboEmLinha from './SituacaoDoRoboEmLinha';
@@ -76,6 +77,12 @@ export default function CabecalhoDoRobo({
       >
         <div className="flex min-w-0 flex-col gap-1.5">
           <div className="flex flex-wrap items-center gap-2">
+            {/* O selo do módulo (Design System v3, §5 "IA"): discreto, na tinta
+                verde, com o ícone em teal — o único lugar em que o teal aparece. */}
+            <Badge variant="outline" className="gap-1 border-primary-line bg-primary-tint text-primary">
+              <Bot className="h-3.5 w-3.5 text-teal" aria-hidden="true" />
+              Automação
+            </Badge>
             {selo}
             {modo}
           </div>

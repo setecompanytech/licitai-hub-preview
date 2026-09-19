@@ -172,7 +172,7 @@ export default function CredenciaisPortalForm() {
               </div>
 
               {isLicitacoesE && (
-                <div className="border border-warning-line rounded-lg p-4 space-y-3 bg-warning-tint">
+                <div className="space-y-3 rounded-md border border-warning-line bg-warning-tint p-4">
                   <p className="text-xs font-semibold text-warning-ink uppercase tracking-wider flex items-center gap-1">
                     <Building2 className="w-4 h-4" aria-hidden="true" />
                     Licitações-e — Banco do Brasil
@@ -241,8 +241,8 @@ export default function CredenciaisPortalForm() {
               )}
 
               {!isLicitacoesE && (
-              <div className="border border-border rounded-lg p-4 space-y-3">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              <div className="space-y-3 rounded-md border border-border p-4">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Login e Senha
                 </p>
                 <div>
@@ -282,7 +282,7 @@ export default function CredenciaisPortalForm() {
               )}
 
 
-              <div className="bg-success-tint border border-success-line rounded-lg p-4">
+              <div className="rounded-md border border-success-line bg-success-tint p-4">
                 <p className="text-sm text-success-ink flex items-start gap-2">
                   <Shield className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
                   <span>
@@ -334,9 +334,9 @@ export default function CredenciaisPortalForm() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {credenciais.map((cred) => (
-            <div key={cred.id} className="rounded-lg border border-border bg-card p-6 shadow-sm">
-              <div className="flex items-center justify-between gap-2 mb-3">
-                <h4 className="font-semibold text-base truncate">{cred.portal_nome}</h4>
+            <div key={cred.id} className="rounded-lg border border-border bg-card p-5 shadow-sm">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <h4 className="truncate text-base font-semibold leading-6">{cred.portal_nome}</h4>
                 <Badge variant={cred.status === 'ativo' ? 'success' : 'muted'}>
                   {cred.status === 'ativo' ? 'Ativo' : 'Inativo'}
                 </Badge>
@@ -377,11 +377,11 @@ export default function CredenciaisPortalForm() {
                 )}
               </div>
 
-              <div className="flex justify-end mt-3 pt-3 border-t border-border">
+              <div className="mt-3 flex justify-end border-t border-border pt-3">
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="text-destructive hover:text-destructive"
+                  className="text-destructive-ink hover:text-destructive-ink"
                   onClick={() => deleteMutation.mutate(cred.id)}
                 >
                   <Trash2 className="w-4 h-4" aria-hidden="true" /> Remover

@@ -76,7 +76,7 @@ export default function NivelAutomacaoSelector({ nivel, onChange, disabled }: Pr
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold">Nível {n.nivel}</span>
+                    <span className="text-sm font-semibold">Nível {n.nivel}</span>
                     {isActive && (
                       <span className="inline-flex items-center gap-1 text-xs font-medium text-success-ink">
                         <CheckCircle2 className="w-4 h-4" aria-hidden="true" /> ativo

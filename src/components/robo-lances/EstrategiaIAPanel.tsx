@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Brain, Loader2, Info } from 'lucide-react';
+import { Brain, Loader2, Info, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -101,15 +102,20 @@ Responda em português, com dados numéricos claros e recomendações práticas.
   };
 
   return (
-    <div className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <h3 className="text-lg font-semibold flex items-center gap-2">
-          <Brain className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+    <div className="space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm">
+      <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+        <h3 className="flex items-center gap-2 text-lg font-semibold">
+          <Brain className="h-5 w-5 text-teal" aria-hidden="true" />
           Estratégia Preditiva IA
         </h3>
         {/* O selo "Gemini AI" saiu em 14/09/2026: o fornecedor do modelo é
             decisão de bastidor da Praefectus, pode mudar sem aviso, e este
-            painel passou a morar na tela do cliente. */}
+            painel passou a morar na tela do cliente. O selo é o da casa
+            (Design System v3, §5 "IA"), sem nome de fornecedor. */}
+        <Badge variant="outline" className="gap-1 self-start border-primary-line bg-primary-tint text-primary sm:self-auto">
+          <Sparkles className="h-3.5 w-3.5 text-teal" aria-hidden="true" />
+          Praefectus IA
+        </Badge>
       </div>
 
       {/* Input fields */}
@@ -158,7 +164,7 @@ Responda em português, com dados numéricos claros e recomendações práticas.
           </p>
 
           {/* AI Analysis */}
-          <div className="bg-muted rounded-lg p-4 max-h-48 overflow-y-auto">
+          <div className="max-h-48 overflow-y-auto rounded-md bg-muted p-4">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
               Briefing Estratégico
             </p>

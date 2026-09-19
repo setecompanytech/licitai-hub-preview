@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { Wifi, WifiOff, Zap, TrendingDown, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -63,10 +64,10 @@ export default function DisputaRealtimePanel() {
   }, [user]);
 
   return (
-    <div className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-3">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <h3 className="text-lg font-semibold flex items-center gap-2">
-          <Zap className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+    <div className="space-y-3 rounded-lg border border-border bg-card p-5 shadow-sm">
+      <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+        <h3 className="flex items-center gap-2 text-lg font-semibold">
+          <Zap className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
           Disputas em Tempo Real
         </h3>
         {/* O selo diz o que a conexão É: a assinatura de inserções em
@@ -82,17 +83,12 @@ export default function DisputaRealtimePanel() {
       </div>
 
       {events.length === 0 ? (
-        <div className="text-center py-6">
-          <div className="w-10 h-10 rounded-full bg-primary-tint text-primary flex items-center justify-center mx-auto mb-2">
-            <Wifi className="w-5 h-5" aria-hidden="true" />
-          </div>
-          <p className="text-base font-semibold">
-            {connected ? 'Aguardando eventos em tempo real' : 'Conectando ao canal de disputas'}
-          </p>
-          <p className="text-sm text-muted-foreground mt-1">
-            Lances, alertas e paradas emergenciais aparecerão aqui instantaneamente.
-          </p>
-        </div>
+        <EstadoVazio
+          tamanho="compacto"
+          icone={<Wifi />}
+          titulo={connected ? 'Aguardando eventos em tempo real' : 'Conectando ao canal de disputas'}
+          descricao="Lances, alertas e paradas emergenciais aparecerão aqui instantaneamente."
+        />
       ) : (
         <div className="space-y-1 max-h-40 overflow-y-auto">
           {events.map((evt) => (

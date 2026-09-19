@@ -32,7 +32,7 @@ export default function ConferenciaDosItens({
   // Estado 1 — o robô entrou e ainda está lendo a lista do portal.
   if (!conferencia) {
     return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground border border-border bg-card rounded-lg px-4 py-3" role="status">
+      <div className="flex items-center gap-2 rounded-md border border-border bg-card px-4 py-3 text-sm text-muted-foreground" role="status">
         <Loader2 className="w-4 h-4 animate-spin shrink-0" aria-hidden="true" />
         <span>Conferindo os itens contra o edital no portal…</span>
       </div>
@@ -42,7 +42,7 @@ export default function ConferenciaDosItens({
   // Estado 2 — sem leitura, nada a afirmar.
   if (!conferencia.leu) {
     return (
-      <div className="flex items-start gap-2 text-sm border border-border bg-muted rounded-lg px-4 py-3">
+      <div className="flex items-start gap-2 rounded-md border border-border bg-muted px-4 py-3 text-sm">
         <HelpCircle className="w-4 h-4 shrink-0 mt-0.5 text-muted-foreground" aria-hidden="true" />
         <div className="text-muted-foreground">
           <span className="font-medium text-foreground">Não deu para conferir os itens.</span>{' '}
@@ -57,7 +57,7 @@ export default function ConferenciaDosItens({
   // sessão vira paisagem, e aí o vermelho também para de ser visto.
   if (conferencia.ok) {
     return (
-      <div className="flex items-center gap-2 text-sm border border-success-line bg-success-tint rounded-lg px-4 py-3">
+      <div className="flex items-center gap-2 rounded-md border border-success-line bg-success-tint px-4 py-3 text-sm">
         <CheckCircle2 className="w-4 h-4 shrink-0 text-success-ink" aria-hidden="true" />
         <span className="text-muted-foreground">
           <span className="font-medium text-foreground">Itens conferem com o edital.</span>{' '}
@@ -75,7 +75,7 @@ export default function ConferenciaDosItens({
   // Estado 4 — não confere. Aqui o número do item é o que importa: é o que a
   // pessoa vai procurar no cadastro para corrigir.
   return (
-    <div className="border border-warning-line bg-warning-tint rounded-lg p-4 space-y-2" role="alert">
+    <div className="space-y-2 rounded-md border border-warning-line bg-warning-tint p-4" role="alert">
       <div className="flex items-center gap-2">
         <AlertTriangle className="w-5 h-5 text-warning-ink shrink-0" aria-hidden="true" />
         <p className="text-base font-semibold">Os itens não conferem com o edital</p>
@@ -93,7 +93,7 @@ export default function ConferenciaDosItens({
             {conferencia.faltando.slice(0, 20).map((n) => (
               <span
                 key={n}
-                className="font-mono text-xs px-2 py-0.5 rounded border border-warning-line bg-card text-warning-ink"
+                className="rounded-sm border border-warning-line bg-card px-2 py-0.5 font-mono text-xs text-warning-ink"
               >
                 nº {n}
               </span>

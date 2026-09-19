@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { generateAgentTemplate } from '@/lib/agente-template-generator';
 import { toast } from 'sonner';
 import {
@@ -79,11 +80,11 @@ export default function AgenteTemplateDownload() {
   return (
     <div className="space-y-6">
       {/* Header + Download */}
-      <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+      <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
+        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
           <div className="space-y-2">
-            <h3 className="text-lg font-semibold flex items-center gap-2">
-              <FileCode className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+            <h3 className="flex items-center gap-2 text-lg font-semibold">
+              <FileCode className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
               Template do Agente Externo
             </h3>
             <p className="text-sm text-muted-foreground max-w-xl">
@@ -108,22 +109,27 @@ export default function AgenteTemplateDownload() {
       </div>
 
       {/* Passo a passo */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         {steps.map((step, i) => (
-          <div key={i} className="rounded-lg border border-border bg-card p-6 shadow-sm text-center space-y-2">
-            <div className="w-10 h-10 rounded-full bg-primary-tint text-primary flex items-center justify-center mx-auto">
-              <step.icon className="w-5 h-5" aria-hidden="true" />
+          <div key={i} className="flex items-start gap-3 rounded-lg border border-border bg-card p-5 shadow-sm">
+            <span
+              aria-hidden="true"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary-tint text-primary"
+            >
+              <step.icon className="h-4 w-4" />
+            </span>
+            <div className="min-w-0 space-y-1">
+              <p className="text-sm font-semibold">{i + 1}. {step.title}</p>
+              <p className="text-sm text-muted-foreground">{step.desc}</p>
             </div>
-            <p className="text-sm font-semibold">{i + 1}. {step.title}</p>
-            <p className="text-sm text-muted-foreground">{step.desc}</p>
           </div>
         ))}
       </div>
 
       {/* Estrutura de arquivos */}
-      <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-        <h4 className="text-lg font-semibold flex items-center gap-2 mb-3">
-          <FolderTree className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+      <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
+        <h4 className="mb-3 flex items-center gap-2 text-base font-semibold leading-6">
+          <FolderTree className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
           Estrutura do Projeto
         </h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -138,8 +144,8 @@ export default function AgenteTemplateDownload() {
       </div>
 
       {/* Callback URL */}
-      <div className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-3">
-        <h4 className="text-lg font-semibold">Configuração de Callback</h4>
+      <div className="space-y-3 rounded-lg border border-border bg-card p-5 shadow-sm">
+        <h4 className="text-base font-semibold leading-6">Configuração de Callback</h4>
         <p className="text-sm text-muted-foreground">
           Configure esta URL no arquivo <code className="bg-muted px-1 rounded">.env</code> do agente como <code className="bg-muted px-1 rounded">CALLBACK_URL</code>:
         </p>
@@ -154,9 +160,9 @@ export default function AgenteTemplateDownload() {
       </div>
 
       {/* Comandos rápidos */}
-      <div className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-3">
-        <h4 className="text-lg font-semibold flex items-center gap-2">
-          <Terminal className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+      <div className="space-y-3 rounded-lg border border-border bg-card p-5 shadow-sm">
+        <h4 className="flex items-center gap-2 text-base font-semibold leading-6">
+          <Terminal className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
           Comandos Rápidos
         </h4>
         <div className="space-y-2">
@@ -178,34 +184,34 @@ export default function AgenteTemplateDownload() {
       </div>
 
       {/* Endpoints */}
-      <div className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-3">
-        <h4 className="text-lg font-semibold">Endpoints Implementados</h4>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="text-left py-2 px-3 text-sm font-semibold">Método</th>
-                <th className="text-left py-2 px-3 text-sm font-semibold">Rota</th>
-                <th className="text-left py-2 px-3 text-sm font-semibold">Descrição</th>
-                <th className="text-left py-2 px-3 text-sm font-semibold">Auth</th>
-              </tr>
-            </thead>
-            <tbody>
+      <div className="space-y-3 rounded-lg border border-border bg-card p-5 shadow-sm">
+        <h4 className="text-base font-semibold leading-6">Endpoints Implementados</h4>
+        <div className="overflow-x-auto rounded-md border border-border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Método</TableHead>
+                <TableHead>Rota</TableHead>
+                <TableHead>Descrição</TableHead>
+                <TableHead>Auth</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {[
                 { method: 'GET', route: '/health', desc: 'Status, versão, sessões ativas e capacidades', auth: false },
                 { method: 'POST', route: '/sessao/iniciar', desc: 'Inicia uma nova sessão de lance real', auth: true },
                 { method: 'POST', route: '/sessao/pausar', desc: 'Pausa sessão em andamento', auth: true },
                 { method: 'POST', route: '/sessao/encerrar', desc: 'Encerra sessão e fecha navegador', auth: true },
               ].map((e) => (
-                <tr key={e.route} className="border-b border-border">
-                  <td className="py-2 px-3">
+                <TableRow key={e.route}>
+                  <TableCell>
                     <Badge variant={e.method === 'GET' ? 'success' : 'info'}>
                       {e.method}
                     </Badge>
-                  </td>
-                  <td className="py-2 px-3 font-mono">{e.route}</td>
-                  <td className="py-2 px-3 text-muted-foreground">{e.desc}</td>
-                  <td className="py-2 px-3">
+                  </TableCell>
+                  <TableCell className="font-mono">{e.route}</TableCell>
+                  <TableCell className="text-muted-foreground">{e.desc}</TableCell>
+                  <TableCell>
                     {e.auth ? (
                       <Badge variant="warning">
                         X-Agent-Key
@@ -213,17 +219,17 @@ export default function AgenteTemplateDownload() {
                     ) : (
                       <span className="text-muted-foreground">Público</span>
                     )}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       </div>
 
       {/* Tipos de callback */}
-      <div className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-3">
-        <h4 className="text-lg font-semibold">Tipos de Callback (Agente → Sistema)</h4>
+      <div className="space-y-3 rounded-lg border border-border bg-card p-5 shadow-sm">
+        <h4 className="text-base font-semibold leading-6">Tipos de Callback (Agente → Sistema)</h4>
         <div className="grid grid-cols-1 gap-2">
           {[
             { tipo: 'lance-enviado', desc: 'Lance enviado com sucesso ao portal', payload: '{ rodada, valor, tipo_lance, metadata }' },

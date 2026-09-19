@@ -153,8 +153,8 @@ export default function PedidoDoRobo({ onAbrirTelaRemota, permitirTelaRemota = f
     const ehCod = pedido.tipo === 'codigo';
     toast.custom(
       (id) => (
-        <div className="w-full rounded-lg border-2 border-primary/60 bg-card shadow-md p-4 flex gap-4">
-          <div className="w-12 h-12 rounded-md bg-primary-tint text-primary flex items-center justify-center shrink-0">
+        <div className="flex w-full gap-4 rounded-lg border border-primary/60 bg-card p-4 shadow-lg">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-primary-tint text-primary">
             {ehCod ? (
               <KeyRound className="w-6 h-6" aria-hidden="true" />
             ) : (
@@ -162,7 +162,7 @@ export default function PedidoDoRobo({ onAbrirTelaRemota, permitirTelaRemota = f
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-base font-semibold leading-tight text-foreground">
+            <p className="text-base font-semibold leading-6 text-foreground">
               {ehCod ? 'O robô está pedindo um código' : 'O robô precisa de um clique seu'}
             </p>
             {/* No caso do captcha, a mensagem do AGENTE — ele sabe em que tela
@@ -284,7 +284,7 @@ export default function PedidoDoRobo({ onAbrirTelaRemota, permitirTelaRemota = f
     // usa box-shadow e seria apagado pela animação.
     <div className="border-2 border-primary bg-primary-tint rounded-lg p-6 space-y-4 animate-pulse-glow" role="alert">
       <div className="flex items-start gap-4">
-        <div className="w-14 h-14 rounded-lg bg-card text-primary flex items-center justify-center shrink-0">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-card text-primary">
           {ehCodigo ? (
             <KeyRound className="w-7 h-7" aria-hidden="true" />
           ) : (
@@ -293,7 +293,7 @@ export default function PedidoDoRobo({ onAbrirTelaRemota, permitirTelaRemota = f
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline justify-between gap-3 flex-wrap">
-            <p className="text-lg font-semibold leading-tight">
+            <p className="text-lg font-semibold leading-6">
               {ehCodigo ? 'O robô precisa de um código' : 'O robô precisa de um clique seu'}
             </p>
             {/* O relógio reinicia a cada tela nova, então o número sobe sozinho
@@ -302,7 +302,7 @@ export default function PedidoDoRobo({ onAbrirTelaRemota, permitirTelaRemota = f
             {restam !== null && (
               <span
                 className={`text-sm tabular-nums shrink-0 ${
-                  restam <= 60 ? 'text-destructive font-semibold' : 'text-muted-foreground'
+                  restam <= 60 ? 'text-destructive-ink font-semibold' : 'text-muted-foreground'
                 }`}
               >
                 {restam > 0
@@ -343,7 +343,7 @@ export default function PedidoDoRobo({ onAbrirTelaRemota, permitirTelaRemota = f
               autoFocus
               // Grande e monoespaçado: são seis dígitos digitados sob pressão de
               // tempo, e ler errado custa uma tentativa na conta do cliente.
-              className="font-mono text-lg tracking-widest h-12 bg-card"
+              className="h-11 bg-card font-mono text-lg tracking-widest"
               disabled={enviando}
             />
             <Button

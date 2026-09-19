@@ -9,6 +9,7 @@ import TabelaGestao, { type ColunaGestao } from '@/components/gestao/TabelaGesta
 import { SecaoGestao } from '@/components/gestao/TelaGestao';
 import SeloSituacao, { AvisoDeContexto, AvisoDeFalha, type TomSituacao } from '@/components/gestao/SeloSituacao';
 import TextoExpansivel from '@/components/gestao/TextoExpansivel';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { dataHoraDeBrasilia } from '@/components/workspace/precificacao/formato';
 import { resumirErroParaCliente } from '@/lib/robo/situacao-da-participacao';
 import MigracaoPendente from './MigracaoPendente';
@@ -313,11 +314,11 @@ export default function DiagnosticoDeSessoes() {
             carregando={leitura.estado === 'carregando'}
             descricao="Sessões recentes do robô de lances, de todas as empresas, com o erro técnico e a tradução para o cliente"
             vazio={
-              <p className="g-corpo px-4 py-8 text-center text-muted-foreground">
-                {sessoes.length === 0
-                  ? 'Nenhuma sessão registrada.'
-                  : 'Nenhuma sessão com estes filtros.'}
-              </p>
+              <EstadoVazio
+                tamanho="compacto"
+                icone={<Activity />}
+                titulo={sessoes.length === 0 ? 'Nenhuma sessão registrada.' : 'Nenhuma sessão com estes filtros.'}
+              />
             }
             rodape={
               leitura.estado === 'pronta' && sessoes.length > 0 ? (

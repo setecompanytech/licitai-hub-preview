@@ -197,7 +197,7 @@ export default function SessoesDoRobo() {
 
   return (
     <div className="rounded-lg border border-border bg-card shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-2 px-6 py-4 border-b border-border">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-5 py-4">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <Activity className="w-5 h-5 text-primary" aria-hidden="true" />
           <h3 className="text-lg font-semibold">Sessões do Robô</h3>
@@ -216,13 +216,13 @@ export default function SessoesDoRobo() {
       </div>
 
       {isLoading ? (
-        <div className="p-6 space-y-3" role="status" aria-busy="true">
+        <div className="space-y-3 p-5" role="status" aria-busy="true">
           <span className="sr-only">Carregando sessões</span>
           {[0, 1, 2].map((i) => (
             <div key={i} className="flex items-center gap-3">
-              <Skeleton className="h-4 w-4 rounded-full shrink-0" />
-              <Skeleton className="h-4 flex-1 max-w-[240px]" />
-              <Skeleton className="h-5 w-20 rounded-full ml-auto shrink-0" />
+              <Skeleton className="h-4 w-4 shrink-0 rounded-full" />
+              <Skeleton className="h-4 max-w-[240px] flex-1" />
+              <Skeleton className="ml-auto h-5 w-20 shrink-0 rounded-sm" />
             </div>
           ))}
         </div>
@@ -246,7 +246,7 @@ export default function SessoesDoRobo() {
             const parada = paradas[s.id];
 
             return (
-              <div key={s.id} className="px-6 py-3">
+              <div key={s.id} className="px-5 py-3">
                 <button
                   type="button"
                   onClick={() => setExpandida(aberta ? null : s.id)}
@@ -272,7 +272,7 @@ export default function SessoesDoRobo() {
                     {/* A causa aparece na linha, sem precisar abrir: erro que
                         exige clique para ser lido é erro que ninguém lê. */}
                     {s.erro && (
-                      <p className="text-xs text-destructive truncate mt-0.5">{s.erro}</p>
+                      <p className="mt-0.5 truncate text-xs text-destructive-ink">{s.erro}</p>
                     )}
                   </div>
 
@@ -330,7 +330,7 @@ export default function SessoesDoRobo() {
                             ? 'text-success-ink'
                             : parada.estado === 'solicitada'
                             ? 'text-warning-ink'
-                            : 'text-destructive'
+                            : 'text-destructive-ink'
                         }`}
                       >
                         {parada.texto}
@@ -356,7 +356,7 @@ export default function SessoesDoRobo() {
                         })}
                       </p>
                     )}
-                    {s.erro && <p className="text-destructive">Motivo: {s.erro}</p>}
+                    {s.erro && <p className="text-destructive-ink">Motivo: {s.erro}</p>}
                     {!s.erro && s.status === 'encerrado' && (
                       <p>A sessão terminou sem erro registrado.</p>
                     )}
@@ -368,7 +368,7 @@ export default function SessoesDoRobo() {
         </div>
       )}
 
-      <p className="px-6 py-3 text-sm text-muted-foreground border-t border-border">
+      <p className="border-t border-border px-5 py-3 text-sm text-muted-foreground">
         A tela remota (VNC) mostra o robô <strong>enquanto</strong> ele trabalha e some quando
         ele termina — às vezes em segundos. Esta lista guarda o que aconteceu.
       </p>

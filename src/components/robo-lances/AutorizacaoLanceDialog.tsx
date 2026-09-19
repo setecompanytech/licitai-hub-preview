@@ -82,7 +82,7 @@ export default function AutorizacaoLanceDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="bg-warning-tint border border-warning-line rounded-lg p-4">
+          <div className="rounded-md border border-warning-line bg-warning-tint p-4">
             <p className="text-sm text-warning-ink font-semibold mb-1">
               Revise a estratégia antes de autorizar
             </p>
@@ -115,7 +115,7 @@ export default function AutorizacaoLanceDialog({
             </div>
 
             {limiteFinanceiro > 0 && (
-              <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${
+              <div className={`flex items-center gap-2 rounded-md border px-3 py-2 ${
                 excedeLimite
                   ? 'bg-destructive-tint border-destructive-line'
                   : 'bg-success-tint border-success-line'

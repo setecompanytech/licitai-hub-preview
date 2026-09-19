@@ -86,10 +86,10 @@ export default function AuditTrailViewer({ sessaoId }: Props) {
     v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   return (
-    <div className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-3">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <h3 className="text-lg font-semibold flex items-center gap-2">
-          <History className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+    <div className="space-y-3 rounded-lg border border-border bg-card p-5 shadow-sm">
+      <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+        <h3 className="flex items-center gap-2 text-lg font-semibold">
+          <History className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
           Trilha de Auditoria Imutável
         </h3>
         <div className="flex flex-wrap items-center gap-2">

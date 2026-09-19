@@ -256,7 +256,7 @@ const TOM = {
 
 function Quadro({ tom, icone, titulo, children }: { tom: keyof typeof TOM; icone: ReactNode; titulo: string; children: ReactNode }) {
   return (
-    <div className={`rounded-lg border px-4 py-3 ${TOM[tom]}`} role="status">
+    <div className={`rounded-md border px-4 py-3 ${TOM[tom]}`} role="status">
       <p className="flex items-center gap-2 font-semibold">
         <span aria-hidden="true" className="shrink-0">{icone}</span>
         {titulo}

@@ -1,7 +1,8 @@
 import { useCallback, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { RefreshCw, Search } from 'lucide-react';
+import { History, RefreshCw, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -235,9 +236,11 @@ export default function HistoricoDoRobo() {
             carregando={leitura.estado === 'carregando'}
             descricao="Histórico do robô de lances: avisos e eventos das sessões, de todas as empresas"
             vazio={
-              <p className="g-corpo px-4 py-8 text-center text-muted-foreground">
-                Nada no histórico com estes filtros neste período.
-              </p>
+              <EstadoVazio
+                tamanho="compacto"
+                icone={<History />}
+                titulo="Nada no histórico com estes filtros neste período."
+              />
             }
             rodape={
               leitura.estado === 'pronta' && linhas.length > 0 ? (

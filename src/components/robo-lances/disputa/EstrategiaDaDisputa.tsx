@@ -150,7 +150,7 @@ export default function EstrategiaDaDisputa({
             className="flex w-full items-start justify-between gap-3 rounded-[var(--g-raio)] px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <span className="flex min-w-0 items-start gap-3">
-              <Brain aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+              <Brain aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-teal" />
               <span className="flex min-w-0 flex-col">
                 <span className="g-titulo-secao text-foreground">Análise com IA (opcional)</span>
                 <span className="g-meta text-muted-foreground">

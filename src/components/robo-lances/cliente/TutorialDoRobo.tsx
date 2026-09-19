@@ -93,13 +93,13 @@ export default function TutorialDoRobo() {
                       <div className="flex items-center gap-2">
                         <span
                           aria-hidden="true"
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary-tint text-primary"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-primary-tint text-primary"
                         >
                           <Icone className="h-4 w-4" />
                         </span>
                         <span className="g-meta text-muted-foreground">{i + 1}</span>
                       </div>
-                      <p className="font-semibold text-foreground">{fase.titulo}</p>
+                      <p className="text-base font-semibold leading-6 text-foreground">{fase.titulo}</p>
                       <p className="g-corpo text-muted-foreground">{fase.texto}</p>
                     </li>
                   );
@@ -107,13 +107,13 @@ export default function TutorialDoRobo() {
               </ol>
 
               <section className="flex flex-col gap-3">
-                <h3 className="g-titulo-secao text-foreground">Estratégias de cada item</h3>
+                <h3 className="text-base font-semibold leading-6 text-foreground">Estratégias de cada item</h3>
                 <p className="g-corpo -mt-1 text-muted-foreground">
                   Marque uma, duas ou as três: elas somam, e o robô cobre o 1º lugar quando qualquer uma autoriza.
                 </p>
                 <ul className="grid gap-3 md:grid-cols-3">
                   {ESTRATEGIAS_DO_ITEM.map((e) => (
-                    <li key={e.id} className="rounded-[var(--g-raio)] border border-border p-3">
+                    <li key={e.id} className="rounded-md border border-border p-3">
                       <p className="font-medium text-foreground">{e.nome}</p>
                       <p className="g-corpo mt-1 text-muted-foreground">{e.explicacao}</p>
                     </li>
@@ -123,7 +123,7 @@ export default function TutorialDoRobo() {
 
               <div className="grid gap-6 md:grid-cols-2">
                 <section className="flex flex-col gap-3">
-                  <h3 className="g-titulo-secao text-foreground">Bom saber</h3>
+                  <h3 className="text-base font-semibold leading-6 text-foreground">Bom saber</h3>
                   <ul className="flex flex-col gap-2">
                     {BOM_SABER.map((texto) => (
                       <li key={texto} className="g-corpo flex items-start gap-2 text-muted-foreground">
@@ -134,7 +134,7 @@ export default function TutorialDoRobo() {
                   </ul>
                 </section>
                 <section className="flex flex-col gap-3">
-                  <h3 className="g-titulo-secao text-foreground">As abas da lista</h3>
+                  <h3 className="text-base font-semibold leading-6 text-foreground">As abas da lista</h3>
                   <dl className="flex flex-col gap-2">
                     {ABAS_DA_LISTA.map((aba) => (
                       <div key={aba.nome} className="g-corpo">
@@ -155,14 +155,14 @@ export default function TutorialDoRobo() {
                 <li key={passo.titulo} className="g-cartao flex gap-3 p-4">
                   <span
                     aria-hidden="true"
-                    className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground"
+                    className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary text-sm font-semibold text-primary-foreground"
                   >
                     {i + 1}
                   </span>
                   <div className="flex min-w-0 flex-col gap-1.5">
-                    <p className="font-semibold text-foreground">{passo.titulo}</p>
+                    <p className="text-base font-semibold leading-6 text-foreground">{passo.titulo}</p>
                     <p className="g-corpo text-muted-foreground">{passo.texto}</p>
-                    <p className="g-meta w-fit rounded-full bg-muted px-2 py-0.5 text-muted-foreground">
+                    <p className="g-meta w-fit rounded-sm bg-muted px-2 py-0.5 text-muted-foreground">
                       Onde: {passo.onde}
                     </p>
                   </div>
@@ -180,10 +180,10 @@ export default function TutorialDoRobo() {
                 return (
                   <li key={portal.id} className="g-cartao flex flex-col gap-3 p-4">
                     <div className="flex flex-col gap-2">
-                      <h3 className="g-titulo-secao text-foreground">{portal.nome}</h3>
+                      <h3 className="text-base font-semibold leading-6 text-foreground">{portal.nome}</h3>
                       <span
                         className={cn(
-                          'g-meta inline-flex w-fit items-center gap-1.5 rounded-full px-2 py-0.5 font-medium',
+                          'g-meta inline-flex w-fit items-center gap-1.5 rounded-sm px-2 py-0.5 font-medium',
                           doRobo ? 'bg-primary-tint text-primary' : 'bg-navy-tint text-foreground',
                         )}
                       >
@@ -204,7 +204,7 @@ export default function TutorialDoRobo() {
 
                     <p
                       className={cn(
-                        'g-corpo flex items-center gap-2 rounded-[var(--g-raio)] px-3 py-2 font-medium',
+                        'g-corpo flex items-center gap-2 rounded-md px-3 py-2 font-medium',
                         portal.lance.liberado ? 'bg-success-tint text-success-ink' : 'bg-muted text-muted-foreground',
                       )}
                     >
@@ -217,7 +217,7 @@ export default function TutorialDoRobo() {
                     </p>
 
                     {portal.atencao && (
-                      <p className="g-corpo flex items-start gap-2 rounded-[var(--g-raio)] bg-warning-tint px-3 py-2 text-warning-ink">
+                      <p className="g-corpo flex items-start gap-2 rounded-md bg-warning-tint px-3 py-2 text-warning-ink">
                         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                         {portal.atencao}
                       </p>

@@ -231,10 +231,10 @@ export default function AgenteExternoConfig() {
   const rotuloStatus = (status: string) => status.charAt(0).toUpperCase() + status.slice(1);
 
   return (
-    <div className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <h3 className="text-lg font-semibold flex items-center gap-2">
-          <Server className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+    <div className="space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm">
+      <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+        <h3 className="flex items-center gap-2 text-lg font-semibold">
+          <Server className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
           Agente Cloud de Lances
         </h3>
         {planConfig && (
@@ -259,41 +259,48 @@ export default function AgenteExternoConfig() {
           ({MANAGED_AGENT_URL.replace('https://', '')}), cuja situação aparece em "Portais no ar".
         </div>
       ) : agentes.length === 0 ? (
-        <div className="text-center py-8 space-y-4">
-          <div className="w-14 h-14 rounded-full bg-primary-tint text-primary flex items-center justify-center mx-auto">
-            <Rocket className="w-7 h-7" aria-hidden="true" />
-          </div>
-          <div className="space-y-1">
-            <p className="text-lg font-semibold text-foreground">
-              Ative seu Agente Cloud com um clique
-            </p>
-            <p className="text-sm text-muted-foreground max-w-md mx-auto">
-              O sistema configura automaticamente o servidor de automação de acordo com seu plano.
-              Sem necessidade de configuração técnica — tudo é gerenciado pela plataforma.
-            </p>
+        /* Bloco de ativação alinhado à esquerda, com o ícone num ladrilho — a
+           versão centralizada parecia página de vendas dentro do admin. */
+        <div className="flex flex-col gap-4 py-2">
+          <div className="flex items-start gap-3">
+            <span
+              aria-hidden="true"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary-tint text-primary"
+            >
+              <Rocket className="h-5 w-5" />
+            </span>
+            <div className="min-w-0 space-y-1">
+              <p className="text-base font-semibold leading-6 text-foreground">
+                Ative seu Agente Cloud com um clique
+              </p>
+              <p className="max-w-xl text-sm text-muted-foreground">
+                O sistema configura automaticamente o servidor de automação de acordo com seu plano.
+                Sem necessidade de configuração técnica — tudo é gerenciado pela plataforma.
+              </p>
+            </div>
           </div>
 
           {planConfig ? (
-            <div className="space-y-3">
-              <div className="bg-muted rounded-lg p-4 max-w-sm mx-auto text-left space-y-2">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            <div className="flex flex-col items-start gap-3">
+              <div className="w-full max-w-md space-y-2 rounded-md bg-muted p-4">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   O que será configurado:
                 </p>
-                <ul className="text-sm text-muted-foreground space-y-1">
+                <ul className="space-y-1 text-sm text-muted-foreground">
                   <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-success shrink-0" aria-hidden="true" />
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-success-ink" aria-hidden="true" />
                     Servidor dedicado em nuvem
                   </li>
                   <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-success shrink-0" aria-hidden="true" />
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-success-ink" aria-hidden="true" />
                     {planConfig.sessions} sessão(ões) paralela(s) de navegador
                   </li>
                   <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-success shrink-0" aria-hidden="true" />
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-success-ink" aria-hidden="true" />
                     Certificado digital seguro (configurado localmente)
                   </li>
                   <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-success shrink-0" aria-hidden="true" />
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-success-ink" aria-hidden="true" />
                     Monitoramento 24/7 e auto-recuperação
                   </li>
                 </ul>
@@ -302,7 +309,6 @@ export default function AgenteExternoConfig() {
               <Button
                 onClick={handleAutoProvision}
                 disabled={provisioning}
-                className="px-8"
               >
                 {provisioning ? (
                   <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
@@ -313,7 +319,7 @@ export default function AgenteExternoConfig() {
               </Button>
             </div>
           ) : (
-            <div className="bg-warning-tint border border-warning-line rounded-lg p-4 max-w-sm mx-auto">
+            <div className="max-w-md rounded-md border border-warning-line bg-warning-tint p-4">
               <p className="text-sm text-warning-ink">
                 O Robô de Lances em nuvem está disponível a partir do plano <strong>Profissional</strong>.
                 Faça upgrade para ativar essa funcionalidade.
@@ -355,7 +361,7 @@ export default function AgenteExternoConfig() {
                 </div>
 
                 {/* Capacidade de sessões paralelas */}
-                <div className="bg-muted rounded-lg p-4 space-y-2">
+                <div className="space-y-2 rounded-md bg-muted p-4">
                   <div className="flex items-center justify-between text-sm">
                     <span className="flex items-center gap-2 text-muted-foreground">
                       <Layers className="w-4 h-4" aria-hidden="true" />

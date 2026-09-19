@@ -266,7 +266,7 @@ export default function AcoesDaDisputa({ lance, nivel, aoAlterar, aoEncerrar, ao
             <Trophy className="mr-2 h-4 w-4" aria-hidden="true" /> Encerrar como Venceu
           </DropdownMenuItem>
           <DropdownMenuItem
-            className="text-destructive focus:bg-destructive-tint focus:text-destructive-ink"
+            className="text-destructive-ink focus:bg-destructive-tint focus:text-destructive-ink"
             onClick={() => void encerrar('perdeu')}
           >
             <XCircle className="mr-2 h-4 w-4" aria-hidden="true" /> Encerrar como Perdeu
@@ -275,7 +275,7 @@ export default function AcoesDaDisputa({ lance, nivel, aoAlterar, aoEncerrar, ao
               limites) e ficava a um clique: uma disputa foi apagada sem querer
               em 17/09/2026. Agora o clique só abre a confirmação. */}
           <DropdownMenuItem
-            className="text-destructive focus:bg-destructive-tint focus:text-destructive-ink"
+            className="text-destructive-ink focus:bg-destructive-tint focus:text-destructive-ink"
             onClick={() => setConfirmandoRemocao(true)}
           >
             <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" /> Remover disputa
