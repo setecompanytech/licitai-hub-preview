@@ -1,11 +1,14 @@
 import { ReactNode, useState, useEffect, forwardRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { cn } from '@/lib/utils';
 import AppHeader from './AppHeader';
-import CompactSidebar from './CompactSidebar';
+import AppSidebar from './AppSidebar';
+import { gravarSidebarRecolhida, lerSidebarRecolhida } from '@/lib/navegacao/sidebar';
 import MenuDeFerramentas from './MenuDeFerramentas';
 import TrilhaDoTopo, { type DegrauDaTrilha } from './TrilhaDoTopo';
 import { ProvedorDeTrilha } from './contexto-trilha';
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import LembreteDeVencimento from '@/components/documentos/LembreteDeVencimento';
 import LembreteDeConvocacao from '@/components/monitoramento/LembreteDeConvocacao';
 import LembreteDoRobo from '@/components/robo-lances/LembreteDoRobo';
@@ -23,35 +26,25 @@ import MeuPerfilModal from '@/components/perfil/MeuPerfilModal';
 import { supabase } from '@/integrations/supabase/client';
 
 /**
- * Moldura de toda tela interna — um cabeçalho horizontal e o conteúdo.
+ * Moldura de toda tela interna — SIDEBAR + TOPBAR + CONTEÚDO (Design System
+ * v3, 19/09/2026).
  *
- * Histórico, porque a alternância confunde quem chega: em 13/09 a navegação foi
- * para o topo pela manhã, voltou para uma coluna navy de 240px à tarde (com o
- * comando de reestruturação do Gestão e suas 22 referências) e voltou ao topo
- * no fim do dia, por comando novo do dono do produto. Este é o estado atual: a
- * coluna saiu, o `AppSidebar` foi removido, e o `AppHeader` responde às três
- * perguntas de uma vez — para onde eu vou (Painel, Ferramentas), o que eu
- * procuro (a busca única) e quem eu sou (empresa, avisos, perfil).
+ * A coluna navy de 248px (recolhível a 72px) carrega a marca e a navegação;
+ * a topbar branca de 60px carrega o nome do módulo, a busca única, os avisos,
+ * o tema, a empresa ativa e a conta; o conteúdo ocupa o resto, com teto de
+ * 1520px e respiro de 16/24/32px conforme a largura. No celular a coluna
+ * vira uma gaveta aberta pelo botão da topbar.
  *
- * ONDE FICA A TRILHA — decisão de 13/09, para não recriar a duplicação que foi
- * corrigida hoje de manhã. Ela NÃO sobe para o cabeçalho: a faixa de 64px
- * agora está ocupada por navegação e identidade, e empilhar uma segunda linha
- * ali custaria ~36px permanentes de altura em todas as 56 telas. A trilha
- * passa a abrir o container do conteúdo, ao lado do botão de voltar, e rola
- * com a página — ela descreve o conteúdo, então pertence a ele. Continua
- * existindo UMA só: `CabecalhoPagina` apenas REGISTRA a trilha pelo contexto,
- * quem desenha é o `TrilhaDoTopo` daqui.
+ * ONDE FICA A TRILHA: abre o container do conteúdo, ao lado do botão de
+ * voltar, e rola com a página — ela descreve o conteúdo, então pertence a ele.
+ * Continua existindo UMA só: `CabecalhoPagina` apenas REGISTRA a trilha pelo
+ * contexto, quem desenha é o `TrilhaDoTopo` daqui.
  */
 interface AppLayoutProps {
   children: ReactNode;
   /**
    * Degraus que o registro de rota não conhece — o identificador do registro
    * aberto, e o caminho até ele quando a rota não é item de menu.
-   *
-   * Existe porque `/processo/:id` e outras telas de detalhe não estão em
-   * `paginas.ts`: `trilhaDaRota` devolve vazio para elas, e a faixa ficava sem
-   * trilha nenhuma justamente nas telas em que o caminho de volta mais importa.
-   * Quem conhece o número do processo é a página, não o roteador.
    */
   trilhaExtra?: DegrauDaTrilha[];
 }
@@ -59,7 +52,9 @@ interface AppLayoutProps {
 const AppLayout = forwardRef<HTMLDivElement, AppLayoutProps>(function AppLayout({ children, trilhaExtra }, _ref) {
   const [notifOpen, setNotifOpen] = useState(false);
   const [menuAberto, setMenuAberto] = useState(false);
+  const [menuMovelAberto, setMenuMovelAberto] = useState(false);
   const [perfilModalOpen, setPerfilModalOpen] = useState(false);
+  const [recolhida, setRecolhida] = useState<boolean>(() => lerSidebarRecolhida());
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
@@ -136,85 +131,114 @@ const AppLayout = forwardRef<HTMLDivElement, AppLayoutProps>(function AppLayout(
     gravarSininhoAbertoEm(user.id, new Date());
   }, [notifOpen, user]);
 
-  // Navegar fecha o diretório: sem isso ele continuaria aberto sobre a tela
-  // recém-carregada, e a pessoa teria que fechá-lo à mão depois de cada clique.
+  // Navegar fecha o diretório e a gaveta do celular: sem isso continuariam
+  // abertos sobre a tela recém-carregada.
   useEffect(() => {
     setMenuAberto(false);
+    setMenuMovelAberto(false);
   }, [location.pathname, location.search]);
 
   const abrirBusca = () => window.dispatchEvent(new CustomEvent('praefectus:abrir-busca'));
 
+  const alternarRecolhida = () =>
+    setRecolhida((atual) => {
+      gravarSidebarRecolhida(!atual);
+      return !atual;
+    });
+
   return (
     <ProvedorDeTrilha>
-    <div className="flex min-h-screen flex-col bg-background">
-      <AppHeader
-        naoLidas={unreadCount}
-        sininhoChamando={sininhoChamando}
-        aoAbrirNotificacoes={() => setNotifOpen((o) => !o)}
-        aoAbrirMeuPerfil={() => setPerfilModalOpen(true)}
-        aoAbrirFerramentas={() => setMenuAberto(true)}
-        ferramentasAberto={menuAberto}
-      />
-
-      {/* Sidebar compacta — visível apenas no desktop (md+). No mobile a
-          navegação continua via o botão hamburger do cabeçalho. */}
-      <div className="hidden md:block">
-        <CompactSidebar
+    <div className="flex min-h-screen bg-background">
+      {/* A coluna de navegação — fixa, altura total, só no desktop. */}
+      <div
+        className={cn(
+          'nao-imprime fixed inset-y-0 left-0 z-30 hidden transition-[width] duration-200 md:block',
+          recolhida ? 'w-[var(--g-barra-lateral-fechada)]' : 'w-[var(--g-barra-lateral)]',
+        )}
+      >
+        <AppSidebar
+          recolhida={recolhida}
+          aoAlternarRecolhida={alternarRecolhida}
           aoAbrirFerramentas={() => setMenuAberto(true)}
           aoAbrirBusca={abrirBusca}
         />
       </div>
 
+      {/* Topbar + conteúdo, deslocados pela largura da coluna. */}
+      <div
+        className={cn(
+          'flex min-h-screen w-full min-w-0 flex-1 flex-col transition-[padding] duration-200 print:pl-0',
+          recolhida ? 'md:pl-[var(--g-barra-lateral-fechada)]' : 'md:pl-[var(--g-barra-lateral)]',
+        )}
+      >
+        <AppHeader
+          naoLidas={unreadCount}
+          sininhoChamando={sininhoChamando}
+          aoAbrirNotificacoes={() => setNotifOpen((o) => !o)}
+          aoAbrirMeuPerfil={() => setPerfilModalOpen(true)}
+          aoAbrirFerramentas={() => setMenuAberto(true)}
+          ferramentasAberto={menuAberto}
+          aoAbrirMenuMovel={() => setMenuMovelAberto(true)}
+        />
+
+        <main className="mx-auto w-full min-w-0 max-w-[var(--g-conteudo)] flex-1 px-4 py-4 sm:px-5 md:px-6 md:py-6 lg:px-8">
+          {/* Banner de manutenção e aviso de vencimento são da sessão, não do
+              documento: no papel viram ruído com data de validade. */}
+          <div className="nao-imprime">
+            <MaintenanceBanner showModal />
+            <AlertaVencimentoBanner />
+          </div>
+
+          {/* Voltar e trilha respondem a coisas diferentes e por isso convivem:
+              a trilha sobe a hierarquia (Gestão › Contratos), o botão desfaz o
+              último passo. No Painel o botão não aparece: ali é a raiz. A linha
+              some inteira quando não há trilha e a pessoa está no Painel. */}
+          <div className="nao-imprime mb-4 flex items-center gap-2 empty:hidden">
+            {location.pathname !== '/dashboard' && <BotaoVoltar somenteIcone />}
+            <TrilhaDoTopo extra={trilhaExtra} className="min-w-0 flex-1" />
+          </div>
+
+          {/* O canto dos lembretes: convocação de pregoeiro, aviso do robô e
+              vencimento de certidão dividem a MESMA pilha. A distância do topo
+              acompanha o token da topbar. */}
+          <div className="pointer-events-none fixed right-4 top-[calc(var(--g-topo)+0.75rem)] z-40 flex w-[min(316px,calc(100vw-2rem))] flex-col gap-2.5 [&>*]:pointer-events-auto">
+            <LembreteDeConvocacao />
+            <LembreteDoRobo />
+            <LembreteDeVencimento />
+          </div>
+          {/* A chamada grande da tela remota, embaixo e no centro — só para a
+              equipe Praefectus (ver `ChamadaDaTelaRemota`). */}
+          <ChamadaDaTelaRemota />
+          {/* Carimbo invisível, para conferir o que está publicado. */}
+          <span data-versao={VERSAO_APP} className="hidden" />
+          {children}
+        </main>
+      </div>
+
+      {/* A navegação no celular: a mesma coluna, numa gaveta. */}
+      <Sheet open={menuMovelAberto} onOpenChange={setMenuMovelAberto}>
+        <SheetContent
+          side="left"
+          className="w-[280px] gap-0 border-sidebar-border bg-sidebar p-0 text-sidebar-foreground sm:max-w-[280px]"
+          classNameFechar="text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-white"
+        >
+          <SheetTitle className="sr-only">Menu de navegação</SheetTitle>
+          <AppSidebar
+            movel
+            aoNavegar={() => setMenuMovelAberto(false)}
+            aoAbrirFerramentas={() => {
+              setMenuMovelAberto(false);
+              setMenuAberto(true);
+            }}
+            aoAbrirBusca={() => {
+              setMenuMovelAberto(false);
+              abrirBusca();
+            }}
+          />
+        </SheetContent>
+      </Sheet>
+
       <MenuDeFerramentas aberto={menuAberto} aoFechar={() => setMenuAberto(false)} />
-
-      {/* Conteúdo principal: no desktop recebe ml-[62px] da sidebar fixa +
-          padding interno de 22px. No mobile sem sidebar.
-
-          `md:w-[calc(100%-62px)]` é o que faltava: `w-full` sozinho mede
-          100% do contêiner-pai e SÓ DEPOIS ganha os 62px de margem — a caixa
-          fica 62px mais larga que a viewport, e o excesso vaza à direita,
-          cortando (ou movendo pra fora da tela) qualquer coisa ancorada à
-          direita nela: botões de ação do cabeçalho, o link "Ver" dos
-          alertas, painéis laterais. O bug era sistêmico porque `AppLayout`
-          é comum a toda tela — daí "cortar à direita em todas as telas". */}
-      <main className="w-full min-w-0 flex-1 px-4 py-4 md:ml-[62px] md:w-[calc(100%-62px)] md:px-[22px] md:py-[18px]">
-        {/* Banner de manutenção e aviso de vencimento são da sessão, não do
-            documento: no papel viram ruído com data de validade. */}
-        <div className="nao-imprime">
-          <MaintenanceBanner showModal />
-          <AlertaVencimentoBanner />
-        </div>
-
-        {/* Voltar e trilha respondem a coisas diferentes e por isso convivem:
-            a trilha sobe a hierarquia (Gestão › Contratos), o botão desfaz o
-            último passo, que muitas vezes veio de outro ramo — do Kanban para
-            o dossiê, do dossiê para a precificação. No Painel o botão não
-            aparece: ali é a raiz, e voltar não leva a lugar que faça sentido.
-            A linha some inteira quando não há trilha (o TrilhaDoTopo devolve
-            nulo) e a pessoa está no Painel — não sobra um espaço vazio. */}
-        <div className="nao-imprime mb-3 flex items-center gap-2 empty:hidden">
-          {location.pathname !== '/dashboard' && <BotaoVoltar somenteIcone />}
-          <TrilhaDoTopo extra={trilhaExtra} className="min-w-0 flex-1" />
-        </div>
-
-        {/* O canto dos lembretes: convocação de pregoeiro (urgente, em cima) e
-            vencimento de certidão dividem a MESMA pilha — dois `fixed` no mesmo
-            ponto se sobrepunham. O contêiner não captura clique quando vazio.
-            A distância do topo acompanha o token do cabeçalho: fixá-la em 84px
-            faria a pilha invadir a faixa no dia em que a altura mudar. */}
-        <div className="pointer-events-none fixed right-5 top-[calc(var(--g-topo)+1.25rem)] z-40 flex w-[min(316px,calc(100vw-2.5rem))] flex-col gap-2.5 [&>*]:pointer-events-auto">
-          <LembreteDeConvocacao />
-          <LembreteDoRobo />
-          <LembreteDeVencimento />
-        </div>
-        {/* A chamada grande da tela remota, embaixo e no centro — só para a
-            equipe Praefectus (ver `ChamadaDaTelaRemota`). */}
-        <ChamadaDaTelaRemota />
-        {/* Uma vez aqui, vale para as 56 telas que usam este layout. */}
-        {/* Carimbo invisível, para conferir o que está publicado. */}
-        <span data-versao={VERSAO_APP} className="hidden" />
-        {children}
-      </main>
 
       <NotificationCenter
         open={notifOpen}

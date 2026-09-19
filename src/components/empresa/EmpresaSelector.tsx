@@ -28,22 +28,18 @@ export default function EmpresaSelector() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
+        {/* Seletor sobre a topbar branca: campo de contexto, não botão de ação —
+            borda fina, ícone no azul corporativo, sem cor escrita à mão. */}
         <button
-          className="flex items-center gap-2 h-8 px-3 rounded-[3px] transition-colors text-[13px] font-medium max-w-[200px]"
-          style={{
-            background: 'hsl(var(--navy))',
-            border: '1px solid rgba(255,255,255,.18)',
-            color: '#fff',
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = 'hsl(var(--navy-hover))')}
-          onMouseLeave={(e) => (e.currentTarget.style.background = 'hsl(var(--navy))')}
+          type="button"
+          className="flex h-9 max-w-[220px] items-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-medium text-foreground shadow-sm transition-colors duration-150 hover:border-foreground-tertiary hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <Building2 className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#8ec9b8' }} />
+          <Building2 className="h-4 w-4 flex-shrink-0 text-brand-blue" aria-hidden="true" />
           <span className="truncate">{label}</span>
-          <ChevronDown className="w-3 h-3 flex-shrink-0" style={{ color: 'rgba(255,255,255,.5)' }} />
+          <ChevronDown className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" aria-hidden="true" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-64">
+      <DropdownMenuContent align="end" className="w-72">
         {ehContaDeEngenharia ? (
           <p className="px-2 py-1.5 text-sm text-muted-foreground">
             Conta da plataforma: opera o sistema pelo Admin e não entra em empresa de cliente.

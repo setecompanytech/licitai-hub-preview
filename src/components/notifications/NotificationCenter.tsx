@@ -129,7 +129,7 @@ export default function NotificationCenter({
     // A posição da gaveta (top/right/z) é a que já foi ajustada contra a faixa
     // superior — só a pele mudou: cartão `bg-card`, canto `rounded-lg` e
     // sombra no teto da identidade (`shadow-md`).
-    <div className="fixed top-[80px] right-2 sm:right-4 z-50 w-[calc(100vw-1rem)] sm:w-[420px] bg-card border border-border rounded-lg shadow-md animate-in slide-in-from-top-2 fade-in duration-200">
+    <div className="fixed top-[calc(var(--g-topo)+0.5rem)] right-2 sm:right-4 z-50 w-[calc(100vw-1rem)] sm:w-[420px] bg-card border border-border rounded-xl shadow-xl animate-in slide-in-from-top-2 fade-in duration-200">
       {/* Cabeçalho. A gaveta tem ~359px num aparelho de 375px
           (`w-[calc(100vw-1rem)]`), então o lado esquerdo encolhe (`min-w-0` +
           `truncate` no título) e o rótulo de "marcar todas" só aparece a partir

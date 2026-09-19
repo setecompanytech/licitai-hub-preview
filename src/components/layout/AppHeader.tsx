@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useTheme } from 'next-themes';
 import { Bell, LayoutGrid, LogOut, Menu, Search, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import BrandLogo from '@/components/shared/BrandLogo';
@@ -15,60 +14,31 @@ import { menuDaConta, type ItemDaConta } from '@/lib/navegacao/menu';
 import { funcaoDaRota } from '@/lib/navegacao/registro';
 
 /**
- * AppHeader — o cabeçalho horizontal fixo do sistema (13/09/2026, fim do dia).
+ * AppHeader — a topbar branca do Design System v3 (19/09/2026).
  *
- * A navegação mudou de lugar três vezes hoje (topo → coluna → topo). Este é o
- * pedido mais recente do dono do produto e o que vale: uma faixa branca única,
- * 64px no desktop e 56px no celular, com marca à esquerda, dois destinos ao
- * lado dela e a identidade à direita. A coluna navy de 240px saiu junto com o
- * `AppSidebar`, que deixou de ter consumidor.
+ * 60px no desktop, 56px no celular. A NAVEGAÇÃO mora na `AppSidebar`; a barra
+ * responde ao resto: onde estou (o nome do módulo), o que procuro (a busca
+ * única, Ctrl+K), e quem sou (avisos, tema, empresa ativa, conta).
  *
- * POR QUE só DOIS itens de navegação, e não os oito grupos do menu:
- *
- *   "Painel" é o único destino que merece um clique dedicado — é a raiz, o
- *   lugar para onde se volta. Todo o resto (os oito grupos de `navGroups`, as
- *   56 telas) mora atrás de "Ferramentas", que abre o diretório inteiro.
- *
- *   "Módulos" foi AVALIADO e DESCARTADO. O comando o admitia "somente se
- *   houver navegação distinta e útil já existente", e não há: com Ferramentas
- *   abrindo o diretório completo — que é exatamente a lista de módulos —, um
- *   terceiro item seria um segundo caminho para a MESMA lista. É a navegação
- *   duplicada que o próprio comando proíbe, e a que custou o dia de hoje (duas
- *   trilhas empilhadas, duas lupas). Se um dia existir uma visão de módulo que
- *   o diretório não dá, o item nasce com ela — não antes.
- *
- * Espaço, a lição de `docs/pendencias.md`: a barra do topo anterior tinha OITO
- * rótulos e em 1280px se sobrepunha (a wordmark cobrindo "Painel", "Ferramentas"
- * colidindo com o seletor de empresa). Com dois rótulos o aperto some, mas a
- * disciplina fica: marca e ações com `shrink-0`, rótulos com `whitespace-nowrap`
- * e o miolo com `min-w-0` — nada aqui conta com quebra de texto para caber.
- *
- * A busca é ÚNICA no sistema. Este botão é o MESMO diálogo do Ctrl+K, chamado
- * de outro lugar (evento `praefectus:abrir-busca`), não um segundo índice.
+ * No celular a barra ganha o acionador da gaveta de navegação e a marca; no
+ * desktop a marca fica na coluna. A busca é UMA só no sistema: este botão é o
+ * MESMO diálogo do Ctrl+K, chamado pelo evento `praefectus:abrir-busca`.
  */
-
 interface AppHeaderProps {
   /** Quantas notificações não lidas — a contagem realtime mora no AppLayout. */
   naoLidas: number;
   /** Abre o painel de notificações (o `NotificationCenter` é do AppLayout). */
   aoAbrirNotificacoes: () => void;
-  /**
-   * Aviso novo do robô desde a última abertura do painel: o sininho treme e
-   * brilha até ser aberto. Quem decide é o AppLayout (`sininhoDeveChamar`).
-   */
+  /** Aviso novo do robô desde a última abertura do painel: o sininho treme. */
   sininhoChamando?: boolean;
   /** Abre o modal do perfil (também montado pelo AppLayout). */
   aoAbrirMeuPerfil: () => void;
-  /**
-   * Abre o menu global de ferramentas.
-   *
-   * Quem monta o `MenuDeFerramentas` é o AppLayout: o cabeçalho só pede a
-   * abertura. Assim este componente não depende do menu para renderizar — e
-   * ele pôde ser testado enquanto o menu ainda estava sendo escrito.
-   */
+  /** Abre o diretório "Todas as ferramentas" (montado pelo AppLayout). */
   aoAbrirFerramentas: () => void;
-  /** Com o menu aberto, o item "Ferramentas" fica aceso e anuncia `expanded`. */
+  /** Com o diretório aberto, o botão anuncia `expanded`. */
   ferramentasAberto?: boolean;
+  /** Abre a gaveta de navegação do celular. */
+  aoAbrirMenuMovel?: () => void;
 }
 
 export default function AppHeader({
@@ -78,29 +48,16 @@ export default function AppHeader({
   aoAbrirFerramentas,
   ferramentasAberto = false,
   sininhoChamando = false,
+  aoAbrirMenuMovel,
 }: AppHeaderProps) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { empresaAtiva } = useEmpresa();
-  // Só o papel importa aqui: quem filtra rota é o diretório, e o Painel é
-  // aberto a toda sessão autenticada (ver a nota adiante).
   const { isAdmin: isEmpresaAdmin } = useMembroPermissoes();
   const avatarUrl = useAvatarUrl();
   const [perfilAberto, setPerfilAberto] = useState(false);
   const perfilRef = useRef<HTMLDivElement>(null);
-
-  /**
-   * A marca tem DUAS versões e a escolha é do fundo, não do gosto: a principal
-   * (navy + verde) para fundo claro, a de fundo escuro (branca + verde) para o
-   * navy. A faixa deixou de ser navy e passou a ser `--card`, que é branco no
-   * tema claro e escuro no tema escuro — então a variante acompanha o tema.
-   * Fixar "light" apagaria o nome da marca no tema escuro, onde ele ficaria
-   * navy sobre navy. `resolvedTheme` chega indefinido no primeiro render; o
-   * padrão é a versão principal, que é a do tema padrão do app.
-   */
-  const { resolvedTheme } = useTheme();
-  const varianteDaMarca = resolvedTheme === 'dark' ? 'dark' : 'light';
 
   // O menu da conta vem de menu.ts (mesma fonte do diretório) e chega agrupado
   // por seção: "Conta", "Empresa", "Preferências", "Plataforma".
@@ -130,36 +87,9 @@ export default function AppHeader({
     return () => document.removeEventListener('mousedown', fora);
   }, [perfilAberto]);
 
-  /**
-   * Item de menu que a pessoa não pode abrir não aparece — a mesma regra que a
-   * coluna aplicava a todos os seus itens. Aqui só há uma rota no cabeçalho, e
-   * ela obedece à mesma autoridade; o diretório filtra o resto por conta dele.
-   *
-   */
-  /**
-   * O Painel aparece para TODA sessão autenticada, e não por descuido.
-   *
-   * `canAccessRoute` nega quando não há linha em `empresa_membros` — o caso de
-   * quem acabou de aceitar um convite, de quem ainda não tem empresa ativa, e
-   * de qualquer falha transitória na carga do membro. Para as telas de módulo
-   * isso é o correto: não anunciar porta que se sabe fechada. Para o Painel,
-   * não: ele é a RAIZ, o destino do "voltar ao início", e a rota já o trata
-   * como aberto a todos os oito setores (`route-permissions.ts`).
-   *
-   * Escondê-lo deixaria o cabeçalho com um item só — "Ferramentas" — e sem
-   * caminho de volta visível, exatamente para quem está mais perdido. Quem de
-   * fato barra a entrada continua sendo o guard da rota; o cabeçalho não é
-   * camada de segurança e nunca foi.
-   */
-  const podeVerPainel = true;
   const painelAtivo = pathname === '/dashboard' || pathname.startsWith('/dashboard/');
-  /**
-   * "Ferramentas" acende quando a pessoa está DENTRO de alguma função do
-   * diretório — sem isso o cabeçalho ficaria sem nenhum item aceso em 55 das
-   * 56 telas, o que se lê como navegação quebrada, não como "nada selecionado".
-   * Com o menu aberto ele também acende, porque é o que está em foco.
-   */
-  const ferramentasAtivo = ferramentasAberto || (!painelAtivo && !!funcaoDaRota(pathname));
+  const funcao = funcaoDaRota(pathname);
+  const nomeDoModulo = painelAtivo ? 'Painel da empresa' : funcao?.nomeCompleto ?? 'Praefectus';
 
   const irParaConta = (path: string, hash: string) => {
     setPerfilAberto(false);
@@ -170,119 +100,73 @@ export default function AppHeader({
     window.dispatchEvent(new CustomEvent('praefectus:abrir-busca'));
   };
 
-  /** Alvo de 44px, foco visível e rótulo que não quebra — vale para os dois. */
-  const classeDoItem = (ativo: boolean) =>
-    cn(
-      'relative flex min-h-[var(--g-linha)] shrink-0 items-center whitespace-nowrap rounded-[var(--g-raio)] px-3 g-corpo font-semibold transition-colors',
-      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-      ativo ? 'text-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-    );
-
-  /** O sublinhado verde: discreto, 2px, sempre no DOM para não saltar. */
-  const Sublinhado = ({ ativo }: { ativo: boolean }) => (
-    <span
-      aria-hidden="true"
-      className={cn(
-        'pointer-events-none absolute inset-x-3 bottom-0 h-[2px] rounded-full bg-primary transition-opacity',
-        ativo ? 'opacity-100' : 'opacity-0',
-      )}
-    />
-  );
-
-  /** Botão de ícone — 34px igual ao prototype .icon-btn */
+  /** Botão de ícone da barra: 36px, foco visível, hover na superfície rebaixada. */
   const classeDoIcone =
-    'relative flex h-[34px] min-w-[34px] shrink-0 items-center justify-center rounded-[3px] border border-transparent bg-transparent text-muted-foreground transition-colors hover:border-border hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+    'relative flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
 
   return (
     /**
-     * `sticky` e não `fixed` de propósito: o elemento continua no fluxo, então
-     * ele RESERVA a própria altura e o conteúdo nunca nasce embaixo dele. Com
-     * `fixed` seria preciso repetir a altura como padding no `main` — duas
-     * medidas para manter iguais, e a sobreposição volta na primeira que
-     * esquecerem de mudar. O comportamento visto é o mesmo: gruda no topo.
+     * `sticky` e não `fixed`: o elemento reserva a própria altura e o conteúdo
+     * nunca nasce embaixo dele.
      */
     <header className="nao-imprime sticky top-0 z-40 shrink-0 border-b border-border bg-card">
-      <div className="flex h-[var(--g-topo-celular)] w-full items-center md:h-[var(--g-topo)]">
-
-        {/* Área da marca — 62px, alinhada com a sidebar. Borda direita separa
-            a zona de identidade da zona de conteúdo, como no prototype. */}
+      <div className="flex h-[var(--g-topo-celular)] w-full items-center gap-2 px-3 md:h-[var(--g-topo)] md:px-6">
+        {/* Celular: a gaveta de navegação e a marca. */}
+        <button
+          type="button"
+          onClick={aoAbrirMenuMovel}
+          aria-label="Abrir menu"
+          title="Menu"
+          className={cn(classeDoIcone, 'md:hidden')}
+        >
+          <Menu aria-hidden="true" className="h-5 w-5" />
+        </button>
         <Link
           to="/dashboard"
           aria-label="Praefectus — página inicial"
-          className="hidden md:flex h-full shrink-0 items-center justify-center border-r border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-          style={{ width: 62 }}
+          className="flex shrink-0 items-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:hidden"
         >
-          {/* Marca compacta: o mesmo símbolo oficial (BrandLogo), não a
-              aproximação em CSS puro — a diferença é visível lado a lado.
-              `aria-hidden` no wrapper: o link já tem o nome acessível. */}
-          <span aria-hidden="true">
-            <BrandLogo variant={varianteDaMarca} mode="symbol" width={26} />
-          </span>
+          <BrandLogo variant="light" mode="full" className="w-[120px]" />
         </Link>
 
-        {/* Marca full no mobile (sem sidebar) */}
-        <Link
-          to="/dashboard"
-          aria-label="Praefectus — página inicial"
-          className="flex md:hidden shrink-0 items-center px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <BrandLogo variant={varianteDaMarca} mode="full" className="w-[132px]" />
-        </Link>
-
-        {/* Nome do módulo ativo — contexto visível como no prototype */}
-        <div className="hidden md:flex min-w-0 flex-1 items-center gap-3 px-4">
-          <span className="font-semibold text-[13px] text-foreground">
-            {funcaoDaRota(pathname)?.nome ?? (painelAtivo ? 'Painel da empresa' : 'Praefectus')}
-          </span>
-          <button
-            type="button"
-            onClick={aoAbrirFerramentas}
-            title="Todas as ferramentas (Ctrl+Shift+K)"
-            aria-haspopup="dialog"
-            aria-expanded={ferramentasAberto}
-            className="text-[12px] text-muted-foreground hover:text-foreground transition-colors"
-          >
-            / Todas as ferramentas
-          </button>
+        {/* Desktop: onde a pessoa está. */}
+        <div className="hidden min-w-0 flex-1 items-center gap-3 md:flex">
+          <p className="truncate text-sm font-semibold text-foreground">{nomeDoModulo}</p>
+          {!painelAtivo && funcao?.descricao && (
+            <p className="hidden min-w-0 truncate text-xs text-muted-foreground xl:block">{funcao.descricao}</p>
+          )}
         </div>
 
         {/* Identidade e ações, à direita */}
-        <div className="ml-auto flex shrink-0 items-center gap-1 px-3">
-
-          {/* Todas as ferramentas (grid icon) — igual ao prototype #openToolsTop */}
-          <button
-            type="button"
-            onClick={aoAbrirFerramentas}
-            title="Todas as ferramentas"
-            aria-label="Todas as ferramentas"
-            aria-haspopup="dialog"
-            aria-expanded={ferramentasAberto}
-            className={cn(classeDoIcone, 'hidden md:flex')}
-          >
-            <LayoutGrid aria-hidden="true" className="h-[17px] w-[17px]" />
-          </button>
-
-          {/* Campo de busca — 310px no desktop, igual ao prototype .search */}
+        <div className="ml-auto flex shrink-0 items-center gap-1">
+          {/* A busca única: campo no desktop largo, ícone abaixo disso. */}
           <button
             type="button"
             onClick={abrirBusca}
             aria-label="Buscar no sistema"
             title="Buscar no sistema (Ctrl+K)"
-            className="hidden md:flex h-[34px] w-[310px] shrink-0 items-center gap-2 rounded-[3px] border border-border bg-muted/20 px-[10px] text-muted-foreground transition-colors hover:bg-muted/40"
+            className={cn(
+              classeDoIcone,
+              'lg:w-[280px] lg:justify-start lg:gap-2 lg:border lg:border-border lg:bg-background lg:px-3 lg:hover:border-foreground-tertiary lg:hover:bg-muted/60',
+            )}
           >
-            <Search aria-hidden="true" className="h-[15px] w-[15px] shrink-0" />
-            <span className="flex-1 text-left text-[13px]">Buscar no sistema...</span>
-            <kbd className="rounded-[3px] border border-border bg-card px-[5px] py-[1px] text-[11px] font-sans leading-none">⌘K</kbd>
+            <Search aria-hidden="true" className="h-4 w-4 shrink-0" />
+            <span className="hidden min-w-0 flex-1 truncate text-left text-sm lg:inline">Buscar no sistema…</span>
+            <kbd className="hidden rounded border border-border bg-card px-1.5 py-0.5 font-sans text-[10px] font-medium leading-none text-muted-foreground lg:inline">
+              Ctrl K
+            </kbd>
           </button>
 
-          {/* Ícone de busca no mobile */}
           <button
             type="button"
-            onClick={abrirBusca}
-            aria-label="Buscar no sistema"
-            className={cn(classeDoIcone, 'md:hidden')}
+            onClick={aoAbrirFerramentas}
+            title="Todas as ferramentas (Ctrl+Shift+K)"
+            aria-label="Todas as ferramentas"
+            aria-haspopup="dialog"
+            aria-expanded={ferramentasAberto}
+            className={cn(classeDoIcone, 'hidden md:flex', ferramentasAberto && 'bg-muted text-foreground')}
           >
-            <Search aria-hidden="true" className="h-[17px] w-[17px]" />
+            <LayoutGrid aria-hidden="true" className="h-[18px] w-[18px]" />
           </button>
 
           <button
@@ -298,33 +182,31 @@ export default function AppHeader({
           >
             <Bell
               aria-hidden="true"
-              className={cn('h-[17px] w-[17px]', sininhoChamando && 'origin-top motion-safe:animate-sininho-tremer')}
+              className={cn('h-[18px] w-[18px]', sininhoChamando && 'origin-top motion-safe:animate-sininho-tremer')}
             />
             {naoLidas > 0 && (
-              /* Badge igual ao prototype: right:-1px; top:-4px */
               <b
                 aria-hidden="true"
-                className="pointer-events-none absolute -right-px -top-1 flex min-w-[16px] items-center justify-center rounded-[10px] bg-destructive px-[3px] text-[10px] leading-[16px] font-bold text-white"
+                className="pointer-events-none absolute -right-0.5 -top-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold leading-none text-destructive-foreground"
               >
                 {naoLidas > 99 ? '99+' : naoLidas}
               </b>
             )}
           </button>
 
-          {/* Theme toggle — mantém funcionalidade, tamanho 34px */}
           <div className="hidden sm:block">
             <ThemeToggle />
           </div>
 
-          <span aria-hidden="true" className="mx-1 hidden h-5 w-px bg-border md:block" />
+          <span aria-hidden="true" className="mx-1.5 hidden h-6 w-px bg-border md:block" />
 
-          {/* Seletor de empresa */}
+          {/* Empresa ativa: contexto, não ação — por isso depois da divisória. */}
           <div className="hidden md:block">
             <EmpresaSelector />
           </div>
 
-          {/* Avatar — 32px igual ao prototype */}
-          <div className="relative shrink-0" ref={perfilRef}>
+          {/* Conta */}
+          <div className="relative ml-1 shrink-0" ref={perfilRef}>
             <button
               type="button"
               onClick={() => setPerfilAberto((o) => !o)}
@@ -332,7 +214,7 @@ export default function AppHeader({
               aria-expanded={perfilAberto}
               aria-label="Minha conta"
               title="Minha conta"
-              className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-border bg-muted text-[13px] font-bold text-foreground transition-all hover:ring-2 hover:ring-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-border bg-navy-tint text-xs font-semibold text-navy transition-shadow hover:ring-2 hover:ring-ring/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {avatarUrl ? (
                 <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
@@ -345,43 +227,44 @@ export default function AppHeader({
               <div
                 role="menu"
                 aria-label="Menu da conta"
-                className="animate-fade-in absolute right-0 top-[calc(100%+0.5rem)] z-50 w-[300px] overflow-hidden rounded-xl border border-border bg-card shadow-xl"
+                className="animate-fade-in absolute right-0 top-[calc(100%+0.5rem)] z-50 w-[288px] overflow-hidden rounded-xl border border-border bg-card shadow-xl"
               >
-                <div className="border-b border-border px-5 pb-3 pt-5 text-center">
-                  <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center overflow-hidden rounded-full bg-muted text-xl font-bold text-foreground">
+                <div className="flex items-center gap-3 border-b border-border px-4 py-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-navy-tint text-sm font-semibold text-navy">
                     {avatarUrl ? (
                       <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
                     ) : (
                       iniciais
                     )}
                   </div>
-                  <p className="truncate text-sm font-semibold text-foreground">{nomeDaPessoa}</p>
-                  <p className="truncate text-xs text-muted-foreground">{emailDaPessoa}</p>
-                  {empresaAtiva && (
-                    <p className="mt-1 truncate text-xs text-accent">
-                      {empresaAtiva.nome_fantasia || empresaAtiva.razao_social}
-                    </p>
-                  )}
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-foreground">{nomeDaPessoa}</p>
+                    <p className="truncate text-xs text-muted-foreground">{emailDaPessoa}</p>
+                    {empresaAtiva && (
+                      <p className="truncate text-xs font-medium text-primary">
+                        {empresaAtiva.nome_fantasia || empresaAtiva.razao_social}
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 <div className="max-h-[min(60vh,420px)] overflow-y-auto py-1.5">
-                  {/* Meu Perfil — acima de tudo */}
                   <button
                     type="button"
                     role="menuitem"
-                    className="flex w-full items-center gap-3 px-5 py-2 text-left text-[13px] font-medium text-foreground transition-colors hover:bg-muted"
+                    className="flex min-h-9 w-full items-center gap-3 px-4 py-2 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted"
                     onClick={() => {
                       setPerfilAberto(false);
                       aoAbrirMeuPerfil();
                     }}
                   >
-                    <User className="h-4 w-4 shrink-0 text-primary" />
+                    <User className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
                     <span>Meu Perfil</span>
                   </button>
                   <div className="mx-4 my-1 border-t border-border" />
                   {secoesDaConta.map(({ secao, itens }) => (
                     <div key={secao}>
-                      <p className="px-5 pb-1 pt-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                      <p className="px-4 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                         {secao}
                       </p>
                       {itens.map((item) => (
@@ -389,10 +272,10 @@ export default function AppHeader({
                           key={item.label}
                           type="button"
                           role="menuitem"
-                          className="flex w-full items-center gap-3 px-5 py-2 text-left text-[13px] text-foreground transition-colors hover:bg-muted"
+                          className="flex min-h-9 w-full items-center gap-3 px-4 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted"
                           onClick={() => irParaConta(item.path, item.hash ?? '')}
                         >
-                          <item.icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                          <item.icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                           <span>{item.label}</span>
                         </button>
                       ))}
@@ -401,37 +284,23 @@ export default function AppHeader({
                   <ExportarDados variant="menu-item" />
                 </div>
 
-                <div className="flex justify-center border-t border-border p-2.5">
+                <div className="border-t border-border p-1.5">
                   <button
                     type="button"
                     role="menuitem"
-                    className="flex items-center gap-2 rounded-lg px-4 py-2 text-[13px] text-destructive transition-colors hover:bg-destructive/5"
+                    className="flex min-h-9 w-full items-center gap-3 rounded-md px-2.5 py-2 text-sm font-medium text-destructive-ink transition-colors hover:bg-destructive-tint"
                     onClick={() => {
                       setPerfilAberto(false);
                       signOut();
                     }}
                   >
-                    <LogOut className="h-4 w-4" />
+                    <LogOut className="h-4 w-4" aria-hidden="true" />
                     <span>Sair da conta</span>
                   </button>
                 </div>
               </div>
             )}
           </div>
-
-          {/* Acionador do menu no celular — abre o MESMO diretório que o item
-              "Ferramentas" abre no desktop. Um por largura, nunca os dois. */}
-          <button
-            type="button"
-            onClick={aoAbrirFerramentas}
-            title="Todas as ferramentas (Ctrl+Shift+K)"
-            aria-haspopup="dialog"
-            aria-expanded={ferramentasAberto}
-            aria-label="Abrir menu"
-            className={cn(classeDoIcone, 'md:hidden')}
-          >
-            <Menu aria-hidden="true" className="h-5 w-5" />
-          </button>
         </div>
       </div>
     </header>
