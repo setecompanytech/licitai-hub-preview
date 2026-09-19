@@ -189,8 +189,8 @@ export default function PrecificacaoReview({ licitacaoId }: { licitacaoId: strin
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-            <DollarSign className="h-5 w-5 text-primary" aria-hidden="true" />
+          <h3 className="flex items-center gap-2 text-lg font-semibold leading-6 text-foreground">
+            <DollarSign className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
             Precificação — {itens.length} itens
           </h3>
           <p className="text-sm text-muted-foreground">
@@ -226,10 +226,10 @@ export default function PrecificacaoReview({ licitacaoId }: { licitacaoId: strin
           />
         </Card>
       ) : (
-        <div className="rounded-lg border border-border bg-card max-h-[500px] overflow-auto">
+        <div className="max-h-[500px] overflow-auto rounded-lg border border-border bg-card">
           <Table>
             <TableHeader>
-              <TableRow className="bg-muted">
+              <TableRow>
                 <TableHead>Item</TableHead>
                 <TableHead className="text-right">Ref.</TableHead>
                 <TableHead className="text-right">Proposta</TableHead>

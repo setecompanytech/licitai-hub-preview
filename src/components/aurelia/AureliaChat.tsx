@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import { X, Send, Loader2, Plus, MessageSquare, History, Archive, Maximize2, Minimize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import EstadoVazio from '@/components/shared/EstadoVazio';
+import SeloPraefectusIA from '@/components/shared/SeloPraefectusIA';
 import { cn } from '@/lib/utils';
 import { streamAIChat, ChatMessage, ToolEvent } from '@/lib/ai-stream';
 import { sanitizeAureliaOutput } from '@/prompts/aurelia-system-prompt';
@@ -11,6 +13,19 @@ import { useFabArrastavel } from '@/hooks/useFabArrastavel';
 import roboAvatar from '@/assets/brand/icon-robo-avatar.png';
 import { useAureliaHistorico } from '@/hooks/useAureliaHistorico';
 
+/**
+ * AURÉLIA — o assistente global, aberto pelo botão flutuante (Design System
+ * v3, 19/09/2026).
+ *
+ * O painel continua sendo o MESMO contêiner de antes — o estado `open`, o
+ * botão que o abre e o lado em que ele encosta não mudaram. Virar `Sheet`
+ * traria véu sobre a página, foco preso e fechamento por Escape ou clique
+ * fora: mudanças de comportamento que um redesign visual não autoriza, e a
+ * consultora é usada justamente enquanto se lê a tela atrás dela. O que
+ * mudou é a apresentação: largura de drawer (480px; 720px ampliado), tela
+ * cheia no celular, cabeçalho de 60px com o selo Praefectus IA, histórico
+ * com rolagem própria e a entrada fixa no rodapé.
+ */
 export default function AureliaChat() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -154,7 +169,8 @@ export default function AureliaChat() {
 
   return (
     <>
-      {/* FAB Button */}
+      {/* O botão flutuante: verde de ação, redondo, 48px, sombra de menu —
+          sem gradiente nem pulso. A posição continua vindo do hook de arraste. */}
       <AnimatePresence>
         {!open && (
           <motion.button
@@ -170,9 +186,8 @@ export default function AureliaChat() {
               setOpen(true);
             }}
             className={cn(
-              "aurelia-fab fixed z-50 w-14 h-14 rounded-full flex items-center justify-center touch-none select-none",
-              fab.arrastando ? "cursor-grabbing aurelia-fab--arrastando" : "cursor-grab",
-              hasNotification && "aurelia-glow"
+              'fixed z-50 flex h-12 w-12 touch-none select-none items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-colors duration-150 hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+              fab.arrastando ? 'cursor-grabbing aurelia-fab--arrastando' : 'cursor-grab',
             )}
             title="Consultar AURÉLIA — arraste para reposicionar"
             aria-label="Consultar AURÉLIA. Arraste para reposicionar o botão."
@@ -188,66 +203,72 @@ export default function AureliaChat() {
                 acompanha o tema, e se a cor mudar um dia o ícone muda junto. */}
             <span className="aurelia-fab__robo pointer-events-none" aria-hidden="true" />
             {hasNotification && (
-              <span className="absolute -top-1 -right-1 w-3 h-3 bg-destructive rounded-full border-2 border-background" />
+              <span
+                aria-hidden="true"
+                className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-background bg-destructive"
+              />
             )}
           </motion.button>
         )}
       </AnimatePresence>
 
-      {/* Chat Panel */}
+      {/* O painel */}
       <AnimatePresence>
         {open && (
           <motion.div
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            role="region"
+            aria-label="AURÉLIA"
             className={cn(
-              'fixed bottom-4 z-50 max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] rounded-lg overflow-hidden shadow-md border border-border bg-card flex flex-col',
+              'fixed z-50 flex flex-col overflow-hidden border border-border bg-card shadow-xl',
+              // Celular: a tela inteira. Desktop: painel ancorado embaixo, na
+              // largura de drawer, do mesmo lado em que o botão está encostado.
+              'inset-0 sm:inset-auto sm:bottom-4 sm:max-w-[calc(100vw-2rem)] sm:rounded-xl',
+              fab.lado === 'esquerda' ? 'sm:left-4' : 'sm:right-4',
               // Ampliar existe porque análise de edital vem longa: em 380px a
               // resposta cabe em vinte linhas de três palavras.
-              ampliado ? 'w-[720px] h-[calc(100vh-2rem)]' : 'w-[380px] h-[520px]',
+              ampliado
+                ? 'sm:h-[calc(100vh-2rem)] sm:w-[720px]'
+                : 'sm:h-[min(680px,calc(100vh-2rem))] sm:w-[480px]',
             )}
-            // Abre do mesmo lado em que o botão está encostado.
-            // Só a posição vive em `style`: cor e raio saem de token, para
-            // acompanhar o tema e aparecer nos greps de conferência.
-            style={
-              fab.lado === 'esquerda'
-                ? { left: 16, right: 'auto' }
-                : { right: 16, left: 'auto' }
-            }
           >
-            {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card">
-              <div className="flex items-center gap-2">
+            {/* Cabeçalho — 60px: identificação, selo e as ações sobre o painel. */}
+            <div className="flex h-[60px] shrink-0 items-center justify-between gap-2 border-b border-border bg-card px-4">
+              <div className="flex min-w-0 items-center gap-2">
                 {/* O robô da marca no lugar do "AU", nas cores originais —
                     azul sobre a tinta verde clara, que dá contraste ao desenho
                     sem disputar com o texto ao lado. */}
-                <div className="w-9 h-9 rounded-full bg-primary-tint flex items-center justify-center overflow-hidden shrink-0 ring-1 ring-border">
-                  <img src={roboAvatar} alt="" className="w-7 h-7 object-contain" />
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary-tint ring-1 ring-border">
+                  <img src={roboAvatar} alt="" className="h-7 w-7 object-contain" />
                 </div>
-                <div>
-                  <h3 className="text-base font-semibold text-foreground tracking-wide">AURÉLIA</h3>
-                  <p className="text-xs text-muted-foreground">Consultora de Licitações</p>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-semibold leading-5 text-foreground">AURÉLIA</h3>
+                    <SeloPraefectusIA className="hidden sm:inline-flex" />
+                  </div>
+                  <p className="truncate text-xs text-muted-foreground">Consultora de Licitações</p>
                 </div>
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex shrink-0 items-center gap-0.5">
                 {/* O ícone era `Minimize2` — desenho de "encolher" para a ação
                     de começar do zero. `Plus` é o que a ação faz. */}
-                <Button variant="ghost" size="icon" onClick={handleNewChat} className="h-8 w-8 text-muted-foreground hover:text-primary" title="Nova conversa" aria-label="Nova conversa">
-                  <Plus className="w-4 h-4" />
+                <Button variant="ghost" size="icon-sm" onClick={handleNewChat} className="text-muted-foreground hover:text-foreground" title="Nova conversa" aria-label="Nova conversa">
+                  <Plus className="h-4 w-4" />
                 </Button>
                 <Button
-                  variant="ghost" size="icon"
+                  variant="ghost" size="icon-sm"
                   onClick={() => setAmpliado((v) => !v)}
-                  className="h-8 w-8 text-muted-foreground hover:text-primary"
+                  className="text-muted-foreground hover:text-foreground"
                   title={ampliado ? 'Reduzir' : 'Ampliar'}
                   aria-label={ampliado ? 'Reduzir a janela' : 'Ampliar a janela'}
                   aria-pressed={ampliado}
                 >
-                  {ampliado ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                  {ampliado ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
                 </Button>
-                <Button variant="ghost" size="icon" onClick={() => setOpen(false)} className="h-8 w-8 text-muted-foreground hover:text-destructive" aria-label="Fechar chat">
-                  <X className="w-4 h-4" />
+                <Button variant="ghost" size="icon-sm" onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground" aria-label="Fechar chat">
+                  <X className="h-4 w-4" />
                 </Button>
               </div>
             </div>
@@ -275,31 +296,31 @@ export default function AureliaChat() {
                     if (t.id === 'historico') void historico.carregarConversas();
                   }}
                   className={cn(
-                    'flex flex-1 items-center justify-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium transition-colors',
+                    'flex min-h-[40px] flex-1 items-center justify-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
                     aba === t.id
-                      ? 'border-primary text-primary'
+                      ? 'border-primary font-semibold text-primary'
                       : 'border-transparent text-muted-foreground hover:text-foreground',
                   )}
                 >
                   <t.icone className="h-4 w-4" aria-hidden="true" />
                   {t.rotulo}
                   {t.id === 'historico' && historico.conversas.length > 0 && (
-                    <span className="tabular-nums opacity-70">({historico.conversas.length})</span>
+                    <span className="tabular-nums text-muted-foreground">({historico.conversas.length})</span>
                   )}
                 </button>
               ))}
             </div>
 
-            {/* Histórico — as conversas anteriores */}
+            {/* Histórico — as conversas anteriores, com rolagem própria. */}
             {aba === 'historico' && (
-              <div className="flex-1 overflow-y-auto bg-background p-3">
+              <div className="flex-1 overflow-y-auto bg-muted p-3">
                 {historico.erro && (
-                  <div role="alert" className="mb-3 rounded-lg border border-destructive-line bg-destructive-tint px-3 py-2 text-xs text-destructive-ink">
+                  <div role="alert" className="mb-3 rounded-md border border-destructive-line bg-destructive-tint px-3 py-2 text-sm text-destructive-ink">
                     {historico.erro}
                     <button
                       type="button"
                       onClick={() => void historico.carregarConversas()}
-                      className="ml-2 font-semibold underline underline-offset-2"
+                      className="ml-2 font-semibold underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       Tentar novamente
                     </button>
@@ -313,13 +334,12 @@ export default function AureliaChat() {
                 )}
 
                 {!historico.carregando && historico.conversas.length === 0 && !historico.erro && (
-                  <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
-                    <History className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
-                    <p className="text-sm font-medium text-foreground">Nenhuma conversa guardada</p>
-                    <p className="text-xs text-muted-foreground">
-                      O que você perguntar à AURÉLIA fica aqui, e pode ser reaberto depois.
-                    </p>
-                  </div>
+                  <EstadoVazio
+                    tamanho="compacto"
+                    icone={<History />}
+                    titulo="Nenhuma conversa guardada"
+                    descricao="O que você perguntar à AURÉLIA fica aqui, e pode ser reaberto depois."
+                  />
                 )}
 
                 <ul className="flex flex-col gap-1.5">
@@ -329,7 +349,7 @@ export default function AureliaChat() {
                         type="button"
                         onClick={() => void abrirDoHistorico(c.id)}
                         className={cn(
-                          'min-w-0 flex-1 rounded-lg border px-3 py-2 text-left transition-colors',
+                          'min-w-0 flex-1 rounded-md border px-3 py-2 text-left transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                           c.id === conversaId
                             ? 'border-primary bg-primary-tint'
                             : 'border-border bg-card hover:border-primary/40',
@@ -351,9 +371,9 @@ export default function AureliaChat() {
                         </span>
                       </button>
                       <Button
-                        variant="ghost" size="icon"
+                        variant="ghost" size="icon-sm"
                         onClick={() => void historico.arquivarConversa(c.id)}
-                        className="mt-1 h-8 w-8 shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
+                        className="mt-0.5 shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
                         title="Arquivar conversa"
                         aria-label={`Arquivar a conversa ${c.titulo ?? 'sem título'}`}
                       >
@@ -365,15 +385,16 @@ export default function AureliaChat() {
               </div>
             )}
 
-            {/* Messages */}
-            <div className={cn('flex-1 overflow-y-auto p-3 space-y-3 bg-background', aba !== 'chat' && 'hidden')}>
+            {/* Mensagens — superfície rebaixada; balão da pessoa na tinta da
+                ação, à direita; balão da IA em cartão, à esquerda. */}
+            <div className={cn('flex-1 space-y-3 overflow-y-auto bg-muted p-3', aba !== 'chat' && 'hidden')}>
               {messages.map((msg, i) => (
-                <div key={i} className={cn("flex", msg.role === 'user' ? 'justify-end' : 'justify-start')}>
+                <div key={i} className={cn('flex', msg.role === 'user' ? 'justify-end' : 'justify-start')}>
                   <div className={cn(
-                    "max-w-[85%] rounded-lg px-3 py-2 text-sm",
+                    'max-w-[85%] rounded-lg px-3 py-2 text-base leading-5',
                     msg.role === 'user'
                       ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-foreground'
+                      : 'border border-border bg-card text-foreground'
                   )}>
                     {msg.role === 'assistant' ? (
                       <div className="whitespace-pre-line">{sanitizeAureliaOutput(msg.content)}</div>
@@ -383,8 +404,8 @@ export default function AureliaChat() {
               ))}
               {activeTool && (
                 <div className="flex justify-start">
-                  <div className="bg-muted rounded-lg px-3 py-2 text-sm text-foreground flex items-center gap-2 border border-border" role="status">
-                    <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                  <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground" role="status">
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
                     <span>
                       {activeTool.name === 'buscar_edital' && '🔎 Buscando edital no cache PNCP…'}
                       {activeTool.name === 'buscar_diario' && '📰 Consultando Diários Oficiais…'}
@@ -396,8 +417,8 @@ export default function AureliaChat() {
               )}
               {isLoading && !activeTool && messages[messages.length - 1]?.role === 'user' && (
                 <div className="flex justify-start">
-                  <div className="bg-muted rounded-lg px-3 py-2 text-sm text-muted-foreground flex items-center gap-2" role="status">
-                    <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                  <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm text-muted-foreground" role="status">
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
                     AURÉLIA está analisando…
                   </div>
                 </div>
@@ -405,8 +426,8 @@ export default function AureliaChat() {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Input */}
-            <div className={cn('p-3 border-t border-border bg-card', aba !== 'chat' && 'hidden')}>
+            {/* Entrada — fixa no rodapé do painel. */}
+            <div className={cn('shrink-0 border-t border-border bg-card p-3', aba !== 'chat' && 'hidden')}>
               <div className="flex gap-2">
                 <label htmlFor="aurelia-chat-input" className="sr-only">Pergunta para a AURÉLIA</label>
                 <Input
@@ -423,10 +444,10 @@ export default function AureliaChat() {
                   onClick={handleSend}
                   disabled={!input.trim() || isLoading}
                   size="icon"
-                  className="h-11 w-11 shrink-0"
+                  className="shrink-0"
                   aria-label="Enviar mensagem"
                 >
-                  <Send className="w-4 h-4" />
+                  <Send className="h-4 w-4" />
                 </Button>
               </div>
             </div>

@@ -1,14 +1,15 @@
 import { useState, useCallback, useEffect, useId } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import EstadoVazio from '@/components/shared/EstadoVazio';
+import SeloPraefectusIA from '@/components/shared/SeloPraefectusIA';
 import { toast } from 'sonner';
 import {
   Search, TrendingUp, TrendingDown, Minus, ExternalLink,
@@ -115,11 +116,12 @@ export default function PesquisaPrecos({
       {/* Busca */}
       <div className="space-y-3">
         {!compacto && (
-          <div className="flex items-center gap-2">
-            <Search className="h-5 w-5 text-primary" aria-hidden="true" />
-            <h3 className="text-lg font-semibold text-foreground">
+          <div className="flex flex-wrap items-center gap-2">
+            <Search className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+            <h3 className="text-lg font-semibold leading-6 text-foreground">
               Pesquisa de preços <span className="text-primary">AURÉLIA</span>
             </h3>
+            <SeloPraefectusIA />
           </div>
         )}
 
@@ -172,31 +174,32 @@ export default function PesquisaPrecos({
         )}
       </div>
 
-      {/* Estatísticas Rápidas */}
+      {/* Estatísticas rápidas — cartões KPI compactos; o preço sugerido é a
+          única superfície tingida, porque é a sugestão da IA. */}
       {resultados?.estatisticas && resultados.estatisticas.total_registros > 0 && (
         <div className="space-y-3">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4 [&>*]:min-w-0">
-            <div className="rounded-lg border border-border bg-primary-tint p-6 shadow-sm">
-              <p className="text-sm font-medium text-muted-foreground">Preço sugerido</p>
-              <p className="mt-1 text-[2rem] leading-10 font-bold tabular-nums text-primary">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4 [&>*]:min-w-0">
+            <div className="rounded-lg border border-primary-line bg-primary-tint px-4 py-3">
+              <p className="text-xs font-medium text-muted-foreground">Preço sugerido</p>
+              <p className="mt-1 truncate text-2xl font-semibold leading-8 tabular-nums text-foreground">
                 {formatCurrency(resultados.estatisticas.preco_sugerido)}
               </p>
             </div>
-            <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-              <p className="text-sm font-medium text-muted-foreground">Mínimo</p>
-              <p className="mt-1 text-[2rem] leading-10 font-bold tabular-nums text-success-ink">
+            <div className="rounded-lg border border-border bg-card px-4 py-3 shadow-sm">
+              <p className="text-xs font-medium text-muted-foreground">Mínimo</p>
+              <p className="mt-1 truncate text-2xl font-semibold leading-8 tabular-nums text-success-ink">
                 {formatCurrency(resultados.estatisticas.minimo)}
               </p>
             </div>
-            <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-              <p className="text-sm font-medium text-muted-foreground">Mediana</p>
-              <p className="mt-1 text-[2rem] leading-10 font-bold tabular-nums text-foreground">
+            <div className="rounded-lg border border-border bg-card px-4 py-3 shadow-sm">
+              <p className="text-xs font-medium text-muted-foreground">Mediana</p>
+              <p className="mt-1 truncate text-2xl font-semibold leading-8 tabular-nums text-foreground">
                 {formatCurrency(resultados.estatisticas.mediana)}
               </p>
             </div>
-            <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-              <p className="text-sm font-medium text-muted-foreground">Máximo</p>
-              <p className="mt-1 text-[2rem] leading-10 font-bold tabular-nums text-destructive-ink">
+            <div className="rounded-lg border border-border bg-card px-4 py-3 shadow-sm">
+              <p className="text-xs font-medium text-muted-foreground">Máximo</p>
+              <p className="mt-1 truncate text-2xl font-semibold leading-8 tabular-nums text-destructive-ink">
                 {formatCurrency(resultados.estatisticas.maximo)}
               </p>
             </div>
@@ -284,57 +287,76 @@ export default function PesquisaPrecos({
               ))}
             </div>
 
-            <ScrollArea className="h-[400px]">
-              <div className="space-y-2">
-                {resultadosFiltrados
-                  .sort((a: any, b: any) => a.preco_unitario - b.preco_unitario)
-                  .map((r: any, i: number) => {
-                    const fonteCfg = FONTES_CONFIG[r.fonte] ?? FONTES_CONFIG.marketplace;
-                    return (
-                      <div
-                        key={i}
-                        className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card p-4 transition-colors hover:bg-muted"
-                      >
-                        <span className="w-6 text-xs text-muted-foreground tabular-nums">#{i + 1}</span>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium text-foreground">{r.titulo}</p>
-                          <div className="mt-1 flex flex-wrap items-center gap-2">
+            {/* A tabela padrão: cabeçalho rebaixado, linhas de 48px, preço à
+                direita com dígitos tabulares. */}
+            <div className="max-h-[400px] overflow-auto rounded-lg border border-border bg-card">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-12 text-right">#</TableHead>
+                    <TableHead>Anúncio</TableHead>
+                    <TableHead>Fonte</TableHead>
+                    <TableHead className="text-right">Preço unitário</TableHead>
+                    <TableHead className="text-right">
+                      <span className="sr-only">Ações</span>
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {resultadosFiltrados
+                    .sort((a: any, b: any) => a.preco_unitario - b.preco_unitario)
+                    .map((r: any, i: number) => {
+                      const fonteCfg = FONTES_CONFIG[r.fonte] ?? FONTES_CONFIG.marketplace;
+                      return (
+                        <TableRow key={i}>
+                          <TableCell nowrap className="text-right text-xs text-muted-foreground tabular-nums">
+                            {i + 1}
+                          </TableCell>
+                          <TableCell className="min-w-[16rem] max-w-[28rem]">
+                            <p className="truncate font-medium text-foreground">{r.titulo}</p>
+                            <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                              <span>{r.vendedor}</span>
+                              {r.orgao && (
+                                <span> • {r.orgao} ({r.uf_orgao})</span>
+                              )}
+                            </p>
+                          </TableCell>
+                          <TableCell nowrap>
                             <Badge variant={fonteCfg.variante} className={fonteCfg.classe}>{fonteCfg.nome}</Badge>
-                            <span className="text-xs text-muted-foreground">{r.vendedor}</span>
-                            {r.orgao && (
-                              <span className="text-xs text-muted-foreground">• {r.orgao} ({r.uf_orgao})</span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="shrink-0 text-right">
-                          <p className="font-semibold tabular-nums text-foreground">{formatCurrency(r.preco_unitario)}</p>
-                          {onPrecoSelecionado && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="mt-1"
-                              onClick={() => onPrecoSelecionado(r.preco_unitario)}
-                            >
-                              Usar
-                            </Button>
-                          )}
-                        </div>
-                        {r.url && (
-                          <a
-                            href={r.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            aria-label={`Abrir anúncio de ${r.titulo} em nova aba`}
-                            className="rounded-md p-2 text-muted-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                          >
-                            <ExternalLink className="h-4 w-4" aria-hidden="true" />
-                          </a>
-                        )}
-                      </div>
-                    );
-                  })}
-              </div>
-            </ScrollArea>
+                          </TableCell>
+                          <TableCell nowrap className="text-right font-semibold tabular-nums text-foreground">
+                            {formatCurrency(r.preco_unitario)}
+                          </TableCell>
+                          <TableCell nowrap className="text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              {onPrecoSelecionado && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => onPrecoSelecionado(r.preco_unitario)}
+                                >
+                                  Usar
+                                </Button>
+                              )}
+                              {r.url && (
+                                <a
+                                  href={r.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  aria-label={`Abrir anúncio de ${r.titulo} em nova aba`}
+                                  className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                >
+                                  <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                                </a>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                </TableBody>
+              </Table>
+            </div>
           </TabsContent>
 
           <TabsContent value="historico">
@@ -342,32 +364,41 @@ export default function PesquisaPrecos({
           </TabsContent>
 
           <TabsContent value="estatisticas">
-            <div className="space-y-3">
-              {Object.entries(fontesCount).map(([fonte, count]) => {
-                const fonteCfg = FONTES_CONFIG[fonte] ?? FONTES_CONFIG.marketplace;
-                const precosFonte = resultados.resultados
-                  .filter((r: any) => r.fonte === fonte)
-                  .map((r: any) => r.preco_unitario);
-                const min = Math.min(...precosFonte);
-                const max = Math.max(...precosFonte);
-                const media = precosFonte.reduce((a: number, b: number) => a + b, 0) / precosFonte.length;
+            <div className="overflow-auto rounded-lg border border-border bg-card">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Fonte</TableHead>
+                    <TableHead className="text-right">Resultados</TableHead>
+                    <TableHead className="text-right">Mín.</TableHead>
+                    <TableHead className="text-right">Méd.</TableHead>
+                    <TableHead className="text-right">Máx.</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {Object.entries(fontesCount).map(([fonte, count]) => {
+                    const fonteCfg = FONTES_CONFIG[fonte] ?? FONTES_CONFIG.marketplace;
+                    const precosFonte = resultados.resultados
+                      .filter((r: any) => r.fonte === fonte)
+                      .map((r: any) => r.preco_unitario);
+                    const min = Math.min(...precosFonte);
+                    const max = Math.max(...precosFonte);
+                    const media = precosFonte.reduce((a: number, b: number) => a + b, 0) / precosFonte.length;
 
-                return (
-                  <Card key={fonte}>
-                    <CardContent className="flex flex-wrap items-center justify-between gap-3 p-6">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Badge variant={fonteCfg.variante} className={fonteCfg.classe}>{fonteCfg.nome}</Badge>
-                        <span className="text-sm text-muted-foreground">{count as number} resultados</span>
-                      </div>
-                      <div className="flex flex-wrap gap-4 text-sm">
-                        <span className="text-muted-foreground">Mín: <strong className="tabular-nums text-success-ink">{formatCurrency(min)}</strong></span>
-                        <span className="text-muted-foreground">Méd: <strong className="tabular-nums text-foreground">{formatCurrency(media)}</strong></span>
-                        <span className="text-muted-foreground">Máx: <strong className="tabular-nums text-destructive-ink">{formatCurrency(max)}</strong></span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+                    return (
+                      <TableRow key={fonte}>
+                        <TableCell nowrap>
+                          <Badge variant={fonteCfg.variante} className={fonteCfg.classe}>{fonteCfg.nome}</Badge>
+                        </TableCell>
+                        <TableCell nowrap className="text-right tabular-nums text-muted-foreground">{count as number}</TableCell>
+                        <TableCell nowrap className="text-right font-medium tabular-nums text-success-ink">{formatCurrency(min)}</TableCell>
+                        <TableCell nowrap className="text-right font-medium tabular-nums text-foreground">{formatCurrency(media)}</TableCell>
+                        <TableCell nowrap className="text-right font-medium tabular-nums text-destructive-ink">{formatCurrency(max)}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
             </div>
           </TabsContent>
         </Tabs>
@@ -424,9 +455,14 @@ function HistoricoVariacao({ descricao, codigoCatmat }: { descricao: string; cod
   }, [descricao, codigoCatmat]);
 
   if (loading) {
+    /* Skeleton na forma do conteúdo (barras + linhas da tabela), não um
+       spinner no centro. */
     return (
-      <div className="flex h-32 items-center justify-center" role="status" aria-label="Carregando histórico">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" aria-hidden="true" />
+      <div className="space-y-3" role="status" aria-label="Carregando histórico">
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-11 w-full" />
+        <Skeleton className="h-11 w-full" />
+        <Skeleton className="h-11 w-2/3" />
       </div>
     );
   }
@@ -455,7 +491,7 @@ function HistoricoVariacao({ descricao, codigoCatmat }: { descricao: string; cod
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h4 className="text-lg font-semibold text-foreground">Histórico de variação</h4>
+        <h4 className="text-lg font-semibold leading-6 text-foreground">Histórico de variação</h4>
         <span className={`text-sm font-medium tabular-nums ${
           variacaoTotal > 5 ? 'text-destructive-ink' : variacaoTotal < -5 ? 'text-success-ink' : 'text-muted-foreground'
         }`}>
@@ -500,7 +536,7 @@ function HistoricoVariacao({ descricao, codigoCatmat }: { descricao: string; cod
       <div className="max-h-[16rem] overflow-auto rounded-lg border border-border bg-card">
         <Table>
           <TableHeader>
-            <TableRow className="bg-muted">
+            <TableRow>
               <TableHead>Data</TableHead>
               <TableHead className="text-right">Mínimo</TableHead>
               <TableHead className="text-right">Mediana</TableHead>

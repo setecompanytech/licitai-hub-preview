@@ -3,132 +3,59 @@ import { useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
 import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import { Button } from '@/components/ui/button';
-import {
-  Download, Bell, Target, Archive, Bot, Search, Scale, BookOpen,
-  Kanban, Shield, Building2, MessageSquare, Crosshair, TrendingUp,
-  Users, DollarSign, ClipboardCheck, HeadphonesIcon, FileText,
-  Zap, BarChart3, FileDown, Loader2,
-} from 'lucide-react';
+import { FileDown, Loader2, Search, Zap } from 'lucide-react';
 import { generateOrganogramaPDF } from '@/lib/organograma-pdf';
 import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
-import { motion } from 'framer-motion';
+import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
+import {
+  categoriasDoSistema,
+  funcoesDoSistema,
+  type FuncaoDoSistema,
+} from '@/lib/navegacao/registro';
 
-interface ToolItem {
-  icon: React.ElementType;
-  label: string;
-  path: string;
-  badge?: 'novo' | 'premium';
-}
-
-interface ToolGroup {
-  title: string;
-  highlight?: boolean;
-  items: ToolItem[];
-}
-
-const toolGroups: ToolGroup[] = [
-  {
-    title: 'Oportunidades de Negócio',
-    items: [
-      { icon: Bell, label: 'Boletins de Licitações', path: '/boletins' },
-      { icon: Download, label: 'Encontrar Editais', path: '/monitoramento-editais' },
-      { icon: Target, label: 'Licitações Estratégicas', path: '/licitacoes-estrategicas' },
-      { icon: Archive, label: 'Histórico de Licitações', path: '/historico-licitacoes' },
-    ],
-  },
-  {
-    title: 'Inteligência Artificial',
-    highlight: true,
-    items: [
-      { icon: Bot, label: 'Assistente IA', path: '/assistente', badge: 'novo' },
-      { icon: Scale, label: 'Consultor Jurídico', path: '/apoio-juridico' },
-      { icon: Search, label: 'Proposta Técnica', path: '/proposta-tecnica' },
-      { icon: BookOpen, label: 'Blog Jurídico IA', path: '/blog' },
-    ],
-  },
-  {
-    title: 'Ferramentas de Gestão',
-    items: [
-      { icon: Kanban, label: 'Kanban de Processos', path: '/kanban' },
-      { icon: Shield, label: 'Gerenciar Documentos', path: '/documentos' },
-      { icon: Building2, label: 'Gerenciar Empresas', path: '/empresas', badge: 'novo' },
-    ],
-  },
-  {
-    title: 'Ferramentas de Automação',
-    items: [
-      { icon: MessageSquare, label: 'Chat e Mural', path: '/monitoramento-chat' },
-      { icon: Crosshair, label: 'Robô de Lances', path: '/robo-lances', badge: 'novo' },
-      { icon: MessageSquare, label: 'WhatsApp CRM', path: '/whatsapp-crm' },
-    ],
-  },
-  {
-    title: 'Análise Estratégica',
-    items: [
-      { icon: TrendingUp, label: 'Análise de Mercado', path: '/analise-mercado' },
-      { icon: Users, label: 'Concorrentes', path: '/concorrentes' },
-      { icon: DollarSign, label: 'Precificação', path: '/precificacao' },
-      { icon: BarChart3, label: 'Analytics', path: '/analytics' },
-    ],
-  },
-  {
-    title: 'Assessoria e Consultoria',
-    items: [
-      { icon: ClipboardCheck, label: 'Assessoria Cadastral', path: '/assessoria-cadastral' },
-      { icon: Scale, label: 'Apoio Jurídico', path: '/apoio-juridico' },
-      { icon: FileText, label: 'E-book ABNT', path: '/ebook' },
-      { icon: HeadphonesIcon, label: 'Suporte', path: '/suporte' },
-    ],
-  },
-];
-
-const container = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.06 } },
-};
-
-const cardVariant = {
-  hidden: { opacity: 0, y: 16, scale: 0.97 },
-  show: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring' as const, stiffness: 260, damping: 24 } },
-};
-
-function ToolCard({ item, navigate }: { item: ToolItem; navigate: (p: string) => void }) {
-  const Icon = item.icon;
+/**
+ * "Nossas ferramentas" — o mapa do sistema como página, por categoria
+ * (Design System v3, 19/09/2026).
+ *
+ * A lista deixou de ser escrita aqui. Ela vinha à mão, com 22 entradas e
+ * nomes próprios ("Encontrar Editais", "Consultor Jurídico", "Blog Jurídico
+ * IA") para telas que o menu chama de outro jeito — a mesma divergência que
+ * `lib/navegacao/registro` existe para eliminar. Agora nome, descrição,
+ * ícone, categoria e rota vêm do registro, na ordem do menu, e só aparece o
+ * que a pessoa pode abrir — o mesmo critério dos atalhos do painel
+ * (`QuickAccessGrid`) e do diretório (`MenuDeFerramentas`).
+ *
+ * A busca por ferramenta já existe, com nome, categoria e sinônimos, no
+ * diretório aberto por Ctrl+Shift+K; o botão do cabeçalho leva até ela em
+ * vez de nascer uma segunda busca aqui.
+ */
+function CartaoFerramenta({ f, navigate }: { f: FuncaoDoSistema; navigate: (p: string) => void }) {
   return (
-    <motion.button
+    <button
       type="button"
-      variants={cardVariant}
-      onClick={() => navigate(item.path)}
-      className={cn(
-        'group relative flex flex-col items-center gap-3 rounded-lg border border-border bg-card p-4 text-center shadow-sm',
-        'transition-colors hover:border-primary/40 hover:shadow-md',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-      )}
+      onClick={() => navigate(f.rota)}
+      className="group flex h-full min-h-[72px] items-start gap-3 rounded-lg border border-border bg-card p-4 text-left shadow-sm transition-[border-color,box-shadow] duration-150 hover:border-primary/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     >
-      {item.badge && (
-        <span
-          className={cn(
-            'absolute -top-2 right-2 rounded-full border px-2 py-0.5 text-xs font-semibold leading-none',
-            item.badge === 'novo'
-              ? 'border-success-line bg-success-tint text-success-ink'
-              : 'border-border bg-muted text-muted-foreground',
-          )}
-        >
-          {item.badge === 'novo' ? 'Novo' : 'Premium'}
-        </span>
-      )}
-      <span className="flex h-12 w-12 items-center justify-center rounded-lg bg-muted text-muted-foreground transition-colors group-hover:bg-primary-tint group-hover:text-primary">
-        <Icon className="h-6 w-6" aria-hidden="true" />
+      <span
+        aria-hidden="true"
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary-tint text-primary"
+      >
+        <f.icone className="h-5 w-5" />
       </span>
-      <span className="text-sm font-medium text-foreground">{item.label}</span>
-    </motion.button>
+      <span className="min-w-0 flex-1">
+        <span className="block text-lg font-semibold leading-6 text-foreground">{f.nome}</span>
+        {f.descricao && (
+          <span className="mt-0.5 line-clamp-2 block text-sm text-muted-foreground">{f.descricao}</span>
+        )}
+      </span>
+    </button>
   );
 }
 
 export default function Ferramentas() {
   const navigate = useNavigate();
   const [gerando, setGerando] = useState(false);
+  const { canAccessRoute, isAdmin } = useMembroPermissoes();
 
   const handleOrganograma = async () => {
     setGerando(true);
@@ -142,6 +69,15 @@ export default function Ferramentas() {
     }
   };
 
+  /* O MESMO diretório do cabeçalho (evento que `MenuDeFerramentas` escuta),
+     não uma segunda busca. */
+  const abrirBuscaDeFerramentas = () =>
+    window.dispatchEvent(new CustomEvent('praefectus:abrir-ferramentas'));
+
+  /** Só o que a pessoa pode abrir — critério idêntico ao dos atalhos do painel. */
+  const permitida = (f: FuncaoDoSistema) =>
+    (!f.adminOnly || isAdmin) && canAccessRoute(f.rota.split('?')[0]);
+
   return (
     <AppLayout>
       {/* `/ferramentas` não é item de menu — não está em `paginas.ts` —, então o
@@ -152,37 +88,37 @@ export default function Ferramentas() {
         icone={<Zap />}
         trilha={[{ rotulo: 'Painel', para: '/dashboard' }, { rotulo: 'Nossas ferramentas' }]}
         acoes={
-          <Button onClick={handleOrganograma} disabled={gerando} variant="outline">
-            {gerando ? <Loader2 className="animate-spin" aria-hidden="true" /> : <FileDown aria-hidden="true" />}
-            {gerando ? 'Gerando...' : 'Organograma PDF'}
-          </Button>
+          <>
+            <Button type="button" variant="outline" onClick={abrirBuscaDeFerramentas}>
+              <Search aria-hidden="true" />
+              Buscar ferramenta
+            </Button>
+            <Button onClick={handleOrganograma} disabled={gerando} variant="outline">
+              {gerando ? <Loader2 className="animate-spin" aria-hidden="true" /> : <FileDown aria-hidden="true" />}
+              {gerando ? 'Gerando...' : 'Organograma PDF'}
+            </Button>
+          </>
         }
       />
 
-      <motion.div
-        variants={container}
-        initial="hidden"
-        animate="show"
-        className="grid grid-cols-1 gap-4 md:grid-cols-2"
-      >
-        {toolGroups.map((group) => (
-          <motion.section
-            key={group.title}
-            variants={cardVariant}
-            className={cn(
-              'rounded-lg border p-6 shadow-sm',
-              group.highlight ? 'border-primary/30 bg-primary-tint' : 'border-border bg-card',
-            )}
-          >
-            <h2 className="mb-4 text-lg font-semibold text-foreground">{group.title}</h2>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {group.items.map((item) => (
-                <ToolCard key={item.path + item.label} item={item} navigate={navigate} />
-              ))}
-            </div>
-          </motion.section>
-        ))}
-      </motion.div>
+      <div className="flex flex-col gap-8">
+        {categoriasDoSistema.map((categoria) => {
+          const itens = funcoesDoSistema.filter((f) => f.categoria === categoria && permitida(f));
+          // Categoria cujas rotas a pessoa não pode abrir some inteira — o
+          // comando proíbe reservar espaço para o que está indisponível.
+          if (itens.length === 0) return null;
+          return (
+            <section key={categoria} aria-label={categoria}>
+              <h2 className="mb-3 text-xl font-semibold leading-6 text-foreground">{categoria}</h2>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 [&>*]:min-w-0">
+                {itens.map((f) => (
+                  <CartaoFerramenta key={f.id} f={f} navigate={navigate} />
+                ))}
+              </div>
+            </section>
+          );
+        })}
+      </div>
     </AppLayout>
   );
 }

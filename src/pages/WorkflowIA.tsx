@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
 import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
+import SeloPraefectusIA from '@/components/shared/SeloPraefectusIA';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -304,7 +305,12 @@ Seja objetivo e formate em Markdown limpo com seções numeradas. NÃO utilize e
             </Select>
           </div>
         }
-      />
+      >
+        {/* O selo dos módulos de IA (Design System v3, §5 "IA"). */}
+        <div>
+          <SeloPraefectusIA />
+        </div>
+      </CabecalhoPagina>
 
       <div className="flex flex-col gap-4">
         {/* A frase que a tela antiga não dizia, no lugar mais alto possível. */}
@@ -325,7 +331,7 @@ Seja objetivo e formate em Markdown limpo com seções numeradas. NÃO utilize e
         {!running && completed.size === WORKFLOW_STEPS.length && (
           <Alert variant="success">
             <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
-            <AlertTitle className="text-lg font-semibold">Análise das oito etapas concluída</AlertTitle>
+            <AlertTitle>Análise das oito etapas concluída</AlertTitle>
             <AlertDescription>
               <p>
                 As oito etapas produziram <strong>sugestões</strong>. Nada foi executado nem gravado:

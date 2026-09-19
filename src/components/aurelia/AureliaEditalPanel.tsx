@@ -5,7 +5,7 @@ import { sanitizeAureliaOutput } from '@/prompts/aurelia-system-prompt';
 import AureliaQuickCard from './AureliaQuickCard';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import SeloPraefectusIA from '@/components/shared/SeloPraefectusIA';
 import { Send, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -123,13 +123,13 @@ export default function AureliaEditalPanel({ edital, empresa, colunas = 2 }: Aur
   ];
 
   return (
-    /* Identidade 12/09: painel claro, sobre a superfície `muted`, com os
-       cartões de análise em `card`. Tudo sai de token e acompanha o tema —
-       nada de cor escrita à mão. */
-    <div className="rounded-lg border border-border bg-muted overflow-hidden">
-      <div className="px-4 py-3 border-b border-border bg-card flex flex-wrap items-center gap-2">
-        <Badge>IA</Badge>
-        <h3 className="text-lg font-semibold text-foreground">AURÉLIA — Análise Deste Edital</h3>
+    /* Superfície de IA do Design System v3: a tinta verde-clara com o contorno
+       da ação delimita o que a AURÉLIA produziu; os cartões de análise ficam
+       em `card` sobre ela. Tudo sai de token e acompanha o tema. */
+    <div className="overflow-hidden rounded-lg border border-primary-line bg-primary-tint">
+      <div className="flex flex-wrap items-center gap-2 border-b border-primary-line bg-card px-4 py-3">
+        <h3 className="text-lg font-semibold leading-6 text-foreground">AURÉLIA — Análise Deste Edital</h3>
+        <SeloPraefectusIA />
       </div>
 
       <div className={cn("grid grid-cols-1 gap-3 p-4", colunas === 2 && "md:grid-cols-2")}>
@@ -147,16 +147,16 @@ export default function AureliaEditalPanel({ edital, empresa, colunas = 2 }: Aur
       </div>
 
       {/* Contextual chat */}
-      <div className="border-t border-border bg-card p-4">
+      <div className="border-t border-primary-line bg-card p-4">
         {chatMessages.length > 0 && (
-          <div className="max-h-48 overflow-y-auto space-y-2 mb-3">
+          <div className="mb-3 max-h-48 space-y-2 overflow-y-auto">
             {chatMessages.map((msg, i) => (
               <div key={i} className={cn("flex", msg.role === 'user' ? 'justify-end' : 'justify-start')}>
                 <div className={cn(
                   "max-w-[85%] rounded-lg px-3 py-2 text-base leading-6",
                   msg.role === 'user'
                     ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted text-foreground'
+                    : 'border border-border bg-card text-foreground'
                 )}>
                   {msg.role === 'assistant' ? (
                     <div className="whitespace-pre-line">{sanitizeAureliaOutput(msg.content)}</div>
@@ -180,10 +180,10 @@ export default function AureliaEditalPanel({ edital, empresa, colunas = 2 }: Aur
             onClick={handleChatSend}
             disabled={!chatInput.trim() || chatLoading}
             size="icon"
-            className="h-11 w-11 shrink-0"
+            className="shrink-0"
             aria-label="Enviar pergunta"
           >
-            {chatLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            {chatLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </div>
       </div>

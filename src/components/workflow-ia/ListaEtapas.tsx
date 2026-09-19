@@ -51,7 +51,7 @@ export default function ListaEtapas({
   return (
     <nav aria-label="Etapas da análise" className="g-cartao overflow-hidden">
       <div className="border-b border-border px-4 py-3">
-        <h2 className="g-titulo-secao text-foreground">
+        <h2 className="text-lg font-semibold leading-6 text-foreground">
           Etapas
           <span className="ml-1.5 font-normal text-muted-foreground tabular-nums">
             ({WORKFLOW_STEPS.length})

@@ -1,10 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
+import EstadoVazio from '@/components/shared/EstadoVazio';
+import SeloPraefectusIA from '@/components/shared/SeloPraefectusIA';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Bot, Send, Sparkles, FileText, Scale, BarChart3, Loader2 } from 'lucide-react';
 import { streamAIChat, ChatMessage } from '@/lib/ai-stream';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 const suggestions = [
   { icon: FileText, text: 'Resuma os requisitos de habilitação da Lei 14.133/2021' },
@@ -55,56 +59,67 @@ export default function Assistente() {
 
   return (
     <AppLayout>
-      <div className="max-w-5xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-            <Bot className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground flex-shrink-0" />
-            Assistente IA Jurídico
-          </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            IA especializada em licitações com base na Lei 14.133/2021
-          </p>
-        </div>
+      {/* Largura de leitura: a conversa fica numa coluna de 3xl no desktop. */}
+      <div className="mx-auto w-full max-w-3xl">
+        {/* A tela não é item de menu: título e descrição vêm à mão. */}
+        <CabecalhoPagina
+          icone={<Bot />}
+          titulo="Assistente IA Jurídico"
+          descricao="IA especializada em licitações com base na Lei 14.133/2021"
+        >
+          <div>
+            <SeloPraefectusIA />
+          </div>
+        </CabecalhoPagina>
 
-        <div className="bg-card rounded-xl border border-border/50 shadow-sm min-h-[500px] flex flex-col">
-          <div className="flex-1 p-6 space-y-4 overflow-y-auto max-h-[60vh]">
+        {/* O painel da conversa: histórico sobre a superfície rebaixada, com
+            rolagem própria, e a entrada fixa no rodapé do cartão. */}
+        <div className="flex min-h-[500px] flex-col overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+          <div className="max-h-[60vh] flex-1 space-y-4 overflow-y-auto bg-muted p-4 sm:p-5">
             {messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full py-12">
-                <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
-                  <Sparkles className="w-8 h-8 text-muted-foreground" />
-                </div>
-                <h2 className="text-lg font-semibold mb-2">Como posso ajudar?</h2>
-                <p className="text-sm text-muted-foreground text-center mb-6 max-w-md">
-                  Pergunte sobre editais, requisitos legais, análises ou gere documentos jurídicos automaticamente.
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-lg">
-                  {suggestions.map((s, i) => (
-                    <button
-                      key={i}
-                      onClick={() => handleSend(s.text)}
-                      className="flex items-center gap-2 p-3 rounded-lg border border-border/50 hover:bg-muted/50 transition-colors text-left text-sm"
-                    >
-                      <s.icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                      <span>{s.text}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <EstadoVazio
+                icone={<Sparkles />}
+                titulo="Como posso ajudar?"
+                descricao="Pergunte sobre editais, requisitos legais, análises ou gere documentos jurídicos automaticamente."
+                acao={
+                  <div className="grid w-full max-w-lg grid-cols-1 gap-3 sm:grid-cols-2">
+                    {suggestions.map((s, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => handleSend(s.text)}
+                        className="flex items-center gap-3 rounded-md border border-border bg-card p-3 text-left text-sm text-foreground transition-colors duration-150 hover:border-primary/40 hover:bg-primary-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      >
+                        <span
+                          aria-hidden="true"
+                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary-tint text-primary"
+                        >
+                          <s.icon className="h-4 w-4" />
+                        </span>
+                        <span>{s.text}</span>
+                      </button>
+                    ))}
+                  </div>
+                }
+              />
             ) : (
               <>
                 {messages.map((msg, i) => (
-                  <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in`}>
-                    <div className={`max-w-[80%] rounded-xl px-4 py-3 text-sm whitespace-pre-wrap ${
-                      msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'
-                    }`}>
+                  <div key={i} className={cn('flex animate-fade-in', msg.role === 'user' ? 'justify-end' : 'justify-start')}>
+                    <div className={cn(
+                      'max-w-[80%] whitespace-pre-wrap rounded-lg px-4 py-3 text-base leading-6',
+                      msg.role === 'user'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'border border-border bg-card text-foreground',
+                    )}>
                       {msg.content}
                     </div>
                   </div>
                 ))}
                 {isLoading && messages[messages.length - 1]?.role !== 'assistant' && (
                   <div className="flex justify-start">
-                    <div className="bg-muted rounded-xl px-4 py-3">
-                      <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                    <div className="rounded-lg border border-border bg-card px-4 py-3" role="status">
+                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
                     </div>
                   </div>
                 )}
@@ -113,17 +128,18 @@ export default function Assistente() {
             )}
           </div>
 
-          <div className="border-t border-border/50 p-4">
+          <div className="shrink-0 border-t border-border bg-card p-4">
             <form onSubmit={(e) => { e.preventDefault(); handleSend(); }} className="flex gap-2">
+              <label htmlFor="assistente-juridico-pergunta" className="sr-only">Sua pergunta</label>
               <Input
+                id="assistente-juridico-pergunta"
                 placeholder="Pergunte sobre licitações, leis, concorrentes..."
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                className="bg-muted/50 border-0 focus-visible:ring-1 focus-visible:ring-accent"
                 disabled={isLoading}
               />
-              <Button type="submit" size="icon" className="bg-accent hover:bg-accent/90 text-accent-foreground flex-shrink-0" disabled={isLoading}>
-                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              <Button type="submit" size="icon" className="shrink-0" disabled={isLoading} aria-label="Enviar pergunta">
+                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               </Button>
             </form>
           </div>

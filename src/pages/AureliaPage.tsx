@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
+import SeloPraefectusIA from '@/components/shared/SeloPraefectusIA';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Send, Loader2, FileText, ClipboardCheck, DollarSign, Target, Scale, Zap, FolderOpen } from 'lucide-react';
@@ -14,6 +15,8 @@ import roboAvatar from '@/assets/brand/icon-robo-avatar.png';
  * O robô da marca no lugar do monograma "AU" — o mesmo avatar que o painel
  * flutuante da AURÉLIA já usa, para a consultora ter uma cara só no app.
  * Pintado sobre a tinta verde clara, que dá contraste ao desenho azul.
+ * O tamanho grande é o do círculo de `EstadoVazio` (56px): ilustração maior
+ * que isso vira herói, e a tela é operacional.
  */
 function AvatarAurelia({ tamanho = 'sm' }: { tamanho?: 'sm' | 'lg' }) {
   const grande = tamanho === 'lg';
@@ -22,10 +25,10 @@ function AvatarAurelia({ tamanho = 'sm' }: { tamanho?: 'sm' | 'lg' }) {
       aria-hidden="true"
       className={cn(
         'inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary-tint ring-1 ring-border',
-        grande ? 'h-20 w-20' : 'mt-1 h-8 w-8',
+        grande ? 'h-14 w-14' : 'mt-1 h-8 w-8',
       )}
     >
-      <img src={roboAvatar} alt="" className={cn('object-contain', grande ? 'h-14 w-14' : 'h-6 w-6')} />
+      <img src={roboAvatar} alt="" className={cn('object-contain', grande ? 'h-10 w-10' : 'h-6 w-6')} />
     </span>
   );
 }
@@ -92,81 +95,92 @@ export default function AureliaPage() {
 
   return (
     <AppLayout>
-      <div className="max-w-4xl mx-auto min-h-[calc(100vh-120px)] flex flex-col">
+      {/* Largura de leitura: a conversa fica numa coluna de 3xl no desktop. */}
+      <div className="mx-auto flex min-h-[calc(100vh-120px)] w-full max-w-3xl flex-col">
         {/* `/assistente` é a rota do menu; a URL atendida é `/aurelia`, então o
             registro é apontado à mão para o título/descrição virem de lá. */}
-        <CabecalhoPagina rota="/assistente" />
+        <CabecalhoPagina rota="/assistente">
+          <div>
+            <SeloPraefectusIA />
+          </div>
+        </CabecalhoPagina>
 
         {showWelcome ? (
-          <div className="flex-1 flex flex-col items-center justify-center py-12">
-            {/* Avatar da consultora */}
-            <div className="mb-6">
+          /* Boas-vindas num cartão, alinhadas à esquerda — não é herói, é o
+             ponto de partida da conversa. */
+          <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
+            <div className="flex items-start gap-4">
               <AvatarAurelia tamanho="lg" />
-            </div>
-            <h2 className="text-lg font-semibold text-foreground mb-1">Como posso ajudar hoje?</h2>
-            <p className="text-base text-muted-foreground mb-6 text-center max-w-md">
-              Pergunte sobre editais, habilitação, propostas, estratégia de lance ou a Lei 14.133/2021.
-            </p>
+              <div className="min-w-0 flex-1">
+                <h2 className="text-lg font-semibold leading-6 text-foreground">Como posso ajudar hoje?</h2>
+                <p className="mt-1 text-base leading-5 text-muted-foreground">
+                  Pergunte sobre editais, habilitação, propostas, estratégia de lance ou a Lei 14.133/2021.
+                </p>
 
-            {processo && (
-              <div className="mb-6 flex max-w-full items-center gap-2 rounded-full border border-border bg-primary-tint px-3 py-1 text-xs">
-                <FolderOpen className="w-4 h-4 text-primary shrink-0" />
-                <span className="text-primary font-medium">Analisando: {processo.numero || 'S/N'}</span>
-                <span className="text-muted-foreground truncate max-w-[200px]">— {processo.orgao}</span>
+                {processo && (
+                  <div className="mt-3 inline-flex max-w-full items-center gap-2 rounded-sm border border-primary-line bg-primary-tint px-2 py-1 text-xs">
+                    <FolderOpen className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
+                    <span className="font-semibold text-primary">Analisando: {processo.numero || 'S/N'}</span>
+                    <span className="max-w-[200px] truncate text-muted-foreground">— {processo.orgao}</span>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
 
-            {/* Quick Actions */}
-            <div className="mb-8 grid w-full max-w-xl grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
+            {/* Sugestões — cartões compactos, ícone num ladrilho tingido. */}
+            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
               {quickActions.map((qa) => (
                 <Button
                   key={qa.label}
                   variant="outline"
                   onClick={() => handleSend(qa.prompt)}
-                  className="h-auto flex-col gap-2 p-4 rounded-lg whitespace-normal text-center"
+                  className="h-auto justify-start gap-3 whitespace-normal px-3 py-3 text-left"
                 >
-                  <qa.icon className="w-5 h-5 text-primary" />
+                  <span
+                    aria-hidden="true"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary-tint text-primary"
+                  >
+                    <qa.icon className="h-4 w-4" />
+                  </span>
                   <span className="text-sm font-medium text-foreground">{qa.label}</span>
                 </Button>
               ))}
             </div>
 
             {/* Input */}
-            <div className="w-full max-w-xl">
-              <div className="flex gap-2">
-                <label htmlFor="aurelia-pergunta" className="sr-only">Pergunta para a AURÉLIA</label>
-                <Input
-                  id="aurelia-pergunta"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                  placeholder="Pergunte sobre editais, habilitação, propostas…"
-                  className="flex-1"
-                />
-                <Button
-                  onClick={() => handleSend()}
-                  disabled={!input.trim()}
-                  size="icon"
-                  className="h-11 w-11 shrink-0"
-                  aria-label="Enviar pergunta"
-                >
-                  <Send className="w-4 h-4" />
-                </Button>
-              </div>
+            <div className="mt-5 flex gap-2">
+              <label htmlFor="aurelia-pergunta" className="sr-only">Pergunta para a AURÉLIA</label>
+              <Input
+                id="aurelia-pergunta"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                placeholder="Pergunte sobre editais, habilitação, propostas…"
+                className="flex-1"
+              />
+              <Button
+                onClick={() => handleSend()}
+                disabled={!input.trim()}
+                size="icon"
+                className="shrink-0"
+                aria-label="Enviar pergunta"
+              >
+                <Send className="h-4 w-4" />
+              </Button>
             </div>
-          </div>
+          </section>
         ) : (
           <>
             {/* Chat messages */}
-            <div className="flex-1 overflow-y-auto py-6 space-y-4">
+            <div className="flex-1 space-y-4 overflow-y-auto py-6">
               {messages.map((msg, i) => (
-                <div key={i} className={cn("flex gap-3", msg.role === 'user' ? 'justify-end' : 'justify-start')}>
+                <div key={i} className={cn('flex gap-3', msg.role === 'user' ? 'justify-end' : 'justify-start')}>
                   {msg.role === 'assistant' && <AvatarAurelia />}
                   <div className={cn(
-                    "max-w-[80%] rounded-lg px-4 py-3 text-base leading-6",
+                    'max-w-[80%] rounded-lg px-4 py-3 text-base leading-6',
                     msg.role === 'user'
                       ? 'bg-primary text-primary-foreground'
-                      : 'bg-card border border-border text-foreground'
+                      : 'border border-border bg-card text-foreground'
                   )}>
                     {msg.role === 'assistant' ? (
                       <div className="whitespace-pre-line">{sanitizeAureliaOutput(msg.content)}</div>
@@ -177,8 +191,8 @@ export default function AureliaPage() {
               {isLoading && messages[messages.length - 1]?.role === 'user' && (
                 <div className="flex gap-3">
                   <AvatarAurelia />
-                  <div className="bg-card border border-border rounded-lg px-4 py-3 text-base leading-6 text-muted-foreground flex items-center gap-2" role="status">
-                    <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                  <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-3 text-base leading-6 text-muted-foreground" role="status">
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
                     AURÉLIA está analisando…
                   </div>
                 </div>
@@ -186,8 +200,8 @@ export default function AureliaPage() {
               <div ref={chatEndRef} />
             </div>
 
-            {/* Input bar */}
-            <div className="sticky bottom-0 py-4 bg-background">
+            {/* Entrada — fixa no pé da coluna. */}
+            <div className="sticky bottom-0 border-t border-border bg-background py-4">
               <div className="flex gap-2">
                 <label htmlFor="aurelia-continuar" className="sr-only">Continue a conversa</label>
                 <Input
@@ -203,10 +217,10 @@ export default function AureliaPage() {
                   onClick={() => handleSend()}
                   disabled={!input.trim() || isLoading}
                   size="icon"
-                  className="h-11 w-11 shrink-0"
+                  className="shrink-0"
                   aria-label="Enviar mensagem"
                 >
-                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 </Button>
               </div>
             </div>

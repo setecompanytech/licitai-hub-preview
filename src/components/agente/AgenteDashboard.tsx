@@ -8,9 +8,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { MoneyInput } from '@/components/ui/money-input';
 import { toast } from 'sonner';
 import {
@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import EstadoVazio from '@/components/shared/EstadoVazio';
+import FaixaIndicadores, { type Indicador } from '@/components/gestao/FaixaIndicadores';
 import PrecificacaoReview from './PrecificacaoReview';
 import PesquisaPrecos from './PesquisaPrecos';
 
@@ -84,15 +85,6 @@ const DECISAO_CONFIG: Record<string, { label: string; variant: VarianteStatus; i
 const LOG_STATUS: Record<string, { label: string; variant: VarianteStatus }> = {
   sucesso: { label: 'Sucesso', variant: 'success' },
   erro: { label: 'Erro', variant: 'danger' },
-};
-
-/** Tom do ícone dos KPIs: semântico só onde há estado real. */
-type Tom = 'neutral' | 'primary' | 'success' | 'warning';
-const TONS: Record<Tom, string> = {
-  neutral: 'bg-muted text-muted-foreground',
-  primary: 'bg-primary-tint text-primary',
-  success: 'bg-success-tint text-success-ink',
-  warning: 'bg-warning-tint text-warning-ink',
 };
 
 export default function AgenteDashboard() {
@@ -239,13 +231,15 @@ export default function AgenteDashboard() {
     );
   }
 
-  const kpis: { label: string; value: string | number; icon: React.ElementType; tom: Tom }[] = [
-    { label: 'Monitoradas', value: metricas?.total_monitoradas ?? 0, icon: Eye, tom: 'neutral' },
-    { label: 'Em Andamento', value: metricas?.em_andamento ?? 0, icon: Activity, tom: 'success' },
-    { label: 'Em Disputa', value: metricas?.em_disputa ?? 0, icon: Zap, tom: 'warning' },
-    { label: 'Aguardando', value: metricas?.aguardando_aprovacao ?? 0, icon: Clock, tom: 'warning' },
-    { label: 'Vitórias (30d)', value: metricas?.vitorias_30d ?? 0, icon: Trophy, tom: 'primary' },
-    { label: 'Taxa Vitória', value: `${metricas?.taxa_vitoria ?? 0}%`, icon: TrendingUp, tom: 'primary' },
+  /* Os indicadores na anatomia do cartão KPI do DS (`FaixaIndicadores`): o
+     tom do ladrilho é semântico só onde há estado real. */
+  const kpis: Indicador[] = [
+    { rotulo: 'Monitoradas', valor: metricas?.total_monitoradas ?? 0, icone: Eye, tom: 'neutro' },
+    { rotulo: 'Em Andamento', valor: metricas?.em_andamento ?? 0, icone: Activity, tom: 'ok' },
+    { rotulo: 'Em Disputa', valor: metricas?.em_disputa ?? 0, icone: Zap, tom: 'aviso' },
+    { rotulo: 'Aguardando', valor: metricas?.aguardando_aprovacao ?? 0, icone: Clock, tom: 'aviso' },
+    { rotulo: 'Vitórias (30d)', valor: metricas?.vitorias_30d ?? 0, icone: Trophy, tom: 'ok' },
+    { rotulo: 'Taxa Vitória', valor: `${metricas?.taxa_vitoria ?? 0}%`, icone: TrendingUp, tom: 'ok' },
   ];
 
   return (
@@ -260,39 +254,30 @@ export default function AgenteDashboard() {
           </Badge>
         </div>
         <Button variant="outline" onClick={carregarDados} disabled={loading}>
-          <RefreshCw aria-hidden="true" className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          <RefreshCw aria-hidden="true" className={cn('h-4 w-4', loading && 'animate-spin')} />
           Atualizar
         </Button>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 [&>*]:min-w-0">
-        {kpis.map((kpi) => (
-          <div key={kpi.label} className="rounded-lg border border-border bg-card p-6 shadow-sm">
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0 flex-1">
-                <p className="text-sm text-muted-foreground font-medium truncate">{kpi.label}</p>
-                <p className="text-[2rem] leading-10 font-bold tabular-nums mt-1 whitespace-nowrap">{kpi.value}</p>
-              </div>
-              <div aria-hidden="true" className={cn('flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-md', TONS[kpi.tom])}>
-                <kpi.icon className="h-5 w-5" />
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+      <FaixaIndicadores itens={kpis} />
 
-      {/* Valor total vitórias */}
+      {/* Valor total vitórias — a única superfície tingida do painel. */}
       {metricas && metricas.valor_total_vitorias > 0 && (
-        <Card className="bg-primary-tint border-border">
-          <CardContent className="p-6 flex items-center justify-between gap-4">
-            <div className="min-w-0">
-              <p className="text-sm text-muted-foreground">Valor total das vitórias (30 dias)</p>
-              <p className="text-[2rem] leading-10 font-bold tabular-nums text-primary">{formatCurrency(metricas.valor_total_vitorias)}</p>
-            </div>
-            <Trophy aria-hidden="true" className="h-8 w-8 text-primary shrink-0" />
-          </CardContent>
-        </Card>
+        <div className="flex items-center justify-between gap-4 rounded-lg border border-primary-line bg-primary-tint px-4 py-3">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-muted-foreground">Valor total das vitórias (30 dias)</p>
+            <p className="truncate text-[1.75rem] font-semibold leading-9 tabular-nums text-foreground">
+              {formatCurrency(metricas.valor_total_vitorias)}
+            </p>
+          </div>
+          <span
+            aria-hidden="true"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-success-tint text-success-ink"
+          >
+            <Trophy className="h-4 w-4" />
+          </span>
+        </div>
       )}
 
       {/* Tabs */}
@@ -320,52 +305,70 @@ export default function AgenteDashboard() {
           </TabsTrigger>
         </TabsList>
 
-        {/* Tab: Licitações Monitoradas */}
+        {/* Tab: Licitações Monitoradas — a tabela padrão, com a decisão em
+            selo e as ações de aprovação na própria linha. */}
         <TabsContent value="monitoradas">
-          <ScrollArea className="h-[500px]">
-            <div className="space-y-3">
-              {licitacoes.length === 0 && (
-                <EstadoVazio
-                  icone={<Bot />}
-                  titulo="Nenhuma licitação monitorada pelo agente"
-                  descricao="Ative o agente e configure os critérios de busca."
-                />
-              )}
+          {licitacoes.length === 0 ? (
+            <Card>
+              <EstadoVazio
+                icone={<Bot />}
+                titulo="Nenhuma licitação monitorada pelo agente"
+                descricao="Ative o agente e configure os critérios de busca."
+              />
+            </Card>
+          ) : (
+            <div className="max-h-[560px] overflow-auto rounded-lg border border-border bg-card">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Licitação</TableHead>
+                    <TableHead>Órgão</TableHead>
+                    <TableHead className="text-right">Valor estimado</TableHead>
+                    <TableHead className="text-right">Score</TableHead>
+                    <TableHead>Agente</TableHead>
+                    <TableHead>Última ação</TableHead>
+                    <TableHead>Abertura</TableHead>
+                    <TableHead>Decisão</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {licitacoes.map((lic) => {
+                    const cfg = DECISAO_CONFIG[lic.decisao] || { label: lic.decisao, variant: 'muted' as const, icon: Eye };
+                    const Icon = cfg.icon;
 
-              {licitacoes.map((lic) => {
-                const cfg = DECISAO_CONFIG[lic.decisao] || { label: lic.decisao, variant: 'muted' as const, icon: Eye };
-                const Icon = cfg.icon;
-
-                return (
-                  <Card key={lic.id} className="hover:border-primary transition-colors">
-                    <CardContent className="p-6">
-                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-base font-medium text-foreground truncate">
+                    return (
+                      <TableRow key={lic.id}>
+                        <TableCell className="min-w-[16rem] max-w-[24rem]">
+                          <span className="block truncate font-medium text-foreground">
                             {lic.pncp_editais_cache?.objeto_compra || 'Carregando...'}
-                          </p>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {lic.pncp_editais_cache?.orgao_nome} • {lic.pncp_editais_cache?.uf} •{' '}
-                            {lic.pncp_editais_cache?.valor_total_estimado
-                              ? formatCurrency(lic.pncp_editais_cache.valor_total_estimado)
-                              : 'Valor não informado'}
-                          </p>
-                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs text-muted-foreground">
-                            <span>Score: <strong className="text-foreground tabular-nums">{lic.score_relevancia}/100</strong></span>
-                            <span>Agente: {lic.agente_atual}</span>
-                            <span>Última ação: {lic.ultima_acao}</span>
-                            {lic.data_abertura && <span>Abertura: {formatDate(lic.data_abertura)}</span>}
-                          </div>
-                        </div>
-
-                        <div className="flex flex-row sm:flex-col items-center sm:items-end gap-2 shrink-0">
+                          </span>
+                        </TableCell>
+                        <TableCell className="max-w-[16rem]">
+                          <span className="block truncate">{lic.pncp_editais_cache?.orgao_nome}</span>
+                          <span className="text-xs text-muted-foreground">{lic.pncp_editais_cache?.uf}</span>
+                        </TableCell>
+                        <TableCell nowrap className="text-right tabular-nums">
+                          {lic.pncp_editais_cache?.valor_total_estimado
+                            ? formatCurrency(lic.pncp_editais_cache.valor_total_estimado)
+                            : 'Valor não informado'}
+                        </TableCell>
+                        <TableCell nowrap className="text-right tabular-nums">
+                          <strong className="font-medium text-foreground">{lic.score_relevancia}</strong>
+                          <span className="text-muted-foreground">/100</span>
+                        </TableCell>
+                        <TableCell nowrap>{lic.agente_atual}</TableCell>
+                        <TableCell truncate>{lic.ultima_acao}</TableCell>
+                        <TableCell nowrap className="tabular-nums">{formatDate(lic.data_abertura)}</TableCell>
+                        <TableCell nowrap>
                           <Badge variant={cfg.variant} className="gap-1">
                             <Icon className="h-3 w-3" aria-hidden="true" />
                             {cfg.label}
                           </Badge>
-
+                        </TableCell>
+                        <TableCell nowrap className="text-right">
                           {lic.decisao === 'aguardar_aprovacao' && (
-                            <div className="flex gap-2">
+                            <div className="flex justify-end gap-2">
                               <Button size="sm" variant="default" onClick={() => aprovarParticipacao(lic.id)}>
                                 <CheckCircle2 className="h-4 w-4" /> Aprovar
                               </Button>
@@ -374,34 +377,36 @@ export default function AgenteDashboard() {
                               </Button>
                             </div>
                           )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
             </div>
-          </ScrollArea>
+          )}
         </TabsContent>
 
         {/* Tab: Precificação */}
         <TabsContent value="precificacao">
           <div className="space-y-4">
             {licitacoes.length === 0 ? (
-              <EstadoVazio
-                icone={<DollarSign />}
-                titulo="Nenhuma licitação para precificar"
-                descricao="Aprove licitações na aba anterior para iniciar a precificação."
-              />
+              <Card>
+                <EstadoVazio
+                  icone={<DollarSign />}
+                  titulo="Nenhuma licitação para precificar"
+                  descricao="Aprove licitações na aba anterior para iniciar a precificação."
+                />
+              </Card>
             ) : (
               <div className="space-y-6">
                 {licitacoes
                   .filter(l => ['participar', 'participando', 'proposta_enviada', 'em_disputa', 'aguardar_aprovacao'].includes(l.decisao))
                   .map((lic) => (
-                    <div key={lic.id} className="space-y-2">
+                    <div key={lic.id} className="space-y-3">
                       <div className="flex flex-wrap items-center gap-2">
                         <Badge variant="info">{lic.pncp_editais_cache?.modalidade_nome}</Badge>
-                        <h4 className="text-base font-semibold text-foreground truncate flex-1 min-w-0">
+                        <h4 className="min-w-0 flex-1 truncate text-lg font-semibold leading-6 text-foreground">
                           {lic.pncp_editais_cache?.objeto_compra || 'Carregando...'}
                         </h4>
                         <span className="text-xs text-muted-foreground">{lic.pncp_editais_cache?.orgao_nome}</span>
@@ -420,30 +425,52 @@ export default function AgenteDashboard() {
           <PesquisaPrecos />
         </TabsContent>
 
+        {/* Tab: Log de ações — tabela padrão. */}
         <TabsContent value="logs">
-          <ScrollArea className="h-[500px]">
-            <div className="space-y-2">
-              {acoesLog.length === 0 && (
-                <EstadoVazio icone={<Activity />} titulo="Nenhuma ação registrada ainda" />
-              )}
-
-              {acoesLog.map((log) => {
-                const st = LOG_STATUS[log.status] ?? { label: log.status, variant: 'warning' as const };
-                return (
-                  <div key={log.id} className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-card px-3 py-2 text-sm">
-                    <Badge variant={st.variant}>{st.label}</Badge>
-                    <span className="font-mono text-xs text-muted-foreground w-24 shrink-0 truncate">{log.agente}</span>
-                    <span className="flex-1 min-w-[10rem] truncate text-foreground">{log.acao}</span>
-                    {log.duracao_ms && <span className="text-xs text-muted-foreground tabular-nums">{log.duracao_ms}ms</span>}
-                    <span className="text-xs text-muted-foreground tabular-nums">{formatDate(log.created_at)}</span>
-                    {log.erro_msg && (
-                      <Badge variant="danger">Erro</Badge>
-                    )}
-                  </div>
-                );
-              })}
+          {acoesLog.length === 0 ? (
+            <Card>
+              <EstadoVazio icone={<Activity />} titulo="Nenhuma ação registrada ainda" />
+            </Card>
+          ) : (
+            <div className="max-h-[560px] overflow-auto rounded-lg border border-border bg-card">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Agente</TableHead>
+                    <TableHead>Ação</TableHead>
+                    <TableHead className="text-right">Duração</TableHead>
+                    <TableHead className="text-right">Quando</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {acoesLog.map((log) => {
+                    const st = LOG_STATUS[log.status] ?? { label: log.status, variant: 'warning' as const };
+                    return (
+                      <TableRow key={log.id}>
+                        <TableCell nowrap>
+                          <div className="flex items-center gap-2">
+                            <Badge variant={st.variant}>{st.label}</Badge>
+                            {log.erro_msg && (
+                              <Badge variant="danger">Erro</Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell nowrap className="font-mono text-xs text-muted-foreground">{log.agente}</TableCell>
+                        <TableCell truncate className="max-w-[28rem]">{log.acao}</TableCell>
+                        <TableCell nowrap className="text-right text-xs tabular-nums text-muted-foreground">
+                          {log.duracao_ms ? `${log.duracao_ms}ms` : '—'}
+                        </TableCell>
+                        <TableCell nowrap className="text-right text-xs tabular-nums text-muted-foreground">
+                          {formatDate(log.created_at)}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
             </div>
-          </ScrollArea>
+          )}
         </TabsContent>
 
         {/* Tab: Configurações */}
@@ -651,7 +678,7 @@ function AgentConfig({ empresaId }: { empresaId: string }) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5 text-primary" aria-hidden="true" />
+            <DollarSign className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
             Precificação Autônoma
           </CardTitle>
         </CardHeader>

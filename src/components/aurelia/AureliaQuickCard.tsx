@@ -17,10 +17,15 @@ export default function AureliaQuickCard({ title, icon, content, isLoading, erro
   return (
     /* Sem `hover:scale`: o cartão carrega parágrafos inteiros e mora em coluna
        rolável — escalar no hover fazia o texto tremer sob o mouse. */
-    <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-      <div className="flex items-center gap-2 mb-3">
-        <span className="text-primary [&>svg]:h-5 [&>svg]:w-5" aria-hidden="true">{icon}</span>
-        <h4 className="text-lg font-semibold text-foreground">{title}</h4>
+    <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+      <div className="mb-3 flex items-center gap-2">
+        <span
+          aria-hidden="true"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary-tint text-primary [&>svg]:h-4 [&>svg]:w-4"
+        >
+          {icon}
+        </span>
+        <h4 className="text-lg font-semibold leading-6 text-foreground">{title}</h4>
       </div>
 
       {isLoading && (
@@ -28,8 +33,8 @@ export default function AureliaQuickCard({ title, icon, content, isLoading, erro
           <Skeleton className="h-3 w-full" />
           <Skeleton className="h-3 w-4/5" />
           <Skeleton className="h-3 w-3/5" />
-          <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-            <Loader2 className="w-3 h-3 animate-spin" /> AURÉLIA está analisando…
+          <p className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
+            <Loader2 className="h-3 w-3 animate-spin" /> AURÉLIA está analisando…
           </p>
         </div>
       )}
@@ -44,7 +49,7 @@ export default function AureliaQuickCard({ title, icon, content, isLoading, erro
             <span>Erro na análise</span>
             {onRetry && (
               <Button variant="outline" size="sm" onClick={onRetry}>
-                <RefreshCw className="w-4 h-4" /> Tentar novamente
+                <RefreshCw className="h-4 w-4" /> Tentar novamente
               </Button>
             )}
           </AlertDescription>
@@ -52,7 +57,7 @@ export default function AureliaQuickCard({ title, icon, content, isLoading, erro
       )}
 
       {!isLoading && !error && content && (
-        <p className="text-base leading-6 text-foreground whitespace-pre-wrap">{content}</p>
+        <p className="whitespace-pre-wrap text-base leading-6 text-foreground">{content}</p>
       )}
     </div>
   );

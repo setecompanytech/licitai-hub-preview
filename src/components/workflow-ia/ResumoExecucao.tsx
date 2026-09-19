@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import ListaDeCampos, { BlocoDoPainel } from '@/components/gestao/ListaDeCampos';
 import { AvisoDeContexto, ValorIndisponivel } from '@/components/gestao/SeloSituacao';
+import { cn } from '@/lib/utils';
 import { WORKFLOW_STEPS } from './etapas';
 
 /**
@@ -31,6 +32,26 @@ interface ResumoExecucaoProps {
   aoRetentarFalhas: () => void;
 }
 
+/** KPI compacto do placar: rótulo de 12px em cima, número de 24px embaixo. */
+function KpiDoResumo({
+  rotulo,
+  valor,
+  className,
+}: {
+  rotulo: string;
+  valor: number;
+  className?: string;
+}) {
+  return (
+    <div className="min-w-0 rounded-md border border-border bg-secondary px-3 py-2">
+      <dt className="g-meta text-muted-foreground">{rotulo}</dt>
+      <dd className={cn('text-2xl font-semibold leading-8 tabular-nums text-foreground', className)}>
+        {valor}
+      </dd>
+    </div>
+  );
+}
+
 export default function ResumoExecucao({
   prontas,
   falhas,
@@ -54,12 +75,21 @@ export default function ResumoExecucao({
         </div>
         <Progress value={percentual} className="h-2" aria-label="Progresso da análise" />
 
+        {/* Os três números do placar em KPIs compactos; a falha só ganha cor
+            quando existe. */}
+        <dl className="mt-1 grid grid-cols-3 gap-2">
+          <KpiDoResumo rotulo="Análises prontas" valor={prontas} />
+          <KpiDoResumo
+            rotulo="Falhas"
+            valor={falhas}
+            className={falhas > 0 ? 'text-destructive-ink' : undefined}
+          />
+          <KpiDoResumo rotulo="Ainda não analisadas" valor={naoAnalisadas} />
+        </dl>
+
         <ListaDeCampos
           className="mt-1"
           campos={[
-            { rotulo: 'Análises prontas', valor: prontas, numerico: true },
-            { rotulo: 'Falhas', valor: falhas, numerico: true },
-            { rotulo: 'Ainda não analisadas', valor: naoAnalisadas, numerico: true },
             {
               rotulo: 'Empresa analisada',
               valor: empresaNome ?? <ValorIndisponivel razao="Nenhuma empresa escolhida" />,

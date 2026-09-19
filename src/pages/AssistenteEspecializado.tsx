@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
+import SeloPraefectusIA from '@/components/shared/SeloPraefectusIA';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -260,7 +261,9 @@ export default function AssistenteEspecializado() {
 
   return (
     <AppLayout>
-      <div className="flex flex-col h-[calc(100vh-4rem)] min-h-0">
+      {/* A altura desconta a topbar, o respiro do conteúdo e a linha da trilha
+          (`AppLayout`): a conversa rola dentro da coluna, a entrada fica fixa. */}
+      <div className="flex h-[calc(100dvh-10rem)] min-h-[520px] min-w-0 flex-col">
         <CabecalhoPagina
           icone={<Sparkles />}
           titulo="Assistente IA Especializada"
@@ -280,7 +283,7 @@ export default function AssistenteEspecializado() {
                   <Button variant="outline" onClick={handleExport}>
                     <Download className="w-4 h-4" /> Exportar
                   </Button>
-                  <Button variant="ghost" onClick={handleClear} className="text-destructive hover:text-destructive">
+                  <Button variant="ghost" onClick={handleClear} className="text-destructive-ink hover:bg-destructive-tint hover:text-destructive-ink">
                     <Trash2 className="w-4 h-4" /> Limpar
                   </Button>
                 </>
@@ -288,18 +291,22 @@ export default function AssistenteEspecializado() {
             </>
           }
         >
-          <div className="flex flex-wrap gap-2">
-            <Badge variant="info">Lei 14.133/2021</Badge>
-            <Badge variant="info">NBC TSP</Badge>
-            <Badge variant="info">TCU</Badge>
-            <Badge variant="info">LRF</Badge>
-            <Badge variant="info">CFC/CRC</Badge>
-            <Badge variant="info">IPCA/IGP-M</Badge>
+          {/* O selo de IA é o único destaque da linha; as fontes são etiquetas
+              neutras — azul aqui disputaria com o verde do selo. */}
+          <div className="flex flex-wrap items-center gap-2">
+            <SeloPraefectusIA />
+            <Badge variant="secondary">Lei 14.133/2021</Badge>
+            <Badge variant="secondary">NBC TSP</Badge>
+            <Badge variant="secondary">TCU</Badge>
+            <Badge variant="secondary">LRF</Badge>
+            <Badge variant="secondary">CFC/CRC</Badge>
+            <Badge variant="secondary">IPCA/IGP-M</Badge>
           </div>
         </CabecalhoPagina>
 
-        {/* Messages */}
-        <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto space-y-4 pb-4">
+        {/* Messages — a coluna rola sozinha; as mensagens ficam numa largura
+            de leitura (3xl) quando a tela é larga. */}
+        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto pb-4">
           {messages.length === 0 && (
             <EstadoVazio
               className="h-full"
@@ -324,12 +331,13 @@ export default function AssistenteEspecializado() {
             />
           )}
 
+          <div className="mx-auto w-full max-w-3xl space-y-4">
           {messages.map((msg) => (
             <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[85%] rounded-lg px-4 py-3 ${
                 msg.role === 'user'
                   ? 'bg-primary text-primary-foreground'
-                  : 'bg-card border border-border'
+                  : 'border border-border bg-card text-foreground'
               }`}>
                 {msg.role === 'assistant' ? (
                   <div className={MARKDOWN_RESPOSTA}>
@@ -349,7 +357,7 @@ export default function AssistenteEspecializado() {
                           href={s.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 rounded-md bg-primary-tint px-2 py-1 text-xs text-primary transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                          className="inline-flex items-center gap-1 rounded-sm border border-primary-line bg-primary-tint px-2 py-0.5 text-xs font-medium text-primary transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                         >
                           <ExternalLink className="w-3 h-3" />
                           {s.title?.slice(0, 40) || new URL(s.url).hostname}
@@ -364,47 +372,52 @@ export default function AssistenteEspecializado() {
 
           {isLoading && messages[messages.length - 1]?.role !== 'assistant' && (
             <div className="flex justify-start">
-              <div className="bg-card border border-border rounded-lg px-4 py-3 flex items-center gap-2" role="status">
-                <Loader2 className="w-4 h-4 animate-spin text-primary" />
+              <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-3" role="status">
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
                 <span className="text-sm text-muted-foreground">
                   {buscaWeb ? 'Buscando em fontes oficiais e analisando...' : 'Analisando...'}
                 </span>
               </div>
             </div>
           )}
+          </div>
         </div>
 
-        {/* Input */}
-        <div className="border-t border-border pt-4">
-          <div className="flex gap-2">
-            <label htmlFor="assistente-pergunta" className="sr-only">Sua pergunta</label>
-            <Textarea
-              id="assistente-pergunta"
-              ref={textareaRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Pergunte sobre legislação, balanços, índices econômicos, habilitação..."
-              rows={2}
-              className="resize-none"
-              disabled={isLoading}
-            />
-            <Button
-              onClick={() => handleSend()}
-              disabled={!input.trim() || isLoading}
-              size="icon"
-              className="h-11 w-11 shrink-0 self-end"
-              aria-label="Enviar pergunta"
-            >
-              {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-            </Button>
+        {/* Entrada — fixa no rodapé da coluna. A caixa nasce com 44px e cresce
+            com o texto (`field-sizing: content`, até 10rem) onde o navegador
+            suporta; nos demais fica na linha única. */}
+        <div className="shrink-0 border-t border-border pt-4">
+          <div className="mx-auto w-full max-w-3xl">
+            <div className="flex gap-2">
+              <label htmlFor="assistente-pergunta" className="sr-only">Sua pergunta</label>
+              <Textarea
+                id="assistente-pergunta"
+                ref={textareaRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Pergunte sobre legislação, balanços, índices econômicos, habilitação..."
+                rows={1}
+                className="max-h-40 min-h-11 resize-none [field-sizing:content]"
+                disabled={isLoading}
+              />
+              <Button
+                onClick={() => handleSend()}
+                disabled={!input.trim() || isLoading}
+                size="icon"
+                className="h-11 w-11 shrink-0 self-end"
+                aria-label="Enviar pergunta"
+              >
+                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              </Button>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              {buscaWeb
+                ? 'A IA consultará fontes oficiais (Planalto, TCU, IBGE, Banco Central) em tempo real para fundamentar a resposta.'
+                : 'Busca web desativada. A IA responderá com base no conhecimento interno.'
+              }
+            </p>
           </div>
-          <p className="text-xs text-muted-foreground mt-2">
-            {buscaWeb
-              ? 'A IA consultará fontes oficiais (Planalto, TCU, IBGE, Banco Central) em tempo real para fundamentar a resposta.'
-              : 'Busca web desativada. A IA responderá com base no conhecimento interno.'
-            }
-          </p>
         </div>
       </div>
     </AppLayout>
