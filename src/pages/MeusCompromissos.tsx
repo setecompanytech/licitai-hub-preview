@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import AppLayout from '@/components/layout/AppLayout';
-import TelaGestao from '@/components/gestao/TelaGestao';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import AbasGestao, { type AbaGestao } from '@/components/gestao/AbasGestao';
 import FaixaIndicadores, { type Indicador } from '@/components/gestao/FaixaIndicadores';
 import BarraFiltros from '@/components/gestao/BarraFiltros';
@@ -11,7 +11,7 @@ import TabelaGestao, {
 } from '@/components/gestao/TabelaGestao';
 import AreaComPainel from '@/components/gestao/AreaComPainel';
 import ListaDeCampos, { BlocoDoPainel, type Campo } from '@/components/gestao/ListaDeCampos';
-import SeloSituacao, { ValorIndisponivel, type TomSituacao } from '@/components/gestao/SeloSituacao';
+import SeloSituacao, { AvisoDeFalha, ValorIndisponivel, type TomSituacao } from '@/components/gestao/SeloSituacao';
 import TextoExpansivel from '@/components/gestao/TextoExpansivel';
 import EstadoVazio from '@/components/shared/EstadoVazio';
 import { Badge } from '@/components/ui/badge';
@@ -142,14 +142,16 @@ function Countdown({ targetDate }: { targetDate: string }) {
     return () => clearInterval(i);
   }, [targetDate]);
 
+  // Tinta `-ink` dos trios de estado: é a que lê sobre o branco da célula —
+  // `text-warning` puro não passa de contraste em texto.
   const colors = {
-    normal: 'text-success',
-    warning: 'text-warning',
-    danger: 'text-destructive animate-pulse',
+    normal: 'text-success-ink',
+    warning: 'text-warning-ink',
+    danger: 'text-destructive-ink animate-pulse',
   };
 
   return (
-    <span className={`inline-flex items-center gap-1 text-sm font-bold tabular-nums ${colors[urgency]}`}>
+    <span className={`inline-flex items-center gap-1 text-sm font-semibold tabular-nums ${colors[urgency]}`}>
       <Clock className="h-4 w-4" aria-hidden="true" />
       {diff}
     </span>
@@ -928,7 +930,7 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
             <Button
               size="sm"
               variant="ghost"
-              className="text-destructive hover:text-destructive"
+              className="text-destructive-ink hover:bg-destructive-tint hover:text-destructive-ink"
               onClick={() => setAcaoDialog({ tipo: 'rejeitar', processo: selecionado })}
             >
               <XCircle aria-hidden="true" /> Rejeitar
@@ -969,20 +971,28 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
 
   return (
     <AppLayout>
-      {/* Título e descrição saem do registro `lib/navegacao/paginas.ts`, e a
+      {/* Cabeçalho padrão das telas de menu (Design System v3): título,
+          descrição e ícone saem do registro `lib/navegacao/paginas.ts`, e a
           trilha da faixa superior (`TrilhaDoTopo`) — a tela não repete nenhum
-          dos dois. */}
-      <TelaGestao
+          dos três. A ação principal (pasta manual) fica à direita, depois da
+          secundária. */}
+      <CabecalhoPagina
+        denso
         titulo={pagina?.titulo ?? 'Meus compromissos'}
         descricao={pagina?.descricao}
-        acoesSecundarias={
-          <Button variant="outline" onClick={carregarProcessos} aria-label="Atualizar lista de compromissos">
-            <RefreshCw aria-hidden="true" /> Atualizar
-          </Button>
+        acoes={
+          <>
+            <Button variant="outline" onClick={carregarProcessos} aria-label="Atualizar lista de compromissos">
+              <RefreshCw aria-hidden="true" /> Atualizar
+            </Button>
+            <BotaoNovaPastaManual variant="default" aoAbrir={() => setNovaPasta(true)} />
+          </>
         }
-        acaoPrincipal={<BotaoNovaPastaManual variant="default" aoAbrir={() => setNovaPasta(true)} />}
-        abas={<AbasGestao abas={ABAS} valor={filtroStatus} aoMudar={trocarAba} />}
       >
+        <AbasGestao abas={ABAS} valor={filtroStatus} aoMudar={trocarAba} />
+      </CabecalhoPagina>
+
+      <div className="flex min-w-0 flex-col gap-4">
         <div className="flex flex-col gap-2">
           <FaixaIndicadores itens={indicadores} />
           {/* Regra 3 do comando, dita em texto: os indicadores seguem empresa e
@@ -995,15 +1005,9 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
         </div>
 
         {erro && (
-          <div className="flex flex-wrap items-center gap-3 rounded-lg border border-destructive-line bg-destructive-tint p-3">
-            <AlertTriangle className="h-5 w-5 shrink-0 text-destructive-ink" aria-hidden="true" />
-            <p className="min-w-0 flex-1 text-sm leading-5 text-destructive-ink">
-              Lista incompleta — {erro} O que está abaixo pode não ser tudo.
-            </p>
-            <Button type="button" variant="outline" size="sm" onClick={carregarProcessos}>
-              <RefreshCw aria-hidden="true" /> Tentar novamente
-            </Button>
-          </div>
+          <AvisoDeFalha aoTentarNovamente={carregarProcessos}>
+            Lista incompleta — {erro} O que está abaixo pode não ser tudo.
+          </AvisoDeFalha>
         )}
 
         <BarraFiltros
@@ -1163,7 +1167,7 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </TelaGestao>
+      </div>
     </AppLayout>
   );
 }

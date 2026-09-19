@@ -60,7 +60,7 @@ export default function RegistrarPerdaDialog({ alvo, onCancelar, onConfirmar, sa
         <div className="space-y-4 py-1">
           <div className="space-y-1.5">
             <Label htmlFor="perda-motivo" className="text-sm font-medium">
-              Motivo <span className="text-destructive">*</span>
+              Motivo <span className="text-destructive-ink">*</span>
             </Label>
             <Select value={motivoId} onValueChange={setMotivoId} disabled={isLoading}>
               <SelectTrigger id="perda-motivo">

@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Skeleton } from '@/components/ui/skeleton';
 import EstadoVazio from '@/components/shared/EstadoVazio';
 import { SecaoGestao } from '@/components/gestao/TelaGestao';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -74,7 +75,7 @@ export default function ParametrizacaoMetas() {
         acoes={<span className="g-meta text-muted-foreground">Referência de meta usada nas projeções</span>}
       >
         <div className="g-cartao flex flex-col">
-          <div className="flex flex-col gap-4 border-b border-border p-4 sm:p-6">
+          <div className="flex flex-col gap-4 border-b border-border p-4 sm:p-5">
             <Alert variant="info">
               <Info aria-hidden="true" className="w-4 h-4" />
               <AlertDescription>
@@ -149,9 +150,12 @@ export default function ParametrizacaoMetas() {
           </div>
 
           {carregandoValores ? (
-            <div role="status" aria-label="Carregando" className="g-corpo flex items-center justify-center gap-2 p-12 text-muted-foreground">
-              <Loader2 aria-hidden="true" className="w-4 h-4 animate-spin" />
-              Carregando…
+            /* Esqueleto na forma das linhas da tabela, não spinner no centro. */
+            <div role="status" aria-label="Carregando" className="space-y-3 p-4 sm:p-5">
+              <span className="sr-only">Carregando…</span>
+              <Skeleton className="h-4 w-2/3" />
+              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-4 w-3/5" />
             </div>
           ) : (valores?.length ?? 0) === 0 ? (
             <EstadoVazio
@@ -167,7 +171,7 @@ export default function ParametrizacaoMetas() {
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-muted">
+                  <TableRow>
                     <TableHead className="pl-4 sm:pl-6">Modalidade</TableHead>
                     <TableHead className="w-[170px] text-right">Valor-alvo</TableHead>
                     <TableHead className="w-[140px]">Vigência</TableHead>
@@ -197,7 +201,7 @@ export default function ParametrizacaoMetas() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="text-destructive hover:text-destructive"
+                          className="text-destructive-ink hover:bg-destructive-tint hover:text-destructive-ink"
                           aria-label={`Excluir valor-alvo de ${rotuloModalidade(v.modalidade_codigo)}`}
                           onClick={() => excluirValor.mutate(v.id)}
                           disabled={excluirValor.isPending}
@@ -216,7 +220,7 @@ export default function ParametrizacaoMetas() {
 
       {/* ── Limiares de alerta e janela histórica ── */}
       <SecaoGestao titulo="Alertas e histórico">
-        <div className="g-cartao flex flex-col gap-6 p-4 sm:p-6">
+        <div className="g-cartao flex flex-col gap-6 p-4 sm:p-5">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div>
               <Label htmlFor="metas-janela-historica" className="g-meta mb-1 block text-muted-foreground">Janela histórica (meses)</Label>
@@ -304,7 +308,7 @@ export default function ParametrizacaoMetas() {
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-muted">
+                  <TableRow>
                     <TableHead className="w-[80px] pl-4 sm:pl-6">Ordem</TableHead>
                     <TableHead>Motivo</TableHead>
                     <TableHead className="w-[150px]">Código</TableHead>

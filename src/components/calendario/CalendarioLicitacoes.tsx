@@ -11,13 +11,15 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import EstadoVazio from '@/components/shared/EstadoVazio';
+import FaixaIndicadores, { type Indicador } from '@/components/gestao/FaixaIndicadores';
 import {
   CalendarDays, FileText, AlertTriangle, Clock, CheckCircle2,
   ChevronRight, Shield, Building2, Database, Trophy, FileWarning, RefreshCw, Bot,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-// Autoridade única do vocabulário de status (CLAUDE.md, princípio 1).
-import { normalizarStatus } from '@/lib/licitacao/status';
+// Autoridade única do vocabulário de status (CLAUDE.md, princípio 1) — e da
+// tinta do selo (`aparenciaStatus`, Design System v3).
+import { aparenciaStatus, normalizarStatus } from '@/lib/licitacao/status';
 /* Vencimento de documento passou a ter uma régua só, compartilhada com o
    painel: `lib/documentos/validade`. Duas correções vieram com ela — "vence
    hoje" deixou de cair no balde de 30 dias, e a comparação virou de DIA (antes
@@ -56,20 +58,6 @@ interface LicitacaoEvento {
   modalidade: string;
   valor_estimado: number | null;
 }
-
-/** Ponto colorido antes do número do processo — reforço do status, que também
- *  vai escrito no selo ao lado. Só tokens. */
-const statusColors: Record<string, string> = {
-  Publicado: 'bg-info',
-  Monitorando: 'bg-info',
-  'Em Análise': 'bg-warning',
-  'Proposta Enviada': 'bg-primary',
-  'Em Disputa': 'bg-primary',
-  Vencida: 'bg-success',
-  Perdida: 'bg-destructive',
-  Homologada: 'bg-success',
-  Arquivada: 'bg-muted-foreground',
-};
 
 /* Tinta por situação de validade, num lugar só. Cada bloco reescrevia o
    ternário "vencido ? destrutivo : aviso" — com a categoria nova ("vence
@@ -416,7 +404,7 @@ export default function CalendarioLicitacoes() {
     month: 'w-full space-y-4',
     table: 'w-full border-collapse',
     head_row: 'flex w-full',
-    head_cell: 'flex-1 rounded-md text-[0.8rem] font-normal text-muted-foreground',
+    head_cell: 'flex-1 rounded-md text-xs font-normal text-muted-foreground',
     row: 'mt-2 flex w-full',
     cell: 'relative flex-1 p-0 text-center text-sm focus-within:relative focus-within:z-20 [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md',
     day: cn(buttonVariants({ variant: 'ghost' }), 'h-10 w-full p-0 font-normal aria-selected:opacity-100'),
@@ -473,7 +461,7 @@ export default function CalendarioLicitacoes() {
       <div className="space-y-4" role="status" aria-busy="true">
         <span className="sr-only">Carregando a agenda</span>
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,65fr)_minmax(0,35fr)]">
-          <Card className="order-2 space-y-4 p-6 lg:order-1">
+          <Card className="order-2 space-y-4 p-5 lg:order-1">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <Skeleton className="h-6 w-40" />
               <Skeleton className="h-10 w-40" />
@@ -485,19 +473,20 @@ export default function CalendarioLicitacoes() {
               ))}
             </div>
           </Card>
-          <Card className="order-1 space-y-4 p-6 lg:order-2">
+          <Card className="order-1 space-y-4 p-5 lg:order-2">
             <Skeleton className="h-6 w-48" />
             <Skeleton className="h-10 w-full" />
             <div className="space-y-2">
               {Array.from({ length: 5 }, (_, i) => (
-                <Skeleton key={i} className="h-16 w-full rounded-lg" />
+                <Skeleton key={i} className="h-16 w-full rounded-md" />
               ))}
             </div>
           </Card>
         </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+        {/* Na forma da faixa de indicadores que vem depois da carga. */}
+        <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(160px,100%),1fr))]">
           {Array.from({ length: 5 }, (_, i) => (
-            <Card key={i} className="space-y-2 p-4">
+            <Card key={i} className="space-y-2 px-4 py-3">
               <Skeleton className="h-4 w-24" />
               <Skeleton className="h-8 w-16" />
               <Skeleton className="h-3 w-28" />
@@ -676,9 +665,9 @@ export default function CalendarioLicitacoes() {
           esquerda para a direita, que é onde esta tela é operada. */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,65fr)_minmax(0,35fr)]">
         {/* Calendar */}
-        <Card className="order-2 p-6 lg:order-1">
+        <Card className="order-2 p-5 lg:order-1">
           <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-            <h2 className="text-lg font-semibold flex items-center gap-2">
+            <h2 className="text-lg font-semibold leading-6 text-foreground flex items-center gap-2">
               <CalendarDays className="w-5 h-5 text-primary" aria-hidden="true" />
               Calendário
             </h2>
@@ -734,12 +723,12 @@ export default function CalendarioLicitacoes() {
         </Card>
 
         {/* Events panel */}
-        <Card className="order-1 p-6 lg:order-2">
+        <Card className="order-1 p-5 lg:order-2">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             {/* Título e abas empilhados: na coluna de 35% a fila de três abas
                 não cabe ao lado da data por extenso. */}
             <div className="mb-4 space-y-3">
-              <h2 className="text-lg font-semibold">
+              <h2 className="text-lg font-semibold leading-6 text-foreground">
                 {selectedDate
                   ? format(selectedDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
                   : 'Selecione uma data'}
@@ -769,17 +758,10 @@ export default function CalendarioLicitacoes() {
                     <button
                       key={l.id}
                       type="button"
-                      className="group flex w-full flex-col gap-2 p-3 text-left rounded-lg border border-border bg-card hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      className="group flex w-full flex-col gap-2 p-3 text-left rounded-md border border-border bg-card hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                       onClick={() => irParaProcesso(l.id)}
                     >
                       <span className="flex items-start gap-2 min-w-0">
-                        <span
-                          aria-hidden="true"
-                          className={cn(
-                            'w-2 h-2 rounded-full mt-1.5 flex-shrink-0',
-                            statusColors[l.status] || 'bg-muted-foreground'
-                          )}
-                        />
                         <span className="min-w-0 flex-1 block">
                           <span className="block text-sm font-medium truncate group-hover:underline">{identidadeDoProcesso(l)}</span>
                           <span className="block text-sm text-muted-foreground truncate">{l.orgao}</span>
@@ -789,9 +771,14 @@ export default function CalendarioLicitacoes() {
                       </span>
                       {/* Selo e valor descem para a segunda linha: na coluna
                           estreita eles disputavam espaço com o objeto e as duas
-                          coisas ficavam truncadas. */}
-                      <span className="flex flex-wrap items-center gap-2 pl-4">
-                        <span className={badgeVariants({ variant: 'muted' })}>{l.status}</span>
+                          coisas ficavam truncadas. O selo é o status como o
+                          banco gravou, na tinta da autoridade (`aparenciaStatus`)
+                          — o ponto colorido que o antecedia saiu: cor e texto
+                          agora vivem no mesmo lugar. */}
+                      <span className="flex flex-wrap items-center gap-2">
+                        <span className={cn(badgeVariants({ variant: 'outline' }), aparenciaStatus(l.status).className)}>
+                          {l.status}
+                        </span>
                         <SeloDoRobo disputas={agendaRobo.porProcesso.get(l.id)} />
                         {l.valor_estimado && (
                           <span className="text-sm font-medium tabular-nums text-foreground">
@@ -808,7 +795,7 @@ export default function CalendarioLicitacoes() {
                       key={`robo-${d.id}`}
                       type="button"
                       onClick={() => navigate(`/robo-lances/disputa/${d.id}`)}
-                      className="group flex w-full flex-wrap items-center justify-between gap-2 p-3 text-left rounded-lg border border-border bg-card hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      className="group flex w-full flex-wrap items-center justify-between gap-2 p-3 text-left rounded-md border border-border bg-card hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     >
                       <span className="flex items-center gap-2 min-w-0">
                         <Bot className="w-4 h-4 text-primary" aria-hidden="true" />
@@ -829,7 +816,7 @@ export default function CalendarioLicitacoes() {
                       onClick={() => irParaOrigemDoDoc(doc)}
                       title={ROTULO_DA_ORIGEM[doc.origem]}
                       className={cn(
-                        'group flex w-full flex-wrap items-center justify-between gap-2 p-3 text-left rounded-lg border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                        'group flex w-full flex-wrap items-center justify-between gap-2 p-3 text-left rounded-md border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                         PELE_DA_SITUACAO[doc.situacao].caixa
                       )}
                     >
@@ -851,7 +838,7 @@ export default function CalendarioLicitacoes() {
                     </button>
                   ))}
                   {selectedEvents.backups && (
-                    <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-lg border border-border bg-card">
+                    <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-md border border-border bg-card">
                       <div className="flex items-center gap-2 min-w-0">
                         <Database className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
                         <div className="min-w-0">
@@ -888,14 +875,14 @@ export default function CalendarioLicitacoes() {
                         key={l.id}
                         type="button"
                         className={cn(
-                          'group flex w-full flex-col gap-2 p-3 text-left rounded-lg border transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                          'group flex w-full flex-col gap-2 p-3 text-left rounded-md border transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                           isUrgent ? 'border-destructive-line bg-destructive-tint' : 'border-border bg-card'
                         )}
                         onClick={() => irParaProcesso(l.id)}
                       >
                         <span className="flex items-start gap-3 min-w-0">
                           <span className="text-center flex-shrink-0 w-12 block">
-                            <span className="block text-lg font-bold tabular-nums leading-6">{format(d, 'dd')}</span>
+                            <span className="block text-lg font-semibold tabular-nums leading-6">{format(d, 'dd')}</span>
                             <span className="block text-xs uppercase text-muted-foreground">
                               {format(d, 'MMM', { locale: ptBR })}
                             </span>
@@ -944,7 +931,7 @@ export default function CalendarioLicitacoes() {
                         onClick={() => irParaOrigemDoDoc(doc)}
                         title={ROTULO_DA_ORIGEM[doc.origem]}
                         className={cn(
-                          'group flex w-full flex-wrap items-center justify-between gap-2 p-3 text-left rounded-lg border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                          'group flex w-full flex-wrap items-center justify-between gap-2 p-3 text-left rounded-md border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                           PELE_DA_SITUACAO[doc.situacao].caixa
                         )}
                       >
@@ -978,11 +965,14 @@ export default function CalendarioLicitacoes() {
         </Card>
       </div>
 
-      {/* REBRAND — anatomia `kpi-meta`, a mesma dos Contratos e dos
-          Compromissos: rótulo e ícone em cima, valor grande à esquerda, nota
-          de contexto embaixo. Antes eram cinco números centralizados com o
-          rótulo em CAIXA ALTA — caixa alta em rótulo de 12px é o que mais
-          atrasa a leitura, porque tira a silhueta da palavra.
+      {/* Os cinco números da agenda na `FaixaIndicadores` do Design System v3
+          — o mesmo cartão KPI dos Contratos e dos Compromissos: rótulo em
+          cima, valor 24 em dígitos tabulares, ícone discreto no canto e a
+          linha de contexto embaixo. O estado (prazo apertado, documento
+          vencido, ganho) fica no ladrilho do ícone, não no cartão inteiro
+          pintado. Antes eram cinco números centralizados com o rótulo em
+          CAIXA ALTA — caixa alta em rótulo de 12px é o que mais atrasa a
+          leitura, porque tira a silhueta da palavra.
 
           ⚠ CORREÇÃO DE DADO, não de aparência. A contagem de "Ganhas" comparava
           `status` com dois literais escritos aqui:
@@ -995,40 +985,35 @@ export default function CalendarioLicitacoes() {
           `contrato assinado`: o número aparecia MENOR do que a realidade, num
           cartão que a pessoa usa para conferir resultado.
           Agora passa por `normalizarStatus`, que é a autoridade. */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-        {(() => {
-          const ganhas = licitacoes.filter((l) => {
-            const s = normalizarStatus(l.status);
-            return s === 'Vencida' || s === 'Homologada';
-          }).length;
-          const vencidos = docsVencidos.length;
+      {(() => {
+        const ganhas = licitacoes.filter((l) => {
+          const s = normalizarStatus(l.status);
+          return s === 'Vencida' || s === 'Homologada';
+        }).length;
+        const vencidos = docsVencidos.length;
 
-          const cartoes = [
-            { rot: 'Total de processos', val: licitacoes.length, ic: CalendarDays, nota: 'Com data no calendário' },
-            { rot: 'Encerra em 3 dias', val: urgentes.length, ic: AlertTriangle, nota: urgentes.length > 0 ? 'Exige decisão hoje' : 'Nenhum prazo apertado', alerta: urgentes.length > 0 },
-            { rot: 'Próximos 30 dias', val: upcoming.length, ic: Clock, nota: 'Abertura ou encerramento' },
-            { rot: 'Ganhas', val: ganhas, ic: Trophy, nota: 'Vencidas e homologadas', bom: ganhas > 0 },
-            { rot: 'Documentos em alerta', val: docsAlerta.length, ic: FileWarning, nota: vencidos > 0 ? `${vencidos} já ${vencidos === 1 ? 'vencido' : 'vencidos'}` : 'Nenhum vencido', alerta: vencidos > 0 },
-          ];
+        const indicadores: Indicador[] = [
+          { rotulo: 'Total de processos', valor: licitacoes.length, icone: CalendarDays, detalhe: 'Com data no calendário' },
+          {
+            rotulo: 'Encerra em 3 dias',
+            valor: urgentes.length,
+            icone: AlertTriangle,
+            detalhe: urgentes.length > 0 ? 'Exige decisão hoje' : 'Nenhum prazo apertado',
+            tom: urgentes.length > 0 ? 'critico' : 'neutro',
+          },
+          { rotulo: 'Próximos 30 dias', valor: upcoming.length, icone: Clock, detalhe: 'Abertura ou encerramento' },
+          { rotulo: 'Ganhas', valor: ganhas, icone: Trophy, detalhe: 'Vencidas e homologadas', tom: ganhas > 0 ? 'ok' : 'neutro' },
+          {
+            rotulo: 'Documentos em alerta',
+            valor: docsAlerta.length,
+            icone: FileWarning,
+            detalhe: vencidos > 0 ? `${vencidos} já ${vencidos === 1 ? 'vencido' : 'vencidos'}` : 'Nenhum vencido',
+            tom: vencidos > 0 ? 'critico' : docsAlerta.length > 0 ? 'aviso' : 'neutro',
+          },
+        ];
 
-          return cartoes.map(({ rot, val, ic: Icone, nota, alerta, bom }) => (
-            <Card key={rot} className={cn('p-4 min-w-0', alerta && 'border-warning-line bg-warning-tint')}>
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <span className={cn('text-sm', alerta ? 'text-warning-ink' : 'text-muted-foreground')}>{rot}</span>
-                <Icone className={cn('w-4 h-4 shrink-0', alerta ? 'text-warning-ink' : 'text-muted-foreground')} aria-hidden="true" />
-              </div>
-              <p className={cn(
-                'text-[2rem] leading-10 font-bold tabular-nums',
-                alerta && 'text-warning-ink',
-                bom && 'text-success',
-              )}>
-                {val}
-              </p>
-              <p className={cn('text-xs mt-1', alerta ? 'text-warning-ink' : 'text-muted-foreground')}>{nota}</p>
-            </Card>
-          ));
-        })()}
-      </div>
+        return <FaixaIndicadores itens={indicadores} />;
+      })()}
     </div>
   );
 }

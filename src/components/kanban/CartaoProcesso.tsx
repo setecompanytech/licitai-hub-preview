@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { identidadeDoProcesso, objetoLegivel } from '@/lib/licitacao/identidade-do-processo';
-import { normalizarStatus, STATUS_DECIDIDOS, type StatusProcesso } from '@/lib/licitacao/status';
+import { aparenciaStatus, normalizarStatus, STATUS_DECIDIDOS, type StatusProcesso } from '@/lib/licitacao/status';
 import {
   COLUNAS,
   colunaDe,
@@ -24,10 +24,11 @@ import {
  * O cartão do quadro — compacto por padrão, completo a um clique.
  *
  * A composição exigida pelo comando de 13/09 é "processo, órgão, prazo,
- * responsável e pendências". Todos cabem em três linhas de ~70px porque as
- * pontas direitas trabalham: valor e prazo são critérios de VARREDURA ("qual
- * vale a pena? qual vence antes?") e ficam alinhados à direita, não escondidos
- * no estado aberto.
+ * responsável e pendências"; o Design System v3 (19/09) acrescenta o STATUS
+ * como selo suave — `aparenciaStatus()` é a autoridade de cor e rótulo. Tudo
+ * cabe em três linhas porque as pontas direitas trabalham: valor e prazo são
+ * critérios de VARREDURA ("qual vale a pena? qual vence antes?") e ficam
+ * alinhados à direita, não escondidos no estado aberto.
  *
  * Aberto, o cartão acrescenta o objeto inteiro, o local, o desfecho de um
  * processo arquivado e as duas ações — entre elas o menu "Mover", que é a
@@ -76,6 +77,9 @@ const CartaoProcesso = forwardRef<HTMLDivElement, CartaoProcessoProps>(function 
   const etapa = colunaDe(lic);
   const prazo = textoDoPrazo(lic.data_encerramento);
   const pendencias = pendenciasDoProcesso(lic);
+  /* O selo mostra o status REAL do processo: num cartão arquivado é o desfecho
+     que ele tinha ("Homologada"), e é isso que a coluna Arquivada não diz. */
+  const aparencia = aparenciaStatus(lic.status);
   const arquivadoComDesfecho =
     lic.arquivado_em && STATUS_DECIDIDOS.includes(normalizarStatus(lic.status));
 
@@ -91,7 +95,9 @@ const CartaoProcesso = forwardRef<HTMLDivElement, CartaoProcessoProps>(function 
       tabIndex={0}
       aria-expanded={aberto}
       className={cn(
-        'g-cartao bg-card p-3 transition-[box-shadow,opacity] hover:shadow-md select-none',
+        // Cartão do quadro (Design System v3): branco, raio 8px, borda fina e
+        // sombra discreta sobre a coluna rebaixada.
+        'rounded-md border border-border bg-card p-3 shadow-sm transition-[box-shadow,opacity,border-color] duration-150 hover:border-primary/40 hover:shadow-md select-none',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
         podeArrastar && 'touch-none',
         arrastando ? 'opacity-30 cursor-grabbing' : 'cursor-pointer',
@@ -123,7 +129,7 @@ const CartaoProcesso = forwardRef<HTMLDivElement, CartaoProcessoProps>(function 
     >
       <div className="flex items-start gap-2">
         {podeArrastar && (
-          <GripVertical className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground/40" aria-hidden="true" />
+          <GripVertical className="mt-0.5 h-4 w-4 flex-shrink-0 text-foreground-tertiary" aria-hidden="true" />
         )}
         <div className="min-w-0 flex-1">
           {/* Linha 1 — processo à esquerda, VALOR à direita. */}
@@ -156,30 +162,31 @@ const CartaoProcesso = forwardRef<HTMLDivElement, CartaoProcessoProps>(function 
             )}
           </div>
 
-          {/* Linha 3 — RESPONSÁVEL e PENDÊNCIAS, a informação que diz de quem é
-              a próxima ação. Some quando não há nada a dizer, para o cartão de
-              um processo em dia continuar com duas linhas. */}
-          {(responsavel || pendencias.length > 0) && (
-            <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-              {responsavel && (
-                <span className="g-meta inline-flex min-w-0 items-center gap-1 text-muted-foreground">
-                  <User className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                  <span className="truncate">{responsavel}</span>
-                </span>
-              )}
-              {pendencias.map((p) => (
-                <Badge
-                  key={p.chave}
-                  variant={p.tom === 'critico' ? 'danger' : 'warning'}
-                  className="gap-1 px-1.5 py-0"
-                  title={p.explicacao}
-                >
-                  <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden="true" />
-                  {p.rotulo}
-                </Badge>
-              ))}
-            </div>
-          )}
+          {/* Linha 3 — STATUS (selo suave), RESPONSÁVEL e PENDÊNCIAS: a
+              informação que diz em que pé o processo está e de quem é a
+              próxima ação. */}
+          <div className="mt-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+            <Badge variant="outline" className={cn('px-1.5 py-0', aparencia.className)}>
+              {aparencia.label}
+            </Badge>
+            {responsavel && (
+              <span className="g-meta inline-flex min-w-0 items-center gap-1 text-muted-foreground">
+                <User className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                <span className="truncate">{responsavel}</span>
+              </span>
+            )}
+            {pendencias.map((p) => (
+              <Badge
+                key={p.chave}
+                variant={p.tom === 'critico' ? 'danger' : 'warning'}
+                className="gap-1 px-1.5 py-0"
+                title={p.explicacao}
+              >
+                <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden="true" />
+                {p.rotulo}
+              </Badge>
+            ))}
+          </div>
 
           {aberto && (
             <>

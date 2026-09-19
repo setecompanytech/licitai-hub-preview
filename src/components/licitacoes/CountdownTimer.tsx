@@ -50,9 +50,11 @@ export default function CountdownTimer({ targetDate, className, compact = false 
     return (
       // `tabular-nums` no lugar da fonte mono: dígitos de largura fixa é o
       // que impede o relógio de "tremer" a cada segundo, sem trocar de família.
+      // Tinta `-ink` dos trios: o relógio é TEXTO sobre a superfície, e
+      // `text-warning` puro não passa de contraste fora de ícone e barra.
       <span className={cn(
         'inline-flex items-center gap-1 text-xs font-medium tabular-nums',
-        isCritical ? 'text-destructive animate-pulse' : isUrgent ? 'text-warning' : 'text-primary',
+        isCritical ? 'text-destructive-ink animate-pulse' : isUrgent ? 'text-warning-ink' : 'text-primary',
         className
       )}>
         {isCritical && <AlertTriangle className="w-4 h-4" aria-hidden="true" />}
@@ -82,7 +84,7 @@ export default function CountdownTimer({ targetDate, className, compact = false 
               : 'bg-primary-tint border-border text-primary'
           )}
         >
-          <span className="text-sm font-bold tabular-nums leading-none">{String(unit.value).padStart(2, '0')}</span>
+          <span className="text-sm font-semibold tabular-nums leading-none">{String(unit.value).padStart(2, '0')}</span>
           <span className="text-xs uppercase opacity-70">{unit.label}</span>
         </div>
       ))}

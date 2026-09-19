@@ -336,7 +336,7 @@ export default function PainelMetas() {
             <div
               role="group"
               aria-label={`Colaborador: ${nomeColaborador}`}
-              className="g-cartao g-corpo flex h-10 items-center gap-2 bg-muted px-3 text-foreground"
+              className="flex h-10 items-center gap-2 rounded-md border border-input bg-muted px-3 text-sm text-foreground"
             >
               <UserRound aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground" />
               <span className="truncate">{nomeColaborador}</span>
@@ -367,10 +367,10 @@ export default function PainelMetas() {
 
       {carregando ? (
         <div role="status" aria-label="Carregando" className="flex flex-col gap-4">
-          <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr))]">
-            {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-[72px] rounded-[var(--g-raio)]" />)}
+          <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(160px,100%),1fr))]">
+            {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-24 rounded-lg" />)}
           </div>
-          <Skeleton className="h-48 w-full rounded-[var(--g-raio)]" />
+          <Skeleton className="h-48 w-full rounded-lg" />
         </div>
       ) : !selecionado ? (
         <div className="g-cartao">
@@ -463,7 +463,7 @@ export default function PainelMetas() {
           {PONTAS.some((l) => analise.pontas[l.chave].alvo > 0) && (
             <SecaoGestao titulo="As três pontas do mês">
               <p className="g-meta text-muted-foreground">{AVISO_CRITERIOS_DISTINTOS}</p>
-              <div className="g-cartao flex flex-col gap-4 p-4 sm:p-6">
+              <div className="g-cartao flex flex-col gap-4 p-4 sm:p-5">
                 {PONTAS.filter((l) => analise.pontas[l.chave].alvo > 0).map((l) => {
                   const p = analise.pontas[l.chave];
                   const pct = p.alvo > 0 ? Math.min((p.feito / p.alvo) * 100, 100) : 0;
@@ -507,7 +507,7 @@ export default function PainelMetas() {
                   duas não contarem histórias diferentes. Antes era laranja fixa,
                   igual com 24% e com 98% — exceção à régua de cor encerrada em
                   2026-08-08. */}
-              <div className="g-cartao p-4 sm:p-6">
+              <div className="g-cartao p-4 sm:p-5">
                 <div className="g-corpo mb-2 flex items-center justify-between text-muted-foreground">
                   <span>Progresso {baseApurada ? `· ${baseApurada.curto}` : ''}</span>
                   <span className="tabular-nums">
@@ -526,11 +526,11 @@ export default function PainelMetas() {
 
               {/* ── O que falta fazer ── */}
               <SecaoGestao titulo="O que falta para bater a meta">
-                <div className="g-cartao flex flex-col gap-6 p-4 sm:p-6">
+                <div className="g-cartao flex flex-col gap-6 p-4 sm:p-5">
                   <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
                     <div>
                       <p className="g-meta text-muted-foreground">Participações</p>
-                      <p className="text-xl font-bold leading-7 tabular-nums text-foreground">
+                      <p className="text-2xl font-semibold leading-7 tabular-nums text-foreground">
                         {analise.projecao.participacoesNecessarias}
                       </p>
                       <LinhaApuracao
@@ -540,7 +540,7 @@ export default function PainelMetas() {
                     </div>
                     <div>
                       <p className="g-meta text-muted-foreground">Contratos</p>
-                      <p className="text-xl font-bold leading-7 tabular-nums text-foreground">
+                      <p className="text-2xl font-semibold leading-7 tabular-nums text-foreground">
                         {analise.projecao.contratosNecessarios}
                       </p>
                       <LinhaApuracao
@@ -550,14 +550,14 @@ export default function PainelMetas() {
                     </div>
                     <div>
                       <p className="g-meta text-muted-foreground">Ritmo necessário</p>
-                      <p className="text-xl font-bold leading-7 tabular-nums text-foreground">
+                      <p className="text-2xl font-semibold leading-7 tabular-nums text-foreground">
                         {formatBRL(paraReais(analise.projecao.runRateNecessarioCent))}
                       </p>
                       <p className="g-meta text-muted-foreground">por dia útil restante</p>
                     </div>
                     <div>
                       <p className="g-meta text-muted-foreground">Ritmo atual</p>
-                      <p className="text-xl font-bold leading-7 tabular-nums text-foreground">
+                      <p className="text-2xl font-semibold leading-7 tabular-nums text-foreground">
                         {/* Dia 1 do mês não tem ritmo "zero": não tem ritmo ainda.
                             A fórmula devolve 0 porque não há divisor — exibir esse
                             0 como fato acusaria de parado quem nem começou. */}
@@ -612,7 +612,7 @@ export default function PainelMetas() {
               </div>
             }
           >
-            <div className="g-cartao flex flex-col gap-6 p-4 sm:p-6">
+            <div className="g-cartao flex flex-col gap-6 p-4 sm:p-5">
               <ListaDeCampos
                 className="sm:grid sm:grid-cols-2 sm:gap-x-8"
                 campos={[

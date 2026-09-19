@@ -65,11 +65,13 @@ const statusConfig: Record<string, { icon: typeof CheckCircle2; color: string; b
   indisponivel: { icon: HelpCircle, color: 'text-muted-foreground', bg: 'bg-muted border-border', variant: 'muted', label: 'Indisponível' },
 };
 
+/* Tinta `-ink` porque aqui a cor vai em TEXTO sobre o branco do cartão (o
+   número do score); `text-warning` puro só serve a ícone e barra. */
 const riscoConfig: Record<string, { text: string; variant: BadgeTom }> = {
-  baixo: { text: 'text-success', variant: 'success' },
-  moderado: { text: 'text-warning', variant: 'warning' },
-  elevado: { text: 'text-warning', variant: 'warning' },
-  critico: { text: 'text-destructive', variant: 'danger' },
+  baixo: { text: 'text-success-ink', variant: 'success' },
+  moderado: { text: 'text-warning-ink', variant: 'warning' },
+  elevado: { text: 'text-warning-ink', variant: 'warning' },
+  critico: { text: 'text-destructive-ink', variant: 'danger' },
 };
 
 type Props = {
@@ -130,7 +132,7 @@ export default function AnaliseCapag({ orgao, uf, municipio }: Props) {
       {/* Resumo com a nota CAPAG — a tarja da esquerda diz o estado, como nos
           cartões de oportunidade da tela (mesma espessura de 3px). */}
       <Card className={`border-l-[3px] ${nota.tarja}`}>
-        <CardContent className="p-6">
+        <CardContent className="p-5">
           {/* Origem dos dados */}
           {data.fonte_dados && (
             <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
@@ -155,8 +157,8 @@ export default function AnaliseCapag({ orgao, uf, municipio }: Props) {
           )}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className={`w-16 h-16 rounded-lg border flex items-center justify-center flex-shrink-0 ${nota.ladrilho}`}>
-                <span className="text-2xl font-bold">{data.capag.nota}</span>
+              <div className={`w-16 h-16 rounded-md border flex items-center justify-center flex-shrink-0 ${nota.ladrilho}`}>
+                <span className="text-3xl font-semibold">{data.capag.nota}</span>
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
@@ -170,7 +172,7 @@ export default function AnaliseCapag({ orgao, uf, municipio }: Props) {
               </div>
             </div>
             <div className="sm:text-right">
-              <div className={`text-[2rem] leading-10 font-bold tabular-nums ${risco.text}`}>
+              <div className={`text-[1.75rem] leading-9 font-semibold tabular-nums ${risco.text}`}>
                 {data.risco_geral.score}%
               </div>
               <Badge variant={risco.variant}>
@@ -190,16 +192,16 @@ export default function AnaliseCapag({ orgao, uf, municipio }: Props) {
           { key: 'liquidez', label: 'Liquidez', icon: Scale, data: data.capag.liquidez },
         ].map(ind => {
           const isIndisponivel = !ind.data.classificacao || ind.data.classificacao.toLowerCase().includes('indispon');
-          const classColor = isIndisponivel ? 'text-muted-foreground' : ind.data.classificacao === 'A' ? 'text-success' : ind.data.classificacao === 'B' ? 'text-info' : 'text-destructive';
+          const classColor = isIndisponivel ? 'text-muted-foreground' : ind.data.classificacao === 'A' ? 'text-success-ink' : ind.data.classificacao === 'B' ? 'text-info-ink' : 'text-destructive-ink';
           const percentual = typeof ind.data.percentual_estimado === 'number' ? ind.data.percentual_estimado : null;
           return (
-            <Card key={ind.key} className="p-6">
+            <Card key={ind.key} className="p-5">
               <div className="flex items-center gap-2 mb-2">
                 <ind.icon className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
                 <span className="text-sm font-medium text-muted-foreground">{ind.label}</span>
               </div>
               <div className="flex items-baseline gap-2 mb-2">
-                <span className={`text-2xl font-bold tabular-nums ${classColor}`}>
+                <span className={`text-3xl font-semibold tabular-nums ${classColor}`}>
                   {isIndisponivel ? 'N/D' : ind.data.classificacao}
                 </span>
                 {percentual !== null && (
@@ -268,7 +270,7 @@ export default function AnaliseCapag({ orgao, uf, municipio }: Props) {
             <ul className="space-y-2">
               {data.recomendacoes.map((rec, i) => (
                 <li key={i} className="text-base text-muted-foreground flex items-start gap-2">
-                  <span className="text-primary font-bold" aria-hidden="true">›</span>
+                  <span className="text-primary font-semibold" aria-hidden="true">›</span>
                   <span>{rec}</span>
                 </li>
               ))}
@@ -278,8 +280,8 @@ export default function AnaliseCapag({ orgao, uf, municipio }: Props) {
       </div>
 
       {/* Fontes */}
-      <Card className="bg-muted">
-        <CardContent className="p-6">
+      <Card className="bg-secondary">
+        <CardContent className="p-5">
           <div className="flex items-center gap-2 mb-2">
             <Info className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
             <span className="text-sm font-medium text-muted-foreground">Fontes de consulta</span>

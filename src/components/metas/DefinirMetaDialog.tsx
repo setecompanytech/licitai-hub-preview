@@ -93,7 +93,7 @@ export default function DefinirMetaDialog({ aberto, onFechar, colaborador, ano, 
               quê compará-lo — e olhar um ponto só esconde onde a esteira
               travou: contratos em dia com quitação zerada é ter fechado e não
               entregado, e o painel mostrava isso como meta batida. */}
-          <div className="rounded-lg border border-border p-4 space-y-4">
+          <div className="rounded-md border border-border bg-secondary p-4 space-y-4">
             <p className="g-corpo font-semibold text-foreground">
               Metas do mês
             </p>

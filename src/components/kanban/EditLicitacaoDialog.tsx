@@ -272,7 +272,7 @@ export default function EditLicitacaoDialog({ licitacao, open, onOpenChange, onS
         <div className="flex-1 min-h-0 overflow-y-auto lg:overflow-hidden lg:grid lg:grid-cols-[26rem_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]">
           {/* Coluna 1 — o formulário */}
           <div className="space-y-4 border-border px-6 py-5 lg:min-h-0 lg:overflow-y-auto lg:border-r">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="edit-lic-numero">Número</Label>
               <Input
@@ -315,7 +315,7 @@ export default function EditLicitacaoDialog({ licitacao, open, onOpenChange, onS
             />
           </div>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,0.7fr)_minmax(0,1fr)]">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,0.7fr)_minmax(0,1fr)]">
             <div className="space-y-2">
               <Label htmlFor="edit-lic-valor">Valor Estimado (R$)</Label>
               <Input
@@ -381,7 +381,7 @@ export default function EditLicitacaoDialog({ licitacao, open, onOpenChange, onS
           </div>
 
           {/* Coluna 2 — AURÉLIA, com a altura toda e largura de leitura */}
-          <div className="min-w-0 bg-muted/30 px-6 py-5 lg:min-h-0 lg:overflow-y-auto">
+          <div className="min-w-0 bg-secondary px-6 py-5 lg:min-h-0 lg:overflow-y-auto">
             <AureliaEditalPanel
               colunas={1}
               edital={{
@@ -396,7 +396,7 @@ export default function EditLicitacaoDialog({ licitacao, open, onOpenChange, onS
           </div>
         </div>
 
-        <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-border bg-muted/30 px-6 py-4">
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-border bg-secondary px-6 py-4">
           <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="ghost"
@@ -413,7 +413,7 @@ export default function EditLicitacaoDialog({ licitacao, open, onOpenChange, onS
             </Button>
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="ghost" className="text-destructive hover:bg-destructive-tint hover:text-destructive">
+                <Button variant="ghost" className="text-destructive-ink hover:bg-destructive-tint hover:text-destructive-ink">
                   <Trash2 aria-hidden="true" />
                   Excluir
                 </Button>

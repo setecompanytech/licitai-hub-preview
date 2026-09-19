@@ -160,7 +160,9 @@ const posicionarQuadro = (tituloAlvo: string) => {
   let alvo = { clientX: -1, clientY: -1 };
   colunas.forEach((coluna, i) => {
     coluna.getBoundingClientRect = retangulo(i * 270, 260);
-    if (within(coluna).queryByText(tituloAlvo)) alvo = { clientX: i * 270 + 130, clientY: 400 };
+    // Pelo TÍTULO da coluna (heading): o selo de status do cartão repete o
+    // mesmo texto, e `queryByText` acharia os dois.
+    if (within(coluna).queryByRole('heading', { name: tituloAlvo })) alvo = { clientX: i * 270 + 130, clientY: 400 };
   });
   return alvo;
 };
@@ -202,14 +204,17 @@ describe('Kanban — as oito colunas', () => {
       'Monitorando', 'Analisando', 'Proposta', 'Em Disputa',
       'Vencida', 'Homologada', 'Perdida', 'Arquivada',
     ];
+    // O título da coluna é um heading (aberta ou recolhida). Desde 19/09 o
+    // cartão também carrega o status num selo, com o mesmo texto — por isso
+    // a busca é pelo papel, e não pelo texto solto.
     for (const titulo of titulos) {
-      expect(within(quadro).getByText(titulo)).toBeTruthy();
+      expect(within(quadro).getByRole('heading', { name: titulo })).toBeTruthy();
     }
     expect(within(quadro).getAllByRole('listitem')).toHaveLength(8);
     // Os rótulos que NÃO existem: se alguém reintroduzir o status cru no
     // cabeçalho da coluna, some a divergência deliberada.
-    expect(within(quadro).queryByText('Em Análise')).toBeNull();
-    expect(within(quadro).queryByText('Proposta Enviada')).toBeNull();
+    expect(within(quadro).queryByRole('heading', { name: 'Em Análise' })).toBeNull();
+    expect(within(quadro).queryByRole('heading', { name: 'Proposta Enviada' })).toBeNull();
   });
 
   it('o cartão traz processo, órgão, prazo, responsável e pendências', async () => {
@@ -251,7 +256,7 @@ describe('Kanban — mover para Perdida', () => {
     expect(estado.atualizarStatus).not.toHaveBeenCalled();
     expect(estado.arquivarProcesso).not.toHaveBeenCalled();
     // E o cartão continua na coluna de origem.
-    const emDisputa = screen.getByText('Em Disputa').closest('[role="listitem"]') as HTMLElement;
+    const emDisputa = screen.getByRole('heading', { name: 'Em Disputa' }).closest('[role="listitem"]') as HTMLElement;
     expect(within(emDisputa).getByText('PE nº 33/2026')).toBeTruthy();
   });
 });
@@ -264,7 +269,7 @@ describe('Kanban — arrastar até a última coluna (relato de 14/09)', () => {
 
     const cartao = screen.getByText('PE nº 33/2026').closest('[role="button"]') as HTMLElement;
     const alvo = posicionarQuadro('Vencida');
-    const vencida = screen.getByText('Vencida').closest('[role="listitem"]') as HTMLElement;
+    const vencida = screen.getByRole('heading', { name: 'Vencida' }).closest('[role="listitem"]') as HTMLElement;
 
     fireEvent.pointerDown(cartao, { button: 0, clientX: 0, clientY: 0 });
     moverPonteiro(alvo);

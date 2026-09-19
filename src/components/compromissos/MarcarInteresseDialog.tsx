@@ -108,7 +108,7 @@ export default function MarcarInteresseDialog({ open, onOpenChange, edital, onSu
 
         <div className="space-y-4">
           {/* Edital info */}
-          <div className="space-y-1 rounded-lg border border-border bg-muted p-4">
+          <div className="space-y-1 rounded-md border border-border bg-secondary p-4">
             <p className="text-sm font-semibold">{edital.numero}</p>
             <p className="text-xs text-muted-foreground">{edital.orgao}</p>
             <p className="text-xs text-muted-foreground line-clamp-2">{edital.objeto}</p>
@@ -168,7 +168,7 @@ export default function MarcarInteresseDialog({ open, onOpenChange, edital, onSu
           </fieldset>
 
           {/* Auto-cadastro */}
-          <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary-tint p-4">
+          <div className="flex items-center justify-between gap-3 rounded-md border border-primary-line bg-primary-tint p-4">
             <div>
               <Label htmlFor="auto-cadastro" className="flex items-center gap-2 text-sm font-medium">
                 <Zap className="h-4 w-4 text-primary" aria-hidden="true" /> Cadastro automático

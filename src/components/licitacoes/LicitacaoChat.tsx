@@ -125,9 +125,9 @@ export default function LicitacaoChat({ licitacaoId, licitacaoNumero }: Props) {
   return (
     <div className="flex flex-col h-full border border-border rounded-lg bg-card overflow-hidden">
       {/* Header */}
-      <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-border bg-muted">
+      <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-border bg-secondary">
         <MessageSquare className="w-5 h-5 text-primary" aria-hidden="true" />
-        <span className="text-lg font-semibold">Mural do Processo</span>
+        <span className="text-lg font-semibold leading-6 text-foreground">Mural do Processo</span>
         {licitacaoNumero && (
           <Badge variant="info">{licitacaoNumero}</Badge>
         )}
@@ -196,19 +196,19 @@ export default function LicitacaoChat({ licitacaoId, licitacaoNumero }: Props) {
                       <Icon className="w-4 h-4" aria-hidden="true" />
                     </div>
                   )}
+                  {/* Balões do Design System v3: o meu na tinta verde, o dos
+                      outros (e o do sistema) na superfície rebaixada — nunca
+                      um balão escuro sólido dentro de um cartão branco. */}
                   <div className={cn(
-                    'max-w-[85%] rounded-lg px-3 py-2 text-sm',
+                    'max-w-[85%] rounded-lg px-3 py-2 text-sm text-foreground',
                     isSystem
                       ? 'bg-muted border border-border text-muted-foreground italic'
                       : isMine
-                      ? 'bg-primary text-primary-foreground'
+                      ? 'bg-primary-tint border border-primary-line'
                       : 'bg-muted'
                   )}>
                     <p className="whitespace-pre-wrap">{msg.conteudo}</p>
-                    <span className={cn(
-                      'text-xs mt-1 block tabular-nums',
-                      isMine ? 'text-primary-foreground/60' : 'text-muted-foreground'
-                    )}>
+                    <span className="text-xs mt-1 block tabular-nums text-muted-foreground">
                       {format(new Date(msg.created_at), "dd/MM HH:mm", { locale: ptBR })}
                     </span>
                   </div>
@@ -235,7 +235,7 @@ export default function LicitacaoChat({ licitacaoId, licitacaoNumero }: Props) {
           size="icon"
           onClick={handleSend}
           disabled={!input.trim() || sending}
-          className="h-11 w-11 flex-shrink-0"
+          className="flex-shrink-0"
           aria-label="Enviar mensagem"
         >
           {sending ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Send aria-hidden="true" />}

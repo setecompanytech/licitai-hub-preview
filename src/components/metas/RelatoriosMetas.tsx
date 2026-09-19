@@ -431,7 +431,7 @@ export default function RelatoriosMetas() {
                   <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
-                        <TableRow className="bg-muted">
+                        <TableRow>
                           <TableHead className="pl-4 sm:pl-6">Módulo</TableHead>
                           <TableHead className="w-[110px] pr-4 text-right sm:pr-6">Registros</TableHead>
                         </TableRow>

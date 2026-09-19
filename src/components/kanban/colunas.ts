@@ -45,48 +45,25 @@ export const colunaDe = (lic: { status: string; arquivado_em: string | null }): 
   lic.arquivado_em ? 'Arquivada' : normalizarStatus(lic.status);
 
 /**
- * Cor do estado em classes de token (identidade 12/09): a barra superior da
- * coluna, o ponto ao lado do título e a lavagem leve do fundo. Antes a cor
- * entrava por `style` inline — cor escrita à mão dentro do .tsx.
+ * Cor do estado em classes de token: o ponto ao lado do título da coluna e
+ * do item do menu "Mover". Só o ponto — no Design System v3 (19/09) a coluna
+ * é a superfície rebaixada neutra (`bg-secondary`), sem barra nem lavagem
+ * colorida, e o status de cada cartão vai num selo suave por
+ * `aparenciaStatus()`, a mesma régua do resto do app: cinza para o que ainda
+ * não é estado, âmbar para análise, verde para proposta e ganho, azul para a
+ * disputa em andamento, vermelho para a perda.
  */
-type CorDaEtapa = { topo: string; ponto: string; lavagem: string };
+type CorDaEtapa = { ponto: string };
 
 const APARENCIA_DA_ETAPA: Record<StatusProcesso, { description: string; cor: CorDaEtapa }> = {
-  Monitorando: {
-    description: 'Editais sendo acompanhados',
-    cor: { topo: 'border-t-info', ponto: 'bg-info', lavagem: 'bg-info/5' },
-  },
-  'Em Análise': {
-    description: 'Análise de viabilidade',
-    cor: { topo: 'border-t-warning', ponto: 'bg-warning', lavagem: 'bg-warning/5' },
-  },
-  'Proposta Enviada': {
-    description: 'Proposta elaborada e enviada',
-    cor: { topo: 'border-t-primary', ponto: 'bg-primary', lavagem: 'bg-primary/5' },
-  },
-  // `--accent` e `--primary` são o mesmo verde nos dois temas: a coluna fica
-  // idêntica à de antes, agora pelo token de ação em vez do de hover.
-  'Em Disputa': {
-    description: 'Disputa/pregão em andamento',
-    cor: { topo: 'border-t-primary', ponto: 'bg-primary', lavagem: 'bg-primary/5' },
-  },
-  Vencida: {
-    description: 'Licitação arrematada',
-    cor: { topo: 'border-t-success', ponto: 'bg-success', lavagem: 'bg-success/5' },
-  },
-  // Azul deixou de ser cor de estado no sistema: Homologada usa o token neutro.
-  Homologada: {
-    description: 'Resultado homologado',
-    cor: { topo: 'border-t-info', ponto: 'bg-info', lavagem: 'bg-info/5' },
-  },
-  Perdida: {
-    description: 'Não arrematada',
-    cor: { topo: 'border-t-destructive', ponto: 'bg-destructive', lavagem: 'bg-destructive/5' },
-  },
-  Arquivada: {
-    description: 'Processos encerrados',
-    cor: { topo: 'border-t-muted-foreground', ponto: 'bg-muted-foreground', lavagem: 'bg-muted/60' },
-  },
+  Monitorando: { description: 'Editais sendo acompanhados', cor: { ponto: 'bg-muted-foreground' } },
+  'Em Análise': { description: 'Análise de viabilidade', cor: { ponto: 'bg-warning' } },
+  'Proposta Enviada': { description: 'Proposta elaborada e enviada', cor: { ponto: 'bg-primary' } },
+  'Em Disputa': { description: 'Disputa/pregão em andamento', cor: { ponto: 'bg-info' } },
+  Vencida: { description: 'Licitação arrematada', cor: { ponto: 'bg-success' } },
+  Homologada: { description: 'Resultado homologado', cor: { ponto: 'bg-success' } },
+  Perdida: { description: 'Não arrematada', cor: { ponto: 'bg-destructive' } },
+  Arquivada: { description: 'Processos encerrados', cor: { ponto: 'bg-muted-foreground' } },
 };
 
 export type ColunaDoQuadro = {

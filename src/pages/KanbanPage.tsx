@@ -8,7 +8,6 @@ import { normalizarStatus as normalizeStatus, type StatusProcesso } from '@/lib/
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select,
@@ -19,7 +18,7 @@ import {
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { identidadeDoProcesso, objetoLegivel } from '@/lib/licitacao/identidade-do-processo';
-import { MapPin, LayoutDashboard, Search, RefreshCw, ShieldAlert } from 'lucide-react';
+import { MapPin, LayoutDashboard, RefreshCw, ShieldAlert } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
@@ -37,6 +36,7 @@ import { colunaSobOPonteiro, velocidadeDeRolagem } from '@/components/kanban/arr
 import RegistrarPerdaDialog, { type PerdaAlvo } from '@/components/metas/RegistrarPerdaDialog';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import AbasGestao from '@/components/gestao/AbasGestao';
+import BarraFiltros from '@/components/gestao/BarraFiltros';
 import CompromissosResumo from '@/components/gestao/CompromissosResumo';
 import HistoricoExtracoes from '@/components/gestao/HistoricoExtracoes';
 
@@ -59,8 +59,12 @@ import HistoricoExtracoes from '@/components/gestao/HistoricoExtracoes';
  */
 const LARGURA_QUADRO_COMPLETO = 768;
 
-/** Piso de largura de coluna fixado pelo comando: abaixo disto o cartão ilegível. */
-const LARGURA_MINIMA_COLUNA = 'min-w-[260px]';
+/**
+ * Largura da coluna fixada pelo Design System v3 (≈300px): fixa, não elástica,
+ * para o cartão ter sempre a mesma medida em qualquer quantidade de colunas
+ * abertas — abaixo disto o cartão fica ilegível, acima ele se espalha.
+ */
+const LARGURA_COLUNA = 'w-[300px] shrink-0';
 
 type DragState = { id: string; offsetX: number; offsetY: number } | null;
 /** Ponteiro apertado num card, ainda sem saber se é clique ou arrasto. */
@@ -549,11 +553,11 @@ export default function KanbanPage() {
             <div className="flex gap-3 overflow-x-auto pb-4" role="status" aria-live="polite">
               <span className="sr-only">Carregando processos…</span>
               {COLUNAS.slice(0, 4).map((c) => (
-                <div key={c.id} className={cn('g-cartao flex-1 space-y-2 p-3', LARGURA_MINIMA_COLUNA)}>
+                <div key={c.id} className={cn('space-y-2 rounded-lg border border-border/70 bg-secondary p-3', LARGURA_COLUNA)}>
                   <Skeleton className="h-5 w-24" />
                   <Skeleton className="h-4 w-32" />
-                  <Skeleton className="h-16 w-full" />
-                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full rounded-md" />
+                  <Skeleton className="h-16 w-full rounded-md" />
                 </div>
               ))}
             </div>
@@ -580,47 +584,43 @@ export default function KanbanPage() {
             )
           ) : (
             <>
-            {/* Barra do quadro: controle de colunas vazias à esquerda, filtro à
-                direita. Os botões "Compartilhar", "Gerar .xlsx" e "Imprimir" do
-                desenho NÃO vieram: no protótipo eles não fazem nada, e botão que
-                não faz nada num board de processo é pior que botão ausente. */}
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex min-w-0 flex-wrap items-center gap-3">
-                {/* Recolher vazias só existe onde há oito colunas ao mesmo
-                    tempo; no celular o seletor já mostra uma etapa por vez. */}
-                {quadroCompleto && vazias > 0 && (
-                  <Button type="button" variant="ghost" onClick={() => setMostrarVazias(v => !v)}>
-                    {mostrarVazias
-                      ? 'Recolher colunas vazias'
-                      : `Mostrar ${vazias} coluna(s) vazia(s)`}
-                  </Button>
-                )}
-                {filtro && (
-                  <span className="g-corpo text-muted-foreground tabular-nums">
-                    {itensFiltrados.length} de {items.length} processos
-                  </span>
-                )}
-              </div>
-
-              <div className="relative w-full sm:w-64">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-                <Input
-                  value={filtro}
-                  onChange={(e) => setFiltro(e.target.value)}
-                  placeholder="Filtrar no board..."
-                  aria-label="Filtrar processos no board"
-                  className="g-controle pl-9"
-                />
-              </div>
-            </div>
+            {/* Barra do quadro na anatomia comum às telas de Gestão
+                (`BarraFiltros`): busca larga à esquerda; à direita a contagem
+                do filtro e o controle de colunas vazias. Os botões
+                "Compartilhar", "Gerar .xlsx" e "Imprimir" do desenho NÃO
+                vieram: no protótipo eles não fazem nada, e botão que não faz
+                nada num board de processo é pior que botão ausente. */}
+            <BarraFiltros
+              busca={filtro}
+              aoBuscar={setFiltro}
+              placeholderBusca="Filtrar no board..."
+              acao={
+                <>
+                  {filtro && (
+                    <span className="g-corpo text-muted-foreground tabular-nums">
+                      {itensFiltrados.length} de {items.length} processos
+                    </span>
+                  )}
+                  {/* Recolher vazias só existe onde há oito colunas ao mesmo
+                      tempo; no celular o seletor já mostra uma etapa por vez. */}
+                  {quadroCompleto && vazias > 0 && (
+                    <Button type="button" variant="ghost" onClick={() => setMostrarVazias(v => !v)}>
+                      {mostrarVazias
+                        ? 'Recolher colunas vazias'
+                        : `Mostrar ${vazias} coluna(s) vazia(s)`}
+                    </Button>
+                  )}
+                </>
+              }
+            />
 
             {quadroCompleto ? (
-              /* O QUADRO. `overflow-x-auto` aqui e `min-w-[260px]` em cada
+              /* O QUADRO. `overflow-x-auto` aqui e 300px fixos em cada
                  coluna: a rolagem horizontal é LOCAL, e as oito colunas param
                  de se espremer para caber na janela. Em notebook de 1.366px
-                 cabem cinco por vez e as outras três estão a um arrasto de
-                 distância — melhor que oito tiras de 150px onde nem o número do
-                 processo cabe. */
+                 cabem três ou quatro por vez e as outras estão a um arrasto
+                 de distância — melhor que oito tiras de 150px onde nem o
+                 número do processo cabe. */
               <div
                 ref={quadroRef}
                 className={cn('flex gap-3 overflow-x-auto pb-4', isDragging && 'select-none')}
@@ -643,37 +643,39 @@ export default function KanbanPage() {
                       ref={(el) => { columnRefs.current[col.id] = el; }}
                       onClick={() => recolhida && setMostrarVazias(true)}
                       title={recolhida ? `${col.title} — vazia. Clique para expandir.` : undefined}
-                      // A cor de cada estado saía num pontinho de 10px — o
-                      // financeiro veste a coluna inteira, e a paridade foi
-                      // pedida. Barra superior na cor + lavagem leve: identidade
-                      // sem gritar sobre os cards.
+                      // Coluna do Design System v3: superfície rebaixada
+                      // (`bg-secondary`) com um fio fino — sem barra colorida:
+                      // a cor do estado fica no ponto ao lado do título e no selo
+                      // de cada cartão. O fio existe porque `secondary` e o fundo
+                      // da página são quase o mesmo tom, e sem ele a coluna se
+                      // dissolvia na página.
                       className={cn(
-                        'rounded-[var(--g-raio)] border border-border border-t-4 transition-[background-color,box-shadow]',
-                        col.cor.topo,
-                        col.cor.lavagem,
+                        'rounded-lg border border-border/70 bg-secondary transition-[background-color,box-shadow]',
                         // Coluna vazia vira uma faixa estreita em vez de ocupar a
                         // largura de uma cheia. Recolher as vazias devolve o
                         // espaço a quem tem trabalho — e elas continuam recebendo
                         // cartão arrastado.
                         recolhida
                           ? 'w-12 flex-shrink-0 p-2 cursor-pointer hover:bg-muted'
-                          : cn('flex-1 p-3', LARGURA_MINIMA_COLUNA),
+                          : cn('p-3', LARGURA_COLUNA),
                         isOver && isDragging && 'ring-2 ring-ring bg-primary-tint'
                       )}
                     >
                       {recolhida ? (
                         <div className="flex flex-col items-center gap-2 py-1">
                           <span className={cn('h-2.5 w-2.5 flex-shrink-0 rounded-full', col.cor.ponto)} aria-hidden="true" />
-                          <span className="whitespace-nowrap g-meta font-semibold text-muted-foreground [writing-mode:vertical-rl]">
+                          {/* Título de coluna continua sendo título quando
+                              recolhido: a etapa é a mesma, só a largura muda. */}
+                          <h3 className="whitespace-nowrap g-meta font-semibold text-muted-foreground [writing-mode:vertical-rl]">
                             {col.title}
-                          </span>
+                          </h3>
                           <span className="g-meta text-muted-foreground tabular-nums">0</span>
                         </div>
                       ) : (
                       <>
                       <div className="mb-3 flex items-center gap-2">
                         <span className={cn('h-2.5 w-2.5 flex-shrink-0 rounded-full', col.cor.ponto)} aria-hidden="true" />
-                        <h3 className="text-sm font-semibold leading-tight">{col.title}</h3>
+                        <h3 className="text-sm font-semibold leading-5 text-foreground">{col.title}</h3>
                         <Badge variant="muted" className="ml-auto tabular-nums">{colItems.length}</Badge>
                       </div>
                       <p className="mb-3 g-meta text-muted-foreground line-clamp-2">{col.description}</p>
@@ -681,7 +683,7 @@ export default function KanbanPage() {
                       <div className="min-h-32 space-y-2">
                         {colItems.length === 0 && (
                           <div className={cn(
-                            'rounded-[var(--g-raio)] border-2 border-dashed border-border py-8 text-center transition-colors',
+                            'rounded-md border border-dashed border-input py-6 text-center transition-colors',
                             isOver && isDragging && 'border-primary/40 bg-primary-tint'
                           )}>
                             <p className="g-meta text-muted-foreground">
@@ -771,7 +773,7 @@ export default function KanbanPage() {
           className="pointer-events-none fixed z-[9999] w-60 rotate-1 opacity-95"
           style={{ left: ghostPos.x - ds.offsetX, top: ghostPos.y - ds.offsetY }}
         >
-          <div className="rounded-[var(--g-raio)] border-2 border-primary/60 bg-card p-3 shadow-md">
+          <div className="rounded-md border border-primary/60 bg-card p-3 shadow-lg">
             <p className="truncate text-sm font-semibold tabular-nums">{identidadeDoProcesso(draggedItem)}</p>
             <p className="mt-0.5 text-sm font-medium line-clamp-1 [overflow-wrap:anywhere]">{objetoLegivel(draggedItem.objeto)}</p>
             {draggedItem.municipio && draggedItem.uf && (

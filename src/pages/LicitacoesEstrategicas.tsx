@@ -494,7 +494,7 @@ export default function LicitacoesEstrategicas() {
           </BarraFiltros>
 
           {loading && (
-            <div role="status" aria-live="polite" className="flex flex-col items-center gap-1 text-center">
+            <div role="status" aria-live="polite" className="flex flex-col gap-0.5">
               <p className="g-corpo text-muted-foreground">Analisando licitações com IA...</p>
               <p className="g-meta text-muted-foreground">Isso pode levar alguns segundos</p>
             </div>

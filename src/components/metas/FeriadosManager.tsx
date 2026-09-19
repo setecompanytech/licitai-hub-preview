@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Skeleton } from '@/components/ui/skeleton';
 import EstadoVazio from '@/components/shared/EstadoVazio';
 import { SecaoGestao } from '@/components/gestao/TelaGestao';
 import {
@@ -141,7 +142,7 @@ export default function FeriadosManager() {
       }
     >
       <div className="g-cartao flex flex-col">
-        <div className="flex flex-col gap-4 border-b border-border p-4 sm:p-6">
+        <div className="flex flex-col gap-4 border-b border-border p-4 sm:p-5">
           <Alert variant="info">
             <Info aria-hidden="true" className="w-4 h-4" />
             <AlertDescription>
@@ -253,9 +254,12 @@ export default function FeriadosManager() {
 
         {/* Lista */}
         {isLoading ? (
-          <div role="status" aria-label="Carregando" className="g-corpo flex items-center justify-center gap-2 p-12 text-muted-foreground">
-            <Loader2 aria-hidden="true" className="w-4 h-4 animate-spin" />
-            Carregando…
+          /* Esqueleto na forma das linhas da tabela, não spinner no centro. */
+          <div role="status" aria-label="Carregando" className="space-y-3 p-4 sm:p-5">
+            <span className="sr-only">Carregando…</span>
+            <Skeleton className="h-4 w-2/3" />
+            <Skeleton className="h-4 w-1/2" />
+            <Skeleton className="h-4 w-3/5" />
           </div>
         ) : (feriados?.length ?? 0) === 0 ? (
           <EstadoVazio
@@ -268,7 +272,7 @@ export default function FeriadosManager() {
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="bg-muted">
+                <TableRow>
                   <TableHead className="w-[130px] pl-4 sm:pl-6">Data</TableHead>
                   <TableHead>Descrição</TableHead>
                   <TableHead className="w-[190px]">Abrangência</TableHead>
@@ -309,7 +313,7 @@ export default function FeriadosManager() {
                           </Button>
                           <Button
                             size="sm" variant="ghost"
-                            className="text-destructive hover:text-destructive"
+                            className="text-destructive-ink hover:bg-destructive-tint hover:text-destructive-ink"
                             aria-label={`Remover feriado ${f.descricao}`}
                             onClick={() => setConfirmarExclusao(f)}
                           >
@@ -339,7 +343,7 @@ export default function FeriadosManager() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className={buttonVariants({ variant: 'destructive' })}
               onClick={() => {
                 if (confirmarExclusao) excluir.mutate(confirmarExclusao.id);
                 setConfirmarExclusao(null);

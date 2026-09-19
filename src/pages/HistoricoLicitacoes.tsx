@@ -20,7 +20,7 @@ import TabelaGestao, { type ColunaGestao, type OrdenacaoTabela } from '@/compone
 import TextoExpansivel from '@/components/gestao/TextoExpansivel';
 import {
   DIAS_CARENCIA_ARQUIVAMENTO, DIAS_RETENCAO_ARQUIVO, RESULTADOS_ENCERRADORES,
-  ehDecidido, STATUS_PROCESSO, normalizarStatus, rotuloStatus, type StatusProcesso,
+  aparenciaStatus, ehDecidido, STATUS_PROCESSO, normalizarStatus, rotuloStatus, type StatusProcesso,
 } from '@/lib/licitacao/status';
 import {
   Archive, Trophy, XCircle, Download, TrendingUp, CheckCircle, AlertTriangle,
@@ -49,11 +49,12 @@ const STATUS_FLOW = STATUS_PROCESSO;
  * Kanban e as edge functions seguem. `statusConfig` foi removido; o RÓTULO
  * passa a vir sempre de `rotuloStatus`.
  *
- * O que NÃO se importou da lib foi `aparenciaStatus().className`: ela devolve
- * alfa composto à mão (`bg-warning/10 text-warning`), que a régua de 13/09
- * aposentou em favor da tripla tint/ink/line de `SeloSituacao`. Então o que
- * sobra local é só o TOM — a família semântica —, com o tipo garantindo
- * cobertura completa do vocabulário. Vocabulário na lib, tinta no módulo.
+ * Desde o Design System v3 (19/09) `aparenciaStatus().className` devolve o
+ * trio tint/ink/line — a mesma tinta do Kanban e do painel —, e é ela que
+ * pinta o selo de etapa aqui (a disputa em azul, a proposta em verde). O que
+ * sobra local é o TOM, que escolhe o ÍCONE do `SeloSituacao`, com o tipo
+ * garantindo cobertura completa do vocabulário. Vocabulário e tinta na lib,
+ * ícone no módulo.
  */
 const TOM_STATUS: Record<StatusProcesso, TomSituacao> = {
   Monitorando: 'neutro',
@@ -143,7 +144,7 @@ const diasRestantes = (arquivadoEm: string | null) => {
 };
 
 /** ETAPA — onde o processo parou. Primeiro dos três eixos. */
-function etapaVisivel(status: string): { rotulo: string; tom: TomSituacao; explicacao?: string } {
+function etapaVisivel(status: string): { rotulo: string; tom: TomSituacao; classe?: string; explicacao?: string } {
   const bruto = (status || '').trim();
   if (DESFECHOS_NO_EIXO_ERRADO.has(bruto.toLowerCase())) {
     return {
@@ -153,9 +154,12 @@ function etapaVisivel(status: string): { rotulo: string; tom: TomSituacao; expli
     };
   }
   const rotulo = rotuloStatus(bruto);
+  const canonico = normalizarStatus(bruto);
   return {
     rotulo,
-    tom: TOM_STATUS[normalizarStatus(bruto)],
+    tom: TOM_STATUS[canonico],
+    // Tinta do selo pela autoridade única de status (trio tint/ink/line).
+    classe: aparenciaStatus(canonico).className,
     // Verificável: quem vê "Monitorando" numa linha gravada como "Publicado"
     // consegue descobrir de onde veio sem abrir o banco.
     explicacao: bruto && bruto !== rotulo ? `Gravado como "${bruto}"` : undefined,
@@ -268,7 +272,7 @@ function PainelDoProcesso({ lic, aoEditar }: { lic: Licitacao; aoEditar: () => v
           <p className="g-meta text-muted-foreground">Como o portal publica: {identidade.bruto}</p>
         )}
         <div className="flex flex-wrap gap-2">
-          <SeloSituacao tom={etapa.tom} explicacao={etapa.explicacao}>{etapa.rotulo}</SeloSituacao>
+          <SeloSituacao tom={etapa.tom} className={etapa.classe} explicacao={etapa.explicacao}>{etapa.rotulo}</SeloSituacao>
           {desfecho && (
             <SeloSituacao tom={desfecho.tom} icone={desfecho.vencedora ? Trophy : undefined}>
               {desfecho.rotulo}
@@ -628,7 +632,11 @@ export default function HistoricoLicitacoes() {
       largura: '140px',
       render: (lic) => {
         const etapa = etapaVisivel(lic.status);
-        return <SeloSituacao tom={etapa.tom} explicacao={etapa.explicacao}>{etapa.rotulo}</SeloSituacao>;
+        return (
+          <SeloSituacao tom={etapa.tom} className={etapa.classe} explicacao={etapa.explicacao}>
+            {etapa.rotulo}
+          </SeloSituacao>
+        );
       },
     },
     {
@@ -814,12 +822,12 @@ export default function HistoricoLicitacoes() {
         </AreaComPainel>
 
         {/* Fluxo de status padronizado */}
-        <section className="g-cartao flex flex-col gap-3 p-6">
-          <h2 className="g-titulo-secao text-foreground">Fluxo de status padronizado</h2>
+        <section className="g-cartao flex flex-col gap-3 p-5">
+          <h2 className="text-lg font-semibold leading-6 text-foreground">Fluxo de status padronizado</h2>
           <div className="flex flex-wrap items-center gap-2">
             {STATUS_FLOW.map((s, i) => (
               <div key={s} className="flex items-center gap-1">
-                <SeloSituacao tom={TOM_STATUS[s]}>{rotuloStatus(s)}</SeloSituacao>
+                <SeloSituacao tom={TOM_STATUS[s]} className={aparenciaStatus(s).className}>{rotuloStatus(s)}</SeloSituacao>
                 {i < 3 && <span className="g-meta text-muted-foreground" aria-hidden="true">→</span>}
                 {i === 3 && <span className="g-meta ml-2 text-muted-foreground" aria-hidden="true">|</span>}
               </div>
