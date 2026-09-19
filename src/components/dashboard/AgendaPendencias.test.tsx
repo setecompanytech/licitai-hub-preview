@@ -77,22 +77,42 @@ describe('AgendaPendencias', () => {
     expect(screen.getByText('Nenhum prazo nos próximos 30 dias')).toBeInTheDocument();
   });
 
-  it('processo em aberto com prazo vencido é atraso de verdade e continua na agenda', () => {
+  it('processo EM JOGO com encerramento passado está em andamento — não é atraso', () => {
+    // Encerramento é o fim do recebimento de propostas, não do processo: quem
+    // está em disputa não está atrasado (dono, 19/09).
     montar([processo({ id: 'p1', status: 'Em Disputa', data_encerramento: emDias(-3) })]);
 
     expect(screen.getByText('PE nº 86/2026')).toBeInTheDocument();
-    expect(screen.getByText('Atrasado')).toBeInTheDocument();
+    expect(screen.getByText('Em andamento')).toBeInTheDocument();
+    expect(screen.queryByText('Atrasado')).not.toBeInTheDocument();
+    expect(screen.getByText(/Propostas encerradas ·/)).toBeInTheDocument();
   });
 
-  it('o rodapé separa o que está em atraso do que ainda vai acontecer', () => {
-    const atrasados = Array.from({ length: 8 }, (_, i) =>
-      processo({ id: `a${i}`, numero: String(100 + i), data_encerramento: emDias(-(i + 1)) }));
+  it('processo no RADAR com encerramento passado pede atualização da situação', () => {
+    montar([processo({ id: 'p1', status: 'Monitorando', data_encerramento: emDias(-3) })]);
+
+    expect(screen.getByText('Situação a atualizar')).toBeInTheDocument();
+    expect(screen.queryByText('Atrasado')).not.toBeInTheDocument();
+  });
+
+  it('sessão passada de processo em jogo é "Sessão realizada", não prazo', () => {
+    montar([processo({ id: 'p1', status: 'Proposta Enviada', data_abertura: emDias(-1), data_encerramento: null })]);
+
+    expect(screen.getByText(/Sessão realizada ·/)).toBeInTheDocument();
+    expect(screen.getByText('Em andamento')).toBeInTheDocument();
+  });
+
+  it('o rodapé separa o que pede ação do que vai acontecer e do que está em andamento', () => {
+    const semSituacao = Array.from({ length: 8 }, (_, i) =>
+      processo({ id: `a${i}`, numero: String(100 + i), status: 'Monitorando', data_encerramento: emDias(-(i + 1)) }));
     const futuros = Array.from({ length: 2 }, (_, i) =>
       processo({ id: `f${i}`, numero: String(200 + i), data_encerramento: emDias(i + 2) }));
+    const emAndamento = [processo({ id: 'e1', numero: '300', status: 'Em Disputa', data_encerramento: emDias(-2) })];
 
-    montar([...atrasados, ...futuros]);
+    montar([...semSituacao, ...futuros, ...emAndamento]);
 
-    // 6 cabem na lista (todos atrasados); sobram 2 atrasados e 2 programados.
-    expect(screen.getByText('+4 com prazo · 2 em atraso · 2 nos próximos 30 dias')).toBeInTheDocument();
+    // 6 cabem na lista (os 8 sem situação vêm primeiro); sobram 2 sem situação,
+    // 2 programados e 1 em andamento.
+    expect(screen.getByText('+5 com prazo · 2 com situação a atualizar · 2 nos próximos 30 dias · 1 em andamento')).toBeInTheDocument();
   });
 });

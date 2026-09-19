@@ -18,11 +18,23 @@ import { useVencimentosDeDocumentos, ROTA_DA_ORIGEM } from '@/hooks/useVenciment
 /**
  * Agenda e pendências — o que tem data, ordenado pelo que aperta primeiro.
  *
- * ── AS TRÊS SITUAÇÕES DE PRAZO, QUE O PAINEL ANTIGO NÃO SEPARAVA ─────────
+ * ── AS SITUAÇÕES DE PRAZO — POR FASE, NÃO SÓ POR DATA ─────────────────────
  *
- *   atrasado   a data efetiva já passou e o processo continua em aberto
- *   hoje       acontece HOJE — a única faixa em que ainda dá para agir a tempo
- *   futuro     tem prazo, entra no planejamento
+ * A data de encerramento é o fim do RECEBIMENTO DE PROPOSTAS, não o fim do
+ * processo: depois dela vêm disputa, habilitação, recursos, homologação. O
+ * painel dizia "Atrasado" para todo encerramento passado — e acusava de
+ * atraso quem estava operando a disputa (dono, 19/09). O que a data passada
+ * significa depende da FASE, que o status do processo declara
+ * (`faixaDe`, em `lib/licitacao/status`):
+ *
+ *   hoje          acontece HOJE — a única faixa em que ainda dá para agir a tempo
+ *   futuro        tem prazo, entra no planejamento ("Programado")
+ *   andamento     a data passou e o processo está EM JOGO (Proposta Enviada,
+ *                 Em Disputa): não é atraso, é o processo seguindo — neutro
+ *   sem_situacao  a data passou e o processo segue no RADAR (Monitorando, Em
+ *                 Análise): ninguém disse o que aconteceu — a ação é atualizar
+ *                 a situação no Kanban (ou arquivar), e o selo pede isso
+ *   vencido       documento com validade passada — atraso de verdade
  *
  * A distinção é feita por DIA de calendário, não por instante: uma sessão às
  * 9h continua sendo "hoje" às 11h, e um documento que vale o dia inteiro não
@@ -32,8 +44,8 @@ import { useVencimentosDeDocumentos, ROTA_DA_ORIGEM } from '@/hooks/useVenciment
  * os indicadores — uma consulta a menos. Os vencimentos vêm do hook
  * compartilhado com a faixa de pendências e com o calendário.
  *
- * Processo já decidido ou arquivado não vira atraso: o prazo dele passou
- * porque ele terminou.
+ * Processo já decidido ou arquivado não entra: o prazo dele passou porque ele
+ * terminou.
  */
 
 export interface ProcessoDaAgenda {
@@ -56,7 +68,7 @@ interface Props {
   aoRecarregarProcessos?: () => void;
 }
 
-type Urgencia = 'atrasado' | 'hoje' | 'futuro';
+type Urgencia = 'vencido' | 'sem_situacao' | 'hoje' | 'futuro' | 'andamento';
 
 interface ItemDaAgenda {
   chave: string;
@@ -80,10 +92,25 @@ const LIMITE = 6;
 const DIAS_A_FRENTE = 30;
 const DIAS_ATRAS = 30;
 
-const PELE: Record<Urgencia, { linha: string; selo: 'danger' | 'warning' | 'muted'; rotulo: string }> = {
-  atrasado: { linha: 'border-destructive-line bg-destructive-tint', selo: 'danger', rotulo: 'Atrasado' },
+const PELE: Record<Urgencia, { linha: string; selo: 'danger' | 'warning' | 'muted' | 'info'; rotulo: string }> = {
+  vencido: { linha: 'border-destructive-line bg-destructive-tint', selo: 'danger', rotulo: 'Vencido' },
+  sem_situacao: { linha: 'border-warning-line bg-warning-tint', selo: 'warning', rotulo: 'Situação a atualizar' },
   hoje: { linha: 'border-warning-line bg-warning-tint', selo: 'warning', rotulo: 'Hoje' },
   futuro: { linha: 'border-border bg-card hover:bg-muted', selo: 'muted', rotulo: 'Programado' },
+  andamento: { linha: 'border-border bg-card hover:bg-muted', selo: 'info', rotulo: 'Em andamento' },
+};
+
+/** O que a data passada quer dizer, pela fase do processo. */
+function urgenciaDoProcesso(dias: number, faixa: ReturnType<typeof faixaDe>): Urgencia {
+  if (dias > 0) return 'futuro';
+  if (dias === 0) return 'hoje';
+  return faixa === 'em_jogo' ? 'andamento' : 'sem_situacao';
+}
+
+/** Como nomear a data quando ela já passou: "Encerramento" vira fato, não prazo. */
+const NATUREZA_PASSADA: Record<'Sessão' | 'Encerramento', string> = {
+  Sessão: 'Sessão realizada',
+  Encerramento: 'Propostas encerradas',
 };
 
 /** Dia de calendário de uma data com hora — é o que decide atraso/hoje/futuro. */
@@ -95,7 +122,8 @@ function diasDeCalendario(iso: string): number {
   return Math.round((alvo - base) / 86400000);
 }
 
-const urgenciaDe = (dias: number): Urgencia => (dias < 0 ? 'atrasado' : dias === 0 ? 'hoje' : 'futuro');
+/** Documentos: validade passada é vencimento de verdade. */
+const urgenciaDoDocumento = (dias: number): Urgencia => (dias < 0 ? 'vencido' : dias === 0 ? 'hoje' : 'futuro');
 
 export default function AgendaPendencias({
   processos, carregandoProcessos, erroProcessos, aoRecarregarProcessos,
@@ -112,7 +140,8 @@ export default function AgendaPendencias({
          compromisso. A regra está escrita no topo deste arquivo desde sempre,
          mas `arquivado_em` não vinha na consulta do painel — e a agenda
          cobrava "Atrasado" de processo que a própria empresa já encerrou. */
-      if (faixaDe(p.status ?? '', p.arquivado_em) === 'arquivo') return;
+      const faixa = faixaDe(p.status ?? '', p.arquivado_em);
+      if (faixa === 'arquivo') return;
       const decidido = STATUS_DECIDIDOS.includes(situacao);
 
       ([
@@ -125,6 +154,7 @@ export default function AgendaPendencias({
         // Processo decidido não tem prazo pendente — o dele passou porque
         // terminou. Marcá-lo como atraso encheria a agenda de falso alarme.
         if (decidido && dias < 0) return;
+        const urgencia = urgenciaDoProcesso(dias, faixa);
         lista.push({
           chave: `${p.id}-${natureza}`,
           /* "86" não identifica nada: é o sequencial do PNCP, sem modalidade e
@@ -133,12 +163,12 @@ export default function AgendaPendencias({
           titulo: identidadeDoProcesso(p),
           contexto: p.orgao || 'Órgão não informado',
           quando: new Date(campo),
-          natureza,
-          urgencia: urgenciaDe(dias),
+          natureza: dias < 0 ? NATUREZA_PASSADA[natureza] : natureza,
+          urgencia,
           dias,
           para: `/processo/${p.id}`,
           icone: Gavel,
-          selo: PELE[urgenciaDe(dias)].rotulo,
+          selo: PELE[urgencia].rotulo,
         });
       });
     });
@@ -152,7 +182,7 @@ export default function AgendaPendencias({
         contexto: ROTULO_DA_SITUACAO[d.situacao],
         quando: diaDaValidade(d.validade),
         natureza: 'Validade',
-        urgencia: urgenciaDe(dias),
+        urgencia: urgenciaDoDocumento(dias),
         dias,
         para: ROTA_DA_ORIGEM[d.origem],
         icone: FileText,
@@ -160,9 +190,10 @@ export default function AgendaPendencias({
       });
     });
 
-    // O que já estourou primeiro, do mais antigo para o mais recente; depois
-    // hoje; depois o futuro em ordem de chegada.
-    const ordem: Record<Urgencia, number> = { atrasado: 0, hoje: 1, futuro: 2 };
+    // O que pede ação primeiro: documento vencido, depois processo com situação
+    // a atualizar, depois hoje e o futuro em ordem de chegada; o que está em
+    // andamento fecha a lista — é informação, não pendência.
+    const ordem: Record<Urgencia, number> = { vencido: 0, sem_situacao: 1, hoje: 2, futuro: 3, andamento: 4 };
     return lista.sort(
       (a, b) => ordem[a.urgencia] - ordem[b.urgencia] || a.quando.getTime() - b.quando.getTime(),
     );
@@ -171,11 +202,16 @@ export default function AgendaPendencias({
   const carregando = carregandoProcessos || carregandoDocs;
 
   /* O que não coube na lista, contado por situação. O rodapé dizia "+26 com
-     data nos próximos 30 dias" somando também o que já venceu — e atraso é
-     passado, não próximo. */
+     data nos próximos 30 dias" somando também o que já venceu — e o que venceu
+     é passado, não próximo. */
   const naoListados = itens.slice(LIMITE);
-  const atrasadosOcultos = naoListados.filter((i) => i.urgencia === 'atrasado').length;
-  const programadosOcultos = naoListados.length - atrasadosOcultos;
+  const contar = (u: Urgencia) => naoListados.filter((i) => i.urgencia === u).length;
+  const partesDoRodape = [
+    contar('vencido') > 0 && `${contar('vencido')} vencido(s)`,
+    contar('sem_situacao') > 0 && `${contar('sem_situacao')} com situação a atualizar`,
+    contar('hoje') + contar('futuro') > 0 && `${contar('hoje') + contar('futuro')} nos próximos 30 dias`,
+    contar('andamento') > 0 && `${contar('andamento')} em andamento`,
+  ].filter(Boolean) as string[];
 
   if (carregando) {
     return (
@@ -266,9 +302,7 @@ export default function AgendaPendencias({
       <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
         {naoListados.length > 0 && (
           <p className="text-sm leading-5 text-muted-foreground">
-            +{naoListados.length} com prazo
-            {atrasadosOcultos > 0 && ` · ${atrasadosOcultos} em atraso`}
-            {programadosOcultos > 0 && ` · ${programadosOcultos} nos próximos 30 dias`}
+            +{naoListados.length} com prazo{partesDoRodape.map((p) => ` · ${p}`).join('')}
           </p>
         )}
         <Link
