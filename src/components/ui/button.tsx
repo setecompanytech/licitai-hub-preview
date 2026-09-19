@@ -4,23 +4,37 @@ import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
 
+/**
+ * Botão — hierarquia do Design System v3 (19/09/2026):
+ *
+ *   default      PRIMARY   verde de ação, sólido — uma ação principal por contexto
+ *   outline      SECONDARY branco com borda
+ *   secondary    tonal     superfície rebaixada, sem borda (filtros, alternância)
+ *   ghost        GHOST     sem fundo
+ *   destructive  DANGER    vermelho, só para ação destrutiva
+ *   link         texto verde sublinhado no hover
+ *
+ * Altura 40px no padrão, 36px no `sm`, 44px no `lg`; raio 8px; transição de
+ * 150ms. Ícone dentro do botão tem 16px e não captura clique.
+ */
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary-hover",
-        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-        outline: "border border-input bg-background hover:bg-primary-tint hover:text-foreground hover:border-primary/40",
-        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-muted hover:text-foreground",
+        default: "bg-primary text-primary-foreground shadow-sm hover:bg-primary-hover",
+        destructive: "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
+        outline: "border border-input bg-card text-foreground shadow-sm hover:border-primary/40 hover:bg-primary-tint hover:text-primary",
+        secondary: "bg-muted text-foreground hover:bg-muted/70",
+        ghost: "text-foreground hover:bg-muted hover:text-foreground",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-11 px-4 py-2",
-        sm: "h-9 rounded-md px-3",
-        lg: "h-12 rounded-md px-8 text-base",
+        default: "h-10 px-4 py-2",
+        sm: "h-9 rounded-md px-3 text-sm",
+        lg: "h-11 rounded-md px-6 text-base",
         icon: "h-10 w-10",
+        "icon-sm": "h-9 w-9",
       },
     },
     defaultVariants: {

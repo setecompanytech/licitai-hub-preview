@@ -3,18 +3,20 @@ import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
 
+/**
+ * Alerta em linha — o trio tinta/tinta-escura/linha de cada estado, raio
+ * 10px, ícone à esquerda. `info` é o azul informativo; `default` é neutro.
+ */
 const alertVariants = cva(
-  "relative w-full rounded-lg border p-4 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground",
+  "relative w-full rounded-lg border p-4 text-sm [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:h-4 [&>svg]:w-4 [&>svg]:text-foreground",
   {
     variants: {
       variant: {
-        default: "bg-card text-foreground",
-        // Famílias semânticas em tinta (identidade 12/09): fundo *-tint, texto
-        // *-ink, contorno *-line — as mesmas do Badge.
+        default: "border-border bg-card text-foreground",
         destructive: "border-destructive-line bg-destructive-tint text-destructive-ink [&>svg]:text-destructive-ink",
         success: "border-success-line bg-success-tint text-success-ink [&>svg]:text-success-ink",
         warning: "border-warning-line bg-warning-tint text-warning-ink [&>svg]:text-warning-ink",
-        info: "border-border bg-muted text-foreground [&>svg]:text-primary",
+        info: "border-info-line bg-info-tint text-info-ink [&>svg]:text-info-ink",
       },
     },
     defaultVariants: {
@@ -33,14 +35,14 @@ Alert.displayName = "Alert";
 
 const AlertTitle = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLHeadingElement>>(
   ({ className, ...props }, ref) => (
-    <h5 ref={ref} className={cn("mb-1 font-medium leading-none tracking-tight", className)} {...props} />
+    <h5 ref={ref} className={cn("mb-1 text-sm font-semibold leading-5 tracking-normal", className)} {...props} />
   ),
 );
 AlertTitle.displayName = "AlertTitle";
 
 const AlertDescription = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("text-sm [&_p]:leading-relaxed", className)} {...props} />
+    <div ref={ref} className={cn("text-sm leading-5 [&_p]:leading-5", className)} {...props} />
   ),
 );
 AlertDescription.displayName = "AlertDescription";

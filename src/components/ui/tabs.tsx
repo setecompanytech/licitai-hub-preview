@@ -3,6 +3,12 @@ import * as TabsPrimitive from "@radix-ui/react-tabs";
 
 import { cn } from "@/lib/utils";
 
+/**
+ * Abas — fila sublinhada sobre uma linha de 1px: item ativo em verde com
+ * filete de 2px, os demais em cinza. Embrulha por padrão (fila com 5+ abas
+ * quebra em duas linhas no celular em vez de alargar a página); quem quer
+ * grade ou rolagem passa por className.
+ */
 const Tabs = TabsPrimitive.Root;
 
 const TabsList = React.forwardRef<
@@ -12,10 +18,6 @@ const TabsList = React.forwardRef<
   <TabsPrimitive.List
     ref={ref}
     className={cn(
-      // Fluent: fila de abas tipo pasta sobre uma única linha divisória, não
-      // uma caixa cinza com pílulas. Embrulha por padrão: fila com 5+ abas
-      // quebra em duas linhas no celular em vez de empurrar a largura da
-      // página. Quem quer grade passa `grid grid-cols-N` por className.
       "inline-flex h-auto w-full max-w-full flex-wrap items-end justify-start gap-1 border-b border-border bg-transparent p-0 text-muted-foreground",
       className,
     )}
@@ -31,7 +33,7 @@ const TabsTrigger = React.forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      "relative -mb-px inline-flex items-center justify-center gap-1.5 whitespace-nowrap border border-transparent border-b-0 px-3 py-2 text-[13px] font-medium text-muted-foreground transition-colors ring-offset-background hover:text-foreground data-[state=active]:border-border data-[state=active]:bg-card data-[state=active]:font-semibold data-[state=active]:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+      "relative -mb-px inline-flex min-h-[40px] items-center justify-center gap-1.5 whitespace-nowrap border-b-2 border-transparent px-3 py-2 text-sm font-medium text-muted-foreground transition-colors duration-150 hover:text-foreground data-[state=active]:border-primary data-[state=active]:font-semibold data-[state=active]:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50",
       className,
     )}
     {...props}
@@ -46,7 +48,7 @@ const TabsContent = React.forwardRef<
   <TabsPrimitive.Content
     ref={ref}
     className={cn(
-      "mt-3 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+      "mt-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
       className,
     )}
     {...props}

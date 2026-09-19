@@ -1,12 +1,11 @@
-/* Inter no corpo, Manrope nos títulos e na marca (identidade 12/09).
-   O protótipo carrega Inter em 400/500/600/700/800; ele usa só cinco pesos, e
-   700 e 600 concentram quase tudo (221 e 176 regras). Cinzel saiu em 12/09
-   junto com a marca antiga — a logo nova (BrandLogo) é Manrope 800.
-   JetBrains Mono continua para código e identificadores.
-   Manrope entrou em 12/09/2026 (600/700/800), para h1–h6 (regra na @layer
-   base): é a fonte de título da direção LICITA360 aprovada pelo dono. Ver o
-   comentário de fontFamily.heading no tailwind.config.ts. */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+/* ============================================================================
+   PRAEFECTUS — Design System v3 (comando do dono do produto, 19/09/2026)
+
+   Uma família só na interface: Inter (400/500/600/700). Manrope 800 fica
+   exclusiva da marca (BrandLogo desenha o nome com ela). JetBrains Mono segue
+   para código e identificadores.
+   ========================================================================== */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 @import './styles/ds-app.css';
 
 @tailwind base;
@@ -15,87 +14,90 @@
 
 @layer base {
   /* ==========================================================================
-     REBRAND — fatia 1: cor.
-     Origem: prototype-praefectus (`mvp-praefectus-rebranding/index.html`),
-     direção aprovada pelo Rafael. Tradução hex -> tripla HSL na seção 6 de
-     `docs/rebranding-front-end.md`.
+     TOKENS — a paleta corporativa do Praefectus.
 
-     A cor predominante é o navy #101B2D, o mesmo do header, do splash e do
-     véu da tela de login do protótipo. O par dele é o dourado da logo. O
-     laranja da paleta antiga saiu inteiro; quem fazia o papel de ação agora
-     é o azul #2563EB.
+     Regra de proporção: ~80% neutros (fundo, cartão, borda, texto) e ~20% de
+     destaque. O navy é ESTRUTURA (sidebar, títulos institucionais); o verde
+     da marca é AÇÃO (botão primário, link, foco, seleção, sucesso, IA); o
+     azul corporativo é informação. Nenhuma cor de interface é escrita à mão
+     nos .tsx — tudo passa por aqui, em tripla HSL, para o tema escuro poder
+     redefinir cada uma.
 
-     Todo valor abaixo foi validado nas DUAS direções — como texto sobre o
-     fundo e como fundo sob o foreground — mantendo a régua que já existia
-     aqui. Onde o tom cheio do protótipo reprovava, entrou a tinta `*-ink`
-     dele, que é a versão legível que ele próprio já usava para texto.
+     Todo par texto/fundo abaixo foi conferido para AA (4.5:1) no tema claro:
+     verde de ação #087F5B sobre branco 5.2:1; texto #172033 sobre #F5F7FA
+     14.6:1; secundário #64748B 4.6:1; erro #DC2626 4.8:1.
      ========================================================================== */
   :root {
-    --background: 30 10% 95%;    /* #f3f2f1 — cinza neutro Microsoft Fluent */
-    --foreground: 20 13% 13%;    /* #201f1e — texto primário quente/neutro */
+    --background: 216 33% 97%;        /* #F5F7FA — fundo geral */
+    --foreground: 221 38% 15%;        /* #172033 — texto principal */
 
-    --card: 0 0% 100%;
-    --card-foreground: 218 54% 20%;
+    --card: 0 0% 100%;                /* #FFFFFF */
+    --card-foreground: 221 38% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 218 54% 20%;
+    --popover-foreground: 221 38% 15%;
 
-    /* Verde de ação (#087F5B) — direção LICITA360 aprovada pelo dono em
-       12/09: o botão primário é verde nas referências (CTA da landing e do
-       painel). O navy #102A43 vira estrutura (sidebar, hero), não ação.
-       5.2:1 com branco por cima. */
+    /* Verde de ação — a cor consolidada na identidade do Praefectus (a mesma
+       do símbolo da marca, #087F5B). Botão primário, link, foco, item
+       selecionado, sucesso. 5.2:1 com branco por cima. */
     --primary: 162 88% 26%;
     --primary-foreground: 0 0% 100%;
+    --primary-hover: 162 89% 21%;     /* #066649 */
+    --primary-tint: 159 52% 94%;      /* #E6F7F1 — superfície verde-clara */
+    --primary-line: 152 76% 80%;      /* #A7F3D0 — contorno sobre a tinta */
 
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 218 54% 20%;
+    /* Teal tecnológico (#08A88A) — o degrau vivo do verde: ícone de IA,
+       indicador positivo, ponto de "selecionado" sobre navy. Nunca como texto
+       sobre branco (3:1). */
+    --teal: 169 91% 35%;
+    --teal-foreground: 0 0% 100%;
 
-    --muted: 213 33% 95%;
-    /* #526477 da paleta nova — 5.6:1 sobre o fundo. */
-    --muted-foreground: 211 18% 39%;
+    /* Azul corporativo (#1F4E79) — segundo tom institucional: rótulo de
+       forte hierarquia, ícone de módulo, série de gráfico. */
+    --brand-blue: 209 59% 30%;
 
-    /* Verde de ação também em link, foco e estado ativo — nas referências
-       novas há UMA cor de ação, não duas. 5.2:1 sobre o fundo. */
+    --secondary: 210 40% 98%;         /* #F8FAFC — cabeçalho de tabela, coluna do kanban */
+    --secondary-foreground: 221 38% 15%;
+
+    --muted: 210 31% 95%;             /* #EEF2F6 — hover de linha, superfície rebaixada */
+    --muted-foreground: 215 16% 47%;  /* #64748B — texto secundário */
+    --foreground-tertiary: 215 20% 65%; /* #94A3B8 — texto terciário, placeholder */
+
+    /* `--accent` é a cor de AÇÃO em 57 arquivos (`text-accent`, `bg-accent/10`):
+       segue igual ao primário. Hover de menu não usa accent — usa `muted`. */
     --accent: 162 88% 26%;
     --accent-foreground: 0 0% 100%;
 
-    /* Estados: o tom CHEIO do protótipo reprova como texto sobre fundo claro
-       (error 4.46, success 3.11, warning 2.93) — o mesmo "lavado" que já
-       tinha sido corrigido aqui antes. Entra a tinta `*-ink` do protótipo,
-       que é a cor que ele usa para texto sobre a tinta clara. */
-    --destructive: 4 76% 40%;   /* #B42318 da paleta nova — 6.0:1 */
+    --destructive: 0 72% 51%;         /* #DC2626 */
     --destructive-foreground: 0 0% 100%;
 
-    --success: 162 88% 26%;     /* mesmo verde da ação — como nas referências */
+    --success: 162 88% 26%;           /* o mesmo verde de ação */
     --success-foreground: 0 0% 100%;
 
-    --warning: 23 83% 31%;      /* #92400E da paleta nova — 7.0:1 */
-    --warning-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;            /* #F59E0B — só em ícone, barra e selo; texto usa a tinta */
+    --warning-foreground: 221 38% 15%;
 
-    /* Info segue neutro: sob a regra de contenção, azul não é estado — e
-       agora que o azul virou a cor de ação, misturar os dois seria pior. */
-    --info: 211 18% 39%;
+    --info: 221 83% 53%;              /* #2563EB */
     --info-foreground: 0 0% 100%;
 
-    /* Séries de gráfico — exceção contida à regra de cor. As cinco primeiras
-       são a família `--cat-*` do protótipo, que já nasceu como cinco tons
-       distinguíveis entre si. */
-    --chart-1: 162 88% 30%;     /* verde da marca */
-    --chart-2: 192 91% 36%;     /* --cat-banco    #0891B2 */
-    --chart-3: 221 83% 53%;     /* azul vira série, não ação */
-    --chart-4: 32 95% 44%;      /* --cat-fiscal   #D97706 */
-    --chart-5: 262 83% 58%;     /* --cat-analise  #7C3AED */
-    /* 6 a 8 servem ContratosGov e TransparenciaPA, que pedem oito séries.
-       O protótipo só oferece sete matizes distinguíveis, então a oitava é o
-       navy clareado — dentro da paleta, e separado das demais por
-       luminosidade, não por matiz. */
-    --chart-6: 46 65% 52%;      /* --gold         #D4AF37 */
-    --chart-7: 199 89% 48%;     /* céu do protótipo #0EA5E9 */
-    --chart-8: 217 48% 30%;     /* navy clareado */
+    /* Trio por estado — fundo tingido, tinta do texto e linha da borda. É o
+       que dá o selo "suave": nunca badge saturado com texto branco. */
+    --success-tint: 152 81% 96%;      --success-ink: 162 89% 21%;      --success-line: 152 76% 80%;
+    --warning-tint: 48 96% 89%;       --warning-ink: 26 90% 37%;       --warning-line: 48 97% 77%;
+    --destructive-tint: 0 86% 97%;    --destructive-ink: 0 74% 42%;    --destructive-line: 0 96% 89%;
+    --info-tint: 214 100% 97%;        --info-ink: 224 76% 48%;         --info-line: 213 97% 87%;
 
-    /* Escala de intensidade do mapa de licitações por estado — do menor ao
-       maior volume. Seis passos, como no protótipo: o 1 quase se confunde com
-       a superfície e o 6 é o azul cheio da marca. */
+    /* Séries de gráfico — única exceção à regra "cor só para estado". */
+    --chart-1: 162 88% 30%;           /* verde da marca */
+    --chart-2: 221 83% 53%;           /* azul informativo */
+    --chart-3: 169 91% 35%;           /* teal */
+    --chart-4: 38 92% 50%;            /* âmbar */
+    --chart-5: 262 83% 58%;           /* violeta */
+    --chart-6: 46 65% 52%;            /* dourado */
+    --chart-7: 199 89% 48%;           /* céu */
+    --chart-8: 216 40% 40%;           /* navy clareado */
+
+    /* Escala de intensidade do mapa por estado — seis passos do verde. */
     --map-1: 160 60% 96%;
     --map-2: 160 55% 90%;
     --map-3: 161 50% 80%;
@@ -103,157 +105,131 @@
     --map-5: 162 60% 42%;
     --map-6: 162 88% 26%;
 
-    --border: 207 22% 84%;   /* #CBD6DF — mais próximo do prototype (--line:#ccd6df) */
-    --input: 207 22% 84%;
-    /* O anel de foco segue a cor de ação. */
-    --ring: 162 88% 30%;
+    --border: 213 27% 92%;            /* #E5EAF0 */
+    --input: 214 25% 87%;             /* #D7DEE7 — borda de campo, um degrau mais firme */
+    --ring: 162 88% 30%;              /* anel de foco na cor de ação */
 
-    /* 0.375rem (6px) no cartão — ajuste ao estilo corporativo denso do prototype.
-       Botão e campo têm 10px fixos no tailwind.config; modal e popover usam
-       rounded-xl (12px padrão Tailwind), que também sobe 1 degrau de densidade. */
-    --radius: 0.25rem; /* 4px — igual ao prototype (border-radius:4px) */
+    /* Raios: cartão 10px, botão e campo 8px, chip 6px, modal 12px. */
+    --radius: 0.625rem;
+    --radius-sm: 0.375rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.625rem;
+    --radius-xl: 0.75rem;
 
-    /* Navy da marca, em três passos — header, hover e tinta.
-       O protótipo os separa de propósito: o botão escuro CLAREIA no hover
-       (o inverso do botão claro). */
-    --navy: 209 61% 16%;        /* #102A43 da paleta nova */
-    --navy-hover: 209 48% 26%;
-    --navy-tint: 210 25% 93%;
-    --primary-tint: 152 45% 94%;    /* #EAF7F1 — superfície verde (surface-green) */
-    --primary-hover: 162 89% 21%;   /* #066649 — hover dos botões verdes */
+    /* Navy da marca — estrutura, não ação: sidebar, títulos institucionais,
+       tooltip. Três passos: base, hover (clareia) e tinta clara. */
+    --navy: 216 56% 13%;              /* #0F1E35 */
+    --navy-hover: 217 49% 21%;        /* #1B2F4F */
+    --navy-tint: 217 42% 94%;         /* #E9EEF6 */
 
-    /* Cores da MARCA (prancha aprovada 12/09) — fixas nos dois temas, por
-       isso não são redefinidas no bloco dark: a logo não muda de cor com o
-       tema, muda de VERSÃO (principal × fundo escuro) no BrandLogo. */
-    --brand-navy: 209 61% 16%;   /* #102A43 — nome e arco superior */
-    --brand-green: 162 88% 26%;  /* #087F5B — arco inferior e quadrado */
+    /* Cores da MARCA — fixas nos dois temas (a logo não muda com o tema). */
+    --brand-navy: 216 56% 13%;
+    --brand-green: 162 88% 26%;
 
-    /* Dourado da marca — é a cor da logo sobre o navy, e só dela. No painel
-       inteiro do protótipo não há outro pixel dourado: é assinatura, não cor
-       de interface. O tom do header é mais claro de propósito (3.6:1 sobre o
-       azul primário, contra 1.5:1 do laranja antigo). */
-    --logo-accent: 158 55% 56%;  /* verde claro sobre o navy — marca na direção nova */
-    --gold: 46 65% 52%;         /* #D4AF37 */
-    --gold-deep: 39 62% 41%;    /* #A87B28 */
-    --gold-hi: 45 76% 87%;      /* #F7ECC4 */
+    /* Verde claro sobre o navy — a marca na sidebar e o item ativo do menu. */
+    --logo-accent: 158 55% 56%;
+    --gold: 46 65% 52%;
+    --gold-deep: 39 62% 41%;
+    --gold-hi: 45 76% 87%;
 
-    /* Trio por estado — fundo tingido, tinta do texto e linha da borda.
-       É o que dá o aviso mais leve do protótipo: hoje o app tem uma cor por
-       estado e precisa compor alfa na mão (`bg-warning/10`). A `*-line`
-       existe porque caixa de alerta grande sem contorno boia sobre o fundo. */
-    --success-tint: 160 55% 94%;      --success-ink: 162 88% 24%;      --success-line: 160 45% 78%;
-    --warning-tint: 42 95% 90%;       --warning-ink: 23 83% 31%;       --warning-line: 40 65% 76%;
-    --destructive-tint: 5 86% 95%;    --destructive-ink: 4 76% 40%;    --destructive-line: 5 65% 85%;
+    /* Carregamento — base do skeleton e a faixa clara que o varre. */
+    --skeleton-bg: 214 30% 92%;
+    --skeleton-hi: 214 40% 97%;
 
-    /* Carregamento — a base do skeleton e a faixa clara que o varre.
-       Valores do protótipo (#E3E9F1 / #F1F5FA). A base precisa destacar do
-       `--card`: skeleton da cor do cartão não comunica que algo está vindo,
-       comunica que o cartão está vazio. */
-    --skeleton-bg: 214 33% 92%;
-    --skeleton-hi: 213 47% 96%;
+    /* Navegação lateral — navy nos dois temas, texto claro, ativo em verde. */
+    --nav-bg: 216 56% 13%;
+    --nav-fg: 215 30% 82%;
+    --nav-active: 169 91% 35%;
+    --nav-hover: 217 49% 21%;
+    --nav-border: 217 42% 22%;
 
-    /* A navegação é navy nos dois temas. Estes cinco tokens estão hoje SEM
-       consumidor no repositório — o AppTopNav pinta com os tokens base. Ficam
-       alinhados à paleta nova para não apodrecerem divergentes; quem de fato
-       repinta a navegação é `--accent`. */
-    --nav-bg: 209 61% 16%;
-    --nav-fg: 210 22% 84%;
-    --nav-active: 158 55% 56%;
-    --nav-hover: 209 48% 24%;
-    --nav-border: 209 45% 26%;
-
-    /* Gradientes refeitos com a paleta nova — os anteriores eram navy->laranja. */
-    --gradient-primary: linear-gradient(135deg, hsl(var(--accent)), hsl(174 62% 38%));
-    --gradient-hero: linear-gradient(160deg, hsl(209 61% 16%) 0%, hsl(209 52% 22%) 50%, hsl(208 45% 30%) 100%);
-    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%), hsl(213 33% 96%));
-    --gradient-dark: linear-gradient(135deg, hsl(209 61% 16%), hsl(209 48% 26%));
-    --gradient-accent-subtle: linear-gradient(135deg, hsl(162 88% 26% / 0.06), hsl(174 62% 38% / 0.02));
-    --gradient-warm: linear-gradient(135deg, hsl(216 38% 98%), hsl(213 33% 95%));
-
-    /* Sombras: o protótipo escreve 28 `box-shadow` à mão sobre 4 tokens.
-       sm e md vêm dele; lg e xl são derivados na mesma família (navy com
-       alfa). O brilho deixou de ser laranja e passou a seguir `--accent`. */
-    --shadow-sm: 0 2px 8px 0 hsl(209 61% 16% / 0.05);
-    --shadow-md: 0 4px 16px -2px hsl(209 61% 16% / 0.08), 0 2px 4px -2px hsl(209 61% 16% / 0.04);
-    --shadow-lg: 0 10px 30px -4px hsl(209 61% 16% / 0.10), 0 4px 12px -4px hsl(209 61% 16% / 0.04);
-    --shadow-xl: 0 24px 48px -12px hsl(209 61% 16% / 0.16);
-    --shadow-glow: 0 0 24px hsl(var(--accent) / 0.18), 0 0 48px hsl(var(--accent) / 0.06);
-    --shadow-glow-sm: 0 0 12px hsl(var(--accent) / 0.1);
-
-    /* Sidebar ESCURA nos dois temas — a marca da direção nova. */
-    --sidebar-background: 209 61% 16%;
-    --sidebar-foreground: 210 25% 88%;
-    --sidebar-primary: 162 88% 32%;
+    --sidebar-background: 216 56% 13%;
+    --sidebar-foreground: 215 30% 82%;
+    --sidebar-primary: 169 91% 35%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 209 48% 24%;
+    --sidebar-accent: 217 49% 21%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 209 45% 24%;
+    --sidebar-border: 217 42% 22%;
     --sidebar-ring: 158 55% 56%;
+
+    /* Gradientes — contidos: só o herói institucional e o realce da IA. */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--teal)));
+    --gradient-hero: linear-gradient(160deg, hsl(216 56% 13%) 0%, hsl(216 50% 18%) 55%, hsl(209 59% 30%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%), hsl(210 40% 98%));
+    --gradient-dark: linear-gradient(135deg, hsl(216 56% 13%), hsl(217 49% 21%));
+    --gradient-accent-subtle: linear-gradient(135deg, hsl(162 88% 26% / 0.06), hsl(169 91% 35% / 0.02));
+    --gradient-warm: linear-gradient(135deg, hsl(216 33% 98%), hsl(210 31% 95%));
+
+    /* Sombras — discretas, na cor do texto (#0F172A) com alfa baixo.
+       `sm` é o repouso do cartão; `md` é o hover; `lg`/`xl` são menus e modais. */
+    --shadow-sm: 0 1px 2px 0 hsl(222 47% 11% / 0.04);
+    --shadow-md: 0 4px 12px 0 hsl(222 47% 11% / 0.06);
+    --shadow-lg: 0 12px 24px -8px hsl(222 47% 11% / 0.12), 0 2px 6px -2px hsl(222 47% 11% / 0.06);
+    --shadow-xl: 0 24px 48px -12px hsl(222 47% 11% / 0.18);
+    --shadow-glow: 0 0 0 4px hsl(var(--primary) / 0.12);
+    --shadow-glow-sm: 0 0 0 3px hsl(var(--primary) / 0.10);
   }
 
   /* ==========================================================================
-     ESCURO — derivado, não desenhado.
-
-     O protótipo não tem tema escuro: zero ocorrências de `.dark`,
-     `prefers-color-scheme` ou `data-theme` nas 19.227 linhas dele. Mas o app
-     abre NO ESCURO por padrão (`defaultTheme="dark"` em App.tsx), então esta
-     é a superfície que a maioria vê.
-
-     Regra da derivação: inverte a luminosidade, PRESERVA matiz e saturação.
-     Por construção não entra cor nova — o escuro é a mesma família navy /
-     azul / dourado do claro. Cada par foi validado nas duas direções.
-
-     Isto é derivação, não desenho. Uma passada de ajuste manual continua
-     pendente, e está registrada no checklist de `docs/rebranding-front-end.md`.
+     ESCURO — derivado do claro: inverte a luminosidade, preserva matiz e
+     saturação. A família continua navy / verde / azul.
      ========================================================================== */
   .dark {
-    --background: 209 55% 7%;
-    --foreground: 210 30% 95%;
+    --background: 216 45% 8%;
+    --foreground: 215 30% 94%;
 
-    --card: 209 45% 11%;
-    --card-foreground: 210 30% 95%;
+    --card: 216 40% 12%;
+    --card-foreground: 215 30% 94%;
 
-    --popover: 209 45% 11%;
-    --popover-foreground: 210 30% 95%;
+    --popover: 216 40% 12%;
+    --popover-foreground: 215 30% 94%;
 
-    /* O verde de ação clareia no escuro para manter contraste; a tinta por
-       cima é o navy profundo, como o claro faz com o branco. */
     --primary: 158 58% 52%;
-    --primary-foreground: 209 61% 10%;
+    --primary-foreground: 216 56% 10%;
+    --primary-hover: 158 58% 46%;
+    --primary-tint: 162 45% 16%;
+    --primary-line: 160 32% 30%;
 
-    --secondary: 209 35% 17%;
-    --secondary-foreground: 210 30% 92%;
+    --teal: 169 70% 45%;
+    --teal-foreground: 216 56% 10%;
+    --brand-blue: 209 59% 55%;
 
-    --muted: 209 30% 15%;
-    --muted-foreground: 211 18% 65%;
+    --secondary: 216 32% 15%;
+    --secondary-foreground: 215 30% 92%;
 
-    /* O verde clareia para 52%: 5.4:1 sobre o fundo escuro. */
+    --muted: 216 30% 16%;
+    --muted-foreground: 215 18% 65%;
+    --foreground-tertiary: 215 16% 52%;
+
     --accent: 158 58% 52%;
-    --accent-foreground: 209 61% 10%;
+    --accent-foreground: 216 56% 10%;
 
-    --destructive: 4 76% 62%;
-    --destructive-foreground: 209 61% 10%;
+    --destructive: 0 72% 62%;
+    --destructive-foreground: 216 56% 10%;
 
     --success: 158 58% 52%;
-    --success-foreground: 209 61% 10%;
+    --success-foreground: 216 56% 10%;
 
-    --warning: 28 88% 58%;
-    --warning-foreground: 209 61% 10%;
+    --warning: 38 92% 58%;
+    --warning-foreground: 216 56% 10%;
 
-    --info: 211 18% 65%;
-    --info-foreground: 209 61% 10%;
+    --info: 221 83% 66%;
+    --info-foreground: 216 56% 10%;
+
+    --success-tint: 160 40% 13%;      --success-ink: 158 55% 60%;      --success-line: 160 32% 28%;
+    --warning-tint: 30 45% 13%;       --warning-ink: 38 88% 62%;       --warning-line: 30 38% 30%;
+    --destructive-tint: 5 45% 13%;    --destructive-ink: 4 76% 68%;    --destructive-line: 5 38% 30%;
+    --info-tint: 221 45% 14%;         --info-ink: 221 83% 72%;         --info-line: 221 40% 30%;
 
     --chart-1: 158 58% 52%;
-    --chart-2: 192 85% 50%;
-    --chart-3: 221 83% 65%;
-    --chart-4: 32 90% 58%;
+    --chart-2: 221 83% 66%;
+    --chart-3: 169 70% 50%;
+    --chart-4: 38 90% 58%;
     --chart-5: 262 83% 72%;
     --chart-6: 46 70% 62%;
     --chart-7: 199 89% 60%;
-    --chart-8: 217 40% 62%;
+    --chart-8: 216 40% 62%;
 
-    /* No escuro a escala do mapa sobe a partir do fundo em vez de descer do
-       branco: o passo 1 mal se destaca da superfície, o 6 é o azul cheio. */
     --map-1: 200 30% 14%;
     --map-2: 180 32% 19%;
     --map-3: 168 38% 26%;
@@ -261,73 +237,51 @@
     --map-5: 160 52% 43%;
     --map-6: 158 58% 52%;
 
-    --border: 209 30% 20%;
-    --input: 209 30% 20%;
-    /* Era `215 55% 20%` nos DOIS temas — navy sobre fundo escuro, praticamente
-       invisível. O anel de foco é a única pista de teclado que existe. */
+    --border: 216 30% 20%;
+    --input: 216 30% 24%;
     --ring: 158 58% 52%;
 
-    --navy: 209 61% 12%;
-    --navy-hover: 209 48% 20%;
-    --navy-tint: 209 35% 17%;
-    --primary-tint: 162 45% 18%;
-    --primary-hover: 158 58% 46%;
+    --navy: 216 56% 10%;
+    --navy-hover: 216 45% 18%;
+    --navy-tint: 216 35% 16%;
 
-    /* O dourado atravessa os dois temas quase igual: ele já nasceu claro para
-       viver sobre o navy do header, que é escuro nos dois. */
     --logo-accent: 158 55% 56%;
     --gold: 46 70% 58%;
     --gold-deep: 39 62% 48%;
     --gold-hi: 45 40% 26%;
 
-    /* Trio por estado invertido: a tinta vira superfície escura, a `*-ink`
-       vira o texto claro, e a linha fica no meio. */
-    --success-tint: 160 40% 13%;      --success-ink: 158 55% 60%;      --success-line: 160 32% 28%;
-    --warning-tint: 30 45% 13%;       --warning-ink: 28 88% 62%;       --warning-line: 30 38% 30%;
-    --destructive-tint: 5 45% 13%;    --destructive-ink: 4 76% 68%;    --destructive-line: 5 38% 30%;
+    --skeleton-bg: 216 30% 16%;
+    --skeleton-hi: 216 26% 24%;
 
-    /* No escuro o skeleton sobe em vez de descer: fica acima do `--card`
-       (217 40% 11%) e abaixo do `--border` (217 28% 20%), que é a faixa onde
-       ele lê como superfície aguardando conteúdo. */
-    --skeleton-bg: 217 30% 16%;
-    --skeleton-hi: 217 26% 24%;
+    --nav-bg: 216 50% 11%;
+    --nav-fg: 215 25% 78%;
+    --nav-active: 169 70% 50%;
+    --nav-hover: 216 45% 18%;
+    --nav-border: 216 40% 20%;
 
-    --nav-bg: 209 61% 12%;
-    --nav-fg: 210 22% 76%;
-    --nav-active: 158 55% 56%;
-    --nav-hover: 209 48% 18%;
-    --nav-border: 209 40% 20%;
-
-    /* Os 6 gradientes NÃO tinham override no escuro: `--gradient-card` era
-       branco->cinza-claro e `--gradient-warm` era bege, ambos claros mesmo
-       com o tema escuro ligado. */
-    --gradient-primary: linear-gradient(135deg, hsl(var(--accent)), hsl(174 62% 45%));
-    --gradient-hero: linear-gradient(160deg, hsl(209 58% 6%) 0%, hsl(209 52% 11%) 50%, hsl(208 45% 16%) 100%);
-    --gradient-card: linear-gradient(180deg, hsl(209 45% 12%), hsl(209 48% 9%));
-    --gradient-dark: linear-gradient(135deg, hsl(209 58% 6%), hsl(209 50% 12%));
-    --gradient-accent-subtle: linear-gradient(135deg, hsl(158 58% 52% / 0.10), hsl(174 62% 45% / 0.03));
-    --gradient-warm: linear-gradient(135deg, hsl(209 45% 12%), hsl(209 36% 15%));
-
-    /* As 6 sombras também não tinham override: usavam `hsl(215 45% 12% / α)`,
-       ou seja, sombra escura sobre fundo escuro — que não aparece. No escuro
-       a sombra precisa ser quase preta e mais opaca para ler como elevação. */
-    --shadow-sm: 0 2px 8px 0 hsl(217 60% 2% / 0.40);
-    --shadow-md: 0 4px 16px -2px hsl(217 60% 2% / 0.50), 0 2px 4px -2px hsl(217 60% 2% / 0.35);
-    --shadow-lg: 0 10px 30px -4px hsl(217 60% 2% / 0.58), 0 4px 12px -4px hsl(217 60% 2% / 0.40);
-    --shadow-xl: 0 24px 48px -12px hsl(217 60% 2% / 0.70);
-
-    /* 13/09: a navegação virou faixa superior. No claro ela é o navy da
-       marca; no ESCURO precisa ficar acima do fundo (7%) para a barra não
-       derreter na página — por isso 14%, e não os 10% de quando era coluna
-       lateral encostada na borda da tela. */
-    --sidebar-background: 209 50% 14%;
-    --sidebar-foreground: 210 25% 88%;
-    --sidebar-primary: 158 58% 52%;
-    --sidebar-primary-foreground: 209 61% 10%;
-    --sidebar-accent: 209 42% 24%;
+    /* No escuro a sidebar precisa ficar acima do fundo (8%), senão derrete
+       na página: 11%. */
+    --sidebar-background: 216 50% 11%;
+    --sidebar-foreground: 215 25% 80%;
+    --sidebar-primary: 169 70% 50%;
+    --sidebar-primary-foreground: 216 56% 10%;
+    --sidebar-accent: 216 45% 18%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 209 35% 24%;
+    --sidebar-border: 216 40% 20%;
     --sidebar-ring: 158 55% 56%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--teal)));
+    --gradient-hero: linear-gradient(160deg, hsl(216 55% 6%) 0%, hsl(216 50% 11%) 55%, hsl(209 50% 22%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(216 40% 12%), hsl(216 42% 9%));
+    --gradient-dark: linear-gradient(135deg, hsl(216 55% 6%), hsl(216 50% 12%));
+    --gradient-accent-subtle: linear-gradient(135deg, hsl(158 58% 52% / 0.10), hsl(169 70% 45% / 0.03));
+    --gradient-warm: linear-gradient(135deg, hsl(216 40% 12%), hsl(216 36% 15%));
+
+    /* No escuro a sombra precisa ser quase preta e mais opaca para ler como elevação. */
+    --shadow-sm: 0 1px 2px 0 hsl(220 60% 2% / 0.40);
+    --shadow-md: 0 4px 12px 0 hsl(220 60% 2% / 0.50);
+    --shadow-lg: 0 12px 24px -8px hsl(220 60% 2% / 0.60), 0 2px 6px -2px hsl(220 60% 2% / 0.40);
+    --shadow-xl: 0 24px 48px -12px hsl(220 60% 2% / 0.70);
   }
 }
 
@@ -335,84 +289,67 @@
   * {
     @apply border-border;
   }
+
+  html {
+    /* Rolagem da página nunca é horizontal: a moldura garante o eixo. */
+    overflow-x: hidden;
+  }
+
   body {
-    /* 13px/1.35 igual ao prototype — densidade visual corporativa */
     @apply bg-background text-foreground antialiased;
-    font-family: "Segoe UI", Inter, Arial, sans-serif;
-    font-size: 13px;
-    line-height: 1.35;
+    /* 14px/20px — o corpo de um software operacional: denso e legível. */
+    font-family: Inter, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    font-size: 14px;
+    line-height: 1.45;
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
+    overflow-x: hidden;
     /* break-word, NUNCA anywhere — e hyphens manual, NUNCA auto: os dois são
        HERDADOS, então o body contamina até quem não está na lista de tags
        abaixo (button, a). `anywhere` esmagava dígitos de valores monetários;
        `auto` partia palavra no meio com hífen ("venci-do") em célula
-       espremida de tabela. Prosa longa não existe nesta UI para justificá-los. */
+       espremida de tabela. */
     overflow-wrap: break-word;
     word-break: normal;
     hyphens: manual;
   }
 
   /* ============================================================
-     Normalização GLOBAL de quebra de texto
-     Previne overflow horizontal e textos cortados em todo o sistema
-     (cards, tabelas, badges, listas, dialogs, formulários)
+     Normalização GLOBAL de quebra de texto — previne overflow
+     horizontal e textos cortados (cards, tabelas, badges, listas,
+     dialogs, formulários).
      ============================================================ */
-
-  /* Parágrafos, spans, divs com texto longo quebram corretamente.
-     break-word, NUNCA anywhere: `anywhere` reduz a largura mínima de
-     qualquer texto a 1 caractere e deixa o flexbox esmagar valores
-     monetários — foi a causa-raiz de "R$ 13.721.710,66" partir no meio
-     dos dígitos em tela após tela. Token longo sem espaços (chave de
-     NF-e) usa `break-all` localmente. */
   p, span, div, li, td, th, dd, dt, label, figcaption, blockquote {
     overflow-wrap: break-word;
   }
 
-  /* Cabeçalhos: quebra suave preservando legibilidade.
-     A família vem daqui, e não de classe em .tsx, para que todo título do
-     app — inclusive os que o shadcn renderiza (DialogTitle, CardTitle) —
-     mude num lugar só. `font-brand` (Manrope, a fonte da marca) é utility e ganha desta regra
-     onde for aplicada, então a marca não é afetada. */
+  /* Hierarquia tipográfica (comando de 19/09):
+       h1 — título de página   28/36 · 600 · -0.015em
+       h2 — título de seção    20/28 · 600
+       h3 — título de cartão   16/24 · 600
+       h4 — subtítulo          15/22 · 600
+     Componente que precisa de outro tamanho declara a classe; sem classe,
+     esta é a régua — inclusive para DialogTitle/CardTitle do shadcn. */
   h1, h2, h3, h4, h5, h6 {
     @apply font-heading;
-  }
-  /* Título grande respira melhor levemente comprimido — régua da direção nova. */
-  h1, h2 {
-    letter-spacing: -0.02em;
     overflow-wrap: break-word;
     word-break: normal;
-    /* `auto` partia "oportu-nidade" no hero e "venci-do" em títulos apertados:
-       título nunca hifeniza sozinho. */
     hyphens: manual;
   }
+  h1 { font-size: 1.75rem;   line-height: 2.25rem;  font-weight: 600; letter-spacing: -0.015em; }
+  h2 { font-size: 1.25rem;   line-height: 1.75rem;  font-weight: 600; letter-spacing: -0.01em; }
+  h3 { font-size: 1rem;      line-height: 1.5rem;   font-weight: 600; }
+  h4 { font-size: 0.9375rem; line-height: 1.375rem; font-weight: 600; }
 
-  /* Escala dos títulos internos (guia 12/09): h1 28/36, h2 22/30, h3 18/26.
-     Página que precisa de outro tamanho declara a classe; sem classe, é esta
-     a régua — inclusive para DialogTitle/CardTitle do shadcn. */
-  /* Escala enterprise — page title 22px, section 16px, card 14px */
-  h1 { font-size: 1.375rem; line-height: 1.875rem; font-weight: 600; }
-  h2 { font-size: 1.0rem;   line-height: 1.5rem;   font-weight: 600; }
-  h3 { font-size: 0.9375rem; line-height: 1.375rem; font-weight: 600; }
-
-  /* Conteúdo monoespaçado/código mantém integridade visual mas quebra se necessário */
   code, pre, kbd, samp {
     overflow-wrap: anywhere;
     white-space: pre-wrap;
   }
 
-  /* Botões: nunca quebram texto, evitam estourar layout via shrink */
   button {
     overflow-wrap: normal;
   }
 
-  /* NÃO impedir a quebra dos rótulos de menu aqui: sem `overflow-wrap:
-     anywhere` os itens do AppTopNav ficam largos demais para 1280px e a
-     barra se SOBREPÕE (wordmark cobrindo "Painel", "Ferramentas" colidindo
-     com o seletor de empresa) — pior que a quebra. A correção real é de
-     layout na própria barra; ver docs/pendencias.md. */
-
-  /* Tabelas: contêineres com overflow horizontal automático */
   table {
     table-layout: auto;
     max-width: 100%;
@@ -422,223 +359,97 @@
     word-break: normal;
   }
 
-  /* Inputs e textareas mantêm comportamento nativo */
   input, textarea, select {
     overflow-wrap: normal;
   }
 
-  /* Links longos (URLs) quebram em qualquer ponto */
   a {
     overflow-wrap: anywhere;
   }
 
-  /* Improve tap targets on mobile */
+  /* Alvo mínimo de toque e escala reduzida do título no celular. */
   @media (max-width: 640px) {
     button, a, [role="button"] {
       min-height: 32px;
     }
-    /* Downscale mobile na proporção da nova escala (28/22/18) —
-       os valores antigos (20/17.6/15.2) ficavam abaixo do corpo de 16px. */
-    h1 { font-size: 1.75rem; }
-    h2 { font-size: 1.375rem; }
-    h3 { font-size: 1.125rem; }
+    h1 { font-size: 1.375rem; line-height: 1.875rem; }
+    h2 { font-size: 1.125rem; line-height: 1.625rem; }
+    h3 { font-size: 1rem;     line-height: 1.5rem; }
   }
+
+  /* Barra de rolagem fina e neutra, em todo o app. */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: hsl(var(--input)); border-radius: 9999px; border: 2px solid transparent; background-clip: padding-box; }
+  ::-webkit-scrollbar-thumb:hover { background: hsl(var(--foreground-tertiary)); background-clip: padding-box; }
 }
 
 @layer utilities {
   /* ===== Utilitários de truncamento e quebra de texto ===== */
-
-  /* Texto que quebra em qualquer ponto (CNPJs, e-mails, URLs longas) */
   .text-anywhere {
     overflow-wrap: anywhere;
     word-break: normal;
   }
-
-  /* Limita texto a N linhas com reticências */
   .text-clamp-1 { @apply truncate; }
   .text-clamp-2 { @apply line-clamp-2 [overflow-wrap:anywhere]; }
   .text-clamp-3 { @apply line-clamp-3 [overflow-wrap:anywhere]; }
-
-  /* Container que nunca expande além do pai (corrige flex overflow comum) */
   .contain-text {
     @apply min-w-0 max-w-full overflow-hidden;
   }
-
-  /* Célula de tabela com ellipsis quando estoura */
   .cell-truncate {
     @apply truncate max-w-[240px];
   }
-
-  /* Badge ou chip que precisa truncar conteúdo longo */
   .badge-truncate {
     @apply max-w-full truncate inline-flex items-center;
+  }
+
+  /* Números que se alinham em coluna. */
+  .num {
+    font-variant-numeric: tabular-nums;
   }
 }
 
 @layer utilities {
-  /* AURÉLIA — o dourado (43 60% 54%) era um segundo laranja de marca;
-     convergido para o laranja de ação único (decisão da auditoria de cor). */
-  .aurelia-gold { color: hsl(var(--accent)); }
-  /* Superfícies da Aurélia — escuras nos DOIS temas de propósito: é a mesma
-     ideia do bloco de código do protótipo, que não segue a superfície clara.
-     Por isso continuam literais, e não `hsl(var(--card))`. O que mudou no
-     rebrand foi só o matiz: saíram da família 213/215/225 antiga e passaram
-     para o 217 do navy da marca. */
-  /* Superfícies da Aurélia. Eram escuras FIXAS nos dois temas, e por isso o
-     painel de análise do edital virava uma ilha navy dentro de um cartão
-     branco — texto claro sobre fundo escuro no meio de uma página clara.
-     Agora saem dos tokens e acompanham o tema, como qualquer outra superfície
-     do app. No escuro elas voltam a ser escuras sozinhas.
-     O bloco de código continua fixo (--cod-bg): ali o escuro é semântica de
-     "leitura técnica", não decoração. Aqui era decoração. */
+  /* ── AURÉLIA (assistente) ────────────────────────────────────────────── */
+  .aurelia-gold { color: hsl(var(--primary)); }
   .aurelia-bg { background: hsl(var(--muted)); }
   .aurelia-surface { background: hsl(var(--card)); }
   .aurelia-border { border-color: hsl(var(--border)); }
   .aurelia-bubble-user { background: hsl(var(--primary-tint)); }
   .aurelia-bubble-ai { background: hsl(var(--muted)); }
 
-  /* O pulso de "tem mensagem nova" SOMA ao relevo do botão em vez de trocá-lo.
-     Antes ele redefinia `box-shadow` inteira, e como `hasNotification` nasce
-     ligado, o relevo do FAB era apagado no primeiro segundo de vida da tela —
-     o botão só ganharia profundidade depois que alguém abrisse o chat.
-
-     A solução é o anel viver em `outline`, que é outra propriedade: as duas
-     convivem, e o pulso não sabe nem precisa saber o que a sombra está
-     fazendo. */
+  /* O pulso de "tem mensagem nova" vive em `outline`, somando ao relevo. */
   @keyframes aurelia-pulse {
     0%, 100% {
-      outline-color: hsl(var(--pulso-aurelia) / 0.55);
+      outline-color: hsl(var(--primary) / 0.55);
       outline-offset: 2px;
     }
     50% {
-      outline-color: hsl(var(--pulso-aurelia) / 0);
+      outline-color: hsl(var(--primary) / 0);
       outline-offset: 7px;
     }
   }
   .aurelia-glow {
-    /* A cor do pulso é variável porque o BOTÃO muda de cor com o tema: no
-       escuro o FAB é dourado, e um anel dourado em volta de um botão dourado
-       deixa de ler como pulso e vira contorno. No escuro o anel sobe para o
-       dourado claro da logo, que separa dos dois. */
-    --pulso-aurelia: var(--gold);
-    outline: 2px solid hsl(var(--pulso-aurelia) / 0.55);
+    outline: 2px solid hsl(var(--primary) / 0.55);
     outline-offset: 2px;
     animation: aurelia-pulse 2.2s ease-out infinite;
-  }
-  .dark .aurelia-glow {
-    --pulso-aurelia: var(--logo-accent);
   }
   @media (prefers-reduced-motion: reduce) {
     .aurelia-glow { animation: none; }
   }
-  .glass-card {
-    @apply bg-card/80 backdrop-blur-xl border border-border/50 shadow-md;
-  }
-  .gradient-text {
-    background: var(--gradient-primary);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-  .landing-section {
-    @apply py-20 md:py-28 px-6;
-  }
-  .landing-container {
-    @apply max-w-7xl mx-auto;
-  }
-  .section-label {
-    @apply text-xs font-bold uppercase tracking-[0.2em] text-accent mb-4 inline-block;
-  }
-  .section-title {
-    @apply text-3xl md:text-4xl lg:text-5xl font-extrabold tracking-tight leading-[1.12];
-  }
-  .section-subtitle {
-    @apply text-base md:text-lg text-muted-foreground max-w-2xl leading-relaxed mt-4;
-  }
-  .nav-item {
-    @apply flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200;
-  }
-  .nav-item-active {
-    background: hsl(var(--accent) / 0.12);
-    @apply text-accent;
-  }
-  .nav-item-idle {
-    @apply text-muted-foreground hover:text-foreground;
-  }
-  .nav-item-idle:hover {
-    background: hsl(var(--muted) / 0.6);
-  }
-  /* REBRAND — o relevo dos cartões do painel.
-     A borda que acendia em azul no hover saiu. Ela pintava a MOLDURA para dizer
-     "você está aqui", que é a gramática de foco, não a de alvo clicável — e
-     numa grade de 24 ladrilhos o azul brigava com o ícone, que já é azul.
 
-     No lugar entra profundidade: o cartão sobe, cresce um pouco e a sombra
-     abre. É o mesmo gesto de levantar um papel da mesa, e funciona sem cor
-     nenhuma — passa em tela monocromática e para quem não distingue matiz.
-
-     `transform` e `box-shadow` são as duas propriedades que o navegador anima
-     na GPU sem recalcular layout: 24 ladrilhos crescendo ao mesmo tempo não
-     custam nada. Animar `width`, `padding` ou `border-width` custaria.
-
-     A curva (.2, .8, .3, 1) desacelera rápido no fim — o cartão chega e para,
-     em vez de deslizar até o lugar. É o que separa "responde ao cursor" de
-     "está escorregando". */
-  .eleva {
-    box-shadow: var(--shadow-sm);
-    transition: transform 200ms cubic-bezier(0.2, 0.8, 0.3, 1),
-                box-shadow 200ms ease-out;
-  }
-  .eleva:hover {
-    transform: translateY(-3px) scale(1.02);
-    box-shadow: var(--shadow-lg);
-    z-index: 10;
-  }
-  /* Ladrilho pequeno cresce mais: 2% em 90px de largura é imperceptível. */
-  .eleva--ladrilho:hover {
-    transform: translateY(-4px) scale(1.05);
-  }
-  .eleva:active {
-    transform: translateY(-1px) scale(0.99);
-    transition-duration: 80ms;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .eleva,
-    .eleva:hover,
-    .eleva:active {
-      transform: none;
-      transition: none;
-    }
-  }
-
-  /* REBRAND — o botão flutuante da AURÉLIA.
-     Era um círculo chapado com um escudo e a letra "A". Escudo é símbolo de
-     proteção; a AURÉLIA é consultora, então o ícone contava outra história.
-
-     O relevo vem de três camadas, que é como um objeto real se comporta sob
-     uma luz vinda de cima:
-
-       1. gradiente do claro (topo) ao escuro (base) — a face virada para a luz
-       2. `inset 0 1px 0` branco no topo e `inset 0 -2px 4px` preto embaixo —
-          a quina que pega luz e a que some na sombra
-       3. DUAS sombras externas: uma curta e escura logo abaixo (o contato com
-          a superfície) e uma longa e difusa (a sombra projetada)
-
-     A sombra de contato é o que a maioria dos botões esquece, e é ela que
-     separa "flutuando" de "colado". */
-  /* Identidade 12/09: o botão da Aurélia é o verde de ação, sólido — sem
-     gradiente, sem dourado. Sombra suave na cor do próprio verde. */
+  /* O botão flutuante da AURÉLIA: verde de ação, sólido, sombra na própria cor. */
   .aurelia-fab {
     background: hsl(var(--primary));
     box-shadow:
       0 2px 4px hsl(var(--primary) / 0.25),
       0 10px 24px -6px hsl(var(--primary) / 0.45);
-    transition: transform 220ms cubic-bezier(0.2, 0.8, 0.3, 1),
-                box-shadow 220ms ease-out;
+    transition: transform 180ms cubic-bezier(0.2, 0.8, 0.3, 1),
+                box-shadow 180ms ease-out;
   }
   .aurelia-fab:hover {
     background: hsl(var(--primary-hover));
-    transform: translateY(-3px) scale(1.05);
+    transform: translateY(-2px) scale(1.03);
     box-shadow:
       0 4px 8px hsl(var(--primary) / 0.25),
       0 18px 36px -8px hsl(var(--primary) / 0.5);
@@ -649,69 +460,19 @@
     box-shadow: 0 1px 3px hsl(var(--primary) / 0.35);
     transition-duration: 90ms;
   }
-
-  /* O robô, recortado do PNG e pintado com o dourado da logo.
-     `mask` usa só o canal alfa do arquivo — o desenho vira recorte e a cor vem
-     do `background`. É por isso que o ícone azul do arquivo aparece dourado
-     aqui, e por isso ele acompanha o token: mudou `--logo-accent`, mudou o
-     robô, sem reexportar imagem. */
+  /* O robô, recortado do PNG pela máscara e pintado em branco. */
   .aurelia-fab__robo {
-    /* 32 de 56: o desenho fica com ~52% do círculo, que é onde um ícone de FAB
-       lê sem encostar na borda. A máscara já traz uma folga própria (arte de
-       176 num quadro de 192), então o número aqui é o quadro, não a arte. */
     width: 32px;
     height: 32px;
     display: block;
-    background: hsl(0 0% 100%);   /* robô branco sobre o verde */
+    background: hsl(var(--primary-foreground));
     -webkit-mask: url('./assets/brand/icon-robo-mascara.png') center / contain no-repeat;
     mask: url('./assets/brand/icon-robo-mascara.png') center / contain no-repeat;
-    transition: transform 220ms cubic-bezier(0.2, 0.8, 0.3, 1);
+    transition: transform 180ms cubic-bezier(0.2, 0.8, 0.3, 1);
   }
   .aurelia-fab:hover .aurelia-fab__robo {
-    transform: scale(1.08);
+    transform: scale(1.06);
   }
-  /* ── O FAB no tema escuro: inverte para dourado com o robô preto ──
-
-     No claro o botão é navy porque ele precisa se destacar de uma página
-     branca. No escuro a página JÁ é navy, e um botão navy sobre fundo navy
-     some — restava a sombra segurando a silhueta sozinha, que é pouco para o
-     único atalho flutuante da tela.
-
-     Invertendo, o botão vira o ponto mais claro da interface escura, e o robô
-     passa a ser recortado em preto sobre ele. O relevo dos três níveis
-     continua o mesmo — só troca de qual lado vem a luz: sobre dourado o
-     brilho superior é quase branco e a sombra inferior é bronze, não preto,
-     porque sombra preta sobre amarelo suja em vez de aprofundar.
-
-     A sombra externa ganha um halo dourado difuso: numa página escura a
-     sombra preta não aparece, e sem ela o botão volta a ficar chapado. */
-  .dark .aurelia-fab {
-    background: linear-gradient(160deg, hsl(var(--logo-accent)) 0%, hsl(var(--gold)) 62%);
-    box-shadow:
-      inset 0 1px 0 hsl(45 90% 97% / 0.55),
-      inset 0 -2px 5px hsl(33 65% 20% / 0.38),
-      0 2px 4px hsl(220 60% 2% / 0.55),
-      0 10px 26px -6px hsl(46 70% 42% / 0.35);
-  }
-  .dark .aurelia-fab:hover {
-    box-shadow:
-      inset 0 1px 0 hsl(45 90% 97% / 0.65),
-      inset 0 -2px 5px hsl(33 65% 20% / 0.38),
-      0 4px 8px hsl(220 60% 2% / 0.50),
-      0 18px 38px -8px hsl(46 70% 42% / 0.45);
-  }
-  .dark .aurelia-fab:active,
-  .dark .aurelia-fab--arrastando {
-    box-shadow:
-      inset 0 2px 6px hsl(33 65% 18% / 0.45),
-      0 1px 3px hsl(220 60% 2% / 0.55);
-  }
-  /* `--navy` no escuro é 217 48% 9% — preto para o olho, mas ainda da família
-     da marca, então o recorte não destoa se o token for reajustado. */
-  .dark .aurelia-fab__robo {
-    background: hsl(var(--navy));
-  }
-
   @media (prefers-reduced-motion: reduce) {
     .aurelia-fab,
     .aurelia-fab:hover,
@@ -723,45 +484,83 @@
     }
   }
 
-  .stat-card {
-    @apply bg-card rounded-xl p-3 sm:p-5 border border-border/60;
+  /* ── Relevo de cartão clicável ───────────────────────────────────────── */
+  .eleva {
     box-shadow: var(--shadow-sm);
-    transition: transform 200ms cubic-bezier(0.2, 0.8, 0.3, 1),
-                box-shadow 200ms ease-out;
+    transition: transform 160ms cubic-bezier(0.2, 0.8, 0.3, 1),
+                box-shadow 160ms ease-out,
+                border-color 160ms ease-out;
   }
-  .stat-card:hover {
-    box-shadow: var(--shadow-lg);
-    transform: translateY(-3px) scale(1.01);
+  .eleva:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    z-index: 10;
+  }
+  .eleva--ladrilho:hover {
+    transform: translateY(-2px);
+  }
+  .eleva:active {
+    transform: translateY(0);
+    transition-duration: 80ms;
   }
   @media (prefers-reduced-motion: reduce) {
-    .stat-card,
-    .stat-card:hover {
+    .eleva,
+    .eleva:hover,
+    .eleva:active {
       transform: none;
       transition: none;
     }
   }
+
+  .stat-card {
+    @apply bg-card rounded-lg border border-border p-4 sm:p-5;
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow 160ms ease-out, border-color 160ms ease-out;
+  }
+  .stat-card:hover {
+    box-shadow: var(--shadow-md);
+  }
+
   .kanban-column {
-    @apply bg-muted/50 rounded-xl p-4 min-h-[400px];
+    @apply bg-secondary rounded-lg p-3 min-h-[400px];
   }
   .kanban-card {
-    @apply bg-card rounded-lg p-4 border border-border/50 shadow-sm cursor-grab active:cursor-grabbing transition-shadow duration-200;
+    @apply bg-card rounded-md p-3 border border-border cursor-grab active:cursor-grabbing;
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow 160ms ease-out, border-color 160ms ease-out;
   }
   .kanban-card:hover {
     box-shadow: var(--shadow-md);
   }
+
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: hsl(var(--border)) transparent;
+    scrollbar-color: hsl(var(--input)) transparent;
   }
   .scrollbar-thin::-webkit-scrollbar {
-    width: 4px;
+    width: 6px;
+    height: 6px;
   }
   .scrollbar-thin::-webkit-scrollbar-track {
     background: transparent;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background-color: hsl(var(--border));
+    background-color: hsl(var(--input));
     border-radius: 9999px;
+  }
+
+  .nav-item {
+    @apply flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-150;
+  }
+  .nav-item-active {
+    background: hsl(var(--primary-tint));
+    @apply text-primary;
+  }
+  .nav-item-idle {
+    @apply text-muted-foreground hover:text-foreground;
+  }
+  .nav-item-idle:hover {
+    background: hsl(var(--muted));
   }
   .sidebar-item {
     @apply nav-item;
@@ -774,127 +573,47 @@
   }
 }
 
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
-}
-@keyframes shimmer {
-  0% { background-position: -200% center; }
-  100% { background-position: 200% center; }
-}
-@keyframes pulse-orange {
-  0%, 100% { box-shadow: 0 0 0 0 hsl(var(--accent) / 0.4); }
-  50% { box-shadow: 0 0 20px 6px hsl(var(--accent) / 0.15); }
-}
-.animate-float {
-  animation: float 6s ease-in-out infinite;
-}
-.animate-float-delayed {
-  animation: float 6s ease-in-out 2s infinite;
-}
-.animate-pulse-orange {
-  animation: none;
-}
-@keyframes marquee {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
-}
-.animate-marquee {
-  animation: marquee 40s linear infinite;
-}
-.shimmer-text {
-  background: linear-gradient(
-    110deg,
-    hsl(var(--foreground)) 0%,
-    hsl(var(--foreground)) 40%,
-    hsl(var(--accent)) 50%,
-    hsl(var(--foreground)) 60%,
-    hsl(var(--foreground)) 100%
-  );
-  background-size: 200% 100%;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  animation: shimmer 4s linear infinite;
-}
-
 /* ============================================================
-   Kanban — Padronização de contenção, quebra e overflow
-   Usado em todos os Kanbans do sistema (Financeiro, Licitações, etc.)
+   Kanban — contenção, quebra e overflow (todos os Kanbans)
    ============================================================ */
 @layer utilities {
-  /* Coluna do Kanban: largura controlada, nunca expande além do grid */
   .kanban-col {
     @apply min-w-0 max-w-full overflow-hidden flex flex-col;
   }
-  /* Área rolável interna da coluna */
   .kanban-col-scroll {
     @apply w-full min-w-0 max-w-full overscroll-contain;
   }
-  /* Container de cards dentro da coluna */
   .kanban-col-body {
     @apply space-y-2 min-w-0 max-w-full;
   }
-  /* Card individual: contém o conteúdo, nunca vaza */
   .kanban-card {
     @apply w-full min-w-0 max-w-full overflow-hidden;
   }
-  /* Conteúdo do card */
   .kanban-card-body {
     @apply min-w-0 max-w-full overflow-hidden;
   }
-  /* Título do card.
-     `overflow-wrap: anywhere` quebrava CEDO DEMAIS: ele autoriza a quebra em
-     qualquer ponto e o navegador aproveitava, produzindo "SALDO TOTAL DIS-
-     PONÍVEL DIA" quando havia um espaço logo antes onde quebrar. `break-words`
-     só corta dentro da palavra quando ela sozinha não cabe — que é o caso
-     raro que se queria cobrir. E `hyphens-none` impede o hífen automático,
-     que num título de lançamento não ajuda a ler, atrapalha. */
   .kanban-card-title {
     @apply text-sm font-medium line-clamp-2 min-w-0 break-words hyphens-none;
   }
-  /* Linha auxiliar (cliente, doc, categoria): uma linha truncada */
   .kanban-card-meta {
-    @apply text-[11px] text-muted-foreground truncate min-w-0 max-w-full;
+    @apply text-xs text-muted-foreground truncate min-w-0 max-w-full;
   }
-  /* Linha auxiliar que pode quebrar (descrições maiores) */
   .kanban-card-meta-wrap {
-    @apply text-[11px] text-muted-foreground min-w-0 max-w-full break-words hyphens-none;
+    @apply text-xs text-muted-foreground min-w-0 max-w-full break-words hyphens-none;
   }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
    Documento — o que a tela vira quando é impressa
-   ═══════════════════════════════════════════════════════════════════════════
-
-   O trabalho em licitação não termina na tela: termina em PDF assinado,
-   numerado e anexado ao processo. É o que se cita em ofício e o que o órgão
-   pede. Até aqui o projeto não tinha uma única regra de impressão — imprimir
-   qualquer tela saía com menu lateral, botões e barra de busca no papel.
-
-   Três classes, e é só isso que uma tela precisa saber:
 
      .nao-imprime   some no papel   (botões, filtros, navegação)
      .so-impresso   só no papel     (cabeçalho oficial, assinaturas)
      .folha-nova    quebra de página antes
-
-   Quem pinta fundo colorido em cartão precisa de `print-color-adjust`, senão
-   o navegador economiza tinta e devolve tudo branco — inclusive o vermelho
-   que diz que o contrato venceu. */
-
+   ═══════════════════════════════════════════════════════════════════════════ */
 @media print {
-  /* SEM `size`: declarar `size: A4` impõe retrato e o navegador desabilita
-     a escolha "Paisagem" do diálogo de impressão — era por isso que tabela
-     larga não tinha como deitar na folha (09/09). A orientação é de quem
-     imprime; a folha continua A4 por padrão do diálogo. */
   @page {
     margin: 14mm 12mm 16mm;
   }
-
-  /* Tabela larga rola na tela; no papel não existe rolagem — o contêiner
-     que corta passa a mostrar, e a folha (retrato ou paisagem) acomoda o
-     que couber. Coluna grudada (ações) volta ao fluxo para não carimbar
-     por cima do conteúdo. */
   .overflow-x-auto,
   .overflow-auto {
     overflow: visible !important;
@@ -902,108 +621,69 @@
   .sticky {
     position: static !important;
   }
-
-  /* Botão dentro de tabela (lápis, lixeira, copiar) é operação de tela —
-     no papel é só ruído ao lado de cada linha. */
   table button {
     display: none !important;
   }
-
-  /* O navegador desliga cor de fundo por padrão. Num documento em que a cor
-     CARREGA informação — vermelho é vencido, âmbar é vencendo — desligar é
-     perder o dado, não economizar tinta. */
   *,
   *::before,
   *::after {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
-
   html,
   body {
     background: #fff !important;
     color: #000;
   }
-
   .nao-imprime,
   [data-imprimir="nao"] {
     display: none !important;
   }
-
   .so-impresso {
     display: block !important;
   }
-
   .folha-nova {
     break-before: page;
   }
-
-  /* Cartão vira bloco de documento: sem sombra, com fio. E não pode ser
-     partido no meio — meio cartão no fim da folha e meio na seguinte é o
-     defeito clássico de imprimir tela. */
   .documento [class*="rounded"],
   .documento .card {
     box-shadow: none !important;
   }
-
   .documento section,
   .documento table,
   .bloco-inteiro {
     break-inside: avoid;
   }
-
-  /* Cabeçalho de tabela repete em toda folha; sem isto, da segunda página em
-     diante ninguém sabe o que cada coluna é. */
   thead {
     display: table-header-group;
   }
-
   tr,
   img {
     break-inside: avoid;
   }
-
-  /* Título órfão no pé da folha. */
   h1, h2, h3, h4 {
     break-after: avoid;
   }
-
   a[href]::after {
     content: "";
   }
 }
 
-/* Fora da impressão, `.so-impresso` fica escondido. Precisa vir depois do
-   bloco @media para não depender da ordem de especificidade do Tailwind. */
 .so-impresso {
   display: none;
 }
 
 /* ============================================================================
-   Skeleton — a varredura de luz do protótipo (`.sk`, index.html:261-262)
-   ============================================================================
-
-   O protótipo anima `background-position` sobre um gradiente de 400% de
-   largura. Funciona, mas repinta o elemento inteiro a cada quadro: com vinte
-   skeletons numa tabela, é vinte repinturas por quadro, e em máquina fraca a
-   varredura engasga justamente quando a tela está mais ocupada carregando.
-
-   Aqui a faixa é um `::after` deslocado por `transform`. Transform é composto
-   na GPU e não dispara repintura — o custo para de crescer com a quantidade de
-   skeletons na tela. Mesmo desenho, conta diferente.
-
-   Vive em `@layer components` de propósito: as utilitárias do Tailwind entram
-   depois e vencem por ordem de camada, então `<Skeleton className="rounded-full" />`
-   continua redondo, e o `overflow: hidden` faz a faixa acompanhar o recorte.
+   Skeleton — varredura de luz por `transform` (composta na GPU, sem repintura).
+   Vive em @layer components para as utilitárias vencerem (`rounded-full`).
    ========================================================================== */
 @layer components {
   .skeleton {
     position: relative;
     overflow: hidden;
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     background: hsl(var(--skeleton-bg));
   }
-
   .skeleton::after {
     content: '';
     position: absolute;
@@ -1023,9 +703,6 @@
   to { transform: translateX(100%); }
 }
 
-/* Movimento infinito é gatilho de enxaqueca e de desconforto vestibular, e a
-   tela de carregamento é onde ele mais aparece. Quem pediu menos movimento
-   fica com a base sólida — ela já comunica "conteúdo a caminho" sozinha. */
 @media (prefers-reduced-motion: reduce) {
   .skeleton::after {
     animation: none;
@@ -1033,12 +710,7 @@
   }
 }
 
-/* ── Esteira de índices oficiais (Jurídico → Índices & Repactuação) ─────────
-   O padrão dos portais econômicos (FGV, agências): os números correm da
-   direita para a esquerda em loop contínuo. A faixa é DUPLICADA no markup e
-   anda -50% — quando a primeira cópia sai, a segunda está exatamente onde a
-   primeira começou, sem emenda visível. Pausa no hover (ler exige parar) e
-   desliga por completo para quem pediu menos movimento ao sistema. */
+/* ── Esteira de índices oficiais (Jurídico → Índices & Repactuação) ─────── */
 @keyframes esteira-indices {
   from { transform: translateX(0); }
   to   { transform: translateX(-50%); }
@@ -1053,56 +725,40 @@
   .esteira-indices-faixa { animation: none; }
 }
 
-/* O halo verde do atalho "Voltar para o robô" (17/09/2026). A cor e o rótulo
-   já dizem o que o botão faz; quem pediu menos movimento não perde nada. */
+/* O halo verde do atalho "Voltar para o robô" (17/09/2026). */
 @media (prefers-reduced-motion: reduce) {
   .animate-piscar-verde { animation: none; }
 }
 
-/* ── Densidade do módulo Gestão ────────────────────────────────────────────
-   O comando de 13/09 fixa uma escala própria para Gestão: título de página
-   26/34 em 700, seção 18/26 em 600, corpo e controles 14/20, metadado 12/16.
-
-   Ela NÃO pode virar a escala global. A escala do app subiu em 10/09 porque o
-   dono achou a anterior "pequena e difícil" de ler nas telas de leitura; o
-   Gestão pede o contrário — tabela de dez colunas, painel lateral e KPI na
-   mesma dobra só cabem em densidade de sistema. As duas convivem porque estas
-   classes só valem onde forem escritas, e nenhum outro módulo as escreve.
-
-   Por que classe e não `fontSize` do Tailwind: mudar `text-sm` mudaria o app
-   inteiro. Aqui o nome diz o papel (`g-corpo`), não o tamanho — trocar o
-   número depois não exige varrer as telas atrás de `text-[14px]`.
-
-   Medidas do comando, em token, para não se repetirem tela a tela.
+/* ── Tokens de medida do app (módulo Gestão e moldura) ────────────────────
+   Medidas em token para não se repetirem tela a tela. Os nomes `g-*` dizem
+   o papel (`g-corpo`), não o tamanho — trocar o número aqui vale para todas.
    ========================================================================== */
 :root {
-  --g-raio: 4px;              /* raio — ajuste ao estilo corporativo do prototype (era 8px) */
-  --g-controle: 36px;         /* altura de input e botão (era 40px; prototype usa 34px) */
-  --g-linha: 40px;            /* altura de linha de tabela (era 44px; prototype usa 37px) */
+  --g-raio: 0.5rem;           /* raio de controle (botão, campo, chip grande) — 8px */
+  --g-controle: 40px;         /* altura de input e botão */
+  --g-linha: 48px;            /* altura de linha de tabela */
   --g-painel: 384px;          /* painel lateral, meio da faixa 360–420 */
-  /* A navegação voltou para o topo em 13/09 e a coluna navy de 240px saiu com
-     o AppSidebar; `--g-barra-lateral` e `--g-barra-lateral-fechada` ficaram
-     sem consumidor e foram REMOVIDAS aqui — token órfão envelhece divergente
-     e depois alguém o usa achando que ainda descreve algo que existe. */
-  --g-topo: 54px;             /* cabeçalho horizontal, desktop (ref: prototype 54px) */
-  --g-topo-celular: 52px;     /* o mesmo cabeçalho abaixo de 768px */
-  --g-conteudo: 1440px;       /* teto do container central do conteúdo */
+  --g-topo: 60px;             /* topbar, desktop */
+  --g-topo-celular: 56px;     /* topbar abaixo de 768px */
+  --g-conteudo: 1520px;       /* teto do container central do conteúdo */
+  --g-barra-lateral: 248px;   /* sidebar aberta */
+  --g-barra-lateral-fechada: 72px; /* sidebar recolhida (trilho) */
 }
 
 @layer components {
   .g-titulo-pagina {
-    font-family: Manrope, Inter, system-ui, sans-serif;
-    font-size: 1.625rem;   /* 26px */
-    line-height: 2.125rem; /* 34px */
-    font-weight: 700;
-    letter-spacing: -0.01em;
+    font-size: 1.75rem;    /* 28px */
+    line-height: 2.25rem;  /* 36px */
+    font-weight: 600;
+    letter-spacing: -0.015em;
   }
 
   .g-titulo-secao {
-    font-family: Manrope, Inter, system-ui, sans-serif;
-    font-size: 1.125rem;   /* 18px */
-    line-height: 1.625rem; /* 26px */
+    font-size: 1.25rem;    /* 20px */
+    line-height: 1.75rem;  /* 28px */
     font-weight: 600;
+    letter-spacing: -0.01em;
   }
 
   .g-corpo {
@@ -1115,17 +771,16 @@
     line-height: 1rem;     /* 16px */
   }
 
-  /* Superfície padrão: branca, borda fina, raio 8, sombra discreta. */
+  /* Superfície padrão: branca, borda fina, raio 10, sombra discreta. */
   .g-cartao {
     background: hsl(var(--card));
     border: 1px solid hsl(var(--border));
-    border-radius: var(--g-raio);
+    border-radius: var(--radius);
     box-shadow: var(--shadow-sm);
   }
 
-  /* Alvo de toque e densidade dos controles do módulo. O piso de 16px no
-     celular é regra do comando e também evita o zoom automático do iOS ao
-     focar um campo — abaixo disso o Safari amplia a página sozinho. */
+  /* Alvo de toque e densidade dos controles. O piso de 16px no celular evita
+     o zoom automático do iOS ao focar um campo. */
   .g-controle {
     min-height: var(--g-controle);
     font-size: 0.875rem;
@@ -1138,16 +793,20 @@
     .g-cartao input,
     .g-cartao textarea,
     .g-cartao select {
-      font-size: 1rem;     /* 16px — piso do comando para entrada no celular */
-      min-height: var(--g-linha);
+      font-size: 1rem;
+      min-height: 44px;
     }
   }
 }
 
-/* Título de página no celular: ~22px, como manda a seção MOBILE. */
+/* Título de página no celular. */
 @media (max-width: 767px) {
   .g-titulo-pagina {
     font-size: 1.375rem;   /* 22px */
     line-height: 1.875rem; /* 30px */
+  }
+  .g-titulo-secao {
+    font-size: 1.125rem;   /* 18px */
+    line-height: 1.625rem;
   }
 }

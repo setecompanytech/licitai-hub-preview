@@ -3,23 +3,30 @@ import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
 
+/**
+ * Badge — selo suave: fundo tingido, tinta escura, contorno fino, raio 6px.
+ * Status sempre com TEXTO — a cor é reforço, nunca a única pista.
+ *
+ *   success  verde   (ganha, ativo, concluído)
+ *   info     azul    (em disputa, em andamento)
+ *   warning  âmbar   (pendente, aguardando)
+ *   danger   vermelho (perdida, vencida, erro)
+ *   muted    cinza   (encerrada, arquivada)
+ */
 const badgeVariants = cva(
-  "inline-flex items-center whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 max-w-full",
+  "inline-flex max-w-full items-center gap-1 whitespace-nowrap rounded-sm border px-2 py-0.5 text-xs font-semibold leading-4 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
   {
     variants: {
       variant: {
-        default: "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
-        secondary: "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        destructive: "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
-        outline: "text-foreground",
-        // Famílias semânticas em tinta suave (identidade 12/09): fundo `*-tint`,
-        // texto `*-ink`, contorno `*-line`. Status sempre com TEXTO — a cor é
-        // reforço, nunca a única pista.
+        default: "border-transparent bg-primary text-primary-foreground",
+        secondary: "border-border bg-secondary text-foreground",
+        destructive: "border-transparent bg-destructive text-destructive-foreground",
+        outline: "border-border bg-transparent text-foreground",
         success: "border-success-line bg-success-tint text-success-ink",
         warning: "border-warning-line bg-warning-tint text-warning-ink",
         danger: "border-destructive-line bg-destructive-tint text-destructive-ink",
-        info: "border-border bg-muted text-foreground",
-        muted: "border-transparent bg-muted text-muted-foreground",
+        info: "border-info-line bg-info-tint text-info-ink",
+        muted: "border-border bg-muted text-muted-foreground",
       },
     },
     defaultVariants: {
