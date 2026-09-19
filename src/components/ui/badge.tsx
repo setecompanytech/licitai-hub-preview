@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
  *   warning  âmbar   (pendente, aguardando)
  *   danger   vermelho (perdida, vencida, erro)
  *   muted    cinza   (encerrada, arquivada)
+ *   ia       verde-claro (selo "Praefectus IA", automação)
  */
 const badgeVariants = cva(
   "inline-flex max-w-full items-center gap-1 whitespace-nowrap rounded-sm border px-2 py-0.5 text-xs font-semibold leading-4 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
@@ -27,6 +28,8 @@ const badgeVariants = cva(
         danger: "border-destructive-line bg-destructive-tint text-destructive-ink",
         info: "border-info-line bg-info-tint text-info-ink",
         muted: "border-border bg-muted text-muted-foreground",
+        /* Selo "Praefectus IA" / automação: a tinta verde da ação, discreta. */
+        ia: "border-primary-line bg-primary-tint text-primary",
       },
     },
     defaultVariants: {

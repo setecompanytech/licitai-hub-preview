@@ -152,8 +152,8 @@ campos em grade `grid gap-4 sm:grid-cols-2`, seções agrupadas por assunto com
 **Vazio:** `EstadoVazio` com ícone, título curto e a ação que tira do vazio.
 **Espera:** `Skeleton` na forma do conteúdo; nunca spinner grande no centro.
 
-**IA:** selo `Praefectus IA` = `Badge` com `bg-primary-tint text-primary
-border-primary-line` e ícone `Sparkles` em `text-teal`; superfícies da
+**IA:** selo `Praefectus IA` = `<Badge variant="ia">` (tinta verde discreta) com
+ícone `Sparkles` em `text-teal`; superfícies da
 Aurélia em `bg-muted`/`bg-primary-tint`, nunca escuras; balões `rounded-lg`,
 mensagem do usuário na tinta verde, da IA em `bg-muted`.
 
