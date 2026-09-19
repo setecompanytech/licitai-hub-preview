@@ -453,8 +453,8 @@ export default function FinRelatorios() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="space-y-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="space-y-1.5">
               <Label htmlFor="rel-inicio">Data inicial</Label>
               <Input
                 id="rel-inicio"
@@ -463,7 +463,7 @@ export default function FinRelatorios() {
                 onChange={(e) => setPeriodo((p) => ({ ...p, inicio: e.target.value }))}
               />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label htmlFor="rel-fim">Data final</Label>
               <Input
                 id="rel-fim"
@@ -472,21 +472,21 @@ export default function FinRelatorios() {
                 onChange={(e) => setPeriodo((p) => ({ ...p, fim: e.target.value }))}
               />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label htmlFor="rel-formato">Formato</Label>
               <Select value={formato} onValueChange={(v) => setFormato(v as Formato)}>
                 <SelectTrigger id="rel-formato"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="pdf">
-                    <span className="flex items-center gap-2"><FileText className="w-4 h-4" /> PDF</span>
+                    <span className="flex items-center gap-2"><FileText className="h-4 w-4" aria-hidden="true" /> PDF</span>
                   </SelectItem>
                   <SelectItem value="xlsx">
-                    <span className="flex items-center gap-2"><FileSpreadsheet className="w-4 h-4" /> Excel (.xlsx)</span>
+                    <span className="flex items-center gap-2"><FileSpreadsheet className="h-4 w-4" aria-hidden="true" /> Excel (.xlsx)</span>
                   </SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label htmlFor="rel-agrupamento">Agrupamento (Razão)</Label>
               <Select value={agrupamento} onValueChange={(v) => setAgrupamento(v as typeof agrupamento)}>
                 <SelectTrigger id="rel-agrupamento"><SelectValue /></SelectTrigger>
@@ -500,11 +500,13 @@ export default function FinRelatorios() {
             </div>
           </div>
           <Separator className="my-4" />
+          {/* Parâmetros aplicados são chips neutros: o azul do sistema é só
+              para informação de estado, não para resumo de escolha. */}
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <Badge variant="info">{periodoLabel}</Badge>
-            <Badge variant="info" className="uppercase">{formato}</Badge>
+            <Badge variant="muted">{periodoLabel}</Badge>
+            <Badge variant="muted" className="uppercase">{formato}</Badge>
             {agrupamento !== "nenhum" && (
-              <Badge variant="info">Agrup.: {agrupamento}</Badge>
+              <Badge variant="muted">Agrup.: {agrupamento}</Badge>
             )}
           </div>
         </CardContent>
@@ -517,27 +519,29 @@ export default function FinRelatorios() {
           const isLoading = gerando === rel.key;
           return (
             <Card key={rel.key} className="flex flex-col">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2">
-                  <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary-tint text-primary">
-                    <Icon className="w-5 h-5" aria-hidden="true" />
-                  </span>
-                  {rel.titulo}
-                </CardTitle>
-                <CardDescription>
-                  {rel.descricao}
-                </CardDescription>
+              {/* Cartão de relatório do Design System v3: ícone num ladrilho
+                  neutro (verde é só de ação/sucesso/IA), título 16/600,
+                  descrição secundária e a ação à direita, em contorno —
+                  seis botões verdes sólidos na mesma grade disputariam entre si. */}
+              <CardHeader className="flex-row items-start gap-3 space-y-0">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                  <Icon className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <CardTitle>{rel.titulo}</CardTitle>
+                  <CardDescription className="mt-1">{rel.descricao}</CardDescription>
+                </div>
               </CardHeader>
-              <CardContent className="mt-auto pt-0">
+              <CardContent className="mt-auto flex justify-end">
                 <Button
-                  className="w-full"
+                  variant="outline"
                   onClick={() => handleGerar(rel)}
                   disabled={isLoading || !empresaAtiva}
                 >
                   {isLoading ? (
-                    <><Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Gerando...</>
+                    <><Loader2 className="animate-spin" aria-hidden="true" /> Gerando...</>
                   ) : (
-                    <><Download className="w-4 h-4" aria-hidden="true" /> Gerar {formato.toUpperCase()}</>
+                    <><Download aria-hidden="true" /> Gerar {formato.toUpperCase()}</>
                   )}
                 </Button>
               </CardContent>

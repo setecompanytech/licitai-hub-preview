@@ -65,11 +65,20 @@ export default function FinIntegracoes() {
     <div className="space-y-4">
       {/* Pluggy */}
       <Card>
+        {/* Cartão de provedor (DS v3): ícone Lucide num ladrilho neutro,
+            título 16/600 e descrição 13 ao lado — sem logo de matiz própria. */}
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Banknote className="w-5 h-5" /> Pluggy — Open Finance</CardTitle>
-          <CardDescription>
-            Conecte contas bancárias e cartões via Open Finance para sincronização automática de transações.
-          </CardDescription>
+          <div className="flex items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+              <Banknote className="h-5 w-5" aria-hidden="true" />
+            </span>
+            <div className="min-w-0 space-y-1">
+              <CardTitle>Pluggy — Open Finance</CardTitle>
+              <CardDescription>
+                Conecte contas bancárias e cartões via Open Finance para sincronização automática de transações.
+              </CardDescription>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <Alert variant="warning">
@@ -82,16 +91,18 @@ export default function FinIntegracoes() {
               <code className="rounded bg-muted px-1 text-foreground">PLUGGY_CLIENT_SECRET</code> nas configurações de Lovable Cloud.
             </AlertDescription>
           </Alert>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button onClick={testarPluggy} disabled={pluggyLoading}>
-              {pluggyLoading ? "Testando..." : "Testar conexão Pluggy"}
-            </Button>
+          {/* Status como selo à esquerda, ação à direita — a anatomia do
+              cartão de provedor. */}
+          <div className="flex flex-wrap items-center gap-3">
             {pluggyStatus === "configured" && (
-              <Badge variant="success"><CheckCircle2 className="w-3 h-3 mr-1" aria-hidden="true" />Configurado</Badge>
+              <Badge variant="success"><CheckCircle2 className="h-3 w-3" aria-hidden="true" />Configurado</Badge>
             )}
             {pluggyStatus === "missing" && (
-              <Badge variant="danger"><AlertCircle className="w-3 h-3 mr-1" aria-hidden="true" />Secrets ausentes</Badge>
+              <Badge variant="danger"><AlertCircle className="h-3 w-3" aria-hidden="true" />Secrets ausentes</Badge>
             )}
+            <Button onClick={testarPluggy} disabled={pluggyLoading} className="ml-auto">
+              {pluggyLoading ? "Testando..." : "Testar conexão Pluggy"}
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -99,10 +110,17 @@ export default function FinIntegracoes() {
       {/* SEFAZ NF-e */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><FileSearch className="w-5 h-5" /> Consulta SEFAZ NF-e</CardTitle>
-          <CardDescription>
-            Consulte status de NF-e diretamente na SEFAZ via NFe.io ou FocusNFe.
-          </CardDescription>
+          <div className="flex items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+              <FileSearch className="h-5 w-5" aria-hidden="true" />
+            </span>
+            <div className="min-w-0 space-y-1">
+              <CardTitle>Consulta SEFAZ NF-e</CardTitle>
+              <CardDescription>
+                Consulte status de NF-e diretamente na SEFAZ via NFe.io ou FocusNFe.
+              </CardDescription>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <Alert variant="warning">
@@ -114,7 +132,7 @@ export default function FinIntegracoes() {
             </AlertDescription>
           </Alert>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label htmlFor="sefaz-chave-nfe">Chave NF-e (44 dígitos)</Label>
               <Input
                 id="sefaz-chave-nfe"
@@ -128,7 +146,7 @@ export default function FinIntegracoes() {
                 {chaveNfe.length}/44 dígitos
               </p>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label htmlFor="sefaz-cnpj-emitente">CNPJ emitente (obrigatório se NFe.io)</Label>
               <Input
                 id="sefaz-cnpj-emitente"

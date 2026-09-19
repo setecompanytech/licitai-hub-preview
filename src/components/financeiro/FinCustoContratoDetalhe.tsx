@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { estimarImpostoDoContrato, type EstimativaImposto } from '@/lib/financeiro/imposto-do-contrato';
-import { AlertCircle, ExternalLink, Link2, Loader2 } from 'lucide-react';
+import { AlertCircle, ExternalLink, Link2 } from 'lucide-react';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 const pct = (v: number) => `${v.toLocaleString('pt-BR', { maximumFractionDigits: 1, minimumFractionDigits: 1 })}%`;
@@ -152,14 +153,23 @@ export default function FinCustoContratoDetalhe({
     <Dialog open onOpenChange={(v) => !v && aoFechar()}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-lg font-semibold">
+          <DialogTitle>
             {linha.numero_contrato || '(sem número)'} — resultado do contrato
           </DialogTitle>
+          <DialogDescription>{linha.orgao_contratante}</DialogDescription>
         </DialogHeader>
-        <p className="-mt-2 text-sm text-muted-foreground">{linha.orgao_contratante}</p>
 
         {carregando ? (
-          <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+          // Espera na forma da DRE que vem a seguir, não um spinner no centro.
+          <div role="status" className="space-y-2 rounded-lg border border-border p-4">
+            <span className="sr-only">Carregando resultado do contrato</span>
+            {Array.from({ length: 6 }, (_, i) => (
+              <div key={i} className="flex items-center justify-between gap-4">
+                <Skeleton className="h-4 w-1/2" />
+                <Skeleton className="h-4 w-24" />
+              </div>
+            ))}
+          </div>
         ) : (
           <div className="space-y-4">
             <div className="rounded-lg border border-border p-4 space-y-2">

@@ -17,8 +17,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import EstadoVazio from "@/components/shared/EstadoVazio";
-import { Printer, RefreshCw, Activity } from "lucide-react";
+import ValorDeCartao from "./ValorDeCartao";
+import { Printer, RefreshCw, Activity, Search, PlusCircle, Pencil, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresaId } from "@/hooks/useFinanceiro";
 import { useEmpresa } from "@/contexts/EmpresaContext";
@@ -172,9 +174,24 @@ export default function FinAtividadeUsuarios() {
     <div className="space-y-4">
       {/* Filtros */}
       <Card className="print:hidden">
-        <CardContent className="p-4 flex flex-wrap items-end gap-3">
-          <div className="space-y-2">
-            <Label htmlFor="atividade-periodo" className="text-sm">Período</Label>
+        <CardContent className="flex flex-wrap items-end gap-3 p-4">
+          {/* Busca larga à esquerda, período ao lado, ações ancoradas à
+              direita — a linha de filtros padrão do módulo. */}
+          <div className="min-w-[220px] flex-1 basis-64 space-y-1.5">
+            <Label htmlFor="atividade-usuario">Filtrar por usuário</Label>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+              <Input
+                id="atividade-usuario"
+                value={filtroUsuario}
+                onChange={(e) => setFiltroUsuario(e.target.value)}
+                placeholder="Nome ou e-mail..."
+                className="pl-9"
+              />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="atividade-periodo">Período</Label>
             <Select value={String(diasAtras)} onValueChange={(v) => setDiasAtras(Number(v))}>
               <SelectTrigger id="atividade-periodo" className="w-48"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -185,39 +202,32 @@ export default function FinAtividadeUsuarios() {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-2 flex-1 min-w-[200px]">
-            <Label htmlFor="atividade-usuario" className="text-sm">Filtrar por usuário</Label>
-            <Input
-              id="atividade-usuario"
-              value={filtroUsuario}
-              onChange={(e) => setFiltroUsuario(e.target.value)}
-              placeholder="Nome ou e-mail..."
-            />
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            <Button variant="outline" onClick={() => refetch()} disabled={isFetching}>
+              <RefreshCw className={isFetching ? "animate-spin" : undefined} aria-hidden="true" />Atualizar
+            </Button>
+            <Button variant="outline" onClick={() => window.print()}>
+              <Printer aria-hidden="true" />Imprimir / PDF
+            </Button>
           </div>
-          <Button variant="outline" onClick={() => refetch()} disabled={isFetching}>
-            <RefreshCw className={isFetching ? "animate-spin" : undefined} aria-hidden="true" />Atualizar
-          </Button>
-          <Button variant="outline" onClick={() => window.print()}>
-            <Printer aria-hidden="true" />Imprimir / PDF
-          </Button>
         </CardContent>
       </Card>
 
       {/* Totais */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 print:hidden">
-        <KpiCard label="Total de eventos" value={totais.total} />
-        <KpiCard label="Inclusões" value={totais.inclusoes} tone="success" />
-        <KpiCard label="Alterações" value={totais.alteracoes} tone="warning" />
-        <KpiCard label="Exclusões" value={totais.exclusoes} tone="danger" />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 print:hidden">
+        <KpiCard label="Total de eventos" value={totais.total} icon={Activity} />
+        <KpiCard label="Inclusões" value={totais.inclusoes} icon={PlusCircle} tone="success" />
+        <KpiCard label="Alterações" value={totais.alteracoes} icon={Pencil} tone="warning" />
+        <KpiCard label="Exclusões" value={totais.exclusoes} icon={Trash2} tone="danger" />
       </div>
 
       {/* Relatório */}
       <Card>
-        <CardContent className="p-6 print:p-0">
-          <header className="border-b border-border pb-3 mb-4 flex flex-wrap items-start justify-between gap-3">
+        <CardContent className="p-5 print:p-0">
+          <header className="mb-4 flex flex-wrap items-start justify-between gap-3 border-b border-border pb-3">
             <div>
-              <h2 className="text-lg font-semibold flex items-center gap-2">
-                <Activity className="w-5 h-5 text-muted-foreground" aria-hidden="true" />Atividade dos Usuários
+              <h2 className="flex items-center gap-2 text-lg font-semibold leading-6 text-foreground">
+                <Activity className="h-5 w-5 text-muted-foreground" aria-hidden="true" />Atividade dos Usuários
               </h2>
               <p className="text-sm text-muted-foreground">{empresaAtiva?.razao_social}</p>
             </div>
@@ -228,7 +238,12 @@ export default function FinAtividadeUsuarios() {
           </header>
 
           {isLoading ? (
-            <div className="space-y-2"><Skeleton className="h-6 w-full" /><Skeleton className="h-6 w-full" /><Skeleton className="h-6 w-full" /></div>
+            <div className="space-y-2" role="status" aria-label="Carregando atividades">
+              <Skeleton className="h-6 w-1/3" />
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+            </div>
           ) : filtrados.length === 0 ? (
             <EstadoVazio
               icone={<Activity />}
@@ -253,29 +268,32 @@ export default function FinAtividadeUsuarios() {
                           </div>
                           {Array.from(tipos.entries()).map(([tipo, evs]) => (
                             <div key={tipo} className="ml-3 mb-2">
-                              <div className="mb-1 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                              <div className="mb-1 pb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                                 Tipo: {tipo}
                               </div>
-                              <div className="overflow-x-auto">
-                                <table className="w-full text-sm">
-                                  <tbody>
+                              {/* As mesmas cinco colunas, nos primitivos de `ui/table`:
+                                  linhas de 48px, divisórias, hover discreto e a rolagem
+                                  presa ao contêiner (Design System v3). */}
+                              <div className="overflow-hidden rounded-lg border border-border">
+                                <Table>
+                                  <TableBody>
                                     {evs.map((ev) => (
-                                      <tr key={ev.id} className="hover:bg-muted">
-                                        <td className="py-1 pr-3 w-28">
+                                      <TableRow key={ev.id}>
+                                        <TableCell className="w-28">
                                           <Badge variant={OPERACAO_VARIANTE[ev.operacao] ?? "muted"}>
                                             {OPERACAO_LABEL[ev.operacao]}
                                           </Badge>
-                                        </td>
-                                        <td className="py-1 pr-3 truncate max-w-xs" title={ev.descricao}>{ev.descricao}</td>
-                                        <td className="py-1 pr-3 tabular-nums whitespace-nowrap text-right w-28">{formatBRL(ev.valor)}</td>
-                                        <td className="py-1 pr-3 text-muted-foreground tabular-nums whitespace-nowrap w-24">
+                                        </TableCell>
+                                        <TableCell className="max-w-xs truncate" title={ev.descricao}>{ev.descricao}</TableCell>
+                                        <TableCell nowrap className="w-28 text-right tabular-nums">{formatBRL(ev.valor)}</TableCell>
+                                        <TableCell nowrap className="w-24 tabular-nums text-muted-foreground">
                                           {ev.data_evento && ev.data_evento.length >= 10 ? format(new Date(ev.data_evento), "dd/MM/yyyy") : "—"}
-                                        </td>
-                                        <td className="py-1 text-muted-foreground truncate">{ev.categoria}</td>
-                                      </tr>
+                                        </TableCell>
+                                        <TableCell className="truncate text-muted-foreground">{ev.categoria}</TableCell>
+                                      </TableRow>
                                     ))}
-                                  </tbody>
-                                </table>
+                                  </TableBody>
+                                </Table>
                               </div>
                               <div className="ml-1 mt-1 text-xs text-muted-foreground">
                                 atividades({evs.length})
@@ -306,17 +324,38 @@ export default function FinAtividadeUsuarios() {
   );
 }
 
-function KpiCard({ label, value, tone }: { label: string; value: number; tone?: "success" | "warning" | "danger" }) {
+/**
+ * Cartão KPI do Design System v3 (112px): rótulo em cima, ícone num ladrilho
+ * tingido no canto, valor 28/36 embaixo — o mesmo desenho do FinResumoCards.
+ */
+function KpiCard({
+  label,
+  value,
+  icon: Icon,
+  tone,
+}: {
+  label: string;
+  value: number;
+  icon: React.ElementType;
+  tone?: "success" | "warning" | "danger";
+}) {
   const cor = tone === "success" ? "text-success-ink"
     : tone === "warning" ? "text-warning-ink"
     : tone === "danger" ? "text-destructive-ink"
     : "text-foreground";
+  const ladrilho = tone === "success" ? "bg-success-tint text-success-ink"
+    : tone === "warning" ? "bg-warning-tint text-warning-ink"
+    : tone === "danger" ? "bg-destructive-tint text-destructive-ink"
+    : "bg-muted text-muted-foreground";
   return (
-    <Card>
-      <CardContent className="p-6">
-        <div className="text-sm text-muted-foreground">{label}</div>
-        <div className={`text-[2rem] leading-10 font-bold tabular-nums ${cor}`}>{value}</div>
-      </CardContent>
+    <Card className="flex min-h-[112px] flex-col justify-between gap-2 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <p className="min-w-0 truncate text-sm font-medium leading-5 text-muted-foreground">{label}</p>
+        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${ladrilho}`}>
+          <Icon className="h-4 w-4" aria-hidden="true" />
+        </span>
+      </div>
+      <ValorDeCartao valor={String(value)} className={cor} />
     </Card>
   );
 }

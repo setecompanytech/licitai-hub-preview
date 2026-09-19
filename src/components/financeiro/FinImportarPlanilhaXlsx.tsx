@@ -6,8 +6,10 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import ValorDeCartao from "./ValorDeCartao";
 import {
-  Upload, FileSpreadsheet, Download, Loader2, Sparkles, Eye,
+  Upload, FileSpreadsheet, Download, Loader2, Info, Eye, Columns3, CheckCircle2, AlertCircle,
 } from "lucide-react";
 import { useEmpresaId } from "@/hooks/useFinanceiro";
 import { supabase } from "@/integrations/supabase/client";
@@ -431,7 +433,7 @@ export default function FinImportarPlanilhaXlsx() {
         </CardHeader>
         <CardContent className="space-y-4">
           <Alert variant="info">
-            <Sparkles className="w-4 h-4" aria-hidden="true" />
+            <Info className="w-4 h-4" aria-hidden="true" />
             <AlertDescription className="space-y-3">
               <p className="font-semibold">
                 Mapeamento inteligente — reconhece automaticamente as ~40 colunas do modelo padrão de exportação dos ERPs de mercado.
@@ -443,16 +445,18 @@ export default function FinImportarPlanilhaXlsx() {
                 <li>Você pode revisar e ajustar o mapeamento coluna→campo antes de importar</li>
               </ul>
               <Button variant="outline" size="sm" onClick={baixarModelo}>
-                <Download className="w-4 h-4" aria-hidden="true" /> Baixar modelo ({entidade})
+                <Download aria-hidden="true" /> Baixar modelo ({entidade})
               </Button>
             </AlertDescription>
           </Alert>
 
           <label
             htmlFor="fin-planilha-xlsx"
-            className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed border-border bg-card p-8 text-center transition-colors hover:border-primary hover:bg-primary-tint has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:focus-visible]:ring-offset-2 has-[:focus-visible]:ring-offset-background"
+            className="flex cursor-pointer flex-col items-center gap-2 rounded-md border border-dashed border-input bg-card p-6 text-center transition-colors duration-150 hover:border-primary hover:bg-primary-tint has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:focus-visible]:ring-offset-2 has-[:focus-visible]:ring-offset-background"
           >
-            <Upload className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
+            <span className="flex h-10 w-10 items-center justify-center rounded-md bg-muted text-muted-foreground" aria-hidden="true">
+              <Upload className="h-5 w-5" />
+            </span>
             <span className="text-base font-semibold text-foreground">Selecione o arquivo .xlsx</span>
             <span className="text-sm text-muted-foreground">Clique aqui para escolher a planilha (.xlsx) exportada do seu sistema anterior</span>
             <input
@@ -467,34 +471,55 @@ export default function FinImportarPlanilhaXlsx() {
 
           {rows.length > 0 && (
             <>
-              {/* Métricas */}
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-                <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-                  <p className="text-sm text-muted-foreground">Linhas lidas</p>
-                  <p className="text-[2rem] font-bold leading-10 tabular-nums text-foreground">{rows.length}</p>
-                </div>
-                <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-                  <p className="text-sm text-muted-foreground">Colunas mapeadas</p>
-                  <p className="text-[2rem] font-bold leading-10 tabular-nums text-foreground">{Object.keys(mapping).length}/{schema.length}</p>
-                </div>
-                <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-                  <p className="text-sm text-muted-foreground">Válidas</p>
-                  <p className="text-[2rem] font-bold leading-10 tabular-nums text-success-ink">{validas.length}</p>
-                </div>
-                <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-                  <p className="text-sm text-muted-foreground">Com erro</p>
-                  <p className="text-[2rem] font-bold leading-10 tabular-nums text-destructive-ink">{invalidas.length}</p>
-                </div>
+              {/* Métricas — cartão KPI do Design System v3 (112px): rótulo em
+                  cima, ícone num ladrilho tingido à direita, número 28/36. */}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <Card className="flex min-h-[112px] flex-col justify-between gap-2 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="min-w-0 truncate text-sm font-medium leading-5 text-muted-foreground">Linhas lidas</p>
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                      <FileSpreadsheet className="h-4 w-4" aria-hidden="true" />
+                    </span>
+                  </div>
+                  <ValorDeCartao valor={String(rows.length)} className="text-foreground" />
+                </Card>
+                <Card className="flex min-h-[112px] flex-col justify-between gap-2 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="min-w-0 truncate text-sm font-medium leading-5 text-muted-foreground">Colunas mapeadas</p>
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                      <Columns3 className="h-4 w-4" aria-hidden="true" />
+                    </span>
+                  </div>
+                  <ValorDeCartao valor={`${Object.keys(mapping).length}/${schema.length}`} className="text-foreground" />
+                </Card>
+                <Card className="flex min-h-[112px] flex-col justify-between gap-2 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="min-w-0 truncate text-sm font-medium leading-5 text-muted-foreground">Válidas</p>
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-success-tint text-success-ink">
+                      <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+                    </span>
+                  </div>
+                  <ValorDeCartao valor={String(validas.length)} className="text-success-ink" />
+                </Card>
+                <Card className="flex min-h-[112px] flex-col justify-between gap-2 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="min-w-0 truncate text-sm font-medium leading-5 text-muted-foreground">Com erro</p>
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-destructive-tint text-destructive-ink">
+                      <AlertCircle className="h-4 w-4" aria-hidden="true" />
+                    </span>
+                  </div>
+                  <ValorDeCartao valor={String(invalidas.length)} className="text-destructive-ink" />
+                </Card>
               </div>
 
               {/* Toggle mapeamento */}
-              <Button variant="outline" size="sm" onClick={() => setShowMapping((s) => !s)}>
-                <Eye className="w-4 h-4" aria-hidden="true" />
+              <Button variant="outline" size="sm" aria-expanded={showMapping} onClick={() => setShowMapping((s) => !s)}>
+                <Eye aria-hidden="true" />
                 {showMapping ? "Ocultar" : "Revisar"} mapeamento de colunas
               </Button>
 
               {showMapping && (
-                <div className="max-h-[320px] space-y-3 overflow-y-auto rounded-lg border border-border p-4">
+                <div className="max-h-[320px] space-y-3 overflow-y-auto rounded-md border border-border bg-secondary p-4">
                   <p className="text-sm text-muted-foreground">
                     Associe cada campo do sistema à coluna correspondente da sua planilha.
                   </p>
@@ -517,7 +542,7 @@ export default function FinImportarPlanilhaXlsx() {
                             });
                           }}
                         >
-                          <SelectTrigger aria-labelledby={`map-${campo.key}`} className="w-48 shrink-0 text-sm"><SelectValue /></SelectTrigger>
+                          <SelectTrigger aria-labelledby={`map-${campo.key}`} className="w-48 shrink-0"><SelectValue /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="_none">— Não importar —</SelectItem>
                             {headers.map((h, i) => (
@@ -533,52 +558,70 @@ export default function FinImportarPlanilhaXlsx() {
                 </div>
               )}
 
-              {/* Preview linhas */}
-              <div className="rounded-lg border border-border">
-                <div className="border-b border-border bg-muted p-4 text-sm font-semibold">
+              {/* Prévia em tabela (Design System v3): cabeçalho rebaixado preso
+                  ao topo, linhas de 48px, valor à direita em dígitos tabulares.
+                  A altura máxima vai no scroller que ui/table cria — um segundo
+                  contêiner de rolagem deixaria o cabeçalho preso ao de dentro. */}
+              <div className="overflow-hidden rounded-lg border border-border">
+                <div className="border-b border-border bg-secondary px-4 py-3 text-sm font-semibold text-foreground">
                   Prévia ({Math.min(processadas.length, 50)} de {processadas.length})
                 </div>
-                <div className="max-h-[320px] divide-y divide-border overflow-y-auto">
-                  {processadas.slice(0, 50).map((p, i) => (
-                    <div key={i} className="flex flex-wrap items-start gap-3 p-3">
-                      <Badge variant={p.erros.length === 0 ? "success" : "danger"} className="mt-0.5 shrink-0">
-                        {p.erros.length === 0 ? "Válida" : "Com erro"}
-                      </Badge>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-base font-medium text-foreground">
-                          {p.data.descricao || p.data.nome || <em className="text-muted-foreground">(sem identificação)</em>}
-                        </p>
-                        <p className="truncate text-sm text-muted-foreground">
-                          {entidade === "pessoas"
-                            ? [p.data.documento, p.data.endereco_municipio, p.data.endereco_uf].filter(Boolean).join(" • ")
-                            : [p.data.data_vencimento, p.data.pessoa_nome, p.data.numero_documento].filter(Boolean).join(" • ")}
-                        </p>
-                        {p.erros.length > 0 && (
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            {p.erros.map((e, j) => (
-                              <Badge key={j} variant="danger">{e}</Badge>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      {entidade !== "pessoas" && typeof p.data.valor === "number" && !isNaN(p.data.valor) && (
-                        <span className="whitespace-nowrap text-right text-sm tabular-nums">
-                          R$ {p.data.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                        </span>
-                      )}
-                    </div>
-                  ))}
+                <div className="[&>div]:max-h-[320px]">
+                  <Table>
+                    <TableHeader className="sticky top-0 z-10">
+                      <TableRow>
+                        <TableHead className="w-28">Situação</TableHead>
+                        <TableHead>Registro</TableHead>
+                        {entidade !== "pessoas" && <TableHead className="text-right">Valor</TableHead>}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {processadas.slice(0, 50).map((p, i) => (
+                        <TableRow key={i}>
+                          <TableCell>
+                            <Badge variant={p.erros.length === 0 ? "success" : "danger"}>
+                              {p.erros.length === 0 ? "Válida" : "Com erro"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="max-w-[480px]">
+                            <p className="truncate font-medium text-foreground">
+                              {p.data.descricao || p.data.nome || <em className="text-muted-foreground">(sem identificação)</em>}
+                            </p>
+                            <p className="truncate text-xs text-muted-foreground">
+                              {entidade === "pessoas"
+                                ? [p.data.documento, p.data.endereco_municipio, p.data.endereco_uf].filter(Boolean).join(" • ")
+                                : [p.data.data_vencimento, p.data.pessoa_nome, p.data.numero_documento].filter(Boolean).join(" • ")}
+                            </p>
+                            {p.erros.length > 0 && (
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                {p.erros.map((e, j) => (
+                                  <Badge key={j} variant="danger">{e}</Badge>
+                                ))}
+                              </div>
+                            )}
+                          </TableCell>
+                          {entidade !== "pessoas" && (
+                            <TableCell className="whitespace-nowrap text-right tabular-nums">
+                              {typeof p.data.valor === "number" && !isNaN(p.data.valor) && (
+                                <>R$ {p.data.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</>
+                              )}
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted p-4">
-                <div className="text-base">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-secondary p-4">
+                <div className="text-base text-foreground">
                   Pronto para importar: <strong>{validas.length}</strong> registro(s)
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Button variant="outline" onClick={reset} disabled={importing}>Cancelar</Button>
                   <Button onClick={handleImportar} disabled={validas.length === 0 || importing}>
-                    {importing ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Upload className="w-4 h-4" aria-hidden="true" />}
+                    {importing ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Upload aria-hidden="true" />}
                     Importar {validas.length} registro(s)
                   </Button>
                 </div>

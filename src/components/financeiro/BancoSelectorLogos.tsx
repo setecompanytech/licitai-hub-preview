@@ -310,8 +310,8 @@ export default function BancoSelectorLogos({
           <span className="flex items-center gap-2 min-w-0">
             {isAll ? (
               <>
-                <div className="w-7 h-7 rounded-md bg-primary-tint text-primary flex items-center justify-center">
-                  <Search className="w-4 h-4" />
+                <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary-tint text-primary" aria-hidden="true">
+                  <Search className="h-4 w-4" />
                 </div>
                 <span className="truncate">Todos os bancos</span>
               </>
@@ -332,7 +332,7 @@ export default function BancoSelectorLogos({
               <span className="text-muted-foreground">{placeholder}</span>
             )}
           </span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" aria-hidden="true" />
         </Button>
       </PopoverTrigger>
       <PopoverContent
@@ -359,12 +359,13 @@ export default function BancoSelectorLogos({
                   }}
                   className="gap-2"
                 >
-                  <div className="w-7 h-7 rounded-md bg-primary-tint text-primary flex items-center justify-center">
-                    <Search className="w-4 h-4" />
+                  <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary-tint text-primary" aria-hidden="true">
+                    <Search className="h-4 w-4" />
                   </div>
                   <span className="flex-1">Todos os bancos</span>
                   <Check
-                    className={cn("h-4 w-4", isAll ? "opacity-100" : "opacity-0")}
+                    aria-hidden="true"
+                    className={cn("h-4 w-4 text-primary", isAll ? "opacity-100" : "opacity-0")}
                   />
                 </CommandItem>
               )}
@@ -382,14 +383,15 @@ export default function BancoSelectorLogos({
                     className="gap-2"
                   >
                     <BancoLogo codigo={b.codigo} nome={b.nome} size={28} />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm truncate">{b.nome}</div>
-                      <div className="text-xs text-muted-foreground tabular-nums">
+                    <div className="min-w-0 flex-1">
+                      <div className={cn("truncate text-sm", isSel && "font-medium")}>{b.nome}</div>
+                      <div className="text-xs tabular-nums text-muted-foreground">
                         Código {b.codigo}
                       </div>
                     </div>
                     <Check
-                      className={cn("h-4 w-4", isSel ? "opacity-100" : "opacity-0")}
+                      aria-hidden="true"
+                      className={cn("h-4 w-4 text-primary", isSel ? "opacity-100" : "opacity-0")}
                     />
                   </CommandItem>
                 );

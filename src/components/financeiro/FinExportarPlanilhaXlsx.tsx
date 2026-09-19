@@ -8,7 +8,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { FileSpreadsheet, Download, Loader2, Filter, Sparkles } from "lucide-react";
+import { FileSpreadsheet, Download, Loader2, Filter, Info } from "lucide-react";
 import { useEmpresaId } from "@/hooks/useFinanceiro";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -249,7 +249,7 @@ export default function FinExportarPlanilhaXlsx() {
 
         <CardContent className="space-y-4">
           <Alert variant="info">
-            <Sparkles className="w-4 h-4" aria-hidden="true" />
+            <Info className="w-4 h-4" aria-hidden="true" />
             <AlertDescription className="space-y-2">
               <p className="font-semibold">
                 Compatível com reimportação aqui e em ERPs de mercado — mesmas colunas e formatação do modelo de importação.
@@ -265,15 +265,15 @@ export default function FinExportarPlanilhaXlsx() {
           {isLanc && (
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               <div className="space-y-1.5">
-                <Label htmlFor="fin-exportar-de" className="text-sm">De</Label>
+                <Label htmlFor="fin-exportar-de">De</Label>
                 <Input id="fin-exportar-de" type="date" value={dataInicio} onChange={(e) => { setDataInicio(e.target.value); setPreviewCount(null); }} />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="fin-exportar-ate" className="text-sm">Até</Label>
+                <Label htmlFor="fin-exportar-ate">Até</Label>
                 <Input id="fin-exportar-ate" type="date" value={dataFim} onChange={(e) => { setDataFim(e.target.value); setPreviewCount(null); }} />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="fin-exportar-status" className="text-sm">Status</Label>
+                <Label htmlFor="fin-exportar-status">Status</Label>
                 <Select value={status} onValueChange={(v) => { setStatus(v as Status); setPreviewCount(null); }}>
                   <SelectTrigger id="fin-exportar-status"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -289,17 +289,17 @@ export default function FinExportarPlanilhaXlsx() {
             </div>
           )}
 
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-secondary p-4">
             <div className="flex flex-wrap items-center gap-2">
               <Button variant="outline" size="sm" onClick={contarRegistros} disabled={exporting}>
-                <Filter className="w-4 h-4" aria-hidden="true" /> Contar registros
+                <Filter aria-hidden="true" /> Contar registros
               </Button>
               {previewCount !== null && (
                 <Badge variant="info">{previewCount} registro(s) encontrado(s)</Badge>
               )}
             </div>
             <Button onClick={exportar} disabled={exporting}>
-              {exporting ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Download className="w-4 h-4" aria-hidden="true" />}
+              {exporting ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Download aria-hidden="true" />}
               Exportar planilha
             </Button>
           </div>

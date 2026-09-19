@@ -40,7 +40,9 @@ const MESES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "O
 const fmt = (v: number) =>
   v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-const TH = "p-2 text-sm font-semibold text-foreground";
+// Cabeçalho de tabela do Design System v3 (rótulo 12/600 sem caixa alta, em
+// superfície rebaixada); 12 px de respiro lateral porque são quinze colunas.
+const TH = "h-11 whitespace-nowrap px-3 align-middle text-xs font-semibold tracking-wide text-muted-foreground";
 const TH_NUM = `${TH} text-right`;
 
 export default function FinOrcamento() {
@@ -168,13 +170,13 @@ export default function FinOrcamento() {
     if (orcado === 0) return "text-foreground";
     const pct = (realizadoV / orcado) * 100;
     if (isReceita) {
-      if (pct >= 100) return "text-success font-medium";
-      if (pct >= 80) return "text-warning";
-      return "text-destructive";
+      if (pct >= 100) return "text-success-ink font-medium";
+      if (pct >= 80) return "text-warning-ink";
+      return "text-destructive-ink";
     } else {
-      if (pct <= 100) return "text-success font-medium";
-      if (pct <= 110) return "text-warning";
-      return "text-destructive";
+      if (pct <= 100) return "text-success-ink font-medium";
+      if (pct <= 110) return "text-warning-ink";
+      return "text-destructive-ink";
     }
   };
 
@@ -197,10 +199,10 @@ export default function FinOrcamento() {
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <CardHeader className="flex flex-col gap-4 space-y-0 md:flex-row md:items-start md:justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+              <TrendingUp className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
               Orçamento Empresarial — Budget vs Actual
             </CardTitle>
             <CardDescription>
@@ -210,7 +212,7 @@ export default function FinOrcamento() {
           {/* Rótulo visível, e não só `aria-label`: quem enxerga também precisa
               saber o que o seletor escolhe antes de mudá-lo. */}
           <div className="flex flex-wrap items-end gap-2">
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label htmlFor="orc-ano">Ano</Label>
               <Select value={String(ano)} onValueChange={(v) => setAno(Number(v))}>
                 <SelectTrigger id="orc-ano" className="w-32"><SelectValue /></SelectTrigger>
@@ -221,7 +223,7 @@ export default function FinOrcamento() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label htmlFor="orc-natureza">Natureza</Label>
               <Select value={filtroNatureza} onValueChange={setFiltroNatureza}>
                 <SelectTrigger id="orc-natureza" className="w-44"><SelectValue /></SelectTrigger>
@@ -234,7 +236,7 @@ export default function FinOrcamento() {
               </Select>
             </div>
             <Button onClick={salvar} disabled={saving || loading}>
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Save className="w-4 h-4" aria-hidden="true" />}
+              {saving ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Save aria-hidden="true" />}
               Salvar
             </Button>
           </div>
@@ -250,6 +252,7 @@ export default function FinOrcamento() {
               icone={<BookOpen />}
               titulo="Nenhuma conta analítica"
               descricao={`Nenhuma conta analítica de ${filtroNatureza} encontrada. Cadastre o Plano de Contas primeiro.`}
+              tamanho="compacto"
             />
           ) : (
             <Tabs defaultValue="orcado">
@@ -260,11 +263,12 @@ export default function FinOrcamento() {
                 <TabsTrigger value="variacao_pct">Atingimento %</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="orcado" className="overflow-x-auto">
+              <TabsContent value="orcado">
+                <div className="overflow-x-auto rounded-lg border border-border">
                 <table className="w-full text-sm">
-                  <thead>
+                  <thead className="bg-secondary">
                     <tr className="border-b border-border">
-                      <th className={`${TH} text-left sticky left-0 bg-card min-w-[260px]`}>Conta</th>
+                      <th className={`${TH} text-left sticky left-0 bg-secondary min-w-[260px]`}>Conta</th>
                       {MESES.map((m) => (
                         <th key={m} className={`${TH_NUM} min-w-[96px]`}>{m}</th>
                       ))}
@@ -277,15 +281,15 @@ export default function FinOrcamento() {
                       const linha = metas[c.id] ?? {};
                       const total = totalLinha(linha);
                       return (
-                        <tr key={c.id} className="border-b border-border hover:bg-muted/50">
-                          <td className="p-2 sticky left-0 bg-card">
+                        <tr key={c.id} className="border-b border-border transition-colors hover:bg-muted/60">
+                          <td className="sticky left-0 bg-card px-3 py-2.5">
                             <div className="font-mono text-xs text-muted-foreground">{c.codigo}</div>
                             <div>{c.nome}</div>
                           </td>
                           {MESES.map((_, idx) => {
                             const m = idx + 1;
                             return (
-                              <td key={m} className="p-1">
+                              <td key={m} className="px-1 py-1.5">
                                 <Input
                                   type="number"
                                   step="0.01"
@@ -297,17 +301,16 @@ export default function FinOrcamento() {
                               </td>
                             );
                           })}
-                          <td className="p-2 text-right font-medium tabular-nums">{fmt(total)}</td>
-                          <td className="p-1">
+                          <td className="px-3 py-2.5 text-right font-medium tabular-nums">{fmt(total)}</td>
+                          <td className="px-1 py-1.5">
                             <Button
                               variant="ghost"
-                              size="icon"
-                              className="h-9 w-9"
+                              size="icon-sm"
                               title="Replicar Jan para todos os meses"
                               aria-label={`Replicar janeiro para todos os meses de ${c.nome}`}
                               onClick={() => replicarLinha(c.id, linha[1] ?? 0)}
                             >
-                              <Copy className="w-4 h-4" aria-hidden="true" />
+                              <Copy aria-hidden="true" />
                             </Button>
                           </td>
                         </tr>
@@ -315,11 +318,13 @@ export default function FinOrcamento() {
                     })}
                   </tbody>
                 </table>
+                </div>
               </TabsContent>
 
-              <TabsContent value="realizado" className="overflow-x-auto">
+              <TabsContent value="realizado">
+                <div className="overflow-x-auto rounded-lg border border-border">
                 <table className="w-full text-sm">
-                  <thead>
+                  <thead className="bg-secondary">
                     <tr className="border-b border-border">
                       <th className={`${TH} text-left min-w-[260px]`}>Conta</th>
                       {MESES.map((m) => <th key={m} className={TH_NUM}>{m}</th>)}
@@ -331,27 +336,29 @@ export default function FinOrcamento() {
                       const r = realizado[c.id] ?? {};
                       const total = totalLinha(r);
                       return (
-                        <tr key={c.id} className="border-b border-border">
-                          <td className="p-2">
+                        <tr key={c.id} className="border-b border-border transition-colors hover:bg-muted/60">
+                          <td className="px-3 py-2.5">
                             <div className="font-mono text-xs text-muted-foreground">{c.codigo}</div>
                             <div>{c.nome}</div>
                           </td>
                           {MESES.map((_, idx) => (
-                            <td key={idx} className="p-2 text-right tabular-nums">
+                            <td key={idx} className="px-3 py-2.5 text-right tabular-nums">
                               {r[idx + 1] ? fmt(r[idx + 1]) : "—"}
                             </td>
                           ))}
-                          <td className="p-2 text-right font-medium tabular-nums">{fmt(total)}</td>
+                          <td className="px-3 py-2.5 text-right font-medium tabular-nums">{fmt(total)}</td>
                         </tr>
                       );
                     })}
                   </tbody>
                 </table>
+                </div>
               </TabsContent>
 
-              <TabsContent value="variacao_abs" className="overflow-x-auto">
+              <TabsContent value="variacao_abs">
+                <div className="overflow-x-auto rounded-lg border border-border">
                 <table className="w-full text-sm">
-                  <thead>
+                  <thead className="bg-secondary">
                     <tr className="border-b border-border">
                       <th className={`${TH} text-left min-w-[260px]`}>Conta</th>
                       {MESES.map((m) => <th key={m} className={TH_NUM}>{m}</th>)}
@@ -364,8 +371,8 @@ export default function FinOrcamento() {
                       const r = realizado[c.id] ?? {};
                       let totalDif = 0;
                       return (
-                        <tr key={c.id} className="border-b border-border">
-                          <td className="p-2">
+                        <tr key={c.id} className="border-b border-border transition-colors hover:bg-muted/60">
+                          <td className="px-3 py-2.5">
                             <div className="font-mono text-xs text-muted-foreground">{c.codigo}</div>
                             <div>{c.nome}</div>
                           </td>
@@ -374,12 +381,12 @@ export default function FinOrcamento() {
                             const dif = (r[m] ?? 0) - (o[m] ?? 0);
                             totalDif += dif;
                             return (
-                              <td key={m} className={cn("p-2 text-right tabular-nums", corVariacao(o[m] ?? 0, r[m] ?? 0, isReceita))}>
+                              <td key={m} className={cn("px-3 py-2.5 text-right tabular-nums", corVariacao(o[m] ?? 0, r[m] ?? 0, isReceita))}>
                                 {dif !== 0 ? fmt(dif) : "—"}
                               </td>
                             );
                           })}
-                          <td className={cn("p-2 text-right font-medium tabular-nums", corVariacao(totalLinha(o), totalLinha(r), isReceita))}>
+                          <td className={cn("px-3 py-2.5 text-right font-medium tabular-nums", corVariacao(totalLinha(o), totalLinha(r), isReceita))}>
                             {fmt(totalDif)}
                           </td>
                         </tr>
@@ -387,11 +394,13 @@ export default function FinOrcamento() {
                     })}
                   </tbody>
                 </table>
+                </div>
               </TabsContent>
 
-              <TabsContent value="variacao_pct" className="overflow-x-auto">
+              <TabsContent value="variacao_pct">
+                <div className="overflow-x-auto rounded-lg border border-border">
                 <table className="w-full text-sm">
-                  <thead>
+                  <thead className="bg-secondary">
                     <tr className="border-b border-border">
                       <th className={`${TH} text-left min-w-[260px]`}>Conta</th>
                       {MESES.map((m) => <th key={m} className={TH_NUM}>{m}</th>)}
@@ -406,8 +415,8 @@ export default function FinOrcamento() {
                       const tR = totalLinha(r);
                       const pctTotal = tO > 0 ? (tR / tO) * 100 : 0;
                       return (
-                        <tr key={c.id} className="border-b border-border">
-                          <td className="p-2">
+                        <tr key={c.id} className="border-b border-border transition-colors hover:bg-muted/60">
+                          <td className="px-3 py-2.5">
                             <div className="font-mono text-xs text-muted-foreground">{c.codigo}</div>
                             <div>{c.nome}</div>
                           </td>
@@ -415,12 +424,12 @@ export default function FinOrcamento() {
                             const m = idx + 1;
                             const pct = (o[m] ?? 0) > 0 ? ((r[m] ?? 0) / (o[m] ?? 0)) * 100 : 0;
                             return (
-                              <td key={m} className={cn("p-2 text-right tabular-nums", corVariacao(o[m] ?? 0, r[m] ?? 0, isReceita))}>
+                              <td key={m} className={cn("px-3 py-2.5 text-right tabular-nums", corVariacao(o[m] ?? 0, r[m] ?? 0, isReceita))}>
                                 {(o[m] ?? 0) > 0 ? `${pct.toFixed(0)}%` : "—"}
                               </td>
                             );
                           })}
-                          <td className={cn("p-2 text-right font-medium tabular-nums", corVariacao(tO, tR, isReceita))}>
+                          <td className={cn("px-3 py-2.5 text-right font-medium tabular-nums", corVariacao(tO, tR, isReceita))}>
                             {tO > 0 ? `${pctTotal.toFixed(0)}%` : "—"}
                           </td>
                         </tr>
@@ -428,6 +437,7 @@ export default function FinOrcamento() {
                     })}
                   </tbody>
                 </table>
+                </div>
               </TabsContent>
             </Tabs>
           )}
@@ -435,9 +445,9 @@ export default function FinOrcamento() {
           <div className="mt-4 text-xs text-muted-foreground border-t border-border pt-3">
             <strong>Legenda:</strong>{" "}
             {isReceita ? (
-              <>Receitas — <span className="text-success">verde ≥100%</span>, <span className="text-warning">amarelo 80–99%</span>, <span className="text-destructive">vermelho &lt;80%</span></>
+              <>Receitas — <span className="text-success-ink">verde ≥100%</span>, <span className="text-warning-ink">amarelo 80–99%</span>, <span className="text-destructive-ink">vermelho &lt;80%</span></>
             ) : (
-              <>Despesas — <span className="text-success">verde ≤100%</span>, <span className="text-warning">amarelo 101–110%</span>, <span className="text-destructive">vermelho &gt;110%</span></>
+              <>Despesas — <span className="text-success-ink">verde ≤100%</span>, <span className="text-warning-ink">amarelo 101–110%</span>, <span className="text-destructive-ink">vermelho &gt;110%</span></>
             )}
           </div>
         </CardContent>

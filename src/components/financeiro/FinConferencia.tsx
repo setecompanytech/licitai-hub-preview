@@ -42,14 +42,14 @@ export default function FinConferencia({ onNavigate }: Props = {}) {
   // Conferência que falha não pode passar por conferência que passou.
   if (error) {
     return (
-      <div className="rounded-xl border border-warning/40 bg-warning/5 px-4 py-2.5 flex items-center gap-2.5">
-        <AlertTriangle className="w-4 h-4 text-warning shrink-0" />
-        <p className="text-xs text-muted-foreground min-w-0">
-          <span className="font-medium text-warning">Não foi possível conferir o Financeiro.</span>{' '}
+      <div role="alert" className="flex flex-wrap items-center gap-2.5 rounded-lg border border-warning-line bg-warning-tint px-4 py-2.5">
+        <AlertTriangle className="h-4 w-4 shrink-0 text-warning-ink" aria-hidden="true" />
+        <p className="min-w-0 flex-1 text-xs text-muted-foreground">
+          <span className="font-medium text-warning-ink">Não foi possível conferir o Financeiro.</span>{' '}
           Os números abaixo não foram verificados nesta sessão. {(error as Error).message}
         </p>
-        <Button size="sm" variant="ghost" className="h-7 text-xs ml-auto shrink-0" onClick={() => refetch()}>
-          <RefreshCw className="w-3.5 h-3.5 mr-1" /> Tentar de novo
+        <Button size="sm" variant="ghost" className="ml-auto shrink-0" onClick={() => refetch()}>
+          <RefreshCw aria-hidden="true" /> Tentar de novo
         </Button>
       </div>
     );
@@ -59,15 +59,15 @@ export default function FinConferencia({ onNavigate }: Props = {}) {
 
   if (lista.length === 0) {
     return (
-      <div className="rounded-xl border border-success/30 bg-success/5 px-4 py-2.5 flex items-center gap-2.5">
-        <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
-        <p className="text-xs text-muted-foreground">
-          <span className="font-medium text-success">O Financeiro fecha.</span>{' '}
+      <div role="status" className="flex flex-wrap items-center gap-2.5 rounded-lg border border-success-line bg-success-tint px-4 py-2.5">
+        <CheckCircle2 className="h-4 w-4 shrink-0 text-success-ink" aria-hidden="true" />
+        <p className="min-w-0 flex-1 text-xs text-muted-foreground">
+          <span className="font-medium text-success-ink">O Financeiro fecha.</span>{' '}
           Saldos conferem com os lançamentos, transferências têm par e o faturamento bate com a apuração.
         </p>
-        <Button size="sm" variant="ghost" className="h-7 text-xs ml-auto shrink-0"
+        <Button size="icon-sm" variant="ghost" className="ml-auto shrink-0" aria-label="Conferir de novo"
           onClick={() => refetch()} disabled={isFetching}>
-          <RefreshCw className={cn('w-3.5 h-3.5', isFetching && 'animate-spin')} />
+          <RefreshCw className={cn(isFetching && 'animate-spin')} aria-hidden="true" />
         </Button>
       </div>
     );
@@ -76,7 +76,7 @@ export default function FinConferencia({ onNavigate }: Props = {}) {
   return (
     <div className="rounded-lg border border-border bg-card shadow-sm">
       <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
-        <h3 className="text-[15px] font-semibold text-foreground">Central de conferência</h3>
+        <h3 className="text-base font-semibold leading-6 text-foreground">Central de conferência</h3>
         <span className="text-xs text-muted-foreground">
           {lista.length} ponto{lista.length > 1 ? 's' : ''} exige{lista.length > 1 ? 'm' : ''} revisão
         </span>
@@ -91,7 +91,9 @@ export default function FinConferencia({ onNavigate }: Props = {}) {
               key={`${a.categoria}-${a.referencia ?? i}`}
               className={cn('flex flex-wrap items-center gap-3 border-l-4 px-4 py-3', e.borda)}
             >
-              <Icone className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                <Icone className="h-4 w-4" aria-hidden="true" />
+              </span>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-foreground">{a.categoria}</p>
                 <p className="mt-0.5 text-xs text-muted-foreground">

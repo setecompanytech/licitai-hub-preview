@@ -76,9 +76,9 @@ export default function FinLotesAuditoria() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-[240px] flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative min-w-[220px] flex-1 basis-64">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
           <Input
             placeholder="Buscar por descrição, job ou origem..."
             className="pl-9"
@@ -93,7 +93,7 @@ export default function FinLotesAuditoria() {
         </Button>
       </div>
 
-      <Card className="overflow-x-auto">
+      <Card className="overflow-hidden">
         <Table className="min-w-[900px]">
           <TableHeader>
             <TableRow>

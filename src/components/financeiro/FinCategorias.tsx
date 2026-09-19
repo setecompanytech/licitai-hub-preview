@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -75,79 +76,98 @@ export default function FinCategorias() {
           disabled={sync.isPending}
           title="Importa todas as contas do Plano de Contas Padrão (Configurável) para a lista de Categorias"
         >
-          <RefreshCw className={`w-4 h-4 ${sync.isPending ? "animate-spin" : ""}`} aria-hidden="true" />
+          <RefreshCw className={sync.isPending ? "animate-spin" : undefined} aria-hidden="true" />
           {sync.isPending ? "Sincronizando..." : "Sincronizar com Plano de Contas"}
         </Button>
         {cats.length === 0 && (
           <Button variant="outline" onClick={() => seed.mutate()} disabled={seed.isPending}>
-            <Sparkles className="w-4 h-4" aria-hidden="true" />
+            <Sparkles aria-hidden="true" />
             {seed.isPending ? "Importando..." : "Importar plano de contas padrão"}
           </Button>
         )}
-        <Button onClick={() => openDialog(null)}><Plus className="w-4 h-4" aria-hidden="true" /> Nova categoria</Button>
+        <Button onClick={() => openDialog(null)}><Plus aria-hidden="true" /> Nova categoria</Button>
       </div>
 
+      {/* Tabela nos primitivos de `ui/table`: cabeçalho em superfície rebaixada,
+          rótulos 12/600 sem caixa alta, linhas de 48px (Design System v3). */}
       <Card>
-        <CardContent className="overflow-x-auto p-0">
-          <table className="w-full text-sm">
-            <thead className="bg-muted text-sm font-semibold text-foreground">
-              <tr>
-                <th className="w-32 px-4 py-3 text-left">Código</th>
-                <th className="px-4 py-3 text-left">Nome</th>
-                <th className="px-4 py-3 text-left">Natureza</th>
-                <th className="px-4 py-3 text-left">Grupo DRE</th>
-                <th className="w-24 px-4 py-3 text-right">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-32">Código</TableHead>
+                <TableHead>Nome</TableHead>
+                <TableHead>Natureza</TableHead>
+                <TableHead>Grupo DRE</TableHead>
+                <TableHead className="w-24 text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {isLoading ? (
-                <tr><td colSpan={5} className="p-3"><Skeleton className="h-8 w-full" /></td></tr>
+                // Espera na forma das linhas — código, nome, selo —, não uma
+                // barra única.
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={5} className="p-0">
+                    <div role="status" aria-label="Carregando categorias" className="flex flex-col gap-px bg-border">
+                      {Array.from({ length: 5 }, (_, i) => (
+                        <div key={i} className="flex items-center gap-4 bg-card px-4 py-3">
+                          <Skeleton className="h-4 w-16" />
+                          <Skeleton className="h-4 w-1/3" />
+                          <Skeleton className="h-5 w-20 rounded-sm" />
+                          <Skeleton className="ml-auto h-4 w-16" />
+                        </div>
+                      ))}
+                    </div>
+                  </TableCell>
+                </TableRow>
               ) : cats.length === 0 ? (
-                <tr>
-                  <td colSpan={5}>
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={5} className="p-0">
                     <EstadoVazio
                       icone={<Tags aria-hidden="true" />}
                       titulo="Nenhuma categoria cadastrada"
                       descricao='Use "Importar plano de contas padrão" para começar, ou crie a primeira categoria.'
                       acao={
                         <Button onClick={() => openDialog(null)}>
-                          <Plus className="w-4 h-4" aria-hidden="true" /> Nova categoria
+                          <Plus aria-hidden="true" /> Nova categoria
                         </Button>
                       }
                     />
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ) : (
                 cats.map((c) => (
-                  <tr key={c.id} className="border-t border-border hover:bg-muted/40">
-                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{c.codigo}</td>
-                    <td className="px-4 py-3 font-medium text-foreground">{c.nome}</td>
-                    <td className="px-4 py-3">
+                  <TableRow key={c.id}>
+                    <TableCell className="font-mono text-xs text-muted-foreground">{c.codigo}</TableCell>
+                    <TableCell className="font-medium">{c.nome}</TableCell>
+                    <TableCell>
                       <Badge variant={c.natureza === "receita" ? "success" : c.natureza === "despesa" ? "danger" : "info"}>
                         {NATUREZAS.find((n) => n.value === c.natureza)?.label}
                       </Badge>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">{c.grupo_dre ?? "—"}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right">
-                      <Button size="icon" variant="ghost" aria-label={`Editar categoria ${c.nome}`} onClick={() => openDialog(c)}>
-                        <Pencil className="w-4 h-4" aria-hidden="true" />
-                      </Button>
-                      <Button size="icon" variant="ghost" aria-label={`Excluir categoria ${c.nome}`} onClick={() => setConfirmDel(c.id)}>
-                        <Trash2 className="w-4 h-4 text-destructive" aria-hidden="true" />
-                      </Button>
-                    </td>
-                  </tr>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{c.grupo_dre ?? "—"}</TableCell>
+                    <TableCell className="whitespace-nowrap text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button size="icon-sm" variant="ghost" aria-label={`Editar categoria ${c.nome}`} onClick={() => openDialog(c)}>
+                          <Pencil aria-hidden="true" />
+                        </Button>
+                        <Button size="icon-sm" variant="ghost-destructive" aria-label={`Excluir categoria ${c.nome}`} onClick={() => setConfirmDel(c.id)}>
+                          <Trash2 aria-hidden="true" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
                 ))
               )}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>{editing?.id ? "Editar categoria" : "Nova categoria"}</DialogTitle></DialogHeader>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="space-y-2">
               <Label htmlFor="cat-codigo">Código *</Label>
               <Input
@@ -159,10 +179,10 @@ export default function FinCategorias() {
                 aria-describedby={tentouSalvar && !codigo.trim() ? "cat-codigo-erro" : undefined}
               />
               {tentouSalvar && !codigo.trim() && (
-                <p id="cat-codigo-erro" className="text-xs text-destructive">Informe o código da categoria</p>
+                <p id="cat-codigo-erro" className="text-xs text-destructive-ink">Informe o código da categoria</p>
               )}
             </div>
-            <div className="space-y-2 md:col-span-2">
+            <div className="space-y-2 sm:col-span-2">
               <Label htmlFor="cat-nome">Nome *</Label>
               <Input
                 id="cat-nome"
@@ -172,10 +192,10 @@ export default function FinCategorias() {
                 aria-describedby={tentouSalvar && !nome.trim() ? "cat-nome-erro" : undefined}
               />
               {tentouSalvar && !nome.trim() && (
-                <p id="cat-nome-erro" className="text-xs text-destructive">Informe o nome da categoria</p>
+                <p id="cat-nome-erro" className="text-xs text-destructive-ink">Informe o nome da categoria</p>
               )}
             </div>
-            <div className="space-y-2 md:col-span-3">
+            <div className="space-y-2 sm:col-span-3">
               <Label htmlFor="cat-natureza">Natureza</Label>
               <Select value={natureza} onValueChange={(v) => setNatureza(v as Natureza)}>
                 <SelectTrigger id="cat-natureza"><SelectValue /></SelectTrigger>
@@ -198,7 +218,12 @@ export default function FinCategorias() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={async () => { if (confirmDel) await del.mutateAsync(confirmDel); setConfirmDel(null); }}>Excluir</AlertDialogAction>
+            <AlertDialogAction
+              className={buttonVariants({ variant: "destructive" })}
+              onClick={async () => { if (confirmDel) await del.mutateAsync(confirmDel); setConfirmDel(null); }}
+            >
+              Excluir
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

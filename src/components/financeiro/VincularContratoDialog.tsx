@@ -1,16 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Loader2, Link2, AlertTriangle } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import {
   ordenarContratos, pedidoAPartirDoLancamento, sugerirItem, PONTOS_PARA_PRESELECIONAR,
   type LancamentoParaVincular, type ContratoCandidato,
@@ -70,6 +73,13 @@ type Props = {
 };
 
 const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+// Chips de escolha do Design System v3 — as mesmas classes do tipo/status no
+// LancamentoDialog: o ativo na cor da ação, o inativo em cinza sobre branco.
+const CHIP =
+  'rounded-sm border px-2.5 py-1 text-xs font-semibold leading-4 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50';
+const CHIP_ATIVO = 'border-primary bg-primary text-primary-foreground';
+const CHIP_INATIVO = 'border-input bg-card text-muted-foreground hover:bg-muted hover:text-foreground';
 
 export default function VincularContratoDialog({
   lancamento, onFechar, onVinculado, modo: modoDoLancamento = 'receita',
@@ -372,16 +382,18 @@ export default function VincularContratoDialog({
     <Dialog open={aberto} onOpenChange={(v) => { if (!v) fechar(); }}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-base">
-            <Link2 className="w-4 h-4 text-muted-foreground" />
+          <DialogTitle className="flex items-center gap-2">
+            <Link2 className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
             {ehDespesa ? 'Atribuir esta despesa a um contrato' : 'Vincular a um contrato'}
           </DialogTitle>
         </DialogHeader>
 
-        <Card className="p-3 bg-muted/40">
-          <p className="text-sm font-medium">{lancamento.descricao}</p>
-          <div className="flex gap-4 text-xs text-muted-foreground mt-1 flex-wrap">
-            <span>{brl(Number(lancamento.valor) || 0)}</span>
+        {/* O lançamento em pauta, na superfície rebaixada e sem sombra: é
+            contexto, não um cartão que se abre. */}
+        <Card className="bg-secondary p-4 shadow-none">
+          <p className="text-sm font-medium text-foreground">{lancamento.descricao}</p>
+          <div className="mt-1 flex flex-wrap gap-4 text-xs text-muted-foreground">
+            <span className="tabular-nums">{brl(Number(lancamento.valor) || 0)}</span>
             {lancamento.numero_documento && <span>NF {lancamento.numero_documento}</span>}
             {lancamento.data_emissao && (
               <span>emitida em {new Date(lancamento.data_emissao + 'T12:00:00').toLocaleDateString('pt-BR')}</span>
@@ -389,18 +401,21 @@ export default function VincularContratoDialog({
           </div>
         </Card>
 
-        <div>
-          <Label className="text-xs">Contrato</Label>
+        <div className="space-y-1.5">
+          <Label>Contrato</Label>
           {carregando ? (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
-              <Loader2 className="w-3.5 h-3.5 animate-spin" /> procurando contratos…
+            // Espera na forma do campo que vai aparecer, não um spinner
+            // (Design System v3); a frase continua, para quem lê a tela.
+            <div role="status" className="space-y-1.5">
+              <Skeleton className="h-10 w-full" />
+              <p className="text-xs text-muted-foreground">procurando contratos…</p>
             </div>
           ) : (
             <Select value={contratoId} onValueChange={setContratoId}>
               <SelectTrigger><SelectValue placeholder="Escolha o contrato" /></SelectTrigger>
               <SelectContent>
                 {contratos.map(c => (
-                  <SelectItem key={c.id} value={c.id} className="text-xs">
+                  <SelectItem key={c.id} value={c.id}>
                     {c.numero_contrato ?? 'sem número'}
                     {c.orgao_contratante && ` · ${c.orgao_contratante.slice(0, 40)}`}
                     {' — '}{(c.objeto ?? '').slice(0, 45)}
@@ -421,49 +436,61 @@ export default function VincularContratoDialog({
 
         {contratoId && !ehDespesa && (
           <>
-            <div className="flex gap-2">
-              <Button size="sm" variant={modo === 'existente' ? 'secondary' : 'ghost'}
+            {/* Chips de escolha (Design System v3): o modo ativo na cor da
+                ação, o outro em cinza — os mesmos chips do LancamentoDialog. */}
+            <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Forma de vínculo">
+              <button
+                type="button"
+                aria-pressed={modo === 'existente'}
+                className={cn(CHIP, modo === 'existente' ? CHIP_ATIVO : CHIP_INATIVO)}
                 onClick={() => setModo('existente')} disabled={pedidos.length === 0}>
                 Ligar a um pedido existente {pedidos.length > 0 && `(${pedidos.length})`}
-              </Button>
-              <Button size="sm" variant={modo === 'novo' ? 'secondary' : 'ghost'}
+              </button>
+              <button
+                type="button"
+                aria-pressed={modo === 'novo'}
+                className={cn(CHIP, modo === 'novo' ? CHIP_ATIVO : CHIP_INATIVO)}
                 onClick={() => setModo('novo')}>
                 Criar o pedido a partir desta nota
-              </Button>
+              </button>
             </div>
 
             {modo === 'existente' ? (
-              <div className="space-y-1 max-h-[30vh] overflow-y-auto">
+              <div className="max-h-[30vh] space-y-1 overflow-y-auto">
                 {pedidos.map(p => (
                   <button key={p.id} type="button" onClick={() => setPedidoEscolhido(p.id)}
-                    className={`w-full text-left p-2 rounded-md border text-xs transition-colors ${
-                      pedidoEscolhido === p.id ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'
-                    }`}>
+                    aria-pressed={pedidoEscolhido === p.id}
+                    className={cn(
+                      'w-full rounded-md border p-3 text-left text-sm transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                      pedidoEscolhido === p.id
+                        ? 'border-primary bg-primary-tint'
+                        : 'border-input bg-card hover:bg-muted',
+                    )}>
                     <div className="flex justify-between gap-2">
-                      <span className="font-medium">{p.numero_pedido}</span>
+                      <span className="font-medium text-foreground">{p.numero_pedido}</span>
                       <span className="tabular-nums">{brl(Number(p.valor_total) || 0)}</span>
                     </div>
-                    <p className="text-muted-foreground truncate" title={p.descricao}>{p.descricao}</p>
+                    <p className="truncate text-xs text-muted-foreground" title={p.descricao}>{p.descricao}</p>
                   </button>
                 ))}
               </div>
             ) : (
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-xs">Nº do pedido</Label>
-                    <Input value={numeroPedido} onChange={e => setNumeroPedido(e.target.value)} className="h-8 text-xs" />
+              <div className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label>Nº do pedido</Label>
+                    <Input value={numeroPedido} onChange={e => setNumeroPedido(e.target.value)} />
                   </div>
-                  <div>
-                    <Label className="text-xs">Quantidade entregue</Label>
+                  <div className="space-y-1.5">
+                    <Label>Quantidade entregue</Label>
                     <Input type="number" value={quantidade} onChange={e => setQuantidade(e.target.value)}
-                      placeholder="em unidades do contrato" className="h-8 text-xs" />
+                      placeholder="em unidades do contrato" className="tabular-nums" />
                     {/* De onde o número veio. Lido e digitado se parecem na
                         tela, e quem confere precisa saber em qual está
                         apoiado — o mesmo motivo do carimbo de procedência do
                         DRE e da data de entrega. */}
                     {daNota && (
-                      <p className="text-[11px] text-muted-foreground mt-1">
+                      <p className="mt-1 text-xs text-muted-foreground">
                         {Number(quantidade) === daNota.total
                           ? `Lido da nota${daNota.linhas.length > 1 ? ` — soma de ${daNota.linhas.length} linhas` : ''}.`
                           : `A nota diz ${daNota.total.toLocaleString('pt-BR')}.`}
@@ -472,19 +499,19 @@ export default function VincularContratoDialog({
                   </div>
                 </div>
 
-                <div>
-                  <Label className="text-xs">Item do contrato</Label>
+                <div className="space-y-1.5">
+                  <Label>Item do contrato</Label>
                   {semItens ? (
-                    <p className="text-xs text-muted-foreground py-1">
+                    <p className="py-1 text-xs text-muted-foreground">
                       Este contrato não tem itens cadastrados — o pedido é criado sem vínculo de item,
                       e o saldo será controlado só por valor.
                     </p>
                   ) : (
                     <Select value={itemId} onValueChange={setItemId}>
-                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Escolha o item" /></SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder="Escolha o item" /></SelectTrigger>
                       <SelectContent>
                         {itens.map(i => (
-                          <SelectItem key={i.id} value={i.id} className="text-xs">
+                          <SelectItem key={i.id} value={i.id}>
                             {i.codigo_item ? `[${i.codigo_item}] ` : ''}{i.descricao.slice(0, 60)}
                             {i.saldo_quantitativo != null && ` · saldo ${Number(i.saldo_quantitativo).toLocaleString('pt-BR')}`}
                           </SelectItem>
@@ -495,27 +522,27 @@ export default function VincularContratoDialog({
                 </div>
 
                 {empenhos.length > 0 && (
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label className="text-xs">Empenho que autoriza</Label>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label>Empenho que autoriza</Label>
                       <Select value={empenhoId || '__sem__'} onValueChange={v => setEmpenhoId(v === '__sem__' ? '' : v)}>
-                        <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="__sem__" className="text-xs">Sem empenho registrado</SelectItem>
+                          <SelectItem value="__sem__">Sem empenho registrado</SelectItem>
                           {empenhos.map(e => (
-                            <SelectItem key={e.id} value={e.id} className="text-xs">{e.numero}</SelectItem>
+                            <SelectItem key={e.id} value={e.id}>{e.numero}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
-                    <div>
-                      <Label className="text-xs">Cota</Label>
+                    <div className="space-y-1.5">
+                      <Label>Cota</Label>
                       <Select value={cota || '__sem__'} onValueChange={v => setCota(v === '__sem__' ? '' : v)}>
-                        <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="__sem__" className="text-xs">Sem divisão de cota</SelectItem>
-                          <SelectItem value="principal" className="text-xs">Cota principal</SelectItem>
-                          <SelectItem value="reservada" className="text-xs">Cota reservada</SelectItem>
+                          <SelectItem value="__sem__">Sem divisão de cota</SelectItem>
+                          <SelectItem value="principal">Cota principal</SelectItem>
+                          <SelectItem value="reservada">Cota reservada</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -527,18 +554,18 @@ export default function VincularContratoDialog({
                     contrato ter entrado na gestão tarde —, e o aviso nomeia o
                     gargalo em vez de barrar. */}
                 {cabimento && !cabimento.cabe && cabimento.gargalo && (
-                  <p className="text-xs text-warning flex items-start gap-1.5">
-                    <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                    <span>{cabimento.frase} {cabimento.gargalo.providencia}</span>
-                  </p>
+                  <Alert variant="warning">
+                    <AlertTriangle aria-hidden="true" />
+                    <AlertDescription>{cabimento.frase} {cabimento.gargalo.providencia}</AlertDescription>
+                  </Alert>
                 )}
 
                 {/* Nota com produtos diferentes não é um pedido só. Mostrar as
                     linhas é o que permite perceber isso antes de somar tudo
                     num item que só corresponde a parte delas. */}
                 {daNota && daNota.linhas.length > 1 && (
-                  <div className="text-[11px] text-muted-foreground border rounded-md p-2 space-y-0.5">
-                    <p className="text-warning">
+                  <div className="space-y-0.5 rounded-md border border-border bg-secondary p-3 text-xs text-muted-foreground">
+                    <p className="font-medium text-warning-ink">
                       A nota tem {daNota.linhas.length} produtos. A soma foi preenchida — se forem itens
                       diferentes do contrato, registre um pedido por item.
                     </p>
@@ -548,7 +575,7 @@ export default function VincularContratoDialog({
                   </div>
                 )}
 
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   O pedido nasce como <b>entregue</b>, com a data da nota — não a de hoje. O valor é o
                   do lançamento{daNota ? '; a quantidade veio do XML' : '; a quantidade é o que você informar'}.
                 </p>
@@ -557,21 +584,24 @@ export default function VincularContratoDialog({
           </>
         )}
 
-        <div className="flex justify-between items-center gap-2 pt-2">
+        {/* Rodapé do modal (Design System v3): Cancelar em outline antes da
+            ação principal. O selo "já vinculado" fica à esquerda; no celular
+            os botões embrulham para a linha de baixo, ainda à direita. */}
+        <DialogFooter className="flex-row flex-wrap items-center gap-2 pt-2 sm:justify-between">
           {((ehDespesa && lancamento.contrato_id) || (!ehDespesa && lancamento.contrato_pedido_id)) && (
-            <Badge variant="outline" className="text-[11px]">
+            <Badge variant="info">
               {ehDespesa ? 'já atribuída — salvar troca o contrato' : 'já vinculado — salvar troca o vínculo'}
             </Badge>
           )}
-          <div className="flex gap-2 ml-auto">
+          <div className="ml-auto flex gap-2">
             <Button variant="outline" onClick={fechar}>Cancelar</Button>
             <Button onClick={salvar}
               disabled={salvando || !contratoId || (!ehDespesa && modo === 'existente' && !pedidoEscolhido)}>
-              {salvando && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
+              {salvando && <Loader2 className="animate-spin" aria-hidden="true" />}
               {ehDespesa ? 'Atribuir ao contrato' : (modo === 'novo' ? 'Criar pedido e vincular' : 'Vincular')}
             </Button>
           </div>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

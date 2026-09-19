@@ -13,6 +13,8 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -497,7 +499,7 @@ export default function FinImportarOFX() {
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="space-y-1.5">
-            <Label htmlFor="ofx-conta" className="text-sm font-medium text-foreground">
+            <Label htmlFor="ofx-conta">
               Conta de destino
             </Label>
             <Select value={contaId} onValueChange={setContaId}>
@@ -512,7 +514,7 @@ export default function FinImportarOFX() {
                   const nomeExibido = b?.nome ?? sel.banco_nome ?? sel.nome;
                   return (
                     <div className="flex w-full min-w-0 items-center gap-3 text-left">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-background">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-card">
                         <BancoLogo
                           codigo={b?.codigo}
                           nome={nomeExibido}
@@ -546,7 +548,7 @@ export default function FinImportarOFX() {
                         className="h-12 rounded-md px-2 py-0 focus:bg-muted [&>span:first-child]:hidden [&>span:last-child]:w-full"
                       >
                         <div className="flex w-full min-w-0 items-center gap-3">
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-background">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-card">
                             <BancoLogo
                               codigo={b?.codigo}
                               nome={nomeExibido}
@@ -593,9 +595,11 @@ export default function FinImportarOFX() {
           <div className="space-y-1.5">
             <label
               htmlFor="ofx-arquivo"
-              className="flex h-full cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border bg-card p-6 text-center transition-colors hover:border-primary hover:bg-primary-tint has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:focus-visible]:ring-offset-2 has-[:focus-visible]:ring-offset-background"
+              className="flex h-full cursor-pointer flex-col items-center justify-center gap-2 rounded-md border border-dashed border-input bg-card p-6 text-center transition-colors duration-150 hover:border-primary hover:bg-primary-tint has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:focus-visible]:ring-offset-2 has-[:focus-visible]:ring-offset-background"
             >
-              <Upload className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
+              <span className="flex h-10 w-10 items-center justify-center rounded-md bg-muted text-muted-foreground" aria-hidden="true">
+                <Upload className="h-5 w-5" />
+              </span>
               <span className="text-base font-semibold text-foreground">Arquivo .ofx</span>
               <span className="text-sm text-muted-foreground">
                 Clique aqui para selecionar o extrato baixado do seu banco
@@ -614,98 +618,116 @@ export default function FinImportarOFX() {
 
         {analisando && (
           <div className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
-            <Sparkles className="h-4 w-4 animate-pulse" aria-hidden="true" />
+            <Sparkles className="h-4 w-4 animate-pulse text-teal" aria-hidden="true" />
             Analisando transações e sugerindo conciliações...
           </div>
         )}
 
         {movimentos.length > 0 && (
           <>
-            <div className="max-h-[450px] divide-y divide-border overflow-y-auto rounded-lg border border-border">
-              {movimentos.map((m, i) => {
-                const cat = categorias.find(
-                  (c) => c.id === m._detalhes.categoria_id
-                );
-                const pes = pessoas.find((p) => p.id === m._detalhes.pessoa_id);
-                return (
-                  <div
-                    key={i}
-                    className="flex flex-wrap items-center gap-3 p-3 text-sm transition-colors hover:bg-muted"
-                  >
-                    {m.valor > 0 ? (
-                      <ArrowDownCircle className="h-4 w-4 shrink-0 text-success" aria-hidden="true" />
-                    ) : (
-                      <ArrowUpCircle className="h-4 w-4 shrink-0 text-destructive" aria-hidden="true" />
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-base" title={m.memo}>{m.memo}</p>
-                      <div className="mt-1 flex flex-wrap items-center gap-2">
-                        <span className="text-xs tabular-nums text-muted-foreground">
+            {/* Prévia em tabela (Design System v3): cabeçalho rebaixado preso ao
+                topo, linhas de 48px, valor à direita em dígitos tabulares. A
+                altura máxima vai no scroller que ui/table cria — um segundo
+                contêiner de rolagem deixaria o cabeçalho preso ao de dentro. */}
+            <div className="overflow-hidden rounded-lg border border-border [&>div]:max-h-[450px]">
+              <Table>
+                <TableHeader className="sticky top-0 z-10">
+                  <TableRow>
+                    <TableHead className="w-28">Data</TableHead>
+                    <TableHead>Movimento</TableHead>
+                    <TableHead className="text-right">Valor</TableHead>
+                    <TableHead className="text-right">
+                      <span className="sr-only">Ações</span>
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {movimentos.map((m, i) => {
+                    const cat = categorias.find(
+                      (c) => c.id === m._detalhes.categoria_id
+                    );
+                    const pes = pessoas.find((p) => p.id === m._detalhes.pessoa_id);
+                    return (
+                      <TableRow key={i}>
+                        <TableCell className="whitespace-nowrap tabular-nums text-muted-foreground">
                           {format(
                             new Date(m.data + "T00:00:00"),
                             "dd/MM/yyyy"
                           )}
-                        </span>
-                        {m._ignorar && (
-                          <Badge variant="muted">Linha de saldo — não será importada</Badge>
-                        )}
-                        {m._sugestao && (
-                          <Badge variant="info" className="gap-1">
-                            <Sparkles className="h-3 w-3" aria-hidden="true" />
-                            Conciliar: {m._sugestao.descricao.slice(0, 40)}
-                          </Badge>
-                        )}
-                        {!m._sugestao && cat && (
-                          <Badge variant="muted">{cat.nome}</Badge>
-                        )}
-                        {!m._sugestao && pes && (
-                          <Badge variant="muted">{pes.nome}</Badge>
-                        )}
-                        {m._editado && !m._sugestao && (
-                          <Badge variant="success" className="gap-1">
-                            <CheckCircle2 className="h-3 w-3" aria-hidden="true" /> editado
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                    <span
-                      className={`font-medium tabular-nums ${
-                        m.valor > 0 ? "text-success" : "text-destructive"
-                      }`}
-                    >
-                      {m.valor > 0 ? "+" : ""} R${" "}
-                      {m.valor.toLocaleString("pt-BR", {
-                        minimumFractionDigits: 2,
-                      })}
-                    </span>
-                    {!m._sugestao && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="shrink-0"
-                        onClick={() => setEditIdx(i)}
-                      >
-                        <Pencil className="h-4 w-4" aria-hidden="true" />
-                        Detalhes
-                      </Button>
-                    )}
-                  </div>
-                );
-              })}
+                        </TableCell>
+                        <TableCell className="max-w-[420px]">
+                          <div className="flex min-w-0 items-center gap-2">
+                            {m.valor > 0 ? (
+                              <ArrowDownCircle className="h-4 w-4 shrink-0 text-success-ink" aria-hidden="true" />
+                            ) : (
+                              <ArrowUpCircle className="h-4 w-4 shrink-0 text-destructive-ink" aria-hidden="true" />
+                            )}
+                            <p className="truncate font-medium text-foreground" title={m.memo}>{m.memo}</p>
+                          </div>
+                          <div className="mt-1 flex flex-wrap items-center gap-2 empty:hidden">
+                            {m._ignorar && (
+                              <Badge variant="muted">Linha de saldo — não será importada</Badge>
+                            )}
+                            {m._sugestao && (
+                              <Badge variant="info" className="gap-1">
+                                <Sparkles className="h-3 w-3" aria-hidden="true" />
+                                Conciliar: {m._sugestao.descricao.slice(0, 40)}
+                              </Badge>
+                            )}
+                            {!m._sugestao && cat && (
+                              <Badge variant="muted">{cat.nome}</Badge>
+                            )}
+                            {!m._sugestao && pes && (
+                              <Badge variant="muted">{pes.nome}</Badge>
+                            )}
+                            {m._editado && !m._sugestao && (
+                              <Badge variant="success" className="gap-1">
+                                <CheckCircle2 className="h-3 w-3" aria-hidden="true" /> editado
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell
+                          className={cn(
+                            "whitespace-nowrap text-right font-semibold tabular-nums",
+                            m.valor > 0 ? "text-success-ink" : "text-destructive-ink"
+                          )}
+                        >
+                          {m.valor > 0 ? "+" : ""} R${" "}
+                          {m.valor.toLocaleString("pt-BR", {
+                            minimumFractionDigits: 2,
+                          })}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {!m._sugestao && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="shrink-0"
+                              onClick={() => setEditIdx(i)}
+                            >
+                              <Pencil aria-hidden="true" />
+                              Detalhes
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
             </div>
-            <Button
-              onClick={importar}
-              disabled={!contaId || importando}
-              className="w-full"
-            >
-              {importando ? (
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-              ) : (
-                <Upload className="h-4 w-4" aria-hidden="true" />
-              )}
-              Confirmar importação ({ativos.length} movimento(s))
-            </Button>
+            <div className="flex justify-end">
+              <Button onClick={importar} disabled={!contaId || importando}>
+                {importando ? (
+                  <Loader2 className="animate-spin" aria-hidden="true" />
+                ) : (
+                  <Upload aria-hidden="true" />
+                )}
+                Confirmar importação ({ativos.length} movimento(s))
+              </Button>
+            </div>
           </>
         )}
 
@@ -714,12 +736,12 @@ export default function FinImportarOFX() {
           open={editIdx !== null}
           onOpenChange={(o) => !o && setEditIdx(null)}
         >
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>
                 Novo lançamento de conta corrente
               </DialogTitle>
-              <DialogDescription className="text-sm">
+              <DialogDescription>
                 Os campos foram preenchidos automaticamente a partir do extrato
                 OFX. Edite o que for necessário antes de confirmar a importação.
               </DialogDescription>
@@ -728,12 +750,12 @@ export default function FinImportarOFX() {
             {movimentoEdit && editIdx !== null && (
               <div className="space-y-6">
                 {/* Cabeçalho com banco + data + valor */}
-                <div className="flex flex-wrap items-center gap-6 rounded-lg border border-border bg-muted p-4">
+                <div className="flex flex-wrap items-center gap-6 rounded-md border border-border bg-secondary p-4">
                   {(() => {
                     const sel = contas.find((c) => c.id === contaId);
                     const b = findBanco(sel?.banco_nome ?? "");
                     return (
-                      <div className="flex h-12 w-12 items-center justify-center rounded-md border border-border bg-background">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-md border border-border bg-card">
                         <BancoLogo
                           codigo={b?.codigo}
                           nome={b?.nome ?? sel?.banco_nome ?? "—"}
@@ -743,7 +765,7 @@ export default function FinImportarOFX() {
                     );
                   })()}
                   <div className="min-w-0">
-                    <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                    <div className="text-xs leading-4 text-muted-foreground">
                       Conta corrente
                     </div>
                     <div className="truncate text-sm font-semibold text-foreground">
@@ -753,7 +775,7 @@ export default function FinImportarOFX() {
                     </div>
                   </div>
                   <div>
-                    <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                    <div className="text-xs leading-4 text-muted-foreground">
                       Data do movimento
                     </div>
                     <div className="text-sm font-medium tabular-nums text-foreground">
@@ -764,7 +786,7 @@ export default function FinImportarOFX() {
                     </div>
                   </div>
                   <div>
-                    <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                    <div className="text-xs leading-4 text-muted-foreground">
                       Valor do lançamento
                     </div>
                     <div
@@ -785,7 +807,7 @@ export default function FinImportarOFX() {
                 {/* Linha 1: Categoria + Tipo doc + Número doc */}
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                   <div className="space-y-1.5">
-                    <Label htmlFor="ofx-categoria" className="text-sm">
+                    <Label htmlFor="ofx-categoria">
                       Categoria <span className="text-destructive-ink" aria-hidden="true">*</span>
                     </Label>
                     <Select
@@ -812,7 +834,7 @@ export default function FinImportarOFX() {
                     </Select>
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="ofx-tipo-doc" className="text-sm">Tipo de documento</Label>
+                    <Label htmlFor="ofx-tipo-doc">Tipo de documento</Label>
                     <Select
                       value={movimentoEdit._detalhes.tipo_documento}
                       onValueChange={(v) =>
@@ -834,7 +856,7 @@ export default function FinImportarOFX() {
                     </Select>
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="ofx-numero-doc" className="text-sm">Número do documento</Label>
+                    <Label htmlFor="ofx-numero-doc">Número do documento</Label>
                     <Input
                       id="ofx-numero-doc"
                       value={movimentoEdit._detalhes.numero_documento}
@@ -852,7 +874,7 @@ export default function FinImportarOFX() {
                 {/* Linha 2: Favorecido (Pessoa) */}
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="space-y-1.5">
-                    <Label htmlFor="ofx-favorecido" className="text-sm">Favorecido / cliente</Label>
+                    <Label htmlFor="ofx-favorecido">Favorecido / cliente</Label>
                     <Select
                       value={movimentoEdit._detalhes.pessoa_id ?? "_none_"}
                       onValueChange={(v) =>
@@ -894,7 +916,7 @@ export default function FinImportarOFX() {
 
                 {/* Observações */}
                 <div className="space-y-1.5">
-                  <Label htmlFor="ofx-observacoes" className="text-sm">Observações</Label>
+                  <Label htmlFor="ofx-observacoes">Observações</Label>
                   <Textarea
                     id="ofx-observacoes"
                     value={movimentoEdit._detalhes.observacoes}
@@ -904,18 +926,18 @@ export default function FinImportarOFX() {
                       })
                     }
                     rows={3}
-                    className="resize-none text-sm"
+                    className="resize-none"
                   />
                 </div>
               </div>
             )}
 
-            <DialogFooter className="gap-2">
+            <DialogFooter>
               <Button variant="outline" onClick={() => setEditIdx(null)}>
                 Cancelar
               </Button>
               <Button onClick={() => setEditIdx(null)}>
-                <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> Salvar e fechar
+                <CheckCircle2 aria-hidden="true" /> Salvar e fechar
               </Button>
             </DialogFooter>
           </DialogContent>

@@ -300,44 +300,45 @@ export default function FinDemonstracoes() {
   return (
     <div className="space-y-6">
       <Card>
-        <CardContent className="p-6 flex flex-wrap items-end gap-3">
-          <div>
-            <Label htmlFor="demo-de" className="block mb-2">De</Label>
+        <CardContent className="flex flex-wrap items-end gap-3 p-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="demo-de">De</Label>
             <Input id="demo-de" type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} className="w-44" />
           </div>
-          <div>
-            <Label htmlFor="demo-ate" className="block mb-2">Até</Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="demo-ate">Até</Label>
             <Input id="demo-ate" type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} className="w-44" />
           </div>
-          <div className="flex-1" />
-          <Button variant="outline" onClick={() => exportarPDF("completo")}>
-            <Download className="w-4 h-4" aria-hidden="true" /> Exportar PDF Completo
-          </Button>
+          <div className="ml-auto flex gap-2">
+            <Button variant="outline" onClick={() => exportarPDF("completo")}>
+              <Download aria-hidden="true" /> Exportar PDF Completo
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
       <Tabs defaultValue="bp" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="bp"><Scale className="w-4 h-4 mr-2" aria-hidden="true" />Balanço Patrimonial</TabsTrigger>
-          <TabsTrigger value="dfc"><Activity className="w-4 h-4 mr-2" aria-hidden="true" />DFC Indireta</TabsTrigger>
-          <TabsTrigger value="dmpl"><TrendingUp className="w-4 h-4 mr-2" aria-hidden="true" />DMPL</TabsTrigger>
+          <TabsTrigger value="bp"><Scale className="h-4 w-4" aria-hidden="true" />Balanço Patrimonial</TabsTrigger>
+          <TabsTrigger value="dfc"><Activity className="h-4 w-4" aria-hidden="true" />DFC Indireta</TabsTrigger>
+          <TabsTrigger value="dmpl"><TrendingUp className="h-4 w-4" aria-hidden="true" />DMPL</TabsTrigger>
         </TabsList>
 
         <TabsContent value="bp" className="space-y-4 mt-0">
           <Card>
-            <CardHeader className="pb-2 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <CardHeader className="flex flex-col gap-3 space-y-0 md:flex-row md:items-center md:justify-between">
               <CardTitle className="flex items-center gap-2">
-                <Scale className="w-5 h-5 text-muted-foreground" aria-hidden="true" />Balanço Patrimonial
+                <Scale className="h-5 w-5 text-muted-foreground" aria-hidden="true" />Balanço Patrimonial
               </CardTitle>
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant={calc.bp.balanceado ? "success" : "danger"}>
                   {calc.bp.balanceado ? "Balanceado" : "Desbalanceado"}
                 </Badge>
                 <Button variant="ghost" onClick={() => salvarSnapshot("balanco_patrimonial")}>
-                  <BookOpen className="w-4 h-4" aria-hidden="true" /> Salvar
+                  <BookOpen aria-hidden="true" /> Salvar
                 </Button>
                 <Button variant="outline" onClick={() => exportarPDF("balanco")}>
-                  <Download className="w-4 h-4" aria-hidden="true" /> PDF
+                  <Download aria-hidden="true" /> PDF
                 </Button>
               </div>
             </CardHeader>
@@ -373,16 +374,16 @@ export default function FinDemonstracoes() {
 
         <TabsContent value="dfc" className="space-y-4 mt-0">
           <Card>
-            <CardHeader className="pb-2 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <CardHeader className="flex flex-col gap-3 space-y-0 md:flex-row md:items-center md:justify-between">
               <CardTitle className="flex items-center gap-2">
-                <Activity className="w-5 h-5 text-success" aria-hidden="true" />DFC – Método Indireto
+                <Activity className="h-5 w-5 text-muted-foreground" aria-hidden="true" />DFC – Método Indireto
               </CardTitle>
               <div className="flex flex-wrap items-center gap-2">
                 <Button variant="ghost" onClick={() => salvarSnapshot("dfc_indireta")}>
-                  <BookOpen className="w-4 h-4" aria-hidden="true" /> Salvar
+                  <BookOpen aria-hidden="true" /> Salvar
                 </Button>
                 <Button variant="outline" onClick={() => exportarPDF("dfc")}>
-                  <Download className="w-4 h-4" aria-hidden="true" /> PDF
+                  <Download aria-hidden="true" /> PDF
                 </Button>
               </div>
             </CardHeader>
@@ -405,16 +406,16 @@ export default function FinDemonstracoes() {
 
         <TabsContent value="dmpl" className="space-y-4 mt-0">
           <Card>
-            <CardHeader className="pb-2 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <CardHeader className="flex flex-col gap-3 space-y-0 md:flex-row md:items-center md:justify-between">
               <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-warning" aria-hidden="true" />DMPL – Mutações do PL
+                <TrendingUp className="h-5 w-5 text-muted-foreground" aria-hidden="true" />DMPL – Mutações do PL
               </CardTitle>
               <div className="flex flex-wrap items-center gap-2">
                 <Button variant="ghost" onClick={() => salvarSnapshot("dmpl")}>
-                  <BookOpen className="w-4 h-4" aria-hidden="true" /> Salvar
+                  <BookOpen aria-hidden="true" /> Salvar
                 </Button>
                 <Button variant="outline" onClick={() => exportarPDF("dmpl")}>
-                  <Download className="w-4 h-4" aria-hidden="true" /> PDF
+                  <Download aria-hidden="true" /> PDF
                 </Button>
               </div>
             </CardHeader>
@@ -443,7 +444,7 @@ function Linha({ label, valor, bold, indent }: { label: string; valor: number; b
   return (
     <div className={`flex items-center justify-between gap-2 py-1.5 ${indent ? "pl-4" : ""}`}>
       <span className={`text-sm ${bold ? "font-semibold" : ""}`}>{label}</span>
-      <span className={`text-right tabular-nums text-sm whitespace-nowrap ${bold ? "font-semibold" : ""} ${valor < 0 ? "text-destructive" : ""}`}>
+      <span className={`text-right tabular-nums text-sm whitespace-nowrap ${bold ? "font-semibold" : ""} ${valor < 0 ? "text-destructive-ink" : ""}`}>
         {fmt(valor)}
       </span>
     </div>

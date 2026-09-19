@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2, Save, Scale, CheckCircle2, AlertTriangle } from "lucide-react";
 import EstadoVazio from "@/components/shared/EstadoVazio";
 import { useToast } from "@/hooks/use-toast";
@@ -117,7 +118,7 @@ export default function FinSaldosAbertura() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2"><Scale className="w-5 h-5" />Saldos de Abertura (Balanço Inicial)</CardTitle>
+        <CardTitle className="flex items-center gap-2"><Scale className="h-5 w-5 text-muted-foreground" aria-hidden="true" />Saldos de Abertura (Balanço Inicial)</CardTitle>
         <CardDescription>Registro de saldos iniciais por conta patrimonial — partida dobrada (ITG 2000): ΣDevedores = ΣCredores.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -126,38 +127,58 @@ export default function FinSaldosAbertura() {
             <Label htmlFor="saldos-data-corte">Data de Corte</Label>
             <Input id="saldos-data-corte" type="date" value={dataCorte} onChange={(e) => setDataCorte(e.target.value)} className="w-44" />
           </div>
-          <Button onClick={salvar} disabled={salvando}>
-            {salvando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}Salvar Saldos
+          <Button onClick={salvar} disabled={salvando} className="ml-auto">
+            {salvando ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Save aria-hidden="true" />}Salvar Saldos
           </Button>
         </div>
 
         {totais.dif === 0 && (totais.d > 0 || totais.c > 0) ? (
           <Alert variant="success">
-            <CheckCircle2 className="w-4 h-4" />
+            <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
             <AlertDescription>Balancete em equilíbrio: ΣD = ΣC = {fmt(totais.d)}</AlertDescription>
           </Alert>
         ) : totais.dif !== 0 ? (
           <Alert variant="destructive">
-            <AlertTriangle className="w-4 h-4" />
+            <AlertTriangle className="h-4 w-4" aria-hidden="true" />
             <AlertDescription>Diferença de {fmt(Math.abs(totais.dif))} entre Devedores ({fmt(totais.d)}) e Credores ({fmt(totais.c)}).</AlertDescription>
           </Alert>
         ) : null}
 
-        {contas.length === 0 ? (
+        {loading ? (
+          // Espera na forma da tabela — código, conta, selo e campo —, em vez
+          // do estado vazio piscando enquanto as contas chegam.
+          <div role="status" aria-label="Carregando contas" className="overflow-hidden rounded-lg border border-border">
+            <div className="flex flex-col gap-px bg-border">
+              {Array.from({ length: 5 }, (_, i) => (
+                <div key={i} className="flex items-center gap-4 bg-card px-4 py-3">
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-4 w-1/3" />
+                  <Skeleton className="h-5 w-20 rounded-sm" />
+                  <Skeleton className="ml-auto h-10 w-40 rounded-md" />
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : contas.length === 0 ? (
           <EstadoVazio
-            icone={<Scale />}
+            tamanho="compacto"
+            icone={<Scale aria-hidden="true" />}
             titulo="Nenhuma conta patrimonial analítica"
             descricao={'Importe o Plano de Contas Padrão PME primeiro, na aba "Plano de Contas", para lançar os saldos de abertura'}
           />
         ) : (
-          <div className="rounded-lg border border-border max-h-[60vh] overflow-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-muted sticky top-0 text-sm font-semibold text-foreground">
+          // Tabela crua de propósito: cabeçalho e rodapé são `sticky` dentro
+          // deste contêiner de 60vh, e o invólucro de rolagem que `ui/table`
+          // acrescenta prenderia a fixação no lugar errado. As classes são as
+          // dos primitivos, aplicadas à mão (Design System v3).
+          <div className="max-h-[60vh] overflow-auto rounded-lg border border-border">
+            <table className="w-full caption-bottom text-sm">
+              <thead className="sticky top-0 bg-secondary [&_tr]:border-b [&_tr]:border-border">
                 <tr>
-                  <th className="text-left px-4 py-3">Código</th>
-                  <th className="text-left px-4 py-3">Conta</th>
-                  <th className="text-center px-4 py-3">Natureza</th>
-                  <th className="text-right px-4 py-3 w-48">Saldo (R$)</th>
+                  <th className="h-11 px-4 text-left align-middle text-xs font-semibold tracking-wide text-muted-foreground">Código</th>
+                  <th className="h-11 px-4 text-left align-middle text-xs font-semibold tracking-wide text-muted-foreground">Conta</th>
+                  <th className="h-11 px-4 text-center align-middle text-xs font-semibold tracking-wide text-muted-foreground">Natureza</th>
+                  <th className="h-11 w-48 px-4 text-right align-middle text-xs font-semibold tracking-wide text-muted-foreground">Saldo (R$)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -165,26 +186,26 @@ export default function FinSaldosAbertura() {
                   const s = saldos.get(c.id);
                   const valor = c.natureza_saldo === "D" ? (s?.saldo_devedor || 0) : (s?.saldo_credor || 0);
                   return (
-                    <tr key={c.id} className="hover:bg-muted">
-                      <td className="px-4 py-2 text-sm tabular-nums text-muted-foreground">{c.codigo}</td>
-                      <td className="px-4 py-2">{c.nome}</td>
-                      <td className="px-4 py-2 text-center">
+                    <tr key={c.id} className="transition-colors duration-150 hover:bg-muted/60">
+                      <td className="h-12 px-4 py-2.5 align-middle text-sm tabular-nums text-muted-foreground">{c.codigo}</td>
+                      <td className="h-12 px-4 py-2.5 align-middle text-sm text-foreground">{c.nome}</td>
+                      <td className="h-12 px-4 py-2.5 text-center align-middle">
                         <Badge variant="muted">{c.natureza_saldo === "D" ? "Devedora" : "Credora"}</Badge>
                       </td>
-                      <td className="px-4 py-2 text-right">
+                      <td className="h-12 px-4 py-2.5 text-right align-middle">
                         <Input type="number" step="0.01" min="0" value={valor || ""}
                           onChange={(e) => setValor(c, Number(e.target.value))}
                           aria-label={`Saldo de abertura da conta ${c.codigo} ${c.nome}`}
-                          className="text-right tabular-nums w-40 ml-auto" placeholder="0,00" />
+                          className="ml-auto w-40 text-right tabular-nums" placeholder="0,00" />
                       </td>
                     </tr>
                   );
                 })}
               </tbody>
-              <tfoot className="bg-muted sticky bottom-0 font-semibold">
+              <tfoot className="sticky bottom-0 border-t border-border bg-secondary font-semibold">
                 <tr>
-                  <td colSpan={3} className="text-right px-4 py-3">Totais:</td>
-                  <td className="text-right px-4 py-3 tabular-nums">D {fmt(totais.d)} · C {fmt(totais.c)}</td>
+                  <td colSpan={3} className="px-4 py-3 text-right text-sm">Totais:</td>
+                  <td className="px-4 py-3 text-right text-sm tabular-nums">D {fmt(totais.d)} · C {fmt(totais.c)}</td>
                 </tr>
               </tfoot>
             </table>

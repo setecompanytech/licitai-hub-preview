@@ -13,6 +13,7 @@ import { ResponsiveContainer, ComposedChart, Line, Bar, XAxis, YAxis, Tooltip, C
 import { useResumoVisorFinanceiro } from "@/hooks/useFinanceiro";
 import { formatBRL } from "@/lib/financeiro/formatters";
 import EstadoVazio from "@/components/shared/EstadoVazio";
+import ValorDeCartao from "./ValorDeCartao";
 import { useQueryClient } from "@tanstack/react-query";
 
 function navegarFinanceiro(view: string) {
@@ -53,11 +54,11 @@ export default function FinResumoVisor() {
   if (isLoading || !data) {
     return (
       <div className="space-y-4" role="status" aria-label="Carregando resumo">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <Skeleton className="h-48 lg:col-span-1" />
           <Skeleton className="h-48 lg:col-span-2" />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <Skeleton className="h-32" />
           <Skeleton className="h-32" />
         </div>
@@ -82,7 +83,7 @@ export default function FinResumoVisor() {
             onClick={() => { qc.invalidateQueries({ queryKey: ["fin-resumo-visor"] }); refetch(); }}
             disabled={isFetching}
           >
-            <RefreshCw className={`w-4 h-4 ${isFetching ? "animate-spin" : ""}`} aria-hidden="true" />
+            <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} aria-hidden="true" />
             Atualizar
           </Button>
           <span className="text-sm text-muted-foreground">Atualização automática a cada 60s</span>
@@ -95,60 +96,59 @@ export default function FinResumoVisor() {
         </div>
       </div>
 
-      {/* Atalhos rápidos */}
+      {/* Atalhos rápidos — o ícone dentro do botão já tem 16px pelo primitivo. */}
       <Card>
         <CardContent className="p-4">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-medium text-muted-foreground mr-2">Ações rápidas</span>
+            <span className="mr-2 text-sm font-medium text-muted-foreground">Ações rápidas</span>
             <Button variant="default" onClick={() => navegarFinanceiro("a_pagar")}>
-              <Plus className="w-4 h-4" aria-hidden="true" /> Conta a Pagar
+              <Plus aria-hidden="true" /> Conta a Pagar
             </Button>
             <Button variant="default" onClick={() => navegarFinanceiro("a_receber")}>
-              <Plus className="w-4 h-4" aria-hidden="true" /> Conta a Receber
+              <Plus aria-hidden="true" /> Conta a Receber
             </Button>
             <Button variant="outline" onClick={() => navegarFinanceiro("transferencia")}>
-              <ArrowLeftRight className="w-4 h-4" aria-hidden="true" /> Transferência
+              <ArrowLeftRight aria-hidden="true" /> Transferência
             </Button>
             <Button variant="outline" onClick={() => navegarFinanceiro("conciliacao")}>
-              <CheckCircle2 className="w-4 h-4" aria-hidden="true" /> Conciliação
+              <CheckCircle2 aria-hidden="true" /> Conciliação
             </Button>
             <Button variant="outline" onClick={() => navegarFinanceiro("baixa_lote")}>
-              <Layers className="w-4 h-4" aria-hidden="true" /> Baixa em Lote
+              <Layers aria-hidden="true" /> Baixa em Lote
             </Button>
             <Button variant="outline" onClick={() => navegarFinanceiro("importar_ofx")}>
-              <FileSpreadsheet className="w-4 h-4" aria-hidden="true" /> Importar OFX
+              <FileSpreadsheet aria-hidden="true" /> Importar OFX
             </Button>
             <Button variant="ghost" onClick={() => navegarFinanceiro("contas")}>
-              <Wallet className="w-4 h-4" aria-hidden="true" /> Gerenciar Contas
+              <Wallet aria-hidden="true" /> Gerenciar Contas
             </Button>
           </div>
         </CardContent>
       </Card>
 
       {/* Hero + gráfico */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Hero — data de hoje e saldo, em cartão claro */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        {/* Hero — data de hoje e saldo, em cartão claro. O dia é o número
+            grande (28/600), o saldo é o KPI do cartão. */}
         <Card className="lg:col-span-1">
-          <CardContent className="p-6 h-full flex flex-col justify-between">
+          <CardContent className="flex h-full flex-col justify-between p-5">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-4xl font-bold leading-none tabular-nums text-foreground">{dataExtenso.dia}</p>
-                <p className="text-lg font-semibold mt-1 capitalize">{dataExtenso.mes}</p>
-                <p className="text-sm text-muted-foreground capitalize">{dataExtenso.semana}-feira</p>
+                <p className="text-4xl font-semibold leading-none tabular-nums text-foreground">{dataExtenso.dia}</p>
+                <p className="mt-1 text-lg font-semibold capitalize leading-6 text-foreground">{dataExtenso.mes}</p>
+                <p className="text-sm capitalize text-muted-foreground">{dataExtenso.semana}-feira</p>
               </div>
               <div className="text-right">
                 <p className="text-xs font-medium text-muted-foreground">Hoje</p>
-                <p className="text-sm text-muted-foreground tabular-nums">{dataExtenso.ano}</p>
+                <p className="text-sm tabular-nums text-muted-foreground">{dataExtenso.ano}</p>
               </div>
             </div>
-            <div className="mt-6">
-              <p className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                <Wallet className="w-4 h-4" aria-hidden="true" />
+            <div className="mt-6 min-w-0">
+              <p className="flex items-center gap-2 text-sm font-medium leading-5 text-muted-foreground">
+                <Wallet className="h-4 w-4" aria-hidden="true" />
                 Saldo em contas
               </p>
-              <p className="mt-1 text-[2rem] leading-10 font-bold tabular-nums text-foreground">
-                {formatBRL(data.saldoTotal)}
-              </p>
+              <ValorDeCartao valor={formatBRL(data.saldoTotal)} className="text-foreground" />
             </div>
           </CardContent>
         </Card>
@@ -157,7 +157,7 @@ export default function FinResumoVisor() {
         <Card className="lg:col-span-2">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+              <TrendingUp className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
               Resumo para os próximos 10 dias
             </CardTitle>
           </CardHeader>
@@ -169,7 +169,7 @@ export default function FinResumoVisor() {
                 <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : String(v)} />
                 <Tooltip
                   formatter={(value: number) => formatBRL(value)}
-                  contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 10, fontSize: 12 }}
+                  contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 10, fontSize: 13, color: "hsl(var(--foreground))" }}
                 />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
                 <ReferenceLine y={0} stroke="hsl(var(--destructive))" strokeDasharray="3 3" />
@@ -183,7 +183,7 @@ export default function FinResumoVisor() {
       </div>
 
       {/* Cards de hoje */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <CardHoje
           tipo="pagar"
           qtd={data.hojePagar.qtd}
@@ -202,7 +202,7 @@ export default function FinResumoVisor() {
       <SaldosPorConta contas={data.contasSaldo} saldoTotal={data.saldoTotal} />
 
       {/* Indicadores extras */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <IndicadorCard
           icon={Activity}
           label="Inadimplência do mês"
@@ -226,7 +226,7 @@ export default function FinResumoVisor() {
       </div>
 
       {/* Top atrasos */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <TopAtrasosCard titulo="Contas a Pagar — Maiores Atrasos" itens={data.topAtrasosPagar} tipo="pagar" />
         <TopAtrasosCard titulo="Contas a Receber — Maiores Atrasos" itens={data.topAtrasosReceber} tipo="receber" />
       </div>
@@ -234,36 +234,40 @@ export default function FinResumoVisor() {
   );
 }
 
+/**
+ * Cartão KPI do Design System v3 (112px): rótulo em cima, ícone num ladrilho
+ * de 32px tingido à direita, valor pelo `ValorDeCartao` (28/600, que encolhe
+ * em vez de quebrar) e linha de contexto 12px. Texto colorido só na tinta
+ * `*-ink`, nunca na cor cheia sobre branco.
+ */
 function CardHoje({ tipo, qtd, total, atraso }: { tipo: "pagar" | "receber"; qtd: number; total: number; atraso: number }) {
   const isPagar = tipo === "pagar";
   const Icon = isPagar ? ArrowUpCircle : ArrowDownCircle;
-  const cor = isPagar ? "text-destructive" : "text-success";
+  const cor = isPagar ? "text-destructive-ink" : "text-success-ink";
   const caixa = isPagar ? "bg-destructive-tint text-destructive-ink" : "bg-success-tint text-success-ink";
 
   return (
-    <Card>
-      <CardContent className="p-6">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-muted-foreground">
-              {isPagar ? "Pagar Hoje" : "Receber Hoje"}
-            </p>
-            <div className="mt-2 flex items-baseline gap-2">
-              <span className={`text-2xl font-semibold tabular-nums ${cor}`}>{qtd}</span>
-              <span className="text-sm text-muted-foreground">contas</span>
-            </div>
-            <p className={`mt-1 text-[2rem] leading-10 font-bold tabular-nums truncate ${cor}`}>{formatBRL(total)}</p>
-            {atraso > 0 && (
-              <p className="text-sm text-muted-foreground mt-2">
-                Em atraso: <span className="font-medium tabular-nums">{formatBRL(atraso)}</span>
-              </p>
-            )}
-          </div>
-          <span className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md ${caixa}`}>
-            <Icon className="w-5 h-5" aria-hidden="true" />
-          </span>
-        </div>
-      </CardContent>
+    <Card className="flex min-h-[112px] flex-col justify-between gap-2 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <p className="min-w-0 truncate text-sm font-medium leading-5 text-muted-foreground">
+          {isPagar ? "Pagar Hoje" : "Receber Hoje"}
+        </p>
+        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${caixa}`}>
+          <Icon className="h-4 w-4" aria-hidden="true" />
+        </span>
+      </div>
+      <div className="min-w-0">
+        <ValorDeCartao valor={formatBRL(total)} className={`mt-0 ${cor}`} />
+        <p className="mt-0.5 flex items-baseline gap-1 text-xs leading-4 text-muted-foreground">
+          <span className="font-semibold tabular-nums text-foreground">{qtd}</span>
+          <span>contas</span>
+        </p>
+        {atraso > 0 && (
+          <p className="text-xs leading-4 text-muted-foreground">
+            Em atraso: <span className="font-medium tabular-nums">{formatBRL(atraso)}</span>
+          </p>
+        )}
+      </div>
     </Card>
   );
 }
@@ -271,34 +275,34 @@ function CardHoje({ tipo, qtd, total, atraso }: { tipo: "pagar" | "receber"; qtd
 function IndicadorCard({ icon: Icon, label, value, hint, tone }: { icon: React.ElementType; label: string; value: string; hint?: string; tone: "default" | "success" | "warning" | "danger" }) {
   const cor = {
     default: "text-foreground",
-    success: "text-success",
-    warning: "text-warning",
-    danger: "text-destructive",
+    success: "text-success-ink",
+    warning: "text-warning-ink",
+    danger: "text-destructive-ink",
   }[tone];
   const caixa = {
-    default: "bg-muted text-foreground",
+    default: "bg-muted text-muted-foreground",
     success: "bg-success-tint text-success-ink",
     warning: "bg-warning-tint text-warning-ink",
     danger: "bg-destructive-tint text-destructive-ink",
   }[tone];
   return (
-    <Card>
-      <CardContent className="p-6 flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-sm font-medium text-muted-foreground">{label}</p>
-          <p className={`mt-1 text-[2rem] leading-10 font-bold tabular-nums truncate ${cor}`}>{value}</p>
-          {hint && <p className="text-xs text-muted-foreground mt-1">{hint}</p>}
-        </div>
-        <span className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md ${caixa}`}>
-          <Icon className="w-5 h-5" aria-hidden="true" />
+    <Card className="flex min-h-[112px] flex-col justify-between gap-2 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <p className="min-w-0 truncate text-sm font-medium leading-5 text-muted-foreground">{label}</p>
+        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${caixa}`}>
+          <Icon className="h-4 w-4" aria-hidden="true" />
         </span>
-      </CardContent>
+      </div>
+      <div className="min-w-0">
+        <ValorDeCartao valor={value} className={`mt-0 ${cor}`} />
+        {hint && <p className="mt-0.5 text-xs leading-4 text-muted-foreground">{hint}</p>}
+      </div>
     </Card>
   );
 }
 
 function TopAtrasosCard({ titulo, itens, tipo }: { titulo: string; itens: Array<{ id: string; descricao: string; pessoa: string; diasAtraso: number; valor: number; vencimento: string }>; tipo: "pagar" | "receber" }) {
-  const cor = tipo === "pagar" ? "text-destructive" : "text-success";
+  const cor = tipo === "pagar" ? "text-destructive-ink" : "text-success-ink";
   const bg = tipo === "pagar" ? "bg-destructive-tint text-destructive-ink" : "bg-success-tint text-success-ink";
 
   return (
@@ -319,18 +323,18 @@ function TopAtrasosCard({ titulo, itens, tipo }: { titulo: string; itens: Array<
             {itens.map((it) => {
               const iniciais = (it.pessoa || "—").split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join("") || "—";
               return (
-                <li key={it.id} className="flex items-center gap-3 px-6 py-3 hover:bg-muted/50 transition-colors">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 ${bg}`} aria-hidden="true">
+                <li key={it.id} className="flex items-center gap-3 px-5 py-3 transition-colors duration-150 hover:bg-muted/60">
+                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-xs font-semibold ${bg}`} aria-hidden="true">
                     {iniciais}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium truncate">{it.pessoa}</div>
-                    <div className="text-xs text-muted-foreground truncate">{it.descricao}</div>
-                    <div className="text-xs text-muted-foreground mt-1 flex flex-wrap items-center gap-1">
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-medium text-foreground">{it.pessoa}</div>
+                    <div className="truncate text-xs text-muted-foreground">{it.descricao}</div>
+                    <div className="mt-1 flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
                       Venc. {formatDataCurta(it.vencimento)} · <Badge variant="danger">{it.diasAtraso}d em atraso</Badge>
                     </div>
                   </div>
-                  <div className={`text-sm font-semibold text-right tabular-nums whitespace-nowrap ${cor}`}>
+                  <div className={`whitespace-nowrap text-right text-sm font-semibold tabular-nums ${cor}`}>
                     {formatBRL(it.valor)}
                   </div>
                 </li>
@@ -361,13 +365,13 @@ function SaldosPorConta({ contas, saldoTotal }: { contas: Array<{ id: string; no
   const ativas = contas.filter((c) => c.ativa);
   return (
     <Card>
-      <CardHeader className="pb-2 flex flex-row flex-wrap items-center justify-between gap-2">
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 pb-2">
         <CardTitle className="flex items-center gap-2">
-          <Wallet className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+          <Wallet className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
           Saldos por conta
           <Badge variant="muted" className="ml-1">{ativas.length} ativas</Badge>
         </CardTitle>
-        <Button variant="ghost" onClick={() => navegarFinanceiro("contas")}>Gerenciar</Button>
+        <Button variant="ghost" size="sm" onClick={() => navegarFinanceiro("contas")}>Gerenciar</Button>
       </CardHeader>
       <CardContent className="p-0">
         {ativas.length === 0 ? (
@@ -393,44 +397,45 @@ function SaldosPorConta({ contas, saldoTotal }: { contas: Array<{ id: string; no
                 <li key={c.id}>
                   <button
                     type="button"
-                    className="w-full text-left flex items-center gap-3 px-6 py-3 hover:bg-muted/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+                    className="flex w-full items-center gap-3 px-5 py-3 text-left transition-colors duration-150 hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
                     onClick={() => navegarFinanceiro("contas")}
                     aria-label={`${c.nome}: ${formatBRL(c.saldoAtual)}. Abrir contas correntes`}
                   >
                     {/* A cor vem do cadastro da conta (escolha do usuário) —
                         exceção de dado, não cor de interface. */}
                     <div
-                      className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${c.cor ? "" : "bg-muted text-foreground"}`}
+                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md ${c.cor ? "" : "bg-muted text-muted-foreground"}`}
                       style={c.cor ? { backgroundColor: `${c.cor}22`, color: c.cor } : undefined}
                       aria-hidden="true"
                     >
-                      <Icon className="w-4 h-4" />
+                      <Icon className="h-4 w-4" />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium truncate">{c.nome}</div>
-                      {subtitulo && <div className="text-xs text-muted-foreground truncate">{subtitulo}</div>}
-                      <div className="h-1 bg-muted rounded-full mt-2 overflow-hidden">
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-medium text-foreground">{c.nome}</div>
+                      {subtitulo && <div className="truncate text-xs text-muted-foreground">{subtitulo}</div>}
+                      <div className="mt-2 h-1 overflow-hidden rounded-full bg-muted">
                         <div
                           className={negativo ? "h-full bg-destructive" : "h-full bg-primary"}
                           style={{ width: `${Math.min(100, Math.abs(pct))}%` }}
                         />
                       </div>
                     </div>
-                    <div className="text-right shrink-0">
-                      <div className={`text-sm font-semibold tabular-nums ${negativo ? "text-destructive" : "text-foreground"}`}>
+                    <div className="shrink-0 text-right">
+                      <div className={`text-sm font-semibold tabular-nums ${negativo ? "text-destructive-ink" : "text-foreground"}`}>
                         {formatBRL(c.saldoAtual)}
                       </div>
                       {saldoTotal > 0 && !negativo && (
-                        <div className="text-xs text-muted-foreground tabular-nums">{pct.toFixed(1)}%</div>
+                        <div className="text-xs tabular-nums text-muted-foreground">{pct.toFixed(1)}%</div>
                       )}
                     </div>
                   </button>
                 </li>
               );
             })}
-            <li className="flex items-center justify-between px-6 py-3 bg-muted font-medium">
-              <span className="text-sm">Saldo consolidado</span>
-              <span className={`text-sm text-right tabular-nums ${saldoTotal < 0 ? "text-destructive" : "text-foreground"}`}>
+            {/* Linha de total na superfície rebaixada, como o rodapé de tabela. */}
+            <li className="flex items-center justify-between bg-secondary px-5 py-3 font-semibold">
+              <span className="text-sm text-foreground">Saldo consolidado</span>
+              <span className={`text-right text-sm tabular-nums ${saldoTotal < 0 ? "text-destructive-ink" : "text-foreground"}`}>
                 {formatBRL(saldoTotal)}
               </span>
             </li>

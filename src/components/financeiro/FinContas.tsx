@@ -2,14 +2,16 @@ import { useState } from "react";
 import { mensagemDeErro } from "@/lib/financeiro/erro-do-banco";
 import { z } from "zod";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MoneyInput } from "@/components/ui/money-input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Pencil, Trash2, AlertCircle, RefreshCw, Landmark } from "lucide-react";
+import { Plus, Pencil, Trash2, AlertCircle, RefreshCw, Landmark, Search } from "lucide-react";
 import EstadoVazio from "@/components/shared/EstadoVazio";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -319,8 +321,23 @@ export default function FinContas() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 md:flex-row md:items-end">
-        <div className="flex-1 min-w-0 space-y-2">
+      {/* Filtros (Design System v3): busca larga à esquerda, seletor de banco
+          com rótulo acima, ações ancoradas à direita — tudo alinhado pela base. */}
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="min-w-[220px] flex-1 basis-64 space-y-2">
+          <Label htmlFor="contas-busca">Buscar</Label>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+            <Input
+              id="contas-busca"
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              placeholder="Nome, agência ou número da conta…"
+              className="pl-9"
+            />
+          </div>
+        </div>
+        <div className="w-full space-y-2 sm:w-72">
           <Label htmlFor="contas-filtro-banco">Filtrar por banco</Label>
           <BancoSelectorLogos
             id="contas-filtro-banco"
@@ -330,16 +347,7 @@ export default function FinContas() {
             placeholder="Todos os bancos"
           />
         </div>
-        <div className="flex-1 min-w-0 space-y-2">
-          <Label htmlFor="contas-busca">Buscar</Label>
-          <Input
-            id="contas-busca"
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            placeholder="Nome, agência ou número da conta…"
-          />
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="ml-auto flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
             onClick={() => setConfirmSync(true)}
@@ -351,90 +359,110 @@ export default function FinContas() {
                 : `${candidatasSync} conta(s) com saldo dessincronizado`
             }
           >
-            <RefreshCw className={cn("w-4 h-4", sincronizando && "animate-spin")} />
+            <RefreshCw className={cn(sincronizando && "animate-spin")} aria-hidden="true" />
             {sincronizando ? "Sincronizando…" : "Sincronizar saldos"}
             {candidatasSync > 0 && !sincronizando && (
-              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-muted px-1.5 text-xs font-semibold text-foreground tabular-nums">
-                {candidatasSync}
-              </span>
+              <Badge variant="muted">{candidatasSync}</Badge>
             )}
           </Button>
           <Button onClick={() => openDialog(null)} className="shrink-0">
-            <Plus className="w-4 h-4" /> Nova conta
+            <Plus aria-hidden="true" /> Nova conta
           </Button>
         </div>
       </div>
 
+      {/* Tabela nos primitivos de `ui/table`: cabeçalho em superfície rebaixada,
+          rótulos 12/600 sem caixa alta, linhas de 48px, números à direita. */}
       <Card>
-        <CardContent className="p-0 overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-muted text-sm font-semibold text-foreground">
-              <tr>
-                <th className="w-12 px-4 py-3 text-left"><span className="sr-only">Banco</span></th>
-                <th className="px-4 py-3 text-left">Nome</th>
-                <th className="px-4 py-3 text-left">Tipo</th>
-                <th className="px-4 py-3 text-left">Banco</th>
-                <th className="px-4 py-3 text-left">Ag./Conta</th>
-                <th className="px-4 py-3 text-right">Saldo atual</th>
-                <th className="w-24 px-4 py-3 text-right"><span className="sr-only">Ações</span></th>
-              </tr>
-            </thead>
-            <tbody>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-12"><span className="sr-only">Banco</span></TableHead>
+                <TableHead>Nome</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead>Banco</TableHead>
+                <TableHead>Ag./Conta</TableHead>
+                <TableHead className="text-right">Saldo atual</TableHead>
+                <TableHead className="w-24 text-right"><span className="sr-only">Ações</span></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {isLoading ? (
-                <tr><td colSpan={7} className="p-3"><Skeleton className="h-8 w-full" /></td></tr>
+                // Espera na forma das linhas — logo, nome, tipo e saldo —, não
+                // uma barra única (Design System v3).
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={7} className="p-0">
+                    <div role="status" aria-label="Carregando contas" className="flex flex-col gap-px bg-border">
+                      {Array.from({ length: 4 }, (_, i) => (
+                        <div key={i} className="flex items-center gap-4 bg-card px-4 py-3">
+                          <Skeleton className="h-8 w-8 shrink-0 rounded-md" />
+                          <Skeleton className="h-4 w-40" />
+                          <Skeleton className="h-4 w-24" />
+                          <Skeleton className="h-4 w-28" />
+                          <Skeleton className="ml-auto h-4 w-24" />
+                        </div>
+                      ))}
+                    </div>
+                  </TableCell>
+                </TableRow>
               ) : contasFiltradas.length === 0 ? (
-                <tr><td colSpan={7}>
-                  <EstadoVazio
-                    icone={<Landmark />}
-                    titulo={contas.length === 0 ? "Nenhuma conta cadastrada" : "Nenhuma conta corresponde aos filtros"}
-                    descricao={
-                      contas.length === 0
-                        ? "Cadastre a primeira conta para acompanhar saldo, extrato e conciliação"
-                        : "Ajuste o banco ou a busca para ver outras contas"
-                    }
-                    acao={
-                      contas.length === 0 ? (
-                        <Button onClick={() => openDialog(null)}>
-                          <Plus className="w-4 h-4" /> Nova conta
-                        </Button>
-                      ) : undefined
-                    }
-                  />
-                </td></tr>
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={7} className="p-0">
+                    <EstadoVazio
+                      icone={<Landmark aria-hidden="true" />}
+                      titulo={contas.length === 0 ? "Nenhuma conta cadastrada" : "Nenhuma conta corresponde aos filtros"}
+                      descricao={
+                        contas.length === 0
+                          ? "Cadastre a primeira conta para acompanhar saldo, extrato e conciliação"
+                          : "Ajuste o banco ou a busca para ver outras contas"
+                      }
+                      acao={
+                        contas.length === 0 ? (
+                          <Button onClick={() => openDialog(null)}>
+                            <Plus aria-hidden="true" /> Nova conta
+                          </Button>
+                        ) : undefined
+                      }
+                    />
+                  </TableCell>
+                </TableRow>
               ) : (
                 contasFiltradas.map((c) => {
                   const b = findBanco(c.banco_nome ?? "");
                   return (
-                    <tr key={c.id} className="border-t border-border hover:bg-muted">
-                      <td className="px-4 py-3">
+                    <TableRow key={c.id}>
+                      <TableCell>
                         <BancoLogo codigo={b?.codigo} nome={c.banco_nome} size={32} />
-                      </td>
-                      <td className="px-4 py-3 font-medium whitespace-nowrap">{c.nome}</td>
-                      <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{TIPOS.find((t) => t.value === c.tipo)?.label ?? c.tipo}</td>
-                      <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{c.banco_nome ?? "—"}</td>
-                      <td className="px-4 py-3 text-muted-foreground tabular-nums whitespace-nowrap">{c.agencia || c.conta ? `${c.agencia ?? "—"} / ${c.conta ?? "—"}` : "—"}</td>
-                      <td className="px-4 py-3 text-right tabular-nums whitespace-nowrap">{formatBRL(Number(c.saldo_atual ?? 0))}</td>
-                      <td className="px-4 py-3 text-right whitespace-nowrap">
-                        <Button size="icon" variant="ghost" aria-label={`Editar conta ${c.nome}`} onClick={() => openDialog(c)}><Pencil className="w-4 h-4" /></Button>
-                        <Button size="icon" variant="ghost" aria-label={`Excluir conta ${c.nome}`} onClick={() => setConfirmDel(c.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
-                      </td>
-                    </tr>
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap font-medium">{c.nome}</TableCell>
+                      <TableCell className="whitespace-nowrap text-muted-foreground">{TIPOS.find((t) => t.value === c.tipo)?.label ?? c.tipo}</TableCell>
+                      <TableCell className="whitespace-nowrap text-muted-foreground">{c.banco_nome ?? "—"}</TableCell>
+                      <TableCell className="whitespace-nowrap tabular-nums text-muted-foreground">{c.agencia || c.conta ? `${c.agencia ?? "—"} / ${c.conta ?? "—"}` : "—"}</TableCell>
+                      <TableCell className="whitespace-nowrap text-right font-semibold tabular-nums">{formatBRL(Number(c.saldo_atual ?? 0))}</TableCell>
+                      <TableCell className="whitespace-nowrap text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button size="icon-sm" variant="ghost" aria-label={`Editar conta ${c.nome}`} onClick={() => openDialog(c)}><Pencil aria-hidden="true" /></Button>
+                          <Button size="icon-sm" variant="ghost-destructive" aria-label={`Excluir conta ${c.nome}`} onClick={() => setConfirmDel(c.id)}><Trash2 aria-hidden="true" /></Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
                   );
                 })
               )}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
 
       <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) resetForm(); }}>
-        <DialogContent className="max-w-3xl p-0 overflow-hidden">
-          <DialogHeader className="px-6 pt-6 pb-3 border-b border-border">
+        <DialogContent className="max-w-3xl p-0">
+          <DialogHeader className="border-b border-border px-6 pb-4 pt-5">
             <DialogTitle>{editing?.id ? "Editar conta" : "Nova conta corrente"}</DialogTitle>
           </DialogHeader>
 
           {/* Cabeçalho fixo: tipo, instituição, nome, agência, conta */}
-          <div className="px-6 pt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-4 px-6 pt-4 md:grid-cols-3">
             <div className="space-y-2">
               <Label htmlFor="conta-tipo">Tipo de Conta Corrente *</Label>
               <Select value={tipo} onValueChange={setTipo}>
@@ -456,7 +484,7 @@ export default function FinContas() {
                 className={cn(erros.banco && "border-destructive focus-visible:ring-destructive")}
               />
               {erros.banco && (
-                <p id="conta-instituicao-erro" role="alert" className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="w-3 h-3" />{erros.banco}</p>
+                <p id="conta-instituicao-erro" role="alert" className="flex items-center gap-1 text-xs text-destructive-ink"><AlertCircle className="h-3 w-3 shrink-0" aria-hidden="true" />{erros.banco}</p>
               )}
             </div>
             <div className="space-y-2">
@@ -472,7 +500,7 @@ export default function FinContas() {
                 maxLength={80}
               />
               {erros.nome && (
-                <p id="conta-nome-erro" role="alert" className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="w-3 h-3" />{erros.nome}</p>
+                <p id="conta-nome-erro" role="alert" className="flex items-center gap-1 text-xs text-destructive-ink"><AlertCircle className="h-3 w-3 shrink-0" aria-hidden="true" />{erros.nome}</p>
               )}
             </div>
             <div className="space-y-2">
@@ -488,7 +516,7 @@ export default function FinContas() {
                 className={cn("tabular-nums", erros.agencia && "border-destructive focus-visible:ring-destructive")}
               />
               {erros.agencia && (
-                <p id="conta-agencia-erro" role="alert" className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="w-3 h-3" />{erros.agencia}</p>
+                <p id="conta-agencia-erro" role="alert" className="flex items-center gap-1 text-xs text-destructive-ink"><AlertCircle className="h-3 w-3 shrink-0" aria-hidden="true" />{erros.agencia}</p>
               )}
             </div>
             <div className="space-y-2">
@@ -504,21 +532,21 @@ export default function FinContas() {
                 className={cn("tabular-nums", erros.conta && "border-destructive focus-visible:ring-destructive")}
               />
               {erros.conta && (
-                <p id="conta-numero-erro" role="alert" className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="w-3 h-3" />{erros.conta}</p>
+                <p id="conta-numero-erro" role="alert" className="flex items-center gap-1 text-xs text-destructive-ink"><AlertCircle className="h-3 w-3 shrink-0" aria-hidden="true" />{erros.conta}</p>
               )}
             </div>
           </div>
 
           {/* Abas: Outras Informações | Sobre a Agência */}
           <Tabs defaultValue="outras" className="px-6 pt-4">
-            <TabsList className="grid grid-cols-2 w-full md:w-auto">
+            <TabsList>
               <TabsTrigger value="outras">Outras Informações</TabsTrigger>
               <TabsTrigger value="agencia">Sobre a Agência</TabsTrigger>
             </TabsList>
 
             <ScrollArea className="max-h-[42vh] mt-3 pr-3">
               <TabsContent value="outras" className="space-y-3 mt-0">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
                   <div className="space-y-2">
                     <Label htmlFor="conta-saldo-inicial">Saldo Inicial</Label>
                     <MoneyInput
@@ -569,7 +597,7 @@ export default function FinContas() {
                   </div>
                 </div>
 
-                <div className="flex items-start gap-3 rounded-md border border-border bg-muted p-4">
+                <div className="flex items-start gap-3 rounded-md border border-border bg-secondary p-4">
                   <Switch
                     id="conta-nao-considerar"
                     checked={naoConsiderar}
@@ -595,14 +623,14 @@ export default function FinContas() {
                 </div>
 
                 {erros.saldoInicial && (
-                  <p id="conta-saldo-inicial-erro" role="alert" className="text-xs text-destructive flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" />{erros.saldoInicial}
+                  <p id="conta-saldo-inicial-erro" role="alert" className="flex items-center gap-1 text-xs text-destructive-ink">
+                    <AlertCircle className="h-3 w-3 shrink-0" aria-hidden="true" />{erros.saldoInicial}
                   </p>
                 )}
               </TabsContent>
 
               <TabsContent value="agencia" className="space-y-3 mt-0">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
                   <div className="md:col-span-2 space-y-2">
                     <Label htmlFor="conta-gerente-nome">Gerente da Conta</Label>
                     <Input id="conta-gerente-nome" value={gerenteNome} onChange={(e) => setGerenteNome(e.target.value)} />
@@ -674,7 +702,7 @@ export default function FinContas() {
             </ScrollArea>
           </Tabs>
 
-          <DialogFooter className="px-6 py-4 border-t border-border bg-muted">
+          <DialogFooter className="border-t border-border bg-secondary px-6 py-4">
             <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
             <Button onClick={handleSave} disabled={upsert.isPending || !nome.trim()}>Salvar</Button>
           </DialogFooter>
@@ -689,7 +717,12 @@ export default function FinContas() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={async () => { if (confirmDel) await del.mutateAsync(confirmDel); setConfirmDel(null); }}>Excluir</AlertDialogAction>
+            <AlertDialogAction
+              className={buttonVariants({ variant: "destructive" })}
+              onClick={async () => { if (confirmDel) await del.mutateAsync(confirmDel); setConfirmDel(null); }}
+            >
+              Excluir
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

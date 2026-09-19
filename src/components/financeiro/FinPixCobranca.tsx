@@ -120,7 +120,7 @@ export default function FinPixCobranca() {
   return (
     <Tabs defaultValue="nova" className="space-y-4">
       <TabsList>
-        <TabsTrigger value="nova"><QrCode className="h-4 w-4 mr-1.5" /> Nova cobrança</TabsTrigger>
+        <TabsTrigger value="nova"><QrCode className="h-4 w-4" aria-hidden="true" />Nova cobrança</TabsTrigger>
         <TabsTrigger value="historico">Histórico ({cobrancas.length})</TabsTrigger>
       </TabsList>
 
@@ -132,7 +132,7 @@ export default function FinPixCobranca() {
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-foreground">Beneficiário</h3>
+              <h3 className="text-base font-semibold leading-6 text-foreground">Beneficiário</h3>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label htmlFor="pix-chave">Chave PIX (CPF/CNPJ/e-mail/telefone/aleatória)</Label>
@@ -154,7 +154,7 @@ export default function FinPixCobranca() {
             </div>
 
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-foreground">Cobrança</h3>
+              <h3 className="text-base font-semibold leading-6 text-foreground">Cobrança</h3>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label htmlFor="pix-valor">Valor (R$)</Label>
@@ -178,7 +178,7 @@ export default function FinPixCobranca() {
 
             <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-4">
               <Button onClick={emitir} disabled={emitting}>
-                {emitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <QrCode className="h-4 w-4" />}
+                {emitting ? <Loader2 className="animate-spin" aria-hidden="true" /> : <QrCode aria-hidden="true" />}
                 Gerar PIX
               </Button>
             </div>
@@ -189,21 +189,23 @@ export default function FinPixCobranca() {
           <Card className="border-success-line bg-success-tint">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-success-ink">
-                <CheckCircle2 className="h-5 w-5" /> Cobrança gerada — {formatBRL(ultimaCobranca.valor)}
+                <CheckCircle2 className="h-5 w-5" aria-hidden="true" /> Cobrança gerada — {formatBRL(ultimaCobranca.valor)}
               </CardTitle>
               <CardDescription>TXID: {ultimaCobranca.txid}</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col items-start gap-4 md:flex-row">
-              {/* bg-white é funcional: a zona de silêncio do QR precisa ser clara em
-                  qualquer tema para o leitor do banco reconhecer o código. */}
-              <img src={qrUrl(ultimaCobranca.br_code)} alt="QR Code da cobrança PIX" className="rounded-md border border-border bg-white p-2" />
+              {/* Moldura do QR (DS v3): raio 8, borda, 16px de respiro. O fundo
+                  fica bg-white de propósito, e não bg-card: a API devolve o PNG
+                  sem zona de silêncio, e é este respiro CLARO que o leitor do
+                  banco exige — no tema escuro, bg-card o apagaria. */}
+              <img src={qrUrl(ultimaCobranca.br_code)} alt="QR Code da cobrança PIX" className="shrink-0 rounded-md border border-border bg-white p-4" />
               <div className="w-full flex-1 space-y-2">
                 <Label htmlFor="pix-br-code">Pix Copia e Cola</Label>
                 <div className="flex gap-2">
                   <Input id="pix-br-code" value={ultimaCobranca.br_code} readOnly className="font-mono text-sm" />
-                  <Button variant="outline" size="icon" aria-label="Copiar código Pix Copia e Cola"
+                  <Button variant="outline" size="icon" className="shrink-0" aria-label="Copiar código Pix Copia e Cola"
                     onClick={() => copiar(ultimaCobranca.br_code)}>
-                    <Copy className="h-4 w-4" />
+                    <Copy aria-hidden="true" />
                   </Button>
                 </div>
                 <p className="text-sm text-muted-foreground">
@@ -221,13 +223,25 @@ export default function FinPixCobranca() {
           <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
             <CardTitle>Cobranças PIX</CardTitle>
             <Button variant="outline" size="sm" onClick={carregar} disabled={loading}>
-              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+              <RefreshCw className={loading ? "animate-spin" : undefined} aria-hidden="true" />
               Atualizar
             </Button>
           </CardHeader>
           <CardContent>
             {loading ? (
-              <Skeleton className="h-48 w-full" />
+              // Espera na forma da tabela — linhas de 48px —, não um bloco
+              // único (Design System v3).
+              <div role="status" aria-label="Carregando cobranças" className="overflow-hidden rounded-lg border border-border">
+                <div className="flex flex-col gap-px bg-border">
+                  {Array.from({ length: 4 }, (_, i) => (
+                    <div key={i} className="flex items-center gap-4 bg-card px-4 py-3">
+                      <Skeleton className="h-4 w-20" />
+                      <Skeleton className="h-4 w-1/3" />
+                      <Skeleton className="ml-auto h-4 w-24" />
+                    </div>
+                  ))}
+                </div>
+              </div>
             ) : cobrancas.length === 0 ? (
               <EstadoVazio
                 tamanho="compacto"
@@ -236,7 +250,7 @@ export default function FinPixCobranca() {
                 descricao="Gere a primeira na aba Nova cobrança — o BR Code aparece aqui com o status do pagamento."
               />
             ) : (
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto rounded-lg border border-border">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -259,15 +273,15 @@ export default function FinPixCobranca() {
                           <Badge variant={statusVariant(c.status)}>{c.status}</Badge>
                         </TableCell>
                         <TableCell className="whitespace-nowrap">
-                          <div className="flex flex-wrap gap-2">
-                            <Button variant="ghost" size="sm" aria-label={`Copiar BR Code da cobrança ${c.txid}`}
+                          <div className="flex flex-wrap items-center gap-1">
+                            <Button variant="ghost" size="icon-sm" aria-label={`Copiar BR Code da cobrança ${c.txid}`}
                               onClick={() => copiar(c.br_code)}>
-                              <Copy className="h-4 w-4" />
+                              <Copy aria-hidden="true" />
                             </Button>
                             {c.status === "pendente" && (
                               <Button variant="ghost" size="sm" aria-label={`Marcar paga — cobrança ${c.txid}`}
                                 onClick={() => marcarPago(c.id)}>
-                                <CheckCircle2 className="h-4 w-4" />
+                                <CheckCircle2 aria-hidden="true" />
                                 Marcar paga
                               </Button>
                             )}

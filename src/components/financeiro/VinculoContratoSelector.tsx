@@ -27,6 +27,9 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import EstadoVazio from "@/components/shared/EstadoVazio";
 import { empenhoCancelado, ROTULO_DO_EMPENHO } from "@/lib/contratos/empenho";
 import { quantidadeConfiavel } from "@/lib/financeiro/quantidade-da-nota";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -475,37 +478,41 @@ export default function VinculoContratoSelector({
   };
 
   return (
-    <Card className="border-border">
-      <CardContent className="p-3 space-y-3">
-        <div className="flex items-center gap-2">
-          <Link2 className="w-4 h-4 text-muted-foreground" />
-          <span className="text-sm font-medium">
-            Vincular a um Contrato / ATA SRP {tipo === "a_receber" ? "(cliente)" : "(fornecedor)"}
-          </span>
-          {loading && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
-        </div>
-
-        <div className="text-xs text-muted-foreground -mt-1">
-          Opcional. Se vinculado, o sistema cria automaticamente um pedido no contrato e
-          recalcula saldo financeiro/quantitativo (e da ATA SRP, quando aplicável).
+    <Card>
+      <CardContent className="space-y-3 p-4">
+        {/* Cabeçalho de seção do Design System v3: título 16/600 com ícone
+            neutro e a descrição em 13px logo abaixo. */}
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <Link2 className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <span className="text-base font-semibold leading-6 text-foreground">
+              Vincular a um Contrato / ATA SRP {tipo === "a_receber" ? "(cliente)" : "(fornecedor)"}
+            </span>
+            {loading && <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" aria-hidden="true" />}
+          </div>
+          <p className="text-sm leading-5 text-muted-foreground">
+            Opcional. Se vinculado, o sistema cria automaticamente um pedido no contrato e
+            recalcula saldo financeiro/quantitativo (e da ATA SRP, quando aplicável).
+          </p>
         </div>
 
         {/* Combobox único: lista filtrada de contratos pré-cadastrados em GESTÃO */}
-        <div>
-          <Label className="text-xs">Contrato / ATA SRP</Label>
+        <div className="space-y-1.5">
+          <Label>Contrato / ATA SRP</Label>
           <Popover open={listaAberta} onOpenChange={setListaAberta}>
             <PopoverTrigger asChild>
               <Button
                 type="button"
                 variant="outline"
                 role="combobox"
-                className="h-9 w-full justify-between mt-1 text-xs font-normal"
+                aria-expanded={listaAberta}
+                className="w-full justify-between font-normal"
                 disabled={loading}
               >
                 {contratoSel ? (
                   <span className="flex items-center gap-1.5 truncate text-left">
                     {contratoSel.tipo_documento === "ata_srp" && (
-                      <Badge variant="outline" className="text-xs py-0 px-1 shrink-0">
+                      <Badge variant="muted" className="shrink-0">
                         ATA
                       </Badge>
                     )}
@@ -523,7 +530,7 @@ export default function VinculoContratoSelector({
                         : `Selecione um contrato (${contratos.length} disponíveis)…`}
                   </span>
                 )}
-                <ChevronsUpDown className="w-3.5 h-3.5 ml-2 shrink-0 opacity-50" />
+                <ChevronsUpDown className="ml-2 shrink-0 text-muted-foreground" aria-hidden="true" />
               </Button>
             </PopoverTrigger>
             <PopoverContent
@@ -552,7 +559,6 @@ export default function VinculoContratoSelector({
                   placeholder="Buscar por nº, órgão ou objeto…"
                   value={busca}
                   onValueChange={setBusca}
-                  className="text-xs"
                 />
                 {/*
                   CommandList: força altura máxima e overflow-y SEMPRE visível
@@ -571,7 +577,7 @@ export default function VinculoContratoSelector({
                     e.stopPropagation();
                   }}
                 >
-                  <CommandEmpty className="py-4 text-xs text-muted-foreground text-center">
+                  <CommandEmpty className="py-4 text-center text-sm text-muted-foreground">
                     Nenhum contrato vigente corresponde à busca.
                   </CommandEmpty>
                   <CommandGroup>
@@ -583,22 +589,22 @@ export default function VinculoContratoSelector({
                           key={c.id}
                           value={c.id}
                           onSelect={() => setContrato(c.id)}
-                          // O destaque padrão pinta bg-accent CHAPADO — o
-                          // laranja da marca em força total — e os textos
-                          // internos (muted, saldo verde/vermelho) somem nele.
-                          // Fundo a 15% destaca sem engolir o texto.
-                          className="flex items-start gap-2 text-xs cursor-pointer data-[selected=true]:bg-accent/15 data-[selected=true]:text-foreground"
+                          // O destaque do item focado vem do primitivo
+                          // (`bg-muted`, Design System v3): realça sem engolir
+                          // os textos internos — muted, saldo verde/vermelho.
+                          className="cursor-pointer items-start"
                         >
                           <Check
+                            aria-hidden="true"
                             className={cn(
-                              "w-3.5 h-3.5 mt-0.5 shrink-0",
+                              "mt-0.5 h-4 w-4 shrink-0",
                               selecionado ? "opacity-100 text-primary" : "opacity-0",
                             )}
                           />
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               {c.tipo_documento === "ata_srp" && (
-                                <Badge variant="outline" className="text-xs py-0 px-1">
+                                <Badge variant="muted">
                                   ATA SRP
                                 </Badge>
                               )}
@@ -607,7 +613,7 @@ export default function VinculoContratoSelector({
                                   a nota retroativa é dele —, mas rotulado,
                                   para ninguém escolhê-lo sem ver. */}
                               {c.status && !["vigente", "ativo", "em_execucao", "ativa"].includes(c.status) && (
-                                <Badge variant="outline" className="text-xs py-0 px-1 text-warning border-warning/40">
+                                <Badge variant="warning">
                                   {c.status}
                                 </Badge>
                               )}
@@ -623,10 +629,10 @@ export default function VinculoContratoSelector({
                                 {c.objeto}
                               </div>
                             )}
-                            <div className="text-xs mt-0.5 flex gap-3 flex-wrap">
+                            <div className="mt-0.5 flex flex-wrap gap-3 text-xs tabular-nums">
                               <span>
                                 Saldo:{" "}
-                                <b className={saldo > 0 ? "text-success" : "text-destructive"}>
+                                <b className={saldo > 0 ? "text-success-ink" : "text-destructive-ink"}>
                                   {fmt(saldo)}
                                 </b>
                               </span>
@@ -645,13 +651,13 @@ export default function VinculoContratoSelector({
           </Popover>
 
           {contratoSel && escolhidoPelaLeitura && (
-            <p className="text-[11px] text-muted-foreground mt-1">
+            <p className="mt-1 text-xs text-muted-foreground">
               Selecionado automaticamente pelo destinatário lido do documento — confira e troque se não for este.
             </p>
           )}
           {contratoSel && (
-            <div className="flex items-center justify-between mt-1.5">
-              <p className="text-xs text-muted-foreground truncate">
+            <div className="mt-1.5 flex items-center justify-between gap-2">
+              <p className="truncate text-xs tabular-nums text-muted-foreground">
                 Saldo remanescente:{" "}
                 <b>{fmt(Number(contratoSel.saldo_remanescente ?? contratoSel.valor_global))}</b>
                 {" · "}Global: {fmt(contratoSel.valor_global)}
@@ -660,10 +666,10 @@ export default function VinculoContratoSelector({
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-6 px-1.5 text-xs text-muted-foreground hover:text-destructive"
+                className="shrink-0 text-muted-foreground"
                 onClick={() => setContrato("")}
               >
-                <X className="w-3 h-3 mr-0.5" />
+                <X aria-hidden="true" />
                 Limpar
               </Button>
             </div>
@@ -672,27 +678,18 @@ export default function VinculoContratoSelector({
 
         {/* ===== Alertas de divergência (documento × contrato) ===== */}
         {divergencias.length > 0 && (
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             {divergencias.map((d, i) => {
               const isError = d.level === "error";
               const Icon = isError ? AlertCircle : AlertTriangle;
               return (
-                <div
-                  key={i}
-                  className={cn(
-                    "flex gap-2 rounded-md border p-2 text-xs",
-                    isError
-                      ? "border-destructive/40 bg-destructive/10 text-destructive"
-                      : "border-warning/40 bg-warning/10 text-warning",
-                  )}
-                  role="alert"
-                >
-                  <Icon className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium">{d.titulo}</div>
-                    <div className="text-xs opacity-90">{d.detalhe}</div>
-                  </div>
-                </div>
+                // O trio tinta/tinta-escura/linha de cada estado vem do
+                // primitivo Alert (Design System v3), não de alfa composto.
+                <Alert key={i} variant={isError ? "destructive" : "warning"}>
+                  <Icon aria-hidden="true" />
+                  <AlertTitle>{d.titulo}</AlertTitle>
+                  <AlertDescription>{d.detalhe}</AlertDescription>
+                </Alert>
               );
             })}
             <p className="text-xs text-muted-foreground italic px-0.5">
@@ -709,8 +706,8 @@ export default function VinculoContratoSelector({
             marcado, porque entrega ANTERIOR ao cancelamento é lançamento
             legítimo. Contrato sem empenho registrado não mostra o bloco. */}
         {value.contrato_id && empenhos.length > 0 && (
-          <div>
-            <Label className="text-xs">Empenho que autoriza (art. 60)</Label>
+          <div className="space-y-1.5">
+            <Label>Empenho que autoriza (art. 60)</Label>
             <Select
               value={value.empenho_id ?? "nenhum"}
               onValueChange={(id) => {
@@ -722,11 +719,11 @@ export default function VinculoContratoSelector({
                 });
               }}
             >
-              <SelectTrigger className="h-9 text-xs mt-1"><SelectValue /></SelectTrigger>
+              <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="nenhum" className="text-xs">Sem vínculo com empenho</SelectItem>
+                <SelectItem value="nenhum">Sem vínculo com empenho</SelectItem>
                 {empenhos.map((e) => (
-                  <SelectItem key={e.id} value={e.id} className="text-xs">
+                  <SelectItem key={e.id} value={e.id}>
                     {e.numero} — {ROTULO_DO_EMPENHO[e.tipo as 'ordinario'] ?? e.tipo}
                     {e.cancelado
                       ? " · CANCELADO"
@@ -740,13 +737,13 @@ export default function VinculoContratoSelector({
 
         {/* Itens do contrato — múltipla seleção (cota principal + cota reservada) */}
         {value.contrato_id && (
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <Label className="text-xs flex items-center gap-1.5">
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between gap-2">
+              <Label className="flex items-center gap-1.5">
                 Itens do contrato (opcional)
                 {itensSelecionados.length > 1 && (
-                  <Badge variant="secondary" className="text-xs py-0 px-1.5 gap-1">
-                    <Layers className="w-2.5 h-2.5" />
+                  <Badge variant="muted" className="gap-1">
+                    <Layers className="h-3 w-3" aria-hidden="true" />
                     {itensSelecionados.length} agrupados
                   </Badge>
                 )}
@@ -756,33 +753,40 @@ export default function VinculoContratoSelector({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="h-6 px-1.5 text-xs text-muted-foreground hover:text-destructive"
+                  className="shrink-0 text-muted-foreground"
                   onClick={() =>
                     onChange({ ...value, contrato_item_ids: [], contrato_item_id: null })
                   }
                 >
-                  <X className="w-3 h-3 mr-0.5" /> Limpar
+                  <X aria-hidden="true" /> Limpar
                 </Button>
               )}
             </div>
 
-            <div className="text-xs text-muted-foreground mb-1.5">
+            <div className="text-xs text-muted-foreground">
               Marque um ou mais itens. Para contratos com <b>cota principal e cota reservada</b> do
               mesmo objeto (Lei 14.133/21), o sistema soma os saldos e rateia o valor do documento
               proporcionalmente entre os itens marcados.
             </div>
 
             {loadingItens ? (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
-                <Loader2 className="w-3.5 h-3.5 animate-spin" /> Carregando itens…
+              // Espera na forma das linhas de item, não um spinner (Design
+              // System v3); a frase continua, para quem lê a tela.
+              <div role="status" className="space-y-2 py-1">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <p className="text-xs text-muted-foreground">Carregando itens…</p>
               </div>
             ) : itens.length === 0 ? (
-              <div className="text-xs text-muted-foreground italic py-2">
-                Este contrato não possui itens cadastrados.
-              </div>
+              <EstadoVazio
+                tamanho="compacto"
+                icone={<FileText />}
+                titulo="Este contrato não possui itens cadastrados."
+              />
             ) : (
               <div
-                className="h-[min(34vh,260px)] min-h-[120px] overflow-y-auto overscroll-contain rounded-md border border-border/60 divide-y divide-border/40"
+                className="h-[min(34vh,260px)] min-h-[120px] divide-y divide-border overflow-y-auto overscroll-contain rounded-md border border-border"
                 onWheel={(e) => e.stopPropagation()}
               >
                 {itens.map((i) => {
@@ -793,8 +797,8 @@ export default function VinculoContratoSelector({
                     <label
                       key={i.id}
                       className={cn(
-                        "flex items-start gap-2 px-2 py-1.5 text-xs cursor-pointer hover:bg-muted/50 transition-colors",
-                        checked && "bg-primary/5",
+                        "flex cursor-pointer items-start gap-2 px-3 py-2 text-sm transition-colors duration-150",
+                        checked ? "bg-primary-tint" : "hover:bg-muted",
                       )}
                     >
                       <Checkbox
@@ -802,15 +806,15 @@ export default function VinculoContratoSelector({
                         onCheckedChange={(v) => toggleItem(i.id, v === true)}
                         className="mt-0.5 shrink-0"
                       />
-                      <FileText className="w-3 h-3 mt-1 text-muted-foreground shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <div className="line-clamp-2 leading-tight" title={i.descricao}>
+                      <FileText className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                      <div className="min-w-0 flex-1">
+                        <div className="line-clamp-2 leading-tight text-foreground" title={i.descricao}>
                           {i.descricao}
                         </div>
-                        <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-xs text-muted-foreground">
+                        <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs tabular-nums text-muted-foreground">
                           <span>
                             Saldo financeiro:{" "}
-                            <b className={saldoFin > 0 ? "text-success" : "text-destructive"}>
+                            <b className={saldoFin > 0 ? "text-success-ink" : "text-destructive-ink"}>
                               {fmt(saldoFin)}
                             </b>
                           </span>
@@ -832,11 +836,11 @@ export default function VinculoContratoSelector({
             )}
 
             {itensSelecionados.length > 1 && (
-              <div className="mt-1.5 rounded-md bg-muted/40 border border-border/60 p-2 text-xs">
-                <div className="font-medium text-foreground flex items-center gap-1">
-                  <Layers className="w-3 h-3" /> Saldos somados dos itens marcados:
+              <div className="rounded-md border border-border bg-secondary p-3 text-xs">
+                <div className="flex items-center gap-1 font-medium text-foreground">
+                  <Layers className="h-3 w-3" aria-hidden="true" /> Saldos somados dos itens marcados:
                 </div>
-                <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-muted-foreground">
+                <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 tabular-nums text-muted-foreground">
                   <span>
                     Quantidade:{" "}
                     <b className="text-foreground">
@@ -858,9 +862,9 @@ export default function VinculoContratoSelector({
           </div>
         )}
         {value.contrato_id && itemSel && (
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <Label className="text-xs">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label>
                 Quantidade {itensSelecionados.length > 1 && "(total a ratear)"}
               </Label>
               <Input
@@ -870,11 +874,11 @@ export default function VinculoContratoSelector({
                 onChange={(e) =>
                   onChange({ ...value, quantidade: parseFloat(e.target.value) || 0 })
                 }
-                className="h-8 text-xs"
+                className="tabular-nums"
               />
             </div>
-            <div>
-              <Label className="text-xs">Valor unitário</Label>
+            <div className="space-y-1.5">
+              <Label>Valor unitário</Label>
               <Input
                 type="number"
                 step="0.01"
@@ -882,7 +886,7 @@ export default function VinculoContratoSelector({
                 onChange={(e) =>
                   onChange({ ...value, valor_unitario: parseFloat(e.target.value) || 0 })
                 }
-                className="h-8 text-xs"
+                className="tabular-nums"
               />
             </div>
           </div>
@@ -890,8 +894,8 @@ export default function VinculoContratoSelector({
 
         {/* Aditivo origem */}
         {value.contrato_id && aditivos.length > 0 && (
-          <div>
-            <Label className="text-xs">Aditivo de origem (opcional)</Label>
+          <div className="space-y-1.5">
+            <Label>Aditivo de origem (opcional)</Label>
             <Select
               value={value.origem_aditivo_id ?? "__contrato__"}
               onValueChange={(v) =>
@@ -901,15 +905,15 @@ export default function VinculoContratoSelector({
                 })
               }
             >
-              <SelectTrigger className="h-8 text-xs mt-1">
+              <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__contrato__" className="text-xs">
+                <SelectItem value="__contrato__">
                   📄 Contrato Original
                 </SelectItem>
                 {aditivos.map((a) => (
-                  <SelectItem key={a.id} value={a.id} className="text-xs">
+                  <SelectItem key={a.id} value={a.id}>
                     📎 {a.numero_aditivo} ({a.tipo})
                   </SelectItem>
                 ))}

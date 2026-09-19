@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
 import { History, Undo2, ShieldCheck, Sparkles, Loader2 } from "lucide-react";
 import EstadoVazio from "@/components/shared/EstadoVazio";
 import { useToast } from "@/hooks/use-toast";
@@ -28,7 +29,7 @@ interface LogRow {
 const ACAO_LABEL: Record<string, { label: string; variant: BadgeProps["variant"]; icon: ElementType }> = {
   auto_match: { label: "Auto", variant: "success", icon: ShieldCheck },
   manual_match: { label: "Manual", variant: "info", icon: History },
-  ai_suggestion: { label: "IA", variant: "muted", icon: Sparkles },
+  ai_suggestion: { label: "IA", variant: "ia", icon: Sparkles },
   revert: { label: "Revertido", variant: "danger", icon: Undo2 },
 };
 
@@ -93,17 +94,26 @@ export default function FinAuditoriaConciliacao() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <History className="w-5 h-5" /> Auditoria de Conciliação
+            <History className="h-5 w-5 text-muted-foreground" aria-hidden="true" /> Auditoria de Conciliação
           </CardTitle>
           <CardDescription>
             Histórico completo de conciliações automáticas e manuais. Auto-conciliações ocorrem com confiança ≥ 90%; demais ficam para revisão.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="border-t border-border p-0">
           {loading ? (
-            <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground" role="status">
-              <Loader2 className="w-5 h-5 animate-spin" />
-              Carregando histórico…
+            // Espera na forma das linhas da tabela, não um spinner no centro
+            // (Design System v3). O texto continua ali para o leitor de tela.
+            <div role="status" className="divide-y divide-border">
+              <span className="sr-only">Carregando histórico…</span>
+              {Array.from({ length: 5 }, (_, i) => (
+                <div key={i} className="flex items-center gap-4 px-5 py-3">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-5 w-16" />
+                  <Skeleton className="h-4 w-1/3" />
+                  <Skeleton className="ml-auto h-4 w-20" />
+                </div>
+              ))}
             </div>
           ) : logs.length === 0 ? (
             <EstadoVazio
@@ -129,19 +139,19 @@ export default function FinAuditoriaConciliacao() {
                   const Icon = meta.icon;
                   return (
                     <TableRow key={log.id}>
-                      <TableCell className="whitespace-nowrap text-sm tabular-nums">
+                      <TableCell nowrap className="tabular-nums">
                         {new Date(log.created_at).toLocaleString("pt-BR")}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={meta.variant} className="gap-1">
-                          <Icon className="w-3 h-3" /> {meta.label}
+                        <Badge variant={meta.variant}>
+                          <Icon className="h-3 w-3" aria-hidden="true" /> {meta.label}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-sm whitespace-nowrap">{log.metodo}</TableCell>
-                      <TableCell className="text-right text-sm tabular-nums">
+                      <TableCell nowrap>{log.metodo}</TableCell>
+                      <TableCell className="text-right tabular-nums">
                         {log.confianca ? `${log.confianca.toFixed(0)}%` : "—"}
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground max-w-xs truncate" title={log.detalhes?.justificativa_ia || log.detalhes?.motivo || undefined}>
+                      <TableCell className="max-w-xs truncate text-muted-foreground" title={log.detalhes?.justificativa_ia || log.detalhes?.motivo || undefined}>
                         {log.detalhes?.justificativa_ia || log.detalhes?.motivo || JSON.stringify(log.detalhes).slice(0, 80)}
                       </TableCell>
                       <TableCell className="text-right">
@@ -152,7 +162,7 @@ export default function FinAuditoriaConciliacao() {
                             onClick={() => reverter(log)}
                             className="shrink-0"
                           >
-                            {revertendo === log.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Undo2 className="w-4 h-4" />}
+                            {revertendo === log.id ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Undo2 aria-hidden="true" />}
                             Reverter
                           </Button>
                         )}

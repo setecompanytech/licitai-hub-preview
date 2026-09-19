@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
 import EstadoVazio from "@/components/shared/EstadoVazio";
 import { FileSpreadsheet, RefreshCw, Plus, Loader2, Calculator, Building2, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -108,9 +109,9 @@ export default function FinIntegracoesFiscais() {
     <div className="space-y-4">
       <Tabs defaultValue="sefaz" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="sefaz" className="gap-1.5"><Building2 className="w-4 h-4" /> SEFAZ por CNPJ</TabsTrigger>
-          <TabsTrigger value="sped" className="gap-1.5"><FileSpreadsheet className="w-4 h-4" /> SPED / DCTFWeb</TabsTrigger>
-          <TabsTrigger value="impostos" className="gap-1.5"><Calculator className="w-4 h-4" /> Apuração de Impostos</TabsTrigger>
+          <TabsTrigger value="sefaz"><Building2 className="h-4 w-4" aria-hidden="true" />SEFAZ por CNPJ</TabsTrigger>
+          <TabsTrigger value="sped"><FileSpreadsheet className="h-4 w-4" aria-hidden="true" />SPED / DCTFWeb</TabsTrigger>
+          <TabsTrigger value="impostos"><Calculator className="h-4 w-4" aria-hidden="true" />Apuração de Impostos</TabsTrigger>
         </TabsList>
 
         <TabsContent value="sefaz">
@@ -123,9 +124,9 @@ export default function FinIntegracoesFiscais() {
             </CardHeader>
             <CardContent className="space-y-4">
               <Alert variant="warning">
-                <AlertTriangle className="w-4 h-4" />
+                <AlertTriangle className="h-4 w-4" aria-hidden="true" />
                 <AlertDescription>
-                  A consulta SEFAZ exige certificado digital A1 instalado em proxy mTLS externo. Configure <code>SEFAZ_PROXY_URL</code> em Integrações para ativar; importação manual de XML continua sempre disponível.
+                  A consulta SEFAZ exige certificado digital A1 instalado em proxy mTLS externo. Configure <code className="rounded bg-muted px-1">SEFAZ_PROXY_URL</code> em Integrações para ativar; importação manual de XML continua sempre disponível.
                 </AlertDescription>
               </Alert>
 
@@ -143,7 +144,7 @@ export default function FinIntegracoesFiscais() {
                     aria-describedby={cnpjInvalido ? "sefaz-novo-cnpj-erro" : undefined}
                   />
                   <Button onClick={adicionarAgendamento} className="shrink-0">
-                    <Plus className="w-4 h-4" /> Adicionar CNPJ
+                    <Plus aria-hidden="true" />Adicionar CNPJ
                   </Button>
                 </div>
                 {cnpjInvalido && (
@@ -152,7 +153,19 @@ export default function FinIntegracoesFiscais() {
               </div>
 
               {loading ? (
-                <div className="py-8 text-center"><Loader2 className="w-5 h-5 animate-spin mx-auto text-muted-foreground" /></div>
+                // Espera na forma da tabela — linhas de 48px —, não um spinner
+                // no centro (Design System v3).
+                <div role="status" aria-label="Carregando agendamentos" className="overflow-hidden rounded-lg border border-border">
+                  <div className="flex flex-col gap-px bg-border">
+                    {Array.from({ length: 3 }, (_, i) => (
+                      <div key={i} className="flex items-center gap-4 bg-card px-4 py-3">
+                        <Skeleton className="h-4 w-36" />
+                        <Skeleton className="h-4 w-20" />
+                        <Skeleton className="ml-auto h-4 w-24" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
               ) : agendamentos.length === 0 ? (
                 <EstadoVazio
                   tamanho="compacto"
@@ -161,7 +174,7 @@ export default function FinIntegracoesFiscais() {
                   descricao="Adicione um CNPJ acima para que a SEFAZ seja consultada periodicamente por notas emitidas contra ele."
                 />
               ) : (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto rounded-lg border border-border">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -184,12 +197,12 @@ export default function FinIntegracoesFiscais() {
                           <TableCell>
                             {a.ultimo_status ? (
                               <Badge variant={statusAgendamento(a.ultimo_status)}>{a.ultimo_status}</Badge>
-                            ) : <span className="text-sm text-muted-foreground">aguardando</span>}
+                            ) : <Badge variant="warning">aguardando</Badge>}
                           </TableCell>
                           <TableCell className="text-right tabular-nums">{a.total_importadas || 0}</TableCell>
                           <TableCell className="text-right">
                             <Button variant="ghost" size="sm" disabled={puxando === a.id} onClick={() => puxarAgora(a.id)} className="shrink-0">
-                              {puxando === a.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                              {puxando === a.id ? <Loader2 className="animate-spin" aria-hidden="true" /> : <RefreshCw aria-hidden="true" />}
                               Puxar agora
                             </Button>
                           </TableCell>
@@ -220,7 +233,7 @@ export default function FinIntegracoesFiscais() {
                   descricao="A geração será disparada conforme seu regime tributário e as competências fechadas no módulo de Apuração."
                 />
               ) : (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto rounded-lg border border-border">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -270,7 +283,7 @@ export default function FinIntegracoesFiscais() {
                   descricao="As apurações são geradas automaticamente ao fechar a competência no módulo de Apuração Fiscal."
                 />
               ) : (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto rounded-lg border border-border">
                   <Table>
                     <TableHeader>
                       <TableRow>

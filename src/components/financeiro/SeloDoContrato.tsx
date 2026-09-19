@@ -32,9 +32,12 @@ export default function SeloDoContrato({ vinculo, statusFuturo }: Props) {
   const quita = statusFuturo === 'realizado' || statusFuturo === 'conciliado';
   const contrato = vinculo.numero_contrato ?? 'contrato sem número';
 
+  // Linha de texto, não Badge: vive sob a descrição numa célula estreita e
+  // precisa quebrar. Tinta informativa (Design System v3) — é um aviso sobre
+  // o efeito na Gestão, não uma ação nem um sucesso; verde fica para a ação.
   return (
-    <p className="text-xs mt-0.5 flex items-start gap-1 text-primary">
-      <FileSignature className="w-3 h-3 mt-0.5 shrink-0" />
+    <p className="mt-0.5 flex items-start gap-1 text-xs text-info-ink">
+      <FileSignature className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
       <span>
         {vinculo.numero_pedido
           ? <>{quita ? 'Quita o' : 'Do'} pedido <b>{vinculo.numero_pedido}</b> do contrato <b>{contrato}</b></>

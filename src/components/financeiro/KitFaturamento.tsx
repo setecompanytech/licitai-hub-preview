@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -28,12 +30,19 @@ import { carregarTimbrado } from '@/lib/timbrado/timbrado';
  * silenciosa.
  */
 
-const CORES: Record<CertidaoAvaliada['situacao'], string> = {
-  valida: 'bg-success/10 text-success border-success/30',
-  vence_em_breve: 'bg-warning/10 text-warning border-warning/30',
-  sem_validade: 'bg-muted text-muted-foreground border-border',
-  vencida: 'bg-destructive/10 text-destructive border-destructive/30',
-  ausente: 'bg-destructive/10 text-destructive border-destructive/30',
+/**
+ * Situação em selo semântico (Design System v3): a cor sai das variantes do
+ * Badge (`*-tint` / `*-ink` / `*-line`), não de alfa composto na mão — e o
+ * texto continua sendo a pista principal.
+ */
+type VarianteBadge = 'success' | 'warning' | 'danger' | 'muted';
+
+const VARIANTE_SITUACAO: Record<CertidaoAvaliada['situacao'], VarianteBadge> = {
+  valida: 'success',
+  vence_em_breve: 'warning',
+  sem_validade: 'muted',
+  vencida: 'danger',
+  ausente: 'danger',
 };
 
 const ROTULOS: Record<CertidaoAvaliada['situacao'], string> = {
@@ -273,16 +282,16 @@ export default function KitFaturamento({ pedido }: Props) {
       {/* Ícone, não rótulo: numa linha de tabela com cinco ações, os 120px
           do texto eram exatamente o que transbordava e cortava os botões
           seguintes. O título no hover mantém a descoberta. */}
-      <Button size="icon" variant="outline" className="h-7 w-7"
+      <Button size="icon" variant="outline" className="h-7 w-7" aria-label="Kit de faturamento"
         title="Kit de faturamento" onClick={() => setAberto(true)}>
-        <Package className="w-4 h-4" />
+        <Package aria-hidden="true" />
       </Button>
 
       <Dialog open={aberto} onOpenChange={setAberto}>
         <DialogContent className="sm:max-w-[560px] max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Package className="w-4 h-4 text-muted-foreground" /> Kit de faturamento
+              <Package className="h-4 w-4 text-muted-foreground" aria-hidden="true" /> Kit de faturamento
             </DialogTitle>
             <DialogDescription>
               Recibo de quitação e certidões para acompanhar a NF-e do pedido{' '}
@@ -291,36 +300,47 @@ export default function KitFaturamento({ pedido }: Props) {
             </DialogDescription>
           </DialogHeader>
 
+          {/* Espera na forma do conteúdo — o bloco do recibo e as linhas das
+              certidões —, não um spinner no centro (Design System v3). */}
           {carregando ? (
-            <div className="flex items-center justify-center py-10">
-              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            <div role="status" aria-label="Carregando certidões" className="space-y-4">
+              <Skeleton className="h-32 w-full" />
+              <div className="overflow-hidden rounded-lg border border-border">
+                <div className="flex flex-col gap-px bg-border">
+                  {Array.from({ length: 4 }, (_, i) => (
+                    <div key={i} className="flex items-center gap-3 bg-card px-3 py-2.5">
+                      <Skeleton className="h-4 flex-1" />
+                      <Skeleton className="h-4 w-16" />
+                      <Skeleton className="h-5 w-20" />
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {(vencidas.length > 0 || ausentes.length > 0) && (
-                <div className="flex gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
-                  <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
-                  <div className="text-xs space-y-1">
-                    <p className="font-medium text-destructive">
-                      {vencidas.length > 0 && `${vencidas.length} certidão(ões) vencida(s)`}
-                      {vencidas.length > 0 && ausentes.length > 0 && ' · '}
-                      {ausentes.length > 0 && `${ausentes.length} não cadastrada(s)`}
-                    </p>
-                    <p className="text-muted-foreground">
-                      Não entram no pacote. Renove em Jurídico → Documentos antes de enviar ao
-                      órgão — certidão vencida volta como pendência e trava o pagamento.
-                    </p>
-                  </div>
-                </div>
+                <Alert variant="destructive">
+                  <AlertTriangle aria-hidden="true" />
+                  <AlertTitle>
+                    {vencidas.length > 0 && `${vencidas.length} certidão(ões) vencida(s)`}
+                    {vencidas.length > 0 && ausentes.length > 0 && ' · '}
+                    {ausentes.length > 0 && `${ausentes.length} não cadastrada(s)`}
+                  </AlertTitle>
+                  <AlertDescription>
+                    Não entram no pacote. Renove em Jurídico → Documentos antes de enviar ao
+                    órgão — certidão vencida volta como pendência e trava o pagamento.
+                  </AlertDescription>
+                </Alert>
               )}
 
-              <div className="rounded-lg border border-border p-3 space-y-2.5">
-                <p className="text-xs font-semibold">Recibo — referências que o órgão confere</p>
-                <div className="grid sm:grid-cols-2 gap-2.5">
-                  <div>
-                    <Label className="text-xs">Nota de empenho</Label>
+              <div className="space-y-3 rounded-lg border border-border p-4">
+                <p className="text-sm font-semibold leading-5 text-foreground">Recibo — referências que o órgão confere</p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label>Nota de empenho</Label>
                     <Select value={empenhoSel || 'nenhum'} onValueChange={(v) => setEmpenhoSel(v === 'nenhum' ? '' : v)}>
-                      <SelectTrigger className="h-8 text-xs mt-1"><SelectValue /></SelectTrigger>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="nenhum">— Sem menção ao empenho —</SelectItem>
                         {empenhos.map((e) => (
@@ -329,10 +349,10 @@ export default function KitFaturamento({ pedido }: Props) {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div>
-                    <Label className="text-xs">Conta para recebimento</Label>
+                  <div className="space-y-1.5">
+                    <Label>Conta para recebimento</Label>
                     <Select value={contaSel || 'nenhuma'} onValueChange={(v) => setContaSel(v === 'nenhuma' ? '' : v)}>
-                      <SelectTrigger className="h-8 text-xs mt-1"><SelectValue /></SelectTrigger>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="nenhuma">— Sem dados bancários —</SelectItem>
                         {contas.map((c) => (
@@ -343,7 +363,7 @@ export default function KitFaturamento({ pedido }: Props) {
                       </SelectContent>
                     </Select>
                     {contas.length === 0 && (
-                      <p className="text-[11px] text-muted-foreground mt-1">
+                      <p className="text-xs leading-4 text-muted-foreground">
                         Nenhuma conta com dados bancários no Financeiro → Contas — cadastre banco, agência e conta lá para o recibo carregá-los.
                       </p>
                     )}
@@ -351,17 +371,17 @@ export default function KitFaturamento({ pedido }: Props) {
                 </div>
               </div>
 
-              <div className="rounded-lg border border-border divide-y divide-border">
+              <div className="divide-y divide-border rounded-lg border border-border">
                 {certidoes.map((c) => (
-                  <div key={c.nome} className="flex items-center gap-2 p-2.5 text-xs">
-                    <span className="flex-1 min-w-0 truncate">{c.nome}</span>
+                  <div key={c.nome} className="flex items-center gap-3 px-3 py-2 text-sm">
+                    <span className="min-w-0 flex-1 truncate text-foreground">{c.nome}</span>
                     {c.documento?.validade && (
-                      <span className="text-muted-foreground tabular-nums whitespace-nowrap">
+                      <span className="whitespace-nowrap text-xs tabular-nums text-muted-foreground">
                         {new Date(c.documento.validade.slice(0, 10) + 'T12:00:00')
                           .toLocaleDateString('pt-BR')}
                       </span>
                     )}
-                    <Badge variant="outline" className={`text-xs ${CORES[c.situacao]}`}>
+                    <Badge variant={VARIANTE_SITUACAO[c.situacao]}>
                       {ROTULOS[c.situacao]}
                     </Badge>
                   </div>
@@ -374,16 +394,16 @@ export default function KitFaturamento({ pedido }: Props) {
             </div>
           )}
 
-          <DialogFooter className="gap-2">
-            <Button variant="ghost" onClick={() => setAberto(false)}>Fechar</Button>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAberto(false)}>Fechar</Button>
             <Button variant="outline" disabled={!!gerando || carregando} onClick={() => montar('zip')}>
-              {gerando === 'zip' ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                                 : <FileArchive className="w-3.5 h-3.5 mr-1.5" />}
+              {gerando === 'zip' ? <Loader2 className="animate-spin" aria-hidden="true" />
+                                 : <FileArchive aria-hidden="true" />}
               Baixar ZIP
             </Button>
             <Button disabled={!!gerando || carregando} onClick={() => montar('pdf')}>
-              {gerando === 'pdf' ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                                 : <FileText className="w-3.5 h-3.5 mr-1.5" />}
+              {gerando === 'pdf' ? <Loader2 className="animate-spin" aria-hidden="true" />
+                                 : <FileText aria-hidden="true" />}
               Baixar PDF único
             </Button>
           </DialogFooter>

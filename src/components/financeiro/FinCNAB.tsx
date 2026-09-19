@@ -85,7 +85,7 @@ export default function FinCNAB() {
             <Badge variant="info">{pendentesReceber} título(s) a receber pendente(s)</Badge>
             <div className="flex flex-wrap gap-2">
               <Button onClick={() => gerarRemessaSimulada("cobranca")} disabled={gerando || pendentesReceber === 0}>
-                {gerando ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Download className="w-4 h-4" aria-hidden="true" />}
+                {gerando ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Download aria-hidden="true" />}
                 Gerar remessa
               </Button>
             </div>
@@ -105,7 +105,7 @@ export default function FinCNAB() {
             <Badge variant="info">{pendentesPagar} título(s) a pagar pendente(s)</Badge>
             <div className="flex flex-wrap gap-2">
               <Button onClick={() => gerarRemessaSimulada("pagamento")} disabled={gerando || pendentesPagar === 0}>
-                {gerando ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Download className="w-4 h-4" aria-hidden="true" />}
+                {gerando ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Download aria-hidden="true" />}
                 Gerar remessa
               </Button>
             </div>
@@ -137,6 +137,7 @@ export default function FinCNAB() {
         <Card>
           <CardContent className="p-0">
             <EstadoVazio
+              tamanho="compacto"
               icone={<History aria-hidden="true" />}
               titulo="Nenhuma transmissão registrada"
               descricao="As remessas geradas e os retornos processados aparecerão aqui."

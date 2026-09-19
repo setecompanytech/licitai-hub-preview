@@ -23,6 +23,12 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresaId } from "@/hooks/useFinanceiro";
 import { formatBRL } from "@/lib/financeiro/formatters";
+import ValorDeCartao from "./ValorDeCartao";
+
+// O número grande de cada cartão do quadro: KPI 28/36 em peso 600, numa
+// linha só (Design System v3). Valores em moeda passam pelo `ValorDeCartao`,
+// que encolhe com o comprimento em vez de quebrar.
+const KPI = "whitespace-nowrap text-[1.75rem] font-semibold leading-9 tabular-nums";
 
 function navegar(view: string) {
   window.dispatchEvent(new CustomEvent("fin:navigate", { detail: view }));
@@ -123,7 +129,8 @@ export default function FinQuadroFinanceiro() {
 
   if (isLoading || !data) {
     return (
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div role="status" className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <span className="sr-only">Carregando quadro financeiro</span>
         {Array.from({ length: 9 }).map((_, i) => <Skeleton key={i} className="h-44 rounded-lg" />)}
       </div>
     );
@@ -131,20 +138,21 @@ export default function FinQuadroFinanceiro() {
 
   return (
     <div className="space-y-3">
-      <div className="text-sm text-muted-foreground">
+      <div className="text-sm leading-5 text-muted-foreground">
         Visão consolidada da operação · atualização automática a cada 60s
       </div>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {/* 1. Clientes & Fornecedores */}
+        {/* 1. Clientes & Fornecedores — dois ladrilhos na superfície rebaixada,
+            texto alinhado à esquerda (tela operacional não centraliza). */}
         <CartaoDoQuadro title="Clientes e Fornecedores" icon={Users} onOpen={() => navegar("pessoas")} cta="Incluir">
-          <div className="grid grid-cols-2 gap-3 text-center">
-            <div className="rounded-md bg-muted p-3">
-              <div className="text-[2rem] font-bold leading-10 tabular-nums text-foreground">{data.clientes}</div>
-              <div className="text-xs uppercase tracking-wide text-muted-foreground">Clientes</div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="min-w-0 rounded-md bg-secondary p-3">
+              <div className={`${KPI} text-foreground`}>{data.clientes}</div>
+              <div className="text-xs leading-4 text-muted-foreground">Clientes</div>
             </div>
-            <div className="rounded-md bg-muted p-3">
-              <div className="text-[2rem] font-bold leading-10 tabular-nums text-foreground">{data.fornecedores}</div>
-              <div className="text-xs uppercase tracking-wide text-muted-foreground">Fornecedores</div>
+            <div className="min-w-0 rounded-md bg-secondary p-3">
+              <div className={`${KPI} text-foreground`}>{data.fornecedores}</div>
+              <div className="text-xs leading-4 text-muted-foreground">Fornecedores</div>
             </div>
           </div>
         </CartaoDoQuadro>
@@ -152,7 +160,7 @@ export default function FinQuadroFinanceiro() {
         {/* 2. Contas a Pagar */}
         <CartaoDoQuadro title="Contas a Pagar" icon={ArrowUpCircle} tone="danger" onOpen={() => navegar("a_pagar")} cta="Incluir">
           <div className="space-y-2">
-            <div className="text-[2rem] font-bold leading-10 tabular-nums text-destructive-ink">{formatBRL(data.cp.total)}</div>
+            <ValorDeCartao valor={formatBRL(data.cp.total)} className="mt-0 text-destructive-ink" />
             <div className="text-sm text-muted-foreground">{data.cp.qtd} conta(s) em aberto</div>
             {data.cp.atraso > 0 && (
               <Badge variant="danger">Em atraso: {formatBRL(data.cp.atraso)}</Badge>
@@ -163,7 +171,7 @@ export default function FinQuadroFinanceiro() {
         {/* 3. Contas a Receber */}
         <CartaoDoQuadro title="Contas a Receber" icon={ArrowDownCircle} tone="success" onOpen={() => navegar("a_receber")} cta="Incluir">
           <div className="space-y-2">
-            <div className="text-[2rem] font-bold leading-10 tabular-nums text-success-ink">{formatBRL(data.cr.total)}</div>
+            <ValorDeCartao valor={formatBRL(data.cr.total)} className="mt-0 text-success-ink" />
             <div className="text-sm text-muted-foreground">{data.cr.qtd} conta(s) em aberto</div>
             {data.cr.atraso > 0 && (
               <Badge variant="warning">Em atraso: {formatBRL(data.cr.atraso)}</Badge>
@@ -174,7 +182,7 @@ export default function FinQuadroFinanceiro() {
         {/* 4. Contas Correntes */}
         <CartaoDoQuadro title="Contas Correntes" icon={Wallet} onOpen={() => navegar("contas")} cta="Incluir">
           <div className="space-y-2">
-            <div className="text-[2rem] font-bold leading-10 tabular-nums text-foreground">{formatBRL(data.contas.saldo)}</div>
+            <ValorDeCartao valor={formatBRL(data.contas.saldo)} className="mt-0 text-foreground" />
             <div className="text-sm text-muted-foreground">{data.contas.qtd} conta(s) ativas</div>
             {data.contas.lista.length > 0 && (
               <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
@@ -202,7 +210,7 @@ export default function FinQuadroFinanceiro() {
         {/* 6. Atividade dos Usuários */}
         <CartaoDoQuadro title="Atividades dos Usuários" icon={Activity} onOpen={() => navegar("atividade_usuarios")}>
           <div className="space-y-2">
-            <div className="text-[2rem] font-bold leading-10 tabular-nums text-foreground">{data.atividadesHoje}</div>
+            <div className={`${KPI} text-foreground`}>{data.atividadesHoje}</div>
             <div className="text-sm text-muted-foreground">eventos registrados hoje</div>
             <div className="text-sm text-muted-foreground">Inclusões, alterações e exclusões em lançamentos, contas e cadastros.</div>
           </div>
@@ -211,7 +219,7 @@ export default function FinQuadroFinanceiro() {
         {/* 7. Bonificação de Vendas */}
         <CartaoDoQuadro title="Bonificação de Vendas" icon={Receipt} onOpen={() => navegar("comissoes")}>
           <div className="space-y-2">
-            <div className="text-[2rem] font-bold leading-10 tabular-nums text-foreground">{formatBRL(data.comissoesAbertas)}</div>
+            <ValorDeCartao valor={formatBRL(data.comissoesAbertas)} className="mt-0 text-foreground" />
             <div className="text-sm text-muted-foreground">a pagar a vendedores</div>
             <div className="text-sm text-muted-foreground">Quitação automática via NF-e Financeiro.</div>
           </div>
@@ -244,10 +252,10 @@ export default function FinQuadroFinanceiro() {
         {/* 9. Meus Relatórios */}
         <CartaoDoQuadro title="Meus Relatórios" icon={FileDown} onOpen={() => navegar("relatorios")}>
           <div className="space-y-1 text-sm">
-            <button type="button" onClick={() => navegar("resumo_exec")} className="block w-full rounded-md px-2 py-1.5 text-left transition-colors hover:bg-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">→ Resumo Executivo</button>
-            <button type="button" onClick={() => navegar("dre")} className="block w-full rounded-md px-2 py-1.5 text-left transition-colors hover:bg-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">→ DRE</button>
-            <button type="button" onClick={() => navegar("fluxo_caixa")} className="block w-full rounded-md px-2 py-1.5 text-left transition-colors hover:bg-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">→ Fluxo de Caixa</button>
-            <button type="button" onClick={() => navegar("atividade_usuarios")} className="block w-full rounded-md px-2 py-1.5 text-left transition-colors hover:bg-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">→ Atividades dos Usuários</button>
+            <button type="button" onClick={() => navegar("resumo_exec")} className="block w-full rounded-md px-2 py-1.5 text-left text-foreground transition-colors duration-150 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">→ Resumo Executivo</button>
+            <button type="button" onClick={() => navegar("dre")} className="block w-full rounded-md px-2 py-1.5 text-left text-foreground transition-colors duration-150 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">→ DRE</button>
+            <button type="button" onClick={() => navegar("fluxo_caixa")} className="block w-full rounded-md px-2 py-1.5 text-left text-foreground transition-colors duration-150 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">→ Fluxo de Caixa</button>
+            <button type="button" onClick={() => navegar("atividade_usuarios")} className="block w-full rounded-md px-2 py-1.5 text-left text-foreground transition-colors duration-150 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">→ Atividades dos Usuários</button>
           </div>
         </CartaoDoQuadro>
       </div>
@@ -255,6 +263,11 @@ export default function FinQuadroFinanceiro() {
   );
 }
 
+/**
+ * Cartão do quadro no Design System v3: título 16/600 com o ícone num
+ * ladrilho de 32px tingido (semântica na tinta `*-ink`, não no matiz cheio),
+ * atalho de abrir sempre visível (ação não some no hover) e rodapé com o CTA.
+ */
 function CartaoDoQuadro({
   title, icon: Icon, children, onOpen, cta = "Abrir", tone, className,
 }: {
@@ -266,33 +279,35 @@ function CartaoDoQuadro({
   tone?: "success" | "danger";
   className?: string;
 }) {
-  const accent = tone === "success" ? "text-success-ink"
-    : tone === "danger" ? "text-destructive-ink"
-    : "text-muted-foreground";
+  const ladrilho = tone === "success" ? "bg-success-tint text-success-ink"
+    : tone === "danger" ? "bg-destructive-tint text-destructive-ink"
+    : "bg-muted text-muted-foreground";
   return (
-    <Card className={`group border-border transition-shadow hover:shadow-md ${className ?? ""}`}>
-      <CardContent className="flex h-full flex-col p-6">
+    <Card className={`border-border transition-[border-color,box-shadow] duration-150 hover:border-primary/40 hover:shadow-md ${className ?? ""}`}>
+      <CardContent className="flex h-full flex-col p-5">
         <div className="mb-4 flex items-start justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-2">
-            <Icon className={`h-5 w-5 shrink-0 ${accent}`} aria-hidden="true" />
-            <h3 className="truncate text-lg font-semibold text-foreground">{title}</h3>
+          <div className="flex min-w-0 items-center gap-3">
+            <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${ladrilho}`}>
+              <Icon className="h-4 w-4" aria-hidden="true" />
+            </span>
+            <h3 className="truncate text-base font-semibold leading-6 text-foreground">{title}</h3>
           </div>
           <Button
-            size="sm"
+            size="icon-sm"
             variant="ghost"
             aria-label={`Abrir ${title}`}
-            className="shrink-0 opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
+            className="shrink-0 text-muted-foreground"
             onClick={onOpen}
           >
-            <ChevronRight className="h-4 w-4" aria-hidden="true" />
+            <ChevronRight aria-hidden="true" />
           </Button>
         </div>
         <div className="flex-1">{children}</div>
         <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
           <Button size="sm" variant="ghost" onClick={onOpen}>
             {cta === "Incluir"
-              ? <><Plus className="h-4 w-4" aria-hidden="true" /> Incluir</>
-              : <>Abrir <ChevronRight className="h-4 w-4" aria-hidden="true" /></>}
+              ? <><Plus aria-hidden="true" /> Incluir</>
+              : <>Abrir <ChevronRight aria-hidden="true" /></>}
           </Button>
         </div>
       </CardContent>
@@ -307,7 +322,7 @@ function Linha({ label, valor, tone }: { label: string; valor: number; tone?: "s
   return (
     <div className="flex items-baseline justify-between gap-2">
       <span className="truncate text-muted-foreground">{label}</span>
-      <span className={`shrink-0 font-medium tabular-nums ${cor}`}>{formatBRL(valor)}</span>
+      <span className={`shrink-0 font-semibold tabular-nums ${cor}`}>{formatBRL(valor)}</span>
     </div>
   );
 }

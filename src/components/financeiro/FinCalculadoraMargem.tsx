@@ -11,8 +11,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useApuracaoTributaria } from "@/hooks/useApuracaoTributaria";
-import { TrendingUp, AlertCircle, Sparkles, RefreshCw, Info, Loader2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { TrendingUp, AlertCircle, Sparkles, RefreshCw, Info } from "lucide-react";
 import { toast } from "sonner";
+import ValorDeCartao from "./ValorDeCartao";
 
 type Periodo = "3" | "6" | "12";
 
@@ -200,11 +202,15 @@ export default function FinCalculadoraMargem() {
         </Alert>
       )}
 
+      {/* Espera na forma do conteúdo — os dois cartões da análise —, não um
+          spinner no centro (Design System v3). O texto segue para o leitor de
+          tela. */}
       {(carregandoConfig || loading) && !analise && (
-        <p className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
-          <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
-          Carregando lançamentos do período…
-        </p>
+        <div role="status" className="grid gap-4 md:grid-cols-2">
+          <span className="sr-only">Carregando lançamentos do período…</span>
+          <Skeleton className="h-72" />
+          <Skeleton className="h-72" />
+        </div>
       )}
 
       {analise && analise.receita === 0 && (
@@ -290,13 +296,11 @@ export default function FinCalculadoraMargem() {
                   />
 
                   {sugestao.viavel ? (
-                    <div className="space-y-2 rounded-lg border border-border bg-muted p-4">
-                      <div className="flex flex-wrap items-baseline justify-between gap-2">
-                        <span className="text-xs text-muted-foreground">Preço de venda sugerido</span>
-                        <span className="text-[2rem] leading-10 font-bold tabular-nums text-foreground">
-                          {fmtBRL(sugestao.precoSugerido)}
-                        </span>
-                      </div>
+                    // O resultado no desenho de KPI do sistema: rótulo em cima,
+                    // valor 28/36 em peso 600 que encolhe em vez de quebrar.
+                    <div className="space-y-2 rounded-lg border border-border bg-secondary p-4">
+                      <p className="text-sm font-medium leading-5 text-muted-foreground">Preço de venda sugerido</p>
+                      <ValorDeCartao valor={fmtBRL(sugestao.precoSugerido)} className="text-foreground" />
                       <div className="flex flex-wrap items-baseline justify-between gap-2 text-xs">
                         <span className="text-muted-foreground">Markup sobre o custo</span>
                         <span className="font-medium tabular-nums text-foreground">{fmtPct(sugestao.markupPerc)}</span>
@@ -321,7 +325,7 @@ export default function FinCalculadoraMargem() {
 
       <Alert variant="info">
         <Info className="h-4 w-4" aria-hidden="true" />
-        <AlertDescription className="text-xs">
+        <AlertDescription>
           <strong>Como funciona:</strong> a análise soma todos os lançamentos com status <em>realizado</em> ou{" "}
           <em>conciliado</em> no período. Categorias do tipo <em>custo</em> compõem o CMV/CSP; as demais despesas
           são tratadas como operacionais. A carga tributária é estimada simulando o regime cadastrado em{" "}

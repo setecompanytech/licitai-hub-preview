@@ -179,12 +179,12 @@ export default function FinCentrosCusto() {
 
       <TabsContent value="cc">
         <Card>
-          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
+          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 space-y-0">
             <CardTitle>Centros de Custo</CardTitle>
             <Dialog open={openCC} onOpenChange={(o) => { setOpenCC(o); setTentouSalvarCC(false); }}>
               <DialogTrigger asChild>
                 <Button size="sm" onClick={() => abrirCC({ ativo: true })}>
-                  <Plus className="w-4 h-4" aria-hidden="true" />
+                  <Plus aria-hidden="true" />
                   Novo centro de custo
                 </Button>
               </DialogTrigger>
@@ -192,7 +192,7 @@ export default function FinCentrosCusto() {
                 <DialogHeader>
                   <DialogTitle>{editCC?.id ? "Editar" : "Novo"} Centro de Custo</DialogTitle>
                 </DialogHeader>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="cc-codigo">Código *</Label>
                     <Input
@@ -205,7 +205,7 @@ export default function FinCentrosCusto() {
                       aria-describedby={faltaCC("codigo") ? "cc-codigo-erro" : undefined}
                     />
                     {faltaCC("codigo") && (
-                      <p id="cc-codigo-erro" className="text-sm text-destructive">Informe o código do centro de custo</p>
+                      <p id="cc-codigo-erro" className="text-xs text-destructive-ink">Informe o código do centro de custo</p>
                     )}
                   </div>
                   <div className="space-y-2">
@@ -220,14 +220,14 @@ export default function FinCentrosCusto() {
                       aria-describedby={faltaCC("nome") ? "cc-nome-erro" : undefined}
                     />
                     {faltaCC("nome") && (
-                      <p id="cc-nome-erro" className="text-sm text-destructive">Informe o nome do centro de custo</p>
+                      <p id="cc-nome-erro" className="text-xs text-destructive-ink">Informe o nome do centro de custo</p>
                     )}
                   </div>
-                  <div className="space-y-2 md:col-span-2">
+                  <div className="space-y-2 sm:col-span-2">
                     <Label htmlFor="cc-descricao">Descrição</Label>
                     <Textarea id="cc-descricao" value={editCC?.descricao || ""} onChange={(e) => setEditCC({ ...editCC, descricao: e.target.value })} rows={2} />
                   </div>
-                  <div className="flex items-center gap-2 md:col-span-2">
+                  <div className="flex items-center gap-2 sm:col-span-2">
                     <Switch id="cc-ativo" checked={editCC?.ativo ?? true} onCheckedChange={(v) => setEditCC({ ...editCC, ativo: v })} />
                     <Label htmlFor="cc-ativo">Ativo</Label>
                   </div>
@@ -248,20 +248,20 @@ export default function FinCentrosCusto() {
                 descricao="Crie centros de custo para separar despesas e receitas por departamento nos lançamentos."
                 acao={
                   <Button onClick={() => abrirCC({ ativo: true })}>
-                    <Plus className="w-4 h-4" aria-hidden="true" />
+                    <Plus aria-hidden="true" />
                     Novo centro de custo
                   </Button>
                 }
               />
             ) : (
-              <div className="overflow-x-auto">
+              <div className="overflow-hidden rounded-lg border border-border">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="text-sm font-semibold">Código</TableHead>
-                      <TableHead className="text-sm font-semibold">Nome</TableHead>
-                      <TableHead className="text-sm font-semibold">Status</TableHead>
-                      <TableHead className="w-24 text-sm font-semibold">Ações</TableHead>
+                      <TableHead>Código</TableHead>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="w-24 text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -272,13 +272,15 @@ export default function FinCentrosCusto() {
                         <TableCell>
                           <Badge variant={cc.ativo ? "success" : "muted"}>{cc.ativo ? "Ativo" : "Inativo"}</Badge>
                         </TableCell>
-                        <TableCell className="whitespace-nowrap">
-                          <Button size="icon" variant="ghost" aria-label={`Editar ${cc.nome}`} onClick={() => abrirCC(cc)}>
-                            <Pencil className="w-4 h-4" aria-hidden="true" />
-                          </Button>
-                          <Button size="icon" variant="ghost" aria-label={`Excluir ${cc.nome}`} onClick={() => excluirCC(cc.id)}>
-                            <Trash2 className="w-4 h-4 text-destructive" aria-hidden="true" />
-                          </Button>
+                        <TableCell className="whitespace-nowrap text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button size="icon-sm" variant="ghost" aria-label={`Editar ${cc.nome}`} onClick={() => abrirCC(cc)}>
+                              <Pencil aria-hidden="true" />
+                            </Button>
+                            <Button size="icon-sm" variant="ghost-destructive" aria-label={`Excluir ${cc.nome}`} onClick={() => excluirCC(cc.id)}>
+                              <Trash2 aria-hidden="true" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -292,12 +294,12 @@ export default function FinCentrosCusto() {
 
       <TabsContent value="proj">
         <Card>
-          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
+          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 space-y-0">
             <CardTitle>Projetos</CardTitle>
             <Dialog open={openProj} onOpenChange={(o) => { setOpenProj(o); setTentouSalvarProj(false); }}>
               <DialogTrigger asChild>
                 <Button size="sm" onClick={() => abrirProj({ ativo: true, status: "ativo" })}>
-                  <Plus className="w-4 h-4" aria-hidden="true" />
+                  <Plus aria-hidden="true" />
                   Novo projeto
                 </Button>
               </DialogTrigger>
@@ -305,7 +307,7 @@ export default function FinCentrosCusto() {
                 <DialogHeader>
                   <DialogTitle>{editProj?.id ? "Editar" : "Novo"} Projeto</DialogTitle>
                 </DialogHeader>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="proj-codigo">Código *</Label>
                     <Input
@@ -318,7 +320,7 @@ export default function FinCentrosCusto() {
                       aria-describedby={faltaProj("codigo") ? "proj-codigo-erro" : undefined}
                     />
                     {faltaProj("codigo") && (
-                      <p id="proj-codigo-erro" className="text-sm text-destructive">Informe o código do projeto</p>
+                      <p id="proj-codigo-erro" className="text-xs text-destructive-ink">Informe o código do projeto</p>
                     )}
                   </div>
                   <div className="space-y-2">
@@ -333,10 +335,10 @@ export default function FinCentrosCusto() {
                       aria-describedby={faltaProj("nome") ? "proj-nome-erro" : undefined}
                     />
                     {faltaProj("nome") && (
-                      <p id="proj-nome-erro" className="text-sm text-destructive">Informe o nome do projeto</p>
+                      <p id="proj-nome-erro" className="text-xs text-destructive-ink">Informe o nome do projeto</p>
                     )}
                   </div>
-                  <div className="space-y-2 md:col-span-2">
+                  <div className="space-y-2 sm:col-span-2">
                     <Label htmlFor="proj-descricao">Descrição</Label>
                     <Textarea id="proj-descricao" value={editProj?.descricao || ""} onChange={(e) => setEditProj({ ...editProj, descricao: e.target.value })} rows={2} />
                   </div>
@@ -356,7 +358,7 @@ export default function FinCentrosCusto() {
                     <Label htmlFor="proj-licitacao">ID Licitação (opcional)</Label>
                     <Input id="proj-licitacao" value={editProj?.licitacao_id || ""} onChange={(e) => setEditProj({ ...editProj, licitacao_id: e.target.value })} placeholder="UUID do processo" />
                   </div>
-                  <div className="flex items-center gap-2 md:col-span-2">
+                  <div className="flex items-center gap-2 sm:col-span-2">
                     <Switch id="proj-ativo" checked={editProj?.ativo ?? true} onCheckedChange={(v) => setEditProj({ ...editProj, ativo: v })} />
                     <Label htmlFor="proj-ativo">Ativo</Label>
                   </div>
@@ -377,21 +379,21 @@ export default function FinCentrosCusto() {
                 descricao="Crie projetos para apurar custo e orçamento por contrato ou processo licitatório."
                 acao={
                   <Button onClick={() => abrirProj({ ativo: true, status: "ativo" })}>
-                    <Plus className="w-4 h-4" aria-hidden="true" />
+                    <Plus aria-hidden="true" />
                     Novo projeto
                   </Button>
                 }
               />
             ) : (
-              <div className="overflow-x-auto">
+              <div className="overflow-hidden rounded-lg border border-border">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="text-sm font-semibold">Código</TableHead>
-                      <TableHead className="text-sm font-semibold">Nome</TableHead>
-                      <TableHead className="text-right text-sm font-semibold">Orçado</TableHead>
-                      <TableHead className="text-sm font-semibold">Status</TableHead>
-                      <TableHead className="w-24 text-sm font-semibold">Ações</TableHead>
+                      <TableHead>Código</TableHead>
+                      <TableHead>Nome</TableHead>
+                      <TableHead className="text-right">Orçado</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="w-24 text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -405,13 +407,15 @@ export default function FinCentrosCusto() {
                         <TableCell>
                           <Badge variant={p.status === "ativo" ? "success" : "muted"} className="capitalize">{p.status}</Badge>
                         </TableCell>
-                        <TableCell className="whitespace-nowrap">
-                          <Button size="icon" variant="ghost" aria-label={`Editar ${p.nome}`} onClick={() => abrirProj(p)}>
-                            <Pencil className="w-4 h-4" aria-hidden="true" />
-                          </Button>
-                          <Button size="icon" variant="ghost" aria-label={`Excluir ${p.nome}`} onClick={() => excluirProj(p.id)}>
-                            <Trash2 className="w-4 h-4 text-destructive" aria-hidden="true" />
-                          </Button>
+                        <TableCell className="whitespace-nowrap text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button size="icon-sm" variant="ghost" aria-label={`Editar ${p.nome}`} onClick={() => abrirProj(p)}>
+                              <Pencil aria-hidden="true" />
+                            </Button>
+                            <Button size="icon-sm" variant="ghost-destructive" aria-label={`Excluir ${p.nome}`} onClick={() => excluirProj(p.id)}>
+                              <Trash2 aria-hidden="true" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
 import { AlertTriangle, CheckCircle2, Download, Loader2 } from "lucide-react";
 import type { DivergenciaApuracao } from "@/hooks/useValidacaoApuracao";
 
@@ -31,9 +32,9 @@ export function DialogDivergenciasApuracao({ open, onOpenChange, divergencias, v
       <DialogContent className="max-w-4xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            {validando ? <Loader2 className="w-5 h-5 animate-spin" /> :
-              total === 0 ? <CheckCircle2 className="w-5 h-5 text-success" /> :
-              <AlertTriangle className="w-5 h-5 text-warning" />}
+            {validando ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" aria-hidden="true" /> :
+              total === 0 ? <CheckCircle2 className="h-5 w-5 text-success-ink" aria-hidden="true" /> :
+              <AlertTriangle className="h-5 w-5 text-warning-ink" aria-hidden="true" />}
             Validação contra plano de contas
           </DialogTitle>
           <DialogDescription>
@@ -43,8 +44,17 @@ export function DialogDivergenciasApuracao({ open, onOpenChange, divergencias, v
           </DialogDescription>
         </DialogHeader>
 
+        {/* Espera na forma da tabela que vem a seguir (Design System v3). */}
+        {validando && (
+          <div className="space-y-2">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        )}
+
         {!validando && total > 0 && (
-          <ScrollArea className="max-h-[55vh]">
+          <ScrollArea className="max-h-[55vh] rounded-lg border border-border">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -60,11 +70,11 @@ export function DialogDivergenciasApuracao({ open, onOpenChange, divergencias, v
               <TableBody>
                 {divergencias!.map((d, i) => (
                   <TableRow key={i}>
-                    <TableCell className="whitespace-nowrap">{d.competencia.slice(0, 7)}</TableCell>
+                    <TableCell className="whitespace-nowrap tabular-nums">{d.competencia.slice(0, 7)}</TableCell>
                     <TableCell>{d.campo}</TableCell>
                     <TableCell className="text-right tabular-nums">{d.campo.includes("classificação") ? "—" : fmt(d.valor_apurado)}</TableCell>
                     <TableCell className="text-right tabular-nums">{d.campo.includes("classificação") ? `${d.valor_plano} item(ns)` : fmt(d.valor_plano)}</TableCell>
-                    <TableCell className={`text-right tabular-nums font-semibold ${d.diferenca > 0 ? "text-destructive" : "text-warning"}`}>
+                    <TableCell className={`text-right tabular-nums font-semibold ${d.diferenca > 0 ? "text-destructive-ink" : "text-warning-ink"}`}>
                       {d.campo.includes("classificação") ? "—" : `${d.diferenca > 0 ? "+" : ""}${fmt(d.diferenca)}`}
                       {d.diferenca_perc > 0 && <div className="text-xs text-muted-foreground">{d.diferenca_perc.toFixed(2)}%</div>}
                     </TableCell>
@@ -80,7 +90,7 @@ export function DialogDivergenciasApuracao({ open, onOpenChange, divergencias, v
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={validando}>Cancelar</Button>
           <Button onClick={onExportar} disabled={validando} variant={altas > 0 ? "destructive" : "default"}>
-            <Download className="w-4 h-4 mr-1.5" />
+            <Download aria-hidden="true" />
             {altas > 0 ? "Exportar mesmo assim" : "Exportar CSV"}
           </Button>
         </DialogFooter>

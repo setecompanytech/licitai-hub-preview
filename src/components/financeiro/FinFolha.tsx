@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import EstadoVazio from "@/components/shared/EstadoVazio";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Calculator, Users, Calendar, Trash2, Pencil } from "lucide-react";
 import {
   useFuncionarios, useUpsertFuncionario, useDeleteFuncionario,
@@ -59,8 +60,8 @@ function FuncionarioForm({ funcionario, onClose }: { funcionario?: Funcionario |
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="space-y-1.5 md:col-span-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="space-y-1.5 sm:col-span-2">
           <Label htmlFor="func-nome">Nome *</Label>
           <Input id="func-nome" value={form.nome ?? ""} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} required />
         </div>
@@ -128,12 +129,12 @@ function FuncionariosTab() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h3 className="text-lg font-semibold text-foreground">Funcionários</h3>
+          <h3 className="text-lg font-semibold leading-6 text-foreground">Funcionários</h3>
           <p className="text-sm text-muted-foreground">{funcionarios.length} cadastrado(s)</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) setEditing(null); }}>
           <DialogTrigger asChild>
-            <Button onClick={() => setEditing(null)}><Plus className="w-4 h-4" aria-hidden="true" />Novo funcionário</Button>
+            <Button onClick={() => setEditing(null)}><Plus aria-hidden="true" />Novo funcionário</Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>{editing ? "Editar" : "Novo"} funcionário</DialogTitle></DialogHeader>
@@ -152,12 +153,26 @@ function FuncionariosTab() {
                 <TableHead>Cargo</TableHead>
                 <TableHead className="text-right">Salário</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="w-24"><span className="sr-only">Ações</span></TableHead>
+                <TableHead className="w-24 text-right"><span className="sr-only">Ações</span></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-6 text-muted-foreground">Carregando...</TableCell></TableRow>
+                // Espera na forma das linhas, não um texto no centro (Design System v3).
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={6} className="p-0">
+                    <div role="status" className="flex flex-col gap-px bg-border">
+                      <span className="sr-only">Carregando...</span>
+                      {Array.from({ length: 4 }, (_, i) => (
+                        <div key={i} className="flex items-center gap-4 bg-card px-4 py-3">
+                          <Skeleton className="h-4 w-1/3" />
+                          <Skeleton className="h-4 w-16" />
+                          <Skeleton className="ml-auto h-4 w-24" />
+                        </div>
+                      ))}
+                    </div>
+                  </TableCell>
+                </TableRow>
               ) : funcionarios.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="p-0">
@@ -176,9 +191,11 @@ function FuncionariosTab() {
                   <TableCell>{f.cargo ?? "-"}</TableCell>
                   <TableCell className="text-right tabular-nums">{fmt(f.salario_base)}</TableCell>
                   <TableCell>{f.ativo ? <Badge variant="success">Ativo</Badge> : <Badge variant="muted">Inativo</Badge>}</TableCell>
-                  <TableCell className="space-x-1">
-                    <Button size="icon" variant="ghost" aria-label={`Editar ${f.nome}`} onClick={() => { setEditing(f); setDialogOpen(true); }}><Pencil className="w-4 h-4" aria-hidden="true" /></Button>
-                    <Button size="icon" variant="ghost" aria-label={`Remover ${f.nome}`} onClick={() => { if (confirm(`Remover ${f.nome}?`)) del.mutate(f.id); }}><Trash2 className="w-4 h-4 text-destructive" aria-hidden="true" /></Button>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <Button size="icon-sm" variant="ghost" aria-label={`Editar ${f.nome}`} onClick={() => { setEditing(f); setDialogOpen(true); }}><Pencil aria-hidden="true" /></Button>
+                      <Button size="icon-sm" variant="ghost-destructive" aria-label={`Remover ${f.nome}`} onClick={() => { if (confirm(`Remover ${f.nome}?`)) del.mutate(f.id); }}><Trash2 aria-hidden="true" /></Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -205,7 +222,7 @@ function ProcessamentoTab() {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Calculator className="w-5 h-5" aria-hidden="true" />Processar folha</CardTitle>
+          <CardTitle className="flex items-center gap-2"><Calculator className="h-5 w-5 text-muted-foreground" aria-hidden="true" />Processar folha</CardTitle>
           <CardDescription>Calcula INSS, IRRF, FGTS e encargos para todos os funcionários ativos.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap items-end gap-3">
@@ -316,8 +333,8 @@ export default function FinFolha() {
   return (
     <Tabs defaultValue="funcionarios" className="space-y-4">
       <TabsList>
-        <TabsTrigger value="funcionarios"><Users className="w-4 h-4 mr-2" aria-hidden="true" />Funcionários</TabsTrigger>
-        <TabsTrigger value="processamento"><Calendar className="w-4 h-4 mr-2" aria-hidden="true" />Processamento</TabsTrigger>
+        <TabsTrigger value="funcionarios"><Users className="h-4 w-4" aria-hidden="true" />Funcionários</TabsTrigger>
+        <TabsTrigger value="processamento"><Calendar className="h-4 w-4" aria-hidden="true" />Processamento</TabsTrigger>
       </TabsList>
       <TabsContent value="funcionarios"><FuncionariosTab /></TabsContent>
       <TabsContent value="processamento"><ProcessamentoTab /></TabsContent>

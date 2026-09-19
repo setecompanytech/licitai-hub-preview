@@ -129,7 +129,7 @@ export function CFOPSelect({
                     >
                       <Check
                         aria-hidden="true"
-                        className={cn("mr-2 h-4 w-4 shrink-0", value === c.codigo ? "opacity-100" : "opacity-0")}
+                        className={cn("mr-2 h-4 w-4 shrink-0 text-primary", value === c.codigo ? "opacity-100" : "opacity-0")}
                       />
                       <Badge variant="muted" className="mr-2 shrink-0 font-mono">{c.codigo}</Badge>
                       <span className="text-sm">{c.descricao}</span>
@@ -143,7 +143,7 @@ export function CFOPSelect({
       </Popover>
 
       {!validacao.ok && validacao.alerta && (
-        <p id={erroId} className="flex items-start gap-1 text-sm text-destructive">
+        <p id={erroId} className="flex items-start gap-1 text-sm text-destructive-ink">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <span>
             {validacao.codigoRejeicao && (

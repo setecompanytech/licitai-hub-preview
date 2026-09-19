@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { CheckCircle2, AlertTriangle, Landmark } from "lucide-react";
+import { CheckCircle2, AlertTriangle, Landmark, ImageOff } from "lucide-react";
 import AppLayout from "@/components/layout/AppLayout";
 import {
   BANCOS_BRASIL,
@@ -7,6 +7,8 @@ import {
   getBrandStyle,
 } from "@/components/financeiro/BancoSelectorLogos";
 import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import CabecalhoPagina from "@/components/shared/CabecalhoPagina";
 
 /**
@@ -94,37 +96,40 @@ export default function AuditoriaBancos() {
         <div className="space-y-6">
           {/* Resumo */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Resumo titulo="Total de bancos" valor={total} tom="neutral" />
-            <Resumo titulo="Logos oficiais reais" valor={oficiais} tom="success" />
-            <Resumo titulo="Placeholders estilizados" valor={placeholders} tom="warning" />
-            <Resumo titulo="Sem SVG" valor={semSvg} tom={semSvg > 0 ? "danger" : "success"} />
+            <Resumo titulo="Total de bancos" valor={total} tom="neutral" icone={Landmark} />
+            <Resumo titulo="Logos oficiais reais" valor={oficiais} tom="success" icone={CheckCircle2} />
+            <Resumo titulo="Placeholders estilizados" valor={placeholders} tom="warning" icone={AlertTriangle} />
+            <Resumo titulo="Sem SVG" valor={semSvg} tom={semSvg > 0 ? "danger" : "success"} icone={ImageOff} />
           </div>
 
           {/* Tabela */}
-          <div className="rounded-lg border border-border bg-card shadow-sm overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-muted text-sm font-semibold text-foreground">
-                <tr>
-                  <th className="text-left px-4 py-3 w-16">Marca</th>
-                  <th className="text-left px-4 py-3 w-20">COMPE</th>
-                  <th className="text-left px-4 py-3">Nome oficial</th>
-                  <th className="text-left px-4 py-3 w-32">Arquivo do logo</th>
-                  <th className="text-left px-4 py-3 w-24">Nome</th>
-                  <th className="text-left px-4 py-3 w-24">Cor</th>
-                  <th className="text-left px-4 py-3">Pendência</th>
-                </tr>
-              </thead>
-              <tbody>
+          {/* Tabela nos primitivos de `ui/table`: cabeçalho `bg-secondary`,
+              rótulos 12/600 sem caixa alta, linhas de 48px e a rolagem
+              horizontal presa ao cartão (Design System v3). */}
+          <Card className="overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-16">Marca</TableHead>
+                  <TableHead className="w-20">COMPE</TableHead>
+                  <TableHead>Nome oficial</TableHead>
+                  <TableHead className="w-32">Arquivo do logo</TableHead>
+                  <TableHead className="w-24">Nome</TableHead>
+                  <TableHead className="w-24">Cor</TableHead>
+                  <TableHead>Pendência</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {linhas.map((l) => (
-                  <tr key={l.codigo} className="border-t border-border hover:bg-muted/50">
-                    <td className="px-4 py-2">
+                  <TableRow key={l.codigo}>
+                    <TableCell>
                       <BancoLogo codigo={l.codigo} nome={l.nome} size={32} />
-                    </td>
-                    <td className="px-4 py-2 font-mono tabular-nums whitespace-nowrap">
+                    </TableCell>
+                    <TableCell nowrap className="font-mono tabular-nums">
                       {l.codigo}
-                    </td>
-                    <td className="px-4 py-2 whitespace-nowrap">{l.nome}</td>
-                    <td className="px-4 py-2">
+                    </TableCell>
+                    <TableCell nowrap>{l.nome}</TableCell>
+                    <TableCell>
                       {l.oficialReal ? (
                         <Badge variant="success">Oficial</Badge>
                       ) : l.temSvg ? (
@@ -132,34 +137,34 @@ export default function AuditoriaBancos() {
                       ) : (
                         <Badge variant="danger">Faltando</Badge>
                       )}
-                    </td>
-                    <td className="px-4 py-2">
+                    </TableCell>
+                    <TableCell>
                       <Badge variant="success">OK</Badge>
-                    </td>
-                    <td className="px-4 py-2">
+                    </TableCell>
+                    <TableCell>
                       {l.temCor ? (
                         <Badge variant="success">OK</Badge>
                       ) : (
                         <Badge variant="danger">Faltando</Badge>
                       )}
-                    </td>
-                    <td className="px-4 py-2 text-xs text-muted-foreground">
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
                       {l.pendencias.length === 0 ? (
-                        <span className="inline-flex items-center gap-1 text-success">
-                          <CheckCircle2 className="w-4 h-4" aria-hidden="true" /> Nenhuma
+                        <span className="inline-flex items-center gap-1 text-success-ink">
+                          <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> Nenhuma
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1">
-                          <AlertTriangle className="w-4 h-4 text-warning shrink-0" aria-hidden="true" />
+                          <AlertTriangle className="h-4 w-4 shrink-0 text-warning-ink" aria-hidden="true" />
                           {l.pendencias.join(" · ")}
                         </span>
                       )}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </TableBody>
+            </Table>
+          </Card>
 
           <p className="text-xs text-muted-foreground">
             Para substituir um placeholder por logo oficial, basta soltar o arquivo{" "}
@@ -172,27 +177,46 @@ export default function AuditoriaBancos() {
   );
 }
 
+/**
+ * Cartão KPI do Design System v3 (112px): rótulo em cima, ícone num ladrilho
+ * tingido no canto, valor 28/36 em tinta `*-ink` — nunca a cor cheia sobre branco.
+ */
 function Resumo({
   titulo,
   valor,
   tom,
+  icone: Icone,
 }: {
   titulo: string;
   valor: number;
   tom: "neutral" | "success" | "warning" | "danger";
+  icone: React.ElementType;
 }) {
   const cor =
     tom === "success"
-      ? "text-success"
+      ? "text-success-ink"
       : tom === "warning"
-        ? "text-warning"
+        ? "text-warning-ink"
         : tom === "danger"
-          ? "text-destructive"
+          ? "text-destructive-ink"
           : "text-foreground";
+  const ladrilho =
+    tom === "success"
+      ? "bg-success-tint text-success-ink"
+      : tom === "warning"
+        ? "bg-warning-tint text-warning-ink"
+        : tom === "danger"
+          ? "bg-destructive-tint text-destructive-ink"
+          : "bg-muted text-muted-foreground";
   return (
-    <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-      <p className="text-sm font-medium text-muted-foreground">{titulo}</p>
-      <p className={`mt-1 text-[2rem] leading-10 font-bold tabular-nums ${cor}`}>{valor}</p>
-    </div>
+    <Card className="flex min-h-[112px] flex-col justify-between gap-2 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <p className="min-w-0 truncate text-sm font-medium leading-5 text-muted-foreground">{titulo}</p>
+        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${ladrilho}`}>
+          <Icone className="h-4 w-4" aria-hidden="true" />
+        </span>
+      </div>
+      <p className={`whitespace-nowrap text-[1.75rem] font-semibold leading-9 tabular-nums ${cor}`}>{valor}</p>
+    </Card>
   );
 }

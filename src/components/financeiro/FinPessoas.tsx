@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -424,80 +425,96 @@ export default function FinPessoas() {
     <div className="space-y-4">
       <div className="flex flex-wrap justify-end gap-2">
         <Button onClick={() => openDialog(null)}>
-          <Plus className="w-4 h-4" aria-hidden="true" /> Novo cliente/fornecedor
+          <Plus aria-hidden="true" /> Novo cliente/fornecedor
         </Button>
       </div>
 
+      {/* Tabela nos primitivos de `ui/table`: cabeçalho em superfície rebaixada,
+          rótulos 12/600 sem caixa alta, linhas de 48px (Design System v3). */}
       <Card>
-        <CardContent className="overflow-x-auto p-0">
-          <table className="w-full text-sm">
-            <thead className="bg-muted text-sm font-semibold text-foreground">
-              <tr>
-                <th className="px-4 py-3 text-left">Nome</th>
-                <th className="px-4 py-3 text-left">Documento</th>
-                <th className="px-4 py-3 text-left">Tipo</th>
-                <th className="px-4 py-3 text-left">Cidade/UF</th>
-                <th className="px-4 py-3 text-left">Tags</th>
-                <th className="px-4 py-3 text-left">Contato</th>
-                <th className="w-24 px-4 py-3 text-right">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nome</TableHead>
+                <TableHead>Documento</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead>Cidade/UF</TableHead>
+                <TableHead>Tags</TableHead>
+                <TableHead>Contato</TableHead>
+                <TableHead className="w-24 text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {isLoading ? (
-                [0, 1, 2].map((i) => (
-                  <tr key={`skel-${i}`} className="border-t border-border">
-                    <td colSpan={7} className="px-4 py-3"><Skeleton className="h-8 w-full" /></td>
-                  </tr>
-                ))
+                // Espera na forma das linhas — nome, documento, selo, contato —,
+                // não uma barra por linha.
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={7} className="p-0">
+                    <div role="status" aria-label="Carregando pessoas" className="flex flex-col gap-px bg-border">
+                      {[0, 1, 2].map((i) => (
+                        <div key={`skel-${i}`} className="flex items-center gap-4 bg-card px-4 py-3">
+                          <Skeleton className="h-4 w-1/4" />
+                          <Skeleton className="h-4 w-32" />
+                          <Skeleton className="h-5 w-20 rounded-sm" />
+                          <Skeleton className="h-4 w-24" />
+                          <Skeleton className="ml-auto h-4 w-16" />
+                        </div>
+                      ))}
+                    </div>
+                  </TableCell>
+                </TableRow>
               ) : pessoas.length === 0 ? (
-                <tr>
-                  <td colSpan={7}>
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={7} className="p-0">
                     <EstadoVazio
                       icone={<Users aria-hidden="true" />}
                       titulo="Nenhuma pessoa cadastrada"
                       descricao="Cadastre clientes e fornecedores para vincular a lançamentos, notas e pedidos."
                       acao={
                         <Button onClick={() => openDialog(null)}>
-                          <Plus className="w-4 h-4" aria-hidden="true" /> Novo cliente/fornecedor
+                          <Plus aria-hidden="true" /> Novo cliente/fornecedor
                         </Button>
                       }
                     />
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ) : (
                 pessoas.map((p) => {
                   const end = (p.endereco as Endereco) ?? {};
                   const tags = ((p as any).tags as string[]) ?? [];
                   return (
-                    <tr key={p.id} className="border-t border-border hover:bg-muted/40">
-                      <td className="px-4 py-3 font-medium text-foreground">
+                    <TableRow key={p.id}>
+                      <TableCell className="font-medium">
                         {p.nome}
-                        {p.nome_fantasia && <div className="text-xs text-muted-foreground">{p.nome_fantasia}</div>}
-                      </td>
-                      <td className="px-4 py-3 tabular-nums text-muted-foreground">{p.documento ? formatDocumento(p.documento) : "—"}</td>
-                      <td className="px-4 py-3"><Badge variant="info">{TIPOS.find((t) => t.value === p.tipo)?.label ?? p.tipo}</Badge></td>
-                      <td className="px-4 py-3 text-muted-foreground">{end.municipio ? `${end.municipio}/${end.uf ?? ""}` : "—"}</td>
-                      <td className="px-4 py-3">
+                        {p.nome_fantasia && <div className="text-xs font-normal text-muted-foreground">{p.nome_fantasia}</div>}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap tabular-nums text-muted-foreground">{p.documento ? formatDocumento(p.documento) : "—"}</TableCell>
+                      <TableCell><Badge variant="info">{TIPOS.find((t) => t.value === p.tipo)?.label ?? p.tipo}</Badge></TableCell>
+                      <TableCell className="text-muted-foreground">{end.municipio ? `${end.municipio}/${end.uf ?? ""}` : "—"}</TableCell>
+                      <TableCell>
                         <div className="flex flex-wrap gap-1">
                           {tags.slice(0, 3).map((t) => <Badge key={t} variant="muted">{t}</Badge>)}
                           {tags.length > 3 && <span className="text-xs text-muted-foreground">+{tags.length - 3}</span>}
                         </div>
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground">{p.email ?? p.telefone ?? "—"}</td>
-                      <td className="whitespace-nowrap px-4 py-3 text-right">
-                        <Button size="icon" variant="ghost" aria-label={`Editar ${p.nome}`} onClick={() => openDialog(p)}>
-                          <Pencil className="w-4 h-4" aria-hidden="true" />
-                        </Button>
-                        <Button size="icon" variant="ghost" aria-label={`Excluir ${p.nome}`} onClick={() => setConfirmDel(p.id)}>
-                          <Trash2 className="w-4 h-4 text-destructive" aria-hidden="true" />
-                        </Button>
-                      </td>
-                    </tr>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{p.email ?? p.telefone ?? "—"}</TableCell>
+                      <TableCell className="whitespace-nowrap text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button size="icon-sm" variant="ghost" aria-label={`Editar ${p.nome}`} onClick={() => openDialog(p)}>
+                            <Pencil aria-hidden="true" />
+                          </Button>
+                          <Button size="icon-sm" variant="ghost-destructive" aria-label={`Excluir ${p.nome}`} onClick={() => setConfirmDel(p.id)}>
+                            <Trash2 aria-hidden="true" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
                   );
                 })
               )}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
 
@@ -517,7 +534,7 @@ export default function FinPessoas() {
             </TabsList>
 
             {/* IDENTIFICAÇÃO */}
-            <TabsContent value="identificacao" className="space-y-4 pt-4">
+            <TabsContent value="identificacao" className="space-y-4">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="pes-documento">CPF / CNPJ</Label>
@@ -565,9 +582,9 @@ export default function FinPessoas() {
                       disabled={buscandoCNPJ}
                       title="Consultar Receita Federal"
                       aria-label="Consultar Receita Federal"
-                      className="h-11 w-11 shrink-0"
+                      className="shrink-0"
                     >
-                      {buscandoCNPJ ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Search className="w-4 h-4" aria-hidden="true" />}
+                      {buscandoCNPJ ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Search aria-hidden="true" />}
                     </Button>
                   </div>
                 </div>
@@ -592,7 +609,7 @@ export default function FinPessoas() {
                     aria-describedby={!form.nome.trim() ? "pes-nome-erro" : undefined}
                   />
                   {!form.nome.trim() && (
-                    <p id="pes-nome-erro" className="text-sm text-destructive">Informe o nome / razão social para salvar</p>
+                    <p id="pes-nome-erro" className="text-xs text-destructive-ink">Informe o nome / razão social para salvar</p>
                   )}
                 </div>
                 <div className="space-y-2 md:col-span-2">
@@ -633,7 +650,7 @@ export default function FinPessoas() {
                         type="button"
                         onClick={() => removeTag(t)}
                         aria-label={`Remover tag ${t}`}
-                        className="rounded-sm hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        className="rounded-sm hover:text-destructive-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
                         <X className="w-3 h-3" aria-hidden="true" />
                       </button>
@@ -649,7 +666,7 @@ export default function FinPessoas() {
             </TabsContent>
 
             {/* ENDEREÇO */}
-            <TabsContent value="endereco" className="space-y-4 pt-4">
+            <TabsContent value="endereco" className="space-y-4">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-6">
                 <div className="space-y-2 md:col-span-2">
                   <Label htmlFor="pes-cep">CEP</Label>
@@ -688,9 +705,9 @@ export default function FinPessoas() {
                       disabled={buscandoCEP}
                       title="Buscar endereço pelo CEP"
                       aria-label="Buscar endereço pelo CEP"
-                      className="h-11 w-11 shrink-0"
+                      className="shrink-0"
                     >
-                      {buscandoCEP ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Search className="w-4 h-4" aria-hidden="true" />}
+                      {buscandoCEP ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Search aria-hidden="true" />}
                     </Button>
                   </div>
                 </div>
@@ -726,7 +743,7 @@ export default function FinPessoas() {
             </TabsContent>
 
             {/* FISCAL */}
-            <TabsContent value="fiscal" className="space-y-4 pt-4">
+            <TabsContent value="fiscal" className="space-y-4">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="pes-ie">Inscrição Estadual</Label>
@@ -740,9 +757,9 @@ export default function FinPessoas() {
                       disabled={validandoSefaz}
                       title="Validar Inscrição Estadual no SEFAZ"
                       aria-label="Validar Inscrição Estadual no SEFAZ"
-                      className="h-11 w-11 shrink-0"
+                      className="shrink-0"
                     >
-                      {validandoSefaz ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <ShieldCheck className="w-4 h-4" aria-hidden="true" />}
+                      {validandoSefaz ? <Loader2 className="animate-spin" aria-hidden="true" /> : <ShieldCheck aria-hidden="true" />}
                     </Button>
                   </div>
                 </div>
@@ -780,7 +797,7 @@ export default function FinPessoas() {
             </TabsContent>
 
             {/* BANCÁRIO */}
-            <TabsContent value="bancario" className="space-y-4 pt-4">
+            <TabsContent value="bancario" className="space-y-4">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <div className="space-y-2 md:col-span-3">
                   <Label htmlFor="pes-banco">Banco</Label>
@@ -820,7 +837,7 @@ export default function FinPessoas() {
             </TabsContent>
 
             {/* CONTATO */}
-            <TabsContent value="contato" className="space-y-4 pt-4">
+            <TabsContent value="contato" className="space-y-4">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="pes-email">E-mail principal</Label>
@@ -858,7 +875,7 @@ export default function FinPessoas() {
           <DialogFooter className="mt-4">
             <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
             <Button onClick={handleSave} disabled={upsert.isPending || !form.nome.trim()}>
-              {upsert.isPending && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
+              {upsert.isPending && <Loader2 className="animate-spin" aria-hidden="true" />}
               Salvar
             </Button>
           </DialogFooter>

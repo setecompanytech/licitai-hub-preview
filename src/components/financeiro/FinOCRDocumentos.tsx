@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import SeloPraefectusIA from "@/components/shared/SeloPraefectusIA";
 import { ScanLine, Upload, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -55,8 +56,9 @@ export default function FinOCRDocumentos() {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ScanLine className="w-5 h-5 text-primary" aria-hidden="true" /> Enviar documento
+          <CardTitle className="flex flex-wrap items-center gap-2">
+            <ScanLine className="h-5 w-5 text-muted-foreground" aria-hidden="true" /> Enviar documento
+            <SeloPraefectusIA />
           </CardTitle>
           <CardDescription>
             Envie uma imagem de NF-e, boleto ou recibo. O sistema usa múltiplas IAs (Gemini Vision, Claude, GPT-5) com fallback automático.
@@ -69,7 +71,7 @@ export default function FinOCRDocumentos() {
               <Input id="ocr-arquivo" type="file" accept="image/*" onChange={handleUpload} />
             </div>
             <Button onClick={processar} disabled={!arquivo || loading}>
-              {loading ? "Processando..." : <><Upload className="w-4 h-4" aria-hidden="true" />Extrair</>}
+              {loading ? "Processando..." : <><Upload aria-hidden="true" />Extrair</>}
             </Button>
           </div>
         </CardContent>
@@ -79,9 +81,10 @@ export default function FinOCRDocumentos() {
         <Card>
           <CardHeader>
             <CardTitle className="flex flex-wrap items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-success" aria-hidden="true" />
+              <CheckCircle2 className="h-5 w-5 text-success-ink" aria-hidden="true" />
               Dados extraídos
-              {motor && <Badge variant="info">{motor}</Badge>}
+              {/* O nome do motor é rótulo de engenharia, não situação: neutro. */}
+              {motor && <Badge variant="muted">{motor}</Badge>}
               {resultado.confianca != null && (
                 <Badge variant={resultado.confianca > 0.8 ? "success" : "warning"}>
                   Confiança: {Math.round(resultado.confianca * 100)}%

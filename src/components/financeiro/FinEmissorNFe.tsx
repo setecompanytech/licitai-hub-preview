@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,7 +11,9 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import EstadoVazio from "@/components/shared/EstadoVazio";
+import { cn } from "@/lib/utils";
 import {
   FileText, Plus, Trash2, Send, AlertCircle, Loader2, ExternalLink, Search,
   CheckCircle2, Building2, User, Truck, Calculator, ShieldCheck, FileDown, Info, RefreshCw, Package,
@@ -114,10 +116,12 @@ type NfeVinculada = {
   pedido_id: string | null;
 };
 
-/** Status da NF-e → família semântica. A cor reforça; o texto nunca sai. */
+/** Status da NF-e → família semântica (Design System v3): rascunho é
+ *  informativo, processando aguarda, autorizada é sucesso, rejeitada/denegada
+ *  são erro e cancelada é neutra. A cor reforça; o texto nunca sai. */
 const STATUS_VARIANT: Record<string, "success" | "warning" | "danger" | "info" | "muted"> = {
-  rascunho: "muted", processando: "warning", autorizada: "success",
-  rejeitada: "danger", cancelada: "danger", denegada: "danger",
+  rascunho: "info", processando: "warning", autorizada: "success",
+  rejeitada: "danger", cancelada: "muted", denegada: "danger",
 };
 
 /** Rótulo curto do status, para caber no Badge da tabela. */
@@ -638,17 +642,17 @@ export default function FinEmissorNFe() {
     <div className="space-y-4">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
-          <TabsTrigger value="faturas" className="gap-2">
-            <Package className="h-4 w-4" />Faturas de pedido
+          <TabsTrigger value="faturas">
+            <Package className="h-4 w-4" aria-hidden="true" />Faturas de pedido
             {pedidosFatura.filter(p => p.status === 'faturar').length > 0 && (
               <Badge variant="warning">
                 {pedidosFatura.filter(p => p.status === 'faturar').length}
               </Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="emissao" className="gap-2"><Send className="h-4 w-4" />Nova emissão</TabsTrigger>
-          <TabsTrigger value="emitidas" className="gap-2"><FileText className="h-4 w-4" />Notas emitidas</TabsTrigger>
-          <TabsTrigger value="guia" className="gap-2"><Info className="h-4 w-4" />Passo a passo (SEBRAE)</TabsTrigger>
+          <TabsTrigger value="emissao"><Send className="h-4 w-4" aria-hidden="true" />Nova emissão</TabsTrigger>
+          <TabsTrigger value="emitidas"><FileText className="h-4 w-4" aria-hidden="true" />Notas emitidas</TabsTrigger>
+          <TabsTrigger value="guia"><Info className="h-4 w-4" aria-hidden="true" />Passo a passo (SEBRAE)</TabsTrigger>
         </TabsList>
 
         {/* ============ FATURAS DE PEDIDO ============ */}
@@ -657,20 +661,30 @@ export default function FinEmissorNFe() {
             <CardHeader>
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <CardTitle className="flex items-center gap-2"><Package className="h-5 w-5" />Faturas de pedido</CardTitle>
+                  <CardTitle className="flex items-center gap-2"><Package className="h-5 w-5" aria-hidden="true" />Faturas de pedido</CardTitle>
                   <CardDescription>Pedidos que aguardam emissão de NF-e (A Faturar) ou que já foram faturados.</CardDescription>
                 </div>
                 <Button size="sm" variant="outline" onClick={carregarPedidosFatura} disabled={loadingPedidos}
                   aria-label="Atualizar a lista de pedidos a faturar">
-                  {loadingPedidos ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                  {loadingPedidos ? <Loader2 className="animate-spin" aria-hidden="true" /> : <RefreshCw aria-hidden="true" />}
                   Atualizar
                 </Button>
               </div>
             </CardHeader>
             <CardContent>
+              {/* Espera na forma da lista — linhas da tabela —, não um spinner
+                  no centro (Design System v3). */}
               {loadingPedidos ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                <div role="status" aria-label="Carregando pedidos a faturar" className="overflow-hidden rounded-lg border border-border">
+                  <div className="flex flex-col gap-px bg-border">
+                    {[0, 1, 2, 3].map(i => (
+                      <div key={i} className="flex items-center gap-4 bg-card px-4 py-3">
+                        <Skeleton className="h-4 w-10" />
+                        <Skeleton className="h-4 w-1/3" />
+                        <Skeleton className="ml-auto h-4 w-24" />
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ) : pedidosFatura.length === 0 ? (
                 <EstadoVazio
@@ -680,7 +694,7 @@ export default function FinEmissorNFe() {
                   descricao={'Pedidos aparecem aqui ao mover para "A Faturar" ou "Faturado" no Kanban de Gestão de Compras.'}
                 />
               ) : (
-                <div className="overflow-x-auto">
+                <div className="overflow-hidden rounded-lg border border-border">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -732,17 +746,17 @@ export default function FinEmissorNFe() {
                             {new Date(p.created_at).toLocaleDateString('pt-BR')}
                           </TableCell>
                           <TableCell>
-                            <div className="flex flex-wrap gap-2">
+                            <div className="flex flex-wrap items-center gap-2">
                               <Button
                                 size="sm"
                                 variant="outline"
                                 onClick={() => navigate(`/gestao-compras?pedido=${p.id}`)}
                               >
-                                <ExternalLink className="h-4 w-4" /> Detalhar pedido
+                                <ExternalLink aria-hidden="true" /> Detalhar pedido
                               </Button>
                               {p.nfe_id && (
                                 <Button size="sm" variant="ghost" onClick={() => setActiveTab('emitidas')}>
-                                  <FileText className="h-4 w-4" /> Ver NF-e
+                                  <FileText aria-hidden="true" /> Ver NF-e
                                 </Button>
                               )}
                             </div>
@@ -760,21 +774,21 @@ export default function FinEmissorNFe() {
         {/* ============ EMISSAO ============ */}
         <TabsContent value="emissao" className="space-y-4">
           <Alert variant="info">
-            <AlertCircle className="h-4 w-4" />
+            <AlertCircle className="h-4 w-4" aria-hidden="true" />
             <AlertTitle>Configuração necessária</AlertTitle>
             <AlertDescription>
-              A transmissão à SEFAZ depende do secret <code className="rounded bg-muted px-1">FOCUS_NFE_API_TOKEN</code> e de um certificado A1 cadastrado.
-              Use <code className="rounded bg-muted px-1">FOCUS_NFE_AMBIENTE=homologacao</code> para testes.
+              A transmissão à SEFAZ depende do secret <code className="rounded-sm bg-muted px-1">FOCUS_NFE_API_TOKEN</code> e de um certificado A1 cadastrado.
+              Use <code className="rounded-sm bg-muted px-1">FOCUS_NFE_AMBIENTE=homologacao</code> para testes.
             </AlertDescription>
           </Alert>
 
           {/* 1. Natureza */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5" />1. Natureza da operação (CFOP)</CardTitle>
+              <CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5" aria-hidden="true" />1. Natureza da operação (CFOP)</CardTitle>
               <CardDescription>Defina o tipo fiscal (venda, remessa, devolução, exportação).</CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-4">
+            <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div className="space-y-1.5">
                 <Label htmlFor="nfe-modelo">Modelo</Label>
                 <Select value={modelo} onValueChange={v => setModelo(v as any)}>
@@ -786,7 +800,7 @@ export default function FinEmissorNFe() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1.5 md:col-span-2">
+              <div className="space-y-1.5 sm:col-span-2">
                 <Label htmlFor="nfe-natureza">Natureza da operação</Label>
                 <Select value={naturezaOp} onValueChange={setNaturezaOp}>
                   <SelectTrigger id="nfe-natureza"><SelectValue /></SelectTrigger>
@@ -822,13 +836,13 @@ export default function FinEmissorNFe() {
           {modelo !== "nfse" && (
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5" />1.5 Identificação fiscal (SEFAZ 4.00)</CardTitle>
+                <CardTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5" aria-hidden="true" />1.5 Identificação fiscal (SEFAZ 4.00)</CardTitle>
                 <CardDescription>
                   Campos obrigatórios do schema NF-e: tipo de operação, destino, consumidor final, contingência e referências.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   <div className="space-y-1.5">
                     <Label htmlFor="fiscal-tpnf">Tipo de operação (tpNF)</Label>
                     <Select value={fiscais.tpNF} onValueChange={v => setFiscais({ ...fiscais, tpNF: v as "0" | "1" })}>
@@ -880,7 +894,7 @@ export default function FinEmissorNFe() {
 
                 {/* Referência NF-e (Devolução) */}
                 {finalidade === "4" && (
-                  <div className="space-y-1.5 rounded-md border border-border bg-muted p-4">
+                  <div className="space-y-1.5 rounded-md border border-border bg-secondary p-4">
                     <Label htmlFor="fiscal-refnfe">NF-e referenciada (devolução)</Label>
                     <Input
                       id="fiscal-refnfe"
@@ -905,7 +919,7 @@ export default function FinEmissorNFe() {
                 )}
 
                 {/* Numeração manual (Sprint 3) */}
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   <div className="space-y-1.5">
                     <Label htmlFor="fiscal-numero-manual">Número manual da NF-e (opcional)</Label>
                     <Input
@@ -934,7 +948,7 @@ export default function FinEmissorNFe() {
                   <p id="fiscal-autxml-ajuda" className="text-xs text-muted-foreground">
                     Até 10 CNPJs (ex.: contador, transportadora). Aparecem no XML autorizado pela SEFAZ.
                   </p>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Input
                       id="fiscal-autxml"
                       value={autXmlInput}
@@ -956,7 +970,7 @@ export default function FinEmissorNFe() {
                         setAutXmlInput("");
                       }}
                     >
-                      <Plus className="h-4 w-4" /> Adicionar
+                      <Plus aria-hidden="true" /> Adicionar
                     </Button>
                   </div>
                   {fiscais.autXML.length > 0 && (
@@ -968,13 +982,13 @@ export default function FinEmissorNFe() {
                             {formatado}
                             <Button
                               type="button"
-                              variant="ghost"
+                              variant="ghost-destructive"
                               size="icon"
                               aria-label={`Remover o CNPJ autorizado ${formatado}`}
                               onClick={() => setFiscais({ ...fiscais, autXML: fiscais.autXML.filter((_, idx) => idx !== i) })}
-                              className="-mr-1 h-5 w-5 shrink-0 hover:bg-transparent hover:text-destructive-ink [&_svg]:size-3"
+                              className="-mr-1 h-5 w-5 shrink-0 rounded-sm [&_svg]:size-3"
                             >
-                              <Trash2 />
+                              <Trash2 aria-hidden="true" />
                             </Button>
                           </Badge>
                         );
@@ -986,7 +1000,7 @@ export default function FinEmissorNFe() {
                 {/* Alerta contingência */}
                 {fiscais.tpEmis !== "1" && (
                   <Alert variant="warning">
-                    <AlertCircle className="h-4 w-4" />
+                    <AlertCircle className="h-4 w-4" aria-hidden="true" />
                     <AlertTitle>Modo contingência ativo</AlertTitle>
                     <AlertDescription>
                       Use somente quando a SEFAZ de origem estiver indisponível. Justifique nas informações complementares (mín. 15 caracteres).
@@ -1001,17 +1015,17 @@ export default function FinEmissorNFe() {
           {/* 2. Emitente */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Building2 className="h-5 w-5" />2. Dados do emitente</CardTitle>
+              <CardTitle className="flex items-center gap-2"><Building2 className="h-5 w-5" aria-hidden="true" />2. Dados do emitente</CardTitle>
               <CardDescription>Carregados automaticamente da empresa ativa. Edite no menu Configurações se necessário.</CardDescription>
             </CardHeader>
             <CardContent>
               {empresaAtiva ? (
-                <dl className="grid grid-cols-1 gap-4 text-sm md:grid-cols-4">
+                <dl className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
                   <div><dt className="text-xs text-muted-foreground">Razão social</dt><dd className="font-medium">{empresaAtiva.razao_social}</dd></div>
                   <div><dt className="text-xs text-muted-foreground">CNPJ</dt><dd className="font-medium">{empresaAtiva.cnpj}</dd></div>
                   <div><dt className="text-xs text-muted-foreground">IE</dt><dd className="font-medium">{empresaAtiva.inscricao_estadual || <span className="text-destructive-ink">não cadastrada</span>}</dd></div>
                   <div><dt className="text-xs text-muted-foreground">Regime</dt><dd className="font-medium uppercase">{empresaAtiva.regime_tributario || "—"}</dd></div>
-                  <div className="md:col-span-2"><dt className="text-xs text-muted-foreground">Endereço</dt><dd className="font-medium">{empresaAtiva.endereco || "—"}</dd></div>
+                  <div className="sm:col-span-2"><dt className="text-xs text-muted-foreground">Endereço</dt><dd className="font-medium">{empresaAtiva.endereco || "—"}</dd></div>
                   <div><dt className="text-xs text-muted-foreground">Município/UF</dt><dd className="font-medium">{empresaAtiva.municipio || "—"}/{empresaAtiva.uf || "—"}</dd></div>
                   <div><dt className="text-xs text-muted-foreground">CEP</dt><dd className="font-medium">{empresaAtiva.cep || "—"}</dd></div>
                 </dl>
@@ -1029,7 +1043,7 @@ export default function FinEmissorNFe() {
           {/* 3. Destinatário */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2"><User className="h-5 w-5" />3. Destinatário</CardTitle>
+              <CardTitle className="flex items-center gap-2"><User className="h-5 w-5" aria-hidden="true" />3. Destinatário</CardTitle>
               <CardDescription>Digite o CNPJ e clique em Buscar para preencher automaticamente via Receita Federal.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -1044,7 +1058,7 @@ export default function FinEmissorNFe() {
                       aria-describedby={documentoDestInvalido ? "dest-documento-erro" : undefined} />
                     <Button type="button" variant="outline" size="icon" onClick={buscarDestinatario} disabled={buscandoCNPJ}
                       aria-label="Buscar dados do destinatário pelo CNPJ">
-                      {buscandoCNPJ ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                      {buscandoCNPJ ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Search aria-hidden="true" />}
                     </Button>
                   </div>
                   {documentoDestInvalido && (
@@ -1118,11 +1132,11 @@ export default function FinEmissorNFe() {
           {modelo === "nfse" ? (
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5" />4. Serviço prestado</CardTitle>
+                <CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5" aria-hidden="true" />4. Serviço prestado</CardTitle>
                 <CardDescription>Descrição completa, código municipal e valor.</CardDescription>
               </CardHeader>
-              <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                <div className="space-y-1.5 md:col-span-2">
+              <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="space-y-1.5 sm:col-span-2">
                   <Label htmlFor="servico-descricao">Descrição do serviço</Label>
                   <Textarea id="servico-descricao" rows={3} value={serviceDescricao} onChange={e => setServiceDescricao(e.target.value)} />
                 </div>
@@ -1143,23 +1157,23 @@ export default function FinEmissorNFe() {
               <CardHeader>
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="min-w-0">
-                    <CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5" />4. Produtos / serviços</CardTitle>
+                    <CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5" aria-hidden="true" />4. Produtos / serviços</CardTitle>
                     <CardDescription>NCM (8 dígitos), CFOP, unidade, quantidade e valor.</CardDescription>
                   </div>
-                  <Button size="sm" variant="outline" onClick={adicionarItem}><Plus className="h-4 w-4" />Adicionar item</Button>
+                  <Button size="sm" variant="outline" onClick={adicionarItem}><Plus aria-hidden="true" />Adicionar item</Button>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 {itens.map((it, idx) => {
                   const ncmInvalido = it.ncm.length > 0 && it.ncm.length !== 8;
                   return (
-                  <div key={idx} className="space-y-4 rounded-lg border border-border bg-muted p-4">
+                  <div key={idx} className="space-y-4 rounded-md border border-border bg-secondary p-4">
                     <div className="flex items-center justify-between gap-2">
                       <Badge variant="muted">Item {idx + 1}</Badge>
-                      <Button size="icon" variant="ghost" onClick={() => removerItem(idx)} disabled={itens.length === 1}
-                        aria-label={`Remover o item ${idx + 1}`}><Trash2 className="h-4 w-4" /></Button>
+                      <Button size="icon-sm" variant="ghost-destructive" onClick={() => removerItem(idx)} disabled={itens.length === 1}
+                        aria-label={`Remover o item ${idx + 1}`}><Trash2 aria-hidden="true" /></Button>
                     </div>
-                    <div className="grid grid-cols-12 gap-3">
+                    <div className="grid grid-cols-12 gap-4">
                       <div className="col-span-12 space-y-1.5 md:col-span-2">
                         <Label htmlFor={`item-${idx}-codigo`}>Código</Label>
                         <Input id={`item-${idx}-codigo`} value={it.codigo} onChange={e => atualizarItem(idx, "codigo", e.target.value)} placeholder="PRD0001" />
@@ -1220,9 +1234,9 @@ export default function FinEmissorNFe() {
                     </div>
                     <Separator />
                     {/* Bloco fiscal */}
-                    <div className="grid grid-cols-12 gap-3">
+                    <div className="grid grid-cols-12 gap-4">
                       <div className="col-span-6 space-y-1.5 md:col-span-3">
-                        <Label htmlFor={`item-${idx}-origem`} className="flex items-center gap-1"><Calculator className="h-3 w-3" />Origem</Label>
+                        <Label htmlFor={`item-${idx}-origem`}>Origem</Label>
                         <Select value={it.origem} onValueChange={v => atualizarItem(idx, "origem", v)}>
                           <SelectTrigger id={`item-${idx}-origem`}><SelectValue /></SelectTrigger>
                           <SelectContent className="max-h-72">{ORIGEM_MERCADORIA.map(o => <SelectItem key={o.codigo} value={o.codigo}>{o.codigo} — {o.descricao}</SelectItem>)}</SelectContent>
@@ -1265,7 +1279,7 @@ export default function FinEmissorNFe() {
           {modelo !== "nfse" && (
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Truck className="h-5 w-5" />5. Transporte</CardTitle>
+                <CardTitle className="flex items-center gap-2"><Truck className="h-5 w-5" aria-hidden="true" />5. Transporte</CardTitle>
                 <CardDescription>Modalidade de frete e dados do transportador (se houver).</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -1280,8 +1294,8 @@ export default function FinEmissorNFe() {
 
                 {/* Transportador */}
                 {transporte.modalidade_frete !== "9" && (
-                  <div className="space-y-4 rounded-md border border-border bg-muted p-4">
-                    <h3 className="text-lg font-semibold text-foreground">Dados do transportador</h3>
+                  <div className="space-y-4 rounded-md border border-border bg-secondary p-4">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dados do transportador</h3>
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-12">
                       <div className="space-y-1.5 md:col-span-6">
                         <Label htmlFor="transp-nome">Razão social / Nome</Label>
@@ -1309,7 +1323,7 @@ export default function FinEmissorNFe() {
                       </div>
                     </div>
 
-                    <h3 className="text-lg font-semibold text-foreground">Veículo</h3>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Veículo</h3>
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-12">
                       <div className="space-y-1.5 md:col-span-3">
                         <Label htmlFor="transp-placa">Placa</Label>
@@ -1328,8 +1342,8 @@ export default function FinEmissorNFe() {
                 )}
 
                 {/* Volumes */}
-                <div className="space-y-4 rounded-md border border-border bg-muted p-4">
-                  <h3 className="text-lg font-semibold text-foreground">Volumes transportados</h3>
+                <div className="space-y-4 rounded-md border border-border bg-secondary p-4">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Volumes transportados</h3>
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-12">
                     <div className="space-y-1.5 md:col-span-2">
                       <Label htmlFor="vol-quantidade">Quantidade</Label>
@@ -1361,7 +1375,7 @@ export default function FinEmissorNFe() {
                 {/* Alertas contextuais por modalidade */}
                 {transporteValidacao.erros.length > 0 && (
                   <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
+                    <AlertCircle className="h-4 w-4" aria-hidden="true" />
                     <AlertTitle>Dados de transporte obrigatórios</AlertTitle>
                     <AlertDescription>
                       <ul className="mt-1 list-disc space-y-1 pl-5 text-sm">
@@ -1373,7 +1387,7 @@ export default function FinEmissorNFe() {
                 )}
                 {transporteValidacao.erros.length === 0 && transporteValidacao.avisos.length > 0 && (
                   <Alert variant="warning">
-                    <Info className="h-4 w-4" />
+                    <Info className="h-4 w-4" aria-hidden="true" />
                     <AlertTitle>Atenção ao bloco de transporte</AlertTitle>
                     <AlertDescription>
                       <ul className="mt-1 list-disc space-y-1 pl-5 text-sm">
@@ -1390,10 +1404,10 @@ export default function FinEmissorNFe() {
           {modelo !== "nfse" && (
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Calculator className="h-5 w-5" />6. Totais e informações complementares</CardTitle>
+                <CardTitle className="flex items-center gap-2"><Calculator className="h-5 w-5" aria-hidden="true" />6. Totais e informações complementares</CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
                   <div className="space-y-1.5">
                     <Label htmlFor="tot-produtos">Total produtos</Label>
                     <Input id="tot-produtos" readOnly value={totalProdutos.toFixed(2)} className="bg-muted tabular-nums" />
@@ -1434,13 +1448,13 @@ export default function FinEmissorNFe() {
           {/* 7. Validação e transmissão */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5" />7. Validar, assinar e transmitir</CardTitle>
+              <CardTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5" aria-hidden="true" />7. Validar, assinar e transmitir</CardTitle>
               <CardDescription>O sistema verifica inconsistências antes do envio à SEFAZ.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {validacoes.erros.length > 0 && (
                 <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
+                  <AlertCircle className="h-4 w-4" aria-hidden="true" />
                   <AlertTitle>Inconsistências bloqueantes ({validacoes.erros.length})</AlertTitle>
                   <AlertDescription>
                     <ul className="mt-1 list-disc space-y-1 pl-5 text-sm">
@@ -1451,7 +1465,7 @@ export default function FinEmissorNFe() {
               )}
               {validacoes.avisos.length > 0 && (
                 <Alert variant="warning">
-                  <AlertCircle className="h-4 w-4" />
+                  <AlertCircle className="h-4 w-4" aria-hidden="true" />
                   <AlertTitle>Avisos ({validacoes.avisos.length})</AlertTitle>
                   <AlertDescription>
                     <ul className="mt-1 list-disc space-y-1 pl-5 text-sm">
@@ -1462,7 +1476,7 @@ export default function FinEmissorNFe() {
               )}
               {validacoes.ok && validacoes.avisos.length === 0 && (
                 <Alert variant="success">
-                  <CheckCircle2 className="h-4 w-4" />
+                  <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
                   <AlertTitle>Pronto para transmitir</AlertTitle>
                   <AlertDescription>Todos os campos obrigatórios foram validados.</AlertDescription>
                 </Alert>
@@ -1470,14 +1484,14 @@ export default function FinEmissorNFe() {
 
               <div className="flex flex-col gap-4 border-t border-border pt-4 md:flex-row md:items-center md:justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Valor total da nota</p>
-                  <p className="text-[2rem] font-bold leading-10 tabular-nums text-foreground">
+                  <p className="text-sm font-medium leading-5 text-muted-foreground">Valor total da nota</p>
+                  <p className="text-[1.75rem] font-semibold leading-9 tabular-nums text-foreground">
                     {totalNota.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Button onClick={emitir} disabled={emitting || polling || !validacoes.ok} size="lg">
-                    {(emitting || polling) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                    {(emitting || polling) ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Send aria-hidden="true" />}
                     {emitting ? "Transmitindo à SEFAZ…"
                       : polling ? "Aguardando autorização…"
                       : "Assinar e transmitir"}
@@ -1497,7 +1511,18 @@ export default function FinEmissorNFe() {
             </CardHeader>
             <CardContent>
               {loadingList ? (
-                <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+                <div role="status" aria-label="Carregando notas emitidas" className="overflow-hidden rounded-lg border border-border">
+                  <div className="flex flex-col gap-px bg-border">
+                    {[0, 1, 2, 3, 4].map(i => (
+                      <div key={i} className="flex items-center gap-4 bg-card px-4 py-3">
+                        <Skeleton className="h-4 w-12" />
+                        <Skeleton className="h-4 w-28" />
+                        <Skeleton className="h-4 w-1/4" />
+                        <Skeleton className="ml-auto h-4 w-24" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
               ) : emitidas.length === 0 ? (
                 <EstadoVazio
                   tamanho="compacto"
@@ -1506,7 +1531,7 @@ export default function FinEmissorNFe() {
                   descricao="As notas transmitidas aparecem aqui com status, chave de acesso e o link do DANFE."
                 />
               ) : (
-                <div className="overflow-x-auto">
+                <div className="overflow-hidden rounded-lg border border-border">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -1541,9 +1566,9 @@ export default function FinEmissorNFe() {
                             <TableCell><Badge variant={STATUS_VARIANT[n.status] || "muted"}>{STATUS_TEXTO[n.status] || n.status}</Badge></TableCell>
                             <TableCell className="max-w-[280px]">
                               <div className="flex items-start gap-2">
-                                {n.status === "processando" && <Loader2 className="mt-0.5 h-3 w-3 shrink-0 animate-spin text-muted-foreground" />}
-                                {n.status === "autorizada" && <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-success-ink" />}
-                                {(n.status === "rejeitada" || n.status === "denegada") && <AlertCircle className="mt-0.5 h-3 w-3 shrink-0 text-destructive-ink" />}
+                                {n.status === "processando" && <Loader2 className="mt-px h-4 w-4 shrink-0 animate-spin text-muted-foreground" aria-hidden="true" />}
+                                {n.status === "autorizada" && <CheckCircle2 className="mt-px h-4 w-4 shrink-0 text-success-ink" aria-hidden="true" />}
+                                {(n.status === "rejeitada" || n.status === "denegada") && <AlertCircle className="mt-px h-4 w-4 shrink-0 text-destructive-ink" aria-hidden="true" />}
                                 <span className="line-clamp-2 text-sm text-muted-foreground" title={motivoTexto}>{motivoTexto}</span>
                               </div>
                             </TableCell>
@@ -1565,14 +1590,16 @@ export default function FinEmissorNFe() {
                                     disabled={isRefreshing}
                                     title="Consultar status atual na SEFAZ"
                                   >
-                                    {isRefreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                                    {isRefreshing ? <Loader2 className="animate-spin" aria-hidden="true" /> : <RefreshCw aria-hidden="true" />}
                                     Atualizar status
                                   </Button>
                                 )}
+                                {/* Link com a mesma anatomia dos botões vizinhos (36px, contorno):
+                                    os três comandos da linha ficam na mesma altura. */}
                                 {n.xml_url && (
                                   <a href={n.xml_url} target="_blank" rel="noopener noreferrer"
-                                    className="inline-flex shrink-0 items-center gap-1 rounded-md text-sm text-primary underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                                    XML <ExternalLink className="h-3 w-3" />
+                                    className={cn(buttonVariants({ variant: "outline", size: "sm" }), "shrink-0")}>
+                                    XML <ExternalLink aria-hidden="true" />
                                   </a>
                                 )}
                                 {n.status === "autorizada" ? (
@@ -1583,7 +1610,7 @@ export default function FinEmissorNFe() {
                                     onClick={() => baixarDanfe(n.id)}
                                     disabled={downloading}
                                   >
-                                    {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
+                                    {downloading ? <Loader2 className="animate-spin" aria-hidden="true" /> : <FileDown aria-hidden="true" />}
                                     DANFE
                                   </Button>
                                 ) : (
@@ -1613,7 +1640,7 @@ export default function FinEmissorNFe() {
               <ol className="space-y-3">
                 {ETAPAS_EMISSAO.map((e, i) => (
                   <li key={e.id} className="flex gap-3 rounded-lg border border-border p-4">
-                    <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary-tint text-sm font-semibold text-primary">{i + 1}</div>
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted text-sm font-semibold tabular-nums text-foreground" aria-hidden="true">{i + 1}</div>
                     <div className="min-w-0">
                       <p className="font-semibold text-foreground">{e.titulo}</p>
                       <p className="text-sm text-muted-foreground">{e.descricao}</p>

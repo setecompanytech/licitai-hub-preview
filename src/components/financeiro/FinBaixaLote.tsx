@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import EstadoVazio from "@/components/shared/EstadoVazio";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 import { CheckCheck, Loader2, Search } from "lucide-react";
 import { useContas, useEmpresaId } from "@/hooks/useFinanceiro";
 import { supabase } from "@/integrations/supabase/client";
@@ -119,7 +121,7 @@ export default function FinBaixaLote() {
       </div>
 
       <Card>
-        <CardContent className="space-y-6 p-6">
+        <CardContent className="space-y-6 p-5">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div className="space-y-2 md:col-span-1">
               <Label htmlFor="fin-baixa-conta">Conta para liquidação</Label>
@@ -162,7 +164,7 @@ export default function FinBaixaLote() {
               gesto principal é selecionar em lote. */}
           <div className="rounded-lg border border-border [&>div]:max-h-[400px]">
             <Table>
-              <TableHeader className="sticky top-0 z-10 bg-muted">
+              <TableHeader className="sticky top-0 z-10 bg-secondary">
                 <TableRow>
                   <TableHead className="w-12">
                     <Checkbox
@@ -178,10 +180,21 @@ export default function FinBaixaLote() {
               </TableHeader>
               <TableBody>
                 {isLoading ? (
+                  // Espera na forma das linhas — caixa, descrição, data e
+                  // valor —, não um spinner no centro (Design System v3).
                   <TableRow className="hover:bg-transparent">
-                    <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">
-                      <Loader2 className="mx-auto w-5 h-5 animate-spin" aria-hidden="true" />
-                      <span className="sr-only">Carregando lançamentos</span>
+                    <TableCell colSpan={4} className="p-0">
+                      <div role="status" className="flex flex-col gap-px bg-border">
+                        <span className="sr-only">Carregando lançamentos</span>
+                        {Array.from({ length: 5 }, (_, i) => (
+                          <div key={i} className="flex items-center gap-4 bg-card px-4 py-3">
+                            <Skeleton className="h-4 w-4" />
+                            <Skeleton className="h-4 w-1/2" />
+                            <Skeleton className="ml-auto h-4 w-20" />
+                            <Skeleton className="h-4 w-24" />
+                          </div>
+                        ))}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ) : filtrados.length === 0 ? (
@@ -201,7 +214,7 @@ export default function FinBaixaLote() {
                     const atrasado = l.status === "em_atraso";
                     return (
                       <TableRow key={l.id}>
-                        <TableCell className="py-3">
+                        <TableCell>
                           <Checkbox
                             checked={checked}
                             onCheckedChange={() => toggle(l.id)}
@@ -213,21 +226,21 @@ export default function FinBaixaLote() {
                             coluna crescer até caber a descrição inteira, e a
                             tabela ganharia rolagem horizontal no lugar das
                             reticências. */}
-                        <TableCell className="max-w-[320px] py-3">
+                        <TableCell className="max-w-[320px]">
                           <p className="truncate text-sm" title={l.descricao}>{l.descricao}</p>
                           {atrasado && <Badge variant="danger" className="mt-1">Em atraso</Badge>}
                         </TableCell>
                         {/* Título sem vencimento (NF-e sem duplicata): a competência
                             no lugar, marcada — o traço deixava a coluna inteira em
                             branco em Contas a Receber (19/09). */}
-                        <TableCell className="py-3 text-right text-sm tabular-nums text-muted-foreground" nowrap>
+                        <TableCell className="text-right tabular-nums text-muted-foreground" nowrap>
                           {l.data_vencimento
                             ? format(new Date(l.data_vencimento + "T00:00:00"), "dd/MM/yyyy")
                             : l.data_competencia
                               ? <span title="Sem vencimento registrado — data de competência">{format(new Date(l.data_competencia + "T00:00:00"), "dd/MM/yyyy")} <span className="text-xs">(comp.)</span></span>
                               : "—"}
                         </TableCell>
-                        <TableCell className="py-3 text-right text-sm font-medium tabular-nums" nowrap>
+                        <TableCell className="text-right font-medium tabular-nums" nowrap>
                           {formatBRL(Number(l.valor))}
                         </TableCell>
                       </TableRow>
@@ -238,10 +251,18 @@ export default function FinBaixaLote() {
             </Table>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-muted p-4">
+          {/* Barra da baixa em lote: na tinta verde enquanto há seleção — a
+              cor da seleção em todo o sistema —, neutra com nada marcado,
+              para não anunciar uma seleção que não existe. */}
+          <div
+            className={cn(
+              "flex flex-wrap items-center justify-between gap-3 rounded-md border p-4 transition-colors duration-150",
+              selecionados.size > 0 ? "border-primary-line bg-primary-tint" : "border-border bg-secondary",
+            )}
+          >
             <div className="text-sm">
               <span className="text-muted-foreground">Selecionados:</span>{" "}
-              <span className="font-semibold">{selecionados.size}</span>
+              <span className="font-semibold tabular-nums">{selecionados.size}</span>
               <span className="text-muted-foreground"> · Total:</span>{" "}
               <span className="font-semibold tabular-nums">
                 {formatBRL(totalSelecionado)}
@@ -249,8 +270,8 @@ export default function FinBaixaLote() {
             </div>
             <Button onClick={handleBaixar} disabled={!contaPadrao || selecionados.size === 0 || saving}>
               {saving
-                ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-                : <CheckCheck className="w-4 h-4" aria-hidden="true" />}
+                ? <Loader2 className="animate-spin" aria-hidden="true" />
+                : <CheckCheck aria-hidden="true" />}
               Baixar {selecionados.size} lançamento(s)
             </Button>
           </div>

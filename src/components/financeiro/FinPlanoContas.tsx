@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import EstadoVazio from "@/components/shared/EstadoVazio";
-import { ChevronRight, ChevronDown, Sparkles, Loader2, FolderTree, Plus } from "lucide-react";
+import { ChevronRight, ChevronDown, Sparkles, Loader2, FolderTree, Plus, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Conta {
@@ -140,7 +141,7 @@ export default function FinPlanoContas() {
     return (
       <div key={conta.id}>
         <div
-          className="flex items-center gap-2 rounded-md px-2 py-2 text-sm transition-colors hover:bg-muted/40"
+          className="flex items-center gap-2 rounded-md px-2 py-2 text-sm transition-colors hover:bg-muted"
           style={{ paddingLeft: `${depth * 16 + 8}px` }}
         >
           {tem ? (
@@ -196,7 +197,7 @@ export default function FinPlanoContas() {
       </div>
 
       <Card>
-        <CardContent className="space-y-4 p-6">
+        <CardContent className="space-y-4 p-5">
           <p className="text-sm text-muted-foreground">
             Estrutura contábil compatível com SPED ECF (NBC TG 1000 / ITG 2000). Apenas contas analíticas aceitam
             lançamentos.
@@ -204,20 +205,33 @@ export default function FinPlanoContas() {
 
           <div className="space-y-2">
             <Label htmlFor="plano-contas-busca">Buscar conta</Label>
-            <Input
-              id="plano-contas-busca"
-              placeholder="Código, nome ou conta referencial SPED…"
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-            />
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+              <Input
+                id="plano-contas-busca"
+                placeholder="Código, nome ou conta referencial SPED…"
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                className="pl-9"
+              />
+            </div>
           </div>
 
-          <div className="max-h-[70vh] overflow-auto rounded-md border border-border">
+          <div className="max-h-[70vh] overflow-auto rounded-lg border border-border">
             {loading ? (
-              <p className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
-                <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
-                Carregando contas…
-              </p>
+              // Espera na forma da árvore — seta, código, nome e selo por
+              // linha —, não um spinner no centro (Design System v3).
+              <div role="status" className="space-y-1 p-3">
+                <span className="sr-only">Carregando contas…</span>
+                {Array.from({ length: 8 }, (_, i) => (
+                  <div key={i} className="flex items-center gap-2 px-2 py-2">
+                    <Skeleton className="h-4 w-4 shrink-0" />
+                    <Skeleton className="h-4 w-16" />
+                    <Skeleton className="h-4 w-1/3" />
+                    <Skeleton className="h-5 w-16 rounded-sm" />
+                  </div>
+                ))}
+              </div>
             ) : vazio ? (
               <EstadoVazio
                 tamanho="compacto"

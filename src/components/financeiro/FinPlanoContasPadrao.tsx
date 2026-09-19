@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
 import EstadoVazio from "@/components/shared/EstadoVazio";
 import { Sparkles, Loader2, FolderTree, CheckCircle2, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -106,17 +107,21 @@ export default function FinPlanoContasPadrao() {
       </div>
 
       <Card>
-        <CardContent className="space-y-4 p-6">
+        <CardContent className="space-y-4 p-5">
           <p className="text-sm text-muted-foreground">
             Estrutura hierárquica padrão (31 contas em 5 grupos). Você pode editar, expandir ou criar contas adicionais
             por empresa.
           </p>
 
           {loading ? (
-            <p className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
-              <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
-              Carregando plano de contas…
-            </p>
+            // Espera na forma do conteúdo — o aviso e dois grupos —, não um
+            // spinner no centro (Design System v3).
+            <div role="status" className="space-y-4">
+              <span className="sr-only">Carregando plano de contas…</span>
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-40 w-full" />
+              <Skeleton className="h-40 w-full" />
+            </div>
           ) : contas.length === 0 ? (
             <EstadoVazio
               tamanho="compacto"

@@ -134,7 +134,7 @@ export default function FinSefazConsulta({ empresaId, cnpjEmpresa, onConcluido }
   return (
     <div className="space-y-4">
       <Alert variant="info">
-        <ShieldCheck className="w-4 h-4" />
+        <ShieldCheck className="h-4 w-4" aria-hidden="true" />
         <AlertTitle>Consulta automática por CNPJ via certificado A1</AlertTitle>
         <AlertDescription className="space-y-2">
           <p>
@@ -142,7 +142,7 @@ export default function FinSefazConsulta({ empresaId, cnpjEmpresa, onConcluido }
             (NFS-e). Requer <b>certificado digital A1</b> da empresa cadastrado e, para NFS-e, que o município esteja homologado.
           </p>
           <p className="flex items-center gap-2">
-            <Cloud className="w-4 h-4 shrink-0" />
+            <Cloud className="h-4 w-4 shrink-0" aria-hidden="true" />
             <span>O processamento mTLS é executado por proxy externo seguro (configuração de infra).</span>
           </p>
         </AlertDescription>
@@ -151,11 +151,11 @@ export default function FinSefazConsulta({ empresaId, cnpjEmpresa, onConcluido }
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <FileSearch className="w-5 h-5" /> Nova consulta
+            <FileSearch className="h-5 w-5" aria-hidden="true" /> Nova consulta
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-1.5">
               <Label htmlFor="sefaz-tipo">Tipo</Label>
               <Select value={tipo} onValueChange={(v: "nfe" | "nfse") => setTipo(v)}>
@@ -212,7 +212,7 @@ export default function FinSefazConsulta({ empresaId, cnpjEmpresa, onConcluido }
               )}
               {munSel && (munSel.status === "pendente" || munSel.status === "indisponivel") && (
                 <Alert variant="destructive" className="mt-2">
-                  <AlertTriangle className="w-4 h-4" />
+                  <AlertTriangle className="h-4 w-4" aria-hidden="true" />
                   <AlertDescription>
                     Município ainda não homologado. Use o upload manual de XMLs ou solicite homologação ao suporte.
                   </AlertDescription>
@@ -223,7 +223,7 @@ export default function FinSefazConsulta({ empresaId, cnpjEmpresa, onConcluido }
 
           <div className="flex flex-wrap gap-2">
             <Button onClick={consultar} disabled={loading || !empresaId}>
-              {loading ? <><Loader2 className="w-4 h-4 animate-spin" />Consultando SEFAZ…</> : "Consultar e importar"}
+              {loading ? <><Loader2 className="animate-spin" aria-hidden="true" />Consultando SEFAZ…</> : "Consultar e importar"}
             </Button>
           </div>
         </CardContent>
@@ -242,7 +242,7 @@ export default function FinSefazConsulta({ empresaId, cnpjEmpresa, onConcluido }
               descricao="As consultas feitas aqui ficam listadas com o resultado de cada importação."
             />
           ) : (
-            <ScrollArea className="max-h-80">
+            <ScrollArea className="max-h-80 rounded-lg border border-border">
               <Table>
                 <TableHeader>
                   <TableRow>

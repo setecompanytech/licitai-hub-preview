@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2, Save, ShieldCheck, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
@@ -60,10 +61,26 @@ export default function FinConfigNFe() {
   };
 
   if (loading) {
+    // Espera na forma do formulário — título, campos e rodapé —, não um
+    // spinner (Design System v3). O aviso continua para o leitor de tela.
     return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" /> Carregando…
-      </div>
+      <Card role="status" className="space-y-6 p-5">
+        <span className="sr-only">Carregando…</span>
+        <div className="space-y-2">
+          <Skeleton className="h-5 w-72 max-w-full" />
+          <Skeleton className="h-4 w-full max-w-md" />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Skeleton className="h-10" />
+          <Skeleton className="h-10" />
+          <Skeleton className="h-10" />
+          <Skeleton className="h-10" />
+        </div>
+        <Skeleton className="h-10 w-full" />
+        <div className="flex justify-end border-t border-border pt-4">
+          <Skeleton className="h-10 w-44" />
+        </div>
+      </Card>
     );
   }
 
@@ -75,7 +92,7 @@ export default function FinConfigNFe() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <CardTitle className="flex items-center gap-2">
-              <ShieldCheck className="h-5 w-5" /> Configuração de Emissão de NF-e
+              <ShieldCheck className="h-5 w-5" aria-hidden="true" /> Configuração de Emissão de NF-e
             </CardTitle>
             <CardDescription>
               Escolha o provedor e cadastre as credenciais. O sistema rotineiriza a emissão pela configuração desta empresa.
@@ -86,8 +103,8 @@ export default function FinConfigNFe() {
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-foreground">Provedor e ambiente</h3>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Provedor e ambiente</h3>
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="nfe-provedor">Provedor</Label>
               <Select value={config.provedor} onValueChange={(v) => setConfig({ ...config, provedor: v })}>
@@ -114,7 +131,7 @@ export default function FinConfigNFe() {
         </div>
 
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-foreground">Credenciais</h3>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Credenciais</h3>
           <div className="space-y-1.5">
             <Label htmlFor="nfe-token">API Token / Chave</Label>
             <Input
@@ -140,7 +157,7 @@ export default function FinConfigNFe() {
                 placeholder="Senha do .pfx"
               />
               <Alert variant="warning">
-                <AlertTriangle className="h-4 w-4" />
+                <AlertTriangle className="h-4 w-4" aria-hidden="true" />
                 <AlertDescription>
                   Emissão direta SEFAZ requer upload do certificado A1 e está em fase de habilitação. Use FocusNFe enquanto isso.
                 </AlertDescription>
@@ -150,8 +167,8 @@ export default function FinConfigNFe() {
         </div>
 
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-foreground">Numeração</h3>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Numeração</h3>
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="nfe-serie">Série padrão</Label>
               <Input id="nfe-serie" type="number" min={1} value={config.serie_padrao}
@@ -166,7 +183,7 @@ export default function FinConfigNFe() {
         </div>
 
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-foreground">Situação e anotações</h3>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Situação e anotações</h3>
           <div className="flex items-center gap-3">
             <Switch id="nfe-ativo" checked={config.ativo} onCheckedChange={(v) => setConfig({ ...config, ativo: v })} />
             <Label htmlFor="nfe-ativo" className="cursor-pointer">Configuração ativa para emissão</Label>
@@ -181,7 +198,7 @@ export default function FinConfigNFe() {
 
         <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-4">
           <Button onClick={salvar} disabled={saving}>
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            {saving ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Save aria-hidden="true" />}
             Salvar configuração
           </Button>
         </div>

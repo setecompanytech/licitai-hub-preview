@@ -48,6 +48,8 @@ import {
   type Lancamento,
 } from "@/hooks/useFinanceiro";
 import LancamentoDialog from "./LancamentoDialog";
+import ValorDeCartao from "./ValorDeCartao";
+import { cn } from "@/lib/utils";
 
 interface Props {
   tipo: "a_pagar" | "a_receber";
@@ -77,7 +79,7 @@ const CHIP_STATUS: Record<TomStatus, string> = {
   muted: "bg-muted text-muted-foreground border-border",
   danger: "bg-destructive-tint text-destructive-ink border-destructive-line",
   warning: "bg-warning-tint text-warning-ink border-warning-line",
-  info: "bg-muted text-foreground border-border",
+  info: "bg-info-tint text-info-ink border-info-line",
 };
 
 function corStatus(l: LancamentoCal): string {
@@ -178,7 +180,7 @@ export default function FinCalendarioLancamentos({ tipo }: Props) {
     <div className="space-y-4">
       {/* Cabeçalho de navegação */}
       <Card>
-        <CardContent className="p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <CardContent className="flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between">
           <div className="flex flex-wrap items-center gap-2">
             <Button variant="outline" size="icon" aria-label="Mês anterior" onClick={() => setRefDate(subMonths(refDate, 1))}>
               <ChevronLeft className="w-4 h-4" aria-hidden="true" />
@@ -187,7 +189,7 @@ export default function FinCalendarioLancamentos({ tipo }: Props) {
               <p className="text-sm text-muted-foreground">
                 {tipo === "a_pagar" ? "Contas a pagar" : "Contas a receber"}
               </p>
-              <p className="text-lg font-semibold capitalize">
+              <p className="text-lg font-semibold capitalize leading-6 text-foreground">
                 {format(refDate, "MMMM 'de' yyyy", { locale: ptBR })}
               </p>
             </div>
@@ -199,18 +201,25 @@ export default function FinCalendarioLancamentos({ tipo }: Props) {
             </Button>
           </div>
 
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="text-right">
-              <p className="text-sm text-muted-foreground">Em aberto no mês</p>
-              <p className="text-lg font-bold tabular-nums">
-                {totalAberto.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-              </p>
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+            {/* Os dois totais no desenho de KPI do sistema: rótulo 13/500 em
+                cima, valor em peso 600 que encolhe em vez de quebrar; o
+                recebido na tinta `success-ink`, nunca a cor cheia sobre branco. */}
+            <div className="min-w-0">
+              <p className="text-sm font-medium leading-5 text-muted-foreground">Em aberto no mês</p>
+              <ValorDeCartao
+                compacto
+                valor={totalAberto.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                className="text-foreground"
+              />
             </div>
-            <div className="text-right">
-              <p className="text-sm text-muted-foreground">{tipo === "a_pagar" ? "Pago" : "Recebido"}</p>
-              <p className="text-lg font-bold tabular-nums text-success">
-                {totalRealizado.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-              </p>
+            <div className="min-w-0">
+              <p className="text-sm font-medium leading-5 text-muted-foreground">{tipo === "a_pagar" ? "Pago" : "Recebido"}</p>
+              <ValorDeCartao
+                compacto
+                valor={totalRealizado.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                className="text-success-ink"
+              />
             </div>
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" onClick={() => irRelatorio("fluxo_caixa")}>
@@ -226,11 +235,11 @@ export default function FinCalendarioLancamentos({ tipo }: Props) {
 
       {/* Filtros */}
       <Card>
-        <CardContent className="p-6 flex flex-wrap items-end gap-3">
-          <div className="flex-1 min-w-[220px]">
+        <CardContent className="flex flex-wrap items-end gap-3 p-4">
+          <div className="min-w-[220px] flex-1 basis-64 space-y-1.5">
             <Label htmlFor={`${idBase}-busca`}>Buscar por descrição, pessoa ou categoria</Label>
-            <div className="relative mt-2">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
               <Input
                 id={`${idBase}-busca`}
                 value={busca}
@@ -253,10 +262,10 @@ export default function FinCalendarioLancamentos({ tipo }: Props) {
               )}
             </div>
           </div>
-          <div className="min-w-[160px]">
+          <div className="min-w-[160px] space-y-1.5">
             <Label htmlFor={`${idBase}-status`}>Status</Label>
             <Select value={filtroStatus} onValueChange={(v) => setFiltroStatus(v as typeof filtroStatus)}>
-              <SelectTrigger id={`${idBase}-status`} className="mt-2"><SelectValue /></SelectTrigger>
+              <SelectTrigger id={`${idBase}-status`}><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="todos">Todos</SelectItem>
                 <SelectItem value="previsto">Em aberto (no prazo)</SelectItem>
@@ -265,7 +274,7 @@ export default function FinCalendarioLancamentos({ tipo }: Props) {
               </SelectContent>
             </Select>
           </div>
-          <p className="text-sm text-muted-foreground pb-3">
+          <p className="pb-2.5 text-sm leading-5 text-muted-foreground">
             <span className="font-semibold text-foreground tabular-nums">{lancamentos.length}</span> de {todos.length} lançamentos
           </p>
         </CardContent>
@@ -273,7 +282,7 @@ export default function FinCalendarioLancamentos({ tipo }: Props) {
 
       {/* Grade do calendário */}
       <Card>
-        <CardContent className="p-2 md:p-3">
+        <CardContent className="p-3 md:p-4">
           {isLoading ? (
             <div className="grid grid-cols-7 gap-1" role="status" aria-label="Carregando calendário">
               {Array.from({ length: 35 }).map((_, i) => (
@@ -285,7 +294,7 @@ export default function FinCalendarioLancamentos({ tipo }: Props) {
               <div className="min-w-[640px]">
                 <div className="grid grid-cols-7 gap-1 mb-1">
                   {NOMES_DIAS.map((d) => (
-                    <div key={d} className="text-xs uppercase tracking-wide text-muted-foreground text-center font-medium py-1">
+                    <div key={d} className="px-2 py-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       {d}
                     </div>
                   ))}
@@ -300,12 +309,14 @@ export default function FinCalendarioLancamentos({ tipo }: Props) {
                     return (
                       <div
                         key={key}
-                        className={`group relative min-h-[110px] rounded-md border border-border p-2 flex flex-col gap-1 transition-colors ${
-                          foraMes ? "bg-muted/40 text-muted-foreground" : "bg-card"
-                        } ${hoje ? "ring-2 ring-primary" : ""}`}
+                        className={cn(
+                          "group relative flex min-h-[110px] flex-col gap-1 rounded-md border p-2 transition-colors duration-150",
+                          foraMes ? "bg-secondary text-muted-foreground" : "bg-card",
+                          hoje ? "border-primary" : "border-border",
+                        )}
                       >
                         <div className="flex items-center justify-between">
-                          <span className={`text-xs font-medium ${hoje ? "text-primary font-bold" : ""}`}>
+                          <span className={cn("text-xs font-medium tabular-nums", hoje && "font-semibold text-primary")}>
                             {format(d, "d")}
                           </span>
                           {!foraMes && (
@@ -329,7 +340,10 @@ export default function FinCalendarioLancamentos({ tipo }: Props) {
                               key={l.id}
                               type="button"
                               onClick={() => { setEditing(l); setDialogOpen(true); }}
-                              className={`w-full text-left rounded px-1 py-0.5 text-xs border truncate focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${corStatus(l)}`}
+                              className={cn(
+                                "w-full truncate rounded-sm border px-1.5 py-0.5 text-left text-xs transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                                corStatus(l),
+                              )}
                               title={`${l.descricao} — ${Number(l.valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`}
                             >
                               <span className="font-medium tabular-nums">

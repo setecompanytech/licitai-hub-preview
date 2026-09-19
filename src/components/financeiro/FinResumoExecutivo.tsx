@@ -12,12 +12,13 @@
  * Estrutura inspirada no anexo "11.9 RESUMO EXECUTIVO DE FINANÇAS" do INTERFACE
  * FINANCEIRO 2 — destinado à diretoria, com botão Imprimir / Salvar PDF.
  */
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CheckCircle2, Printer, Sparkles } from "lucide-react";
+import { ArrowDownCircle, ArrowUpCircle, CheckCircle2, Landmark, Percent, Printer, Scale, Sparkles, Wallet } from "lucide-react";
 import EstadoVazio from "@/components/shared/EstadoVazio";
+import ValorDeCartao from "./ValorDeCartao";
 import { useEmpresaId } from "@/hooks/useFinanceiro";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useQuery } from "@tanstack/react-query";
@@ -47,9 +48,12 @@ type ContaSaldo = {
   limite: number;
 };
 
-const TH = "px-3 py-2 text-sm font-semibold text-foreground";
-const TD = "px-3 py-2";
-const SECAO = "text-lg font-semibold mb-3";
+// Anatomia de tabela do Design System v3: cabeçalho em `secondary`, rótulo
+// 12/600 sem caixa alta, linhas de 48px, corpo 13px.
+const TH = "h-11 px-4 text-xs font-semibold tracking-wide text-muted-foreground";
+const TD = "h-12 px-4 py-2.5 align-middle text-sm text-foreground";
+const TOTAL = "border-t border-border bg-secondary font-semibold";
+const SECAO = "mb-3 text-lg font-semibold leading-6 text-foreground";
 
 export default function FinResumoExecutivo() {
   const empresaId = useEmpresaId();
@@ -145,53 +149,54 @@ export default function FinResumoExecutivo() {
     <div className="space-y-4">
       <div className="flex justify-end print:hidden">
         <Button onClick={() => window.print()} variant="outline">
-          <Printer className="w-4 h-4" aria-hidden="true" /> Imprimir / Salvar PDF
+          <Printer aria-hidden="true" /> Imprimir / Salvar PDF
         </Button>
       </div>
 
-      <div className="rounded-lg border border-border bg-card p-6 md:p-8 shadow-sm print:border-0 print:p-0 print:shadow-none space-y-8 max-w-5xl mx-auto">
+      <div className="mx-auto max-w-5xl space-y-8 rounded-lg border border-border bg-card p-6 shadow-sm md:p-8 print:border-0 print:p-0 print:shadow-none">
         {/* Cabeçalho do documento — a página já tem o h1 do módulo, este é o
             título do documento impresso. */}
         <header className="border-b border-border pb-4">
           <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <h2 className="text-lg font-semibold">Resumo Executivo de Finanças</h2>
-              <p className="text-base font-medium mt-1">{empresaAtiva?.razao_social}</p>
+            <div className="min-w-0">
+              <h2 className="text-lg font-semibold leading-6 text-foreground">Resumo Executivo de Finanças</h2>
+              <p className="mt-1 text-base font-medium text-foreground">{empresaAtiva?.razao_social}</p>
               {empresaAtiva?.cnpj && (
                 <p className="text-sm text-muted-foreground">CNPJ: {formatDocumento(empresaAtiva.cnpj)}</p>
               )}
             </div>
             <div className="text-right text-sm text-muted-foreground">
               <p>Posição em</p>
-              <p className="font-medium text-foreground tabular-nums">{format(new Date(), "dd/MM/yyyy", { locale: ptBR })}</p>
+              <p className="font-medium tabular-nums text-foreground">{format(new Date(), "dd/MM/yyyy", { locale: ptBR })}</p>
               <p className="text-xs tabular-nums">{format(new Date(), "HH:mm:ss")}</p>
             </div>
           </div>
-          <p className="text-sm text-muted-foreground mt-3">
+          <p className="mt-3 text-sm leading-5 text-muted-foreground">
             Veja abaixo o resumo das contas a pagar, contas a receber e contas correntes da sua empresa.
           </p>
         </header>
 
-        {/* 1. Posição financeira */}
+        {/* 1. Posição financeira — os quatro cartões KPI do Design System v3
+            (112px): rótulo em cima, ícone num ladrilho tingido, valor 28/36. */}
         <section>
           <h3 className={SECAO}>Posição financeira atual</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <KpiBox label="Saldo em contas" value={data.saldoTotal} />
-            <KpiBox label="A receber" value={data.totalCR} tone="success" />
-            <KpiBox label="A pagar" value={data.totalCP} tone="danger" />
-            <KpiBox label="Posição líquida" value={data.saldoTotal + data.totalCR - data.totalCP} />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <KpiBox label="Saldo em contas" value={data.saldoTotal} icon={Wallet} />
+            <KpiBox label="A receber" value={data.totalCR} tone="success" icon={ArrowDownCircle} />
+            <KpiBox label="A pagar" value={data.totalCP} tone="danger" icon={ArrowUpCircle} />
+            <KpiBox label="Posição líquida" value={data.saldoTotal + data.totalCR - data.totalCP} icon={Scale} />
           </div>
         </section>
 
         {/* 2. Resultado do mês */}
         <section>
           <h3 className={SECAO}>Resultado do mês corrente</h3>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto rounded-lg border border-border">
             <table className="w-full text-sm">
               <tbody>
-                <tr className="border-b border-border"><td className="py-2">(+) Receitas realizadas</td><td className="py-2 text-right tabular-nums text-success">{formatBRL(data.receitaMes)}</td></tr>
-                <tr className="border-b border-border"><td className="py-2">(−) Despesas realizadas</td><td className="py-2 text-right tabular-nums text-destructive">({formatBRL(data.despesaMes)})</td></tr>
-                <tr className="border-b-2 border-foreground font-semibold"><td className="py-2">(=) Resultado líquido do mês</td><td className={`py-2 text-right tabular-nums ${data.resultadoMes >= 0 ? "text-success" : "text-destructive"}`}>{formatBRL(data.resultadoMes)}</td></tr>
+                <tr className="border-b border-border"><td className={TD}>(+) Receitas realizadas</td><td className={`${TD} text-right tabular-nums text-success-ink`}>{formatBRL(data.receitaMes)}</td></tr>
+                <tr className="border-b border-border"><td className={TD}>(−) Despesas realizadas</td><td className={`${TD} text-right tabular-nums text-destructive-ink`}>({formatBRL(data.despesaMes)})</td></tr>
+                <tr className={TOTAL}><td className={TD}>(=) Resultado líquido do mês</td><td className={`${TD} text-right tabular-nums ${data.resultadoMes >= 0 ? "text-success-ink" : "text-destructive-ink"}`}>{formatBRL(data.resultadoMes)}</td></tr>
               </tbody>
             </table>
           </div>
@@ -199,26 +204,26 @@ export default function FinResumoExecutivo() {
 
         {/* 3. Detalhe Contas a Pagar */}
         <section>
-          <h3 className="text-lg font-semibold mb-1">Resumo das Contas a Pagar</h3>
-          <p className="text-sm text-muted-foreground mb-3">Todas as contas a pagar atrasadas ou a vencer na data atual</p>
+          <h3 className="mb-1 text-lg font-semibold leading-6 text-foreground">Resumo das Contas a Pagar</h3>
+          <p className="mb-3 text-sm leading-5 text-muted-foreground">Todas as contas a pagar atrasadas ou a vencer na data atual</p>
           <TabelaLancamentos lancs={data.detalheCP} tipo="pagar" total={data.totalCP} />
         </section>
 
         {/* 4. Detalhe Contas a Receber */}
         <section>
-          <h3 className="text-lg font-semibold mb-1">Resumo das Contas a Receber</h3>
-          <p className="text-sm text-muted-foreground mb-3">Todas as contas a receber atrasadas ou a vencer na data atual</p>
+          <h3 className="mb-1 text-lg font-semibold leading-6 text-foreground">Resumo das Contas a Receber</h3>
+          <p className="mb-3 text-sm leading-5 text-muted-foreground">Todas as contas a receber atrasadas ou a vencer na data atual</p>
           <TabelaLancamentos lancs={data.detalheCR} tipo="receber" total={data.totalCR} />
         </section>
 
         {/* 5. Contas Correntes */}
         <section>
-          <h3 className="text-lg font-semibold mb-1">Resumo das Contas Correntes</h3>
-          <p className="text-sm text-muted-foreground mb-3">Saldo atual das contas correntes (consideradas no Resumo Financeiro)</p>
+          <h3 className="mb-1 text-lg font-semibold leading-6 text-foreground">Resumo das Contas Correntes</h3>
+          <p className="mb-3 text-sm leading-5 text-muted-foreground">Saldo atual das contas correntes (consideradas no Resumo Financeiro)</p>
           <div className="overflow-x-auto rounded-lg border border-border">
             <table className="w-full text-sm">
-              <thead className="bg-muted">
-                <tr>
+              <thead className="bg-secondary">
+                <tr className="border-b border-border">
                   <th className={`${TH} text-left`}>Tipo de Conta</th>
                   <th className={`${TH} text-left`}>Conta Corrente</th>
                   <th className={`${TH} text-right`}>Valor do Limite</th>
@@ -228,11 +233,15 @@ export default function FinResumoExecutivo() {
               </thead>
               <tbody>
                 {data.contas.length === 0 ? (
-                  <tr><td colSpan={5} className="text-center py-4 text-muted-foreground">Nenhuma conta corrente ativa.</td></tr>
+                  <tr>
+                    <td colSpan={5} className="px-4">
+                      <EstadoVazio tamanho="compacto" icone={<Landmark />} titulo="Nenhuma conta corrente ativa." />
+                    </td>
+                  </tr>
                 ) : data.contas.map((c) => {
                   const negativo = Number(c.saldo_atual) < 0;
                   return (
-                    <tr key={c.id} className="border-t border-border">
+                    <tr key={c.id} className="border-t border-border transition-colors duration-150 hover:bg-muted/60">
                       <td className={TD}>{c.tipo ?? "Conta Corrente"}</td>
                       <td className={TD}>
                         <div className="font-medium">{c.nome}</div>
@@ -243,16 +252,16 @@ export default function FinResumoExecutivo() {
                         )}
                       </td>
                       <td className={`${TD} text-right tabular-nums`}>{formatBRL(Number(c.limite ?? 0))}</td>
-                      <td className={`${TD} text-right tabular-nums ${negativo ? "text-destructive" : "text-info"}`}>
+                      <td className={`${TD} text-right tabular-nums ${negativo ? "text-destructive-ink" : "text-info-ink"}`}>
                         {formatBRL(Number(c.saldo_atual ?? 0))}
                       </td>
-                      <td className={`${TD} text-right tabular-nums ${negativo ? "text-destructive" : "text-info"}`}>
+                      <td className={`${TD} text-right tabular-nums ${negativo ? "text-destructive-ink" : "text-info-ink"}`}>
                         {formatBRL(Number(c.saldo_atual ?? 0) + Number(c.limite ?? 0))}
                       </td>
                     </tr>
                   );
                 })}
-                <tr className="border-t-2 border-foreground font-semibold bg-muted">
+                <tr className={TOTAL}>
                   <td colSpan={2} className={TD}>Total ({data.contas.length})</td>
                   <td className={`${TD} text-right tabular-nums`}>{formatBRL(data.limiteTotal)}</td>
                   <td className={`${TD} text-right tabular-nums`}>{formatBRL(data.saldoTotal)}</td>
@@ -266,30 +275,40 @@ export default function FinResumoExecutivo() {
         {/* 6. Indicadores */}
         <section>
           <h3 className={SECAO}>Indicadores de saúde</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card>
-              <CardContent className="p-4">
-                <p className="text-sm text-muted-foreground">Inadimplência (em atraso)</p>
-                <p className="text-lg font-semibold tabular-nums">{formatBRL(data.inadimplencia)}</p>
-                <p className="text-xs text-muted-foreground tabular-nums">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <Card className="flex min-h-[112px] flex-col justify-between gap-2 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <p className="min-w-0 truncate text-sm font-medium leading-5 text-muted-foreground">Inadimplência (em atraso)</p>
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-warning-tint text-warning-ink">
+                  <ArrowDownCircle className="h-4 w-4" aria-hidden="true" />
+                </span>
+              </div>
+              <div className="min-w-0">
+                <ValorDeCartao valor={formatBRL(data.inadimplencia)} className="mt-0 text-foreground" />
+                <p className="mt-0.5 text-xs leading-4 tabular-nums text-muted-foreground">
                   {data.totalCR > 0 ? ((data.inadimplencia / data.totalCR) * 100).toFixed(1) : 0}% do total a receber
                 </p>
-              </CardContent>
+              </div>
             </Card>
-            <Card>
-              <CardContent className="p-4">
-                <p className="text-sm text-muted-foreground">Margem do mês</p>
-                <p className="text-lg font-semibold tabular-nums">
+            <Card className="flex min-h-[112px] flex-col justify-between gap-2 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <p className="min-w-0 truncate text-sm font-medium leading-5 text-muted-foreground">Margem do mês</p>
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                  <Percent className="h-4 w-4" aria-hidden="true" />
+                </span>
+              </div>
+              <div className="min-w-0">
+                <p className="whitespace-nowrap text-[1.75rem] font-semibold leading-9 tabular-nums text-foreground">
                   {data.receitaMes > 0 ? ((data.resultadoMes / data.receitaMes) * 100).toFixed(1) : 0}%
                 </p>
-                <p className="text-xs text-muted-foreground">Resultado / Receita realizada</p>
-              </CardContent>
+                <p className="mt-0.5 text-xs leading-4 text-muted-foreground">Resultado / Receita realizada</p>
+              </div>
             </Card>
           </div>
         </section>
 
-        <footer className="border-t border-border pt-4 text-xs text-muted-foreground flex items-center gap-2">
-          <Sparkles className="w-3 h-3" aria-hidden="true" />
+        <footer className="flex items-center gap-2 border-t border-border pt-4 text-xs text-muted-foreground">
+          <Sparkles className="h-3 w-3 shrink-0" aria-hidden="true" />
           Documento gerado automaticamente pelo PRAEFECTUS · Confidencial · Uso restrito à diretoria
         </footer>
       </div>
@@ -297,22 +316,35 @@ export default function FinResumoExecutivo() {
   );
 }
 
-function KpiBox({ label, value, tone }: { label: string; value: number; tone?: "success" | "danger" }) {
-  const cor = tone === "success" ? "text-success"
-    : tone === "danger" ? "text-destructive"
+/**
+ * Cartão KPI do Design System v3: rótulo 13/500, ícone num ladrilho de 32px
+ * tingido no canto, valor pelo `ValorDeCartao` (28/600, que encolhe em vez
+ * de quebrar). Texto colorido só na tinta `*-ink`.
+ */
+function KpiBox({ label, value, tone, icon: Icon }: { label: string; value: number; tone?: "success" | "danger"; icon: React.ElementType }) {
+  const cor = tone === "success" ? "text-success-ink"
+    : tone === "danger" ? "text-destructive-ink"
     : "text-foreground";
+  const ladrilho = tone === "success" ? "bg-success-tint text-success-ink"
+    : tone === "danger" ? "bg-destructive-tint text-destructive-ink"
+    : "bg-muted text-muted-foreground";
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
-      <p className="text-sm text-muted-foreground">{label}</p>
-      <p className={`mt-1 text-[2rem] leading-10 font-bold tabular-nums truncate ${cor}`}>{formatBRL(value)}</p>
-    </div>
+    <Card className="flex min-h-[112px] flex-col justify-between gap-2 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <p className="min-w-0 truncate text-sm font-medium leading-5 text-muted-foreground">{label}</p>
+        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${ladrilho}`}>
+          <Icon className="h-4 w-4" aria-hidden="true" />
+        </span>
+      </div>
+      <ValorDeCartao valor={formatBRL(value)} className={cor} />
+    </Card>
   );
 }
 
 function TabelaLancamentos({ lancs, tipo, total }: { lancs: LancDetalhe[]; tipo: "pagar" | "receber"; total: number }) {
   const labelPessoa = tipo === "pagar" ? "Fornecedor" : "Cliente";
   const labelData = tipo === "pagar" ? "Previsão de Pagamento" : "Previsão de Recebimento";
-  const corValor = tipo === "pagar" ? "text-destructive" : "text-success";
+  const corValor = tipo === "pagar" ? "text-destructive-ink" : "text-success-ink";
 
   if (lancs.length === 0) {
     return (
@@ -328,43 +360,43 @@ function TabelaLancamentos({ lancs, tipo, total }: { lancs: LancDetalhe[]; tipo:
   return (
     <div className="overflow-x-auto rounded-lg border border-border">
       <table className="w-full text-sm">
-        <thead className="bg-muted">
-          <tr>
-            <th className={`${TH} text-left w-32`}>Situação</th>
+        <thead className="bg-secondary">
+          <tr className="border-b border-border">
+            <th className={`${TH} w-32 text-left`}>Situação</th>
             <th className={`${TH} text-left`}>{labelPessoa}</th>
-            <th className={`${TH} text-left w-40`}>{labelData}</th>
-            <th className={`${TH} text-right w-36`}>Valor</th>
+            <th className={`${TH} w-40 text-left`}>{labelData}</th>
+            <th className={`${TH} w-36 text-right`}>Valor</th>
           </tr>
         </thead>
         <tbody>
           {lancs.slice(0, 30).map((l) => (
-            <tr key={l.id} className="border-t border-border">
+            <tr key={l.id} className="border-t border-border transition-colors duration-150 hover:bg-muted/60">
               <td className={`${TD} whitespace-nowrap`}>
                 {l.status === "em_atraso" ? (
                   <Badge variant="danger">Atrasado</Badge>
                 ) : (
                   <Badge variant="info">A vencer</Badge>
                 )}
-                {l.diasAtraso > 0 && <span className="ml-1 text-xs text-muted-foreground tabular-nums">{l.diasAtraso}d</span>}
+                {l.diasAtraso > 0 && <span className="ml-1 text-xs tabular-nums text-muted-foreground">{l.diasAtraso}d</span>}
               </td>
               <td className={TD}>
-                <div className="font-medium truncate max-w-md">{l.pessoa}</div>
-                {l.descricao && <div className="text-xs text-muted-foreground truncate max-w-md">{l.descricao}</div>}
+                <div className="max-w-md truncate font-medium">{l.pessoa}</div>
+                {l.descricao && <div className="max-w-md truncate text-xs text-muted-foreground">{l.descricao}</div>}
               </td>
-              <td className={`${TD} tabular-nums whitespace-nowrap`}>
+              <td className={`${TD} whitespace-nowrap tabular-nums`}>
                 {l.data_vencimento ? format(new Date(l.data_vencimento + "T00:00:00"), "dd/MM/yyyy") : "—"}
               </td>
-              <td className={`${TD} text-right tabular-nums font-medium whitespace-nowrap ${corValor}`}>{formatBRL(l.valor)}</td>
+              <td className={`${TD} whitespace-nowrap text-right font-medium tabular-nums ${corValor}`}>{formatBRL(l.valor)}</td>
             </tr>
           ))}
           {lancs.length > 30 && (
-            <tr className="border-t border-border bg-muted/50">
-              <td colSpan={4} className={`${TD} text-center text-xs text-muted-foreground`}>
+            <tr className="border-t border-border bg-secondary">
+              <td colSpan={4} className={`${TD} text-xs text-muted-foreground`}>
                 +{lancs.length - 30} lançamento(s) adicional(is) — exibindo os 30 com vencimento mais próximo
               </td>
             </tr>
           )}
-          <tr className="border-t-2 border-foreground font-semibold bg-muted">
+          <tr className={TOTAL}>
             <td colSpan={3} className={TD}>Total ({lancs.length})</td>
             <td className={`${TD} text-right tabular-nums ${corValor}`}>{formatBRL(total)}</td>
           </tr>

@@ -39,6 +39,7 @@ import { format, parseISO, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { formatBRL, formatDate } from "@/lib/financeiro/formatters";
 import EstadoVazio from "@/components/shared/EstadoVazio";
+import ValorDeCartao from "./ValorDeCartao";
 import { toast } from "sonner";
 
 interface MovimentoRel {
@@ -253,17 +254,17 @@ export default function FinRelatorioConciliacao() {
     <div className="space-y-6">
       {/* Filtros */}
       <Card>
-        <CardContent className="p-6 flex flex-wrap items-end gap-3">
-          <div>
-            <Label htmlFor="rel-conc-inicio" className="block mb-2">Data inicial</Label>
+        <CardContent className="flex flex-wrap items-end gap-3 p-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="rel-conc-inicio">Data inicial</Label>
             <Input id="rel-conc-inicio" type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} className="w-44" />
           </div>
-          <div>
-            <Label htmlFor="rel-conc-fim" className="block mb-2">Data final</Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="rel-conc-fim">Data final</Label>
             <Input id="rel-conc-fim" type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} className="w-44" />
           </div>
-          <div className="min-w-[200px]">
-            <Label htmlFor="rel-conc-conta" className="block mb-2">Conta</Label>
+          <div className="min-w-[200px] space-y-1.5">
+            <Label htmlFor="rel-conc-conta">Conta</Label>
             <Select value={contaId} onValueChange={setContaId}>
               <SelectTrigger id="rel-conc-conta"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -275,16 +276,18 @@ export default function FinRelatorioConciliacao() {
             </Select>
           </div>
           <Button variant="outline" onClick={() => refetch()} disabled={isFetching}>
-            {isFetching ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <RefreshCcw className="w-4 h-4" aria-hidden="true" />}
+            {isFetching ? <Loader2 className="animate-spin" aria-hidden="true" /> : <RefreshCcw aria-hidden="true" />}
             Atualizar
           </Button>
-          <div className="flex-1" />
-          <Button variant="outline" onClick={exportarCSV} disabled={movimentos.length === 0}>
-            <FileSpreadsheet className="w-4 h-4" aria-hidden="true" />Exportar CSV
-          </Button>
-          <Button onClick={exportarPDF} disabled={movimentos.length === 0}>
-            <FileText className="w-4 h-4" aria-hidden="true" />Exportar PDF
-          </Button>
+          {/* Exportações ancoradas à direita; o PDF é a única ação principal da tela. */}
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            <Button variant="outline" onClick={exportarCSV} disabled={movimentos.length === 0}>
+              <FileSpreadsheet aria-hidden="true" />Exportar CSV
+            </Button>
+            <Button onClick={exportarPDF} disabled={movimentos.length === 0}>
+              <FileText aria-hidden="true" />Exportar PDF
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
@@ -323,44 +326,44 @@ export default function FinRelatorioConciliacao() {
       {/* Resumo por conta */}
       {resumo.porConta.length > 1 && (
         <Card>
-          <CardHeader className="pb-2"><CardTitle>Resumo por conta</CardTitle></CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Conta</TableHead>
-                    <TableHead className="text-right">Importados</TableHead>
-                    <TableHead className="text-right">Conciliados</TableHead>
-                    <TableHead className="text-right">Pendentes</TableHead>
-                    <TableHead className="text-right">Valor</TableHead>
+          <CardHeader><CardTitle>Resumo por conta</CardTitle></CardHeader>
+          {/* Tabela rente ao cartão: o cabeçalho `bg-secondary` vai de borda a
+              borda e a rolagem horizontal fica presa ao próprio primitivo. */}
+          <CardContent className="border-t border-border p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Conta</TableHead>
+                  <TableHead className="text-right">Importados</TableHead>
+                  <TableHead className="text-right">Conciliados</TableHead>
+                  <TableHead className="text-right">Pendentes</TableHead>
+                  <TableHead className="text-right">Valor</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {resumo.porConta.map((c) => (
+                  <TableRow key={c.nome}>
+                    <TableCell className="font-medium">{c.nome}</TableCell>
+                    <TableCell className="text-right tabular-nums">{c.total}</TableCell>
+                    <TableCell className="text-right tabular-nums text-success-ink">{c.conciliados}</TableCell>
+                    <TableCell className="text-right tabular-nums text-warning-ink">{c.pendentes}</TableCell>
+                    <TableCell className="text-right tabular-nums">{formatBRL(c.valor)}</TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {resumo.porConta.map((c) => (
-                    <TableRow key={c.nome}>
-                      <TableCell className="font-medium">{c.nome}</TableCell>
-                      <TableCell className="text-right tabular-nums">{c.total}</TableCell>
-                      <TableCell className="text-right tabular-nums text-success">{c.conciliados}</TableCell>
-                      <TableCell className="text-right tabular-nums text-warning">{c.pendentes}</TableCell>
-                      <TableCell className="text-right tabular-nums">{formatBRL(c.valor)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                ))}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       )}
 
       {/* Detalhe */}
       <Card>
-        <CardHeader className="pb-2">
+        <CardHeader>
           <CardTitle>Movimentos do período ({movimentos.length})</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="border-t border-border p-0">
           {isLoading ? (
-            <div className="space-y-2" role="status" aria-label="Carregando movimentos">
+            <div className="space-y-2 p-5" role="status" aria-label="Carregando movimentos">
               {Array.from({ length: 6 }).map((_, i) => (
                 <Skeleton key={i} className="h-10" />
               ))}
@@ -373,7 +376,7 @@ export default function FinRelatorioConciliacao() {
               descricao="Nenhum movimento de extrato no período e na conta selecionados."
             />
           ) : (
-            <div className="overflow-x-auto max-h-[480px] overflow-y-auto">
+            <div className="max-h-[480px] overflow-y-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -388,9 +391,9 @@ export default function FinRelatorioConciliacao() {
                   {movimentos.slice(0, 500).map((m) => (
                     <TableRow key={m.id}>
                       <TableCell nowrap>{formatDate(m.data_movimento)}</TableCell>
-                      <TableCell className="text-sm">{m.conta?.nome ?? "—"}</TableCell>
-                      <TableCell className="text-sm max-w-[420px] truncate" title={m.descricao}>{m.descricao}</TableCell>
-                      <TableCell className={`text-right tabular-nums whitespace-nowrap ${Number(m.valor) >= 0 ? "text-success" : "text-destructive"}`}>
+                      <TableCell>{m.conta?.nome ?? "—"}</TableCell>
+                      <TableCell className="max-w-[420px] truncate" title={m.descricao}>{m.descricao}</TableCell>
+                      <TableCell className={`whitespace-nowrap text-right tabular-nums ${Number(m.valor) >= 0 ? "text-success-ink" : "text-destructive-ink"}`}>
                         {formatBRL(Number(m.valor))}
                       </TableCell>
                       <TableCell>
@@ -405,7 +408,7 @@ export default function FinRelatorioConciliacao() {
                 </TableBody>
               </Table>
               {movimentos.length > 500 && (
-                <p className="text-xs text-muted-foreground text-center py-2">
+                <p className="px-4 py-2 text-center text-xs text-muted-foreground">
                   Exibindo 500 de {movimentos.length} movimentos. Exporte para ver tudo.
                 </p>
               )}
@@ -430,21 +433,31 @@ function KpiCard({
   sublabel: string;
   tone: "default" | "success" | "warning" | "destructive";
 }) {
+  // Cartão KPI do Design System v3 (112px): rótulo em cima, ícone num
+  // ladrilho tingido no canto, valor 28/36 em tinta `*-ink` (nunca a cor
+  // cheia sobre branco) e a linha de contexto embaixo.
   const toneClasses: Record<string, string> = {
     default: "text-foreground",
-    success: "text-success",
-    warning: "text-warning",
-    destructive: "text-destructive",
+    success: "text-success-ink",
+    warning: "text-warning-ink",
+    destructive: "text-destructive-ink",
+  };
+  const ladrilho: Record<string, string> = {
+    default: "bg-muted text-muted-foreground",
+    success: "bg-success-tint text-success-ink",
+    warning: "bg-warning-tint text-warning-ink",
+    destructive: "bg-destructive-tint text-destructive-ink",
   };
   return (
-    <Card>
-      <CardContent className="p-6">
-        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-          {icon}<span>{label}</span>
-        </div>
-        <p className={`mt-1 text-[2rem] leading-10 font-bold tabular-nums ${toneClasses[tone]}`}>{valor}</p>
-        <p className="text-xs text-muted-foreground tabular-nums mt-1">{sublabel}</p>
-      </CardContent>
+    <Card className="flex min-h-[112px] flex-col justify-between gap-2 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <p className="min-w-0 truncate text-sm font-medium leading-5 text-muted-foreground">{label}</p>
+        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${ladrilho[tone]}`}>
+          {icon}
+        </span>
+      </div>
+      <ValorDeCartao valor={String(valor)} className={toneClasses[tone]} />
+      <p className="text-xs leading-4 tabular-nums text-muted-foreground">{sublabel}</p>
     </Card>
   );
 }

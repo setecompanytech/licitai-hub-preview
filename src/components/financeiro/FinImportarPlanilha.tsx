@@ -6,7 +6,8 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Upload, Download, Loader2, Info } from "lucide-react";
+import ValorDeCartao from "./ValorDeCartao";
+import { Upload, Download, Loader2, Info, FileText, CheckCircle2, AlertCircle } from "lucide-react";
 import { useEmpresaId } from "@/hooks/useFinanceiro";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -194,16 +195,18 @@ export default function FinImportarPlanilha() {
                 <li>Encoding UTF-8</li>
               </ul>
               <Button variant="outline" size="sm" onClick={baixarModelo}>
-                <Download className="w-4 h-4" aria-hidden="true" /> Baixar modelo
+                <Download aria-hidden="true" /> Baixar modelo
               </Button>
             </AlertDescription>
           </Alert>
 
           <label
             htmlFor="fin-planilha-csv"
-            className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed border-border bg-card p-8 text-center transition-colors hover:border-primary hover:bg-primary-tint has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:focus-visible]:ring-offset-2 has-[:focus-visible]:ring-offset-background"
+            className="flex cursor-pointer flex-col items-center gap-2 rounded-md border border-dashed border-input bg-card p-6 text-center transition-colors duration-150 hover:border-primary hover:bg-primary-tint has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:focus-visible]:ring-offset-2 has-[:focus-visible]:ring-offset-background"
           >
-            <Upload className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
+            <span className="flex h-10 w-10 items-center justify-center rounded-md bg-muted text-muted-foreground" aria-hidden="true">
+              <Upload className="h-5 w-5" />
+            </span>
             <span className="text-base font-semibold text-foreground">Selecione o arquivo .csv</span>
             <span className="text-sm text-muted-foreground">Clique aqui para escolher a planilha no seu computador</span>
             <input
@@ -218,19 +221,37 @@ export default function FinImportarPlanilha() {
 
           {linhas.length > 0 && (
             <>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-                  <p className="text-sm text-muted-foreground">Total de linhas</p>
-                  <p className="text-[2rem] font-bold leading-10 tabular-nums text-foreground">{linhas.length}</p>
-                </div>
-                <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-                  <p className="text-sm text-muted-foreground">Válidas</p>
-                  <p className="text-[2rem] font-bold leading-10 tabular-nums text-success-ink">{validas.length}</p>
-                </div>
-                <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-                  <p className="text-sm text-muted-foreground">Com erro</p>
-                  <p className="text-[2rem] font-bold leading-10 tabular-nums text-destructive-ink">{invalidas.length}</p>
-                </div>
+              {/* Resumo da leitura no cartão KPI do Design System v3 (112px):
+                  rótulo em cima, ícone num ladrilho tingido à direita, número
+                  28/36 embaixo — o mesmo desenho do FinResumoCards. */}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <Card className="flex min-h-[112px] flex-col justify-between gap-2 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="min-w-0 truncate text-sm font-medium leading-5 text-muted-foreground">Total de linhas</p>
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                      <FileText className="h-4 w-4" aria-hidden="true" />
+                    </span>
+                  </div>
+                  <ValorDeCartao valor={String(linhas.length)} className="text-foreground" />
+                </Card>
+                <Card className="flex min-h-[112px] flex-col justify-between gap-2 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="min-w-0 truncate text-sm font-medium leading-5 text-muted-foreground">Válidas</p>
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-success-tint text-success-ink">
+                      <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+                    </span>
+                  </div>
+                  <ValorDeCartao valor={String(validas.length)} className="text-success-ink" />
+                </Card>
+                <Card className="flex min-h-[112px] flex-col justify-between gap-2 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="min-w-0 truncate text-sm font-medium leading-5 text-muted-foreground">Com erro</p>
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-destructive-tint text-destructive-ink">
+                      <AlertCircle className="h-4 w-4" aria-hidden="true" />
+                    </span>
+                  </div>
+                  <ValorDeCartao valor={String(invalidas.length)} className="text-destructive-ink" />
+                </Card>
               </div>
 
               {/* A altura máxima vai no scroller da própria Table (o div que
@@ -238,14 +259,14 @@ export default function FinImportarPlanilha() {
                   deixariam o `sticky` do cabeçalho preso ao de dentro, que
                   nunca rola — e a linha de títulos sumiria numa planilha
                   longa, que é justamente quando ela faz falta. */}
-              <div className="rounded-lg border border-border [&>div]:max-h-[300px]">
+              <div className="overflow-hidden rounded-lg border border-border [&>div]:max-h-[300px]">
                 <Table>
-                  <TableHeader className="sticky top-0 z-10 bg-muted">
+                  <TableHeader className="sticky top-0 z-10">
                     <TableRow>
-                      <TableHead className="text-sm font-semibold">Situação</TableHead>
-                      <TableHead className="text-sm font-semibold">Descrição</TableHead>
-                      <TableHead className="text-sm font-semibold">Vencimento</TableHead>
-                      <TableHead className="text-right text-sm font-semibold">Valor</TableHead>
+                      <TableHead>Situação</TableHead>
+                      <TableHead>Descrição</TableHead>
+                      <TableHead>Vencimento</TableHead>
+                      <TableHead className="text-right">Valor</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -254,12 +275,12 @@ export default function FinImportarPlanilha() {
                         <TableCell>
                           <Badge variant={l._erro ? "danger" : "success"}>{l._erro ? "Com erro" : "Válida"}</Badge>
                         </TableCell>
-                        <TableCell className="max-w-[320px] text-sm">
-                          <p className="truncate">{l.descricao || <em className="text-muted-foreground">vazia</em>}</p>
-                          {l._erro && <p className="mt-1 text-sm text-destructive-ink">{l._erro}</p>}
+                        <TableCell className="max-w-[320px]">
+                          <p className="truncate font-medium text-foreground">{l.descricao || <em className="text-muted-foreground">vazia</em>}</p>
+                          {l._erro && <p className="mt-1 text-xs text-destructive-ink">{l._erro}</p>}
                         </TableCell>
-                        <TableCell className="text-sm tabular-nums text-muted-foreground">{l.data_vencimento || "—"}</TableCell>
-                        <TableCell className="whitespace-nowrap text-right text-sm tabular-nums">
+                        <TableCell className="whitespace-nowrap tabular-nums text-muted-foreground">{l.data_vencimento || "—"}</TableCell>
+                        <TableCell className="whitespace-nowrap text-right tabular-nums">
                           R$ {l.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                         </TableCell>
                       </TableRow>
@@ -268,12 +289,12 @@ export default function FinImportarPlanilha() {
                 </Table>
               </div>
 
-              <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted p-4">
-                <div className="text-base">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-secondary p-4">
+                <div className="text-base text-foreground">
                   Total a importar: <span className="font-semibold tabular-nums">R$ {total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
                 </div>
                 <Button onClick={handleImportar} disabled={validas.length === 0 || importing}>
-                  {importing ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Upload className="w-4 h-4" aria-hidden="true" />}
+                  {importing ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Upload aria-hidden="true" />}
                   Importar {validas.length} lançamento(s)
                 </Button>
               </div>

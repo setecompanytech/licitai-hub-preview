@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import EstadoVazio from "@/components/shared/EstadoVazio";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -186,15 +187,15 @@ export default function FinOpenFinance() {
   return (
     <Tabs defaultValue="conexoes" className="space-y-4">
       <TabsList>
-        <TabsTrigger value="conexoes"><Plug className="w-4 h-4 mr-2" aria-hidden="true" />Conexões</TabsTrigger>
-        <TabsTrigger value="logs"><Activity className="w-4 h-4 mr-2" aria-hidden="true" />Histórico de sincronizações</TabsTrigger>
+        <TabsTrigger value="conexoes"><Plug className="h-4 w-4" aria-hidden="true" />Conexões</TabsTrigger>
+        <TabsTrigger value="logs"><Activity className="h-4 w-4" aria-hidden="true" />Histórico de sincronizações</TabsTrigger>
       </TabsList>
 
       <TabsContent value="conexoes" className="mt-0 space-y-4">
         <Alert variant="info">
           <ShieldCheck className="w-4 h-4" aria-hidden="true" />
           <AlertTitle>Open Finance e integração bancária</AlertTitle>
-          <AlertDescription className="text-muted-foreground">
+          <AlertDescription>
             Conecte suas contas bancárias para sincronização automática de extratos e saldos. Suporte a agregadores
             <strong> Pluggy </strong>e<strong> Belvo</strong> (requer credenciais do provedor configuradas como secrets).
             Enquanto a integração API não estiver ativa, use <strong>Importar OFX</strong> ou registre uma <strong>conexão manual</strong> para
@@ -203,17 +204,21 @@ export default function FinOpenFinance() {
         </Alert>
 
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-lg font-semibold text-foreground">
+          <h3 className="text-lg font-semibold leading-6 text-foreground">
             {conexoes.length} conexão(ões) configurada(s)
           </h3>
-          <Button onClick={() => setNovoOpen(true)} size="sm">
-            <Plus className="w-4 h-4" aria-hidden="true" />Nova conexão
+          <Button onClick={() => setNovoOpen(true)}>
+            <Plus aria-hidden="true" />Nova conexão
           </Button>
         </div>
 
         {isLoading ? (
-          <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground" role="status">
-            <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" /> Carregando conexões…
+          // Espera na forma dos cartões de conexão, não um spinner no centro
+          // (Design System v3).
+          <div role="status" className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <span className="sr-only">Carregando conexões…</span>
+            <Skeleton className="h-44" />
+            <Skeleton className="h-44" />
           </div>
         ) : conexoes.length === 0 ? (
           <Card>
@@ -224,7 +229,7 @@ export default function FinOpenFinance() {
                 descricao="Registre uma conexão manual para organizar suas contas ou conecte um agregador Open Finance."
                 acao={
                   <Button onClick={() => setNovoOpen(true)}>
-                    <Plus className="w-4 h-4" aria-hidden="true" />Nova conexão
+                    <Plus aria-hidden="true" />Nova conexão
                   </Button>
                 }
               />
@@ -238,17 +243,25 @@ export default function FinOpenFinance() {
               const conta = contas.find((cc) => cc.id === c.conta_id);
               return (
                 <Card key={c.id}>
-                  <CardContent className="p-4 space-y-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="text-base font-semibold text-foreground truncate">{c.banco_nome}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {c.provedor === "manual" ? "Conexão manual" : `Via ${c.provedor.charAt(0).toUpperCase() + c.provedor.slice(1)}`}
-                          {conta && ` · ${conta.nome}`}
-                        </p>
+                  {/* Cartão de conexão (DS v3): ladrilho neutro com o ícone,
+                      título 16/600, descrição 13, status como selo semântico
+                      à direita e as ações no rodapé, também à direita. */}
+                  <CardContent className="space-y-4 p-5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex min-w-0 items-start gap-3">
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                          <Building2 className="h-5 w-5" aria-hidden="true" />
+                        </span>
+                        <div className="min-w-0">
+                          <p className="truncate text-base font-semibold leading-6 text-foreground">{c.banco_nome}</p>
+                          <p className="text-sm leading-5 text-muted-foreground">
+                            {c.provedor === "manual" ? "Conexão manual" : `Via ${c.provedor.charAt(0).toUpperCase() + c.provedor.slice(1)}`}
+                            {conta && ` · ${conta.nome}`}
+                          </p>
+                        </div>
                       </div>
-                      <Badge variant={st.variante} className="gap-1">
-                        <Icon className="w-3 h-3" aria-hidden="true" />{st.label}
+                      <Badge variant={st.variante} className="shrink-0">
+                        <Icon className="h-3 w-3" aria-hidden="true" />{st.label}
                       </Badge>
                     </div>
                     {c.erro_mensagem && (
@@ -266,30 +279,31 @@ export default function FinOpenFinance() {
                           : "—"}
                       </p>
                     </div>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap items-center justify-end gap-2">
                       <Button
                         size="sm"
                         variant="outline"
-                        className="flex-1"
                         onClick={() => sincronizar.mutate(c)}
                         disabled={sincronizar.isPending}
                       >
                         {sincronizar.isPending ? (
-                          <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                          <Loader2 className="animate-spin" aria-hidden="true" />
                         ) : (
-                          <RefreshCw className="w-4 h-4" aria-hidden="true" />
+                          <RefreshCw aria-hidden="true" />
                         )}
                         Sincronizar
                       </Button>
+                      {/* A lixeira da linha: tinta vermelha sem fundo, pela
+                          variante do primitivo — não pela cor pintada no ícone. */}
                       <Button
-                        size="sm"
-                        variant="ghost"
+                        size="icon-sm"
+                        variant="ghost-destructive"
                         aria-label={`Remover conexão com ${c.banco_nome}`}
                         onClick={() => {
                           if (confirm(`Remover conexão com ${c.banco_nome}?`)) remover.mutate(c.id);
                         }}
                       >
-                        <Trash2 className="w-4 h-4 text-destructive" aria-hidden="true" />
+                        <Trash2 aria-hidden="true" />
                       </Button>
                     </div>
                   </CardContent>
@@ -314,13 +328,13 @@ export default function FinOpenFinance() {
                 tamanho="compacto"
               />
             ) : (
-              <div className="max-h-96 overflow-y-auto">
+              <div className="max-h-96 divide-y divide-border overflow-y-auto rounded-lg border border-border">
                 {logs.map((l) => {
                   const conexao = conexoes.find((c) => c.id === l.conexao_id);
                   return (
-                    <div key={l.id} className="flex items-center justify-between gap-3 border-b border-border p-3 text-sm last:border-b-0">
+                    <div key={l.id} className="flex items-center justify-between gap-3 p-3 text-sm">
                       <div className="min-w-0 flex-1">
-                        <p className="font-medium text-foreground truncate">{conexao?.banco_nome ?? "—"}</p>
+                        <p className="truncate font-medium text-foreground">{conexao?.banco_nome ?? "—"}</p>
                         <p className="text-xs text-muted-foreground">
                           {format(new Date(l.created_at), "dd/MM/yyyy HH:mm:ss", { locale: ptBR })}
                           {l.duracao_ms != null && ` · ${l.duracao_ms}ms`}
@@ -328,6 +342,7 @@ export default function FinOpenFinance() {
                         {l.erro && <p className="text-xs text-destructive-ink truncate">{l.erro}</p>}
                       </div>
                       <Badge
+                        className="shrink-0"
                         variant={
                           l.status === "sucesso" ? "success" : l.status === "erro" ? "danger" : "muted"
                         }
@@ -397,7 +412,7 @@ export default function FinOpenFinance() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setNovoOpen(false)}>Cancelar</Button>
             <Button onClick={() => criar.mutate()} disabled={criar.isPending || !bancoCodigo}>
-              {criar.isPending && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
+              {criar.isPending && <Loader2 className="animate-spin" aria-hidden="true" />}
               Criar conexão
             </Button>
           </DialogFooter>

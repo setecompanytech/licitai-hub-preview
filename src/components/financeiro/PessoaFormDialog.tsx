@@ -317,7 +317,7 @@ export default function PessoaFormDialog({ open, onOpenChange, editing, defaultT
         </DialogHeader>
 
         <Tabs defaultValue="identificacao" className="mt-2">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList>
             <TabsTrigger value="identificacao">Identificação</TabsTrigger>
             <TabsTrigger value="endereco">Endereço</TabsTrigger>
             <TabsTrigger value="fiscal">Fiscal</TabsTrigger>
@@ -326,8 +326,8 @@ export default function PessoaFormDialog({ open, onOpenChange, editing, defaultT
           </TabsList>
 
           {/* IDENTIFICAÇÃO */}
-          <TabsContent value="identificacao" className="space-y-3 pt-4">
-            <div className="grid grid-cols-2 gap-3">
+          <TabsContent value="identificacao" className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label>CPF / CNPJ</Label>
                 <div className="flex gap-2">
@@ -356,8 +356,8 @@ export default function PessoaFormDialog({ open, onOpenChange, editing, defaultT
                     inputMode="numeric"
                     placeholder="CPF ou CNPJ (com ou sem pontuação)"
                   />
-                  <Button type="button" variant="outline" size="icon" onClick={handleBuscarCNPJ} disabled={buscandoCNPJ} title="Consultar Receita Federal">
-                    {buscandoCNPJ ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                  <Button type="button" variant="outline" size="icon" className="shrink-0" onClick={handleBuscarCNPJ} disabled={buscandoCNPJ} title="Consultar Receita Federal" aria-label="Consultar Receita Federal">
+                    {buscandoCNPJ ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Search aria-hidden="true" />}
                   </Button>
                 </div>
               </div>
@@ -371,11 +371,11 @@ export default function PessoaFormDialog({ open, onOpenChange, editing, defaultT
                   </SelectContent>
                 </Select>
               </div>
-              <div className="col-span-2 space-y-1.5">
+              <div className="space-y-1.5 sm:col-span-2">
                 <Label>Nome / Razão social *</Label>
                 <Input value={form.nome} onChange={(e) => set("nome", e.target.value)} />
               </div>
-              <div className="col-span-2 space-y-1.5">
+              <div className="space-y-1.5 sm:col-span-2">
                 <Label>Nome fantasia</Label>
                 <Input value={form.nome_fantasia} onChange={(e) => set("nome_fantasia", e.target.value)} />
               </div>
@@ -400,11 +400,18 @@ export default function PessoaFormDialog({ open, onOpenChange, editing, defaultT
                   placeholder="Ex.: VIP, Atacado, Inadimplente" />
                 <Button type="button" variant="outline" onClick={addTag}>Adicionar</Button>
               </div>
-              <div className="flex flex-wrap gap-1.5 mt-2">
+              <div className="mt-2 flex flex-wrap gap-2">
                 {form.tags.map(t => (
-                  <Badge key={t} variant="secondary" className="gap-1">
+                  <Badge key={t} variant="muted" className="gap-1">
                     {t}
-                    <button onClick={() => removeTag(t)} className="hover:text-destructive"><X className="w-3 h-3" /></button>
+                    <button
+                      type="button"
+                      onClick={() => removeTag(t)}
+                      aria-label={`Remover tag ${t}`}
+                      className="rounded-sm hover:text-destructive-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <X className="h-3 w-3" aria-hidden="true" />
+                    </button>
                   </Badge>
                 ))}
               </div>
@@ -417,9 +424,9 @@ export default function PessoaFormDialog({ open, onOpenChange, editing, defaultT
           </TabsContent>
 
           {/* ENDEREÇO */}
-          <TabsContent value="endereco" className="space-y-3 pt-4">
-            <div className="grid grid-cols-6 gap-3">
-              <div className="col-span-2 space-y-1.5">
+          <TabsContent value="endereco" className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-6">
+              <div className="space-y-1.5 md:col-span-2">
                 <Label>CEP</Label>
                 <div className="flex gap-2">
                   <Input
@@ -434,30 +441,31 @@ export default function PessoaFormDialog({ open, onOpenChange, editing, defaultT
                     onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleBuscarCEP(); } }}
                     inputMode="numeric" maxLength={9} placeholder="00000-000"
                   />
-                  <Button type="button" variant="default" size="icon" onClick={() => handleBuscarCEP()} disabled={buscandoCEP}>
-                    {buscandoCEP ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                  {/* Outline, não verde: o sólido é só da ação principal do rodapé. */}
+                  <Button type="button" variant="outline" size="icon" className="shrink-0" onClick={() => handleBuscarCEP()} disabled={buscandoCEP} aria-label="Buscar endereço pelo CEP">
+                    {buscandoCEP ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Search aria-hidden="true" />}
                   </Button>
                 </div>
               </div>
-              <div className="col-span-4 space-y-1.5"><Label>Logradouro</Label><Input value={form.endereco.logradouro ?? ""} onChange={(e) => setEnd("logradouro", e.target.value)} /></div>
-              <div className="col-span-1 space-y-1.5"><Label>Nº</Label><Input value={form.endereco.numero ?? ""} onChange={(e) => setEnd("numero", e.target.value)} /></div>
-              <div className="col-span-3 space-y-1.5"><Label>Complemento</Label><Input value={form.endereco.complemento ?? ""} onChange={(e) => setEnd("complemento", e.target.value)} /></div>
-              <div className="col-span-2 space-y-1.5"><Label>Bairro</Label><Input value={form.endereco.bairro ?? ""} onChange={(e) => setEnd("bairro", e.target.value)} /></div>
-              <div className="col-span-4 space-y-1.5"><Label>Município</Label><Input value={form.endereco.municipio ?? ""} onChange={(e) => setEnd("municipio", e.target.value)} /></div>
-              <div className="col-span-1 space-y-1.5"><Label>UF</Label><Input value={form.endereco.uf ?? ""} onChange={(e) => setEnd("uf", e.target.value.toUpperCase().slice(0, 2))} maxLength={2} /></div>
-              <div className="col-span-1 space-y-1.5"><Label>IBGE</Label><Input value={form.endereco.cod_municipio_ibge ?? ""} onChange={(e) => setEnd("cod_municipio_ibge", e.target.value)} /></div>
+              <div className="space-y-1.5 md:col-span-4"><Label>Logradouro</Label><Input value={form.endereco.logradouro ?? ""} onChange={(e) => setEnd("logradouro", e.target.value)} /></div>
+              <div className="space-y-1.5 md:col-span-1"><Label>Nº</Label><Input value={form.endereco.numero ?? ""} onChange={(e) => setEnd("numero", e.target.value)} /></div>
+              <div className="space-y-1.5 md:col-span-3"><Label>Complemento</Label><Input value={form.endereco.complemento ?? ""} onChange={(e) => setEnd("complemento", e.target.value)} /></div>
+              <div className="space-y-1.5 md:col-span-2"><Label>Bairro</Label><Input value={form.endereco.bairro ?? ""} onChange={(e) => setEnd("bairro", e.target.value)} /></div>
+              <div className="space-y-1.5 md:col-span-4"><Label>Município</Label><Input value={form.endereco.municipio ?? ""} onChange={(e) => setEnd("municipio", e.target.value)} /></div>
+              <div className="space-y-1.5 md:col-span-1"><Label>UF</Label><Input value={form.endereco.uf ?? ""} onChange={(e) => setEnd("uf", e.target.value.toUpperCase().slice(0, 2))} maxLength={2} /></div>
+              <div className="space-y-1.5 md:col-span-1"><Label>IBGE</Label><Input value={form.endereco.cod_municipio_ibge ?? ""} onChange={(e) => setEnd("cod_municipio_ibge", e.target.value)} /></div>
             </div>
           </TabsContent>
 
           {/* FISCAL */}
-          <TabsContent value="fiscal" className="space-y-3 pt-4">
-            <div className="grid grid-cols-2 gap-3">
+          <TabsContent value="fiscal" className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label>Inscrição Estadual</Label>
                 <div className="flex gap-2">
                   <Input value={form.ie} onChange={(e) => set("ie", e.target.value)} placeholder="ISENTO se aplicável" />
-                  <Button type="button" variant="outline" size="icon" onClick={handleValidarSefaz} disabled={validandoSefaz} title="Validar IE no SEFAZ" className="shrink-0">
-                    {validandoSefaz ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
+                  <Button type="button" variant="outline" size="icon" onClick={handleValidarSefaz} disabled={validandoSefaz} title="Validar IE no SEFAZ" aria-label="Validar IE no SEFAZ" className="shrink-0">
+                    {validandoSefaz ? <Loader2 className="animate-spin" aria-hidden="true" /> : <ShieldCheck aria-hidden="true" />}
                   </Button>
                 </div>
               </div>
@@ -476,16 +484,16 @@ export default function PessoaFormDialog({ open, onOpenChange, editing, defaultT
                   <SelectContent>{REGIMES.map(r => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div className="col-span-2 space-y-1.5"><Label>CNAE principal</Label><Input value={form.cnae_principal} onChange={(e) => set("cnae_principal", e.target.value)} placeholder="Ex.: 4751-2/01 - Comércio varejista" /></div>
+              <div className="space-y-1.5 sm:col-span-2"><Label>CNAE principal</Label><Input value={form.cnae_principal} onChange={(e) => set("cnae_principal", e.target.value)} placeholder="Ex.: 4751-2/01 - Comércio varejista" /></div>
               <div className="space-y-1.5"><Label>Limite de crédito (R$)</Label><Input type="number" step="0.01" value={form.limite_credito} onChange={(e) => set("limite_credito", e.target.value)} /></div>
               <div className="space-y-1.5"><Label>Prazo padrão (dias)</Label><Input type="number" value={form.prazo_padrao_dias} onChange={(e) => set("prazo_padrao_dias", e.target.value)} /></div>
             </div>
           </TabsContent>
 
           {/* BANCÁRIO */}
-          <TabsContent value="bancario" className="space-y-3 pt-4">
-            <div className="grid grid-cols-3 gap-3">
-              <div className="col-span-3 space-y-1.5"><Label>Banco</Label><Input value={form.dados_bancarios.banco ?? ""} onChange={(e) => setBanc("banco", e.target.value)} placeholder="Ex.: 341 - Itaú" /></div>
+          <TabsContent value="bancario" className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="space-y-1.5 sm:col-span-3"><Label>Banco</Label><Input value={form.dados_bancarios.banco ?? ""} onChange={(e) => setBanc("banco", e.target.value)} placeholder="Ex.: 341 - Itaú" /></div>
               <div className="space-y-1.5"><Label>Agência</Label><Input value={form.dados_bancarios.agencia ?? ""} onChange={(e) => setBanc("agencia", e.target.value)} /></div>
               <div className="space-y-1.5"><Label>Conta</Label><Input value={form.dados_bancarios.conta ?? ""} onChange={(e) => setBanc("conta", e.target.value)} /></div>
               <div className="space-y-1.5">
@@ -495,7 +503,7 @@ export default function PessoaFormDialog({ open, onOpenChange, editing, defaultT
                   <SelectContent>{TIPO_CONTA.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div className="col-span-3 space-y-1.5"><Label>Titular (se diferente)</Label><Input value={form.dados_bancarios.titular ?? ""} onChange={(e) => setBanc("titular", e.target.value)} /></div>
+              <div className="space-y-1.5 sm:col-span-3"><Label>Titular (se diferente)</Label><Input value={form.dados_bancarios.titular ?? ""} onChange={(e) => setBanc("titular", e.target.value)} /></div>
               <div className="space-y-1.5">
                 <Label>Tipo de chave PIX</Label>
                 <Select value={form.dados_bancarios.pix_tipo ?? ""} onValueChange={(v) => setBanc("pix_tipo", v)}>
@@ -503,19 +511,19 @@ export default function PessoaFormDialog({ open, onOpenChange, editing, defaultT
                   <SelectContent>{PIX_TIPOS.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div className="col-span-2 space-y-1.5"><Label>Chave PIX</Label><Input value={form.dados_bancarios.pix_chave ?? ""} onChange={(e) => setBanc("pix_chave", e.target.value)} /></div>
+              <div className="space-y-1.5 sm:col-span-2"><Label>Chave PIX</Label><Input value={form.dados_bancarios.pix_chave ?? ""} onChange={(e) => setBanc("pix_chave", e.target.value)} /></div>
             </div>
           </TabsContent>
 
           {/* CONTATO */}
-          <TabsContent value="contato" className="space-y-3 pt-4">
-            <div className="grid grid-cols-2 gap-3">
+          <TabsContent value="contato" className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5"><Label>E-mail principal</Label><Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} /></div>
               <div className="space-y-1.5"><Label>Telefone principal</Label><Input value={form.telefone} onChange={(e) => set("telefone", e.target.value)} /></div>
             </div>
-            <div className="border-t pt-3">
-              <p className="text-sm font-medium mb-2">Contato secundário (responsável)</p>
-              <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-4 border-t border-border pt-4">
+              <p className="text-base font-semibold text-foreground">Contato secundário (responsável)</p>
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5"><Label>Nome</Label><Input value={form.contato_secundario.nome ?? ""} onChange={(e) => setContato("nome", e.target.value)} /></div>
                 <div className="space-y-1.5"><Label>Cargo</Label><Input value={form.contato_secundario.cargo ?? ""} onChange={(e) => setContato("cargo", e.target.value)} /></div>
                 <div className="space-y-1.5"><Label>E-mail</Label><Input type="email" value={form.contato_secundario.email ?? ""} onChange={(e) => setContato("email", e.target.value)} /></div>
@@ -528,7 +536,7 @@ export default function PessoaFormDialog({ open, onOpenChange, editing, defaultT
         <DialogFooter className="mt-4">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button onClick={handleSave} disabled={upsert.isPending || !form.nome.trim()}>
-            {upsert.isPending && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
+            {upsert.isPending && <Loader2 className="animate-spin" aria-hidden="true" />}
             Salvar
           </Button>
         </DialogFooter>

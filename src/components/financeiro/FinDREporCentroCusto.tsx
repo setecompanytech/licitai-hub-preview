@@ -6,7 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FolderTree } from "lucide-react";
+import { FolderTree, Receipt, ShoppingCart, TrendingUp, Wallet } from "lucide-react";
+import EstadoVazio from "@/components/shared/EstadoVazio";
+import ValorDeCartao from "./ValorDeCartao";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useCentrosCusto } from "@/hooks/useCentrosCusto";
@@ -115,7 +117,7 @@ export default function FinDREporCentroCusto() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <FolderTree className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+          <FolderTree className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
           Análise por Centro de Custo
         </CardTitle>
         <CardDescription>
@@ -125,7 +127,7 @@ export default function FinDREporCentroCusto() {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <Label htmlFor="dre-cc-centro">Centro de custo</Label>
             <Select value={centroId} onValueChange={setCentroId}>
               <SelectTrigger id="dre-cc-centro"><SelectValue placeholder="Selecione" /></SelectTrigger>
@@ -136,67 +138,81 @@ export default function FinDREporCentroCusto() {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <Label htmlFor="dre-cc-inicio">Início</Label>
             <Input id="dre-cc-inicio" type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} />
           </div>
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <Label htmlFor="dre-cc-fim">Fim</Label>
             <Input id="dre-cc-fim" type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} />
           </div>
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4" role="status" aria-label="Calculando">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4" role="status" aria-label="Calculando">
             {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-24" />
+              <Skeleton key={i} className="h-28" />
             ))}
           </div>
         ) : resultado ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-            <KPI label="Receita" value={formatBRL(resultado.receita)} />
-            <KPI label="(–) Custos" value={formatBRL(resultado.custo)} muted />
-            <KPI label="(–) Despesas" value={formatBRL(resultado.despesa)} muted />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <KPI label="Receita" value={formatBRL(resultado.receita)} icone={TrendingUp} />
+            <KPI label="(–) Custos" value={formatBRL(resultado.custo)} icone={ShoppingCart} muted />
+            <KPI label="(–) Despesas" value={formatBRL(resultado.despesa)} icone={Receipt} muted />
             <KPI
               label="Resultado"
               value={formatBRL(resultado.liquido)}
+              icone={Wallet}
               accent={resultado.liquido >= 0 ? "positive" : "negative"}
               hint={resultado.receita > 0 ? `Margem ${margem.toFixed(2)}%` : "Sem receita no centro: margem não se aplica"}
             />
             {/* Quatro zeros afirmam "este centro não custou nada"; o que há é
                 ausência de vínculo. Dito com todas as letras (19/09). */}
             {resultado.receita === 0 && resultado.custo === 0 && resultado.despesa === 0 && resultado.rateado === 0 && (
-              <p className="sm:col-span-2 md:col-span-4 text-xs text-warning-ink">
+              <p className="sm:col-span-2 lg:col-span-4 text-xs text-warning-ink">
                 Nenhum lançamento vinculado a este centro de custo no período — nem direto, nem por rateio.
                 O vínculo hoje é feito pelo rateio do lançamento (aba Rateio, em lançamentos já salvos).
               </p>
             )}
             {resultado.rateado > 0 && (
-              <div className="sm:col-span-2 md:col-span-4 text-xs text-muted-foreground flex flex-wrap items-center gap-2">
+              <div className="sm:col-span-2 lg:col-span-4 text-xs text-muted-foreground flex flex-wrap items-center gap-2">
                 <Badge variant="info">Rateio</Badge>
                 <span className="tabular-nums">{formatBRL(resultado.rateado)} provenientes de lançamentos com rateio percentual.</span>
               </div>
             )}
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">Selecione um centro de custo para iniciar.</p>
+          <EstadoVazio icone={<FolderTree />} titulo="Selecione um centro de custo para iniciar." tamanho="compacto" />
         )}
       </CardContent>
     </Card>
   );
 }
 
+/**
+ * Cartão KPI do Design System v3 (112px): rótulo em cima, ícone num ladrilho
+ * tingido à direita, valor 28/36 que encolhe em vez de quebrar. Texto colorido
+ * sempre na tinta `*-ink`, nunca na cor cheia sobre branco.
+ */
 function KPI({
-  label, value, muted, accent, hint,
-}: { label: string; value: string; muted?: boolean; accent?: "positive" | "negative"; hint?: string }) {
+  label, value, icone: Icone, muted, accent, hint,
+}: { label: string; value: string; icone: React.ElementType; muted?: boolean; accent?: "positive" | "negative"; hint?: string }) {
   const accentClass =
-    accent === "positive" ? "text-success" :
-    accent === "negative" ? "text-destructive" : "";
+    accent === "positive" ? "text-success-ink" :
+    accent === "negative" ? "text-destructive-ink" : "text-foreground";
+  const ladrilho =
+    accent === "positive" ? "bg-success-tint text-success-ink" :
+    accent === "negative" ? "bg-destructive-tint text-destructive-ink" : "bg-muted text-muted-foreground";
   return (
-    <div className="rounded-lg border border-border bg-card p-4 space-y-1">
-      <p className="text-sm text-muted-foreground">{label}</p>
-      <p className={`text-lg font-semibold tabular-nums ${muted ? "text-muted-foreground" : accentClass}`}>{value}</p>
-      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
-    </div>
+    <Card className="flex min-h-[112px] flex-col justify-between gap-2 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <p className="min-w-0 truncate text-sm font-medium leading-5 text-muted-foreground">{label}</p>
+        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${ladrilho}`}>
+          <Icone className="h-4 w-4" aria-hidden="true" />
+        </span>
+      </div>
+      <ValorDeCartao valor={value} className={muted ? "text-muted-foreground" : accentClass} />
+      {hint && <p className="text-xs leading-4 text-muted-foreground">{hint}</p>}
+    </Card>
   );
 }

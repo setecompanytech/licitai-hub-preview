@@ -77,14 +77,14 @@ export default function FinTransferencia() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <ArrowRightLeft className="w-5 h-5 text-muted-foreground" /> Transferência entre contas
+            <ArrowRightLeft className="h-5 w-5 text-muted-foreground" aria-hidden="true" /> Transferência entre contas
           </CardTitle>
           <CardDescription>
             Movimente saldo entre contas correntes. O sistema registra automaticamente uma única operação tipo "transferência" que afeta as duas contas — sem dupla contagem no DRE.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="transf-origem">Conta de origem</Label>
               <Select value={origem} onValueChange={setOrigem} disabled={isLoading}>
@@ -123,7 +123,7 @@ export default function FinTransferencia() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="transf-valor">Valor (R$)</Label>
               <Input id="transf-valor" type="number" step="0.01" min="0" value={valor} onChange={(e) => setValor(e.target.value)} placeholder="0,00" className="tabular-nums" />
@@ -146,17 +146,22 @@ export default function FinTransferencia() {
 
           {contaOrigem && valorNum > Number(contaOrigem.saldo_atual) && (
             <Alert variant="warning">
-              <AlertTriangle className="w-4 h-4" />
+              <AlertTriangle aria-hidden="true" />
               <AlertDescription>
                 Atenção: o valor informado é maior que o saldo atual da conta de origem. A transferência ficará permitida, mas a conta ficará negativa.
               </AlertDescription>
             </Alert>
           )}
 
-          <Button className="w-full" onClick={handleSubmit} disabled={!podeSalvar || saving}>
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRightLeft className="w-4 h-4" />}
-            Registrar transferência
-          </Button>
+          {/* Rodapé de formulário do Design System v3: a ação principal
+              alinhada à direita, no tamanho do próprio rótulo — não uma
+              faixa verde de borda a borda. */}
+          <div className="flex justify-end pt-2">
+            <Button onClick={handleSubmit} disabled={!podeSalvar || saving}>
+              {saving ? <Loader2 className="animate-spin" aria-hidden="true" /> : <ArrowRightLeft aria-hidden="true" />}
+              Registrar transferência
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>

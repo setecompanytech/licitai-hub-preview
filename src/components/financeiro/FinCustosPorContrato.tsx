@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import EstadoVazio from '@/components/shared/EstadoVazio';
+import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
@@ -176,7 +177,20 @@ export default function FinCustosPorContrato() {
   }, [linhas, config.ratear_indiretas, indiretas]);
 
   if (permLoading) {
-    return <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>;
+    // Espera na forma do conteúdo — barra de ações, cartão do rateio e a
+    // tabela —, não um spinner no centro (Design System v3).
+    return (
+      <div role="status" className="space-y-4">
+        <span className="sr-only">Carregando custos por contrato</span>
+        <div className="flex justify-end gap-2">
+          <Skeleton className="h-10 w-40" />
+          <Skeleton className="h-10 w-10" />
+          <Skeleton className="h-10 w-56" />
+        </div>
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
   }
 
   if (!podeVer) {
@@ -199,7 +213,7 @@ export default function FinCustosPorContrato() {
           aqui fica só a barra de ações, que embrulha no celular. */}
       <div className="flex flex-wrap items-center justify-end gap-2">
         <Button
-          variant={incluirEncerrados ? 'default' : 'outline'}
+          variant={incluirEncerrados ? 'secondary' : 'outline'}
           aria-pressed={incluirEncerrados}
           onClick={() => setIncluirEncerrados(v => !v)}
         >
@@ -214,7 +228,7 @@ export default function FinCustosPorContrato() {
       </div>
 
       {/* Rateio: política da empresa, nunca padrão do produto (princípio 7) */}
-      <Card className="flex flex-col gap-3 p-6 sm:flex-row sm:items-center sm:justify-between">
+      <Card className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-3">
           <Switch id="ratear" checked={config.ratear_indiretas} onCheckedChange={alternarRateio} disabled={salvandoConfig} />
           <div>
@@ -244,7 +258,19 @@ export default function FinCustosPorContrato() {
           </AlertDescription>
         </Alert>
       ) : loading ? (
-        <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+        <div role="status" className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+          <span className="sr-only">Carregando custos por contrato</span>
+          <div className="flex flex-col gap-px bg-border">
+            {Array.from({ length: 5 }, (_, i) => (
+              <div key={i} className="flex items-center gap-4 bg-card px-4 py-3">
+                <Skeleton className="h-4 w-1/4" />
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="ml-auto h-4 w-24" />
+                <Skeleton className="h-4 w-24" />
+              </div>
+            ))}
+          </div>
+        </div>
       ) : linhas.length === 0 ? (
         <Card>
           <EstadoVazio
@@ -300,7 +326,7 @@ export default function FinCustosPorContrato() {
                       <Link
                         to={`/gestao-contratos?contrato=${l.contrato_id}`}
                         onClick={e => e.stopPropagation()}
-                        className="font-medium text-foreground hover:text-primary hover:underline"
+                        className="font-medium text-foreground hover:underline"
                       >
                         {l.numero_contrato || '(sem número)'}
                       </Link>
@@ -335,7 +361,7 @@ export default function FinCustosPorContrato() {
                   </TableRow>
                 );
               })}
-              <TableRow className="bg-muted font-semibold">
+              <TableRow className="bg-secondary font-semibold">
                 <TableCell className="text-sm" colSpan={2}>Total ({linhas.length} contrato{linhas.length === 1 ? '' : 's'})</TableCell>
                 <TableCell className="text-sm text-right whitespace-nowrap tabular-nums">{fmt(calc.tot.faturamento)}</TableCell>
                 <TableCell className="text-sm text-right whitespace-nowrap tabular-nums">{fmt(calc.tot.pago)}</TableCell>

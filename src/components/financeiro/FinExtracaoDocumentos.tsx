@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import SeloPraefectusIA from "@/components/shared/SeloPraefectusIA";
 import {
   Upload, Loader2, FileCheck2, FileX, ScanLine,
   FileText, ImageIcon, Pencil, CheckCircle2, AlertCircle, Info, Link2, ChevronDown, ChevronUp,
@@ -505,9 +506,10 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-4xl max-h-[calc(100vh-2rem)] grid-rows-[auto,minmax(0,1fr)] overflow-hidden p-0">
           <DialogHeader className="px-6 pt-6 pb-0">
-            <DialogTitle className="flex items-center gap-2">
-              <ScanLine className="w-5 h-5" aria-hidden="true" />
+            <DialogTitle className="flex flex-wrap items-center gap-2">
+              <ScanLine className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
               Extração automática de documentos — {tipo === "a_receber" ? "Contas a Receber" : "Contas a Pagar"}
+              <SeloPraefectusIA />
             </DialogTitle>
             <DialogDescription asChild>
               <div className="space-y-2">
@@ -519,11 +521,24 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                     precisa saber que ele fica guardado, que a leitura é só uma
                     proposta, e que o lançamento exige um clique — três coisas
                     que a tela fazia e não contava. */}
-                <ol className="text-sm space-y-1 list-decimal list-inside marker:text-muted-foreground">
-                  <li>O arquivo é <strong>arquivado</strong> assim que chega — mesmo se a leitura falhar.</li>
-                  <li>A IA lê os campos e mostra para <strong>você conferir</strong>.</li>
-                  <li>Só ao clicar em <strong>Lançar</strong> nasce o {tipoLabel} em{' '}
-                    <strong>{tipo === "a_receber" ? "Contas a Receber" : "Contas a Pagar"}</strong>.</li>
+                {/* Passos como lista sóbria (Design System v3): o número num
+                    ladrilho neutro, o texto ao lado. `role="list"` porque
+                    `list-none` faz alguns leitores de tela esquecerem que é
+                    lista. */}
+                <ol role="list" className="list-none space-y-1.5 text-sm">
+                  <li className="flex items-start gap-2">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-muted text-xs font-semibold tabular-nums text-muted-foreground" aria-hidden="true">1</span>
+                    <span>O arquivo é <strong>arquivado</strong> assim que chega — mesmo se a leitura falhar.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-muted text-xs font-semibold tabular-nums text-muted-foreground" aria-hidden="true">2</span>
+                    <span>A IA lê os campos e mostra para <strong>você conferir</strong>.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-muted text-xs font-semibold tabular-nums text-muted-foreground" aria-hidden="true">3</span>
+                    <span>Só ao clicar em <strong>Lançar</strong> nasce o {tipoLabel} em{' '}
+                      <strong>{tipo === "a_receber" ? "Contas a Receber" : "Contas a Pagar"}</strong>.</span>
+                  </li>
                 </ol>
               </div>
             </DialogDescription>
@@ -549,11 +564,13 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                   inputRef.current?.click();
                 }
               }}
-              className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-                dragOver ? "border-primary bg-primary-tint" : "border-border hover:border-primary"
+              className={`cursor-pointer rounded-md border border-dashed p-6 text-center transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                dragOver ? "border-primary bg-primary-tint" : "border-input hover:border-primary hover:bg-primary-tint"
               }`}
             >
-              <Upload className="w-8 h-8 mx-auto text-muted-foreground" aria-hidden="true" />
+              <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-md bg-muted text-muted-foreground" aria-hidden="true">
+                <Upload className="h-5 w-5" />
+              </span>
               <p className="text-base font-semibold text-foreground mt-2">
                 Arraste arquivos aqui ou clique para selecionar
               </p>
@@ -599,9 +616,9 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                       </Button>
                       <Button size="sm" onClick={processarTodos} disabled={processando || docs.every((d) => d.status === "ok" || d.status === "erro")}>
                         {processando ? (
-                          <><Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />Processando…</>
+                          <><Loader2 className="animate-spin" aria-hidden="true" />Processando…</>
                         ) : (
-                          <><ScanLine className="w-4 h-4" aria-hidden="true" />Processar todos</>
+                          <><ScanLine aria-hidden="true" />Processar todos</>
                         )}
                       </Button>
                     </div>
@@ -610,16 +627,16 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                   <ScrollArea className="h-[min(52vh,520px)] pr-3">
                     <div className="space-y-2">
                       {docs.map((d) => (
-                        <div key={d.id} className="rounded-lg border border-border p-3 flex items-start gap-3 flex-wrap">
-                          <div className="mt-0.5 text-muted-foreground" aria-hidden="true">
-                            {d.kind === "xml" && <FileText className="w-5 h-5" />}
-                            {d.kind === "pdf" && <FileText className="w-5 h-5" />}
-                            {d.kind === "image" && <ImageIcon className="w-5 h-5" />}
-                            {d.kind === "outro" && <FileX className="w-5 h-5" />}
-                          </div>
+                        <div key={d.id} className="flex flex-wrap items-start gap-3 rounded-md border border-border bg-card p-3">
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground" aria-hidden="true">
+                            {d.kind === "xml" && <FileText className="h-4 w-4" />}
+                            {d.kind === "pdf" && <FileText className="h-4 w-4" />}
+                            {d.kind === "image" && <ImageIcon className="h-4 w-4" />}
+                            {d.kind === "outro" && <FileX className="h-4 w-4" />}
+                          </span>
                           <div className="flex-1 min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
-                              <p className="text-sm font-medium text-foreground truncate">{d.file.name}</p>
+                              <p className="min-w-0 truncate text-sm font-medium text-foreground">{d.file.name}</p>
                               <Badge variant="muted">{KIND_LABEL[d.kind]}</Badge>
                               {d.status === "ok" && (
                                 // O nome do motor ("gemini_2.5_pro") é dado de
@@ -682,7 +699,14 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                               ((d.dados as any).avisos as string[]).map((a, i) => (
                                 <p key={i} className="text-xs text-warning-ink mt-1">{a}</p>
                               ))}
-                            {d.erro && <p className="text-xs text-destructive-ink mt-1">{d.erro}</p>}
+                            {/* Erro de leitura com a mensagem real, no Alert
+                                destrutivo — o texto é o mesmo de antes. */}
+                            {d.erro && (
+                              <Alert variant="destructive" className="mt-2">
+                                <AlertCircle className="h-4 w-4" aria-hidden="true" />
+                                <AlertDescription>{d.erro}</AlertDescription>
+                              </Alert>
+                            )}
                             {/* Onde o arquivo foi parar.
                                 Antes, o documento processado ficava num limbo: o
                                 cartão mostrava os campos lidos e três botões, e
@@ -788,7 +812,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                                   {d.vinculo?.contrato_id ? "Lançar e vincular" : "Lançar"}
                                 </Button>
                                 <Button size="sm" variant="outline" onClick={() => abrirEditorComDados(d)}>
-                                  <Pencil className="w-4 h-4" aria-hidden="true" />Revisar
+                                  <Pencil aria-hidden="true" />Revisar
                                 </Button>
                               </>
                             )}

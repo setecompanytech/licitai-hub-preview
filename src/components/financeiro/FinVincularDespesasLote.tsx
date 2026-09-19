@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import EstadoVazio from '@/components/shared/EstadoVazio';
+import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
@@ -168,7 +169,7 @@ export default function FinVincularDespesasLote({
       <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Link2 className="w-5 h-5" aria-hidden="true" /> Vincular despesas em lote
+            <Link2 className="h-5 w-5 text-muted-foreground" aria-hidden="true" /> Vincular despesas em lote
           </DialogTitle>
           <DialogDescription>
             Despesas de Contas a Pagar ainda sem contrato (movimentação fica de fora).
@@ -177,15 +178,17 @@ export default function FinVincularDespesasLote({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <div className="relative flex-1">
+        {/* Linha de filtros do Design System v3: busca larga à esquerda,
+            select de 40px ao lado — e tudo embrulha no celular. */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative min-w-[220px] flex-1 basis-64">
             <Search className="pointer-events-none absolute left-3 top-1/2 w-4 h-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
             <Input value={busca} onChange={e => setBusca(e.target.value)}
               aria-label="Buscar despesa por descrição, fornecedor ou categoria"
               placeholder="Buscar por descrição, fornecedor ou categoria…" className="pl-9" />
           </div>
           <Select value={categoriaFiltro} onValueChange={setCategoriaFiltro}>
-            <SelectTrigger className="sm:w-[260px]" aria-label="Filtrar por categoria"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-[260px]" aria-label="Filtrar por categoria"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="todas">Todas as categorias</SelectItem>
               {categorias.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
@@ -195,9 +198,18 @@ export default function FinVincularDespesasLote({
 
         <div className="min-h-[200px] flex-1 overflow-auto rounded-lg border border-border">
           {carregando ? (
-            <div className="flex justify-center py-10">
-              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" aria-hidden="true" />
+            // Espera na forma das linhas da tabela, não um spinner no centro
+            // (Design System v3).
+            <div role="status" className="flex flex-col gap-px bg-border">
               <span className="sr-only">Carregando despesas</span>
+              {Array.from({ length: 6 }, (_, i) => (
+                <div key={i} className="flex items-center gap-4 bg-card px-4 py-3">
+                  <Skeleton className="h-4 w-4" />
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-4 w-1/3" />
+                  <Skeleton className="ml-auto h-4 w-24" />
+                </div>
+              ))}
             </div>
           ) : filtradas.length === 0 ? (
             <EstadoVazio
@@ -226,22 +238,22 @@ export default function FinVincularDespesasLote({
               <TableBody>
                 {filtradas.map(d => (
                   <TableRow key={d.id} className="cursor-pointer" onClick={() => alternar(d.id)}>
-                    <TableCell className="py-3" onClick={e => e.stopPropagation()}>
+                    <TableCell onClick={e => e.stopPropagation()}>
                       <Checkbox checked={selecionadas.has(d.id)} onCheckedChange={() => alternar(d.id)}
                         aria-label={`Selecionar ${d.descricao || 'despesa'}`} />
                     </TableCell>
-                    <TableCell className="py-3 text-sm tabular-nums" nowrap>{fmtDate(d.data_vencimento || d.data_competencia)}</TableCell>
-                    <TableCell className="max-w-[240px] py-3 text-sm">
+                    <TableCell className="tabular-nums" nowrap>{fmtDate(d.data_vencimento || d.data_competencia)}</TableCell>
+                    <TableCell className="max-w-[240px]">
                       <span className="block truncate" title={d.descricao || undefined}>{d.descricao || '—'}</span>
                       {d.pessoa?.nome && <span className="block truncate text-xs text-muted-foreground">{d.pessoa.nome}</span>}
                     </TableCell>
-                    <TableCell className="max-w-[180px] py-3 text-sm"><span className="block truncate">{d.categoria?.nome || 'Sem categoria'}</span></TableCell>
-                    <TableCell className="py-3" nowrap>
+                    <TableCell className="max-w-[180px]"><span className="block truncate">{d.categoria?.nome || 'Sem categoria'}</span></TableCell>
+                    <TableCell nowrap>
                       <Badge variant={d.status === 'realizado' || d.status === 'conciliado' ? 'success' : 'info'}>
                         {d.status === 'realizado' || d.status === 'conciliado' ? 'Pago' : 'Em aberto'}
                       </Badge>
                     </TableCell>
-                    <TableCell className="py-3 text-right text-sm font-medium tabular-nums" nowrap>{fmt(d.valor)}</TableCell>
+                    <TableCell className="text-right font-medium tabular-nums" nowrap>{fmt(d.valor)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -268,14 +280,14 @@ export default function FinVincularDespesasLote({
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <div className="text-right">
-              <p className="text-xs text-muted-foreground">{selecionadas.size} selecionada{selecionadas.size === 1 ? '' : 's'}</p>
+              <p className="text-xs tabular-nums text-muted-foreground">{selecionadas.size} selecionada{selecionadas.size === 1 ? '' : 's'}</p>
               <p className="text-base font-semibold tabular-nums">{fmt(totalSelecionado)}</p>
             </div>
             <Button variant="outline" onClick={onFechar}>Cancelar</Button>
             <Button onClick={vincular} disabled={salvando || selecionadas.size === 0 || !contratoDestino}>
               {salvando
-                ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-                : <Link2 className="w-4 h-4" aria-hidden="true" />}
+                ? <Loader2 className="animate-spin" aria-hidden="true" />
+                : <Link2 aria-hidden="true" />}
               Vincular
             </Button>
           </div>

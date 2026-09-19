@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
 import EstadoVazio from "@/components/shared/EstadoVazio";
 import { Inbox, AlertCircle, Loader2, CheckCircle2, Upload, Download, Receipt, FileText, History } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -356,7 +357,7 @@ export default function FinConsultaNFeEntrada() {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0">
               <CardTitle className="flex items-center gap-2">
-                <Inbox className="h-5 w-5" /> NF-e recebidas
+                <Inbox className="h-5 w-5" aria-hidden="true" /> NF-e recebidas
               </CardTitle>
               <CardDescription>
                 Notas emitidas contra o CNPJ da empresa. Chegam sozinhas pelo webhook do provedor de
@@ -367,14 +368,27 @@ export default function FinConsultaNFeEntrada() {
               <input ref={entradaXml} type="file" accept=".xml,text/xml" className="hidden"
                 onChange={(e) => { void importarXml(e.target.files?.[0] ?? null); e.target.value = ""; }} />
               <Button size="sm" variant="outline" onClick={() => entradaXml.current?.click()}>
-                <Upload className="h-4 w-4" /> Importar XML
+                <Upload aria-hidden="true" />Importar XML
               </Button>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           {loadingNotas ? (
-            <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+            // Espera na forma da lista — três linhas com título, chave e
+            // valor —, não um spinner no centro (Design System v3).
+            <div role="status" aria-label="Carregando NF-e recebidas" className="divide-y divide-border rounded-lg border border-border">
+              {Array.from({ length: 3 }, (_, i) => (
+                <div key={i} className="flex items-start justify-between gap-3 p-4">
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <Skeleton className="h-4 w-2/3" />
+                    <Skeleton className="h-3 w-1/2" />
+                    <Skeleton className="h-3 w-1/3" />
+                  </div>
+                  <Skeleton className="h-4 w-24" />
+                </div>
+              ))}
+            </div>
           ) : notas.length === 0 ? (
             <EstadoVazio
               tamanho="compacto"
@@ -383,18 +397,20 @@ export default function FinConsultaNFeEntrada() {
               descricao="Ative o webhook no provedor de DFe (Configuração NF-e) ou importe um XML para começar."
             />
           ) : (
-            <div className="max-h-[26rem] divide-y divide-border overflow-y-auto rounded-md border border-border">
+            <div className="max-h-[26rem] divide-y divide-border overflow-y-auto rounded-lg border border-border">
               {notas.map((n) => (
                 <div key={n.id} className="flex flex-wrap items-start justify-between gap-3 p-4 text-sm">
                   <div className="min-w-0 flex-1">
-                    <p className="flex flex-wrap items-center gap-2 font-semibold text-foreground">
-                      <FileText className="h-4 w-4 text-muted-foreground" />
+                    {/* div, não p: o Badge renderiza uma div, e div dentro de p é
+                        aninhamento inválido — o React avisava no console. */}
+                    <div className="flex flex-wrap items-center gap-2 font-semibold text-foreground">
+                      <FileText className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                       NF-e {n.numero ?? "s/nº"}{n.serie ? ` · série ${n.serie}` : ""} — {n.emitente_nome ?? "emitente não lido"}
                       {n.situacao === "cancelada" && <Badge variant="danger">Cancelada</Badge>}
                       {n.situacao === "resumo" && <Badge variant="warning">Aguardando XML completo</Badge>}
                       {n.lancamento_id && <Badge variant="success">Conta a Pagar gerada</Badge>}
                       <Badge variant="muted">{n.origem === "webhook" ? "Automática" : "Importada"}</Badge>
-                    </p>
+                    </div>
                     <p className="mt-1 font-mono text-xs text-muted-foreground">{n.chave}</p>
                     <p className="text-xs text-muted-foreground">
                       {[n.emitente_cnpj, n.data_emissao ? new Date(n.data_emissao + "T12:00:00").toLocaleDateString("pt-BR") : null,
@@ -404,10 +420,10 @@ export default function FinConsultaNFeEntrada() {
                   <div className="shrink-0 space-y-2 text-right">
                     <p className="font-semibold tabular-nums">{brl(n.valor_total)}</p>
                     <div className="flex flex-wrap items-center justify-end gap-2">
-                      <Button size="sm" variant="ghost" onClick={() => baixarXml(n)}
+                      <Button size="icon-sm" variant="ghost" onClick={() => baixarXml(n)}
                         aria-label={`Baixar o XML da NF-e ${n.numero ?? n.chave}`}
                         title="Baixar o XML da nota">
-                        <Download className="h-4 w-4" />
+                        <Download aria-hidden="true" />
                       </Button>
                       <Button size="sm" variant="ghost"
                         title="Preencher a manifestação abaixo com esta chave"
@@ -419,8 +435,8 @@ export default function FinConsultaNFeEntrada() {
                           disabled={gerandoId === n.id}
                           onClick={() => gerarContaAPagar(n)}>
                           {gerandoId === n.id
-                            ? <Loader2 className="h-4 w-4 animate-spin" />
-                            : <Receipt className="h-4 w-4" />}
+                            ? <Loader2 className="animate-spin" aria-hidden="true" />
+                            : <Receipt aria-hidden="true" />}
                           Gerar Conta a Pagar
                         </Button>
                       )}
@@ -434,7 +450,7 @@ export default function FinConsultaNFeEntrada() {
       </Card>
 
       <Alert variant="info">
-        <AlertCircle className="h-4 w-4" />
+        <AlertCircle className="h-4 w-4" aria-hidden="true" />
         <AlertTitle>Manifestação do destinatário</AlertTitle>
         <AlertDescription>
           Registre Ciência, Confirmação, Desconhecimento ou Operação Não Realizada para NF-e recebidas.
@@ -444,7 +460,7 @@ export default function FinConsultaNFeEntrada() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Inbox className="h-5 w-5" /> Nova manifestação</CardTitle>
+          <CardTitle className="flex items-center gap-2"><Inbox className="h-5 w-5" aria-hidden="true" /> Nova manifestação</CardTitle>
           <CardDescription>Informe a chave de 44 dígitos da NF-e recebida.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -503,7 +519,7 @@ export default function FinConsultaNFeEntrada() {
           )}
           <div className="flex flex-wrap gap-2">
             <Button onClick={manifestar} disabled={loading}>
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+              {loading ? <Loader2 className="animate-spin" aria-hidden="true" /> : <CheckCircle2 aria-hidden="true" />}
               {loading ? "Registrando…" : "Registrar manifestação"}
             </Button>
           </div>
@@ -517,7 +533,19 @@ export default function FinConsultaNFeEntrada() {
         </CardHeader>
         <CardContent>
           {loadingList ? (
-            <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+            // Espera na forma da tabela — linhas de 48px —, não um spinner no
+            // centro (Design System v3).
+            <div role="status" aria-label="Carregando manifestações" className="overflow-hidden rounded-lg border border-border">
+              <div className="flex flex-col gap-px bg-border">
+                {Array.from({ length: 4 }, (_, i) => (
+                  <div key={i} className="flex items-center gap-4 bg-card px-4 py-3">
+                    <Skeleton className="h-4 w-28" />
+                    <Skeleton className="h-4 w-1/3" />
+                    <Skeleton className="ml-auto h-4 w-24" />
+                  </div>
+                ))}
+              </div>
+            </div>
           ) : historico.length === 0 ? (
             <EstadoVazio
               tamanho="compacto"
@@ -526,7 +554,7 @@ export default function FinConsultaNFeEntrada() {
               descricao="As manifestações enviadas à SEFAZ aparecem aqui com evento, protocolo e origem."
             />
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto rounded-lg border border-border">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -541,7 +569,7 @@ export default function FinConsultaNFeEntrada() {
                 <TableBody>
                   {historico.map(m => (
                     <TableRow key={m.id}>
-                      <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
+                      <TableCell className="whitespace-nowrap text-muted-foreground">
                         {new Date(m.data_manifestacao).toLocaleString("pt-BR")}
                       </TableCell>
                       <TableCell className="font-mono text-xs">{m.chave_nfe}</TableCell>
@@ -550,7 +578,7 @@ export default function FinConsultaNFeEntrada() {
                           {TIPO_LABEL[m.tipo] || m.tipo}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-sm">{m.motivo || "—"}</TableCell>
+                      <TableCell>{m.motivo || "—"}</TableCell>
                       <TableCell className="whitespace-nowrap font-mono text-xs">{m.protocolo || "—"}</TableCell>
                       <TableCell className="whitespace-nowrap">
                         <Badge variant={m.automatica ? "info" : "muted"}>

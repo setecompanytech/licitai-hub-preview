@@ -1,13 +1,12 @@
 import { useMemo } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import ValorDeCartao from "./ValorDeCartao";
 import { useEmpresaId } from "@/hooks/useFinanceiro";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from "recharts";
-import { Target } from "lucide-react";
-
-const KPI_VALOR = "mt-1 text-[2rem] leading-10 font-bold tabular-nums truncate";
+import { Target, TrendingDown, TrendingUp } from "lucide-react";
 
 export default function FinPrevistoRealizado() {
   const empresaId = useEmpresaId();
@@ -62,11 +61,11 @@ export default function FinPrevistoRealizado() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Target className="w-5 h-5 text-muted-foreground" aria-hidden="true" /> Previsto × Realizado — {new Date().getFullYear()}
+            <Target className="h-5 w-5 text-muted-foreground" aria-hidden="true" /> Previsto × Realizado — {new Date().getFullYear()}
           </CardTitle>
-          <p className="text-sm text-muted-foreground">
+          <CardDescription>
             Compara o que foi planejado (previsto) com o efetivamente realizado em cada mês do ano corrente.
-          </p>
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -74,19 +73,38 @@ export default function FinPrevistoRealizado() {
           ) : (
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={meses}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                  <XAxis dataKey="mes" className="text-xs" />
-                  <YAxis className="text-xs" tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} />
+                <BarChart data={meses} barGap={2}>
+                  {/* Grade e eixos recessivos, nos tokens do tema — `className`
+                      no CartesianGrid não pintava nada: as linhas trazem o
+                      próprio `stroke` e ignoravam a classe do grupo. */}
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                  <XAxis
+                    dataKey="mes"
+                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+                    axisLine={{ stroke: "hsl(var(--border))" }}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={(v) => `${(v/1000).toFixed(0)}k`}
+                  />
                   <Tooltip
                     formatter={(v: number) => `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
                     contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 10, color: "hsl(var(--foreground))" }}
                   />
                   <Legend wrapperStyle={{ fontSize: 12 }} />
-                  <Bar dataKey="receitaPrev" name="Receita prevista" fill="hsl(var(--success) / 0.4)" />
-                  <Bar dataKey="receitaReal" name="Receita realizada" fill="hsl(var(--success))" />
-                  <Bar dataKey="despesaPrev" name="Despesa prevista" fill="hsl(var(--destructive) / 0.4)" />
-                  <Bar dataKey="despesaReal" name="Despesa realizada" fill="hsl(var(--destructive))" />
+                  {/* Quatro séries, quatro cores de token distintas (validadas
+                      para daltonismo e contraste nos dois temas): o previsto
+                      é informativo (azul) e violeta; o realizado leva a tinta
+                      da receita (verde) e da despesa (vermelho). O alfa
+                      composto na mão (`/ 0.4`) deixava duas séries com a
+                      mesma cor na legenda. */}
+                  <Bar dataKey="receitaPrev" name="Receita prevista" fill="hsl(var(--info))" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="receitaReal" name="Receita realizada" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="despesaPrev" name="Despesa prevista" fill="hsl(var(--chart-5))" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="despesaReal" name="Despesa realizada" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -94,25 +112,49 @@ export default function FinPrevistoRealizado() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card><CardContent className="p-6">
-          <p className="text-sm font-medium text-muted-foreground">Receita prevista</p>
-          <p className={KPI_VALOR}>R$ {totalRecPrev.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}</p>
-        </CardContent></Card>
-        <Card><CardContent className="p-6">
-          <p className="text-sm font-medium text-muted-foreground">Receita realizada</p>
-          <p className={`${KPI_VALOR} text-success`}>R$ {totalRecReal.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}</p>
+      {/* Os quatro totais no cartão KPI do Design System v3 (112px): rótulo em
+          cima, ícone num ladrilho tingido à direita, valor 28/36 que encolhe em
+          vez de quebrar. Previsto em azul informativo; realizado na tinta da
+          receita (verde) ou da despesa (vermelho). */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Card className="flex min-h-[112px] flex-col justify-between gap-2 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <p className="min-w-0 truncate text-sm font-medium leading-5 text-muted-foreground">Receita prevista</p>
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-info-tint text-info-ink">
+              <TrendingUp className="h-4 w-4" aria-hidden="true" />
+            </span>
+          </div>
+          <ValorDeCartao valor={`R$ ${totalRecPrev.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`} className="text-foreground" />
+        </Card>
+        <Card className="flex min-h-[112px] flex-col justify-between gap-2 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <p className="min-w-0 truncate text-sm font-medium leading-5 text-muted-foreground">Receita realizada</p>
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-success-tint text-success-ink">
+              <TrendingUp className="h-4 w-4" aria-hidden="true" />
+            </span>
+          </div>
+          <ValorDeCartao valor={`R$ ${totalRecReal.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`} className="text-success-ink" />
           <p className="text-xs text-muted-foreground mt-1 tabular-nums">{totalRecPrev ? ((totalRecReal/totalRecPrev)*100).toFixed(1) : 0}% da meta</p>
-        </CardContent></Card>
-        <Card><CardContent className="p-6">
-          <p className="text-sm font-medium text-muted-foreground">Despesa prevista</p>
-          <p className={KPI_VALOR}>R$ {totalDespPrev.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}</p>
-        </CardContent></Card>
-        <Card><CardContent className="p-6">
-          <p className="text-sm font-medium text-muted-foreground">Despesa realizada</p>
-          <p className={`${KPI_VALOR} text-destructive`}>R$ {totalDespReal.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}</p>
+        </Card>
+        <Card className="flex min-h-[112px] flex-col justify-between gap-2 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <p className="min-w-0 truncate text-sm font-medium leading-5 text-muted-foreground">Despesa prevista</p>
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-info-tint text-info-ink">
+              <TrendingDown className="h-4 w-4" aria-hidden="true" />
+            </span>
+          </div>
+          <ValorDeCartao valor={`R$ ${totalDespPrev.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`} className="text-foreground" />
+        </Card>
+        <Card className="flex min-h-[112px] flex-col justify-between gap-2 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <p className="min-w-0 truncate text-sm font-medium leading-5 text-muted-foreground">Despesa realizada</p>
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-destructive-tint text-destructive-ink">
+              <TrendingDown className="h-4 w-4" aria-hidden="true" />
+            </span>
+          </div>
+          <ValorDeCartao valor={`R$ ${totalDespReal.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`} className="text-destructive-ink" />
           <p className="text-xs text-muted-foreground mt-1 tabular-nums">{totalDespPrev ? ((totalDespReal/totalDespPrev)*100).toFixed(1) : 0}% do orçado</p>
-        </CardContent></Card>
+        </Card>
       </div>
     </div>
   );

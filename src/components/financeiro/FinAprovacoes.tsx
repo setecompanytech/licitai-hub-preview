@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MoneyInput } from "@/components/ui/money-input";
 import { Skeleton } from "@/components/ui/skeleton";
+import EstadoVazio from "@/components/shared/EstadoVazio";
 import { ShieldCheck, Check, X, Loader2, ShieldAlert, CheckCircle2 } from "lucide-react";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useMembroPermissoes } from "@/hooks/useMembroPermissoes";
@@ -168,17 +169,17 @@ export default function FinAprovacoes() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <ShieldCheck className="w-5 h-5 text-primary" aria-hidden="true" /> Aprovação de Pagamentos
+            <ShieldCheck className="h-5 w-5 text-muted-foreground" aria-hidden="true" /> Aprovação de Pagamentos
           </CardTitle>
-          <p className="text-sm text-muted-foreground">
+          <CardDescription>
             Com o workflow ligado, a <b>baixa manual</b> de contas a pagar exige aprovação — a trava é no
             banco e vale em todas as telas. Conciliação bancária não é barrada: o extrato prova que o
             dinheiro saiu, e registrar o fato não é autorizá-lo.
-          </p>
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Configuração — política da empresa, decidida pelo admin */}
-          <div className="rounded-lg border border-border bg-muted p-4 flex flex-col lg:flex-row lg:items-end gap-4">
+          <div className="flex flex-col gap-4 rounded-lg border border-border bg-secondary p-4 lg:flex-row lg:items-end">
             <div className="flex items-start gap-3 flex-1">
               <Switch
                 id="wf-ativo"
@@ -196,11 +197,11 @@ export default function FinAprovacoes() {
               </div>
             </div>
             <div className="flex flex-wrap items-end gap-3">
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label htmlFor="wf-limite">Limite da equipe (R$)</Label>
                 <MoneyInput id="wf-limite" value={cfgLimite} onValueChange={setCfgLimite} disabled={!podeConfigurar} className="w-40" />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label htmlFor="wf-janela">Janela (dias)</Label>
                 <Input id="wf-janela" type="number" min={1} max={365} value={cfgJanela} onChange={e => setCfgJanela(e.target.value)}
                   disabled={!podeConfigurar} className="w-24" />
@@ -215,43 +216,39 @@ export default function FinAprovacoes() {
           </div>
 
           {!config?.ativo ? (
-            <div className="flex flex-col items-center rounded-lg border border-dashed border-border py-12 px-6 text-center">
-              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
-                <ShieldAlert className="w-6 h-6" aria-hidden="true" />
-              </span>
-              <p className="mt-3 text-lg font-semibold">Workflow desligado</p>
-              <p className="mt-1 max-w-md text-sm text-muted-foreground">
-                As baixas acontecem sem aprovação, como sempre. Ligue o interruptor acima para ativar a
-                trava de alçada nesta empresa.
-              </p>
+            <div className="rounded-lg border border-dashed border-border">
+              <EstadoVazio
+                icone={<ShieldAlert />}
+                titulo="Workflow desligado"
+                descricao="As baixas acontecem sem aprovação, como sempre. Ligue o interruptor acima para ativar a trava de alçada nesta empresa."
+              />
             </div>
           ) : (
             <>
-              <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-muted p-4">
-                <span className="text-sm">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-secondary px-4 py-3">
+                <span className="text-sm text-muted-foreground">
                   Aguardando aprovação (vencimentos até {config.janela_dias} dias):
                 </span>
-                <span className="font-semibold tabular-nums text-right">
+                <span className="text-right font-semibold tabular-nums text-foreground">
                   {pendentes.filter(p => p.aprovacao_status !== "rejeitado").length} · {fmt(totalPendente)}
                 </span>
               </div>
 
               <div className="rounded-lg border border-border max-h-[480px] overflow-y-auto">
                 {pendentes.length === 0 ? (
-                  <div className="flex flex-col items-center py-12 px-6 text-center">
-                    <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
-                      <CheckCircle2 className="w-6 h-6" aria-hidden="true" />
-                    </span>
-                    <p className="mt-3 text-lg font-semibold">Nada aguardando aprovação</p>
-                    <p className="mt-1 max-w-md text-sm text-muted-foreground">Nenhum pagamento pendente na janela configurada.</p>
-                  </div>
+                  <EstadoVazio
+                    tamanho="compacto"
+                    icone={<CheckCircle2 />}
+                    titulo="Nada aguardando aprovação"
+                    descricao="Nenhum pagamento pendente na janela configurada."
+                  />
                 ) : (
                   pendentes.map(l => {
                     const acimaDoLimite = l.valor > limite;
                     const rejeitado = l.aprovacao_status === "rejeitado";
                     const podeDecidir = podeConfigurar || (isFinanceiro && !acimaDoLimite);
                     return (
-                      <div key={l.id} className={`flex flex-wrap items-center gap-3 p-4 border-b border-border last:border-b-0 ${rejeitado ? "bg-destructive-tint" : ""}`}>
+                      <div key={l.id} className={`flex flex-wrap items-center gap-3 border-b border-border px-4 py-3 last:border-b-0 ${rejeitado ? "bg-destructive-tint" : ""}`}>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">{l.descricao || "(sem descrição)"}</p>
                           <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -272,14 +269,18 @@ export default function FinAprovacoes() {
                             title="Rejeitar (devolve para revisão com motivo — não cancela o título)"
                             disabled={!podeDecidir || agindo === l.id}
                             onClick={() => { setRejeitando(l); setMotivo(""); }}>
-                            <X className="w-4 h-4" /> Rejeitar
+                            <X aria-hidden="true" /> Rejeitar
                           </Button>
-                          <Button size="sm"
+                          {/* Contorno com a tinta de sucesso, como o "marcar pago" do
+                              quadro: o verde sólido é de UMA ação por contexto, e uma
+                              fila com vinte linhas viraria vinte botões verdes. */}
+                          <Button size="sm" variant="outline"
+                            className="text-success-ink hover:bg-success-tint hover:text-success-ink"
                             aria-label="Aprovar pagamento"
                             title={podeDecidir ? "Aprovar — libera a baixa" : "Alçada insuficiente para este valor"}
                             disabled={!podeDecidir || agindo === l.id}
                             onClick={() => decidir(l, "aprovar")}>
-                            {agindo === l.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} Aprovar
+                            {agindo === l.id ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Check aria-hidden="true" />} Aprovar
                           </Button>
                         </div>
                       </div>
@@ -300,7 +301,7 @@ export default function FinAprovacoes() {
                   <div className="space-y-1">
                     {trilha.map(t => (
                       <p key={t.id} className="text-xs text-muted-foreground truncate">
-                        <span className={t.acao === "aprovado" ? "text-success font-semibold" : "text-destructive font-semibold"}>
+                        <span className={t.acao === "aprovado" ? "font-semibold text-success-ink" : "font-semibold text-destructive-ink"}>
                           {t.acao === "aprovado" ? "Aprovado" : "Rejeitado"}
                         </span>{" · "}
                         {new Date(t.criado_em).toLocaleString("pt-BR")} · {fmt(Number(t.valor) || 0)} · {t.descricao || "—"}
@@ -326,19 +327,19 @@ export default function FinAprovacoes() {
                 A rejeição devolve a conta para revisão com o motivo abaixo. O título continua vivo —
                 nada é cancelado.
               </p>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label htmlFor="wf-motivo">Motivo *</Label>
                 <Textarea id="wf-motivo" rows={3} value={motivo} onChange={e => setMotivo(e.target.value)}
                   placeholder="Ex.: valor diverge do boleto; fornecedor pendente de regularização…" />
                 {motivo.trim().length > 0 && motivo.trim().length < 4 && (
-                  <p className="text-xs text-destructive">Informe ao menos 4 caracteres.</p>
+                  <p className="text-xs text-destructive-ink">Informe ao menos 4 caracteres.</p>
                 )}
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setRejeitando(null)}>Cancelar</Button>
                 <Button variant="destructive" disabled={motivo.trim().length < 4 || agindo === rejeitando.id}
                   onClick={() => decidir(rejeitando, "rejeitar", motivo.trim())}>
-                  {agindo === rejeitando.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
+                  {agindo === rejeitando.id ? <Loader2 className="animate-spin" aria-hidden="true" /> : <X aria-hidden="true" />}
                   Rejeitar
                 </Button>
               </DialogFooter>

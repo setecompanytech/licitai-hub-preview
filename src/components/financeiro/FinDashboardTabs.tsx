@@ -7,17 +7,19 @@ import FinCFODashboard from "./FinCFODashboard";
 export default function FinDashboardTabs() {
   return (
     <Tabs defaultValue="cfo" className="space-y-4">
+      {/* Abas sublinhadas do Design System v3 — o gatilho já traz o espaço
+          entre ícone (16px) e rótulo. */}
       <TabsList>
         <TabsTrigger value="cfo">
-          <Activity className="w-4 h-4 mr-2" aria-hidden="true" />
+          <Activity className="h-4 w-4" aria-hidden="true" />
           CFO
         </TabsTrigger>
         <TabsTrigger value="executivo">
-          <BarChart3 className="w-4 h-4 mr-2" aria-hidden="true" />
+          <BarChart3 className="h-4 w-4" aria-hidden="true" />
           Executivo
         </TabsTrigger>
         <TabsTrigger value="operacional">
-          <LayoutDashboard className="w-4 h-4 mr-2" aria-hidden="true" />
+          <LayoutDashboard className="h-4 w-4" aria-hidden="true" />
           Operacional
         </TabsTrigger>
       </TabsList>
