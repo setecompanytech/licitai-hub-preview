@@ -11,8 +11,9 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Skeleton } from '@/components/ui/skeleton';
 import EstadoVazio from '@/components/shared/EstadoVazio';
 import { Loader2, DollarSign, Check, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -321,23 +322,38 @@ export default function FinPedidosAFaturar() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-        <p className="text-sm text-muted-foreground">Total pendente</p>
-        <ValorDeCartao valor={fmt(total)} className="text-foreground" />
-        <p className="text-xs text-muted-foreground">
-          {rows.length} pedido{rows.length === 1 ? '' : 's'} aguardando faturamento
-        </p>
-        {jaLancados.qtd > 0 && (
-          <p className="mt-2 text-xs text-muted-foreground">
-            Fora da lista: {jaLancados.qtd} pedido{jaLancados.qtd === 1 ? '' : 's'} ({fmt(jaLancados.total)}) já
-            {jaLancados.qtd === 1 ? ' tem' : ' têm'} título em Contas a Receber — faturar de novo duplicaria o recebível.
+      {/* Cartão KPI do Design System v3: rótulo em cima, ícone num ladrilho
+          neutro à direita, valor 28/36 e a linha de contexto embaixo. */}
+      <div className="flex min-h-[112px] flex-col justify-between gap-2 rounded-lg border border-border bg-card p-4 shadow-sm">
+        <div className="flex items-start justify-between gap-3">
+          <p className="min-w-0 truncate text-sm font-medium leading-5 text-muted-foreground">Total pendente</p>
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+            <DollarSign className="h-4 w-4" aria-hidden="true" />
+          </span>
+        </div>
+        <div className="min-w-0">
+          <ValorDeCartao valor={fmt(total)} className="text-foreground" />
+          <p className="mt-0.5 text-xs leading-4 text-muted-foreground">
+            {rows.length} pedido{rows.length === 1 ? '' : 's'} aguardando faturamento
           </p>
-        )}
+          {jaLancados.qtd > 0 && (
+            <p className="mt-2 text-xs leading-4 text-muted-foreground">
+              Fora da lista: {jaLancados.qtd} pedido{jaLancados.qtd === 1 ? '' : 's'} ({fmt(jaLancados.total)}) já
+              {jaLancados.qtd === 1 ? ' tem' : ' têm'} título em Contas a Receber — faturar de novo duplicaria o recebível.
+            </p>
+          )}
+        </div>
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-12" role="status" aria-label="Carregando pedidos">
-          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" aria-hidden="true" />
+        // Espera na forma da tabela, não um spinner no centro (DS v3).
+        <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm" role="status" aria-label="Carregando pedidos">
+          <div className="flex flex-col gap-px bg-border">
+            <div className="flex items-center gap-4 bg-card px-4 py-3"><Skeleton className="h-4 w-1/4" /><Skeleton className="h-4 w-1/3" /><Skeleton className="ml-auto h-4 w-16" /></div>
+            <div className="flex items-center gap-4 bg-card px-4 py-3"><Skeleton className="h-4 w-1/4" /><Skeleton className="h-4 w-1/3" /><Skeleton className="ml-auto h-4 w-16" /></div>
+            <div className="flex items-center gap-4 bg-card px-4 py-3"><Skeleton className="h-4 w-1/4" /><Skeleton className="h-4 w-1/3" /><Skeleton className="ml-auto h-4 w-16" /></div>
+            <div className="flex items-center gap-4 bg-card px-4 py-3"><Skeleton className="h-4 w-1/4" /><Skeleton className="h-4 w-1/3" /><Skeleton className="ml-auto h-4 w-16" /></div>
+          </div>
         </div>
       ) : rows.length === 0 ? (
         <EstadoVazio
@@ -436,13 +452,13 @@ export default function FinPedidosAFaturar() {
       <Dialog open={!!faturando} onOpenChange={v => { if (!v) { setFaturando(null); setContaId(''); setParcelas('1'); } }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-lg font-semibold">
-              <DollarSign className="w-5 h-5 text-muted-foreground" aria-hidden="true" /> Lançar Conta a Receber
+            <DialogTitle className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5 text-muted-foreground" aria-hidden="true" /> Lançar Conta a Receber
             </DialogTitle>
           </DialogHeader>
           {faturando && (
             <div className="space-y-4 py-1">
-              <div className="rounded-md border border-border bg-muted p-3 text-sm space-y-1">
+              <div className="space-y-1 rounded-md border border-border bg-secondary p-3 text-sm">
                 <div className="flex justify-between gap-4">
                   <span className="text-muted-foreground">Pedido</span>
                   <span className="font-medium">{faturando.numero_pedido}</span>
@@ -455,12 +471,12 @@ export default function FinPedidosAFaturar() {
                 )}
                 <div className="flex justify-between gap-4">
                   <span className="text-muted-foreground">Valor total</span>
-                  <span className="font-bold tabular-nums text-foreground">{fmt(faturando.valor_total)}</span>
+                  <span className="font-semibold tabular-nums text-foreground">{fmt(faturando.valor_total)}</span>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="pedido-conta-destino" className="text-sm">Conta destino *</Label>
+                <Label htmlFor="pedido-conta-destino">Conta destino *</Label>
                 <Select value={contaId} onValueChange={setContaId}>
                   <SelectTrigger id="pedido-conta-destino">
                     <SelectValue placeholder="Selecione a conta bancária..." />
@@ -474,7 +490,7 @@ export default function FinPedidosAFaturar() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="pedido-parcelas" className="text-sm">Número de parcelas</Label>
+                <Label htmlFor="pedido-parcelas">Número de parcelas</Label>
                 <Input
                   id="pedido-parcelas"
                   type="number" min="1" max="60"
@@ -488,12 +504,13 @@ export default function FinPedidosAFaturar() {
                 )}
               </div>
 
-              <div className="flex flex-wrap justify-end gap-2 pt-1">
-                <Button variant="outline" size="sm" onClick={() => { setFaturando(null); }}>
+              {/* Rodapé padrão de modal: Cancelar em outline, a ação principal
+                  por último em verde, tudo de 40px e alinhado à direita. */}
+              <DialogFooter className="pt-1">
+                <Button variant="outline" onClick={() => { setFaturando(null); }}>
                   Cancelar
                 </Button>
                 <Button
-                  size="sm"
                   variant="outline"
                   disabled={!contaId || saving}
                   onClick={() => handleFaturar(false)}
@@ -504,7 +521,6 @@ export default function FinPedidosAFaturar() {
                   Gerar {parseInt(parcelas) > 1 ? `${parcelas} parcelas` : 'conta'}
                 </Button>
                 <Button
-                  size="sm"
                   disabled={!contaId || saving}
                   onClick={() => handleFaturar(true)}
                   title="Cria a conta a receber e abre o Emissor com os dados do pedido carregados"
@@ -514,7 +530,7 @@ export default function FinPedidosAFaturar() {
                     : <ExternalLink aria-hidden="true" />}
                   Faturar e emitir NF-e
                 </Button>
-              </div>
+              </DialogFooter>
             </div>
           )}
         </DialogContent>

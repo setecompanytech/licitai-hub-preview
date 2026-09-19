@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import ValorDeCartao from './ValorDeCartao';
 import { useResumoFinanceiro, useResumoVisorFinanceiro, useProximasMovimentacoes } from '@/hooks/useFinanceiro';
 import { formatBRL, formatDate, statusLabel, tipoLabel } from '@/lib/financeiro/formatters';
 import FinConferencia from './FinConferencia';
@@ -113,17 +114,22 @@ export default function FinPainelInicial({ onNavigate }: Props) {
     },
   ];
 
+  // Texto colorido só na tinta `*-ink` — a cor cheia é para ícone e barra.
   const TOM_TEXTO: Record<string, string> = {
     neutro: 'text-foreground',
-    success: 'text-success',
-    destructive: 'text-destructive',
-    warning: 'text-warning',
+    success: 'text-success-ink',
+    destructive: 'text-destructive-ink',
+    warning: 'text-warning-ink',
   };
 
   return (
     <div className="space-y-4">
-      {/* ============ Faixa de KPIs ============ */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      {/* ============ Faixa de KPIs ============
+          Cartão KPI do Design System v3 (112px, rótulo em cima, valor embaixo,
+          linha de contexto). Seis numa fileira só a partir de `xl`; o valor é o
+          `ValorDeCartao` compacto, que encolhe com o comprimento em vez de
+          quebrar ou estourar o cartão. */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 [&>*]:min-w-0">
         {kpis.map((k) => (
           <button
             key={k.rotulo}
@@ -131,19 +137,19 @@ export default function FinPainelInicial({ onNavigate }: Props) {
             disabled={!k.onClick}
             onClick={k.onClick}
             className={cn(
-              'min-w-0 rounded-lg border border-border bg-card p-3 text-left transition-colors',
-              k.onClick && 'hover:border-primary/40 hover:bg-primary-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+              'flex min-h-[112px] min-w-0 flex-col justify-between gap-2 rounded-lg border border-border bg-card p-4 text-left shadow-sm transition-[border-color,box-shadow] duration-150',
+              k.onClick && 'hover:border-primary/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
             )}
           >
-            <p className="truncate text-xs font-medium text-muted-foreground">{k.rotulo}</p>
-            {carregandoResumo || carregandoVisor ? (
-              <Skeleton className="mt-1.5 h-6 w-3/4" />
-            ) : (
-              <p className={cn('mt-0.5 truncate text-xl font-bold tabular-nums', TOM_TEXTO[k.tom])}>
-                {formatBRL(k.valor)}
-              </p>
-            )}
-            <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{k.sub}</p>
+            <p className="truncate text-sm font-medium leading-5 text-muted-foreground">{k.rotulo}</p>
+            <span className="block min-w-0">
+              {carregandoResumo || carregandoVisor ? (
+                <Skeleton className="h-8 w-3/4" />
+              ) : (
+                <ValorDeCartao valor={formatBRL(k.valor)} compacto className={cn('mt-0', TOM_TEXTO[k.tom])} />
+              )}
+              <span className="mt-0.5 block truncate text-xs leading-4 text-muted-foreground">{k.sub}</span>
+            </span>
           </button>
         ))}
       </div>
@@ -152,7 +158,7 @@ export default function FinPainelInicial({ onNavigate }: Props) {
       <div className="grid gap-3 lg:grid-cols-[2fr_1fr] [&>*]:min-w-0">
         <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
           <div className="mb-2 flex items-center justify-between gap-3">
-            <h3 className="text-[15px] font-semibold text-foreground">Fluxo de caixa</h3>
+            <h3 className="text-base font-semibold leading-6 text-foreground">Fluxo de caixa</h3>
             <span className="text-xs text-muted-foreground">Entradas e saídas por mês</span>
           </div>
           {carregandoResumo ? (
@@ -182,7 +188,7 @@ export default function FinPainelInicial({ onNavigate }: Props) {
 
         <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 shadow-sm">
           <div className="flex items-center justify-between gap-3">
-            <h3 className="text-[15px] font-semibold text-foreground">Hoje e próximos dias</h3>
+            <h3 className="text-base font-semibold leading-6 text-foreground">Hoje e próximos dias</h3>
             <span className="text-xs text-muted-foreground">{formatDate(new Date())}</span>
           </div>
 
@@ -197,9 +203,9 @@ export default function FinPainelInicial({ onNavigate }: Props) {
               <button
                 type="button"
                 onClick={() => onNavigate('a_receber')}
-                className="flex items-center gap-3 rounded-lg border border-border p-3 text-left transition-colors hover:border-primary/40 hover:bg-primary-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="flex items-center gap-3 rounded-md border border-border p-3 text-left transition-colors duration-150 hover:border-primary/40 hover:bg-primary-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <ArrowDownCircle className="h-4 w-4 shrink-0 text-success" aria-hidden="true" />
+                <ArrowDownCircle className="h-4 w-4 shrink-0 text-success-ink" aria-hidden="true" />
                 <div className="min-w-0 flex-1">
                   <p className="text-xs text-muted-foreground">Receber hoje</p>
                   <p className="truncate text-sm font-semibold tabular-nums text-foreground">{formatBRL(visor?.hojeReceber.total ?? 0)}</p>
@@ -210,9 +216,9 @@ export default function FinPainelInicial({ onNavigate }: Props) {
               <button
                 type="button"
                 onClick={() => onNavigate('a_pagar')}
-                className="flex items-center gap-3 rounded-lg border border-border p-3 text-left transition-colors hover:border-primary/40 hover:bg-primary-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="flex items-center gap-3 rounded-md border border-border p-3 text-left transition-colors duration-150 hover:border-primary/40 hover:bg-primary-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <ArrowUpCircle className="h-4 w-4 shrink-0 text-destructive" aria-hidden="true" />
+                <ArrowUpCircle className="h-4 w-4 shrink-0 text-destructive-ink" aria-hidden="true" />
                 <div className="min-w-0 flex-1">
                   <p className="text-xs text-muted-foreground">Pagar hoje</p>
                   <p className="truncate text-sm font-semibold tabular-nums text-foreground">{formatBRL(visor?.hojePagar.total ?? 0)}</p>
@@ -223,7 +229,7 @@ export default function FinPainelInicial({ onNavigate }: Props) {
               <button
                 type="button"
                 onClick={() => onNavigate('calendario_financeiro')}
-                className="flex items-center gap-3 rounded-lg border border-border p-3 text-left transition-colors hover:border-primary/40 hover:bg-primary-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="flex items-center gap-3 rounded-md border border-border p-3 text-left transition-colors duration-150 hover:border-primary/40 hover:bg-primary-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <CalendarClock className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                 <div className="min-w-0 flex-1">
@@ -253,7 +259,7 @@ export default function FinPainelInicial({ onNavigate }: Props) {
       <div className="grid gap-3 lg:grid-cols-[2fr_1fr] [&>*]:min-w-0">
         <div className="rounded-lg border border-border bg-card shadow-sm">
           <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
-            <h3 className="text-[15px] font-semibold text-foreground">Próximas movimentações</h3>
+            <h3 className="text-base font-semibold leading-6 text-foreground">Próximas movimentações</h3>
             <Button variant="ghost" size="sm" onClick={() => onNavigate('lancamentos')}>
               Ver todos <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
             </Button>
@@ -269,28 +275,28 @@ export default function FinPainelInicial({ onNavigate }: Props) {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
-                    <th className="px-4 py-2 font-medium">Data</th>
-                    <th className="px-4 py-2 font-medium">Descrição</th>
-                    <th className="px-4 py-2 font-medium">Tipo</th>
-                    <th className="px-4 py-2 text-right font-medium">Valor</th>
-                    <th className="px-4 py-2 font-medium">Status</th>
+                <thead className="bg-secondary">
+                  <tr className="border-b border-border text-left text-xs font-semibold tracking-wide text-muted-foreground">
+                    <th className="h-11 px-4 font-semibold">Data</th>
+                    <th className="h-11 px-4 font-semibold">Descrição</th>
+                    <th className="h-11 px-4 font-semibold">Tipo</th>
+                    <th className="h-11 px-4 text-right font-semibold">Valor</th>
+                    <th className="h-11 px-4 font-semibold">Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {proximas.map((m) => (
-                    <tr key={m.id} className="border-b border-border last:border-0">
-                      <td className="whitespace-nowrap px-4 py-2.5 text-muted-foreground">{formatDate(m.dataVencimento)}</td>
-                      <td className="min-w-0 max-w-[220px] truncate px-4 py-2.5 font-medium text-foreground">{m.descricao}</td>
-                      <td className="whitespace-nowrap px-4 py-2.5 text-muted-foreground">{tipoLabel[m.tipo] ?? m.tipo}</td>
+                    <tr key={m.id} className="border-b border-border transition-colors duration-150 last:border-0 hover:bg-muted/60">
+                      <td className="h-12 whitespace-nowrap px-4 py-2.5 tabular-nums text-muted-foreground">{formatDate(m.dataVencimento)}</td>
+                      <td className="h-12 min-w-0 max-w-[220px] truncate px-4 py-2.5 font-medium text-foreground">{m.descricao}</td>
+                      <td className="h-12 whitespace-nowrap px-4 py-2.5 text-muted-foreground">{tipoLabel[m.tipo] ?? m.tipo}</td>
                       <td className={cn(
-                        'whitespace-nowrap px-4 py-2.5 text-right font-semibold tabular-nums',
-                        m.tipo === 'a_receber' ? 'text-success' : 'text-destructive',
+                        'h-12 whitespace-nowrap px-4 py-2.5 text-right font-semibold tabular-nums',
+                        m.tipo === 'a_receber' ? 'text-success-ink' : 'text-destructive-ink',
                       )}>
                         {m.tipo === 'a_receber' ? '+ ' : '- '}{formatBRL(m.valor)}
                       </td>
-                      <td className="whitespace-nowrap px-4 py-2.5">
+                      <td className="h-12 whitespace-nowrap px-4 py-2.5">
                         <Badge variant={STATUS_VARIANTE[m.status] ?? 'muted'}>{statusLabel[m.status] ?? m.status}</Badge>
                       </td>
                     </tr>
@@ -302,7 +308,7 @@ export default function FinPainelInicial({ onNavigate }: Props) {
         </div>
 
         <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
-          <h3 className="mb-3 text-[15px] font-semibold text-foreground">Ações rápidas</h3>
+          <h3 className="mb-3 text-base font-semibold leading-6 text-foreground">Ações rápidas</h3>
           <div className="grid grid-cols-2 gap-2">
             {ACOES_RAPIDAS.map((a) => (
               <Button
@@ -323,7 +329,7 @@ export default function FinPainelInicial({ onNavigate }: Props) {
       {/* ============ Operação financeira (atalhos do dia a dia) ============ */}
       <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
         <div className="mb-3 flex items-center justify-between gap-3">
-          <h3 className="text-[15px] font-semibold text-foreground">Operação financeira</h3>
+          <h3 className="text-base font-semibold leading-6 text-foreground">Operação financeira</h3>
           <Button variant="ghost" size="sm" onClick={() => onNavigate('panorama')}>
             <LayoutDashboard className="h-3.5 w-3.5" aria-hidden="true" /> Painel completo
           </Button>
@@ -343,7 +349,7 @@ export default function FinPainelInicial({ onNavigate }: Props) {
               key={item.id}
               type="button"
               onClick={() => onNavigate(item.id)}
-              className="flex items-center gap-3 rounded-lg border border-border p-3 text-left transition-colors hover:border-primary/40 hover:bg-primary-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex items-center gap-3 rounded-md border border-border p-3 text-left transition-colors duration-150 hover:border-primary/40 hover:bg-primary-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary-tint text-primary">
                 <item.icon className="h-[18px] w-[18px]" aria-hidden="true" />

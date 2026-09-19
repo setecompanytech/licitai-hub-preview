@@ -46,13 +46,15 @@ function KpiCard({
   status?: "good" | "warn" | "bad" | "neutral";
   icon: React.ElementType;
 }) {
+  // Valor na tinta `*-ink` (legível sobre branco); a cor cheia fica para o
+  // ladrilho do ícone, no par `*-tint`/`*-ink` da mesma família.
   const cor =
     status === "good"
-      ? "text-success"
+      ? "text-success-ink"
       : status === "warn"
-        ? "text-warning"
+        ? "text-warning-ink"
         : status === "bad"
-          ? "text-destructive"
+          ? "text-destructive-ink"
           : "text-foreground";
   const caixa =
     status === "good"
@@ -61,21 +63,21 @@ function KpiCard({
         ? "bg-warning-tint text-warning-ink"
         : status === "bad"
           ? "bg-destructive-tint text-destructive-ink"
-          : "bg-muted text-foreground";
+          : "bg-muted text-muted-foreground";
+  // Cartão KPI do Design System v3: 112px, rótulo em cima com o ícone num
+  // ladrilho tingido à direita, valor 28/36 embaixo e a linha de contexto.
   return (
-    <Card>
-      <CardContent className="p-6">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-muted-foreground">{titulo}</p>
-            <ValorDeCartao valor={valor} sufixo={sufixo} className={cor} />
-            {hint && <p className="text-xs text-muted-foreground mt-1">{hint}</p>}
-          </div>
-          <span className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md ${caixa}`}>
-            <Icon className="w-5 h-5" aria-hidden="true" />
-          </span>
-        </div>
-      </CardContent>
+    <Card className="flex min-h-[112px] flex-col justify-between gap-2 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <p className="min-w-0 truncate text-sm font-medium leading-5 text-muted-foreground">{titulo}</p>
+        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${caixa}`}>
+          <Icon className="h-4 w-4" aria-hidden="true" />
+        </span>
+      </div>
+      <div className="min-w-0">
+        <ValorDeCartao valor={valor} sufixo={sufixo} className={cor} />
+        {hint && <p className="mt-1 text-xs leading-4 text-muted-foreground">{hint}</p>}
+      </div>
     </Card>
   );
 }
@@ -134,12 +136,12 @@ export default function FinCFODashboard() {
     <div className="space-y-6">
       {/* Cabeçalho + IA */}
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold flex items-center gap-2">
-            <Activity className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+        <div className="min-w-0">
+          <h2 className="flex items-center gap-2 text-lg font-semibold leading-6 text-foreground">
+            <Activity className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
             Painel CFO — Visão Executiva
           </h2>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="mt-1 text-sm leading-5 text-muted-foreground">
             Indicadores contábeis e projeção de caixa 90 dias
             {ind.competenciaBp && (
               <> · BP de referência: <strong>{formatDate(ind.competenciaBp)}</strong></>
@@ -176,7 +178,7 @@ export default function FinCFODashboard() {
 
       {/* Linha 1: Rentabilidade */}
       <div>
-        <h3 className="text-lg font-semibold mb-3">Rentabilidade</h3>
+        <h3 className="mb-3 text-base font-semibold leading-6 text-foreground">Rentabilidade</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiCard
             titulo="EBITDA"
@@ -211,7 +213,7 @@ export default function FinCFODashboard() {
 
       {/* Linha 2: Liquidez & Endividamento */}
       <div>
-        <h3 className="text-lg font-semibold mb-3">
+        <h3 className="mb-3 text-base font-semibold leading-6 text-foreground">
           Liquidez & Endividamento
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -250,7 +252,7 @@ export default function FinCFODashboard() {
 
       {/* Linha 3: Retorno & Caixa */}
       <div>
-        <h3 className="text-lg font-semibold mb-3">
+        <h3 className="mb-3 text-base font-semibold leading-6 text-foreground">
           Retorno & Caixa
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -340,16 +342,17 @@ export default function FinCFODashboard() {
 
       {/* Insights IA */}
       {insights && (
-        <Card className="border-primary/40">
+        <Card className="border-primary-line">
           <CardHeader className="pb-2">
-            <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <CardTitle className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+                {/* Sparkles em teal: a marca da Praefectus IA no sistema. */}
+                <Sparkles className="h-5 w-5 text-teal" aria-hidden="true" />
                 Análise Executiva IA
               </CardTitle>
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">Saúde financeira:</span>
-                <span className="text-2xl font-bold tabular-nums text-foreground">{insights.saude_score}</span>
+                <span className="text-2xl font-semibold tabular-nums text-foreground">{insights.saude_score}</span>
                 {nivelBadge(insights.saude_nivel)}
               </div>
             </div>
@@ -357,28 +360,28 @@ export default function FinCFODashboard() {
           <CardContent className="space-y-4">
             <p className="text-base">{insights.resumo}</p>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
-                <h4 className="text-sm font-semibold text-success mb-2 flex items-center gap-1">
-                  <CheckCircle2 className="w-4 h-4" aria-hidden="true" /> Pontos Fortes
+                <h4 className="mb-2 flex items-center gap-1 text-sm font-semibold text-success-ink">
+                  <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> Pontos Fortes
                 </h4>
                 <ul className="space-y-2">
                   {insights.pontos_fortes.map((p, i) => (
-                    <li key={i} className="text-sm flex gap-2">
-                      <span className="text-success mt-0.5" aria-hidden="true">✓</span>
+                    <li key={i} className="flex gap-2 text-sm">
+                      <span className="mt-0.5 text-success-ink" aria-hidden="true">✓</span>
                       <span>{p}</span>
                     </li>
                   ))}
                 </ul>
               </div>
               <div>
-                <h4 className="text-sm font-semibold text-warning mb-2 flex items-center gap-1">
-                  <AlertTriangle className="w-4 h-4" aria-hidden="true" /> Pontos de Atenção
+                <h4 className="mb-2 flex items-center gap-1 text-sm font-semibold text-warning-ink">
+                  <AlertTriangle className="h-4 w-4" aria-hidden="true" /> Pontos de Atenção
                 </h4>
                 <ul className="space-y-2">
                   {insights.pontos_atencao.map((p, i) => (
-                    <li key={i} className="text-sm flex gap-2">
-                      <span className="text-warning mt-0.5" aria-hidden="true">!</span>
+                    <li key={i} className="flex gap-2 text-sm">
+                      <span className="mt-0.5 text-warning-ink" aria-hidden="true">!</span>
                       <span>{p}</span>
                     </li>
                   ))}
@@ -388,16 +391,16 @@ export default function FinCFODashboard() {
 
             {insights.acoes_prioritarias?.length > 0 && (
               <div>
-                <h4 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-1">
-                  <Target className="w-4 h-4" aria-hidden="true" /> Ações Prioritárias (30 dias)
+                <h4 className="mb-2 flex items-center gap-1 text-sm font-semibold text-foreground">
+                  <Target className="h-4 w-4" aria-hidden="true" /> Ações Prioritárias (30 dias)
                 </h4>
                 <div className="space-y-2">
                   {insights.acoes_prioritarias.map((a, i) => (
                     <div
                       key={i}
-                      className="flex items-start gap-3 p-3 rounded-md border border-border bg-muted"
+                      className="flex items-start gap-3 rounded-md border border-border bg-secondary p-3"
                     >
-                      <div className="text-xl font-bold tabular-nums text-foreground leading-none">{i + 1}</div>
+                      <div className="text-xl font-semibold leading-none tabular-nums text-foreground">{i + 1}</div>
                       <div className="flex-1">
                         <p className="text-sm font-medium">{a.titulo}</p>
                         <div className="flex flex-wrap gap-2 mt-1">

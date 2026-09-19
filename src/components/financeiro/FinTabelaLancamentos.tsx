@@ -13,9 +13,10 @@ import { Badge, badgeVariants } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
 import EstadoVazio from "@/components/shared/EstadoVazio";
+import ValorDeCartao from "./ValorDeCartao";
 import {
-  Loader2,
   Plus,
   Search,
   Pencil,
@@ -257,46 +258,78 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
   };
 
   if (isLoading) {
+    // Espera na forma do conteúdo — três cartões e as linhas da tabela —, não
+    // um spinner no centro (Design System v3).
     return (
-      <div role="status" className="flex items-center justify-center py-12">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" aria-hidden="true" />
+      <div role="status" className="space-y-6">
         <span className="sr-only">Carregando lançamentos</span>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <Skeleton className="h-28" />
+          <Skeleton className="h-28" />
+          <Skeleton className="h-28" />
+        </div>
+        <Skeleton className="h-10 w-full" />
+        <Card className="overflow-hidden">
+          <div className="flex flex-col gap-px bg-border">
+            {Array.from({ length: 6 }, (_, i) => (
+              <div key={i} className="flex items-center gap-4 bg-card px-4 py-3">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-1/3" />
+                <Skeleton className="ml-auto h-4 w-20" />
+              </div>
+            ))}
+          </div>
+        </Card>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* Totais */}
+      {/* Totais — os mesmos três números de sempre, no cartão KPI do Design
+          System v3 (112px): rótulo em cima, ícone num ladrilho tingido à
+          direita, valor 28/36 que encolhe em vez de quebrar. */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <Card>
-          <CardContent className="p-6">
-            <p className="text-sm font-medium text-muted-foreground">Total em aberto</p>
-            <p className="mt-1 text-[2rem] font-bold leading-10 tabular-nums text-foreground">
-              {totalAberto.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-            </p>
-          </CardContent>
+        <Card className="flex min-h-[112px] flex-col justify-between gap-2 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <p className="min-w-0 truncate text-sm font-medium leading-5 text-muted-foreground">Total em aberto</p>
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-info-tint text-info-ink">
+              <Clock className="h-4 w-4" aria-hidden="true" />
+            </span>
+          </div>
+          <ValorDeCartao
+            valor={totalAberto.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+            className="text-foreground"
+          />
         </Card>
-        <Card>
-          <CardContent className="p-6">
-            <p className="text-sm font-medium text-muted-foreground">Total pago</p>
-            <p className="mt-1 text-[2rem] font-bold leading-10 tabular-nums text-success-ink">
-              {totalPago.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-            </p>
-          </CardContent>
+        <Card className="flex min-h-[112px] flex-col justify-between gap-2 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <p className="min-w-0 truncate text-sm font-medium leading-5 text-muted-foreground">Total pago</p>
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-success-tint text-success-ink">
+              <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+            </span>
+          </div>
+          <ValorDeCartao
+            valor={totalPago.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+            className="text-success-ink"
+          />
         </Card>
-        <Card>
-          <CardContent className="p-6">
-            <p className="text-sm font-medium text-muted-foreground">Lançamentos</p>
-            <p className="mt-1 text-[2rem] font-bold leading-10 tabular-nums text-foreground">{filtrados.length}</p>
-          </CardContent>
+        <Card className="flex min-h-[112px] flex-col justify-between gap-2 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <p className="min-w-0 truncate text-sm font-medium leading-5 text-muted-foreground">Lançamentos</p>
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+              <FileText className="h-4 w-4" aria-hidden="true" />
+            </span>
+          </div>
+          <ValorDeCartao valor={String(filtrados.length)} className="text-foreground" />
         </Card>
       </div>
 
-      {/* Filtros e ações */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-[220px] flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 w-4 h-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+      {/* Filtros e ações: busca larga à esquerda, selects em fila, ações
+          ancoradas à direita — a linha padrão entre indicadores e tabela. */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative min-w-[220px] flex-1 basis-64">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
           <Input
             aria-label="Buscar por descrição, documento ou pessoa"
             placeholder="Buscar descrição, doc ou pessoa…"
@@ -328,28 +361,30 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
             ))}
           </SelectContent>
         </Select>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" disabled={filtrados.length === 0}>
-              <Download className="w-4 h-4" aria-hidden="true" />
-              Exportar
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={exportarCSV}>
-              <FileSpreadsheet className="mr-2 w-4 h-4" aria-hidden="true" />
-              Exportar CSV
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={exportarPDF}>
-              <FileText className="mr-2 w-4 h-4" aria-hidden="true" />
-              Exportar PDF
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <Button onClick={abrirNovo}>
-          <Plus className="w-4 h-4" aria-hidden="true" />
-          Novo {tipo === "a_pagar" ? "pagamento" : "recebimento"}
-        </Button>
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" disabled={filtrados.length === 0}>
+                <Download aria-hidden="true" />
+                Exportar
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={exportarCSV}>
+                <FileSpreadsheet className="mr-2 h-4 w-4" aria-hidden="true" />
+                Exportar CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={exportarPDF}>
+                <FileText className="mr-2 h-4 w-4" aria-hidden="true" />
+                Exportar PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button onClick={abrirNovo}>
+            <Plus aria-hidden="true" />
+            Novo {tipo === "a_pagar" ? "pagamento" : "recebimento"}
+          </Button>
+        </div>
       </div>
 
       {/* Tabela */}
@@ -361,17 +396,17 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
             <TableHeader>
               <TableRow>
                 <TableHead className="whitespace-nowrap" aria-sort={ariaOrdem("data_vencimento")}>
-                  <button type="button" onClick={() => toggleSort("data_vencimento")} className="inline-flex items-center gap-1 transition-colors hover:text-primary">
+                  <button type="button" onClick={() => toggleSort("data_vencimento")} className="inline-flex items-center gap-1 rounded transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                     Vencimento <IconeOrdem ativa={sortKey === "data_vencimento"} dir={sortDir} />
                   </button>
                 </TableHead>
                 <TableHead className="whitespace-nowrap" aria-sort={ariaOrdem("descricao")}>
-                  <button type="button" onClick={() => toggleSort("descricao")} className="inline-flex items-center gap-1 transition-colors hover:text-primary">
+                  <button type="button" onClick={() => toggleSort("descricao")} className="inline-flex items-center gap-1 rounded transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                     Descrição <IconeOrdem ativa={sortKey === "descricao"} dir={sortDir} />
                   </button>
                 </TableHead>
                 <TableHead className="whitespace-nowrap" aria-sort={ariaOrdem("pessoa")}>
-                  <button type="button" onClick={() => toggleSort("pessoa")} className="inline-flex items-center gap-1 transition-colors hover:text-primary">
+                  <button type="button" onClick={() => toggleSort("pessoa")} className="inline-flex items-center gap-1 rounded transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                     {tipo === "a_pagar" ? "Fornecedor" : "Cliente"} <IconeOrdem ativa={sortKey === "pessoa"} dir={sortDir} />
                   </button>
                 </TableHead>
@@ -384,12 +419,12 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
                     ações. O responsável continua no filtro acima e na edição. */}
                 <TableHead className="hidden whitespace-nowrap min-[1400px]:table-cell">Responsável</TableHead>
                 <TableHead className="whitespace-nowrap" aria-sort={ariaOrdem("status")}>
-                  <button type="button" onClick={() => toggleSort("status")} className="inline-flex items-center gap-1 transition-colors hover:text-primary">
+                  <button type="button" onClick={() => toggleSort("status")} className="inline-flex items-center gap-1 rounded transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                     Status <IconeOrdem ativa={sortKey === "status"} dir={sortDir} />
                   </button>
                 </TableHead>
                 <TableHead className="whitespace-nowrap text-right" aria-sort={ariaOrdem("valor")}>
-                  <button type="button" onClick={() => toggleSort("valor")} className="ml-auto inline-flex items-center gap-1 transition-colors hover:text-primary">
+                  <button type="button" onClick={() => toggleSort("valor")} className="ml-auto inline-flex items-center gap-1 rounded transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                     Valor <IconeOrdem ativa={sortKey === "valor"} dir={sortDir} />
                   </button>
                 </TableHead>

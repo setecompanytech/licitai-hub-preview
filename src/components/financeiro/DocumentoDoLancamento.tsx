@@ -129,8 +129,10 @@ export default function DocumentoDoLancamento({
                 disabled={enviando}
                 className={cn(
                   'h-7 w-7 shrink-0',
+                  // Tinta `warning-ink`, não a cor cheia: âmbar puro sobre
+                  // branco não passa no contraste (Design System v3).
                   exigeDocumento
-                    ? 'text-warning hover:text-warning hover:bg-warning-tint'
+                    ? 'text-warning-ink hover:bg-warning-tint hover:text-warning-ink'
                     : 'text-muted-foreground hover:text-foreground',
                 )}
                 aria-label="Anexar documento a este lançamento"

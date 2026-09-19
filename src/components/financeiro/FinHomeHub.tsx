@@ -207,14 +207,14 @@ export default function FinHomeHub({ onNavigate }: FinHomeHubProps) {
       {/* ============ Busca + Command palette hint ============ */}
       <div className="relative">
         <label htmlFor="fin-hub-busca" className="sr-only">Buscar funcionalidade</label>
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
         <Input
           id="fin-hub-busca"
           ref={inputRef}
           placeholder="Buscar funcionalidade... (ex: conciliação, NF-e, bonificação)"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="pl-11 pr-28"
+          className="pl-9 pr-28"
         />
         <div className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:flex items-center gap-2" aria-hidden="true">
           <kbd className="inline-flex h-5 items-center gap-1 rounded border border-border bg-muted px-1.5 text-xs font-mono text-muted-foreground">
@@ -291,8 +291,8 @@ export default function FinHomeHub({ onNavigate }: FinHomeHubProps) {
           <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
-                <h2 className="text-lg font-semibold text-foreground">{titulo}</h2>
-                {subtitulo && <p className="text-sm text-muted-foreground">{subtitulo}</p>}
+                <h2 className="text-lg font-semibold leading-6 text-foreground">{titulo}</h2>
+                {subtitulo && <p className="text-sm leading-5 text-muted-foreground">{subtitulo}</p>}
               </div>
               <Button
                 variant="ghost"
@@ -364,7 +364,7 @@ function ModuleRow({
       type="button"
       onClick={() => onNavigate(item.id)}
       className={cn(
-        "group relative w-full text-left flex items-center gap-3 p-3 pr-2 rounded-lg border bg-card shadow-sm transition-colors duration-200",
+        "group relative flex w-full items-center gap-3 rounded-lg border bg-card p-3 pr-2 text-left shadow-sm transition-[border-color,box-shadow] duration-150",
         "hover:border-primary/40 hover:shadow-md",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
         "animate-in fade-in",
@@ -378,13 +378,13 @@ function ModuleRow({
         aria-hidden="true"
       />
 
-      <div className="shrink-0 w-10 h-10 rounded-md flex items-center justify-center bg-primary-tint text-primary">
-        <Icon className="w-5 h-5" />
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary-tint text-primary">
+        <Icon className="h-5 w-5" />
       </div>
 
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-medium text-sm leading-tight truncate">{item.label}</span>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="truncate text-base font-medium leading-5 text-foreground">{item.label}</span>
           {item.badge && (
             <Badge variant={item.badge === "Novo" ? "success" : "info"} className="shrink-0">
               {item.badge}

@@ -218,7 +218,10 @@ export default function Financeiro() {
 
   return (
     <AppLayout>
-      <div className="p-4 md:p-6 max-w-[1400px] mx-auto">
+      {/* Respiro e teto de largura vêm do `AppLayout` (Design System v3):
+          o `p-4 md:p-6 max-w-[1400px]` que morava aqui dobrava o recuo do
+          conteúdo e deixava o Financeiro mais estreito que as demais telas. */}
+      <div className="w-full min-w-0">
         {/* O "Voltar ao Hub" saiu: com o Voltar do layout logo acima, eram
             duas setas fazendo a mesma coisa. O caminho para o hub continua no
             rastro de migalhas — "Financeiro" ali em cima é clicável —, que
@@ -249,7 +252,7 @@ export default function Financeiro() {
                   Painel completo
                 </Button>
                 <Button onClick={() => navigateToView("lancamentos")}>
-                  <Plus className="w-4 h-4" aria-hidden="true" />
+                  <Plus aria-hidden="true" />
                   Novo lançamento
                 </Button>
               </>

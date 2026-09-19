@@ -44,12 +44,14 @@ const formatPct = (v: number | null, digits = 1) =>
 
 type KpiTone = "default" | "success" | "danger" | "warning" | "info";
 
+// Valor sempre na tinta `*-ink` (legível sobre branco); o ladrilho do ícone
+// usa o par `*-tint`/`*-ink` da mesma família — nunca a cor cheia como texto.
 const toneClasses: Record<KpiTone, { value: string; box: string }> = {
-  default: { value: "text-foreground", box: "bg-muted text-foreground" },
-  success: { value: "text-success", box: "bg-success-tint text-success-ink" },
-  danger: { value: "text-destructive", box: "bg-destructive-tint text-destructive-ink" },
-  warning: { value: "text-warning", box: "bg-warning-tint text-warning-ink" },
-  info: { value: "text-info", box: "bg-muted text-info" },
+  default: { value: "text-foreground", box: "bg-muted text-muted-foreground" },
+  success: { value: "text-success-ink", box: "bg-success-tint text-success-ink" },
+  danger: { value: "text-destructive-ink", box: "bg-destructive-tint text-destructive-ink" },
+  warning: { value: "text-warning-ink", box: "bg-warning-tint text-warning-ink" },
+  info: { value: "text-info-ink", box: "bg-info-tint text-info-ink" },
 };
 
 function KpiCard({
@@ -81,45 +83,45 @@ function KpiCard({
       ? null
       : (trend.value > 0) === (trend.positiveIsGood ?? true);
 
+  // Cartão KPI do Design System v3: 112px, rótulo em cima com o ícone num
+  // ladrilho tingido à direita, valor 28/36 embaixo e a linha de contexto.
   return (
-    <Card className="relative overflow-hidden">
-      <CardContent className="p-6">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-muted-foreground">{label}</p>
-            <ValorDeCartao valor={value} className={t.value} />
-            {/* A dica quebra em duas linhas em vez de ser cortada: "Receita R$ 184,3K ·
-                Despesa R$ …" escondia justamente o número que explicava o resultado. */}
-            {hint && <p className="text-xs text-muted-foreground mt-1">{hint}</p>}
-            {trend && (
-              <div className="flex items-center gap-1 mt-1">
-                <TrendIcon
-                  className={cn(
-                    "w-4 h-4",
-                    trendGood === null && "text-muted-foreground",
-                    trendGood === true && "text-success",
-                    trendGood === false && "text-destructive"
-                  )}
-                  aria-hidden="true"
-                />
-                <span
-                  className={cn(
-                    "text-xs tabular-nums font-medium",
-                    trendGood === null && "text-muted-foreground",
-                    trendGood === true && "text-success",
-                    trendGood === false && "text-destructive"
-                  )}
-                >
-                  {formatPct(trend.value)}
-                </span>
-              </div>
-            )}
+    <Card className="flex min-h-[112px] flex-col justify-between gap-2 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <p className="min-w-0 truncate text-sm font-medium leading-5 text-muted-foreground">{label}</p>
+        <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-md", t.box)}>
+          <Icon className="h-4 w-4" aria-hidden="true" />
+        </span>
+      </div>
+      <div className="min-w-0">
+        <ValorDeCartao valor={value} className={t.value} />
+        {/* A dica quebra em duas linhas em vez de ser cortada: "Receita R$ 184,3K ·
+            Despesa R$ …" escondia justamente o número que explicava o resultado. */}
+        {hint && <p className="mt-1 text-xs leading-4 text-muted-foreground">{hint}</p>}
+        {trend && (
+          <div className="mt-1 flex items-center gap-1">
+            <TrendIcon
+              className={cn(
+                "h-4 w-4",
+                trendGood === null && "text-muted-foreground",
+                trendGood === true && "text-success-ink",
+                trendGood === false && "text-destructive-ink"
+              )}
+              aria-hidden="true"
+            />
+            <span
+              className={cn(
+                "text-xs font-medium tabular-nums",
+                trendGood === null && "text-muted-foreground",
+                trendGood === true && "text-success-ink",
+                trendGood === false && "text-destructive-ink"
+              )}
+            >
+              {formatPct(trend.value)}
+            </span>
           </div>
-          <span className={cn("inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md", t.box)}>
-            <Icon className="w-5 h-5" aria-hidden="true" />
-          </span>
-        </div>
-      </CardContent>
+        )}
+      </div>
     </Card>
   );
 }

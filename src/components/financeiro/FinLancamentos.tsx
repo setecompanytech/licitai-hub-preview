@@ -204,11 +204,12 @@ export default function FinLancamentos() {
 
       {/* ── Filtros ── */}
       <Card>
-        <CardContent className="p-6 space-y-4">
-          {/* Linha principal */}
+        <CardContent className="space-y-4 p-4">
+          {/* Linha principal — rótulo acima do campo, no mesmo desenho do
+              `Label` (13/500), e a busca larga à esquerda. */}
           <div className="flex flex-wrap items-end gap-3">
-            <div className="min-w-[220px] flex-1 space-y-1">
-              <label htmlFor="fin-lanc-busca" className="text-sm text-muted-foreground">Buscar lançamento</label>
+            <div className="min-w-[220px] flex-1 space-y-1.5">
+              <label htmlFor="fin-lanc-busca" className="block text-sm font-medium leading-none text-foreground">Buscar lançamento</label>
               <div className="relative">
                 <Search className="pointer-events-none absolute left-3 top-1/2 w-4 h-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
                 <Input
@@ -221,8 +222,8 @@ export default function FinLancamentos() {
               </div>
             </div>
 
-            <div className="space-y-1">
-              <label id="fin-lanc-tipo-label" className="text-sm text-muted-foreground">Tipo</label>
+            <div className="space-y-1.5">
+              <label id="fin-lanc-tipo-label" className="block text-sm font-medium leading-none text-foreground">Tipo</label>
               <Select
                 value={filtro.tipo ?? "todos"}
                 onValueChange={(v) => setFiltro((f) => ({ ...f, tipo: v as LancamentoFiltro["tipo"] }))}
@@ -240,8 +241,8 @@ export default function FinLancamentos() {
               </Select>
             </div>
 
-            <div className="space-y-1">
-              <label id="fin-lanc-status-label" className="text-sm text-muted-foreground">Status</label>
+            <div className="space-y-1.5">
+              <label id="fin-lanc-status-label" className="block text-sm font-medium leading-none text-foreground">Status</label>
               <Select
                 value={filtro.status ?? "todos"}
                 onValueChange={(v) => setFiltro((f) => ({ ...f, status: v as LancamentoFiltro["status"] }))}
@@ -260,8 +261,8 @@ export default function FinLancamentos() {
               </Select>
             </div>
 
-            <div className="space-y-1">
-              <label id="fin-lanc-conta-label" className="text-sm text-muted-foreground">Conta</label>
+            <div className="space-y-1.5">
+              <label id="fin-lanc-conta-label" className="block text-sm font-medium leading-none text-foreground">Conta</label>
               <Select
                 value={filtro.contaId ?? "todos"}
                 onValueChange={(v) => setFiltro((f) => ({ ...f, contaId: v }))}
@@ -299,9 +300,9 @@ export default function FinLancamentos() {
           {mostrarFiltrosAvancados && (
             <div className="flex flex-wrap items-end gap-3 border-t border-border pt-4">
               <div className="flex flex-wrap items-end gap-2">
-                <div className="space-y-1">
-                  <label htmlFor="fin-lanc-data-inicio" className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <CalendarRange className="w-4 h-4 shrink-0" aria-hidden="true" />
+                <div className="space-y-1.5">
+                  <label htmlFor="fin-lanc-data-inicio" className="flex items-center gap-2 text-sm font-medium leading-none text-foreground">
+                    <CalendarRange className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                     Período de
                   </label>
                   <Input
@@ -312,8 +313,8 @@ export default function FinLancamentos() {
                     onChange={(e) => setFiltro((f) => ({ ...f, dataInicio: e.target.value }))}
                   />
                 </div>
-                <div className="space-y-1">
-                  <label htmlFor="fin-lanc-data-fim" className="text-sm text-muted-foreground">até</label>
+                <div className="space-y-1.5">
+                  <label htmlFor="fin-lanc-data-fim" className="block text-sm font-medium leading-none text-foreground">até</label>
                   <Input
                     id="fin-lanc-data-fim"
                     type="date"
@@ -324,8 +325,8 @@ export default function FinLancamentos() {
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label id="fin-lanc-origem-label" className="text-sm text-muted-foreground">Origem</label>
+              <div className="space-y-1.5">
+                <label id="fin-lanc-origem-label" className="block text-sm font-medium leading-none text-foreground">Origem</label>
                 <Select
                   value={filtro.origemTipo ?? "todos"}
                   onValueChange={(v) => setFiltro((f) => ({ ...f, origemTipo: v as LancamentoFiltro["origemTipo"] }))}
@@ -428,10 +429,12 @@ export default function FinLancamentos() {
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[900px] text-sm">
-              <thead>
-                <tr className="border-b border-border bg-muted text-sm font-semibold text-foreground">
+              {/* Cabeçalho na anatomia do Design System v3: superfície
+                  rebaixada, rótulo 12/600 sem caixa alta, 44px de altura. */}
+              <thead className="bg-secondary">
+                <tr className="border-b border-border text-xs font-semibold tracking-wide text-muted-foreground">
                   <th
-                    className="w-[110px] whitespace-nowrap px-4 py-3 text-left"
+                    className="h-11 w-[110px] whitespace-nowrap px-4 text-left"
                     aria-sort={
                       sort.campo === "data_competencia"
                         ? (sort.dir === "asc" ? "ascending" : "descending")
@@ -440,7 +443,7 @@ export default function FinLancamentos() {
                   >
                     <button
                       type="button"
-                      className="inline-flex items-center gap-1 transition-colors hover:text-primary"
+                      className="inline-flex items-center gap-1 rounded transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       onClick={() =>
                         setSort((s) =>
                           s.campo === "data_competencia"
@@ -459,13 +462,13 @@ export default function FinLancamentos() {
                       )}
                     </button>
                   </th>
-                  <th className="w-[100px] whitespace-nowrap px-3 py-3 text-left">2ª data</th>
-                  <th className="px-3 py-3 text-left">Descrição / categoria</th>
-                  <th className="w-[170px] whitespace-nowrap px-3 py-3 text-left">Favorecido / conta</th>
-                  <th className="w-[110px] whitespace-nowrap px-3 py-3 text-left">Tipo</th>
-                  <th className="w-[120px] whitespace-nowrap px-3 py-3 text-left">Status</th>
-                  <th className="w-[140px] whitespace-nowrap px-3 py-3 text-right">Valor</th>
-                  <th className="w-[130px] px-4 py-3 text-right">Ações</th>
+                  <th className="h-11 w-[100px] whitespace-nowrap px-3 text-left">2ª data</th>
+                  <th className="h-11 px-3 text-left">Descrição / categoria</th>
+                  <th className="h-11 w-[170px] whitespace-nowrap px-3 text-left">Favorecido / conta</th>
+                  <th className="h-11 w-[110px] whitespace-nowrap px-3 text-left">Tipo</th>
+                  <th className="h-11 w-[120px] whitespace-nowrap px-3 text-left">Status</th>
+                  <th className="h-11 w-[140px] whitespace-nowrap px-3 text-right">Valor</th>
+                  <th className="h-11 w-[130px] px-4 text-right">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -505,15 +508,15 @@ export default function FinLancamentos() {
                     return (
                       <tr
                         key={l.id}
-                        className={`border-l-2 ${isReceita ? "border-l-success-line" : "border-l-destructive-line"} transition-colors hover:bg-muted`}
+                        className={`border-l-2 ${isReceita ? "border-l-success-line" : "border-l-destructive-line"} transition-colors duration-150 hover:bg-muted/60`}
                       >
                         {/* Competência */}
-                        <td className="whitespace-nowrap py-3 pl-4 pr-3 text-sm text-muted-foreground">
+                        <td className="h-12 whitespace-nowrap py-2.5 pl-4 pr-3 text-sm tabular-nums text-muted-foreground">
                           {formatDate(l.data_competencia)}
                         </td>
 
                         {/* Vencimento */}
-                        <td className="whitespace-nowrap px-3 py-3 text-sm">
+                        <td className="whitespace-nowrap h-12 px-3 py-2.5 text-sm">
                           {vencDiferente ? (
                             <span
                               className={
@@ -536,7 +539,7 @@ export default function FinLancamentos() {
                         </td>
 
                         {/* Descrição / categoria */}
-                        <td className="max-w-[280px] px-3 py-3">
+                        <td className="max-w-[280px] h-12 px-3 py-2.5">
                           <span className="block truncate text-sm font-medium" title={l.descricao}>
                             {l.descricao}
                           </span>
@@ -557,7 +560,7 @@ export default function FinLancamentos() {
                         </td>
 
                         {/* Favorecido / conta */}
-                        <td className="max-w-[170px] px-3 py-3 text-sm">
+                        <td className="max-w-[170px] h-12 px-3 py-2.5 text-sm">
                           {l.pessoa?.nome ? (
                             <span className="block truncate text-foreground" title={l.pessoa.nome}>
                               {l.pessoa.nome}
@@ -571,7 +574,7 @@ export default function FinLancamentos() {
                         </td>
 
                         {/* Tipo */}
-                        <td className="whitespace-nowrap px-3 py-3">
+                        <td className="whitespace-nowrap h-12 px-3 py-2.5">
                           <span className="inline-flex items-center gap-1.5 text-sm text-foreground">
                             {(l.tipo === "a_pagar" || l.tipo === "a_receber") && (
                               <span
@@ -589,7 +592,7 @@ export default function FinLancamentos() {
                         </td>
 
                         {/* Status */}
-                        <td className="whitespace-nowrap px-3 py-3">
+                        <td className="whitespace-nowrap h-12 px-3 py-2.5">
                           <Badge variant={STATUS_VARIANTE[l.status] ?? "muted"} className="gap-1.5">
                             <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true" />
                             {statusLabel[l.status] ?? l.status}
@@ -598,7 +601,7 @@ export default function FinLancamentos() {
 
                         {/* Valor */}
                         <td
-                          className={`whitespace-nowrap px-3 py-3 text-right text-sm font-semibold tabular-nums ${
+                          className={`whitespace-nowrap h-12 px-3 py-2.5 text-right text-sm font-semibold tabular-nums ${
                             isReceita ? "text-success-ink" : "text-destructive-ink"
                           }`}
                         >
@@ -606,7 +609,7 @@ export default function FinLancamentos() {
                         </td>
 
                         {/* Ações */}
-                        <td className="whitespace-nowrap px-3 py-3 text-right">
+                        <td className="whitespace-nowrap h-12 px-3 py-2.5 text-right">
                           <div className="flex items-center justify-end gap-1">
                             {/* O mesmo elo de Contas a Receber. Ele nascera só
                                 lá, e esta é a tela em que se procura um

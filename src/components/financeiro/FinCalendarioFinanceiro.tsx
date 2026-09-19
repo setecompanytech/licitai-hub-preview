@@ -38,7 +38,9 @@ import {
 import { ptBR } from "date-fns/locale";
 import { useLancamentos, type Lancamento } from "@/hooks/useFinanceiro";
 import { formatBRL } from "@/lib/financeiro/formatters";
+import { cn } from "@/lib/utils";
 import LancamentoDialog from "./LancamentoDialog";
+import ValorDeCartao from "./ValorDeCartao";
 
 type LancamentoCal = Lancamento & {
   pessoa?: { id: string; nome: string } | null;
@@ -187,38 +189,40 @@ export default function FinCalendarioFinanceiro() {
     <div className="space-y-4">
       {/* Cabeçalho de navegação + KPIs proporcionais */}
       <Card>
-        <CardContent className="p-6 space-y-6">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <CardContent className="space-y-5 p-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div className="flex flex-wrap items-center gap-2">
               <Button variant="outline" size="icon" aria-label="Mês anterior" onClick={() => setRefDate(subMonths(refDate, 1))}>
-                <ChevronLeft className="w-4 h-4" aria-hidden="true" />
+                <ChevronLeft aria-hidden="true" />
               </Button>
               <div className="min-w-[200px] text-center">
-                <p className="text-sm text-muted-foreground">Calendário Financeiro</p>
-                <p className="text-lg font-semibold capitalize">
+                <p className="text-sm leading-5 text-muted-foreground">Calendário Financeiro</p>
+                <p className="text-lg font-semibold capitalize leading-6 text-foreground">
                   {format(refDate, "MMMM 'de' yyyy", { locale: ptBR })}
                 </p>
               </div>
               <Button variant="outline" size="icon" aria-label="Próximo mês" onClick={() => setRefDate(addMonths(refDate, 1))}>
-                <ChevronRight className="w-4 h-4" aria-hidden="true" />
+                <ChevronRight aria-hidden="true" />
               </Button>
               <Button variant="ghost" onClick={() => setRefDate(new Date())}>
-                <CalendarDays className="w-4 h-4" aria-hidden="true" />Hoje
+                <CalendarDays aria-hidden="true" />Hoje
               </Button>
             </div>
 
+            {/* Duas ações de criação com o mesmo peso: nenhuma é "a" principal
+                da tela, então nenhuma leva o verde sólido. */}
             <div className="flex flex-wrap items-center gap-2">
-              <Button variant="default" onClick={() => novoNoDia(new Date(), "a_pagar")}>
-                <Plus className="w-4 h-4" aria-hidden="true" />A pagar
+              <Button variant="outline" onClick={() => novoNoDia(new Date(), "a_pagar")}>
+                <Plus aria-hidden="true" />A pagar
               </Button>
-              <Button variant="default" onClick={() => novoNoDia(new Date(), "a_receber")}>
-                <Plus className="w-4 h-4" aria-hidden="true" />A receber
+              <Button variant="outline" onClick={() => novoNoDia(new Date(), "a_receber")}>
+                <Plus aria-hidden="true" />A receber
               </Button>
             </div>
           </div>
 
           {/* KPIs compactos do mês */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <KpiMini icon={ArrowUpCircle} label="A pagar" value={formatBRL(totaisMes.pagar)} tone="danger" />
             <KpiMini icon={ArrowDownCircle} label="A receber" value={formatBRL(totaisMes.receber)} tone="success" />
             <KpiMini icon={TrendingDown} label="Pago" value={formatBRL(totaisMes.pago)} tone="muted" />
@@ -235,11 +239,11 @@ export default function FinCalendarioFinanceiro() {
 
       {/* Filtros */}
       <Card>
-        <CardContent className="p-6 flex flex-wrap items-end gap-3">
-          <div className="flex-1 min-w-[220px]">
+        <CardContent className="flex flex-wrap items-end gap-3 p-4">
+          <div className="min-w-[220px] flex-1 basis-64">
             <Label htmlFor="cal-fin-busca">Buscar por descrição, pessoa ou categoria</Label>
             <div className="relative mt-2">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
               <Input
                 id="cal-fin-busca"
                 value={busca}
@@ -285,7 +289,7 @@ export default function FinCalendarioFinanceiro() {
               </SelectContent>
             </Select>
           </div>
-          <p className="text-sm text-muted-foreground pb-3 whitespace-nowrap">
+          <p className="whitespace-nowrap pb-2.5 text-sm text-muted-foreground">
             <span className="font-semibold text-foreground tabular-nums">{lancamentos.length}</span> de {todos.length} lançamentos
           </p>
         </CardContent>
@@ -305,7 +309,7 @@ export default function FinCalendarioFinanceiro() {
               <div className="min-w-[640px]">
                 <div className="grid grid-cols-7 gap-1 mb-1">
                   {NOMES_DIAS.map((d) => (
-                    <div key={d} className="text-xs uppercase tracking-wide text-muted-foreground text-center font-medium py-1">
+                    <div key={d} className="py-1 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       {d}
                     </div>
                   ))}
@@ -328,37 +332,37 @@ export default function FinCalendarioFinanceiro() {
                     return (
                       <div
                         key={key}
-                        className={`relative min-h-[120px] rounded-md border border-border p-2 flex flex-col gap-1 transition-colors group ${
-                          foraMes ? "bg-muted/40 text-muted-foreground" : "bg-card"
-                        } ${hoje ? "ring-2 ring-primary" : ""}`}
+                        className={`group relative flex min-h-[120px] flex-col gap-1 rounded-md border p-2 transition-colors ${
+                          foraMes ? "border-border bg-secondary text-muted-foreground" : "border-border bg-card"
+                        } ${hoje ? "border-primary ring-1 ring-primary/30" : ""}`}
                       >
                         <div className="flex items-center justify-between gap-1">
-                          <span className={`text-xs font-medium ${hoje ? "text-primary font-bold" : ""}`}>
+                          <span className={`text-xs font-medium tabular-nums ${hoje ? "font-semibold text-primary" : ""}`}>
                             {format(d, "d")}
                           </span>
                           {!foraMes && (
-                            <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
+                            <div className="flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
                               <Button
                                 type="button"
                                 variant="ghost"
                                 size="icon"
-                                className="h-6 w-6 text-destructive hover:text-destructive"
+                                className="h-7 w-7 text-destructive-ink hover:bg-destructive-tint hover:text-destructive-ink"
                                 onClick={() => novoNoDia(d, "a_pagar")}
                                 title="Novo a pagar"
                                 aria-label={`Novo a pagar em ${format(d, "dd/MM")}`}
                               >
-                                <ArrowUpCircle className="w-4 h-4" aria-hidden="true" />
+                                <ArrowUpCircle className="h-4 w-4" aria-hidden="true" />
                               </Button>
                               <Button
                                 type="button"
                                 variant="ghost"
                                 size="icon"
-                                className="h-6 w-6 text-success hover:text-success"
+                                className="h-7 w-7 text-success-ink hover:bg-success-tint hover:text-success-ink"
                                 onClick={() => novoNoDia(d, "a_receber")}
                                 title="Novo a receber"
                                 aria-label={`Novo a receber em ${format(d, "dd/MM")}`}
                               >
-                                <ArrowDownCircle className="w-4 h-4" aria-hidden="true" />
+                                <ArrowDownCircle className="h-4 w-4" aria-hidden="true" />
                               </Button>
                             </div>
                           )}
@@ -433,11 +437,11 @@ export default function FinCalendarioFinanceiro() {
                                         className="w-full text-left rounded-md border border-border px-2 py-2 hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                       >
                                         <div className="flex items-center justify-between gap-2">
-                                          <span className="text-xs font-medium truncate flex items-center gap-1">
+                                          <span className="flex items-center gap-1 truncate text-xs font-medium">
                                             {l.tipo === "a_pagar" ? (
-                                              <ArrowUpCircle className="w-3 h-3 text-destructive" aria-hidden="true" />
+                                              <ArrowUpCircle className="h-3 w-3 text-destructive-ink" aria-hidden="true" />
                                             ) : (
-                                              <ArrowDownCircle className="w-3 h-3 text-success" aria-hidden="true" />
+                                              <ArrowDownCircle className="h-3 w-3 text-success-ink" aria-hidden="true" />
                                             )}
                                             {l.descricao}
                                           </span>
@@ -462,8 +466,8 @@ export default function FinCalendarioFinanceiro() {
 
                         {/* Saldo do dia */}
                         {!foraMes && (totalPagar > 0 || totalReceber > 0) && (
-                          <div className={`text-xs tabular-nums text-right border-t border-border pt-0.5 font-medium ${
-                            saldoDia >= 0 ? "text-success" : "text-destructive"
+                          <div className={`border-t border-border pt-0.5 text-right text-xs font-medium tabular-nums ${
+                            saldoDia >= 0 ? "text-success-ink" : "text-destructive-ink"
                           }`}>
                             {saldoDia >= 0 ? "+" : ""}{formatBRL(saldoDia)}
                           </div>
@@ -475,14 +479,14 @@ export default function FinCalendarioFinanceiro() {
               </div>
 
               {/* Legenda */}
-              <div className="flex flex-wrap items-center gap-3 mt-3 px-2 text-xs text-muted-foreground">
+              <div className="mt-3 flex flex-wrap items-center gap-3 px-2 text-xs text-muted-foreground">
                 <span className="inline-flex items-center gap-1">
-                  <span className="w-3 h-3 rounded-sm bg-success-tint border border-success-line" aria-hidden="true" />
-                  <ArrowDownCircle className="w-3 h-3 text-success" aria-hidden="true" />A receber (entrada)
+                  <span className="h-3 w-3 rounded-sm border border-success-line bg-success-tint" aria-hidden="true" />
+                  <ArrowDownCircle className="h-3 w-3 text-success-ink" aria-hidden="true" />A receber (entrada)
                 </span>
                 <span className="inline-flex items-center gap-1">
-                  <span className="w-3 h-3 rounded-sm bg-destructive-tint border border-destructive-line" aria-hidden="true" />
-                  <ArrowUpCircle className="w-3 h-3 text-destructive" aria-hidden="true" />A pagar (saída)
+                  <span className="h-3 w-3 rounded-sm border border-destructive-line bg-destructive-tint" aria-hidden="true" />
+                  <ArrowUpCircle className="h-3 w-3 text-destructive-ink" aria-hidden="true" />A pagar (saída)
                 </span>
                 <span className="inline-flex items-center gap-1">
                   <span className="w-3 h-3 rounded-sm bg-success-tint border border-success-ink" aria-hidden="true" />Recebido
@@ -520,18 +524,28 @@ function KpiMini({
   value: string;
   tone: "success" | "danger" | "muted";
 }) {
+  // Cartão KPI do Design System v3, na versão compacta (96px): rótulo em
+  // cima, ícone num ladrilho tingido à direita, valor que encolhe com o
+  // comprimento em vez de cortar. Texto colorido só na tinta `*-ink`.
   const cor = {
-    success: "text-success",
-    danger: "text-destructive",
-    muted: "text-muted-foreground",
+    success: "text-success-ink",
+    danger: "text-destructive-ink",
+    muted: "text-foreground",
+  }[tone];
+  const ladrilho = {
+    success: "bg-success-tint text-success-ink",
+    danger: "bg-destructive-tint text-destructive-ink",
+    muted: "bg-muted text-muted-foreground",
   }[tone];
   return (
-    <div className="rounded-lg border border-border bg-card p-4 flex items-start justify-between gap-2">
-      <div className="min-w-0">
-        <p className="text-sm text-muted-foreground">{label}</p>
-        <p className={`text-lg font-semibold tabular-nums truncate ${cor}`}>{value}</p>
+    <div className="flex min-h-[96px] flex-col justify-between gap-2 rounded-lg border border-border bg-card p-4 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <p className="min-w-0 truncate text-sm font-medium leading-5 text-muted-foreground">{label}</p>
+        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${ladrilho}`}>
+          <Icon className="h-4 w-4" aria-hidden="true" />
+        </span>
       </div>
-      <Icon className={`w-5 h-5 shrink-0 ${cor}`} aria-hidden="true" />
+      <ValorDeCartao valor={value} compacto className={cn("mt-0", cor)} />
     </div>
   );
 }

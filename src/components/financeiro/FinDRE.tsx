@@ -123,10 +123,10 @@ export default function FinDRE() {
         <CardHeader className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
-              <Scale className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+              <Scale className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
               DRE — Demonstração do Resultado do Exercício
             </CardTitle>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="mt-1 text-sm leading-5 text-muted-foreground">
               Estrutura conforme Lei 6.404/76, art. 187. Inclui Análise Vertical
               (AV) e Análise Horizontal (AH).
             </p>
@@ -258,7 +258,7 @@ export default function FinDRE() {
           <Card className="border-warning-line">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5 text-warning" aria-hidden="true" />
+                <AlertTriangle className="h-5 w-5 text-warning-ink" aria-hidden="true" />
                 Fora do resultado
               </CardTitle>
             </CardHeader>
@@ -310,7 +310,7 @@ export default function FinDRE() {
                     <span className="font-medium text-sm">{g.rotulo}</span>
                     <span
                       className={`text-sm font-medium text-right tabular-nums ${
-                        g.natureza === "receita" ? "text-success" : "text-destructive"
+                        g.natureza === "receita" ? "text-success-ink" : "text-destructive-ink"
                       }`}
                     >
                       {formatBRL(g.total)}
@@ -373,12 +373,12 @@ function LinhaDRE({
   const corVariacao = (() => {
     if (variacaoAbs == null) return "text-muted-foreground";
     if (Math.abs(variacaoAbs) < 0.005) return "text-muted-foreground";
-    return variacaoAbs > 0 ? "text-success" : "text-destructive";
+    return variacaoAbs > 0 ? "text-success-ink" : "text-destructive-ink";
   })();
 
   return (
     <TableRow
-      className={subtotal ? "bg-muted font-semibold" : ""}
+      className={subtotal ? "bg-secondary font-semibold" : ""}
     >
       <TableCell
         className={`${nivel === 1 ? "pl-8" : ""} ${
@@ -394,7 +394,7 @@ function LinhaDRE({
           "100.0 / %") parece outro número. */}
       <TableCell
         className={`text-right tabular-nums whitespace-nowrap ${
-          valorAtual < 0 ? "text-destructive" : ""
+          valorAtual < 0 ? "text-destructive-ink" : ""
         }`}
       >
         {formatBRL(valorAtual)}
@@ -408,7 +408,7 @@ function LinhaDRE({
         <>
           <TableCell
             className={`text-right tabular-nums whitespace-nowrap text-muted-foreground ${
-              valorComp != null && valorComp < 0 ? "text-destructive" : ""
+              valorComp != null && valorComp < 0 ? "text-destructive-ink" : ""
             }`}
           >
             {valorComp != null ? formatBRL(valorComp) : "—"}

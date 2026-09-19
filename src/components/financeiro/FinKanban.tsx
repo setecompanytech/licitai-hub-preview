@@ -6,13 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   CheckCircle2,
   AlertCircle,
   Clock,
   FileText,
-  Loader2,
   Plus,
   Search,
   Pencil,
@@ -58,12 +58,13 @@ const COLUNAS: { id: ColunaKanban; nome: string; cor: string; icone: typeof Cloc
   // As três primeiras são DERIVADAS da data de vencimento — o lançamento se
   // move sozinho conforme o calendário anda. Só "Concluído" é um estado que se
   // escolhe (arrastar para cá marca pago/recebido; tirar daqui reabre).
-  // Tinta semântica da identidade 12/09: fundo `*-tint`, contorno `*-line` —
-  // os mesmos pares do Badge e do Alert, em vez de alfa composto na mão.
-  { id: "aberto",   nome: "Em aberto",        cor: "bg-muted border-border",                    icone: FileText },
-  { id: "vence_7d", nome: "Vence em 7 dias",  cor: "bg-warning-tint border-warning-line",       icone: Clock },
-  { id: "vencido",  nome: "Vencido",          cor: "bg-destructive-tint border-destructive-line", icone: AlertCircle },
-  { id: "pago",     nome: "Concluído",        cor: "bg-success-tint border-success-line",       icone: CheckCircle2 },
+  // Design System v3: toda coluna de kanban é a superfície rebaixada
+  // (`bg-secondary`); a semântica mora no ícone do cabeçalho, na tinta
+  // `*-ink` — cor financeira com moderação, não quatro colunas pintadas.
+  { id: "aberto",   nome: "Em aberto",        cor: "text-muted-foreground",  icone: FileText },
+  { id: "vence_7d", nome: "Vence em 7 dias",  cor: "text-warning-ink",       icone: Clock },
+  { id: "vencido",  nome: "Vencido",          cor: "text-destructive-ink",   icone: AlertCircle },
+  { id: "pago",     nome: "Concluído",        cor: "text-success-ink",       icone: CheckCircle2 },
 ];
 
 interface Props {
@@ -425,9 +426,18 @@ export default function FinKanban({ tipo }: Props) {
   };
 
   if (isLoading) {
+    // Espera na forma do quadro — a faixa de cima e as quatro colunas —, não
+    // um spinner no centro (Design System v3).
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      <div role="status" className="space-y-4">
+        <span className="sr-only">Carregando lançamentos</span>
+        <Skeleton className="h-28 w-full" />
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Skeleton className="h-48" />
+          <Skeleton className="h-48" />
+          <Skeleton className="h-48" />
+          <Skeleton className="h-48" />
+        </div>
       </div>
     );
   }
@@ -448,46 +458,49 @@ export default function FinKanban({ tipo }: Props) {
             centro, e a ação principal caía sozinha numa segunda linha. Agora os
             indicadores correm LADO A LADO no topo, e a barra de ações ocupa a
             largura toda embaixo — com a busca esticando para preencher o vão. */}
-        <CardContent className="pt-4 space-y-3">
+        <CardContent className="space-y-3 p-4">
           <div className="flex flex-wrap items-stretch gap-x-8 gap-y-3">
-            <div>
+            <div className="min-w-0">
               {/* A contagem vive AO LADO do total que ela qualifica — no meio da
                   barra de ações ela era informação espremida entre botões,
                   quebrando o fluxo de quem procura um comando. */}
-              <p className="text-sm text-muted-foreground flex flex-wrap items-center gap-2">
+              <p className="flex flex-wrap items-center gap-2 text-sm font-medium leading-5 text-muted-foreground">
                 Total {tipo === "a_pagar" ? "a pagar" : "a receber"} em aberto
                 <Badge variant="muted">
                   {lancamentosFiltrados.length} lançamento{lancamentosFiltrados.length === 1 ? "" : "s"}
                 </Badge>
               </p>
-              <p className="text-[2rem] leading-10 font-bold tabular-nums text-foreground">
+              {/* KPI 28/36 em peso 600, a escala de indicador do sistema. */}
+              <p className="whitespace-nowrap text-[1.75rem] font-semibold leading-9 tabular-nums text-foreground">
                 {total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
               </p>
             </div>
-            <div className="w-px bg-border hidden sm:block" />
-            <div>
-              <p className="text-sm text-muted-foreground">
+            <div className="hidden w-px bg-border sm:block" />
+            <div className="min-w-0">
+              <p className="text-sm font-medium leading-5 text-muted-foreground">
                 Saldo atual {filtroConta !== "todos" ? `· ${contas.find((c) => c.id === filtroConta)?.nome ?? ""}` : "· todas as contas"}
               </p>
-              <p className={cn("text-[2rem] leading-10 font-bold tabular-nums", saldoContaAtual >= 0 ? "text-success-ink" : "text-destructive-ink")}>
+              <p className={cn("whitespace-nowrap text-[1.75rem] font-semibold leading-9 tabular-nums", saldoContaAtual >= 0 ? "text-success-ink" : "text-destructive-ink")}>
                 {saldoContaAtual.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
               </p>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
-            <div className="relative flex-1 min-w-[220px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
+            <div className="relative min-w-[220px] flex-1 basis-64">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
               <Input
                 placeholder="Buscar descrição, doc, pessoa ou categoria…"
                 aria-label="Buscar lançamento por descrição, documento, pessoa ou categoria"
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
-                className="pl-10 w-full"
+                className="w-full pl-9"
               />
             </div>
+            {/* Tonal quando aberto/aplicado: o verde sólido é só da ação
+                principal, à direita. */}
             <Button
-              variant={mostrarFiltros || filtrosAtivos > 0 ? "default" : "outline"}
+              variant={mostrarFiltros || filtrosAtivos > 0 ? "secondary" : "outline"}
               onClick={() => setMostrarFiltros((v) => !v)}
               aria-expanded={mostrarFiltros}
             >
@@ -517,7 +530,7 @@ export default function FinKanban({ tipo }: Props) {
           <Button
             key={c.id}
             size="sm"
-            variant={filtroVenc === c.id ? "default" : "outline"}
+            variant={filtroVenc === c.id ? "default" : "secondary"}
             aria-pressed={filtroVenc === c.id}
             onClick={() => setFiltroVenc(c.id)}
           >
@@ -535,7 +548,7 @@ export default function FinKanban({ tipo }: Props) {
       {/* Painel expansível de filtros avançados */}
       {mostrarFiltros && (
         <Card>
-          <CardContent className="pt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <CardContent className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-2">
               <label htmlFor="fin-kanban-categoria" className="block text-sm font-medium text-foreground">Categoria</label>
               <Select value={filtroCategoria} onValueChange={setFiltroCategoria}>
@@ -647,12 +660,12 @@ export default function FinKanban({ tipo }: Props) {
         </Card>
       )}
 
-      {/* Barra de seleção em lote */}
+      {/* Barra de seleção em lote — na tinta verde, como toda seleção do sistema. */}
       {selecionados.size > 0 && (
-        <Card className="border-border bg-muted">
-          <CardContent className="py-3 flex flex-wrap items-center justify-between gap-3">
+        <Card className="border-primary-line bg-primary-tint">
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
             <div className="flex flex-wrap items-center gap-3 text-sm">
-              <CheckSquare className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+              <CheckSquare className="h-4 w-4 text-primary" aria-hidden="true" />
               <span>
                 <strong>{selecionados.size}</strong> selecionado(s) ·{" "}
                 <span className="tabular-nums font-semibold">
@@ -691,11 +704,9 @@ export default function FinKanban({ tipo }: Props) {
             <Card
               key={col.id}
               className={cn(
-                // Contorno de 1px como todo cartão da identidade: a coluna já
-                // se distingue pela tinta (`*-tint` + `*-line`), e a moldura
-                // dupla era o único traço de 2px do módulo.
-                col.cor,
-                "kanban-col transition-shadow",
+                // Coluna na superfície rebaixada, sem sombra: o cartão dentro
+                // dela é que é branco e em relevo (anatomia de kanban do DS v3).
+                "kanban-col bg-secondary shadow-none transition-shadow",
                 dragOverCol === col.id && "ring-2 ring-ring shadow-md",
               )}
               onDragOver={handleColDragOver(col.id)}
@@ -706,22 +717,22 @@ export default function FinKanban({ tipo }: Props) {
               }}
               onDrop={handleColDrop(col.id)}
             >
-              <CardHeader className="p-4 pb-2 space-y-1">
-                <CardTitle className="text-lg font-semibold flex items-center gap-2 min-w-0">
-                  <Icone className="w-4 h-4 shrink-0" aria-hidden="true" />
+              <CardHeader className="space-y-1 p-3 pb-2">
+                <CardTitle className="flex min-w-0 items-center gap-2 text-base font-semibold">
+                  <Icone className={cn("h-4 w-4 shrink-0", col.cor)} aria-hidden="true" />
                   <span className="truncate">{col.nome}</span>
                   {/* A contagem como selo, não como parte da mesma frase do
                       valor: eram dois números de naturezas diferentes colados
                       por um ponto, e a leitura tropeçava nos dois. */}
-                  <span className="ml-auto shrink-0 rounded-full bg-background px-2 py-0.5 text-xs font-semibold tabular-nums">
+                  <span className="ml-auto shrink-0 rounded-sm border border-border bg-card px-1.5 py-0.5 text-xs font-semibold tabular-nums text-muted-foreground">
                     {items.length}
                   </span>
                 </CardTitle>
-                <p className="text-sm font-semibold tabular-nums whitespace-nowrap overflow-hidden text-ellipsis">
+                <p className="overflow-hidden text-ellipsis whitespace-nowrap text-sm font-semibold tabular-nums text-foreground">
                   {subtotal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                 </p>
               </CardHeader>
-              <CardContent className="p-2 kanban-col">
+              <CardContent className="kanban-col p-2">
                 {/* Coluna vazia não ocupa meia tela.
                     As quatro tinham altura fixa de 520px, e num quadro com duas
                     vazias isso somava mais de mil pixels de moldura tracejada —
@@ -734,10 +745,10 @@ export default function FinKanban({ tipo }: Props) {
                   <div className="kanban-col-body">
                     {items.length === 0 ? (
                       <div className={cn(
-                        "border-2 border-dashed rounded-md py-6 text-center transition-colors",
+                        "rounded-md border border-dashed py-6 text-center transition-colors",
                         dragOverCol === col.id
                           ? "border-primary bg-primary-tint"
-                          : "border-border",
+                          : "border-input",
                       )}>
                         <p className="text-sm text-muted-foreground">
                           {dragOverCol === col.id ? "Solte aqui" : "Nenhum item"}
@@ -755,7 +766,7 @@ export default function FinKanban({ tipo }: Props) {
                           <Card
                             key={l.id}
                             className={cn(
-                              "bg-card border border-border shadow-sm kanban-card cursor-grab active:cursor-grabbing transition-all",
+                              "kanban-card cursor-grab rounded-md border border-border bg-card shadow-sm transition-[opacity,box-shadow,border-color] duration-150 active:cursor-grabbing",
                               isDragging && "opacity-40",
                             )}
                             draggable
@@ -797,7 +808,7 @@ export default function FinKanban({ tipo }: Props) {
                                         {l.descricao}
                                       </p>
                                       <span className={cn(
-                                        "text-sm font-bold tabular-nums whitespace-nowrap shrink-0 text-right",
+                                        "shrink-0 whitespace-nowrap text-right text-sm font-semibold tabular-nums",
                                         col.id === "vencido" && "text-destructive-ink",
                                         col.id === "pago" && "text-success-ink",
                                       )}>

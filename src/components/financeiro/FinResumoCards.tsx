@@ -1,10 +1,15 @@
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, Wallet, ArrowDownCircle, ArrowUpCircle } from "lucide-react";
 import { formatBRL } from "@/lib/financeiro/formatters";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useResumoFinanceiro } from "@/hooks/useFinanceiro";
 import ValorDeCartao from "./ValorDeCartao";
 
+/**
+ * Cartão KPI do Design System v3 (112px): rótulo em cima, ícone num ladrilho
+ * tingido no canto, valor 28/36 embaixo — o mesmo desenho do `StatCard`.
+ * Texto colorido sempre na tinta `*-ink`, nunca na cor cheia sobre branco.
+ */
 const Item = ({
   label,
   value,
@@ -18,27 +23,25 @@ const Item = ({
 }) => {
   const toneClass = {
     default: "text-foreground",
-    success: "text-success",
-    warning: "text-warning",
-    danger: "text-destructive",
+    success: "text-success-ink",
+    warning: "text-warning-ink",
+    danger: "text-destructive-ink",
   }[tone];
   const iconBox = {
-    default: "bg-muted text-foreground",
+    default: "bg-muted text-muted-foreground",
     success: "bg-success-tint text-success-ink",
     warning: "bg-warning-tint text-warning-ink",
     danger: "bg-destructive-tint text-destructive-ink",
   }[tone];
   return (
-    <Card>
-      <CardContent className="p-6 flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-sm font-medium text-muted-foreground">{label}</p>
-          <ValorDeCartao valor={value} className={toneClass} />
-        </div>
-        <span className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md ${iconBox}`}>
-          <Icon className="w-5 h-5" aria-hidden="true" />
+    <Card className="flex min-h-[112px] flex-col justify-between gap-2 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <p className="min-w-0 truncate text-sm font-medium leading-5 text-muted-foreground">{label}</p>
+        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${iconBox}`}>
+          <Icon className="h-4 w-4" aria-hidden="true" />
         </span>
-      </CardContent>
+      </div>
+      <ValorDeCartao valor={value} className={toneClass} />
     </Card>
   );
 };

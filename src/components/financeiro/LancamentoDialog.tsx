@@ -22,7 +22,6 @@ import { MoneyInput } from "@/components/ui/money-input";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
 import { Info, CheckCircle2, TrendingUp, TrendingDown, ArrowLeftRight, AlertCircle, Link2, Trash2 } from "lucide-react";
 import type { LancamentoParaVincular } from "@/lib/contratos/pedido-do-lancamento";
 import { toast } from "sonner";
@@ -89,12 +88,15 @@ const TIPO_OPTIONS = [
   { value: "transferencia", label: "Transferência", icon: ArrowLeftRight },
 ] as const;
 
+// Status escolhido como selo suave do Design System v3 (trio tint/ink/line),
+// não pílula sólida: previsto = informativo, realizado/conciliado = sucesso,
+// em atraso = erro, cancelado = neutro.
 const STATUS_OPTIONS = [
-  { value: "previsto", label: "Previsto", active: "bg-info text-info-foreground border-info" },
-  { value: "realizado", label: "Realizado", active: "bg-success text-success-foreground border-success" },
-  { value: "conciliado", label: "Conciliado", active: "bg-success text-success-foreground border-success" },
-  { value: "em_atraso", label: "Em atraso", active: "bg-destructive text-destructive-foreground border-destructive" },
-  { value: "cancelado", label: "Cancelado", active: "bg-muted-foreground text-background border-muted-foreground" },
+  { value: "previsto", label: "Previsto", active: "bg-info-tint text-info-ink border-info-line" },
+  { value: "realizado", label: "Realizado", active: "bg-success-tint text-success-ink border-success-line" },
+  { value: "conciliado", label: "Conciliado", active: "bg-success-tint text-success-ink border-success-line" },
+  { value: "em_atraso", label: "Em atraso", active: "bg-destructive-tint text-destructive-ink border-destructive-line" },
+  { value: "cancelado", label: "Cancelado", active: "bg-muted text-muted-foreground border-border" },
 ] as const;
 
 type Props = {
@@ -970,31 +972,29 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto p-0">
-        {/* Header colorido por tipo */}
-        <div className={cn(
-          "px-6 pt-5 pb-4 border-b",
-          tipo === "a_pagar" ? "bg-destructive/5" :
-          tipo === "a_receber" ? "bg-success/5" :
-          "bg-muted/30"
-        )}>
+        {/* Cabeçalho neutro (Design System v3): o tipo e o status são chips
+            de escolha logo abaixo do título — a cor fica no selo escolhido,
+            não numa faixa tingida atrás de tudo. */}
+        <div className="border-b border-border bg-card px-6 pb-4 pt-5">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-base">
+            <DialogTitle className="flex items-center gap-2">
               {editando ? "Editar lançamento" : "Novo lançamento"}
             </DialogTitle>
           </DialogHeader>
 
-          {/* Tipo como pills */}
-          <div className="flex flex-wrap items-center gap-1.5 mt-3">
+          {/* Tipo como chips */}
+          <div className="mt-3 flex flex-wrap items-center gap-1.5" role="group" aria-label="Tipo do lançamento">
             {TIPO_OPTIONS.map((t) => (
               <button
                 key={t.value}
                 type="button"
+                aria-pressed={tipo === t.value}
                 onClick={() => setTipo(t.value as Tipo)}
                 className={cn(
-                  "px-3 py-1 rounded-full text-xs font-medium transition-all border",
+                  "rounded-sm border px-2.5 py-1 text-xs font-semibold leading-4 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                   tipo === t.value
-                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                    : "bg-background/70 text-muted-foreground border-border hover:bg-accent"
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-input bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
                 )}
               >
                 {t.label}
@@ -1002,18 +1002,19 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
             ))}
           </div>
 
-          {/* Status como pills coloridos */}
-          <div className="flex flex-wrap items-center gap-1.5 mt-2">
+          {/* Status como selos suaves */}
+          <div className="mt-2 flex flex-wrap items-center gap-1.5" role="group" aria-label="Status do lançamento">
             {STATUS_OPTIONS.map((s) => (
               <button
                 key={s.value}
                 type="button"
+                aria-pressed={status === s.value}
                 onClick={() => setStatus(s.value as Status)}
                 className={cn(
-                  "px-3 py-1 rounded-full text-xs font-medium transition-all border",
+                  "rounded-sm border px-2.5 py-1 text-xs font-semibold leading-4 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                   status === s.value
                     ? s.active
-                    : "bg-background/70 text-muted-foreground border-border hover:bg-accent"
+                    : "border-input bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
                 )}
               >
                 {s.label}
@@ -1022,9 +1023,9 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
           </div>
         </div>
 
-        <div className="px-6 pt-4 pb-2">
+        <div className="px-6 pb-2 pt-4">
           <Tabs defaultValue="geral" className="w-full">
-            <TabsList className="grid w-full grid-cols-4 mb-4">
+            <TabsList className="mb-4">
               <TabsTrigger value="geral">Geral</TabsTrigger>
               <TabsTrigger value="documento">Documento</TabsTrigger>
               <TabsTrigger value="rateio" disabled={!editando}>Rateio</TabsTrigger>
@@ -1046,10 +1047,10 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
                 />
               </div>
 
-              {/* Valor + Conta + Forma de pagamento */}
-              <div className={cn("grid gap-3", isTransferencia ? "grid-cols-2" : "grid-cols-3")}>
+              {/* Valor + Conta + Forma de pagamento — uma coluna no celular. */}
+              <div className={cn("grid gap-4", isTransferencia ? "sm:grid-cols-2" : "sm:grid-cols-3")}>
                 <div className="space-y-1.5">
-                  <Label className={valor <= 0 ? "text-destructive" : ""}>Valor *</Label>
+                  <Label className={valor <= 0 ? "text-destructive-ink" : ""}>Valor *</Label>
                   <MoneyInput value={valor} onValueChange={setValor} className={valor <= 0 ? "border-destructive focus-visible:ring-destructive" : ""} />
                 </div>
                 {!isTransferencia && (
@@ -1082,8 +1083,8 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
 
               {/* Datas */}
               <div className="space-y-2">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Datas</p>
-                <div className="grid grid-cols-3 gap-3">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Datas</p>
+                <div className="grid gap-4 sm:grid-cols-3">
                   <div className="space-y-1.5">
                     <Label>Competência *</Label>
                     <Input type="date" value={dataCompetencia} onChange={(e) => setDataCompetencia(e.target.value)} />
@@ -1103,8 +1104,8 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
 
               {/* Transferência entre contas */}
               <div className={cn(
-                "rounded-lg border p-3 space-y-3 transition-colors",
-                isTransferencia ? "border-primary/40 bg-primary/5" : "border-border bg-muted/20"
+                "space-y-3 rounded-md border p-4 transition-colors duration-150",
+                isTransferencia ? "border-primary-line bg-primary-tint" : "border-border bg-secondary"
               )}>
                 <div className="flex items-center gap-2.5">
                   <Checkbox
@@ -1132,11 +1133,11 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
                 </div>
 
                 {isTransferencia && (
-                  <div className="grid grid-cols-2 gap-3 pt-1">
+                  <div className="grid gap-4 pt-1 sm:grid-cols-2">
                     <div className="space-y-1.5">
-                      <Label className="text-xs">Conta de origem</Label>
+                      <Label>Conta de origem</Label>
                       <Select value={contaId || "none"} onValueChange={(v) => setContaId(v === "none" ? "" : v)}>
-                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                        <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">— Sem conta —</SelectItem>
                           {contas.map((c) => (
@@ -1146,12 +1147,12 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
                       </Select>
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs text-foreground font-medium">Conta de destino *</Label>
+                      <Label>Conta de destino *</Label>
                       <Select
                         value={contaDestinoId || "none"}
                         onValueChange={(v) => setContaDestinoId(v === "none" ? "" : v)}
                       >
-                        <SelectTrigger className={cn("h-8 text-xs", !contaDestinoId && "border-primary/50")}>
+                        <SelectTrigger className={cn(!contaDestinoId && "border-primary")}>
                           <SelectValue placeholder="Selecione a conta destino" />
                         </SelectTrigger>
                         <SelectContent>
@@ -1170,8 +1171,8 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
 
               {/* Classificação */}
               <div className="space-y-2">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Classificação</p>
-                <div className="grid grid-cols-2 gap-3">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Classificação</p>
+                <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label>Categoria</Label>
                     <Select value={categoriaId || "none"} onValueChange={(v) => setCategoriaId(v === "none" ? "" : v)}>
@@ -1246,7 +1247,7 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
                     </Select>
                   </div>
 
-                  <div className="col-span-2 space-y-1.5">
+                  <div className="space-y-1.5 sm:col-span-2">
                     <Label>Vendedor / responsável</Label>
                     <Select value={vendedorId || "none"} onValueChange={(v) => setVendedorId(v === "none" ? "" : v)}>
                       <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
@@ -1266,27 +1267,27 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
 
               {/* Acréscimos e Descontos */}
               <div className="space-y-2">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Acréscimos e Descontos</p>
-                <div className="grid grid-cols-4 gap-3">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Acréscimos e Descontos</p>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   <div className="space-y-1.5">
-                    <Label className="text-xs">Juros (R$)</Label>
+                    <Label>Juros (R$)</Label>
                     <MoneyInput value={valorJuros} onValueChange={setValorJuros} />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs">Multa (R$)</Label>
+                    <Label>Multa (R$)</Label>
                     <MoneyInput value={valorMulta} onValueChange={setValorMulta} />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs">Desconto (R$)</Label>
+                    <Label>Desconto (R$)</Label>
                     <MoneyInput value={valorDesconto} onValueChange={setValorDesconto} />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs">Tarifa bancária (R$)</Label>
+                    <Label>Tarifa bancária (R$)</Label>
                     <MoneyInput value={valorTarifa} onValueChange={setValorTarifa} />
                   </div>
                 </div>
                 {temAcrescimos && (
-                  <div className="flex flex-wrap items-center justify-end gap-2 rounded-md bg-muted/40 px-3 py-2 text-sm">
+                  <div className="flex flex-wrap items-center justify-end gap-2 rounded-md bg-secondary px-3 py-2 text-sm">
                     <Info className="w-4 h-4 text-muted-foreground" />
                     <span className="text-muted-foreground">
                       Valor líquido a {tipo === "a_pagar" ? "pagar" : "receber"}:
@@ -1319,12 +1320,12 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
 
                   O armazenamento sempre foi genérico; era a redação que dizia
                   "NF-e" em toda linha. Ver lib/financeiro/anexo-do-lancamento. */}
-              <div className="rounded-lg border border-dashed p-3 space-y-2">
+              <div className="space-y-3 rounded-md border border-dashed border-input p-4">
                 <input ref={entradaDeArquivo} type="file" className="hidden"
                   accept={perfil.aceita} multiple onChange={receberArquivos} />
-                <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <div>
-                    <p className="text-sm font-medium">{perfil.titulo}</p>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-base font-medium text-foreground">{perfil.titulo}</p>
                     <p className="text-xs text-muted-foreground">{perfil.ajuda}</p>
                   </div>
                   <Button type="button" variant="outline" size="sm"
@@ -1336,20 +1337,21 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
                     anexar, e quem reabre conclui que o arquivo não foi
                     guardado. */}
                 {docGuardado && !arquivoPdf && !arquivoXml && (
-                  <div className="flex items-center justify-between gap-2 flex-wrap rounded-md border bg-background px-2.5 py-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-secondary px-3 py-2">
                     <div className="min-w-0">
-                      <p className="text-xs font-medium truncate">{docGuardado.arquivo_nome}</p>
-                      <p className="text-[11px] text-muted-foreground">
+                      <p className="truncate text-sm font-medium text-foreground">{docGuardado.arquivo_nome}</p>
+                      <p className="text-xs text-muted-foreground">
                         guardado neste lançamento
                         {docGuardado.arquivo_xml && " · com XML"}
                       </p>
                     </div>
-                    <div className="flex gap-1.5 shrink-0">
-                      <Button type="button" variant="outline" size="sm"
-                        className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                    <div className="flex shrink-0 gap-1.5">
+                      <Button type="button" variant="outline" size="icon-sm"
+                        className="text-destructive-ink hover:bg-destructive-tint hover:text-destructive-ink"
                         title="Apagar o arquivo guardado (os campos digitados permanecem)"
+                        aria-label="Apagar o arquivo guardado"
                         onClick={apagarDocGuardado}>
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 aria-hidden="true" />
                       </Button>
                       {/* ── Ver a nota quando só existe o XML ─────────────────
                           XML aberto no navegador é marcação crua. O dado está
@@ -1361,7 +1363,7 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
                           Contribuinte, e chamar uma leitura de DANFE
                           convidaria alguém a apresentá-la como se fosse. */}
                       {docGuardado.arquivo_xml && (
-                        <Button type="button" variant="outline" size="sm" className="h-7 text-xs"
+                        <Button type="button" variant="outline" size="sm"
                           onClick={() => {
                             try {
                               if (!abrirEspelho(parseNFeXML(docGuardado.arquivo_xml!))) {
@@ -1376,7 +1378,7 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
                           Ver a nota
                         </Button>
                       )}
-                      <Button type="button" variant="outline" size="sm" className="h-7 text-xs"
+                      <Button type="button" variant="outline" size="sm"
                         onClick={abrirDocGuardado} disabled={abrindoDoc}>
                         {abrindoDoc ? "abrindo…" : "Ver arquivo"}
                       </Button>
@@ -1384,7 +1386,7 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
                   </div>
                 )}
                 {(arquivoPdf || arquivoXml) && (
-                  <div className="flex gap-3 text-xs text-muted-foreground flex-wrap">
+                  <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
                     {arquivoXml && <span>XML: {arquivoXml.name}</span>}
                     {arquivoPdf && <span>PDF: {arquivoPdf.name}</span>}
                     {lendoDanfe && <span className="text-primary">{lendoDanfe}</span>}
@@ -1395,9 +1397,9 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
                     conciliado veio do extrato — é o dinheiro que entrou —, e
                     pode diferir da nota por retenção ou desconto. */}
                 {divergencias.length > 0 && (
-                  <div className="text-xs text-warning space-y-0.5">
-                    <p className="flex items-center gap-1.5">
-                      <AlertCircle className="w-3.5 h-3.5" /> A nota diverge do que está gravado — nada foi alterado:
+                  <div className="space-y-0.5 rounded-md border border-warning-line bg-warning-tint px-3 py-2 text-xs text-warning-ink">
+                    <p className="flex items-center gap-1.5 font-semibold">
+                      <AlertCircle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /> A nota diverge do que está gravado — nada foi alterado:
                     </p>
                     {divergencias.map(d => (
                       <p key={d.campo} className="ml-5">
@@ -1408,7 +1410,7 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label>Tipo de documento</Label>
                   <Select value={tipoDocumento || "none"} onValueChange={(v) => setTipoDocumento(v === "none" ? "" : (v as TipoDocumento))}>
@@ -1434,7 +1436,7 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
                   <Input value={serieDocumento} onChange={(e) => setSerieDocumento(e.target.value)} placeholder="Ex.: 1" />
                 </div>
                 {(tipoDocumento === "nfe" || tipoDocumento === "nfce" || tipoDocumento === "nfse" || tipoDocumento === "cte") && (
-                  <div className="col-span-2 space-y-1.5">
+                  <div className="space-y-1.5 sm:col-span-2">
                     <Label>Chave de acesso (44 dígitos)</Label>
                     <Input
                       value={chaveAcessoNfe}
@@ -1443,15 +1445,15 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
                       maxLength={44}
                     />
                     {chaveAcessoNfe && chaveAcessoNfe.length !== 44 && (
-                      <p className="text-xs text-destructive">A chave deve ter 44 dígitos numéricos.</p>
+                      <p className="text-xs text-destructive-ink">A chave deve ter 44 dígitos numéricos.</p>
                     )}
                   </div>
                 )}
               </div>
 
               {tipo === "a_receber" && (
-                <p className="text-[11px] text-muted-foreground flex items-start gap-1.5">
-                  <Link2 className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                  <Link2 className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                   <span>
                     O anexo não liga o recebimento a um contrato — essa é a etapa seguinte, pelo
                     ícone de elo na linha do lançamento. A quantidade lida desta nota vai junto
@@ -1468,9 +1470,9 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
 
             {/* ===================== PARCELAMENTO ===================== */}
             <TabsContent value="parcelas" className="space-y-4 mt-0">
-              <div className="rounded-md border p-4 flex items-center justify-between gap-4">
+              <div className="flex items-center justify-between gap-4 rounded-md border border-border p-4">
                 <div className="min-w-0">
-                  <p className="font-medium">Incluir repetições / parcelamento</p>
+                  <p className="text-base font-medium text-foreground">Incluir repetições / parcelamento</p>
                   <p className="text-xs text-muted-foreground">
                     Para despesas fixas (ex.: aluguel, telefonia, energia) use{" "}
                     <strong>Repetir o mesmo valor</strong>. Para parcelar uma compra,{" "}
@@ -1482,13 +1484,14 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
 
               {parcelar && (
                 <>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid gap-4 sm:grid-cols-2">
                     <button
                       type="button"
+                      aria-pressed={modoParc === "dividir"}
                       onClick={() => { setModoParc("dividir"); setSimulacaoEdits({}); }}
                       className={cn(
-                        "text-left rounded-md border p-3 transition-colors",
-                        modoParc === "dividir" ? "border-primary ring-1 ring-primary/40 bg-primary/5" : "hover:bg-accent/40"
+                        "rounded-md border p-3 text-left transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                        modoParc === "dividir" ? "border-primary bg-primary-tint" : "border-border hover:bg-muted"
                       )}
                     >
                       <div className="flex items-center gap-2 text-sm font-medium">
@@ -1501,10 +1504,11 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
                     </button>
                     <button
                       type="button"
+                      aria-pressed={modoParc === "repetir"}
                       onClick={() => { setModoParc("repetir"); setSimulacaoEdits({}); }}
                       className={cn(
-                        "text-left rounded-md border p-3 transition-colors",
-                        modoParc === "repetir" ? "border-primary ring-1 ring-primary/40 bg-primary/5" : "hover:bg-accent/40"
+                        "rounded-md border p-3 text-left transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                        modoParc === "repetir" ? "border-primary bg-primary-tint" : "border-border hover:bg-muted"
                       )}
                     >
                       <div className="flex items-center gap-2 text-sm font-medium">
@@ -1517,9 +1521,9 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
                     <div className="space-y-1.5">
-                      <Label className="text-xs">Quanto a sábados e domingos</Label>
+                      <Label>Quanto a sábados e domingos</Label>
                       <Select value={regraFds} onValueChange={(v) => { setRegraFds(v as RegraFimSemana); setSimulacaoEdits({}); }}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
@@ -1530,7 +1534,7 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
                       </Select>
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs">Periodicidade</Label>
+                      <Label>Periodicidade</Label>
                       <Select value={periodicidade} onValueChange={(v) => { setPeriodicidade(v as Periodicidade); setSimulacaoEdits({}); }}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
@@ -1547,7 +1551,7 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
                     </div>
                     {periodicidade === "dias" ? (
                       <div className="space-y-1.5">
-                        <Label className="text-xs">A cada (dias)</Label>
+                        <Label>A cada (dias)</Label>
                         <Input
                           type="number" min={1} max={365}
                           value={intervaloDias}
@@ -1556,7 +1560,7 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
                       </div>
                     ) : (
                       <div className="space-y-1.5">
-                        <Label className="text-xs">Repetir todo dia</Label>
+                        <Label>Repetir todo dia</Label>
                         <Input
                           type="number" min={1} max={31}
                           placeholder="(usa o dia do venc.)"
@@ -1567,7 +1571,7 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
                       </div>
                     )}
                     <div className="space-y-1.5">
-                      <Label className="text-xs">Por (qtd. de repetições)</Label>
+                      <Label>Por (qtd. de repetições)</Label>
                       <Input
                         type="number" min={2} max={120}
                         value={qtdParcelas}
@@ -1576,26 +1580,26 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
                     </div>
                   </div>
 
-                  <div className="rounded-md border overflow-hidden">
-                    <div className="flex items-center justify-between px-3 py-2 bg-muted/40 border-b gap-2 flex-wrap">
-                      <div className="text-sm font-medium">
+                  <div className="overflow-hidden rounded-md border border-border">
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-secondary px-3 py-2">
+                      <div className="text-sm font-medium text-foreground">
                         Simulação das repetições
-                        <span className="text-xs text-muted-foreground ml-2">
+                        <span className="ml-2 text-xs text-muted-foreground">
                           (clique no vencimento ou valor para ajustar manualmente)
                         </span>
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        Total da série: <strong className="text-foreground">{totalSerie.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</strong>
+                        Total da série: <strong className="tabular-nums text-foreground">{totalSerie.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</strong>
                       </div>
                     </div>
                     <div className="max-h-72 overflow-auto">
                       <table className="w-full text-sm">
-                        <thead className="bg-muted/20 text-xs text-muted-foreground sticky top-0">
+                        <thead className="sticky top-0 bg-secondary text-xs font-semibold tracking-wide text-muted-foreground">
                           <tr>
-                            <th className="text-left font-medium px-3 py-2 w-28">Situação</th>
-                            <th className="text-left font-medium px-3 py-2 w-24">Parcela</th>
-                            <th className="text-left font-medium px-3 py-2">Vencimento</th>
-                            <th className="text-right font-medium px-3 py-2 w-40">Valor</th>
+                            <th className="h-10 w-28 px-3 text-left font-semibold">Situação</th>
+                            <th className="h-10 w-24 px-3 text-left font-semibold">Parcela</th>
+                            <th className="h-10 px-3 text-left font-semibold">Vencimento</th>
+                            <th className="h-10 w-40 px-3 text-right font-semibold">Valor</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1604,10 +1608,10 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
                             const dow = dt.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "");
                             const dataStr = dt.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit" });
                             return (
-                              <tr key={i} className="border-t hover:bg-accent/30">
+                              <tr key={i} className="border-t border-border transition-colors hover:bg-muted/60">
                                 <td className="px-3 py-1.5">
                                   <span className="inline-flex items-center gap-1 text-xs">
-                                    <span className="w-2 h-2 rounded-full bg-warning" />
+                                    <span className="h-2 w-2 rounded-full bg-warning" aria-hidden="true" />
                                     A vencer
                                   </span>
                                 </td>
@@ -1619,7 +1623,7 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
                                     type="date"
                                     value={d.vencimento}
                                     onChange={(e) => setSimulacaoEdits((prev) => ({ ...prev, [i]: { ...prev[i], vencimento: e.target.value } }))}
-                                    className="bg-transparent border-0 outline-none focus:ring-1 focus:ring-primary rounded px-1 py-0.5"
+                                    className="rounded-sm border-0 bg-transparent px-1 py-0.5 outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                   />
                                   <span className="text-xs text-muted-foreground ml-2 capitalize">{dataStr} {dow}</span>
                                 </td>
@@ -1628,7 +1632,7 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
                                     type="number" step="0.01" min="0"
                                     value={d.valor}
                                     onChange={(e) => setSimulacaoEdits((prev) => ({ ...prev, [i]: { ...prev[i], valor: parseFloat(e.target.value || "0") } }))}
-                                    className="w-32 text-right bg-transparent border-0 outline-none focus:ring-1 focus:ring-primary rounded px-1 py-0.5 tabular-nums"
+                                    className="w-32 rounded-sm border-0 bg-transparent px-1 py-0.5 text-right tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                   />
                                 </td>
                               </tr>
@@ -1656,7 +1660,7 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
           </Tabs>
         </div>
 
-        <DialogFooter className="px-6 py-4 border-t bg-muted/20">
+        <DialogFooter className="border-t border-border bg-secondary px-6 py-4">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button onClick={handleSubmit} disabled={isSalvando || !descricao.trim() || valor <= 0}>
             {isSalvando

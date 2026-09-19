@@ -19,19 +19,19 @@ export default function FinPanorama() {
             aqui só duplicava o que o componente de ui garante. */}
         <TabsList>
           <TabsTrigger value="visao">
-            <Eye className="w-4 h-4 mr-2" aria-hidden="true" />
+            <Eye className="h-4 w-4" aria-hidden="true" />
             Visão Geral
           </TabsTrigger>
           <TabsTrigger value="cfo">
-            <Activity className="w-4 h-4 mr-2" aria-hidden="true" />
+            <Activity className="h-4 w-4" aria-hidden="true" />
             CFO
           </TabsTrigger>
           <TabsTrigger value="executivo">
-            <BarChart3 className="w-4 h-4 mr-2" aria-hidden="true" />
+            <BarChart3 className="h-4 w-4" aria-hidden="true" />
             Executivo
           </TabsTrigger>
           <TabsTrigger value="operacional">
-            <LayoutDashboard className="w-4 h-4 mr-2" aria-hidden="true" />
+            <LayoutDashboard className="h-4 w-4" aria-hidden="true" />
             Operacional
           </TabsTrigger>
         </TabsList>
@@ -49,12 +49,12 @@ export default function FinPanorama() {
         </TabsContent>
       </Tabs>
 
-      <section className="space-y-4 pt-6 border-t border-border">
-        <div className="flex items-center gap-3">
-          <CalendarDays className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
-          <div>
-            <h2 className="text-lg font-semibold">Calendário Financeiro</h2>
-            <p className="text-sm text-muted-foreground">
+      <section className="space-y-4 border-t border-border pt-6">
+        <div className="flex items-start gap-3">
+          <CalendarDays className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <div className="min-w-0">
+            <h2 className="text-lg font-semibold leading-6 text-foreground">Calendário Financeiro</h2>
+            <p className="text-sm leading-5 text-muted-foreground">
               Espelho dinâmico de pagamentos e recebimentos do mês.
             </p>
           </div>
