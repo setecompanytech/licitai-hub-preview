@@ -2,9 +2,10 @@ import SkeletonPagina from '@/components/shared/SkeletonPagina';
 import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import AppLayout from '@/components/layout/AppLayout';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -76,57 +77,66 @@ export default function MetricasSaaS() {
   if (error || !metrics) {
     return (
       <AppLayout>
-        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-          <AlertTriangle className="w-12 h-12 text-destructive" />
-          <p className="text-muted-foreground">{error || 'Sem dados disponíveis'}</p>
-          <Button onClick={fetchMetrics} variant="outline" size="sm">
-            <RefreshCw className="w-4 h-4 mr-2" /> Tentar novamente
-          </Button>
+        <CabecalhoPagina rota="/admin/metricas-saas" />
+        <div className="rounded-lg border border-border bg-card shadow-sm">
+          <EstadoVazio
+            icone={<AlertTriangle />}
+            titulo="Não foi possível carregar as métricas"
+            descricao={error || 'Sem dados disponíveis'}
+            acao={
+              <Button onClick={fetchMetrics} variant="outline" size="sm">
+                <RefreshCw aria-hidden="true" /> Tentar novamente
+              </Button>
+            }
+          />
         </div>
       </AppLayout>
     );
   }
 
+  /* Tom do ícone — semântico só onde há estado real (receita, churn, cancelamento). */
   const kpiCards = [
-    { label: 'MRR', value: formatBRL(metrics.mrr), icon: DollarSign, color: 'text-muted-foreground', desc: 'Receita Mensal Recorrente' },
-    { label: 'ARR', value: formatBRL(metrics.arr), icon: TrendingUp, color: 'text-success', desc: 'Receita Anual Recorrente' },
-    { label: 'Assinaturas Ativas', value: metrics.activeSubscriptions.toString(), icon: UserCheck, color: 'text-muted-foreground', desc: 'Planos ativos no Stripe' },
-    { label: 'Churn Rate', value: `${metrics.churnRate}%`, icon: TrendingDown, color: metrics.churnRate > 5 ? 'text-destructive' : 'text-success', desc: 'Cancelamentos nos últimos 30 dias' },
-    { label: 'LTV', value: formatBRL(metrics.ltv), icon: BarChart3, color: 'text-muted-foreground', desc: 'Lifetime Value médio' },
-    { label: 'ARPU', value: formatBRL(metrics.arpu), icon: DollarSign, color: 'text-muted-foreground', desc: 'Receita média por assinante' },
-    { label: 'Receita 30d', value: formatBRL(metrics.revenue30d), icon: ArrowUpRight, color: 'text-success', desc: 'Faturamento últimos 30 dias' },
-    { label: 'Usuários', value: metrics.totalUsers.toString(), icon: Users, color: 'text-muted-foreground', desc: 'Usuários cadastrados' },
-    { label: 'Empresas', value: metrics.totalEmpresas.toString(), icon: Building2, color: 'text-muted-foreground', desc: 'Empresas ativas' },
-    { label: 'Cancelamentos', value: metrics.recentCancellations.toString(), icon: ArrowDownRight, color: 'text-destructive', desc: 'Nos últimos 30 dias' },
+    { label: 'MRR', value: formatBRL(metrics.mrr), icon: DollarSign, tom: 'bg-muted text-muted-foreground', desc: 'Receita Mensal Recorrente' },
+    { label: 'ARR', value: formatBRL(metrics.arr), icon: TrendingUp, tom: 'bg-success-tint text-success-ink', desc: 'Receita Anual Recorrente' },
+    { label: 'Assinaturas Ativas', value: metrics.activeSubscriptions.toString(), icon: UserCheck, tom: 'bg-muted text-muted-foreground', desc: 'Planos ativos no Stripe' },
+    { label: 'Churn Rate', value: `${metrics.churnRate}%`, icon: TrendingDown, tom: metrics.churnRate > 5 ? 'bg-destructive-tint text-destructive-ink' : 'bg-success-tint text-success-ink', desc: 'Cancelamentos nos últimos 30 dias' },
+    { label: 'LTV', value: formatBRL(metrics.ltv), icon: BarChart3, tom: 'bg-muted text-muted-foreground', desc: 'Lifetime Value médio' },
+    { label: 'ARPU', value: formatBRL(metrics.arpu), icon: DollarSign, tom: 'bg-muted text-muted-foreground', desc: 'Receita média por assinante' },
+    { label: 'Receita 30d', value: formatBRL(metrics.revenue30d), icon: ArrowUpRight, tom: 'bg-success-tint text-success-ink', desc: 'Faturamento últimos 30 dias' },
+    { label: 'Usuários', value: metrics.totalUsers.toString(), icon: Users, tom: 'bg-muted text-muted-foreground', desc: 'Usuários cadastrados' },
+    { label: 'Empresas', value: metrics.totalEmpresas.toString(), icon: Building2, tom: 'bg-muted text-muted-foreground', desc: 'Empresas ativas' },
+    { label: 'Cancelamentos', value: metrics.recentCancellations.toString(), icon: ArrowDownRight, tom: 'bg-destructive-tint text-destructive-ink', desc: 'Nos últimos 30 dias' },
   ];
 
   return (
     <AppLayout>
       <Helmet><title>Métricas SaaS | PRAEFECTUS Admin</title></Helmet>
 
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Métricas SaaS</h1>
-          <p className="text-sm text-muted-foreground">Visão executiva em tempo real — dados do Stripe + banco</p>
-        </div>
-        <Button onClick={fetchMetrics} variant="outline" size="sm">
-          <RefreshCw className="w-4 h-4 mr-2" /> Atualizar
-        </Button>
-      </div>
+      <CabecalhoPagina
+        rota="/admin/metricas-saas"
+        descricao="Visão executiva em tempo real — dados do Stripe + banco"
+        acoes={
+          <Button onClick={fetchMetrics} variant="outline">
+            <RefreshCw aria-hidden="true" /> Atualizar
+          </Button>
+        }
+      />
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+      <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5 [&>*]:min-w-0">
         {kpiCards.map((kpi) => (
-          <Card key={kpi.label} className="bg-card/50 backdrop-blur-sm border-border/50">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-2">
-                <kpi.icon className={`w-5 h-5 ${kpi.color}`} />
-                <Badge variant="outline" className="text-xs">{kpi.label}</Badge>
-              </div>
-              <p className="text-xl font-bold tracking-tight">{kpi.value}</p>
-              <p className="text-xs text-muted-foreground mt-1">{kpi.desc}</p>
-            </CardContent>
-          </Card>
+          <div key={kpi.label} className="flex min-h-[112px] flex-col justify-between gap-2 rounded-lg border border-border bg-card p-4 shadow-sm">
+            <div className="flex items-start justify-between gap-2">
+              <p className="truncate text-sm font-medium text-muted-foreground">{kpi.label}</p>
+              <span aria-hidden="true" className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${kpi.tom}`}>
+                <kpi.icon className="h-4 w-4" />
+              </span>
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-2xl font-semibold leading-8 tabular-nums text-foreground" title={kpi.value}>{kpi.value}</p>
+              <p className="truncate text-xs text-muted-foreground">{kpi.desc}</p>
+            </div>
+          </div>
         ))}
       </div>
 
@@ -135,7 +145,7 @@ export default function MetricasSaaS() {
         {/* MRR Trend */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold">Evolução do MRR</CardTitle>
+            <CardTitle>Evolução do MRR</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={260}>
@@ -153,7 +163,7 @@ export default function MetricasSaaS() {
         {/* Customers Trend */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold">Assinantes por Mês</CardTitle>
+            <CardTitle>Assinantes por Mês</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={260}>
@@ -173,7 +183,7 @@ export default function MetricasSaaS() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold">Distribuição por Plano</CardTitle>
+            <CardTitle>Distribuição por Plano</CardTitle>
           </CardHeader>
           <CardContent>
             {metrics.planBreakdown.length > 0 ? (
@@ -212,7 +222,7 @@ export default function MetricasSaaS() {
         {/* Unit Economics */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold">Unit Economics</CardTitle>
+            <CardTitle>Unit Economics</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {[
@@ -227,7 +237,7 @@ export default function MetricasSaaS() {
                   <p className="text-sm font-medium">{item.label}</p>
                   <p className="text-xs text-muted-foreground">{item.desc}</p>
                 </div>
-                <p className="text-sm font-bold">{item.value}</p>
+                <p className="text-sm font-semibold tabular-nums">{item.value}</p>
               </div>
             ))}
           </CardContent>

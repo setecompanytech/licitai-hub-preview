@@ -14,11 +14,14 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import {
-  Plus, Pencil, Trash2, Save, X, ShieldCheck, Globe, Factory,
-  Search, ExternalLink, Loader2, ArrowUpDown
+  Plus, Pencil, Trash2, Save, X, Factory,
+  Search, ExternalLink, ArrowUpDown
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Navigate } from 'react-router-dom';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
+import EstadoVazio from '@/components/shared/EstadoVazio';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const CATEGORIAS = [
   'informatica',
@@ -101,7 +104,17 @@ export default function AdminFontesFabricantes() {
 
   useEffect(() => { loadFontes(); }, []);
 
-  if (roleLoading) return <AppLayout><div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin" /></div></AppLayout>;
+  if (roleLoading) {
+    return (
+      <AppLayout>
+        <div role="status" aria-busy="true" className="space-y-3">
+          <span className="sr-only">Carregando...</span>
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-64 w-full" />
+        </div>
+      </AppLayout>
+    );
+  }
   if (!isAdmin) return <Navigate to="/dashboard" replace />;
 
   const filtered = fontes.filter(f => {
@@ -178,31 +191,25 @@ export default function AdminFontesFabricantes() {
 
   return (
     <AppLayout>
-      <div className="max-w-6xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold flex items-center gap-2">
-              <Factory className="w-5 h-5 text-muted-foreground" />
-              Fontes de Fabricantes & Portais
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Alimente a IA de catalogação com portais e sites de fabricantes para aperfeiçoar as buscas de especificações e imagens.
-            </p>
-          </div>
-          <Badge variant="outline" className="border-border text-muted-foreground">
-            <ShieldCheck className="w-3 h-3 mr-1" /> Admin
-          </Badge>
-        </div>
+      <div className="mx-auto max-w-6xl space-y-6">
+        <CabecalhoPagina
+          rota="/admin/fontes-fabricantes"
+          descricao="Alimente a IA de catalogação com portais e sites de fabricantes para aperfeiçoar as buscas de especificações e imagens."
+          acoes={
+            <Button onClick={startCreate}>
+              <Plus aria-hidden="true" /> Nova Fonte
+            </Button>
+          }
+        />
 
         {/* Toolbar */}
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Buscar fonte..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-8 h-9" />
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative min-w-[200px] flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+            <Input placeholder="Buscar fonte..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-9" />
           </div>
           <Select value={filterCat} onValueChange={setFilterCat}>
-            <SelectTrigger className="w-[200px] h-9">
+            <SelectTrigger className="w-[220px]" aria-label="Categoria">
               <SelectValue placeholder="Categoria" />
             </SelectTrigger>
             <SelectContent>
@@ -212,29 +219,26 @@ export default function AdminFontesFabricantes() {
               ))}
             </SelectContent>
           </Select>
-          <Button onClick={startCreate} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-            <Plus className="w-4 h-4 mr-1" /> Nova Fonte
-          </Button>
         </div>
 
         {/* Create/Edit Form */}
         {(creating || editing) && (
-          <div className="border border-border rounded-xl p-5 bg-muted space-y-4">
-            <h3 className="text-sm font-semibold flex items-center gap-2">
-              {creating ? <Plus className="w-4 h-4 text-muted-foreground" /> : <Pencil className="w-4 h-4 text-muted-foreground" />}
+          <div className="space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm">
+            <h3 className="flex items-center gap-2 text-base font-semibold text-foreground">
+              {creating ? <Plus className="h-4 w-4 text-muted-foreground" aria-hidden="true" /> : <Pencil className="h-4 w-4 text-muted-foreground" aria-hidden="true" />}
               {creating ? 'Adicionar Nova Fonte' : 'Editar Fonte'}
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold">Nome do Fabricante/Portal *</Label>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Nome do Fabricante/Portal *</Label>
                 <Input placeholder="Ex: HP Brasil, Tramontina, 3M" value={form.nome} onChange={e => setForm(p => ({ ...p, nome: e.target.value }))} />
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold">URL Base *</Label>
+              <div className="space-y-2">
+                <Label>URL Base *</Label>
                 <Input placeholder="https://www.hp.com.br" value={form.url_base} onChange={e => setForm(p => ({ ...p, url_base: e.target.value }))} />
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold">Categoria</Label>
+              <div className="space-y-2">
+                <Label>Categoria</Label>
                 <Select value={form.categoria} onValueChange={v => setForm(p => ({ ...p, categoria: v }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -244,35 +248,35 @@ export default function AdminFontesFabricantes() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold">Prioridade (0-100)</Label>
+              <div className="space-y-2">
+                <Label>Prioridade (0-100)</Label>
                 <Input type="number" min={0} max={100} value={form.prioridade} onChange={e => setForm(p => ({ ...p, prioridade: parseInt(e.target.value) || 0 }))} />
               </div>
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Descrição</Label>
+            <div className="space-y-2">
+              <Label>Descrição</Label>
               <Textarea placeholder="Fabricante líder em impressoras, notebooks e periféricos de informática..." value={form.descricao || ''} onChange={e => setForm(p => ({ ...p, descricao: e.target.value }))} className="min-h-[60px]" />
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Palavras-chave (separadas por vírgula)</Label>
+            <div className="space-y-2">
+              <Label>Palavras-chave (separadas por vírgula)</Label>
               <Input placeholder="impressora, notebook, monitor, toner, cartucho" value={kwInput} onChange={e => setKwInput(e.target.value)} />
               <p className="text-xs text-muted-foreground">A IA usará estas palavras para priorizar este fabricante em buscas de produtos relacionados.</p>
             </div>
             <div className="flex items-center gap-2">
               <Switch checked={form.ativo} onCheckedChange={v => setForm(p => ({ ...p, ativo: v }))} />
-              <Label className="text-xs">Ativo</Label>
+              <Label>Ativo</Label>
             </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={cancel}><X className="w-4 h-4 mr-1" /> Cancelar</Button>
-              <Button onClick={handleSave} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-                <Save className="w-4 h-4 mr-1" /> Salvar
+            <div className="flex justify-end gap-2 border-t border-border pt-4">
+              <Button variant="outline" onClick={cancel}><X aria-hidden="true" /> Cancelar</Button>
+              <Button onClick={handleSave}>
+                <Save aria-hidden="true" /> Salvar
               </Button>
             </div>
           </div>
         )}
 
         {/* Info banner */}
-        <div className="bg-muted/30 border border-border/40 rounded-lg p-3 text-xs text-muted-foreground space-y-1">
+        <div className="space-y-1 rounded-lg border border-border bg-muted/40 p-4 text-xs text-muted-foreground">
           <p className="font-semibold text-foreground">🧠 Como a IA utiliza estas fontes:</p>
           <p>1. Ao gerar Fichas Técnicas, Folders ou Catálogos, a IA consulta esta base de fabricantes</p>
           <p>2. Quando a marca/fabricante do produto coincide com uma fonte cadastrada, a IA prioriza buscas diretas no site oficial</p>
@@ -282,67 +286,73 @@ export default function AdminFontesFabricantes() {
 
         {/* Table */}
         {loading ? (
-          <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+          <div role="status" aria-busy="true" className="space-y-2">
+            <span className="sr-only">Carregando fontes...</span>
+            {Array.from({ length: 5 }, (_, i) => <Skeleton key={i} className="h-12 w-full" />)}
+          </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            <Factory className="w-10 h-10 mx-auto mb-2 opacity-30" />
-            <p className="text-sm">Nenhuma fonte cadastrada.</p>
-            <p className="text-xs mt-1">Adicione sites de fabricantes para aperfeiçoar a IA de catalogação.</p>
+          <div className="rounded-lg border border-border bg-card shadow-sm">
+            <EstadoVazio
+              tamanho="compacto"
+              icone={<Factory />}
+              titulo="Nenhuma fonte cadastrada."
+              descricao="Adicione sites de fabricantes para aperfeiçoar a IA de catalogação."
+            />
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-border/50">
+          <div className="overflow-x-auto rounded-lg border border-border bg-card shadow-sm">
             <Table>
               <TableHeader>
-                <TableRow className="bg-muted/50">
-                  <TableHead className="text-xs font-semibold h-8">Status</TableHead>
-                  <TableHead className="text-xs font-semibold h-8">Fabricante/Portal</TableHead>
-                  <TableHead className="text-xs font-semibold h-8">URL</TableHead>
-                  <TableHead className="text-xs font-semibold h-8">Categoria</TableHead>
-                  <TableHead className="text-xs font-semibold h-8">Palavras-chave</TableHead>
-                  <TableHead className="text-xs font-semibold h-8 text-center">
-                    <span className="flex items-center gap-1 justify-center"><ArrowUpDown className="w-3 h-3" /> Prior.</span>
+                <TableRow>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Fabricante/Portal</TableHead>
+                  <TableHead>URL</TableHead>
+                  <TableHead>Categoria</TableHead>
+                  <TableHead>Palavras-chave</TableHead>
+                  <TableHead className="text-center">
+                    <span className="flex items-center justify-center gap-1"><ArrowUpDown className="h-3 w-3" aria-hidden="true" /> Prior.</span>
                   </TableHead>
-                  <TableHead className="text-xs font-semibold h-8 w-20">Ações</TableHead>
+                  <TableHead className="w-24">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.map(fonte => (
                   <TableRow key={fonte.id}>
-                    <TableCell className="py-1.5">
+                    <TableCell>
                       <Switch
                         checked={fonte.ativo}
                         onCheckedChange={v => handleToggle(fonte.id, v)}
-                        className="scale-75"
+                        aria-label={fonte.ativo ? 'Desativar fonte' : 'Ativar fonte'}
                       />
                     </TableCell>
-                    <TableCell className="text-xs py-1.5 font-medium">{fonte.nome}</TableCell>
-                    <TableCell className="text-xs py-1.5">
-                      <a href={fonte.url_base} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline flex items-center gap-1">
+                    <TableCell className="font-medium">{fonte.nome}</TableCell>
+                    <TableCell>
+                      <a href={fonte.url_base} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-primary hover:underline">
                         {fonte.url_base.replace(/^https?:\/\//, '').substring(0, 35)}
-                        <ExternalLink className="w-3 h-3" />
+                        <ExternalLink className="h-3 w-3" aria-hidden="true" />
                       </a>
                     </TableCell>
-                    <TableCell className="py-1.5">
-                      <Badge variant="outline" className="text-xs">{CATEGORIA_LABELS[fonte.categoria] || fonte.categoria}</Badge>
+                    <TableCell>
+                      <Badge variant="outline">{CATEGORIA_LABELS[fonte.categoria] || fonte.categoria}</Badge>
                     </TableCell>
-                    <TableCell className="text-xs py-1.5 max-w-[200px]">
+                    <TableCell className="max-w-[240px]">
                       <div className="flex flex-wrap gap-1">
                         {(fonte.palavras_chave || []).slice(0, 4).map((kw, i) => (
-                          <Badge key={i} variant="secondary" className="text-xs">{kw}</Badge>
+                          <Badge key={i} variant="muted">{kw}</Badge>
                         ))}
                         {(fonte.palavras_chave || []).length > 4 && (
-                          <Badge variant="secondary" className="text-xs">+{fonte.palavras_chave.length - 4}</Badge>
+                          <Badge variant="muted">+{fonte.palavras_chave.length - 4}</Badge>
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className="text-xs py-1.5 text-center font-semibold">{fonte.prioridade}</TableCell>
-                    <TableCell className="py-1.5">
+                    <TableCell className="text-center font-semibold tabular-nums">{fonte.prioridade}</TableCell>
+                    <TableCell>
                       <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => startEdit(fonte)}>
-                          <Pencil className="w-3 h-3" />
+                        <Button variant="ghost" size="icon-sm" aria-label="Editar fonte" onClick={() => startEdit(fonte)}>
+                          <Pencil aria-hidden="true" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(fonte.id)}>
-                          <Trash2 className="w-3 h-3" />
+                        <Button variant="ghost" size="icon-sm" aria-label="Excluir fonte" className="text-destructive-ink hover:bg-destructive-tint" onClick={() => handleDelete(fonte.id)}>
+                          <Trash2 aria-hidden="true" />
                         </Button>
                       </div>
                     </TableCell>
@@ -353,7 +363,7 @@ export default function AdminFontesFabricantes() {
           </div>
         )}
 
-        <div className="text-xs text-muted-foreground text-right">
+        <div className="text-right text-xs text-muted-foreground">
           {filtered.length} fonte(s) · {fontes.filter(f => f.ativo).length} ativa(s)
         </div>
       </div>

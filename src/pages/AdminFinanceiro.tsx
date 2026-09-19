@@ -9,9 +9,12 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { DollarSign, Building2, Check, X, Clock, Search, Eye, MessageCircle, AlertTriangle } from 'lucide-react';
+import { DollarSign, Building2, Check, X, Clock, Search, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Navigate } from 'react-router-dom';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
+import EstadoVazio from '@/components/shared/EstadoVazio';
+import { Skeleton } from '@/components/ui/skeleton';
 
 type Assinatura = {
   id: string;
@@ -40,11 +43,12 @@ type TicketAdmin = {
   created_at: string;
 };
 
-const statusAssinatura: Record<string, { label: string; color: string }> = {
-  ativa: { label: 'Ativa', color: 'bg-success/10 text-success' },
-  pendente: { label: 'Pendente', color: 'bg-warning/10 text-warning' },
-  cancelada: { label: 'Cancelada', color: 'bg-destructive/10 text-destructive' },
-  expirada: { label: 'Expirada', color: 'bg-muted text-muted-foreground' },
+/* Selo suave por situação — o trio de cada estado, via variante do Badge. */
+const statusAssinatura: Record<string, { label: string; variante: 'success' | 'warning' | 'danger' | 'muted' }> = {
+  ativa: { label: 'Ativa', variante: 'success' },
+  pendente: { label: 'Pendente', variante: 'warning' },
+  cancelada: { label: 'Cancelada', variante: 'danger' },
+  expirada: { label: 'Expirada', variante: 'muted' },
 };
 
 export default function AdminFinanceiro() {
@@ -92,7 +96,17 @@ export default function AdminFinanceiro() {
     if (error) toast.error('Erro ao responder'); else { toast.success('Ticket respondido!'); setResposta(''); setTicketSelecionado(null); fetchAll(); }
   }
 
-  if (roleLoading) return <AppLayout><div className="flex items-center justify-center h-64 text-muted-foreground">Carregando...</div></AppLayout>;
+  if (roleLoading) {
+    return (
+      <AppLayout>
+        <div role="status" aria-busy="true" className="space-y-3">
+          <span className="sr-only">Carregando...</span>
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-28 w-full" />
+        </div>
+      </AppLayout>
+    );
+  }
   if (!isAdmin) return <Navigate to="/dashboard" replace />;
 
   const filteredAssinaturas = assinaturas.filter(a =>
@@ -103,51 +117,49 @@ export default function AdminFinanceiro() {
 
   return (
     <AppLayout>
-      <div className="max-w-6xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Gerenciador Financeiro</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">Gerencie assinaturas, pagamentos e tickets de suporte</p>
-        </div>
+      <div className="mx-auto max-w-6xl">
+        <CabecalhoPagina rota="/admin/financeiro" descricao="Gerencie assinaturas, pagamentos e tickets de suporte" />
 
         {/* KPIs */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4 [&>*]:min-w-0">
           {[
-            { label: 'Assinaturas Ativas', value: assinaturas.filter(a => a.status === 'ativa').length, icon: Check, color: 'text-success' },
-            { label: 'Pendentes', value: assinaturas.filter(a => a.status === 'pendente').length, icon: Clock, color: 'text-warning' },
-            { label: 'Receita Mensal', value: `R$ ${assinaturas.filter(a => a.status === 'ativa').reduce((sum, a) => sum + (a.plano?.preco_mensal || 0), 0).toLocaleString('pt-BR')}`, icon: DollarSign, color: 'text-muted-foreground' },
-            { label: 'Tickets Abertos', value: ticketsAbertos, icon: MessageCircle, color: ticketsAbertos > 0 ? 'text-destructive' : 'text-muted-foreground' },
+            { label: 'Assinaturas Ativas', value: assinaturas.filter(a => a.status === 'ativa').length, icon: Check, tom: 'bg-success-tint text-success-ink' },
+            { label: 'Pendentes', value: assinaturas.filter(a => a.status === 'pendente').length, icon: Clock, tom: 'bg-warning-tint text-warning-ink' },
+            { label: 'Receita Mensal', value: `R$ ${assinaturas.filter(a => a.status === 'ativa').reduce((sum, a) => sum + (a.plano?.preco_mensal || 0), 0).toLocaleString('pt-BR')}`, icon: DollarSign, tom: 'bg-muted text-muted-foreground' },
+            { label: 'Tickets Abertos', value: ticketsAbertos, icon: MessageCircle, tom: ticketsAbertos > 0 ? 'bg-destructive-tint text-destructive-ink' : 'bg-muted text-muted-foreground' },
           ].map(k => (
-            <div key={k.label} className="stat-card">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-muted-foreground">{k.label}</span>
-                <k.icon className={`w-4 h-4 ${k.color}`} />
+            <div key={k.label} className="flex min-h-[96px] flex-col justify-between gap-2 rounded-lg border border-border bg-card p-4 shadow-sm">
+              <div className="flex items-start justify-between gap-2">
+                <span className="truncate text-sm font-medium text-muted-foreground">{k.label}</span>
+                <span aria-hidden="true" className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${k.tom}`}>
+                  <k.icon className="h-4 w-4" />
+                </span>
               </div>
-              <p className="text-2xl font-bold">{k.value}</p>
+              <p className="truncate text-2xl font-semibold leading-8 tabular-nums text-foreground">{k.value}</p>
             </div>
           ))}
         </div>
 
         <Tabs defaultValue="assinaturas" className="space-y-6">
           <TabsList>
-            <TabsTrigger value="assinaturas"><DollarSign className="w-4 h-4 mr-1.5" /> Assinaturas</TabsTrigger>
+            <TabsTrigger value="assinaturas"><DollarSign className="h-4 w-4" aria-hidden="true" /> Assinaturas</TabsTrigger>
             <TabsTrigger value="tickets">
-              <MessageCircle className="w-4 h-4 mr-1.5" /> Tickets
-              {ticketsAbertos > 0 && <Badge className="ml-2 bg-destructive text-destructive-foreground text-xs px-1.5">{ticketsAbertos}</Badge>}
+              <MessageCircle className="h-4 w-4" aria-hidden="true" /> Tickets
+              {ticketsAbertos > 0 && <Badge variant="danger" className="ml-1 px-1.5">{ticketsAbertos}</Badge>}
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="assinaturas">
             <div className="mb-4">
               <div className="relative max-w-sm">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input placeholder="Buscar por razão social ou CNPJ..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+                <Input placeholder="Buscar por razão social ou CNPJ..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
               </div>
             </div>
 
             {filteredAssinaturas.length === 0 && (
-              <div className="text-center py-12 text-muted-foreground">
-                <Building2 className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                <p>Nenhuma assinatura encontrada.</p>
+              <div className="rounded-lg border border-border bg-card shadow-sm">
+                <EstadoVazio tamanho="compacto" icone={<Building2 />} titulo="Nenhuma assinatura encontrada." />
               </div>
             )}
 
@@ -155,24 +167,24 @@ export default function AdminFinanceiro() {
               {filteredAssinaturas.map(a => {
                 const sc = statusAssinatura[a.status] || statusAssinatura.pendente;
                 return (
-                  <div key={a.id} className="bg-card rounded-xl border border-border/50 p-5">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <div className="flex items-center gap-3 mb-1">
-                          <h3 className="font-semibold">{a.empresa?.razao_social || 'Empresa'}</h3>
-                          <Badge className={sc.color}>{sc.label}</Badge>
+                  <div key={a.id} className="rounded-lg border border-border bg-card p-5 shadow-sm">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="mb-1 flex flex-wrap items-center gap-3">
+                          <h3 className="text-base font-semibold text-foreground">{a.empresa?.razao_social || 'Empresa'}</h3>
+                          <Badge variant={sc.variante}>{sc.label}</Badge>
                         </div>
                         <p className="text-xs text-muted-foreground">CNPJ: {a.empresa?.cnpj} • Plano: {a.plano?.nome} • R$ {a.plano?.preco_mensal}/mês</p>
-                        {a.data_inicio && <p className="text-xs text-muted-foreground mt-1">Início: {new Date(a.data_inicio).toLocaleDateString('pt-BR')}</p>}
+                        {a.data_inicio && <p className="mt-1 text-xs text-muted-foreground">Início: {new Date(a.data_inicio).toLocaleDateString('pt-BR')}</p>}
                       </div>
                       <div className="flex gap-2">
                         {a.status === 'pendente' && (
                           <>
-                            <Button size="sm" className="bg-success hover:bg-success/90 text-success-foreground" onClick={() => updateAssinaturaStatus(a.id, 'ativa')}>
-                              <Check className="w-4 h-4 mr-1" /> Liberar
+                            <Button size="sm" onClick={() => updateAssinaturaStatus(a.id, 'ativa')}>
+                              <Check aria-hidden="true" /> Liberar
                             </Button>
                             <Button size="sm" variant="destructive" onClick={() => updateAssinaturaStatus(a.id, 'cancelada')}>
-                              <X className="w-4 h-4 mr-1" /> Recusar
+                              <X aria-hidden="true" /> Recusar
                             </Button>
                           </>
                         )}
@@ -197,27 +209,26 @@ export default function AdminFinanceiro() {
           <TabsContent value="tickets">
             <div className="space-y-3">
               {tickets.length === 0 && (
-                <div className="text-center py-12 text-muted-foreground">
-                  <MessageCircle className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                  <p>Nenhum ticket recebido.</p>
+                <div className="rounded-lg border border-border bg-card shadow-sm">
+                  <EstadoVazio tamanho="compacto" icone={<MessageCircle />} titulo="Nenhum ticket recebido." />
                 </div>
               )}
               {tickets.map(t => (
-                <div key={t.id} className="bg-card rounded-xl border border-border/50 p-5">
-                  <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <h3 className="font-semibold">{t.assunto}</h3>
-                      <p className="text-xs text-muted-foreground capitalize">{t.categoria} • {t.prioridade} • {new Date(t.created_at).toLocaleDateString('pt-BR')}</p>
+                <div key={t.id} className="rounded-lg border border-border bg-card p-5 shadow-sm">
+                  <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h3 className="text-base font-semibold text-foreground">{t.assunto}</h3>
+                      <p className="text-xs capitalize text-muted-foreground">{t.categoria} • {t.prioridade} • {new Date(t.created_at).toLocaleDateString('pt-BR')}</p>
                     </div>
-                    <Badge className={t.status === 'aberto' ? 'bg-warning/10 text-warning' : t.status === 'resolvido' ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}>
+                    <Badge variant={t.status === 'aberto' ? 'warning' : t.status === 'resolvido' ? 'success' : 'muted'}>
                       {t.status}
                     </Badge>
                   </div>
-                  <p className="text-sm text-muted-foreground mb-3">{t.descricao}</p>
+                  <p className="mb-3 text-sm text-muted-foreground">{t.descricao}</p>
 
                   {t.resposta && (
-                    <div className="p-3 rounded-lg bg-muted border border-border mb-3">
-                      <p className="text-xs font-semibold text-foreground mb-1">Sua Resposta</p>
+                    <div className="mb-3 rounded-md border border-border bg-muted p-3">
+                      <p className="mb-1 text-xs font-semibold text-foreground">Sua Resposta</p>
                       <p className="text-sm">{t.resposta}</p>
                     </div>
                   )}
@@ -228,13 +239,13 @@ export default function AdminFinanceiro() {
                         <div className="space-y-2">
                           <Textarea placeholder="Escreva sua resposta..." value={resposta} onChange={e => setResposta(e.target.value)} rows={3} />
                           <div className="flex gap-2">
-                            <Button size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={() => responderTicket(t.id)}>Enviar Resposta</Button>
+                            <Button size="sm" onClick={() => responderTicket(t.id)}>Enviar Resposta</Button>
                             <Button size="sm" variant="outline" onClick={() => { setTicketSelecionado(null); setResposta(''); }}>Cancelar</Button>
                           </div>
                         </div>
                       ) : (
                         <Button size="sm" variant="outline" onClick={() => setTicketSelecionado(t.id)}>
-                          <MessageCircle className="w-4 h-4 mr-1" /> Responder
+                          <MessageCircle aria-hidden="true" /> Responder
                         </Button>
                       )}
                     </>

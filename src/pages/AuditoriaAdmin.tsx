@@ -7,8 +7,12 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Shield, Search, RefreshCw, Loader2, Filter, Download, FileText, ShieldCheck, Activity, Lock, AlertTriangle } from 'lucide-react';
+import { Shield, Search, RefreshCw, Filter, Download, FileText, ShieldCheck, Activity, Lock, AlertTriangle } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
+import EstadoVazio from '@/components/shared/EstadoVazio';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -28,9 +32,9 @@ type RowUnif = {
 
 const FONTE_META: Record<Fonte, { label: string; icon: typeof Shield; cor: string; tabela: string }> = {
   lgpd:        { label: 'LGPD (Art. 37)',     icon: Lock,        cor: 'text-muted-foreground', tabela: 'lgpd_tratamento_log' },
-  colaborador: { label: 'Atividades equipe',  icon: Activity,    cor: 'text-info',        tabela: 'atividades_colaborador' },
-  lances:      { label: 'Lances (chained)',   icon: ShieldCheck, cor: 'text-success',     tabela: 'audit_log_lances' },
-  financeiro:  { label: 'Financeiro',         icon: FileText,    cor: 'text-warning',     tabela: 'financeiro_audit_log' },
+  colaborador: { label: 'Atividades equipe',  icon: Activity,    cor: 'text-info-ink',    tabela: 'atividades_colaborador' },
+  lances:      { label: 'Lances (chained)',   icon: ShieldCheck, cor: 'text-success-ink', tabela: 'audit_log_lances' },
+  financeiro:  { label: 'Financeiro',         icon: FileText,    cor: 'text-warning-ink', tabela: 'financeiro_audit_log' },
 };
 
 export default function AuditoriaAdmin() {
@@ -190,38 +194,31 @@ export default function AuditoriaAdmin() {
     <AppLayout>
       <Helmet><title>Auditoria & Compliance LGPD | PRAEFECTUS</title></Helmet>
       <div className="space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-          <div>
-            <h1 className="text-xl font-bold flex items-center gap-2">
-              <Shield className="w-6 h-6 text-muted-foreground" />
-              Auditoria & Compliance LGPD
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Trilha unificada de tratamento de dados pessoais (Art. 37 LGPD), atividades de equipe, lances e financeiro. Retenção de 5 anos.
-            </p>
-          </div>
-          <div className="flex gap-2 shrink-0">
-            <Button variant="outline" size="sm" onClick={handleExportCSV} disabled={filtered.length === 0}>
-              <Download className="w-4 h-4 mr-1" /> CSV
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleExportPDF} disabled={filtered.length === 0}>
-              <FileText className="w-4 h-4 mr-1" /> PDF
-            </Button>
-            <Button variant="outline" size="sm" onClick={fetchRows}>
-              <RefreshCw className="w-4 h-4 mr-1" /> Atualizar
-            </Button>
-          </div>
-        </div>
+        <CabecalhoPagina
+          rota="/admin/auditoria"
+          descricao="Trilha unificada de tratamento de dados pessoais (Art. 37 LGPD), atividades de equipe, lances e financeiro. Retenção de 5 anos."
+          acoes={
+            <>
+              <Button variant="outline" onClick={handleExportCSV} disabled={filtered.length === 0}>
+                <Download aria-hidden="true" /> CSV
+              </Button>
+              <Button variant="outline" onClick={handleExportPDF} disabled={filtered.length === 0}>
+                <FileText aria-hidden="true" /> PDF
+              </Button>
+              <Button variant="outline" onClick={fetchRows}>
+                <RefreshCw aria-hidden="true" /> Atualizar
+              </Button>
+            </>
+          }
+        />
 
-        <div className="bg-warning/5 border border-warning/20 rounded-lg p-3 flex items-start gap-2 text-xs">
-          <AlertTriangle className="w-4 h-4 text-warning mt-0.5 shrink-0" />
-          <div>
-            <p className="font-semibold">Política de retenção</p>
-            <p className="text-muted-foreground">
-              Registros com mais de 5 anos são automaticamente expurgados (rotina diária às 03h). Exporte periodicamente para arquivamento de longo prazo.
-            </p>
-          </div>
-        </div>
+        <Alert variant="warning">
+          <AlertTriangle aria-hidden="true" />
+          <AlertTitle>Política de retenção</AlertTitle>
+          <AlertDescription>
+            Registros com mais de 5 anos são automaticamente expurgados (rotina diária às 03h). Exporte periodicamente para arquivamento de longo prazo.
+          </AlertDescription>
+        </Alert>
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as Fonte)}>
           <TabsList className="grid grid-cols-2 md:grid-cols-4 w-full">
@@ -229,8 +226,8 @@ export default function AuditoriaAdmin() {
               const M = FONTE_META[k];
               const Icon = M.icon;
               return (
-                <TabsTrigger key={k} value={k} className="text-xs">
-                  <Icon className={`w-3.5 h-3.5 mr-1.5 ${M.cor}`} />
+                <TabsTrigger key={k} value={k}>
+                  <Icon className={`h-4 w-4 ${M.cor}`} aria-hidden="true" />
                   <span className="truncate">{M.label}</span>
                 </TabsTrigger>
               );
@@ -270,40 +267,44 @@ export default function AuditoriaAdmin() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-4 [&>*]:min-w-0">
               {[
                 { label: 'Registros', value: stats.total },
                 { label: 'Ações distintas', value: stats.eventosUnicos },
                 { label: 'Usuários', value: stats.usuariosUnicos },
                 { label: 'Últimas 24h', value: stats.ultimas24h },
               ].map((s) => (
-                <div key={s.label} className="bg-card border border-border rounded-lg p-3">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">{s.label}</p>
-                  <p className="text-xl font-bold mt-0.5">{s.value}</p>
+                <div key={s.label} className="rounded-lg border border-border bg-card px-4 py-3 shadow-sm">
+                  <p className="truncate text-sm font-medium text-muted-foreground">{s.label}</p>
+                  <p className="mt-1 text-2xl font-semibold leading-8 tabular-nums text-foreground">{s.value}</p>
                 </div>
               ))}
             </div>
 
             {loading ? (
-              <div className="flex items-center justify-center py-16">
-                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              <div role="status" aria-busy="true" className="space-y-2">
+                <span className="sr-only">Carregando registros...</span>
+                {Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className="h-12 w-full" />)}
               </div>
             ) : filtered.length === 0 ? (
-              <div className="text-center py-16 text-muted-foreground border border-dashed border-border rounded-xl">
-                <Shield className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                <p className="text-sm">Nenhum registro encontrado para os filtros selecionados.</p>
+              <div className="rounded-lg border border-dashed border-border bg-card">
+                <EstadoVazio
+                  tamanho="compacto"
+                  icone={<Shield />}
+                  titulo="Nenhum registro encontrado para os filtros selecionados."
+                />
               </div>
             ) : (
-              <div className="border border-border rounded-xl overflow-hidden overflow-x-auto">
+              <div className="overflow-hidden overflow-x-auto rounded-lg border border-border bg-card shadow-sm">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="text-xs whitespace-nowrap">Data/Hora</TableHead>
-                      <TableHead className="text-xs whitespace-nowrap">Ação</TableHead>
-                      <TableHead className="text-xs whitespace-nowrap">Módulo</TableHead>
-                      <TableHead className="text-xs whitespace-nowrap">Usuário</TableHead>
-                      <TableHead className="text-xs whitespace-nowrap">IP</TableHead>
-                      <TableHead className="text-xs">Detalhes</TableHead>
+                      <TableHead className="whitespace-nowrap">Data/Hora</TableHead>
+                      <TableHead className="whitespace-nowrap">Ação</TableHead>
+                      <TableHead className="whitespace-nowrap">Módulo</TableHead>
+                      <TableHead className="whitespace-nowrap">Usuário</TableHead>
+                      <TableHead className="whitespace-nowrap">IP</TableHead>
+                      <TableHead>Detalhes</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -328,7 +329,7 @@ export default function AuditoriaAdmin() {
                   </TableBody>
                 </Table>
                 {filtered.length > 200 && (
-                  <div className="text-xs text-muted-foreground text-center py-2 bg-muted/30 border-t border-border">
+                  <div className="border-t border-border bg-secondary py-2 text-center text-xs text-muted-foreground">
                     Exibindo 200 de {filtered.length} registros — exporte para visualizar todos.
                   </div>
                 )}

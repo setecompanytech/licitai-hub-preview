@@ -10,9 +10,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Plus, Pencil, Trash2, Save, X, ShieldCheck } from 'lucide-react';
+import { Plus, Pencil, Trash2, Save, X, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { Navigate } from 'react-router-dom';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
+import EstadoVazio from '@/components/shared/EstadoVazio';
+import { Skeleton } from '@/components/ui/skeleton';
 
 type Template = {
   id: string;
@@ -68,7 +71,18 @@ export default function AdminTemplates() {
 
   useEffect(() => { if (isAdmin) loadTemplates(); }, [isAdmin]);
 
-  if (roleLoading) return <AppLayout><div className="flex items-center justify-center h-64"><p className="text-muted-foreground">Carregando...</p></div></AppLayout>;
+  if (roleLoading) {
+    return (
+      <AppLayout>
+        <div role="status" aria-busy="true" className="space-y-3">
+          <span className="sr-only">Carregando...</span>
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+        </div>
+      </AppLayout>
+    );
+  }
   if (!isAdmin) return <Navigate to="/dashboard" replace />;
 
   const resetForm = () => {
@@ -121,25 +135,21 @@ export default function AdminTemplates() {
 
   return (
     <AppLayout>
-      <div className="mb-6 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <ShieldCheck className="w-6 h-6 text-muted-foreground" />
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Templates de Documentos</h1>
-            <p className="text-sm text-muted-foreground">Gerencie modelos e prompts da IA — Painel Administrador</p>
-          </div>
-        </div>
-        {!creating && !editing && (
-          <Button onClick={() => { resetForm(); setCreating(true); }} className="gap-2">
-            <Plus className="w-4 h-4" /> Novo Template
-          </Button>
-        )}
-      </div>
+      <CabecalhoPagina
+        rota="/admin/templates"
+        acoes={
+          !creating && !editing ? (
+            <Button onClick={() => { resetForm(); setCreating(true); }}>
+              <Plus aria-hidden="true" /> Novo Template
+            </Button>
+          ) : undefined
+        }
+      />
 
       {/* Form */}
       {(creating || editing) && (
-        <div className="bg-card rounded-xl border border-border/50 p-6 mb-6 space-y-4">
-          <h3 className="text-sm font-semibold">{editing ? 'Editar Template' : 'Novo Template'}</h3>
+        <div className="mb-6 space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm">
+          <h3 className="text-base font-semibold text-foreground">{editing ? 'Editar Template' : 'Novo Template'}</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Nome *</Label>
@@ -175,9 +185,9 @@ export default function AdminTemplates() {
             <Switch checked={form.ativo} onCheckedChange={v => setForm(f => ({ ...f, ativo: v }))} />
             <Label>Ativo</Label>
           </div>
-          <div className="flex gap-2">
-            <Button onClick={handleSave} className="gap-2"><Save className="w-4 h-4" /> Salvar</Button>
-            <Button variant="outline" onClick={resetForm} className="gap-2"><X className="w-4 h-4" /> Cancelar</Button>
+          <div className="flex justify-end gap-2 border-t border-border pt-4">
+            <Button variant="outline" onClick={resetForm}><X aria-hidden="true" /> Cancelar</Button>
+            <Button onClick={handleSave}><Save aria-hidden="true" /> Salvar</Button>
           </div>
         </div>
       )}
@@ -185,28 +195,35 @@ export default function AdminTemplates() {
       {/* List */}
       <div className="space-y-3">
         {loading ? (
-          <p className="text-sm text-muted-foreground text-center py-8">Carregando templates...</p>
+          <div role="status" aria-busy="true" className="space-y-3">
+            <span className="sr-only">Carregando templates...</span>
+            {Array.from({ length: 3 }, (_, i) => <Skeleton key={i} className="h-24 w-full" />)}
+          </div>
         ) : templates.length === 0 ? (
-          <div className="bg-card rounded-xl border border-border/50 p-8 text-center">
-            <p className="text-muted-foreground">Nenhum template cadastrado</p>
-            <p className="text-xs text-muted-foreground mt-1">Crie o primeiro modelo de documento para os usuários</p>
+          <div className="rounded-lg border border-border bg-card shadow-sm">
+            <EstadoVazio
+              tamanho="compacto"
+              icone={<FileText />}
+              titulo="Nenhum template cadastrado"
+              descricao="Crie o primeiro modelo de documento para os usuários"
+            />
           </div>
         ) : (
           templates.map(t => (
-            <div key={t.id} className="bg-card rounded-xl border border-border/50 p-4 flex items-start justify-between gap-4">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-sm font-semibold">{t.nome}</span>
-                  <Badge variant="outline" className="text-xs">{categoriaLabels[t.categoria] || t.categoria}</Badge>
-                  {!t.ativo && <Badge variant="secondary" className="text-xs">Inativo</Badge>}
+            <div key={t.id} className="flex items-start justify-between gap-4 rounded-lg border border-border bg-card p-4 shadow-sm">
+              <div className="min-w-0 flex-1">
+                <div className="mb-1 flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-semibold text-foreground">{t.nome}</span>
+                  <Badge variant="outline">{categoriaLabels[t.categoria] || t.categoria}</Badge>
+                  {!t.ativo && <Badge variant="muted">Inativo</Badge>}
                 </div>
-                {t.descricao && <p className="text-xs text-muted-foreground">{t.descricao}</p>}
-                {t.legislacao_base && <p className="text-xs text-muted-foreground mt-1">📜 {t.legislacao_base}</p>}
-                <p className="text-xs text-muted-foreground mt-1 line-clamp-2 font-mono">Prompt: {t.prompt_sistema.slice(0, 120)}...</p>
+                {t.descricao && <p className="text-sm text-muted-foreground">{t.descricao}</p>}
+                {t.legislacao_base && <p className="mt-1 text-xs text-muted-foreground">📜 {t.legislacao_base}</p>}
+                <p className="mt-1 line-clamp-2 font-mono text-xs text-muted-foreground">Prompt: {t.prompt_sistema.slice(0, 120)}...</p>
               </div>
-              <div className="flex gap-1 flex-shrink-0">
-                <Button size="icon" variant="ghost" onClick={() => startEdit(t)}><Pencil className="w-4 h-4" /></Button>
-                <Button size="icon" variant="ghost" className="text-destructive" onClick={() => handleDelete(t.id)}><Trash2 className="w-4 h-4" /></Button>
+              <div className="flex flex-shrink-0 gap-1">
+                <Button size="icon-sm" variant="ghost" aria-label="Editar template" onClick={() => startEdit(t)}><Pencil aria-hidden="true" /></Button>
+                <Button size="icon-sm" variant="ghost" aria-label="Excluir template" className="text-destructive-ink hover:bg-destructive-tint" onClick={() => handleDelete(t.id)}><Trash2 aria-hidden="true" /></Button>
               </div>
             </div>
           ))

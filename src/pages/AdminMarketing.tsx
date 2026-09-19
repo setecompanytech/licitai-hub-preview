@@ -14,10 +14,14 @@ import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, Cart
 import { Users, TrendingUp, DollarSign, Target, ArrowUpRight, ArrowDownRight, Search, Download, RefreshCw, Megaphone, Eye, MousePointerClick, UserPlus } from 'lucide-react';
 import { format, subDays, startOfMonth, endOfMonth, eachDayOfInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Loader2 } from 'lucide-react';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const PLANO_VALORES: Record<string, number> = { basico: 197, profissional: 497, enterprise: 997 };
-const COLORS = ['hsl(174 72% 45%)', 'hsl(210 100% 50%)', 'hsl(45 93% 47%)', 'hsl(0 72% 50%)', 'hsl(280 72% 50%)'];
+/* Séries de gráfico pelos tokens `--chart-*` — a única cor que um gráfico escreve. */
+const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))', 'hsl(var(--chart-3))'];
+const COR_LEADS = 'hsl(var(--chart-1))';
+const COR_CONVERSOES = 'hsl(var(--chart-2))';
 
 export default function AdminMarketing() {
   const { isAdmin, loading: roleLoading } = useUserRole();
@@ -124,65 +128,76 @@ export default function AdminMarketing() {
     );
   }, [leads, search]);
 
-  if (roleLoading) return <AppLayout><div className="flex justify-center p-20"><Loader2 className="w-8 h-8 animate-spin text-muted-foreground" /></div></AppLayout>;
+  if (roleLoading) {
+    return (
+      <AppLayout>
+        <div role="status" aria-busy="true" className="space-y-3">
+          <span className="sr-only">Carregando...</span>
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-28 w-full" />
+        </div>
+      </AppLayout>
+    );
+  }
   if (!isAdmin) return <Navigate to="/dashboard" replace />;
 
+  /* Selo suave por etapa do funil: convertido verde, qualificado azul,
+     contatado cinza, o resto âmbar (novo, aguardando). */
   const statusColor = (s: string) => {
-    if (s === 'convertido') return 'default';
-    if (s === 'qualificado') return 'secondary';
-    if (s === 'contatado') return 'outline';
-    return 'destructive';
+    if (s === 'convertido') return 'success';
+    if (s === 'qualificado') return 'info';
+    if (s === 'contatado') return 'muted';
+    return 'warning';
   };
 
   return (
     <AppLayout>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
-              <Megaphone className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground flex-shrink-0" />
-              Painel de Marketing
-            </h1>
-            <p className="text-xs sm:text-sm text-muted-foreground">Métricas de aquisição, leads e conversões</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Select value={period} onValueChange={setPeriod}>
-              <SelectTrigger className="w-[140px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="7">7 dias</SelectItem>
-                <SelectItem value="30">30 dias</SelectItem>
-                <SelectItem value="90">90 dias</SelectItem>
-                <SelectItem value="180">6 meses</SelectItem>
-                <SelectItem value="365">1 ano</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button variant="outline" size="icon" onClick={fetchLeads}>
-              <RefreshCw className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
+        <CabecalhoPagina
+          rota="/admin/marketing"
+          descricao="Métricas de aquisição, leads e conversões"
+          icone={<Megaphone />}
+          acoes={
+            <>
+              <Select value={period} onValueChange={setPeriod}>
+                <SelectTrigger className="w-[140px]" aria-label="Período">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7">7 dias</SelectItem>
+                  <SelectItem value="30">30 dias</SelectItem>
+                  <SelectItem value="90">90 dias</SelectItem>
+                  <SelectItem value="180">6 meses</SelectItem>
+                  <SelectItem value="365">1 ano</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button variant="outline" size="icon" onClick={fetchLeads} aria-label="Atualizar">
+                <RefreshCw aria-hidden="true" />
+              </Button>
+            </>
+          }
+        />
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 [&>*]:min-w-0">
           {[
-            { label: 'Total Leads', value: kpis.total, icon: UserPlus, color: 'text-muted-foreground' },
-            { label: 'Conversões', value: kpis.convertidos, icon: Target, color: 'text-success', sub: `${kpis.taxaConversao.toFixed(1)}%` },
-            { label: 'CAC', value: `R$ ${kpis.cac.toFixed(0)}`, icon: DollarSign, color: 'text-muted-foreground' },
-            { label: 'LTV Estimado', value: `R$ ${kpis.ltv.toFixed(0)}`, icon: TrendingUp, color: 'text-muted-foreground', sub: `${kpis.ltv > 0 && kpis.cac > 0 ? (kpis.ltv / kpis.cac).toFixed(1) : '0'}x ROI` },
+            { label: 'Total Leads', value: kpis.total, icon: UserPlus, tom: 'bg-muted text-muted-foreground' },
+            { label: 'Conversões', value: kpis.convertidos, icon: Target, tom: 'bg-success-tint text-success-ink', sub: `${kpis.taxaConversao.toFixed(1)}%` },
+            { label: 'CAC', value: `R$ ${kpis.cac.toFixed(0)}`, icon: DollarSign, tom: 'bg-muted text-muted-foreground' },
+            { label: 'LTV Estimado', value: `R$ ${kpis.ltv.toFixed(0)}`, icon: TrendingUp, tom: 'bg-muted text-muted-foreground', sub: `${kpis.ltv > 0 && kpis.cac > 0 ? (kpis.ltv / kpis.cac).toFixed(1) : '0'}x ROI` },
           ].map((kpi) => (
-            <Card key={kpi.label}>
-              <CardContent className="pt-5">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{kpi.label}</span>
-                  <kpi.icon className={`w-4 h-4 ${kpi.color}`} />
-                </div>
-                <p className="text-2xl font-bold">{kpi.value}</p>
-                {kpi.sub && <p className="text-xs text-muted-foreground mt-1">{kpi.sub}</p>}
-              </CardContent>
-            </Card>
+            <div key={kpi.label} className="flex min-h-[112px] flex-col justify-between gap-2 rounded-lg border border-border bg-card p-4 shadow-sm">
+              <div className="flex items-start justify-between gap-2">
+                <span className="truncate text-sm font-medium text-muted-foreground">{kpi.label}</span>
+                <span aria-hidden="true" className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${kpi.tom}`}>
+                  <kpi.icon className="h-4 w-4" />
+                </span>
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-2xl font-semibold leading-8 tabular-nums text-foreground">{kpi.value}</p>
+                {kpi.sub && <p className="text-xs text-muted-foreground">{kpi.sub}</p>}
+              </div>
+            </div>
           ))}
         </div>
 
@@ -208,8 +223,8 @@ export default function AdminMarketing() {
                       <XAxis dataKey="data" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
                       <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
                       <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8 }} />
-                      <Area type="monotone" dataKey="leads" stroke="hsl(174 72% 45%)" fill="hsl(174 72% 45% / 0.2)" name="Leads" />
-                      <Area type="monotone" dataKey="conversoes" stroke="hsl(210 100% 50%)" fill="hsl(210 100% 50% / 0.2)" name="Conversões" />
+                      <Area type="monotone" dataKey="leads" stroke={COR_LEADS} fill={COR_LEADS} fillOpacity={0.2} name="Leads" />
+                      <Area type="monotone" dataKey="conversoes" stroke={COR_CONVERSOES} fill={COR_CONVERSOES} fillOpacity={0.2} name="Conversões" />
                       <Legend />
                     </AreaChart>
                   </ResponsiveContainer>
@@ -243,7 +258,7 @@ export default function AdminMarketing() {
                     <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
                     <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={120} stroke="hsl(var(--muted-foreground))" />
                     <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8 }} />
-                    <Bar dataKey="value" fill="hsl(174 72% 45%)" radius={[0, 6, 6, 0]} name="Leads" />
+                    <Bar dataKey="value" fill={COR_LEADS} radius={[0, 6, 6, 0]} name="Leads" />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -271,7 +286,7 @@ export default function AdminMarketing() {
                         <TableCell className="text-right">{c.leads}</TableCell>
                         <TableCell className="text-right">{c.conversoes}</TableCell>
                         <TableCell className="text-right">
-                          <Badge variant={parseFloat(c.taxa) > 10 ? 'default' : 'secondary'}>{c.taxa}%</Badge>
+                          <Badge variant={parseFloat(c.taxa) > 10 ? 'success' : 'muted'}>{c.taxa}%</Badge>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -295,7 +310,7 @@ export default function AdminMarketing() {
                     <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
                     <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
                     <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8 }} />
-                    <Bar dataKey="value" fill="hsl(210 100% 50%)" radius={[6, 6, 0, 0]} name="Leads" />
+                    <Bar dataKey="value" fill={COR_CONVERSOES} radius={[6, 6, 0, 0]} name="Leads" />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -367,19 +382,19 @@ export default function AdminMarketing() {
           <CardContent className="space-y-3 text-sm text-muted-foreground">
             <p>Para ativar o rastreamento, adicione seus IDs nos scripts do <code className="bg-muted px-1.5 py-0.5 rounded text-xs">index.html</code>:</p>
             <div className="grid sm:grid-cols-2 gap-3">
-              <div className="bg-muted p-3 rounded-lg">
+              <div className="rounded-md border border-border bg-muted/40 p-3">
                 <p className="font-medium text-foreground mb-1">Meta Pixel (Facebook)</p>
                 <p className="text-xs">Substitua <code>YOUR_PIXEL_ID</code> pelo ID do pixel</p>
               </div>
-              <div className="bg-muted p-3 rounded-lg">
+              <div className="rounded-md border border-border bg-muted/40 p-3">
                 <p className="font-medium text-foreground mb-1">Google Analytics 4</p>
                 <p className="text-xs">Substitua <code>G-XXXXXXXXXX</code> pelo ID de medição</p>
               </div>
-              <div className="bg-muted p-3 rounded-lg">
+              <div className="rounded-md border border-border bg-muted/40 p-3">
                 <p className="font-medium text-foreground mb-1">Google Ads Tag</p>
                 <p className="text-xs">Substitua <code>AW-CONVERSION_ID</code> pelo ID de conversão</p>
               </div>
-              <div className="bg-muted p-3 rounded-lg">
+              <div className="rounded-md border border-border bg-muted/40 p-3">
                 <p className="font-medium text-foreground mb-1">UTM Tracking</p>
                 <p className="text-xs">✅ Ativo automaticamente — captura params da URL</p>
               </div>

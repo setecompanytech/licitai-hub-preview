@@ -1,5 +1,7 @@
 import SkeletonPagina from '@/components/shared/SkeletonPagina';
-import BotaoVoltar from '@/components/layout/BotaoVoltar';
+import AppLayout from '@/components/layout/AppLayout';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
+import { Label } from '@/components/ui/label';
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -131,12 +133,13 @@ export default function PainelDistribuicao() {
     setSendingTest(false);
   };
 
+  /* Selo suave por situação da coleta: verde no ar, âmbar atrasado, vermelho fora. */
   const getStatusPortal = (ultima: string | null) => {
-    if (!ultima) return { cor: "destructive" as const, texto: "Nunca coletado" };
+    if (!ultima) return { cor: "danger" as const, texto: "Nunca coletado" };
     const diffH = (Date.now() - new Date(ultima).getTime()) / (1000 * 60 * 60);
-    if (diffH < 3) return { cor: "default" as const, texto: "Online" };
-    if (diffH < 12) return { cor: "secondary" as const, texto: "Atrasado" };
-    return { cor: "destructive" as const, texto: "Offline" };
+    if (diffH < 3) return { cor: "success" as const, texto: "Online" };
+    if (diffH < 12) return { cor: "warning" as const, texto: "Atrasado" };
+    return { cor: "danger" as const, texto: "Offline" };
   };
 
   const distFiltradas = distribuicoes.filter((d: any) => {
@@ -145,29 +148,34 @@ export default function PainelDistribuicao() {
     return true;
   });
 
-  // Sem AppLayout nesta rota: na espera a tela ficava vazia de ponta a ponta.
+  // Dentro da moldura do app (19/09): a espera mostra a barra e a coluna, e o
+  // conteúdo em esqueleto — a tela deixou de ser a única fora do AppLayout.
   if (loading) {
-    return <SkeletonPagina />;
+    return (
+      <AppLayout>
+        <SkeletonPagina moldura={false} />
+      </AppLayout>
+    );
   }
 
   return (
-    <div className="space-y-6 p-4 md:p-6">
-      <BotaoVoltar />
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Painel de Distribuição</h1>
-          <p className="text-sm text-muted-foreground">Gerenciamento de portais, editais e distribuições automáticas</p>
-        </div>
-        <Button onClick={() => sincronizarPortal()} disabled={syncingAll} className="gap-2">
-          {syncingAll ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-          Sincronizar Todos
-        </Button>
-      </div>
+    <AppLayout>
+    <div className="space-y-6">
+      <CabecalhoPagina
+        rota="/admin/distribuicao"
+        descricao="Gerenciamento de portais, editais e distribuições automáticas"
+        acoes={
+          <Button onClick={() => sincronizarPortal()} disabled={syncingAll}>
+            {syncingAll ? <Loader2 className="animate-spin" aria-hidden="true" /> : <RefreshCw aria-hidden="true" />}
+            Sincronizar Todos
+          </Button>
+        }
+      />
 
       {/* Seção 1 — Status dos Portais */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
+          <CardTitle className="flex items-center gap-2">
             <Database className="h-5 w-5" /> Status dos Portais
           </CardTitle>
         </CardHeader>
@@ -190,7 +198,7 @@ export default function PainelDistribuicao() {
                   <TableRow key={p.id}>
                     <TableCell className="font-medium">{p.nome}</TableCell>
                     <TableCell>
-                      <Badge variant="outline" className="uppercase text-xs">{p.tipo}</Badge>
+                      <Badge variant="outline" className="uppercase">{p.tipo}</Badge>
                     </TableCell>
                     <TableCell>{p.uf || "Nacional"}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">
@@ -225,36 +233,23 @@ export default function PainelDistribuicao() {
 
       {/* Seção 2 — Editais Coletados */}
       <div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-          <Card>
-            <CardContent className="pt-4 pb-3 text-center">
-              <p className="text-2xl font-bold text-foreground">{metricas.total}</p>
-              <p className="text-xs text-muted-foreground">Total Coletados (24h)</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-4 pb-3 text-center">
-              <p className="text-2xl font-bold text-success">{metricas.distribuidos}</p>
-              <p className="text-xs text-muted-foreground">Distribuídos</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-4 pb-3 text-center">
-              <p className="text-2xl font-bold text-warning">{metricas.pendentes}</p>
-              <p className="text-xs text-muted-foreground">Pendentes</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-4 pb-3 text-center">
-              <p className="text-2xl font-bold text-info">{metricas.comPdf}</p>
-              <p className="text-xs text-muted-foreground">Com PDF</p>
-            </CardContent>
-          </Card>
+        <div className="mb-4 grid grid-cols-2 gap-4 md:grid-cols-4 [&>*]:min-w-0">
+          {[
+            { rotulo: 'Total Coletados (24h)', valor: metricas.total, cor: 'text-foreground' },
+            { rotulo: 'Distribuídos', valor: metricas.distribuidos, cor: 'text-success-ink' },
+            { rotulo: 'Pendentes', valor: metricas.pendentes, cor: 'text-warning-ink' },
+            { rotulo: 'Com PDF', valor: metricas.comPdf, cor: 'text-info-ink' },
+          ].map((k) => (
+            <div key={k.rotulo} className="rounded-lg border border-border bg-card px-4 py-3 shadow-sm">
+              <p className="truncate text-sm font-medium text-muted-foreground">{k.rotulo}</p>
+              <p className={`mt-1 text-2xl font-semibold leading-8 tabular-nums ${k.cor}`}>{k.valor}</p>
+            </div>
+          ))}
         </div>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="flex items-center gap-2 text-lg">
+            <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" /> Editais Coletados (24h)
             </CardTitle>
             <Button size="sm" variant="outline" onClick={forcarDistribuicao} disabled={distributing} className="gap-1">
@@ -289,9 +284,9 @@ export default function PainelDistribuicao() {
                       <TableCell className="text-sm">{e.uf || "—"}</TableCell>
                       <TableCell>
                         {e.distribuido ? (
-                          <CheckCircle2 className="h-4 w-4 text-success" />
+                          <CheckCircle2 className="h-4 w-4 text-success-ink" aria-label="Distribuído" />
                         ) : (
-                          <Clock className="h-4 w-4 text-warning" />
+                          <Clock className="h-4 w-4 text-warning-ink" aria-label="Pendente" />
                         )}
                       </TableCell>
                     </TableRow>
@@ -306,7 +301,7 @@ export default function PainelDistribuicao() {
       {/* Seção 3 — Log de Distribuições */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
+          <CardTitle className="flex items-center gap-2">
             <Send className="h-5 w-5" /> Log de Distribuições (24h)
           </CardTitle>
           <div className="flex gap-2 pt-2">
@@ -344,7 +339,7 @@ export default function PainelDistribuicao() {
                 {distFiltradas.slice(0, 50).map((d: any) => (
                   <TableRow key={d.id}>
                     <TableCell>
-                      <Badge variant={d.canal === "whatsapp" ? "default" : "secondary"} className="text-xs">
+                      <Badge variant={d.canal === "whatsapp" ? "info" : "muted"}>
                         {d.canal}
                       </Badge>
                     </TableCell>
@@ -357,15 +352,14 @@ export default function PainelDistribuicao() {
                     <TableCell>
                       <Badge
                         variant={
-                          d.status === "enviado" ? "default" :
-                          d.status === "falhou" ? "destructive" : "secondary"
+                          d.status === "enviado" ? "success" :
+                          d.status === "falhou" ? "danger" : "muted"
                         }
-                        className="text-xs"
                       >
                         {d.status}
                       </Badge>
                       {d.erro && (
-                        <span className="block text-xs text-destructive mt-1 max-w-[200px] truncate">{d.erro}</span>
+                        <span className="mt-1 block max-w-[200px] truncate text-xs text-destructive-ink">{d.erro}</span>
                       )}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
@@ -389,16 +383,16 @@ export default function PainelDistribuicao() {
       {/* Seção 4 — Teste de Envio */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
+          <CardTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5" /> Teste de Envio
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
-            <div>
-              <label className="text-sm font-medium text-foreground mb-1 block">Edital</label>
+          <div className="grid grid-cols-1 items-end gap-4 md:grid-cols-4">
+            <div className="space-y-2">
+              <Label htmlFor="dist-edital">Edital</Label>
               <Select value={testEditalId} onValueChange={setTestEditalId}>
-                <SelectTrigger><SelectValue placeholder="Selecione um edital" /></SelectTrigger>
+                <SelectTrigger id="dist-edital"><SelectValue placeholder="Selecione um edital" /></SelectTrigger>
                 <SelectContent>
                   {editais.slice(0, 20).map((e: any) => (
                     <SelectItem key={e.id} value={e.id}>
@@ -408,29 +402,32 @@ export default function PainelDistribuicao() {
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <label className="text-sm font-medium text-foreground mb-1 block">WhatsApp (teste)</label>
+            <div className="space-y-2">
+              <Label htmlFor="dist-whatsapp">WhatsApp (teste)</Label>
               <Input
+                id="dist-whatsapp"
                 placeholder="5591999999999"
                 value={testWhatsapp}
                 onChange={(e) => setTestWhatsapp(e.target.value)}
               />
             </div>
-            <div>
-              <label className="text-sm font-medium text-foreground mb-1 block">E-mail (teste)</label>
+            <div className="space-y-2">
+              <Label htmlFor="dist-email">E-mail (teste)</Label>
               <Input
+                id="dist-email"
                 placeholder="teste@email.com"
                 value={testEmail}
                 onChange={(e) => setTestEmail(e.target.value)}
               />
             </div>
-            <Button onClick={enviarTeste} disabled={sendingTest} className="gap-2">
-              {sendingTest ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            <Button onClick={enviarTeste} disabled={sendingTest}>
+              {sendingTest ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Send aria-hidden="true" />}
               Enviar Teste
             </Button>
           </div>
         </CardContent>
       </Card>
     </div>
+    </AppLayout>
   );
 }
