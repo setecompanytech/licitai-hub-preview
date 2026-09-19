@@ -2,6 +2,8 @@ import AppLayout from '@/components/layout/AppLayout';
 import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import EstadoVazio from '@/components/shared/EstadoVazio';
 import { useEmpresa } from '@/contexts/EmpresaContext';
+import { useContaDeEngenharia } from '@/hooks/useContaDeEngenharia';
+import { MENSAGEM_CONTA_DE_ENGENHARIA } from '@/lib/conta-de-engenharia';
 import { Button } from '@/components/ui/button';
 import { Building2, Pencil, Plus, ShieldCheck, Trash2 } from 'lucide-react';
 import { useState } from 'react';
@@ -14,6 +16,9 @@ import { cn } from '@/lib/utils';
 
 export default function Empresas() {
   const { empresas, empresaAtiva, todasSelecionadas, reloadEmpresas } = useEmpresa();
+  // A conta de engenharia não cadastra empresa (lib/conta-de-engenharia.ts):
+  // sem "Nova empresa", sem formulário, e o vazio explica por quê.
+  const { ehContaDeEngenharia } = useContaDeEngenharia();
   const [showForm, setShowForm] = useState(false);
   const [editEmpresa, setEditEmpresa] = useState<any>(null);
 
@@ -33,20 +38,30 @@ export default function Empresas() {
       <div className="mx-auto max-w-5xl">
         <CabecalhoPagina
           acoes={
-            <Button onClick={() => setShowForm(!showForm)} aria-expanded={showForm}>
-              <Plus aria-hidden="true" />
-              Nova empresa
-            </Button>
+            ehContaDeEngenharia ? undefined : (
+              <Button onClick={() => setShowForm(!showForm)} aria-expanded={showForm}>
+                <Plus aria-hidden="true" />
+                Nova empresa
+              </Button>
+            )
           }
         />
 
-        {showForm && (
+        {showForm && !ehContaDeEngenharia && (
           <section className="mb-6 rounded-lg border border-border bg-card p-6 shadow-sm">
             <CadastroCertificado onSuccess={() => setShowForm(false)} />
           </section>
         )}
 
-        {empresas.length === 0 ? (
+        {ehContaDeEngenharia ? (
+          <section className="rounded-lg border border-border bg-card shadow-sm">
+            <EstadoVazio
+              icone={<Building2 />}
+              titulo="Conta de engenharia, sem empresa"
+              descricao={MENSAGEM_CONTA_DE_ENGENHARIA}
+            />
+          </section>
+        ) : empresas.length === 0 ? (
           <section className="rounded-lg border border-border bg-card shadow-sm">
             <EstadoVazio
               icone={<Building2 />}

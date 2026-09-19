@@ -1088,6 +1088,32 @@ Dois pedidos do Ian depois de usar a chamada da tela remota. **Sem commit.** Ver
 - [x] **`animate-piscar-verde`** (novo, `tailwind.config.ts`): halo `primary` em quatro batidas, sem `infinite` — chama atenção na chegada e depois é um botão comum. Desligado em `prefers-reduced-motion` (`index.css`), onde a cor e o rótulo já dizem tudo.
 - **Visto em tela** (Chrome headless, claro e escuro, 1440 px e 520 px), com os dois estados do botão lado a lado.
 
+#### 19/09 — operação × oficina técnica: o que é de quem opera e o que é da engenharia
+
+Pedido do Rafael em 18/09, com prints da aba **Agente e infraestrutura** logado como GRUPO SANTA ROSA (Agente Cloud com versão, sessões paralelas e RAM; Portais no ar; Checklist de Ativação com endereço do agente e sinal de vida): *"É essa estrutura que não deve aparecer pro usuário do sistema, somente pra quem opera"*, *"configurações internas do desenvolvedor do sistema"*, e o e-mail de engenharia *"teria toda essa visualização"*. O Grupo Santa Rosa é CNPJ do próprio Rafael; o login `comercial@gruposantarosa.com.br` **manteve o admin** da plataforma (decisão do Ian). Regra completa na seção Permissões do `CLAUDE.md`.
+
+**Primeiro desenho, revisto no mesmo dia:** toda a infraestrutura do robô, inclusive a tela remota e o captcha, só no `engsoft@`. Custava ao Rafael um segundo login, num segundo perfil do Chrome, para o clique diário no captcha, e o aviso de captcha deixava de chegar no login que ele usa. Os prints não mostravam a tela remota. **Decisão (Ian, 19/09): separar por natureza**, com a aba Diagnóstico junto da oficina técnica.
+
+| | Quem vê | O quê |
+| --- | --- | --- |
+| **Operação** | todo admin da plataforma (a Santa Rosa, sem segunda conta, e o `engsoft@`) | Sessões e tela remota (captcha, focar, responder código), Avisos aos clientes, Histórico do robô, o toast da tela remota e os avisos de captcha / "assistir ao vivo" / "robô entrando" |
+| **Oficina técnica** | só a conta de engenharia (`engsoft@`) | Agente e infraestrutura, Diagnóstico, o cru técnico do webhook (`detalhe_tecnico`, nome e endereço de agente, saúde completa), configurar agente, testar o freio |
+
+- [x] **`engsoft@praefectus.com.br`** criado já confirmado (SQL no Editor), admin da plataforma, sem empresa. **Conta de engenharia = admin da plataforma sem empresa nenhuma**, em três cópias que mudam juntas: `src/lib/conta-de-engenharia.ts`, `eh_conta_de_engenharia`/`sou_conta_de_engenharia()` no banco e `ehContaDeEngenharia` em `_shared/robo-plataforma.ts`.
+- [x] **Banco.** A conta de engenharia não cria nem entra em empresa (`20260919000003`, aplicada). `20260919000006` (aplicada) deu as regras "Plataforma lê…" do robô só à engenharia; **`20260919000007` (aplicada e conferida em 19/09)** devolve a todo admin o que é operação: sessões, histórico, as duas regras de avisos e `nomes_de_empresas_para_plataforma`. Ficam só da engenharia: configuração dos agentes, registro de chamadas e `contas_para_plataforma`. Conferência em `pg_policies`: 4 regras de operação, 2 da oficina técnica.
+- [x] **Tela** (local): `/admin/robo-lances` abre para todo admin da plataforma (a trava da rota é o `AdminGuard`). As abas Agente e infraestrutura e Diagnóstico só aparecem para a conta de engenharia (`ABAS_DA_ENGENHARIA` em `AdminRoboLances.tsx`). Para os outros admins a página abre em Sessões e tela remota, e um `?aba=agente` digitado cai nela. A aba do agente lista o agente de todas as contas, com o dono de cada um (`contas_para_plataforma`). Saíram os painéis que liam a conta logada: checklist, trilha e tempo real. O toast da tela remota segue com todo admin (`isSystemAdmin`).
+- [x] **Servidor** (local, **falta deploy**): o `robo-lances-webhook` faz duas perguntas por ação.
+  - **`ehAdmin`** (`ehAdminDaPlataforma`) é a operação: as travas de empresa em enviar sessão, focar, responder código, enviar proposta e situação do robô.
+  - **`verDetalhe`** (`ehContaDeEngenharia`) é o cru: `corpoDeErro` (a opção mudou de nome, de `ehAdmin` para `verDetalhe`), tentativas, `detalhe_tecnico`, nome de agente, motivo cru e titulares de outra empresa no certificado, e a lista de agentes em `status`. `configurar-agente` e `testar-kill-switch` são só da engenharia.
+  - **Healthcheck em três visões:**
+    - engenharia: completa;
+    - quem opera: `reduzirSaudeParaCliente` com **todas** as sessões visíveis, ou seja, sessões e pedidos de código de toda empresa, sem endereço, versão, RAM nem certificado alheio;
+    - cliente: só as sessões dele.
+  - Os avisos da operação seguem para todo admin.
+  - **Aviso novo "🤖 Robô entrando"**, a todo admin **menos quem clicou** (que já tem o toast local), em segundo plano e ANTES de acionar o robô. Vale no envio manual e no agendador. O robô leva até 60 s para responder e o captcha pode vir nesse meio-tempo; antes, sessão de cliente ou do agendador não chamava ninguém à tela remota. O front reconhece o título e mostra a chamada com o motivo "entrando".
+- `deno check` numa cópia: os mesmos 6 erros antigos de HEAD, nenhum novo. Vitest: 2.324 passando. Os 7 que falham são da leva de visual de 19/09 (cabeçalho e painel), anteriores a esta mudança.
+- **Dia do pregão:** o Rafael opera pelo login da Santa Rosa. O `engsoft@` é da equipe técnica, para depurar (Agente, Diagnóstico); o login é um só por perfil do navegador, então usar as duas contas ao mesmo tempo exige outro perfil do Chrome ou janela anônima.
+
 #### O que depende de alguém
 
 | O quê | De quem |

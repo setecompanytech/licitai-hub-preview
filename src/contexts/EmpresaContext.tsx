@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useState, type ReactNode, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserRole } from '@/hooks/useUserRole';
+import { MENSAGEM_CONTA_DE_ENGENHARIA, ehContaDeEngenharia } from '@/lib/conta-de-engenharia';
 
 const withTimeoutSignal = (ms = 6000) => {
   const controller = new AbortController();
@@ -126,6 +128,7 @@ const dedupeEmpresas = (membros: EmpresaMembro[]) => {
 
 export function EmpresaProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const { isSystemAdmin } = useUserRole();
   const [empresas, setEmpresas] = useState<EmpresaMembro[]>([]);
   const [empresaAtiva, setEmpresaAtivaState] = useState<Empresa | null>(null);
   const [todasSelecionadas, setTodasSelecionadas] = useState(false);
@@ -254,6 +257,14 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
 
   const addEmpresa = async (data: any) => {
     if (!user) return null;
+
+    // Os três caminhos que criam empresa (seletor → /empresas, assistente de
+    // boas-vindas, cadastro por certificado) passam por aqui. A conta de
+    // engenharia não cria: quem cria vira admin da empresa, e ela não é
+    // membro de cliente (lib/conta-de-engenharia.ts). O banco recusa também.
+    if (ehContaDeEngenharia({ isSystemAdmin, totalDeEmpresas: empresas.length })) {
+      throw new Error(MENSAGEM_CONTA_DE_ENGENHARIA);
+    }
 
     const cnpjNormalizado = normalizeCnpj(data.cnpj);
     if (!cnpjNormalizado) {

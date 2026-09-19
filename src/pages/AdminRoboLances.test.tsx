@@ -9,9 +9,11 @@ import type { ReactNode } from 'react';
  * O que estes testes guardam:
  *  1. as cinco abas, na ordem, com a aba na URL;
  *  2. cada aba monta as peças técnicas que saíram da tela do cliente — e com
- *     os contratos que só a plataforma usa: `AtivacaoChecklist modo="plataforma"`
- *     e `PedidoDoRobo permitirTelaRemota`;
- *  3. a rota continua fechada a quem não é administrador do sistema.
+ *     o contrato que só a plataforma usa: `PedidoDoRobo permitirTelaRemota`;
+ *  3. a rota continua fechada a quem não é administrador do sistema;
+ *  4. operação × oficina técnica (19/09/2026): todo admin da plataforma opera
+ *     (Sessões, Avisos, Histórico); Agente e Diagnóstico são só da conta de
+ *     engenharia.
  *
  * Os componentes reaproveitados têm testes próprios (e falam com rede):
  * aqui são dublês que só dizem quais props receberam.
@@ -19,6 +21,8 @@ import type { ReactNode } from 'react';
 
 const autorizacao = vi.hoisted(() => ({ isSystemAdmin: true, loading: false }));
 vi.mock('@/hooks/useAuthorization', () => ({ useAuthorization: () => autorizacao }));
+const conta = vi.hoisted(() => ({ ehContaDeEngenharia: true, carregando: false }));
+vi.mock('@/hooks/useContaDeEngenharia', () => ({ useContaDeEngenharia: () => conta }));
 vi.mock('@/components/shared/SkeletonPagina', () => ({ default: () => null }));
 
 vi.mock('@/components/layout/AppLayout', () => ({
@@ -38,9 +42,6 @@ vi.mock('@/components/robo-lances/AgenteExternoConfig', () => ({
 vi.mock('@/components/robo-lances/PortalHealthcheck', () => ({
   default: () => <div data-testid="portal-healthcheck" />,
 }));
-vi.mock('@/components/robo-lances/AtivacaoChecklist', () => ({
-  default: ({ modo }: { modo?: string }) => <div data-testid="ativacao-checklist" data-modo={modo} />,
-}));
 vi.mock('@/components/robo-lances/PedidoDoRobo', () => ({
   default: ({ permitirTelaRemota, onAbrirTelaRemota }: { permitirTelaRemota?: boolean; onAbrirTelaRemota?: () => void }) => (
     <button type="button" data-testid="pedido-do-robo" data-tela-remota={String(permitirTelaRemota)} onClick={onAbrirTelaRemota}>
@@ -56,12 +57,6 @@ vi.mock('@/components/robo-lances/AcessoManualPortal', () => ({
 }));
 vi.mock('@/components/robo-lances/SessoesDoRobo', () => ({
   default: () => <div data-testid="sessoes-do-robo" />,
-}));
-vi.mock('@/components/robo-lances/AuditTrailViewer', () => ({
-  default: () => <div data-testid="audit-trail" />,
-}));
-vi.mock('@/components/robo-lances/DisputaRealtimePanel', () => ({
-  default: () => <div data-testid="disputa-realtime" />,
 }));
 vi.mock('@/components/admin-robo/DiagnosticoDeSessoes', () => ({
   default: () => <div data-testid="diagnostico-sessoes" />,
@@ -90,10 +85,67 @@ function renderizar(url = '/admin/robo-lances') {
 beforeEach(() => {
   autorizacao.isSystemAdmin = true;
   autorizacao.loading = false;
+  conta.ehContaDeEngenharia = true;
+  conta.carregando = false;
 });
 
-describe('Admin › Robô de Lances', () => {
-  it('mostra as cinco abas da operação, na ordem', () => {
+/**
+ * Operação × oficina técnica (Rafael, 18/09; Ian, 19/09): o admin da
+ * plataforma que opera — a Santa Rosa, login do Rafael — segue com a tela
+ * remota, o captcha, os avisos e o histórico, sem segunda conta; a "poluição
+ * visual" dos prints (agente, RAM, portais no ar, checklist) e o Diagnóstico
+ * são só da conta de engenharia.
+ */
+describe('admin que opera, sem ser a conta de engenharia', () => {
+  beforeEach(() => {
+    conta.ehContaDeEngenharia = false;
+  });
+
+  it('vê só as três abas da operação, e abre em Sessões e tela remota', () => {
+    renderizar();
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual([
+      'Sessões e tela remota',
+      'Avisos aos clientes',
+      'Histórico do robô',
+    ]);
+    expect(screen.getByRole('tab', { name: 'Sessões e tela remota' })).toHaveAttribute('data-state', 'active');
+    expect(screen.getByTestId('pedido-do-robo')).toHaveAttribute('data-tela-remota', 'true');
+    expect(screen.queryByTestId('agente-externo-config')).toBeNull();
+  });
+
+  it('o aviso do captcha (?tela=abrir) abre a tela remota no login de quem opera', () => {
+    renderizar('/admin/robo-lances?aba=sessoes&tela=abrir');
+    expect(screen.getByTestId('vnc')).toHaveAttribute('data-abrir-em', '1');
+  });
+
+  it('?aba=agente e ?aba=diagnostico digitados à mão caem em Sessões, sem montar a oficina', () => {
+    for (const aba of ['agente', 'diagnostico']) {
+      const { unmount } = renderizar(`/admin/robo-lances?aba=${aba}`);
+      expect(screen.getByTestId('sessoes-do-robo')).toBeInTheDocument();
+      expect(screen.queryByTestId('agente-externo-config')).toBeNull();
+      expect(screen.queryByTestId('portal-healthcheck')).toBeNull();
+      expect(screen.queryByTestId('registro-chamadas')).toBeNull();
+      unmount();
+    }
+  });
+
+  it('Avisos e Histórico abrem normalmente', () => {
+    const { unmount } = renderizar('/admin/robo-lances?aba=avisos');
+    expect(screen.getByTestId('gestor-avisos')).toBeInTheDocument();
+    unmount();
+    renderizar('/admin/robo-lances?aba=auditoria');
+    expect(screen.getByTestId('historico-do-robo')).toBeInTheDocument();
+  });
+
+  it('enquanto o papel carrega, esqueleto: não mostra Sessões para pular a Agente depois', () => {
+    conta.carregando = true;
+    renderizar();
+    expect(screen.queryByRole('tab')).toBeNull();
+  });
+});
+
+describe('Admin › Robô de Lances, na conta de engenharia', () => {
+  it('mostra as cinco abas, na ordem', () => {
     renderizar();
     expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual([
       'Agente e infraestrutura',
@@ -105,12 +157,12 @@ describe('Admin › Robô de Lances', () => {
     expect(screen.getByTestId('cabecalho')).toHaveAttribute('data-rota', '/admin/robo-lances');
   });
 
-  it('abre em Agente e infraestrutura, com o checklist no modo da plataforma', () => {
+  it('abre em Agente e infraestrutura; o checklist, que é de uma empresa, vira aviso', () => {
     renderizar();
     expect(screen.getByRole('tab', { name: 'Agente e infraestrutura' })).toHaveAttribute('data-state', 'active');
     expect(screen.getByTestId('agente-externo-config')).toBeInTheDocument();
     expect(screen.getByTestId('portal-healthcheck')).toBeInTheDocument();
-    expect(screen.getByTestId('ativacao-checklist')).toHaveAttribute('data-modo', 'plataforma');
+    expect(screen.getByText(/não aparece na conta de engenharia, que não tem empresa/)).toBeInTheDocument();
     expect(screen.getByText(/O cliente vê apenas se o robô está disponível/)).toBeInTheDocument();
     // As outras abas não montam — a tela remota não consulta nada fora da própria aba.
     expect(screen.queryByTestId('vnc')).toBeNull();
@@ -147,12 +199,10 @@ describe('Admin › Robô de Lances', () => {
     expect(screen.getByTestId('gestor-avisos')).toBeInTheDocument();
   });
 
-  it('Histórico do robô vem primeiro (link antigo ?aba=auditoria cai nele); trilha e tempo real seguem, avisando que são da sua conta', () => {
+  it('Histórico do robô (link antigo ?aba=auditoria cai nele); trilha e tempo real, de cada conta, saíram', () => {
     renderizar('/admin/robo-lances?aba=auditoria');
     expect(screen.getByTestId('historico-do-robo')).toBeInTheDocument();
-    expect(screen.getByTestId('audit-trail')).toBeInTheDocument();
-    expect(screen.getByTestId('disputa-realtime')).toBeInTheDocument();
-    expect(screen.getByText(/ainda leem só os registros da sua própria conta/)).toBeInTheDocument();
+    expect(screen.getByText(/eventos em tempo real de cada conta saíram desta tela/)).toBeInTheDocument();
   });
 
   it('aba desconhecida na URL cai na primeira, em vez de tela vazia', () => {

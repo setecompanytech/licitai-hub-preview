@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
+import { useContaDeEngenharia } from '@/hooks/useContaDeEngenharia';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -15,6 +16,7 @@ import {
 
 type AgenteConfig = {
   id: string;
+  user_id: string;
   nome: string;
   url_base: string;
   status: string;
@@ -44,11 +46,29 @@ const MANAGED_AGENT_URL = 'https://agente.praefectus.com.br';
 
 type BadgeVariant = 'success' | 'warning' | 'danger' | 'info' | 'muted';
 
+type DonoDoAgente = { nome: string; empresas: string | null };
+
+/**
+ * A configuração de agente de TODAS as contas (19/09/2026).
+ *
+ * Este cartão mora só no Admin › Configurações do Robô de Lances. Até aqui ele
+ * lia a linha da conta logada, e a conta de engenharia (engsoft@), que não
+ * tem agente próprio, via a aba vazia. A policy "Plataforma lê configuração
+ * dos agentes" (20260914000004) já deixava a plataforma ler todas; o dono de
+ * cada linha vem de `contas_para_plataforma` (20260919000004): nome e
+ * empresas, sem e-mail.
+ *
+ * Conta sem linha própria não fica sem robô: o webhook cai no agente da
+ * plataforma (segredo `AGENTE_URL_BASE`, sem linha nesta tabela).
+ */
 export default function AgenteExternoConfig() {
   const { user, subscription } = useAuth();
   const { empresaAtiva } = useEmpresa();
   const { isAdmin } = useMembroPermissoes();
+  const { ehContaDeEngenharia } = useContaDeEngenharia();
   const [agentes, setAgentes] = useState<AgenteConfig[]>([]);
+  const [donos, setDonos] = useState<Record<string, DonoDoAgente>>({});
+  const [erroDosDonos, setErroDosDonos] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [provisioning, setProvisioning] = useState(false);
   const [certLinkLoading, setCertLinkLoading] = useState(false);
@@ -59,20 +79,52 @@ export default function AgenteExternoConfig() {
 
   useEffect(() => {
     if (!user) return;
-    supabase
-      .from('agente_externo_config')
-      // Colunas explícitas, sem `api_key_hash`: a migration 20260914000003 tira
-      // o SELECT dessa coluna do navegador, e `*` passaria a falhar.
-      .select('id, nome, url_base, status, ultimo_heartbeat, versao_agente, capacidades, max_sessoes_paralelas, sessoes_ativas, ram_mb')
-      .eq('user_id', user.id)
-      .then(({ data, error }) => {
-        // Falha de leitura não pode parecer "nenhum agente": a tela ofereceria
-        // ativar de novo algo que já existe.
-        if (error) toast.error(`Não foi possível ler a configuração do agente: ${error.message}`);
-        setAgentes((data || []) as unknown as AgenteConfig[]);
-        setLoading(false);
-      });
+    let vivo = true;
+    const carregar = async () => {
+      const { data, error } = await supabase
+        .from('agente_externo_config')
+        // Colunas explícitas, sem `api_key_hash`: a migration 20260914000003 tira
+        // o SELECT dessa coluna do navegador, e `*` passaria a falhar.
+        // Sem filtro por conta: quem decide o que aparece é a RLS — a plataforma
+        // lê todas as linhas, e o cartão só é montado no Admin.
+        .select('id, user_id, nome, url_base, status, ultimo_heartbeat, versao_agente, capacidades, max_sessoes_paralelas, sessoes_ativas, ram_mb')
+        .order('updated_at', { ascending: false });
+      if (!vivo) return;
+      // Falha de leitura não pode parecer "nenhum agente": a tela ofereceria
+      // ativar de novo algo que já existe.
+      if (error) toast.error(`Não foi possível ler a configuração do agente: ${error.message}`);
+      const lidos = (data || []) as unknown as AgenteConfig[];
+      setAgentes(lidos);
+      setLoading(false);
+
+      const ids = [...new Set(lidos.map((a) => a.user_id).filter(Boolean))];
+      if (ids.length === 0) return;
+      // `types.ts` ainda não conhece a função nova (20260919000004).
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const resposta = await (supabase as any).rpc('contas_para_plataforma', { p_ids: ids });
+      if (!vivo) return;
+      if (resposta.error) {
+        // Sem o dono, o cartão segue útil; o motivo fica à vista (princípio 3).
+        setErroDosDonos(resposta.error.message);
+        return;
+      }
+      const mapa: Record<string, DonoDoAgente> = {};
+      for (const linha of (resposta.data ?? []) as Array<{ id: string; nome: string; empresas: string | null }>) {
+        mapa[linha.id] = { nome: linha.nome, empresas: linha.empresas };
+      }
+      setDonos(mapa);
+    };
+    void carregar();
+    return () => {
+      vivo = false;
+    };
   }, [user]);
+
+  const donoDe = (agente: AgenteConfig) => {
+    const dono = donos[agente.user_id];
+    if (!dono) return `Conta …${agente.user_id.slice(-6)}`;
+    return dono.empresas ? `${dono.nome} · ${dono.empresas}` : dono.nome;
+  };
 
   /** Provisiona automaticamente o agente gerenciado para o plano do usuário */
   const handleAutoProvision = async () => {
@@ -199,6 +251,13 @@ export default function AgenteExternoConfig() {
           <Skeleton className="h-5 w-1/3" />
           <Skeleton className="h-20 w-full rounded-lg" />
         </div>
+      ) : agentes.length === 0 && ehContaDeEngenharia ? (
+        // A conta de engenharia não ativa agente para si: ela não disputa. Sem
+        // linha de conta nenhuma, todas usam o agente da plataforma.
+        <div className="rounded-lg border border-border bg-muted p-4 text-sm text-muted-foreground">
+          Nenhuma conta tem agente próprio configurado. As disputas usam o agente da plataforma
+          ({MANAGED_AGENT_URL.replace('https://', '')}), cuja situação aparece em "Portais no ar".
+        </div>
       ) : agentes.length === 0 ? (
         <div className="text-center py-8 space-y-4">
           <div className="w-14 h-14 rounded-full bg-primary-tint text-primary flex items-center justify-center mx-auto">
@@ -276,9 +335,10 @@ export default function AgenteExternoConfig() {
                     {statusIcon(agente.status)}
                     <div>
                       <p className="text-base font-medium">{agente.nome}</p>
-                      {agente.versao_agente && (
-                        <p className="text-xs text-muted-foreground">v{agente.versao_agente}</p>
-                      )}
+                      <p className="text-xs text-muted-foreground">
+                        {donoDe(agente)}
+                        {agente.versao_agente && ` · v${agente.versao_agente}`}
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -329,7 +389,16 @@ export default function AgenteExternoConfig() {
             );
           })}
 
-          {/* Certificate Upload Section */}
+          {erroDosDonos && (
+            <p className="text-xs text-muted-foreground">
+              Não foi possível dizer de quem é cada agente ({erroDosDonos}). A migration
+              20260919000004 (contas_para_plataforma) já foi aplicada?
+            </p>
+          )}
+
+          {/* Certificate Upload Section — é da empresa ativa; sem empresa (a
+              conta de engenharia), não há certificado de quem gerar link. */}
+          {empresaAtiva?.id && (
           <div className="border border-border rounded-lg p-4 space-y-3 bg-muted">
             <div className="flex items-center gap-2">
               <Upload className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
@@ -376,6 +445,7 @@ export default function AgenteExternoConfig() {
               </Button>
             )}
           </div>
+          )}
         </div>
       )}
     </div>

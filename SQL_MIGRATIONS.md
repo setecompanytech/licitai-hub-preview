@@ -14414,3 +14414,616 @@ COMMENT ON COLUMN public.financeiro_lancamentos.vendedor_responsavel_id IS
 ```
 
 ---
+
+## 20260919000002 — engsoft@praefectus.com.br é o admin da plataforma
+
+Arquivo: `supabase/migrations/20260919000002_engsoft_admin_da_plataforma.sql`
+
+Decisão do Rafael (14/09, confirmada em 19/09): o que é de desenvolvimento e TI
+(o grupo Admin, com a tela remota do robô, o agente e o servidor) fica numa
+conta de engenharia. O levantamento de 19/09 mostrou que o único admin da
+plataforma era a `comercial@gruposantarosa.com.br`, também admin da Santa Rosa.
+
+**Só registra o papel.** A conta é criada à mão no Auth, pelo SQL Editor ou por
+Authentication › Add user com o e-mail já confirmado, e nunca por aqui: criar
+conta leva senha, e segredo não entra no repositório. A conta não entra em
+empresa nenhuma.
+
+A `comercial@gruposantarosa` mantém o papel: os dois admins coexistem
+(decisão do Ian, 19/09; seção Permissões do `CLAUDE.md`).
+
+Idempotente; não faz nada se a conta ainda não existir. Reversão no cabeçalho
+do arquivo.
+
+```sql
+-- ═══════════════════════════════════════════════════════════════════════════
+-- engsoft@praefectus.com.br é o admin da plataforma
+-- Data: 2026-09-19
+-- ═══════════════════════════════════════════════════════════════════════════
+--
+-- Decisão do Rafael (14/09, confirmada pelo Ian em 19/09): o que é de
+-- desenvolvimento e TI — o grupo Admin inteiro, com a tela remota do robô, o
+-- agente e o servidor — fica numa conta de engenharia, e não nas contas dos
+-- clientes. Até aqui o único admin da plataforma era a
+-- `comercial@gruposantarosa.com.br`, que é também admin do Grupo Santa Rosa.
+--
+-- Esta migration só REGISTRA o papel. A conta em si é criada à mão no Auth
+-- (SQL Editor ou Dashboard › Authentication › Add user, com o e-mail já
+-- confirmado) e nunca por migration: criar conta leva senha, e segredo não
+-- entra no repositório.
+--
+-- A conta NÃO é membro de empresa nenhuma: enxerga a operação pelo Admin, sem
+-- se misturar aos dados de negócio dos clientes (incidente de 16/09).
+--
+-- A `comercial@gruposantarosa` MANTÉM o papel: os dois admins coexistem
+-- (decisão do Ian, 19/09). Seção Permissões do CLAUDE.md.
+--
+-- Idempotente: não faz nada se a conta ainda não existir, nem se o papel já
+-- estiver lá. REVERSÃO:
+--   delete from public.user_roles r using auth.users u
+--    where r.user_id = u.id and r.role = 'admin'
+--      and lower(u.email) = 'engsoft@praefectus.com.br';
+
+insert into public.user_roles (user_id, role)
+select u.id, 'admin'::public.app_role
+from auth.users u
+where lower(u.email) = 'engsoft@praefectus.com.br'
+on conflict (user_id, role) do nothing;
+```
+
+---
+
+## 20260919000003 — a conta de engenharia não cria empresa nem entra em empresa
+
+Arquivo: `supabase/migrations/20260919000003_conta_de_engenharia_fora_das_empresas.sql`
+
+O `engsoft@` opera o sistema pelo Admin e não é membro de cliente (decisão do
+Rafael, 14/09; 19/09). Quem cria empresa vira admin dela, e o incidente de
+16/09 veio de uma conta da plataforma entrar numa empresa de cliente.
+
+"Conta de engenharia" = **admin da plataforma sem empresa nenhuma**, a mesma
+regra do front (`src/lib/conta-de-engenharia.ts`). A `comercial@gruposantarosa`,
+também admin da plataforma (os dois coexistem), está na Santa Rosa e fica de fora.
+
+Duas travas antes de gravar: em `empresa_membros` (criação de empresa, convite,
+convite de setor, SQL à mão) e em `empresas` (criação pela sessão da própria
+conta; o SQL Editor e o service_role seguem podendo). A tela já não oferece o
+cadastro; isto é o que garante.
+
+Idempotente. Reversão no cabeçalho do arquivo.
+
+```sql
+-- ═══════════════════════════════════════════════════════════════════════════
+-- A conta de engenharia da plataforma não cria empresa nem entra em empresa
+-- Data: 2026-09-19
+-- ═══════════════════════════════════════════════════════════════════════════
+--
+-- Decisão do Rafael (14/09, confirmada pelo Ian em 19/09): o engsoft@ opera o
+-- sistema pelo Admin e NÃO é membro de cliente. Quem cria empresa vira admin
+-- dela (EmpresaContext.addEmpresa), e o incidente de 16/09 veio justamente de
+-- uma conta da plataforma entrar numa empresa de cliente — as telas passaram a
+-- misturar Santa Rosa e BAQPLAST.
+--
+-- "Conta de engenharia" é definida por fato, não por e-mail: ADMIN DA
+-- PLATAFORMA SEM EMPRESA NENHUMA (a mesma regra do front, em
+-- `src/lib/conta-de-engenharia.ts`). A `comercial@gruposantarosa`, também
+-- admin da plataforma (os dois coexistem, decisão de 19/09), está na Santa
+-- Rosa e fica de fora: a regra não atinge o login do dono do produto.
+--
+-- Duas travas, as duas antes de gravar:
+--   1. empresa_membros — a conta de engenharia não vira membro (criação de
+--      empresa, convite de membro, convite de setor ou SQL à mão);
+--   2. empresas — ela não cria empresa pela API. `auth.uid()` é nulo no SQL
+--      Editor e no service_role, então a manutenção pela plataforma segue
+--      possível; só a sessão da própria conta é barrada.
+--
+-- Idempotente (CREATE OR REPLACE + DROP TRIGGER IF EXISTS). REVERSÃO:
+--   drop trigger if exists trg_conta_de_engenharia_fora_das_empresas on public.empresa_membros;
+--   drop trigger if exists trg_conta_de_engenharia_nao_cria_empresa on public.empresas;
+--   drop function if exists public.conta_de_engenharia_fora_das_empresas();
+--   drop function if exists public.conta_de_engenharia_nao_cria_empresa();
+--   drop function if exists public.eh_conta_de_engenharia(uuid);
+
+create or replace function public.eh_conta_de_engenharia(_user_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select _user_id is not null
+     and public.has_role(_user_id, 'admin')
+     and not exists (select 1 from public.empresa_membros m where m.user_id = _user_id)
+$$;
+
+-- Só os gatilhos abaixo a usam (e rodam como dono): ninguém de fora precisa
+-- perguntar ao banco se uma conta é a de engenharia.
+revoke all on function public.eh_conta_de_engenharia(uuid) from public, anon, authenticated;
+
+create or replace function public.conta_de_engenharia_fora_das_empresas()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if public.eh_conta_de_engenharia(new.user_id) then
+    raise exception 'A conta de engenharia da plataforma não entra em empresa de cliente'
+      using errcode = 'P0001',
+            hint = 'Conta de engenharia = admin da plataforma sem empresa. Ver CLAUDE.md, seção Permissões.';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_conta_de_engenharia_fora_das_empresas on public.empresa_membros;
+create trigger trg_conta_de_engenharia_fora_das_empresas
+  before insert or update of user_id on public.empresa_membros
+  for each row execute function public.conta_de_engenharia_fora_das_empresas();
+
+create or replace function public.conta_de_engenharia_nao_cria_empresa()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if public.eh_conta_de_engenharia(auth.uid()) then
+    raise exception 'A conta de engenharia da plataforma não cadastra empresa'
+      using errcode = 'P0001',
+            hint = 'Quem cria empresa vira admin dela, e a conta de engenharia não é membro de cliente.';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_conta_de_engenharia_nao_cria_empresa on public.empresas;
+create trigger trg_conta_de_engenharia_nao_cria_empresa
+  before insert on public.empresas
+  for each row execute function public.conta_de_engenharia_nao_cria_empresa();
+```
+
+---
+
+## 20260919000004 — nome e empresas de uma conta, só para a plataforma
+
+Arquivo: `supabase/migrations/20260919000004_contas_para_plataforma.sql`
+
+A aba "Agente e infraestrutura" do Admin do robô passou a listar o agente de
+todas as contas (a policy "Plataforma lê configuração dos agentes" já deixava;
+a tela filtrava pela conta logada, e o engsoft@ via a aba vazia). Cada linha de
+`agente_externo_config` só tem `user_id`; esta função diz de quem é com o
+mínimo — nome e empresas, sem e-mail — e só para o admin da plataforma, no
+padrão de `nomes_de_empresas_para_plataforma`.
+
+Idempotente. Reversão no cabeçalho do arquivo.
+
+```sql
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Nome e empresas de uma conta, só para a plataforma
+-- Data: 2026-09-19
+-- ═══════════════════════════════════════════════════════════════════════════
+--
+-- A aba "Agente e infraestrutura" (Admin › Configurações do Robô de Lances)
+-- passou a listar a configuração de agente de TODAS as contas — a policy
+-- "Plataforma lê configuração dos agentes" (20260914000004) já permitia; a
+-- tela é que filtrava pela conta logada, e a conta de engenharia (engsoft@),
+-- que não tem agente próprio, via a aba vazia.
+--
+-- Cada linha de `agente_externo_config` tem só `user_id`. Para dizer de quem é
+-- o agente sem abrir `profiles` e `empresa_membros` à plataforma, esta função
+-- devolve o MÍNIMO: o nome da pessoa e os nomes das empresas dela. Sem e-mail,
+-- sem telefone, sem papel. Mesmo padrão de `nomes_de_empresas_para_plataforma`.
+--
+-- Idempotente (CREATE OR REPLACE). REVERSÃO:
+--   drop function if exists public.contas_para_plataforma(uuid[]);
+
+create or replace function public.contas_para_plataforma(p_ids uuid[])
+returns table (id uuid, nome text, empresas text)
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+begin
+  if not public.has_role(auth.uid(), 'admin'::public.app_role) then
+    raise exception 'Consulta exclusiva da operação Praefectus.';
+  end if;
+  return query
+    select u.id,
+           coalesce(nullif(trim(p.nome_completo), ''), 'Conta sem nome')::text,
+           (select string_agg(coalesce(e.nome_fantasia, e.razao_social), ', ' order by e.razao_social)
+              from public.empresa_membros m
+              join public.empresas e on e.id = m.empresa_id
+             where m.user_id = u.id)::text
+      from unnest(p_ids) as u(id)
+      left join public.profiles p on p.user_id = u.id;
+end $$;
+
+revoke all on function public.contas_para_plataforma(uuid[]) from public;
+grant execute on function public.contas_para_plataforma(uuid[]) to authenticated;
+
+notify pgrst, 'reload schema';
+```
+
+---
+
+## 20260919000005 — o admin da plataforma não passa por cima de dado de cliente
+
+Arquivo: `supabase/migrations/20260919000005_dado_de_cliente_sem_passe_do_admin.sql`
+
+Levantamento de 19/09 no banco no ar (`pg_policies`): 46 regras dão passe ao
+admin da plataforma. 42 estão certas: operação (robô, logs, saúde dos
+portais), catálogo do produto, negócio da Praefectus (assinaturas, leads,
+suporte) e LGPD. Quatro davam ao admin ler, alterar e apagar dado de cliente
+("dono OU admin"): `notas_fiscais`, `nota_fiscal_itens` (Contratos › Pedidos),
+`sub_tarefas` (Equipe › Tarefas) e `transacoes_bancarias` (legada).
+
+As quatro estavam vazias (0 linhas): nada exposto. Fecha-se antes do primeiro
+dado. Cada regra é refeita igual à original, só sem o `OR has_role(..., 'admin')`.
+
+Idempotente. Reversão no cabeçalho do arquivo.
+
+```sql
+-- ═══════════════════════════════════════════════════════════════════════════
+-- O admin da plataforma não passa por cima de dado de cliente
+-- Data: 2026-09-19
+-- ═══════════════════════════════════════════════════════════════════════════
+--
+-- Levantamento de 19/09 (pg_policies do banco no ar): de 46 regras em que o
+-- admin da plataforma (`user_roles.role = 'admin'`) tem passe próprio, 42 são
+-- de operação, catálogo, negócio da Praefectus ou LGPD — corretas. Quatro
+-- davam ao admin LER, ALTERAR E APAGAR dado de cliente, pela fórmula
+-- "dono OU admin" herdada das migrations de março:
+--
+--   notas_fiscais / nota_fiscal_itens — Contratos › Pedidos
+--   sub_tarefas                       — Equipe › Tarefas
+--   transacoes_bancarias              — legada, sem uso no app
+--
+-- As quatro estavam VAZIAS no dia (0 linhas): nada foi exposto. Fecha-se agora
+-- porque duas são usadas pelo app, e o dado do primeiro cliente nasceria
+-- alcançável pela plataforma. Linha combinada em 19/09: a plataforma enxerga a
+-- operação, não o negócio de cada cliente.
+--
+-- Cada regra é refeita IGUAL à original, só sem o `OR has_role(..., 'admin')`:
+-- o acesso do próprio dono não muda.
+--
+-- Idempotente (DROP POLICY IF EXISTS + CREATE). REVERSÃO: recriar as quatro
+-- com o `OR public.has_role(auth.uid(), 'admin')` de volta (textos originais
+-- em 20260316235727, 20260317001119 e 20260316234219).
+
+drop policy if exists "Users manage own notas_fiscais" on public.notas_fiscais;
+create policy "Users manage own notas_fiscais"
+  on public.notas_fiscais for all to authenticated
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid());
+
+drop policy if exists "Users manage nota_fiscal_itens via parent" on public.nota_fiscal_itens;
+create policy "Users manage nota_fiscal_itens via parent"
+  on public.nota_fiscal_itens for all to authenticated
+  using (
+    exists (select 1 from public.notas_fiscais nf
+             where nf.id = nota_fiscal_itens.nota_fiscal_id and nf.user_id = auth.uid())
+  )
+  with check (
+    exists (select 1 from public.notas_fiscais nf
+             where nf.id = nota_fiscal_itens.nota_fiscal_id and nf.user_id = auth.uid())
+  );
+
+drop policy if exists "Users manage own transacoes_bancarias" on public.transacoes_bancarias;
+create policy "Users manage own transacoes_bancarias"
+  on public.transacoes_bancarias for all to authenticated
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid());
+
+drop policy if exists "Users can manage sub_tarefas of their tasks" on public.sub_tarefas;
+create policy "Users can manage sub_tarefas of their tasks"
+  on public.sub_tarefas for all to authenticated
+  using (
+    exists (select 1 from public.tarefas_colaborador t
+             where t.id = sub_tarefas.tarefa_id
+               and (t.atribuido_a = auth.uid() or t.criado_por = auth.uid()))
+  )
+  with check (
+    exists (select 1 from public.tarefas_colaborador t
+             where t.id = sub_tarefas.tarefa_id
+               and (t.atribuido_a = auth.uid() or t.criado_por = auth.uid()))
+  );
+```
+
+---
+
+## 20260919000006 — a infraestrutura do robô é da conta de engenharia, não de todo admin
+
+Arquivo: `supabase/migrations/20260919000006_infra_do_robo_so_da_engenharia.sql`
+
+O Rafael (18/09, com prints de Admin › Configurações do Robô de Lances logado
+como GRUPO SANTA ROSA) pediu essas telas fora da conta do dia a dia; o Ian
+(19/09) manteve a `comercial@gruposantarosa` como admin da plataforma, mas sem
+a infraestrutura do robô. As regras que davam essa infraestrutura a todo admin
+passam a exigir `sou_conta_de_engenharia()` (admin sem empresa, só sobre a
+própria conta): configuração de agentes, sessões e registro de chamadas de
+todas as contas, histórico do robô, avisos aos clientes, e as duas funções de
+nome (`nomes_de_empresas_para_plataforma`, `contas_para_plataforma`).
+
+Cada cliente segue lendo as próprias sessões, o próprio agente e o próprio
+registro de chamadas pelas regras de dono e de membro. `portal_healthcheck`
+fica como está (regra antiga libera leitura a todo usuário logado). Na tela,
+o mesmo corte: `ROTAS_DA_ENGENHARIA` em `src/lib/route-permissions.ts`.
+**Revista no mesmo dia pela 20260919000007** (operação × oficina técnica): a
+operação voltou a todo admin, e `ROTAS_DA_ENGENHARIA` saiu do código.
+
+Idempotente. Reversão no cabeçalho do arquivo.
+
+```sql
+-- ═══════════════════════════════════════════════════════════════════════════
+-- A infraestrutura do robô é da conta de engenharia, não de todo admin
+-- Data: 2026-09-19
+-- ═══════════════════════════════════════════════════════════════════════════
+--
+-- O Rafael, em 18/09, com prints de Admin › Configurações do Robô de Lances
+-- logado como GRUPO SANTA ROSA: "Eu vejo essas funções como configurações
+-- internas do desenvolvedor do sistema, não cabe ao usuário aderente ao plano
+-- ter todas as informações" — e o e-mail de engenharia "teria toda essa
+-- visualização". Em 19/09 o Ian decidiu que a `comercial@gruposantarosa`
+-- MANTÉM o papel de admin da plataforma (o resto do grupo Admin segue com
+-- ela), mas a infraestrutura do robô passa a ser só da conta de engenharia.
+--
+-- "Conta de engenharia" = admin da plataforma sem empresa nenhuma
+-- (`eh_conta_de_engenharia`, migration 20260919000003). Esta migration troca
+-- `has_role(auth.uid(), 'admin')` por `sou_conta_de_engenharia()` nas regras
+-- que davam a infraestrutura do robô a todo admin:
+--
+--   agente_externo_config — configuração de agente de todas as contas
+--   sessoes_lance_real    — sessões do robô de todas as empresas
+--   webhook_log           — registro de chamadas de todas as contas
+--   robo_historico        — histórico do robô de todas as empresas
+--   robo_avisos_portal    — escrever avisos e ler os fora do ar
+--   contas_para_plataforma / nomes_de_empresas_para_plataforma — nomes para
+--                           o diagnóstico e a aba do agente
+--
+-- O que NÃO muda: cada cliente segue lendo as PRÓPRIAS sessões, a própria
+-- configuração de agente e o próprio registro de chamadas pelas regras de
+-- dono e de membro da empresa. `portal_healthcheck` fica como está: uma regra
+-- antiga deixa qualquer usuário logado ler a saúde dos portais.
+--
+-- `sou_conta_de_engenharia()` existe porque `eh_conta_de_engenharia(uuid)` não
+-- pode ser chamada pelo navegador (EXECUTE revogado em 000003): esta versão só
+-- responde sobre a própria conta.
+--
+-- Idempotente (CREATE OR REPLACE + DROP POLICY IF EXISTS). REVERSÃO: recriar
+-- as regras com `public.has_role(auth.uid(), 'admin'::public.app_role)` no
+-- lugar de `public.sou_conta_de_engenharia()` (textos de 20260914000004 e
+-- 20260917000004), e as duas funções de nome com o teste de `has_role`.
+
+create or replace function public.sou_conta_de_engenharia()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select public.eh_conta_de_engenharia(auth.uid())
+$$;
+
+revoke all on function public.sou_conta_de_engenharia() from public, anon;
+grant execute on function public.sou_conta_de_engenharia() to authenticated;
+
+-- ── Leitura entre empresas: só a engenharia ────────────────────────────────
+
+drop policy if exists "Plataforma lê configuração dos agentes" on public.agente_externo_config;
+create policy "Plataforma lê configuração dos agentes"
+on public.agente_externo_config for select to authenticated
+using (public.sou_conta_de_engenharia());
+
+drop policy if exists "Plataforma lê sessões do robô" on public.sessoes_lance_real;
+create policy "Plataforma lê sessões do robô"
+on public.sessoes_lance_real for select to authenticated
+using (public.sou_conta_de_engenharia());
+
+drop policy if exists "Plataforma lê registro de chamadas" on public.webhook_log;
+create policy "Plataforma lê registro de chamadas"
+on public.webhook_log for select to authenticated
+using (public.sou_conta_de_engenharia());
+
+drop policy if exists "Plataforma lê o histórico do robô" on public.robo_historico;
+create policy "Plataforma lê o histórico do robô"
+on public.robo_historico for select to authenticated
+using (public.sou_conta_de_engenharia());
+
+-- ── Avisos aos clientes: cliente lê o vigente; a engenharia escreve e vê todos
+
+drop policy if exists "Clientes leem avisos vigentes" on public.robo_avisos_portal;
+create policy "Clientes leem avisos vigentes"
+on public.robo_avisos_portal for select to authenticated
+using (
+  (ativo and inicio_em <= now() and (fim_em is null or fim_em > now()))
+  or public.sou_conta_de_engenharia()
+);
+
+drop policy if exists "Plataforma escreve avisos" on public.robo_avisos_portal;
+create policy "Plataforma escreve avisos"
+on public.robo_avisos_portal for all to authenticated
+using (public.sou_conta_de_engenharia())
+with check (public.sou_conta_de_engenharia());
+
+-- ── Nomes para o diagnóstico e para a aba do agente ─────────────────────────
+
+create or replace function public.nomes_de_empresas_para_plataforma(p_ids uuid[])
+returns table (id uuid, razao_social text, nome_fantasia text)
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+begin
+  if not public.sou_conta_de_engenharia() then
+    raise exception 'Consulta exclusiva da gestão técnica do sistema.';
+  end if;
+  return query
+    select e.id, e.razao_social::text, e.nome_fantasia::text
+      from public.empresas e
+     where e.id = any (p_ids);
+end $$;
+
+revoke all on function public.nomes_de_empresas_para_plataforma(uuid[]) from public;
+grant execute on function public.nomes_de_empresas_para_plataforma(uuid[]) to authenticated;
+
+create or replace function public.contas_para_plataforma(p_ids uuid[])
+returns table (id uuid, nome text, empresas text)
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+begin
+  if not public.sou_conta_de_engenharia() then
+    raise exception 'Consulta exclusiva da gestão técnica do sistema.';
+  end if;
+  return query
+    select u.id,
+           coalesce(nullif(trim(p.nome_completo), ''), 'Conta sem nome')::text,
+           (select string_agg(coalesce(e.nome_fantasia, e.razao_social), ', ' order by e.razao_social)
+              from public.empresa_membros m
+              join public.empresas e on e.id = m.empresa_id
+             where m.user_id = u.id)::text
+      from unnest(p_ids) as u(id)
+      left join public.profiles p on p.user_id = u.id;
+end $$;
+
+revoke all on function public.contas_para_plataforma(uuid[]) from public;
+grant execute on function public.contas_para_plataforma(uuid[]) to authenticated;
+
+notify pgrst, 'reload schema';
+```
+
+---
+
+## 20260919000007 — operação × oficina técnica: a operação do robô volta a todo admin
+
+Arquivo: `supabase/migrations/20260919000007_operacao_do_robo_de_todo_admin.sql`
+
+Revisão da 20260919000006 no mesmo dia (Ian, 19/09). Quem opera o robô toda
+manhã é o Rafael, pelo login da Santa Rosa; um segundo login só para o captcha
+seria atrito diário, e a "poluição visual" que ele apontou em 18/09 foram os
+cartões técnicos (agente, RAM, portais no ar, checklist), não a tela remota.
+
+Volta a `has_role(auth.uid(), 'admin')` o que é **operação**: sessões do robô
+de todas as empresas, histórico do robô, as duas regras de avisos aos clientes
+e `nomes_de_empresas_para_plataforma`. Fica com `sou_conta_de_engenharia()` a
+**oficina técnica**: configuração dos agentes, registro de chamadas e
+`contas_para_plataforma`. Na tela, `AdminRoboLances` mostra Agente e
+infraestrutura e Diagnóstico só à conta de engenharia; no servidor, o
+`robo-lances-webhook` separa `ehAdmin` (operação) de `verDetalhe` (o cru).
+
+Idempotente. Reversão no cabeçalho do arquivo. Conferência no fim: 4 regras de
+operação, 2 da oficina técnica.
+
+```sql
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Operação × oficina técnica: a operação do robô volta a todo admin
+-- Data: 2026-09-19
+-- ═══════════════════════════════════════════════════════════════════════════
+--
+-- A 20260919000006 deu a infraestrutura INTEIRA do robô só à conta de
+-- engenharia (engsoft@). Revista no mesmo dia (Ian, 19/09): quem opera o robô
+-- toda manhã é o Rafael, pelo login da Santa Rosa (CNPJ dele, admin da
+-- plataforma). Obrigá-lo a um segundo login, num segundo perfil do Chrome, para
+-- o clique diário no captcha é atrito; captcha perdido é disputa perdida. E o
+-- que ele chamou de "poluição visual" em 18/09 foram os cartões técnicos —
+-- agente, RAM, portais no ar, checklist —, não a tela remota.
+--
+-- A regra passa a ser por NATUREZA:
+--
+--   operação (todo admin da plataforma, `has_role(... 'admin')`) — volta aqui:
+--     sessoes_lance_real  "Plataforma lê sessões do robô"   (aba Sessões)
+--     robo_historico      "Plataforma lê o histórico do robô"
+--     robo_avisos_portal  "Clientes leem avisos vigentes" e "Plataforma escreve avisos"
+--     nomes_de_empresas_para_plataforma (nomes no histórico)
+--
+--   oficina técnica (só a conta de engenharia, `sou_conta_de_engenharia()`) —
+--   fica como a 000006 deixou:
+--     agente_externo_config "Plataforma lê configuração dos agentes"
+--     webhook_log           "Plataforma lê registro de chamadas" (Diagnóstico)
+--     contas_para_plataforma (dono de cada agente, na aba do agente)
+--
+-- Na tela, o mesmo corte: `AdminRoboLances` mostra Agente e infraestrutura e
+-- Diagnóstico só à conta de engenharia. No servidor, `robo-lances-webhook`
+-- separa `ehAdmin` (operação) de `verDetalhe` (o cru técnico).
+--
+-- O que NÃO muda: cada cliente segue lendo só as próprias sessões, o próprio
+-- agente e o próprio registro, pelas regras de dono e de membro da empresa.
+-- A conta de engenharia continua admin: `has_role` a inclui.
+--
+-- Idempotente (CREATE OR REPLACE + DROP POLICY IF EXISTS). Os textos são os
+-- originais de 20260914000004 e 20260917000004. REVERSÃO: rodar de novo os
+-- blocos correspondentes da 20260919000006.
+
+-- ── Operação: leitura entre empresas volta a todo admin ─────────────────────
+
+DROP POLICY IF EXISTS "Plataforma lê sessões do robô" ON public.sessoes_lance_real;
+CREATE POLICY "Plataforma lê sessões do robô"
+ON public.sessoes_lance_real FOR SELECT TO authenticated
+USING (public.has_role(auth.uid(), 'admin'::public.app_role));
+
+DROP POLICY IF EXISTS "Plataforma lê o histórico do robô" ON public.robo_historico;
+CREATE POLICY "Plataforma lê o histórico do robô"
+ON public.robo_historico FOR SELECT TO authenticated
+USING (public.has_role(auth.uid(), 'admin'::public.app_role));
+
+-- ── Avisos aos clientes: cliente lê o vigente; todo admin escreve e vê todos ─
+
+DROP POLICY IF EXISTS "Clientes leem avisos vigentes" ON public.robo_avisos_portal;
+CREATE POLICY "Clientes leem avisos vigentes"
+ON public.robo_avisos_portal FOR SELECT TO authenticated
+USING (
+  (ativo AND inicio_em <= now() AND (fim_em IS NULL OR fim_em > now()))
+  OR public.has_role(auth.uid(), 'admin'::public.app_role)
+);
+
+DROP POLICY IF EXISTS "Plataforma escreve avisos" ON public.robo_avisos_portal;
+CREATE POLICY "Plataforma escreve avisos"
+ON public.robo_avisos_portal FOR ALL TO authenticated
+USING (public.has_role(auth.uid(), 'admin'::public.app_role))
+WITH CHECK (public.has_role(auth.uid(), 'admin'::public.app_role));
+
+-- ── Nomes das empresas no histórico: todo admin ─────────────────────────────
+
+CREATE OR REPLACE FUNCTION public.nomes_de_empresas_para_plataforma(p_ids uuid[])
+RETURNS TABLE (id uuid, razao_social text, nome_fantasia text)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF NOT public.has_role(auth.uid(), 'admin'::public.app_role) THEN
+    RAISE EXCEPTION 'Consulta exclusiva da operação Praefectus.';
+  END IF;
+  RETURN QUERY
+    SELECT e.id, e.razao_social::text, e.nome_fantasia::text
+      FROM public.empresas e
+     WHERE e.id = ANY (p_ids);
+END $$;
+
+REVOKE ALL ON FUNCTION public.nomes_de_empresas_para_plataforma(uuid[]) FROM public;
+GRANT EXECUTE ON FUNCTION public.nomes_de_empresas_para_plataforma(uuid[]) TO authenticated;
+
+NOTIFY pgrst, 'reload schema';
+
+-- ── Conferência (rodar depois) ──────────────────────────────────────────────
+-- Esperado: 4 regras com has_role (operação) e 2 com sou_conta_de_engenharia
+-- (oficina técnica).
+--
+-- SELECT tablename, policyname,
+--        CASE WHEN coalesce(qual, '') || coalesce(with_check, '') LIKE '%sou_conta_de_engenharia%'
+--             THEN 'oficina técnica (engsoft@)' ELSE 'operação (todo admin)' END AS quem
+--   FROM pg_policies
+--  WHERE schemaname = 'public'
+--    AND policyname IN ('Plataforma lê configuração dos agentes', 'Plataforma lê sessões do robô',
+--                       'Plataforma lê registro de chamadas', 'Plataforma lê o histórico do robô',
+--                       'Clientes leem avisos vigentes', 'Plataforma escreve avisos')
+--  ORDER BY quem, tablename;
+```
+
+---

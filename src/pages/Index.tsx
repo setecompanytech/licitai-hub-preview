@@ -20,6 +20,7 @@ import { useAnalyticsData } from '@/hooks/useAnalyticsData';
 import { ANCORA_LISTAGEM } from '@/lib/licitacao/recortes-do-painel';
 import RelatorioGerencialPDF from '@/components/relatorios/RelatorioGerencialPDF';
 import OnboardingWizard, { useOnboarding } from '@/components/onboarding/OnboardingWizard';
+import { useContaDeEngenharia } from '@/hooks/useContaDeEngenharia';
 import MascoteBoasVindas, { useMascoteBoasVindas } from '@/components/onboarding/MascoteBoasVindas';
 import NavegadorDeSecoes from '@/components/shared/NavegadorDeSecoes';
 import ColaboradorIdentificacaoModal from '@/components/auth/ColaboradorIdentificacaoModal';
@@ -64,11 +65,16 @@ export default function Index() {
     erro: erroProcessos, recarregar: recarregarProcessos,
   } = useAnalyticsData();
   const { showOnboarding, dismissOnboarding, onboardingCarregado } = useOnboarding();
+  /* A conta de engenharia não passa pelas boas-vindas de cliente: o assistente
+     cadastra empresa, e ela não entra em empresa (lib/conta-de-engenharia.ts).
+     Espera o papel carregar para o assistente não piscar antes de sumir. */
+  const { ehContaDeEngenharia, carregando: carregandoConta } = useContaDeEngenharia();
+  const mostrarOnboarding = showOnboarding && !carregandoConta && !ehContaDeEngenharia;
   /* O mascote entra na fila DEPOIS do wizard: os dois nascem da mesma condição
      de primeiro acesso, e empilhados um cobriria o outro. Configura a conta,
      depois é apresentado ao guia. */
   const { mascoteAberto, fecharMascote } = useMascoteBoasVindas(
-    onboardingCarregado && !showOnboarding,
+    onboardingCarregado && !showOnboarding && !ehContaDeEngenharia,
   );
 
   /* Modo de personalização: liga as estrelas de favoritar no grid de atalhos.
@@ -264,7 +270,7 @@ export default function Index() {
         <NavegadorDeSecoes />
       </div>
 
-      <OnboardingWizard open={showOnboarding} onClose={dismissOnboarding} />
+      <OnboardingWizard open={mostrarOnboarding} onClose={dismissOnboarding} />
       <MascoteBoasVindas open={mascoteAberto} onClose={fecharMascote} />
       <ColaboradorIdentificacaoModal />
     </AppLayout>

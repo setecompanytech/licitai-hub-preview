@@ -109,6 +109,9 @@ vi.mock('@/hooks/useMembroPermissoes', () => ({
 }));
 
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: { id: 'u1' } }) }));
+vi.mock('@/hooks/useContaDeEngenharia', () => ({
+  useContaDeEngenharia: () => ({ ehContaDeEngenharia: false, carregando: false }),
+}));
 vi.mock('@/contexts/EmpresaContext', () => ({
   useEmpresa: () => ({
     empresaAtiva: { id: 'e1', nome_fantasia: 'Construtora Alfa' },

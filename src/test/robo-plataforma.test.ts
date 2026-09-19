@@ -13,6 +13,7 @@ import {
   estadoDoLigado,
   erroDeTabelaAusente,
   ehAdminDaPlataforma,
+  ehContaDeEngenharia,
   motivoDeNegocio,
   corpoDeErro,
   ehEstouroDeTempo,
@@ -239,6 +240,24 @@ describe('reduzirSaudeParaCliente — a saúde que o cliente pode ver', () => {
     expect(ehUuid(S1)).toBe(true);
     expect(ehUuid('teste-local')).toBe(false);
   });
+
+  /**
+   * Quem OPERA o robô sem ser a conta de engenharia (19/09/2026) — o admin da
+   * Santa Rosa: o webhook passa TODAS as sessões da saúde como visíveis. Ele
+   * precisa do captcha e das sessões de qualquer empresa (a tela remota é
+   * compartilhada), mas não da oficina técnica nem do certificado alheio.
+   */
+  it('quem opera: sessões e pedidos de todas as empresas, sem infraestrutura nem certificado alheio', () => {
+    const operacao = reduzirSaudeParaCliente(completa, idsDeSessaoNaSaude(completa), { cnpjsVisiveis: ['12345678000199'] });
+    const a = operacao.agentes[0];
+    expect(a.sessoes.map((s) => s.sessao_id)).toEqual([S1, S2, S3]);
+    expect(a.aguardando_humano.map((p) => p.sessao_id)).toEqual([S1, S2]);
+    expect(a.sessoes_ativas).toBe(2);
+    const texto = JSON.stringify(operacao);
+    for (const proibido of ['agente.praefectus.com.br', '2.2.0', '16000', 'ram_total_mb', 'url_base', '/srv/agente', 'OUTRA EMPRESA SA']) {
+      expect(texto).not.toContain(proibido);
+    }
+  });
 });
 
 describe('certificadoParaCliente — o verde não pode vir do certificado de outra empresa', () => {
@@ -322,6 +341,49 @@ describe('ehAdminDaPlataforma — user_roles, uma consulta por requisição', ()
   });
 });
 
+/**
+ * A conta de engenharia (19/09/2026): admin da plataforma SEM empresa. É ela, e
+ * não todo admin, quem recebe o cru técnico do webhook (`verDetalhe`); a
+ * operação — tela remota, captcha, avisos — segue com todo admin, inclusive o
+ * da Santa Rosa (operação × oficina técnica).
+ */
+describe('conta de engenharia — o cru técnico do webhook', () => {
+  /** Cliente falso que responde por tabela: user_roles e empresa_membros. */
+  function clientePorTabela(respostas: Record<string, { data?: unknown; error?: unknown }>) {
+    const from = vi.fn((tabela: string) => {
+      const resposta = respostas[tabela] ?? { data: [], error: null };
+      const encadeado: Record<string, unknown> = {};
+      for (const m of ['select', 'eq', 'in']) encadeado[m] = vi.fn(() => encadeado);
+      encadeado.limit = vi.fn().mockResolvedValue(resposta);
+      encadeado.then = (ok: (v: unknown) => unknown, falha?: (e: unknown) => unknown) =>
+        Promise.resolve(resposta).then(ok, falha);
+      return encadeado;
+    });
+    return { cliente: { from }, from };
+  }
+
+  it('admin sem empresa é a conta de engenharia; admin com empresa, não', async () => {
+    const engsoft = clientePorTabela({ user_roles: { data: [{ role: 'admin' }] }, empresa_membros: { data: [] } });
+    expect(await ehContaDeEngenharia(engsoft.cliente, 'u-engsoft')).toBe(true);
+
+    const santaRosa = clientePorTabela({ user_roles: { data: [{ role: 'admin' }] }, empresa_membros: { data: [{ user_id: 'u-sr' }] } });
+    expect(await ehContaDeEngenharia(santaRosa.cliente, 'u-sr')).toBe(false);
+  });
+
+  it('quem não é admin nem chega a consultar as empresas', async () => {
+    const { cliente, from } = clientePorTabela({ user_roles: { data: [] } });
+    expect(await ehContaDeEngenharia(cliente, 'u-cliente')).toBe(false);
+    expect(from).not.toHaveBeenCalledWith('empresa_membros');
+  });
+
+  it('falha ao ler as empresas responde false — a visão do cliente', async () => {
+    const silenciar = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { cliente } = clientePorTabela({ user_roles: { data: [{ role: 'admin' }] }, empresa_membros: { data: null, error: { message: 'boom' } } });
+    expect(await ehContaDeEngenharia(cliente, 'u-x')).toBe(false);
+    silenciar.mockRestore();
+  });
+});
+
 describe('frases ao cliente', () => {
   it('motivoDeNegocio traduz a recusa crua do agente', () => {
     expect(motivoDeNegocio('Login falhou: usuário ou senha incorretos')).toBe(FRASES_AO_CLIENTE.acessoRecusado);
@@ -335,9 +397,9 @@ describe('frases ao cliente', () => {
     expect(motivoDeNegocio(undefined, 'padrão')).toBe('padrão');
   });
 
-  it('corpoDeErro só entrega o detalhe técnico ao admin da plataforma', () => {
-    expect(corpoDeErro('Frase.', { ehAdmin: false, detalhe: 'HTTP 502 em http://203.0.113.10' })).toEqual({ error: 'Frase.' });
-    expect(corpoDeErro('Frase.', { ehAdmin: true, detalhe: 'HTTP 502', extra: { success: false } }))
+  it('corpoDeErro só entrega o detalhe técnico com verDetalhe (a conta de engenharia)', () => {
+    expect(corpoDeErro('Frase.', { verDetalhe: false, detalhe: 'HTTP 502 em http://203.0.113.10' })).toEqual({ error: 'Frase.' });
+    expect(corpoDeErro('Frase.', { verDetalhe: true, detalhe: 'HTTP 502', extra: { success: false } }))
       .toEqual({ success: false, error: 'Frase.', detalhe_tecnico: 'HTTP 502' });
   });
 

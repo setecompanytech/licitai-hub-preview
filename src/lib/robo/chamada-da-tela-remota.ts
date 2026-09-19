@@ -111,12 +111,15 @@ export function mensagemSemEndereco(mensagem: string | null | undefined): string
     .trim();
 }
 
-/** O aviso do robô (pedido de captcha ou "assistir ao vivo") como chamada. */
+/**
+ * O aviso do robô como chamada: "robô entrando" (o servidor avisa quem opera
+ * no envio da sessão, 19/09/2026), pedido de captcha ou "assistir ao vivo".
+ */
 export function chamadaDoAviso(aviso: { id: string; titulo: string | null; mensagem: string | null; created_at: string }): Omit<ChamadaDaTelaRemota, 'id'> & { id: string } {
   const titulo = String(aviso.titulo || 'Tela remota do robô').replace(/^[^\p{L}\p{N}]+/u, '').trim();
   return {
     id: `aviso-${aviso.id}`,
-    motivo: /ao vivo/i.test(titulo) ? 'ao-vivo' : 'captcha',
+    motivo: /ao vivo/i.test(titulo) ? 'ao-vivo' : /entrando/i.test(titulo) ? 'entrando' : 'captcha',
     titulo,
     mensagem: mensagemSemEndereco(aviso.mensagem),
     disputaId: null,

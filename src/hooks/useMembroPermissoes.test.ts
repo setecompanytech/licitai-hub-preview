@@ -111,6 +111,17 @@ describe('fronteira entre operador do SaaS e admin de empresa', () => {
     expect(result.current.canAccessRoute('/admin/templates')).toBe(true);
   });
 
+  it('admin da plataforma COM empresa (a Santa Rosa) abre o robô: quem opera não precisa de outra conta (19/09)', async () => {
+    // O corte da oficina técnica é por ABA, dentro da página (AdminRoboLances);
+    // a rota inteira segue de todo admin da plataforma.
+    estado.papeis = { isAdmin: true, isSystemAdmin: true, isCompanyAdmin: true, loading: false };
+    contextoDeEmpresa.empresas = [{ empresa_id: 'empresa-B', papel: 'admin' }];
+    estado.papelDoMembro = 'admin';
+    const { result } = await montar();
+    expect(result.current.canAccessRoute('/admin/robo-lances')).toBe(true);
+    expect(result.current.canAccessRoute('/admin/metricas-saas')).toBe(true);
+  });
+
   it('admin da empresa ativa mantém o que sempre teve', async () => {
     contextoDeEmpresa.empresas = [{ empresa_id: 'empresa-B', papel: 'admin' }];
     estado.papelDoMembro = 'admin';

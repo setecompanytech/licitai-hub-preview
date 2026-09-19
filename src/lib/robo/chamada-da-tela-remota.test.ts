@@ -45,6 +45,9 @@ describe('chamada-da-tela-remota', () => {
     expect(c).toMatchObject({ id: 'aviso-n1', motivo: 'captcha', titulo: 'Robô esperando uma pessoa — 07/2026' });
     expect(c.mensagem).toBe('O robô parou em Compras.gov.br esperando o clique no captcha do gov.br, até as 16:40.');
     expect(chamadaDoAviso({ id: 'n2', titulo: '📺 Assistir o robô ao vivo — 07/2026', mensagem: null, created_at: '' }).motivo).toBe('ao-vivo');
+    // O aviso do servidor a quem opera, no envio da sessão (19/09).
+    const entrando = chamadaDoAviso({ id: 'n3', titulo: '🤖 Robô entrando — 07/2026', mensagem: null, created_at: '' });
+    expect(entrando).toMatchObject({ motivo: 'entrando', titulo: 'Robô entrando — 07/2026' });
     expect(mensagemSemEndereco('O robô entrou. Aviso só da equipe Praefectus: a tela remota não é mostrada a clientes.')).toBe('O robô entrou.');
   });
 

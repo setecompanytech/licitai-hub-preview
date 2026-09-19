@@ -10,7 +10,9 @@
  * `agente_externo_config`. Nada disso é decisão dele. O limite certo é: o
  * cliente liga e desliga o robô da empresa, cuida do próprio acesso aos portais
  * e lê avisos escritos por gente. O resto é da operação da plataforma
- * (`user_roles.role = 'admin'`).
+ * (`user_roles.role = 'admin'`) — e, dentro dela, o cru técnico (endereço e
+ * nome de agente, erro de HTTP, `detalhe_tecnico`) é da CONTA DE ENGENHARIA
+ * desde 19/09/2026 (`ehContaDeEngenharia`: operação × oficina técnica).
  *
  * Três consequências no servidor, todas decididas aqui:
  *
@@ -21,8 +23,8 @@
  *      os pedidos de código de TODAS as empresas da VPS. O cliente recebe só
  *      as sessões que ele pode ver, sem nada de infraestrutura.
  *   3. FRASE DE NEGÓCIO — erro cru do agente ("fetch failed", "HTTP 502",
- *      endereço do host) não vai para o cliente. Vai para o `webhook_log`, e o
- *      administrador da plataforma o recebe em `detalhe_tecnico`.
+ *      endereço do host) não vai para o cliente. Vai para o `webhook_log`, e a
+ *      conta de engenharia o recebe em `detalhe_tecnico`.
  *
  * Sem import de Deno de propósito: o vitest importa este arquivo pelo caminho
  * relativo (`src/test/robo-plataforma.test.ts`).
@@ -99,15 +101,18 @@ export const FRASES_AO_CLIENTE = {
 /**
  * Corpo de erro para uma ação que o cliente chama.
  *
- * `error` é sempre a frase de negócio. O detalhe técnico só atravessa para o
- * administrador da plataforma — para os demais ele fica no `webhook_log`.
+ * `error` é sempre a frase de negócio. O detalhe técnico só atravessa com
+ * `verDetalhe` — a conta de engenharia (`ehContaDeEngenharia`); para os demais,
+ * inclusive o admin da plataforma que opera o robô, ele fica no `webhook_log`.
+ * A opção se chamava `ehAdmin` até 19/09/2026, quando deixou de ser a mesma
+ * pergunta.
  */
 export function corpoDeErro(
   frase: string,
-  opcoes: { ehAdmin?: boolean; detalhe?: unknown; extra?: Record<string, unknown> } = {},
+  opcoes: { verDetalhe?: boolean; detalhe?: unknown; extra?: Record<string, unknown> } = {},
 ): Record<string, unknown> {
   const corpo: Record<string, unknown> = { ...(opcoes.extra || {}), error: frase };
-  if (opcoes.ehAdmin && opcoes.detalhe !== undefined && opcoes.detalhe !== null && opcoes.detalhe !== "") {
+  if (opcoes.verDetalhe && opcoes.detalhe !== undefined && opcoes.detalhe !== null && opcoes.detalhe !== "") {
     corpo.detalhe_tecnico = opcoes.detalhe;
   }
   return corpo;
@@ -203,6 +208,59 @@ export function ehAdminDaPlataforma(cliente: ClienteSupabaseMinimo, userId: stri
     })
     .catch((e: unknown) => {
       console.error("robo-plataforma: não foi possível ler user_roles:", textoDoErro(e));
+      return false;
+    });
+  porUsuario.set(userId, consulta);
+  return consulta;
+}
+
+// ─── Conta de engenharia ────────────────────────────────────────────────────
+//
+// Operação × oficina técnica (19/09/2026). O Rafael chamou de "poluição
+// visual" os cartões técnicos do admin do robô — agente, RAM, portais no ar,
+// checklist — e disse que são "configurações internas do desenvolvedor do
+// sistema" (18/09). Quem OPERA o robô (todo admin da plataforma, inclusive o
+// login dele, da Santa Rosa) segue com a operação: tela remota, captcha, avisos,
+// travas de empresa (`ehAdminDaPlataforma`). O cru técnico e a oficina —
+// configurar agente, testar o freio — são da CONTA DE ENGENHARIA.
+//
+// Conta de engenharia = admin da plataforma SEM EMPRESA NENHUMA — a mesma regra
+// do front (`src/lib/conta-de-engenharia.ts`) e do banco
+// (`eh_conta_de_engenharia`, migration 20260919000003). Três cópias de uma
+// regra de uma linha; mudar uma é mudar as três.
+
+const cacheDeEngenharia = new WeakMap<object, Map<string, Promise<boolean>>>();
+
+/**
+ * O usuário é a conta de ENGENHARIA da plataforma?
+ *
+ * É o `verDetalhe` do webhook: `detalhe_tecnico` nos erros, nome e endereço de
+ * agente, a saúde completa e as ações da oficina (`configurar-agente`,
+ * `testar-kill-switch`). Não decide operação — isso é `ehAdminDaPlataforma`.
+ * Falha de leitura responde `false`: na dúvida, a visão sem o cru.
+ */
+export function ehContaDeEngenharia(cliente: ClienteSupabaseMinimo, userId: string | null | undefined): Promise<boolean> {
+  if (!cliente || !userId) return Promise.resolve(false);
+  let porUsuario = cacheDeEngenharia.get(cliente);
+  if (!porUsuario) {
+    porUsuario = new Map();
+    cacheDeEngenharia.set(cliente, porUsuario);
+  }
+  const emCache = porUsuario.get(userId);
+  if (emCache) return emCache;
+
+  const consulta = ehAdminDaPlataforma(cliente, userId)
+    .then(async (ehAdmin) => {
+      if (!ehAdmin) return false;
+      const r = await cliente.from("empresa_membros").select("user_id").eq("user_id", userId).limit(1);
+      if (r?.error) {
+        console.error("robo-plataforma: não foi possível ler empresa_membros:", textoDoErro(r.error));
+        return false;
+      }
+      return !(Array.isArray(r?.data) && r.data.length > 0);
+    })
+    .catch((e: unknown) => {
+      console.error("robo-plataforma: não foi possível decidir a conta de engenharia:", textoDoErro(e));
       return false;
     });
   porUsuario.set(userId, consulta);

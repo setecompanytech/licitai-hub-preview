@@ -5,19 +5,18 @@ import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { PARAMETRO_DA_VOLTA, botaoDaVolta } from '@/lib/robo/volta-para-o-robo';
+import { useContaDeEngenharia } from '@/hooks/useContaDeEngenharia';
 import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import AbasGestao, { type AbaGestao } from '@/components/gestao/AbasGestao';
 import { AvisoDeContexto } from '@/components/gestao/SeloSituacao';
 import { useAbaNaUrl } from '@/lib/navegacao/aba-na-url';
 import AgenteExternoConfig from '@/components/robo-lances/AgenteExternoConfig';
 import PortalHealthcheck from '@/components/robo-lances/PortalHealthcheck';
-import AtivacaoChecklist from '@/components/robo-lances/AtivacaoChecklist';
 import PedidoDoRobo from '@/components/robo-lances/PedidoDoRobo';
 import VncWebViewer from '@/components/robo-lances/VncWebViewer';
 import AcessoManualPortal from '@/components/robo-lances/AcessoManualPortal';
 import SessoesDoRobo from '@/components/robo-lances/SessoesDoRobo';
-import AuditTrailViewer from '@/components/robo-lances/AuditTrailViewer';
-import DisputaRealtimePanel from '@/components/robo-lances/DisputaRealtimePanel';
+import SkeletonPagina from '@/components/shared/SkeletonPagina';
 import DiagnosticoDeSessoes from '@/components/admin-robo/DiagnosticoDeSessoes';
 import RegistroDeChamadas from '@/components/admin-robo/RegistroDeChamadas';
 import GestorDeAvisos from '@/components/admin-robo/GestorDeAvisos';
@@ -37,18 +36,27 @@ import HistoricoDoRobo from '@/components/admin-robo/HistoricoDoRobo';
  * diferente da primeira. O que é novo nasce em `components/admin-robo/`:
  * diagnóstico entre empresas, registro de chamadas e avisos aos clientes.
  *
- * ─── O que ainda não é "entre empresas" ─────────────────────────────────────
+ * ─── Operação × oficina técnica (19/09/2026) ────────────────────────────────
  *
- * Vários reaproveitados foram escritos para a conta de quem está logado
- * (`eq('user_id', user.id)` na configuração do agente e na trilha de
- * auditoria; filtro por usuário no tempo real). Aqui eles mostram o que são:
- * a visão da conta do operador. A leitura de todas as empresas é a aba
- * Diagnóstico — e a tela diz isso onde a diferença importa.
+ * O Rafael viu esta tela logado como GRUPO SANTA ROSA (CNPJ dele, e o login
+ * com que ele opera o robô) e chamou de "poluição visual" os cartões técnicos:
+ * agente, RAM, portais no ar, checklist. Ele não pediu para tirar a tela
+ * remota nem o captcha — é a operação que ele faz toda manhã. Então a página
+ * se divide por NATUREZA, e não por conta:
  *
- * ─── A trava não mora aqui ──────────────────────────────────────────────────
+ *   operação (todo admin da plataforma) — Sessões e tela remota, Avisos aos
+ *     clientes, Histórico do robô. Sem segunda conta no dia a dia;
+ *   oficina técnica (só a conta de engenharia, `engsoft@`: admin sem empresa,
+ *     `lib/conta-de-engenharia.ts`) — Agente e infraestrutura, Diagnóstico.
  *
- * Quem barra é o `AdminGuard` da rota (App.tsx) e, de verdade, a RLS com
- * `has_role(auth.uid(), 'admin')`. Esta tela não repete a checagem.
+ * Quem barra a rota é o `AdminGuard` (App.tsx); o corte da oficina é aqui, por
+ * aba, e no banco (`sou_conta_de_engenharia()` em `agente_externo_config` e
+ * `webhook_log`, migrations 20260919000006/000007).
+ *
+ * Os painéis que liam a conta logada — o checklist de ativação (de uma
+ * empresa), a trilha de auditoria e o tempo real — saíram. A trilha dos
+ * clientes NÃO foi aberta à plataforma: guarda valores de lance e ações de
+ * cada cliente.
  */
 
 const ABAS: AbaGestao[] = [
@@ -60,7 +68,8 @@ const ABAS: AbaGestao[] = [
   { valor: 'auditoria', rotulo: 'Histórico do robô' },
 ];
 
-const ABA_PADRAO = 'agente';
+/** A oficina técnica: só a conta de engenharia vê estas abas (ver o cabeçalho). */
+const ABAS_DA_ENGENHARIA = new Set(['agente', 'diagnostico']);
 
 function NotaDaPlataforma({ children }: { children: ReactNode }) {
   return (
@@ -72,9 +81,15 @@ function NotaDaPlataforma({ children }: { children: ReactNode }) {
 }
 
 export default function AdminRoboLances() {
-  const [abaNaUrl, definirAba] = useAbaNaUrl(ABA_PADRAO);
+  // A oficina técnica é da conta de engenharia; a operação, de todo admin.
+  // A aba padrão é a primeira visível: Agente para a engenharia, Sessões para
+  // quem opera — e `?aba=agente` na mão de quem não é da engenharia cai nela.
+  const { ehContaDeEngenharia, carregando: carregandoConta } = useContaDeEngenharia();
+  const abasVisiveis = ehContaDeEngenharia ? ABAS : ABAS.filter((a) => !ABAS_DA_ENGENHARIA.has(a.valor));
+  const abaPadrao = abasVisiveis[0].valor;
+  const [abaNaUrl, definirAba] = useAbaNaUrl(abaPadrao);
   // `?aba=` digitado à mão ou de um link velho não deixa a tela em branco.
-  const aba = ABAS.some((a) => a.valor === abaNaUrl) ? abaNaUrl : ABA_PADRAO;
+  const aba = abasVisiveis.some((a) => a.valor === abaNaUrl) ? abaNaUrl : abaPadrao;
 
   // Contador, não booleano: é o contrato do `VncWebViewer` — cada incremento é
   // um pedido para abrir, e o segundo pedido seguido também precisa abrir.
@@ -91,6 +106,7 @@ export default function AdminRoboLances() {
   // robô" nesta visita e voltar ao "Ir para o Robô de Lances" na próxima, se a
   // pessoa chegar aqui pelo menu. Regra em `lib/robo/volta-para-o-robo.ts`.
   const volta = botaoDaVolta(parametros.get(PARAMETRO_DA_VOLTA));
+
   useEffect(() => {
     if (!pedeTela) return;
     abrirTelaRemota();
@@ -98,6 +114,11 @@ export default function AdminRoboLances() {
     sem.delete('tela');
     definirParametros(sem, { replace: true });
   }, [pedeTela, parametros, definirParametros, abrirTelaRemota]);
+
+  // Sem o papel lido, a lista de abas ainda não é a certa: esqueleto, em vez
+  // de mostrar Sessões e pular para Agente um instante depois. Depois de todos
+  // os hooks — return antecipado antes deles é a tela branca de 02/09.
+  if (carregandoConta) return <SkeletonPagina />;
 
   return (
     <AppLayout>
@@ -122,7 +143,7 @@ export default function AdminRoboLances() {
       />
 
       <div className="flex min-w-0 flex-col gap-4">
-        <AbasGestao abas={ABAS} valor={aba} aoMudar={definirAba} />
+        <AbasGestao abas={abasVisiveis} valor={aba} aoMudar={definirAba} />
 
         {aba === 'agente' && (
           <div className="flex min-w-0 flex-col gap-4">
@@ -138,7 +159,11 @@ export default function AdminRoboLances() {
                 <PortalHealthcheck />
               </div>
             </div>
-            <AtivacaoChecklist modo="plataforma" />
+            <NotaDaPlataforma>
+              O checklist de ativação confere o robô de uma empresa (credencial, agente, robô ligado) e por
+              isso não aparece na conta de engenharia, que não tem empresa. As sessões de todas as empresas
+              estão em Diagnóstico.
+            </NotaDaPlataforma>
           </div>
         )}
 
@@ -171,17 +196,9 @@ export default function AdminRoboLances() {
                 o sininho guarda o aviso do robô só por 24 horas (17/09/2026). */}
             <HistoricoDoRobo />
             <NotaDaPlataforma>
-              A trilha de auditoria e os eventos em tempo real ainda leem só os registros da sua própria
-              conta. A leitura de todas as empresas está na aba Diagnóstico.
+              A trilha de auditoria e os eventos em tempo real de cada conta saíram desta tela: o que o robô fez
+              em todas as empresas está no histórico acima.
             </NotaDaPlataforma>
-            <div className="grid min-w-0 gap-4 xl:grid-cols-2">
-              <div className="min-w-0">
-                <AuditTrailViewer />
-              </div>
-              <div className="min-w-0">
-                <DisputaRealtimePanel />
-              </div>
-            </div>
           </div>
         )}
       </div>

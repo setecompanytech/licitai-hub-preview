@@ -175,6 +175,157 @@ delas precisa passar por ele:
   `useLicitacaoIntegration.promoverFase`. O espelho PNCP (Revogada/Anulada/
   Suspensa) só PEDE desfecho na agenda; nunca decide por ninguém.
 
+## Permissões — o que é da plataforma não aparece ao cliente (pedido do Rafael em 14/09, decidido em 19/09/2026)
+
+O Rafael quer que parte do sistema deixe de ficar exposta às contas das
+empresas que usam o plano e passe a viver só num acesso admin (mensagem de
+14/09: "todos os usuários visualizam configurações que só quem desenvolve o
+sistema deveria ter"). **O Grupo Santa Rosa é CNPJ do próprio Rafael**, não
+cliente (Giovanny, 19/09); a BAQPLAST parece ser do mesmo grupo ("a gente
+utiliza a empresa Baqplast", Rafael, 19/09 — a confirmar). A regra vale mesmo
+assim: o pedido foi dele, sobre o próprio login ("não cabe ao usuário aderente
+ao plano"), e o sistema é SaaS — há assinantes de fora (ex.: Voltele). **A lista completa do que esconder ainda
+não existe** — confirmar com ele antes de mexer. Já há permissões no banco e
+em docs do sistema: partir delas.
+
+**Decidido em 19/09 (Ian, com o Rafael ciente):** a plataforma ganha **uma
+conta de engenharia, `engsoft@praefectus.com.br`, admin da plataforma**
+(`user_roles.role = 'admin'`) — a "gestão técnica do sistema" / Sys Admin
+de que o Giovanny falou em 18/09. **Os dois admins coexistem** (Ian, 19/09):
+a `comercial@gruposantarosa.com.br` — login do Rafael, admin da Santa Rosa e
+até então o ÚNICO admin da plataforma — **mantém o papel** para a gestão do
+negócio (assinaturas, marketing, métricas, o resto do grupo Admin).
+
+**No robô, a divisão é por natureza: operação × oficina técnica** (Ian,
+19/09, revendo no mesmo dia um desenho que mandava tudo ao `engsoft@`). Os
+prints do Rafael (18/09) eram da aba Agente e infraestrutura: agente, RAM,
+portais no ar, checklist — *"configurações internas do desenvolvedor do
+sistema"*. Ele não apontou a tela remota, e é ele quem clica o captcha toda
+manhã, pelo login da Santa Rosa; um segundo login para isso seria atrito
+diário, e captcha perdido é disputa perdida.
+- **Operação — todo admin da plataforma**, a Santa Rosa sem segunda conta:
+  Sessões e tela remota, Avisos aos clientes, Histórico do robô, o toast da
+  tela remota e os avisos de captcha / "assistir ao vivo" / "robô entrando".
+- **Oficina técnica — só a conta de engenharia**: as abas Agente e
+  infraestrutura e Diagnóstico, o cru técnico do webhook (`detalhe_tecnico`,
+  nome e endereço de agente, saúde completa), configurar agente, testar o freio.
+
+Três camadas, o mesmo corte:
+- tela — `ABAS_DA_ENGENHARIA` em `AdminRoboLances.tsx`, com
+  `useContaDeEngenharia`; a rota segue com o `AdminGuard`;
+- banco — `sou_conta_de_engenharia()` só em agentes, registro de chamadas e
+  `contas_para_plataforma` (migrations `20260919000006` + `000007`);
+- servidor — `robo-lances-webhook` com duas perguntas por ação: `ehAdmin` para
+  a operação, `verDetalhe` para o cru.
+
+O gov.br do robô não muda (segue o CPF do Rafael pela Santa Rosa).
+**Passos 1 e 2 feitos em 19/09** (SQL no Editor, pelo Ian): `engsoft@` criado
+já confirmado, papéis `admin, user`, sem empresa, nome "Engenharia
+Praefectus". A migration `20260919000002` registra só o papel.
+
+**A conta de engenharia não cria empresa nem entra em empresa** (19/09).
+Definição por fato, não por e-mail: **admin da plataforma sem empresa
+nenhuma** (`lib/conta-de-engenharia.ts`, espelhada no banco em
+`eh_conta_de_engenharia`). A da Santa Rosa, também admin, está na empresa e
+fica de fora — é o que deixa os dois admins coexistirem sem a regra atingir o
+login do Rafael. Na tela: o seletor mostra "Conta de engenharia" sem "Cadastrar
+empresa", o assistente de boas-vindas não abre, `/empresas` não cadastra e
+`EmpresaContext.addEmpresa` recusa (os três caminhos de criação passam por
+ela). No banco, a trava de verdade: migration `20260919000003`, com gatilhos
+em `empresa_membros` e `empresas` — **aplicada em 19/09** e conferida
+(`eh_conta_de_engenharia`: engsoft@ `true`, comercial@gruposantarosa `false`).
+
+A mesma mensagem pedia outra coisa, **fora do código**: passar Claude, IA,
+Supabase, Lovable, GitHub e pagamentos dos e-mails da xfin e do
+`praefectusbr@gmail.com` para o `engsoft@`. É do Giovanny. Trocou chave de
+serviço → os secrets das edge functions (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`,
+`RESEND_API_KEY`, `STRIPE_SECRET_KEY`, Z-API…) mudam **no mesmo dia**, senão a
+função para calada. GitHub e Lovable mudam juntos: são o caminho do Publish.
+
+Passos da conta de engenharia:
+1. ✅ criar a conta `engsoft@` no sistema (19/09, SQL no Editor);
+2. ✅ SQL idempotente dando `admin` a ela (migration `20260919000002`);
+3. ✅ (local, 19/09) o admin do robô mostra a configuração de agente **de todas
+   as contas**, com o dono de cada uma (`contas_para_plataforma`, migration
+   `20260919000004`); para a conta de engenharia, o checklist de ativação, a
+   trilha de auditoria e o tempo real — que leem a conta logada — dão lugar a
+   um aviso. A trilha dos clientes NÃO foi aberta à plataforma: guarda valores
+   de lance e ações de cada cliente. Esses três painéis saíram de vez;
+   `AuditTrailViewer` e `DisputaRealtimePanel` ficaram sem uso no app;
+4. testar os dois lados: logado como `engsoft@` (as cinco abas) e como a
+   Santa Rosa (Sessões, Avisos e Histórico; captcha e tela remota sem trocar
+   de conta);
+5. ~~tirar o `admin` da `comercial@gruposantarosa`~~ — **não será feito**
+   (Ian, 19/09: os dois admins coexistem). No lugar, **operação × oficina
+   técnica** (acima):
+   - **banco** — `20260919000006` **aplicada** (tudo à engenharia) e
+     `20260919000007` **aplicada e conferida em 19/09** (a operação volta a
+     todo admin; `pg_policies`: 4 regras de operação com `has_role`, 2 da
+     oficina com `sou_conta_de_engenharia()` — agentes e registro de chamadas);
+   - **tela** — local: as abas da oficina, e o toast de volta a todo admin;
+   - **servidor** — **pronto local, pendente de deploy**:
+     - `verDetalhe` para o cru, `ehAdmin` para a operação;
+     - healthcheck: completo para a engenharia; reduzido para quem opera, com
+       as sessões e os pedidos de toda empresa;
+     - aviso novo "Robô entrando" a todo admin, menos a quem clicou, antes de
+       acionar o robô (manual e agendador);
+     - arquivos: `_shared/robo-plataforma.ts` e `_shared/robo-estado-da-sala.ts`.
+
+O exemplo dele: **as configurações do robô não ficam no acesso das empresas.**
+Como está em 19/09:
+- a tela do cliente (`/robo-lances`) já perdeu as abas Agente, Portais e
+  Configurações em 14/09; o que é da operação mora em Admin › Configurações do
+  Robô de Lances (`/admin/robo-lances`), que só abre para o operador do SaaS;
+- ao **admin da empresa** a tela do cliente ainda mostra, na `FaixaDaEmpresa`,
+  o cadastro dos acessos aos portais (`CredenciaisPortalForm`) e o checklist
+  de ativação (`AtivacaoChecklist modo="cliente"`). Se isso também sai do
+  cliente, é decisão dele.
+
+Em 19/09 a divisão ainda não tinha sido feita: as três levas do Giovanny desse
+dia (design Fluent, dashboard, financeiro) não tocam em permissão.
+
+As permissões são **em camadas**, e as duas de baixo já existem; o pedido novo
+é sobre a de cima. A mudança se apoia nelas (não criar um quarto nível):
+
+| Camada | Quem é | Onde se decide |
+| --- | --- | --- |
+| 1. Plataforma — o operador do SaaS (pedido novo) | `user_roles.role = 'admin'` → `useUserRole().isSystemAdmin` | rotas `/admin/*` (`ehRotaDoOperador` em `lib/route-permissions.ts`), `AdminGuard` na rota, RLS com `has_role(auth.uid(), 'admin')` |
+| 2. Empresa — quem assina (Santa Rosa, BAQPLAST, Voltele) | `empresa_membros.papel = 'admin'` na empresa ATIVA | `ROTAS_ADMINISTRATIVAS` (empresas, equipe, configurações, integração) |
+| 3. Sub-acessos da empresa, por setor — pedido do Rafael meses atrás (ex.: no escritório da Santa Rosa, separar o comercial do financeiro) | `empresa_membros.papel` (`operador`/`viewer`) + `equipe` (setor) + `permissoes` (módulos) | `ROUTE_SECTOR_MAP` via `useMembroPermissoes().canAccessRoute`; convite por setor (`create-sector-invite` → `empresa_convites.email_setor`); login de setor compartilhado com identificação individual (`ColaboradorIdentificacaoModal`, `nome_individual`/`login_individual`); tela Equipe › Permissões |
+
+Cuidados que a divisão precisa respeitar:
+- **Conta de cliente não vira admin da plataforma.** Quem tem
+  `user_roles.role = 'admin'` vê o admin inteiro, menos a oficina técnica do
+  robô — e inclusive a tela remota, compartilhada entre as empresas, e as
+  sessões e os pedidos de código de todas elas. A ÚNICA exceção aceita é a
+  `comercial@gruposantarosa`, login do dono do produto (decisão de 19/09).
+  Nenhuma outra conta de empresa ganha esse papel: o acesso técnico é do
+  `engsoft@`.
+- Esconder menu não protege: a trava de verdade é a rota (`AdminGuard`) e o
+  RLS. Tela que só some do menu continua aberta pela URL.
+- **O admin da plataforma enxerga a operação, não o negócio do cliente.**
+  Levantamento de 19/09 (`pg_policies` com `has_role(... 'admin')`, 46
+  regras): certas as de operação (robô, logs, portais), catálogo do produto,
+  negócio da Praefectus (assinaturas, leads, suporte) e LGPD. As quatro
+  "dono OU admin" sobre dado de cliente (`notas_fiscais`, `nota_fiscal_itens`,
+  `sub_tarefas`, `transacoes_bancarias`) foram fechadas na migration
+  `20260919000005`, vazias no dia — **aplicada e conferida em 19/09**
+  (nenhuma das quatro com `has_role`). Regra nova com passe do admin sobre
+  dado de empresa não entra sem essa conversa.
+- Não incluir conta em empresa alheia para testar: foi o que misturou Santa
+  Rosa e BAQPLAST na tela em 16/09 (`docs/robo-de-lances.md`).
+
+Abertos em 19/09, para o Rafael decidir:
+- `financeiro+financeiro-01@gruposantarosa` é **admin** da Santa Rosa, e admin
+  da empresa pula a trava de setor: vê comercial e robô. Deveria ser operador?
+- A camada 3 **só esconde o menu**: nenhuma rota confere o setor
+  (`useAuthorization().isAllowed` não tem quem chame; `/financeiro` está em
+  `ProtectedPages`), e as migrations não têm RLS por setor. Confirmar pelas
+  regras do banco (`pg_policies` das tabelas `financeiro_%`) antes de afirmar.
+- "Configurações" e "API e integração" saem do admin da empresa?
+- As contas `comercialbaqplast+com-0N@gmail.com` estão na empresa **O S
+  Distribuidora**, não numa "BAQPLAST": é a mesma empresa?
+
 ## Preview do rebranding — a branch tem DOIS remotos
 
 A `feature/rebrand-ui-ux` está no ar em **https://praefectus-preview.pages.dev**,

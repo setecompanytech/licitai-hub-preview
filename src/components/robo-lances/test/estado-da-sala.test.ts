@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   anteriorDoItem,
   avisoDoPrimeiroLance,
+  avisoDeRoboEntrando,
   avisoParaAssistirAoVivo,
   eventosDoEstado,
   mesclarEstadoDoItem,
@@ -178,5 +179,20 @@ describe('avisoParaAssistirAoVivo', () => {
     expect(a.mensagem).toContain('em Compras.gov.br');
     expect(a.mensagem).toMatch(/não é mostrada a clientes/);
     expect(avisoParaAssistirAoVivo({ edital: '', portal: null }).titulo).toBe('📺 Assistir o robô ao vivo — disputa sem número');
+  });
+});
+
+describe('avisoDeRoboEntrando', () => {
+  it('chega a quem opera na hora do envio, com empresa e portal, e leva à tela remota', () => {
+    const a = avisoDeRoboEntrando({ edital: '90025/2026', portal: 'Compras.gov.br', empresa: 'GRUPO SANTA ROSA', origem: 'manual' });
+    expect(a.titulo).toBe('🤖 Robô entrando — 90025/2026');
+    expect(a.mensagem).toBe('O robô está entrando no Compras.gov.br, pela GRUPO SANTA ROSA. Acompanhe pela tela remota: se o gov.br pedir o captcha, é lá que se clica.');
+    expect(a.link).toBe('/admin/robo-lances?aba=sessoes&tela=abrir');
+  });
+
+  it('pelo agendador, diz que foi o agendador; sem dados, não inventa', () => {
+    const a = avisoDeRoboEntrando({ edital: null, portal: null, origem: 'agendador' });
+    expect(a.titulo).toBe('🤖 Robô entrando — disputa sem número');
+    expect(a.mensagem).toMatch(/^O agendador mandou o robô entrar\. Acompanhe/);
   });
 });

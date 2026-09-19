@@ -1,4 +1,5 @@
 import { useEmpresa } from '@/contexts/EmpresaContext';
+import { useContaDeEngenharia } from '@/hooks/useContaDeEngenharia';
 import { Building2, ChevronDown, Check, Layers } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -11,9 +12,14 @@ import {
 
 export default function EmpresaSelector() {
   const { empresas, empresaAtiva, todasSelecionadas, setEmpresaAtiva } = useEmpresa();
+  const { ehContaDeEngenharia } = useContaDeEngenharia();
   const navigate = useNavigate();
 
-  const label = empresas.length === 0
+  // A conta de engenharia não tem empresa por decisão, não por falta de
+  // cadastro: o seletor diz o que ela é e não oferece "Cadastrar empresa".
+  const label = ehContaDeEngenharia
+    ? 'Conta de engenharia'
+    : empresas.length === 0
     ? 'Nenhuma empresa'
     : todasSelecionadas
       ? 'Todas as Empresas'
@@ -38,7 +44,11 @@ export default function EmpresaSelector() {
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64">
-        {empresas.length === 0 ? (
+        {ehContaDeEngenharia ? (
+          <p className="px-2 py-1.5 text-sm text-muted-foreground">
+            Conta da plataforma: opera o sistema pelo Admin e não entra em empresa de cliente.
+          </p>
+        ) : empresas.length === 0 ? (
           <DropdownMenuItem onClick={() => navigate('/empresas')} className="gap-2">
             <Building2 className="w-4 h-4" />
             <span className="text-sm">Cadastrar empresa</span>

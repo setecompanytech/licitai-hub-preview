@@ -44,6 +44,10 @@ vi.mock('@/contexts/EmpresaContext', () => ({
     setEmpresaAtiva: vi.fn(),
   }),
 }));
+// O seletor de empresa pergunta se é a conta de engenharia (19/09); aqui não é.
+vi.mock('@/hooks/useContaDeEngenharia', () => ({
+  useContaDeEngenharia: () => ({ ehContaDeEngenharia: false, carregando: false }),
+}));
 
 vi.mock('@/hooks/useAvatarPerfil', () => ({ useAvatarUrl: () => null }));
 

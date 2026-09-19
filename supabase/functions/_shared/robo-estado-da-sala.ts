@@ -272,3 +272,31 @@ export function avisoParaAssistirAoVivo(e: { edital: string | null | undefined; 
     link: LINK_DA_TELA_REMOTA,
   };
 }
+
+/**
+ * "Robô entrando" — o aviso a quem opera o robô no momento em que a sessão
+ * vai para ele (19/09/2026).
+ *
+ * O toast da tela remota nascia só no navegador de quem clicou "Entrar agora".
+ * Sessão disparada por um cliente, ou pelo agendador, que ninguém clica, não
+ * chamava ninguém à tela remota: quem opera só ficava sabendo quando o gov.br
+ * pedia captcha ou o robô chegava à sala. Este aviso leva o "entrando" a todo
+ * admin da plataforma na hora — menos a quem clicou, que já tem o toast.
+ * O front reconhece o título ("entrando") e mostra a chamada com esse motivo.
+ */
+export function avisoDeRoboEntrando(e: {
+  edital: string | null | undefined;
+  portal: string | null | undefined;
+  empresa?: string | null;
+  origem: "manual" | "agendador";
+}): { titulo: string; mensagem: string; link: string } {
+  const edital = String(e.edital || "").trim() || "disputa sem número";
+  const portal = String(e.portal || "").trim();
+  const empresa = String(e.empresa || "").trim();
+  const quem = e.origem === "agendador" ? "O agendador mandou o robô entrar" : "O robô está entrando";
+  return {
+    titulo: `🤖 Robô entrando — ${edital}`,
+    mensagem: `${quem}${portal ? ` no ${portal}` : ""}${empresa ? `, pela ${empresa}` : ""}. Acompanhe pela tela remota: se o gov.br pedir o captcha, é lá que se clica.`,
+    link: LINK_DA_TELA_REMOTA,
+  };
+}

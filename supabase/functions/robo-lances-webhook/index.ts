@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { credencialEmClaro } from "../_shared/credenciais-cifra.ts";
 import { portalDoAgente, idDeArmazenamento } from "../_shared/robo-portais.ts";
 import { autorizadoComoCron } from "../_shared/cron-auth.ts";
-import { anteriorDoItem, avisoDoPrimeiroLance, avisoParaAssistirAoVivo, eventosDoEstado, mesclarEstadoDoItem, motivoParaPessoas, situacaoDoItem, type EstadoDaSala, type EstadoGravado, type EventoDaSala } from "../_shared/robo-estado-da-sala.ts";
+import { anteriorDoItem, avisoDeRoboEntrando, avisoDoPrimeiroLance, avisoParaAssistirAoVivo, eventosDoEstado, mesclarEstadoDoItem, motivoParaPessoas, situacaoDoItem, type EstadoDaSala, type EstadoGravado, type EventoDaSala } from "../_shared/robo-estado-da-sala.ts";
 import {
   documentosQueVencemAteASessao,
   deveDespacharAgora,
@@ -37,6 +37,12 @@ import {
   chaveEsperadaNoCallback,
 } from "../_shared/robo-acao.ts";
 // O que é da empresa e o que é da operação Praefectus — ver o cabeçalho do arquivo.
+// Duas perguntas por ação desde 19/09/2026 (operação × oficina técnica):
+//   ehAdmin    — `ehAdminDaPlataforma`: quem OPERA (todo admin da plataforma)
+//                passa das travas de empresa e vê a operação de todas elas;
+//   verDetalhe — `ehContaDeEngenharia`: só a oficina técnica (engsoft@, admin
+//                sem empresa) recebe o cru — `detalhe_tecnico`, nome e endereço
+//                de agente, erro de HTTP — e configura o agente e testa o freio.
 import {
   FRASES_AO_CLIENTE,
   corpoDeErro,
@@ -44,6 +50,7 @@ import {
   ehEstouroDeTempo,
   motivoDeNegocio,
   ehAdminDaPlataforma,
+  ehContaDeEngenharia,
   estadoDoLigado,
   agentesParaUsuario,
   comAgenteGerenciado,
@@ -128,9 +135,10 @@ serve(async (req) => {
       // Endereço, chave e slots do agente não são decisão do cliente. Até aqui
       // todo administrador de empresa cadastrava a própria linha pela tela do
       // robô; agora quem não tem linha usa o agente da plataforma
-      // (`AGENTE_URL_BASE`), e esta ação fica com o administrador da
-      // plataforma (`user_roles.role = 'admin'`).
-      if (!(await ehAdminDaPlataforma(supabase, user.id))) {
+      // (`AGENTE_URL_BASE`), e esta ação fica com a CONTA DE ENGENHARIA
+      // (19/09/2026: admin da plataforma sem empresa — a oficina técnica,
+      // não quem opera o robô no dia a dia).
+      if (!(await ehContaDeEngenharia(supabase, user.id))) {
         return jsonResponse({ error: FRASES_AO_CLIENTE.exclusivoDaPlataforma }, 403);
       }
 
@@ -235,6 +243,7 @@ serve(async (req) => {
       const { user, resposta: naoAutenticado } = await usuarioDaRequisicao(supabase, req);
       if (!user) return naoAutenticado!;
       const ehAdmin = await ehAdminDaPlataforma(supabase, user.id);
+      const verDetalhe = await ehContaDeEngenharia(supabase, user.id);
 
       // ── O ROBÔ DA EMPRESA ESTÁ LIGADO? ANTES DE QUALQUER ESCRITA ──────────
       //
@@ -281,7 +290,7 @@ serve(async (req) => {
             { erro: ligado.detalhe }
           );
           return jsonResponse(
-            corpoDeErro(FRASES_AO_CLIENTE.ligadoIncerto, { ehAdmin, detalhe: ligado.detalhe }),
+            corpoDeErro(FRASES_AO_CLIENTE.ligadoIncerto, { verDetalhe, detalhe: ligado.detalhe }),
             503
           );
         }
@@ -315,7 +324,7 @@ serve(async (req) => {
           erro: erroAgente.message,
         });
         return jsonResponse(
-          corpoDeErro(FRASES_AO_CLIENTE.falhaInterna, { ehAdmin, detalhe: erroAgente.message }),
+          corpoDeErro(FRASES_AO_CLIENTE.falhaInterna, { verDetalhe, detalhe: erroAgente.message }),
           500
         );
       }
@@ -329,7 +338,7 @@ serve(async (req) => {
         const detalhe = "Nenhuma linha ativa em agente_externo_config para o usuário e segredo " +
                         "AGENTE_URL_BASE ausente ou inválido.";
         await registrarNoLog(supabase, user.id, "enviar-sessao-recusada", { etapa: "sem-agente" }, { erro: detalhe });
-        return jsonResponse(corpoDeErro(FRASES_AO_CLIENTE.semRobo, { ehAdmin, detalhe }), 400);
+        return jsonResponse(corpoDeErro(FRASES_AO_CLIENTE.semRobo, { verDetalhe, detalhe }), 400);
       }
 
       // O PORTAL DA TELA NAO E O PORTAL DO AGENTE.
@@ -373,7 +382,7 @@ serve(async (req) => {
           { erro: textoDoErro(e) }
         );
         return jsonResponse(
-          corpoDeErro(FRASES_AO_CLIENTE.credencialIlegivel, { ehAdmin, detalhe: textoDoErro(e) }),
+          corpoDeErro(FRASES_AO_CLIENTE.credencialIlegivel, { verDetalhe, detalhe: textoDoErro(e) }),
           500
         );
       }
@@ -455,7 +464,7 @@ serve(async (req) => {
       if (sessErr || !sessao) {
         const detalhe = sessErr?.message ?? "insert da sessão sem retorno";
         await registrarNoLog(supabase, user.id, "enviar-sessao-recusada", { etapa: "gravar-sessao" }, { erro: detalhe });
-        return jsonResponse(corpoDeErro(FRASES_AO_CLIENTE.falhaInterna, { ehAdmin, detalhe }), 500);
+        return jsonResponse(corpoDeErro(FRASES_AO_CLIENTE.falhaInterna, { verDetalhe, detalhe }), 500);
       }
 
       // OS ITENS DA SESSAO, COM OS TRES VALORES SEPARADOS.
@@ -524,7 +533,7 @@ serve(async (req) => {
           corpoDeErro(
             "Os itens da disputa não puderam ser gravados, e o robô não foi acionado. " +
               "Tente novamente; se persistir, fale com o suporte.",
-            { ehAdmin, detalhe: itensErr.message }
+            { verDetalhe, detalhe: itensErr.message }
           ),
           500
         );
@@ -586,6 +595,12 @@ serve(async (req) => {
           });
         }
       }
+
+      // "Robô entrando" a quem opera — menos a quem clicou, que já tem o toast.
+      emSegundoPlano(avisarQueORoboEstaEntrando(supabase, {
+        edital: sessaoData.edital, portal: sessaoData.portal_nome, empresaId: empresaDaSessao,
+        origem: "manual", exceto: user.id,
+      }));
 
       // Forward to external agent
       try {
@@ -693,9 +708,9 @@ serve(async (req) => {
         const frase = motivoDeNegocio(agentData?.error, FRASES_AO_CLIENTE.sessaoNaoIniciada);
         return jsonResponse(
           corpoDeErro(frase, {
-            ehAdmin,
+            verDetalhe,
             detalhe: erroCru,
-            extra: { success: false, sessao: { ...sessao, status: "erro", erro: ehAdmin ? erroCru : frase } },
+            extra: { success: false, sessao: { ...sessao, status: "erro", erro: verDetalhe ? erroCru : frase } },
           }),
           502
         );
@@ -715,7 +730,7 @@ serve(async (req) => {
         return jsonResponse(
           corpoDeErro(
             ehEstouroDeTempo(e) ? FRASES_AO_CLIENTE.semRespostaATempo : FRASES_AO_CLIENTE.roboForaDoAr,
-            { ehAdmin, detalhe: erroCru, extra: { success: false } }
+            { verDetalhe, detalhe: erroCru, extra: { success: false } }
           ),
           502
         );
@@ -1014,6 +1029,11 @@ serve(async (req) => {
             await avisarQueALicitacaoMudou(supabase, { donoId, disputaId: d.id, edital: String(d.edital ?? ""), resumo: conferencia.resumo });
           }
         }
+
+        // "Robô entrando" a quem opera: o agendador ninguém clica.
+        emSegundoPlano(avisarQueORoboEstaEntrando(supabase, {
+          edital: sessaoData.edital, portal: sessaoData.portal_nome, empresaId: d.empresa_id, origem: "agendador",
+        }));
 
         try {
           const resp = await fetch(`${agente.url_base}/sessao/iniciar`, {
@@ -1915,7 +1935,7 @@ serve(async (req) => {
     if (action === "parar-sessao") {
       const { user, resposta: naoAutenticado } = await usuarioDaRequisicao(supabase, req);
       if (!user) return naoAutenticado!;
-      const ehAdmin = await ehAdminDaPlataforma(supabase, user.id);
+      const verDetalhe = await ehContaDeEngenharia(supabase, user.id);
 
       const { sessao_id } = body;
       if (!sessao_id) return jsonResponse({ error: "sessao_id é obrigatório" }, 400);
@@ -1933,7 +1953,7 @@ serve(async (req) => {
           erro: erroSessao.message,
         });
         return jsonResponse(
-          corpoDeErro(FRASES_AO_CLIENTE.falhaInterna, { ehAdmin, detalhe: erroSessao.message }),
+          corpoDeErro(FRASES_AO_CLIENTE.falhaInterna, { verDetalhe, detalhe: erroSessao.message }),
           500
         );
       }
@@ -1955,7 +1975,7 @@ serve(async (req) => {
             erro: erroMembro.message,
           });
           return jsonResponse(
-            corpoDeErro(FRASES_AO_CLIENTE.falhaInterna, { ehAdmin, detalhe: erroMembro.message }),
+            corpoDeErro(FRASES_AO_CLIENTE.falhaInterna, { verDetalhe, detalhe: erroMembro.message }),
             500
           );
         }
@@ -2127,9 +2147,9 @@ serve(async (req) => {
         parada_confirmada_em: confirmadaEm,
         sessao_id,
         // Cliente: sem nome de agente nem erro cru (ver `tentativasParaCliente`).
-        tentativas: ehAdmin ? tentativas : tentativasParaCliente(tentativas),
+        tentativas: verDetalhe ? tentativas : tentativasParaCliente(tentativas),
         ...(observacoes.length ? { observacoes } : {}),
-        ...(ehAdmin && detalhesTecnicos.length ? { detalhe_tecnico: detalhesTecnicos } : {}),
+        ...(verDetalhe && detalhesTecnicos.length ? { detalhe_tecnico: detalhesTecnicos } : {}),
       });
     }
 
@@ -2152,6 +2172,7 @@ serve(async (req) => {
       const { user, resposta: naoAutenticado } = await usuarioDaRequisicao(supabase, req);
       if (!user) return naoAutenticado!;
       const ehAdmin = await ehAdminDaPlataforma(supabase, user.id);
+      const verDetalhe = await ehContaDeEngenharia(supabase, user.id);
 
       const { sessao_id } = body;
       if (!sessao_id) return jsonResponse({ error: "sessao_id é obrigatório" }, 400);
@@ -2170,7 +2191,7 @@ serve(async (req) => {
         const detalhe = "Nenhum agente próprio e segredo AGENTE_URL_BASE ausente ou inválido.";
         await registrarNoLog(supabase, user.id, "focar-sessao-falha", { sessao_id, etapa: "sem-agente" }, { erro: detalhe });
         return jsonResponse(
-          corpoDeErro(FRASES_AO_CLIENTE.semRobo, { ehAdmin, detalhe, extra: { focou: false, sessao_id } }),
+          corpoDeErro(FRASES_AO_CLIENTE.semRobo, { verDetalhe, detalhe, extra: { focou: false, sessao_id } }),
           400
         );
       }
@@ -2202,7 +2223,7 @@ serve(async (req) => {
       await registrarNoLog(supabase, user.id, "focar-sessao-falha", { sessao_id, tentativas });
       return jsonResponse(
         corpoDeErro(FRASES_AO_CLIENTE.focoNaoAconteceu, {
-          ehAdmin,
+          verDetalhe,
           detalhe: tentativas,
           extra: { focou: false, sessao_id },
         }),
@@ -2213,7 +2234,7 @@ serve(async (req) => {
     if (action === "kill-switch") {
       const { user, resposta: naoAutenticado } = await usuarioDaRequisicao(supabase, req);
       if (!user) return naoAutenticado!;
-      const ehAdmin = await ehAdminDaPlataforma(supabase, user.id);
+      const verDetalhe = await ehContaDeEngenharia(supabase, user.id);
 
       const { motivo } = body;
       const motivoTexto = motivo || "Acionada pelo operador";
@@ -2263,7 +2284,7 @@ serve(async (req) => {
       if (erroSessoes) {
         await registrarNoLog(supabase, user.id, "kill-switch-falha", { etapa: "ler-sessoes" }, { erro: erroSessoes.message });
         return jsonResponse(
-          corpoDeErro(FRASES_AO_CLIENTE.falhaInterna, { ehAdmin, detalhe: erroSessoes.message }),
+          corpoDeErro(FRASES_AO_CLIENTE.falhaInterna, { verDetalhe, detalhe: erroSessoes.message }),
           500
         );
       }
@@ -2478,11 +2499,11 @@ serve(async (req) => {
         agente_parou: agentResults.length > 0 && confirmaram === agentResults.length,
         // Cliente: sem id, nome, HTTP nem erro cru — `KillSwitchButton` lê
         // só `ok` e `detalhe`.
-        agentes_notificados: ehAdmin
+        agentes_notificados: verDetalhe
           ? agentResults
           : agentResults.map((r) => ({ ok: r.ok, detalhe: r.ok ? null : FRASES_AO_CLIENTE.freioSemConfirmacao })),
         observacoes,
-        ...(ehAdmin && detalhesTecnicos.length ? { detalhe_tecnico: detalhesTecnicos } : {}),
+        ...(verDetalhe && detalhesTecnicos.length ? { detalhe_tecnico: detalhesTecnicos } : {}),
       });
     }
 
@@ -2495,7 +2516,7 @@ serve(async (req) => {
     if (action === "instalar-certificado") {
       const { user, resposta: naoAutenticado } = await usuarioDaRequisicao(supabase, req);
       if (!user) return naoAutenticado!;
-      const ehAdmin = await ehAdminDaPlataforma(supabase, user.id);
+      const verDetalhe = await ehContaDeEngenharia(supabase, user.id);
 
       // Com agente próprio ativo, o helper escolhe sozinho — como antes. Sem
       // ele, o agente da PLATAFORMA vai como terceiro argumento.
@@ -2519,7 +2540,7 @@ serve(async (req) => {
             instalado: false,
             motivo: FRASES_AO_CLIENTE.semRobo,
             certificado: null,
-            ...(ehAdmin ? { detalhe_tecnico: detalhe } : {}),
+            ...(verDetalhe ? { detalhe_tecnico: detalhe } : {}),
           },
           400
         );
@@ -2554,15 +2575,17 @@ serve(async (req) => {
         );
       }
 
+      // O certificado de outra empresa é dado de cliente, não operação: quem
+      // opera vê, como o cliente, só o titular das próprias empresas (19/09/2026).
       let certificado: unknown = resultado.certificado ?? null;
-      if (!ehAdmin && certificado) {
+      if (!verDetalhe && certificado) {
         const empresas = await empresasDoUsuario(supabase, user.id);
         certificado = certificadoParaCliente(certificado, await cnpjsDasEmpresas(supabase, empresas));
       }
       return jsonResponse(
         {
           instalado: resultado.instalado,
-          motivo: ehAdmin ? resultado.motivo : motivoDoCertificadoParaCliente(resultado.motivo),
+          motivo: verDetalhe ? resultado.motivo : motivoDoCertificadoParaCliente(resultado.motivo),
           certificado,
         },
         resultado.instalado ? 200 : 400
@@ -2582,6 +2605,7 @@ serve(async (req) => {
       const { user, resposta: naoAutenticado } = await usuarioDaRequisicao(supabase, req);
       if (!user) return naoAutenticado!;
       const ehAdmin = await ehAdminDaPlataforma(supabase, user.id);
+      const verDetalhe = await ehContaDeEngenharia(supabase, user.id);
 
       const { sessao_id, valor } = body;
       if (!sessao_id || valor === undefined || valor === null || String(valor).trim() === "") {
@@ -2601,7 +2625,7 @@ serve(async (req) => {
       if (!agentes.length) {
         const detalhe = "Nenhum agente próprio e segredo AGENTE_URL_BASE ausente ou inválido.";
         await registrarNoLog(supabase, user.id, "responder-humano-falha", { sessao_id, etapa: "sem-agente" }, { erro: detalhe });
-        return jsonResponse(corpoDeErro(FRASES_AO_CLIENTE.semRobo, { ehAdmin, detalhe }), 400);
+        return jsonResponse(corpoDeErro(FRASES_AO_CLIENTE.semRobo, { verDetalhe, detalhe }), 400);
       }
 
       // Sem adivinhar em qual agente a sessão vive: pergunta a cada um, e o
@@ -2626,7 +2650,7 @@ serve(async (req) => {
             return jsonResponse({
               aceito: true,
               tipo: corpo.tipo ?? null,
-              ...(ehAdmin ? { agente: agente.nome } : {}),
+              ...(verDetalhe ? { agente: agente.nome } : {}),
             });
           }
           tentativas.push({ agente: agente.nome, status: resp.status, motivo: corpo?.error ?? null });
@@ -2641,7 +2665,7 @@ serve(async (req) => {
         {
           aceito: false,
           error: FRASES_AO_CLIENTE.semPedidoEmAberto,
-          ...(ehAdmin ? { tentativas } : {}),
+          ...(verDetalhe ? { tentativas } : {}),
         },
         409
       );
@@ -2787,6 +2811,7 @@ serve(async (req) => {
       const { user, resposta: naoAutenticado } = await usuarioDaRequisicao(supabase, req);
       if (!user) return naoAutenticado!;
       const ehAdmin = await ehAdminDaPlataforma(supabase, user.id);
+      const verDetalhe = await ehContaDeEngenharia(supabase, user.id);
 
       const { data: proprios } = await supabase
         .from("agente_externo_config")
@@ -2861,10 +2886,19 @@ serve(async (req) => {
         online: resultados.some((r) => r.online),
         agentes: resultados,
       };
-      if (ehAdmin) return jsonResponse(completa);
+      // Três visões (19/09/2026):
+      //   oficina técnica (conta de engenharia) — a saúde completa;
+      //   quem opera (admin da plataforma com empresa) — as sessões e os
+      //     pedidos de código de TODAS as empresas, porque a tela remota é
+      //     compartilhada e é ele quem clica o captcha; sem endereço, versão,
+      //     RAM nem erro cru, e o certificado só das empresas dele;
+      //   cliente — só as sessões que ele pode ver.
+      if (verDetalhe) return jsonResponse(completa);
 
       const empresas = await empresasDoUsuario(supabase, user.id);
-      const visiveis = await sessoesVisiveis(supabase, user.id, idsDeSessaoNaSaude(completa), empresas);
+      const visiveis = ehAdmin
+        ? idsDeSessaoNaSaude(completa)
+        : await sessoesVisiveis(supabase, user.id, idsDeSessaoNaSaude(completa), empresas);
       const cnpjs = resultados.some((r) => r.certificado && typeof r.certificado === "object")
         ? await cnpjsDasEmpresas(supabase, empresas)
         : [];
@@ -2882,7 +2916,8 @@ serve(async (req) => {
     if (action === "testar-kill-switch") {
       const { user, resposta: naoAutenticado } = await usuarioDaRequisicao(supabase, req);
       if (!user) return naoAutenticado!;
-      if (!(await ehAdminDaPlataforma(supabase, user.id))) {
+      // Oficina técnica (19/09/2026): só a conta de engenharia.
+      if (!(await ehContaDeEngenharia(supabase, user.id))) {
         return jsonResponse({ error: FRASES_AO_CLIENTE.exclusivoDaPlataforma }, 403);
       }
 
@@ -2994,7 +3029,7 @@ serve(async (req) => {
     if (action === "status") {
       const { user, resposta: naoAutenticado } = await usuarioDaRequisicao(supabase, req);
       if (!user) return naoAutenticado!;
-      const ehAdmin = await ehAdminDaPlataforma(supabase, user.id);
+      const verDetalhe = await ehContaDeEngenharia(supabase, user.id);
 
       const sessoesResp = await supabase
         .from("sessoes_lance_real")
@@ -3003,7 +3038,8 @@ serve(async (req) => {
         .order("created_at", { ascending: false })
         .limit(50);
 
-      if (!ehAdmin) {
+      // Agentes e endereço do agente da plataforma: oficina técnica (19/09/2026).
+      if (!verDetalhe) {
         return jsonResponse({ agentes: [], sessoes: sessoesResp.data || [] });
       }
 
@@ -3046,6 +3082,7 @@ serve(async (req) => {
       const { user, resposta: naoAutenticado } = await usuarioDaRequisicao(supabase, req);
       if (!user) return naoAutenticado!;
       const ehAdmin = await ehAdminDaPlataforma(supabase, user.id);
+      const verDetalhe = await ehContaDeEngenharia(supabase, user.id);
 
       const empresaId = typeof body.empresa_id === "string" ? body.empresa_id.trim() : "";
       if (!empresaId) return jsonResponse({ error: "empresa_id é obrigatório" }, 400);
@@ -3073,7 +3110,7 @@ serve(async (req) => {
           erro: ligadoLido.detalhe,
         });
         return jsonResponse(
-          corpoDeErro(FRASES_AO_CLIENTE.situacaoIlegivel, { ehAdmin, detalhe: ligadoLido.detalhe }),
+          corpoDeErro(FRASES_AO_CLIENTE.situacaoIlegivel, { verDetalhe, detalhe: ligadoLido.detalhe }),
           503
         );
       }
@@ -3117,7 +3154,7 @@ serve(async (req) => {
         ligado,
         portais_suportados: portais,
         verificado_em: new Date().toISOString(),
-        ...(ehAdmin && detalhe ? { detalhe_tecnico: detalhe } : {}),
+        ...(verDetalhe && detalhe ? { detalhe_tecnico: detalhe } : {}),
       });
     }
 
@@ -3970,6 +4007,48 @@ async function avisarNotificacoesDoPortal(
     feitos.push({ chave: p.chave, gravidade: p.gravidade, avisados: destinatarios.size, email: email ? email.enviados : null });
   }
   return { lida: true, avisos: feitos.length, feitos, leituras_com_falha: leiturasComFalha };
+}
+
+/**
+ * "Robô entrando" a quem opera o robô (19/09/2026).
+ *
+ * Sai ANTES de chamar o robô, em segundo plano: o robô só responde ao webhook
+ * depois de abrir o navegador e tentar o login (até 60 s), e o gov.br pode
+ * pedir o captcha nesse meio-tempo. O toast "Robô entrando" era só de quem
+ * clicou "Entrar agora"; sessão disparada por um cliente, ou pelo agendador,
+ * não chamava ninguém à tela remota. Vai a todo admin da plataforma — quem
+ * opera e a conta de engenharia —, menos a quem clicou (`exceto`): ele já tem
+ * o toast local, e o do aviso não fecha quando o robô para. Falha aqui não
+ * impede a sessão: fica no log.
+ */
+async function avisarQueORoboEstaEntrando(
+  supabase: any,
+  e: { edital: unknown; portal: unknown; empresaId: unknown; origem: "manual" | "agendador"; exceto?: string },
+): Promise<void> {
+  try {
+    const { data: admins, error: adminsErr } = await supabase.from("user_roles").select("user_id").eq("role", "admin");
+    if (adminsErr) console.error("robo-lances-webhook: destinatários do robô entrando:", adminsErr.message);
+    const ids = [...new Set((admins || []).map((a: { user_id: string }) => a.user_id))]
+      .filter((id) => id && id !== e.exceto) as string[];
+    if (!ids.length) return;
+    let empresa: string | null = null;
+    if (ehUuid(e.empresaId)) {
+      const { data } = await supabase.from("empresas").select("nome_fantasia, razao_social").eq("id", e.empresaId).maybeSingle();
+      empresa = (data?.nome_fantasia || data?.razao_social || null) as string | null;
+    }
+    const aviso = avisoDeRoboEntrando({
+      edital: typeof e.edital === "string" ? e.edital : null,
+      portal: typeof e.portal === "string" ? e.portal : null,
+      empresa,
+      origem: e.origem,
+    });
+    const { error } = await supabase.from("notificacoes").insert(
+      ids.map((uid) => ({ user_id: uid, tipo: "info", titulo: aviso.titulo, mensagem: aviso.mensagem, link: aviso.link })),
+    );
+    if (error) console.error("robo-lances-webhook: aviso de robô entrando não gravado:", error.message);
+  } catch (err) {
+    console.error("robo-lances-webhook: aviso de robô entrando falhou:", textoDoErro(err));
+  }
 }
 
 /** Trabalho que continua depois da resposta (`EdgeRuntime.waitUntil`); sem ele, espera. */
