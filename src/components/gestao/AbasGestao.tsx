@@ -42,7 +42,7 @@ export default function AbasGestao({
             key={aba.valor}
             value={aba.valor}
             className={cn(
-              'g-corpo shrink-0 rounded-none border-b-2 border-transparent bg-transparent px-4 py-3 font-medium text-muted-foreground shadow-none',
+              'shrink-0 rounded-none border-b-2 border-transparent bg-transparent px-3 py-2.5 text-sm font-medium text-muted-foreground shadow-none',
               'hover:text-foreground',
               'data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:font-semibold data-[state=active]:text-primary data-[state=active]:shadow-none',
             )}

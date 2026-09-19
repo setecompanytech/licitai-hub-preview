@@ -2,32 +2,28 @@ import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 /**
- * TelaGestao — o cabeçalho e a moldura de toda tela do módulo Gestão.
+ * TelaGestao — o cabeçalho e a moldura de toda tela de registro do módulo
+ * Gestão (Design System v3).
  *
- * Anatomia fixada pelo comando de 13/09, de cima para baixo:
+ * Anatomia, de cima para baixo:
  *
- *   título 26/34 em 700  ·  selos de situação  ·  ações à direita
+ *   título 28/36 em 600  ·  selos de situação  ·  ações à direita
  *   descrição curta (uma linha)
  *   linha de contexto (origem, órgão, vigência — o que identifica o registro)
  *   abas
  *   ─────────────────────────────────────────────
  *   conteúdo
  *
- * Duas escolhas que o comando torna obrigatórias e que é fácil desfazer sem
- * perceber:
+ * Duas escolhas obrigatórias e fáceis de desfazer sem perceber:
  *
  *  - A descrição é CURTA. Objeto de licitação com sete linhas no cabeçalho
- *    empurra a tabela para fora da primeira tela; ele pertence ao Resumo, com
- *    `TextoExpansivel`.
+ *    empurra a tabela para fora da primeira tela; ele pertence ao Resumo.
  *  - Uma ação principal por contexto. `acaoPrincipal` é uma só, à direita das
- *    secundárias — as referências nunca mostram dois botões verdes disputando
- *    a mesma atenção.
+ *    secundárias — nunca dois botões verdes disputando a mesma atenção.
  *
- * Este componente não é `CabecalhoPagina`: aquele serve às telas de menu, puxa
- * título e trilha do registro `paginas.ts` e trabalha na escala de leitura do
- * app. Aqui a escala é a de sistema (`g-*`), o título costuma ser o
- * IDENTIFICADOR de um registro — "Contrato 068/2025" —, e a trilha mora na
- * faixa superior, não na tela.
+ * Este componente não é `CabecalhoPagina`: aquele serve às telas de menu e
+ * puxa título e trilha do registro `paginas.ts`. Aqui o título costuma ser o
+ * IDENTIFICADOR de um registro — "Contrato 068/2025".
  */
 interface TelaGestaoProps {
   titulo: ReactNode;
@@ -59,7 +55,7 @@ export default function TelaGestao({
   className,
 }: TelaGestaoProps) {
   return (
-    <div className={cn('flex min-w-0 flex-col gap-4', className)}>
+    <div className={cn('flex min-w-0 flex-col gap-5', className)}>
       <header className="flex flex-col gap-2">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex min-w-0 flex-col gap-1.5">
@@ -112,7 +108,7 @@ export function SecaoGestao({
   return (
     <section className={cn('flex min-w-0 flex-col gap-3', className)}>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="g-titulo-secao text-foreground">
+        <h2 className="text-lg font-semibold leading-6 text-foreground">
           {titulo}
           {typeof contagem === 'number' && (
             <span className="ml-1.5 font-normal text-muted-foreground tabular-nums">

@@ -267,6 +267,7 @@
 }
 .ds-alert-line.red    { background: hsl(var(--destructive-tint)); border-color: hsl(var(--destructive-line)); color: hsl(var(--destructive-ink)); }
 .ds-alert-line.yellow { background: hsl(var(--warning-tint));     border-color: hsl(var(--warning-line));     color: hsl(var(--warning-ink)); }
+.ds-alert-line.green  { background: hsl(var(--success-tint));     border-color: hsl(var(--success-line));     color: hsl(var(--success-ink)); }
 .ds-alert-line strong { display: block; font-weight: 600; font-size: 13px; }
 .ds-alert-line span   { display: block; font-size: 12px; opacity: .85; margin-top: 1px; }
 .ds-alert-line a      { margin-left: auto; color: inherit; font-weight: 600; font-size: 12px; text-decoration: none; flex-shrink: 0; }

@@ -147,14 +147,18 @@ export function ehDecidido(status: string, resultado?: string | null): boolean {
  * semântica só onde o estado é real (andamento / ganho / perda); azul e teal
  * decorativos são neutros.
  */
+/* Selos suaves do Design System v3 (19/09): fundo tingido, tinta escura e
+   contorno fino, pelos trios de estado — cinza para o que ainda não é estado,
+   âmbar para análise/pendência, verde para proposta e ganho, azul para a
+   disputa em andamento, vermelho para a perda. */
 const APARENCIA: Record<StatusProcesso, { label: string; className: string }> = {
   Monitorando: { label: 'Monitorando', className: 'bg-muted text-muted-foreground border-border' },
-  'Em Análise': { label: 'Analisando', className: 'bg-warning/10 text-warning border-warning/20' },
-  'Proposta Enviada': { label: 'Proposta', className: 'bg-primary/10 text-primary border-primary/20' },
-  'Em Disputa': { label: 'Em Disputa', className: 'bg-accent/10 text-accent border-accent/20' },
-  Vencida: { label: 'Vencida', className: 'bg-success/10 text-success border-success/20' },
-  Homologada: { label: 'Homologada', className: 'bg-success/10 text-success border-success/20' },
-  Perdida: { label: 'Perdida', className: 'bg-destructive/10 text-destructive border-destructive/20' },
+  'Em Análise': { label: 'Analisando', className: 'bg-warning-tint text-warning-ink border-warning-line' },
+  'Proposta Enviada': { label: 'Proposta', className: 'bg-primary-tint text-primary border-primary-line' },
+  'Em Disputa': { label: 'Em Disputa', className: 'bg-info-tint text-info-ink border-info-line' },
+  Vencida: { label: 'Vencida', className: 'bg-success-tint text-success-ink border-success-line' },
+  Homologada: { label: 'Homologada', className: 'bg-success-tint text-success-ink border-success-line' },
+  Perdida: { label: 'Perdida', className: 'bg-destructive-tint text-destructive-ink border-destructive-line' },
   Arquivada: { label: 'Arquivada', className: 'bg-muted text-muted-foreground border-border' },
 };
 

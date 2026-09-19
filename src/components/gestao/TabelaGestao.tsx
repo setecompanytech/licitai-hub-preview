@@ -202,7 +202,7 @@ export default function TabelaGestao<T>({
         <table className="w-full border-collapse">
           <caption className="sr-only">{descricao}</caption>
           <thead>
-            <tr className="border-b border-border bg-muted/40">
+            <tr className="border-b border-border bg-secondary">
               {colunas.map((coluna) => {
                 const ativa = ordenacao?.chave === coluna.chave;
                 return (
@@ -211,7 +211,7 @@ export default function TabelaGestao<T>({
                     scope="col"
                     style={coluna.largura ? { width: coluna.largura } : undefined}
                     className={cn(
-                      'g-meta px-3 py-3 font-semibold uppercase tracking-wide text-muted-foreground',
+                      'h-11 whitespace-nowrap px-3 py-2 text-xs font-semibold tracking-wide text-muted-foreground',
                       ALINHAMENTO[coluna.alinhamento ?? 'esquerda'],
                     )}
                     aria-sort={
@@ -267,9 +267,9 @@ export default function TabelaGestao<T>({
                     : {})}
                   aria-current={ativo ? 'true' : undefined}
                   className={cn(
-                    'border-b border-border last:border-0 transition-colors',
+                    'border-b border-border last:border-0 transition-colors duration-150',
                     aoSelecionar &&
-                      'cursor-pointer hover:bg-muted/40 focus-visible:outline-none focus-visible:bg-muted/40',
+                      'cursor-pointer hover:bg-muted/60 focus-visible:outline-none focus-visible:bg-muted/60',
                     // A tarja verde à esquerda do registro em foco, das referências.
                     ativo && 'bg-primary-tint/60 shadow-[inset_3px_0_0_0_hsl(var(--primary))]',
                   )}

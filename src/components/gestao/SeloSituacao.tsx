@@ -74,8 +74,8 @@ export default function SeloSituacao({
   return (
     <span
       className={cn(
-        'inline-flex max-w-full items-center rounded-full border font-medium',
-        grande ? 'g-corpo gap-2 px-3.5 py-1.5' : 'g-meta gap-1.5 px-2.5 py-1',
+        'inline-flex max-w-full items-center rounded-sm border font-semibold',
+        grande ? 'gap-2 px-3 py-1 text-sm leading-5' : 'gap-1.5 px-2 py-0.5 text-xs leading-4',
         classe,
         className,
       )}

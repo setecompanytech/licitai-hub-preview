@@ -90,33 +90,34 @@ export default function QuickAccessGrid({ personalizando = false }: QuickAccessG
   if (grupos.length === 0) return null;
 
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       {grupos.map((grupo) => (
         <section
           key={grupo.titulo}
-          className="rounded-xl border border-border bg-card p-5 shadow-sm"
+          className="rounded-lg border border-border bg-card p-4 shadow-sm"
         >
-          <h3 className="mb-4 flex items-center gap-2 text-base font-semibold leading-6 text-foreground">
-            <grupo.icone className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold leading-5 text-foreground">
+            <grupo.icone className="h-4 w-4 shrink-0 text-brand-blue" aria-hidden="true" />
             {grupo.titulo}
           </h3>
 
           {/* 2×2 como pede a referência. No celular, duas colunas enquanto os
-              rótulos couberem — `min-w-0` com `truncate` decide isso sozinho,
-              sem ponto de quebra declarado. */}
-          <div className="grid grid-cols-2 gap-3">
+              rótulos couberem — `min-w-0` com `truncate` decide isso sozinho. */}
+          <div className="grid grid-cols-2 gap-2">
             {grupo.funcoes.map((f) => (
               <div key={f.id} className="relative">
                 <Link
                   to={f.rota}
                   onClick={() => registrarAcesso(f.id)}
                   className={cn(
-                    'flex h-full min-h-[88px] flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card px-3 py-4 text-center transition-colors',
-                    'hover:border-primary/40 hover:bg-muted/40',
+                    'group flex h-full min-h-[64px] items-center gap-3 rounded-md border border-border bg-card px-3 py-2.5 text-left transition-colors duration-150',
+                    'hover:border-primary/40 hover:bg-primary-tint/40',
                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                   )}
                 >
-                  <f.icone className="h-6 w-6 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground transition-colors group-hover:bg-primary-tint group-hover:text-primary">
+                    <f.icone className="h-4 w-4" aria-hidden="true" />
+                  </span>
                   <span className="min-w-0 text-sm font-medium leading-5 text-foreground">
                     {f.nome}
                   </span>

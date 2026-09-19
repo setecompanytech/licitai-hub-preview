@@ -21,19 +21,19 @@ import { Skeleton } from '@/components/ui/skeleton';
 export function SkeletonCorpo({ cartoes = 4 }: { cartoes?: number }) {
   return (
     <>
-      <Skeleton className="h-[26px] w-[210px] mb-[22px]" />
+      <Skeleton className="mb-6 h-8 w-[240px]" />
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-7">
+      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         {Array.from({ length: cartoes }, (_, i) => (
-          <div key={i} className="rounded-2xl bg-card shadow-sm p-5">
-            <Skeleton className="h-[13px] w-[45%] mb-[9px]" />
-            <Skeleton className="h-[13px] w-[80%] mb-[9px]" />
-            <Skeleton className="h-[13px] w-[60%]" />
+          <div key={i} className="rounded-lg border border-border bg-card p-4 shadow-sm">
+            <Skeleton className="mb-3 h-3 w-[45%]" />
+            <Skeleton className="mb-2 h-7 w-[60%]" />
+            <Skeleton className="h-3 w-[70%]" />
           </div>
         ))}
       </div>
 
-      <Skeleton className="h-[300px] rounded-2xl" />
+      <Skeleton className="h-[320px] rounded-lg" />
     </>
   );
 }

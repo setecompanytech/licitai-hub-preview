@@ -390,12 +390,12 @@ export default function PainelLicitacoes() {
           { label: 'Total', value: stats.total.toString(), color: 'text-foreground' },
           { label: 'Ativas', value: stats.ativas.toString(), color: 'text-foreground' },
           { label: 'Valor estimado', value: formatCurrency(stats.valorTotal), color: 'text-primary' },
-          { label: 'Urgentes (≤3d)', value: stats.urgentes.toString(), color: stats.urgentes > 0 ? 'text-destructive' : 'text-muted-foreground' },
-          { label: 'Prazo perdido', value: stats.prazoPerdido.toString(), color: stats.prazoPerdido > 0 ? 'text-warning' : 'text-muted-foreground' },
+          { label: 'Urgentes (≤3d)', value: stats.urgentes.toString(), color: stats.urgentes > 0 ? 'text-destructive-ink' : 'text-muted-foreground' },
+          { label: 'Prazo perdido', value: stats.prazoPerdido.toString(), color: stats.prazoPerdido > 0 ? 'text-warning-ink' : 'text-muted-foreground' },
         ].map((s) => (
-          <div key={s.label} className="rounded-lg border border-border bg-card p-4 shadow-sm">
-            <p className="text-sm font-medium text-muted-foreground truncate">{s.label}</p>
-            <p className={cn('mt-1 text-xl font-bold tabular-nums truncate', s.color)} title={s.value}>{s.value}</p>
+          <div key={s.label} className="rounded-lg border border-border bg-card px-4 py-3 shadow-sm">
+            <p className="truncate text-xs font-medium text-muted-foreground">{s.label}</p>
+            <p className={cn('mt-1 truncate text-xl font-semibold tabular-nums', s.color)} title={s.value}>{s.value}</p>
           </div>
         ))}
       </div>
@@ -553,13 +553,13 @@ export default function PainelLicitacoes() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border bg-muted/50">
-                  <th scope="col" className="text-left p-3 text-sm font-semibold text-muted-foreground">Nº / Objeto</th>
-                  <th scope="col" className="text-left p-3 text-sm font-semibold text-muted-foreground hidden md:table-cell">Órgão</th>
-                  <th scope="col" className="text-left p-3 text-sm font-semibold text-muted-foreground hidden lg:table-cell">Local</th>
-                  <th scope="col" className="text-right p-3 text-sm font-semibold text-muted-foreground">Valor Est.</th>
-                  <th scope="col" className="text-center p-3 text-sm font-semibold text-muted-foreground">Status</th>
-                  <th scope="col" className="text-center p-3 text-sm font-semibold text-muted-foreground">Ações</th>
+                <tr className="border-b border-border bg-secondary">
+                  <th scope="col" className="h-11 px-3 text-left text-xs font-semibold tracking-wide text-muted-foreground">Nº / Objeto</th>
+                  <th scope="col" className="hidden h-11 px-3 text-left text-xs font-semibold tracking-wide text-muted-foreground md:table-cell">Órgão</th>
+                  <th scope="col" className="hidden h-11 px-3 text-left text-xs font-semibold tracking-wide text-muted-foreground lg:table-cell">Local</th>
+                  <th scope="col" className="h-11 px-3 text-right text-xs font-semibold tracking-wide text-muted-foreground">Valor Est.</th>
+                  <th scope="col" className="h-11 px-3 text-center text-xs font-semibold tracking-wide text-muted-foreground">Status</th>
+                  <th scope="col" className="h-11 px-3 text-center text-xs font-semibold tracking-wide text-muted-foreground">Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -588,7 +588,7 @@ export default function PainelLicitacoes() {
                           <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-muted-foreground">
                             {lic.modalidade && <span>{lic.modalidade}</span>}
                             {lic.data_encerramento && (
-                              <span className={cn('flex items-center gap-1', isUrgent && 'text-destructive font-semibold')}>
+                              <span className={cn('flex items-center gap-1', isUrgent && 'text-destructive-ink font-semibold')}>
                                 <Calendar className="w-4 h-4" aria-hidden="true" />
                                 {new Date(lic.data_encerramento).toLocaleDateString('pt-BR')}
                               </span>
@@ -596,7 +596,7 @@ export default function PainelLicitacoes() {
                             {/* Sinaliza a falha operacional em vez de escondê-la:
                                 arquivar automaticamente aqui apagaria a evidência. */}
                             {perdeuPrazo && (
-                              <span className="flex items-center gap-1 text-warning font-semibold">
+                              <span className="flex items-center gap-1 text-warning-ink font-semibold">
                                 <AlertTriangle className="w-4 h-4" aria-hidden="true" />
                                 Prazo perdido
                               </span>

@@ -60,10 +60,10 @@ export default function AtalhosPessoais({ personalizando }: Props) {
       {listas.map((lista) => (
         <section
           key={lista.chave}
-          className="rounded-xl border border-border bg-card p-4 shadow-sm"
+          className="rounded-lg border border-border bg-card p-4 shadow-sm"
           aria-label={lista.titulo}
         >
-          <h3 className="mb-3 flex items-center gap-2 text-xs font-medium uppercase leading-4 tracking-wide text-muted-foreground">
+          <h3 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase leading-4 tracking-wider text-muted-foreground">
             <lista.icone className="h-4 w-4 shrink-0" aria-hidden="true" />
             {lista.titulo}
           </h3>
@@ -76,9 +76,9 @@ export default function AtalhosPessoais({ personalizando }: Props) {
                   <Link
                     to={f.rota}
                     className={cn(
-                      'inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2',
-                      'text-sm font-medium leading-5 text-foreground transition-colors',
-                      'hover:border-primary/40 hover:bg-muted/40',
+                      'inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5',
+                      'text-sm font-medium leading-5 text-foreground transition-colors duration-150',
+                      'hover:border-primary/40 hover:bg-primary-tint/40',
                       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                     )}
                   >

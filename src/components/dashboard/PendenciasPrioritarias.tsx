@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { AlertTriangle, ChevronRight, RefreshCw } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ChevronRight, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import BrandLogo from '@/components/shared/BrandLogo';
 import { cn } from '@/lib/utils';
@@ -56,11 +56,8 @@ export default function PendenciasPrioritarias() {
 
   if (total === 0) {
     return (
-      <div
-        className="ds-alert-line"
-        style={{ background: '#ecf8f3', borderColor: '#b9dfd0', color: '#087b62' }}
-      >
-        <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />
+      <div className="ds-alert-line green">
+        <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />
         <div>
           <strong>Documentação em dia</strong>
           <span>Nenhum documento vencido ou a vencer nos próximos 30 dias.</span>
@@ -77,20 +74,20 @@ export default function PendenciasPrioritarias() {
           <BrandLogo variant="dark" mode="symbol" width={22} />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-[15px] font-semibold text-foreground">Central de criticidade documental</p>
+          <p className="text-base font-semibold leading-6 text-foreground">Central de criticidade documental</p>
           <p className="text-xs text-muted-foreground">
             {total} pendência{total > 1 ? 's' : ''} pode{total > 1 ? 'm' : ''} afetar sua participação em licitações
           </p>
         </div>
         <div className="flex flex-shrink-0 flex-wrap items-center gap-2">
           {bloqueantes > 0 && (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-destructive-line bg-destructive-tint px-2.5 py-1 text-xs font-semibold text-destructive-ink">
+            <span className="inline-flex items-center gap-1.5 rounded-sm border border-destructive-line bg-destructive-tint px-2 py-0.5 text-xs font-semibold text-destructive-ink">
               <span className="h-1.5 w-1.5 rounded-full bg-destructive" aria-hidden="true" />
               {bloqueantes} bloqueante{bloqueantes > 1 ? 's' : ''}
             </span>
           )}
           {atencao > 0 && (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-warning-line bg-warning-tint px-2.5 py-1 text-xs font-semibold text-warning-ink">
+            <span className="inline-flex items-center gap-1.5 rounded-sm border border-warning-line bg-warning-tint px-2 py-0.5 text-xs font-semibold text-warning-ink">
               <span className="h-1.5 w-1.5 rounded-full bg-warning" aria-hidden="true" />
               {atencao} atenção
             </span>
@@ -123,7 +120,7 @@ export default function PendenciasPrioritarias() {
               <p className="text-sm font-bold tabular-nums text-foreground">
                 {bloqueantes} documento{bloqueantes > 1 ? 's' : ''}
               </p>
-              <p className="text-[11px] font-medium text-destructive">Bloqueia habilitação</p>
+              <p className="text-xs font-medium text-destructive-ink">Bloqueia habilitação</p>
             </div>
             <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
           </Link>
@@ -143,7 +140,7 @@ export default function PendenciasPrioritarias() {
               <p className="text-sm font-bold tabular-nums text-foreground">
                 {atencao} documento{atencao > 1 ? 's' : ''}
               </p>
-              <p className="text-[11px] font-medium text-warning">Vence em 30 dias</p>
+              <p className="text-xs font-medium text-warning-ink">Vence em 30 dias</p>
             </div>
             <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
           </Link>

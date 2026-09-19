@@ -6,7 +6,7 @@ export interface ItemKpi {
   icone: React.ElementType;
   /** Cor do ladrilho do ícone. `neutro` é o padrão — semântica só onde há estado real. */
   tom?: 'neutro' | 'ok' | 'aviso' | 'info';
-  /** Passando isto, o cartão vira botão de filtro, como no protótipo. */
+  /** Passando isto, o cartão vira botão de filtro. */
   aoClicar?: () => void;
   /** Destaca o cartão quando o filtro dele está ligado. */
   ativo?: boolean;
@@ -16,21 +16,21 @@ const TOM = {
   neutro: 'bg-muted text-muted-foreground',
   ok: 'bg-success-tint text-success-ink',
   aviso: 'bg-warning-tint text-warning-ink',
-  info: 'bg-primary-tint text-primary',
+  info: 'bg-info-tint text-info-ink',
 } as const;
 
 /**
- * Régua de números do topo de uma tela — o `.crt-kpi` do protótipo, na
- * identidade 12/09: valor 32/40 em negrito com dígitos tabulares, rótulo
- * 14/20 secundário, ladrilho do ícone em tinta suave.
+ * Régua de números do topo de uma tela — o cartão KPI do Design System v3:
+ * rótulo em cima, valor 28/36 em peso 600 com dígitos tabulares, ícone
+ * discreto no canto. 112px de altura, alinhado à esquerda como um cartão de
+ * software financeiro, não centralizado como um painel de marketing.
  *
- * A grade é `auto-fit` com mínimo em `min(240px, 100%)`: acomoda três, quatro
- * ou seis cartões sem nenhum ponto de quebra declarado, e o `min()` impede que
- * o mínimo estoure a largura em tela estreita.
+ * A grade é `auto-fit` com mínimo em `min(200px, 100%)`: acomoda três, quatro
+ * ou seis cartões sem ponto de quebra declarado.
  */
 export default function LinhaKpis({ itens }: { itens: ItemKpi[] }) {
   return (
-    <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr))] [&>*]:min-w-0">
+    <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr))] [&>*]:min-w-0">
       {itens.map((k) => {
         const Icone = k.icone;
         const clicavel = Boolean(k.aoClicar);
@@ -40,23 +40,22 @@ export default function LinhaKpis({ itens }: { itens: ItemKpi[] }) {
             key={k.rotulo}
             {...(clicavel ? { type: 'button' as const, onClick: k.aoClicar, 'aria-pressed': k.ativo } : {})}
             className={cn(
-              'flex flex-col items-center gap-2 rounded-lg border bg-card p-4 text-center shadow-sm transition-colors',
-              clicavel && 'hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-              k.ativo ? 'border-primary' : 'border-border',
+              'flex min-h-[112px] flex-col justify-between gap-2 rounded-lg border bg-card p-4 text-left shadow-sm transition-[border-color,box-shadow] duration-150',
+              clicavel && 'hover:border-primary/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+              k.ativo ? 'border-primary ring-1 ring-primary/30' : 'border-border',
             )}
           >
-            <span className={cn('flex h-10 w-10 items-center justify-center rounded-md', TOM[k.tom ?? 'neutro'])}>
-              <Icone className="h-5 w-5" aria-hidden="true" />
+            <span className="flex items-start justify-between gap-3">
+              <span className="min-w-0 truncate text-sm font-medium leading-5 text-muted-foreground">{k.rotulo}</span>
+              <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-md', TOM[k.tom ?? 'neutro'])}>
+                <Icone className="h-4 w-4" aria-hidden="true" />
+              </span>
             </span>
-            {/* Valor 32/40 em toda largura — o número é o que se lê primeiro.
-                `break-normal` (e não `break-words`): valor de dinheiro só pode
-                quebrar no espaço depois do "R$", nunca no meio do número —
-                "R$ 25.664.097,89" chegou a virar dois números quando o
-                contêiner permitia quebra em qualquer ponto. */}
-            <span className="max-w-full break-normal font-bold tabular-nums text-[2rem] leading-10">
+            {/* Valor de dinheiro só quebra no espaço depois do "R$", nunca no
+                meio do número — daí `break-normal`. */}
+            <span className="max-w-full break-normal text-[1.75rem] font-semibold leading-9 tabular-nums text-foreground">
               {k.valor}
             </span>
-            <span className="text-sm leading-5 text-muted-foreground">{k.rotulo}</span>
           </Elemento>
         );
       })}

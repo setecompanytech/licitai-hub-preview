@@ -263,7 +263,7 @@ export default function AgendaPendencias({
 
   if (carregando) {
     return (
-      <div role="status" aria-busy="true" className="space-y-2 rounded-xl border border-border bg-card p-5 shadow-sm">
+      <div role="status" aria-busy="true" className="space-y-2 rounded-lg border border-border bg-card p-5 shadow-sm">
         <span className="sr-only">Carregando a agenda</span>
         {Array.from({ length: 4 }, (_, i) => (
           <Skeleton key={i} className="h-14 w-full rounded-lg" />
@@ -280,7 +280,7 @@ export default function AgendaPendencias({
   ] as (Falha | null)[]).filter((f): f is Falha => f !== null);
 
   return (
-    <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+    <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
       {/* Erro antes do conteúdo: o que está faltando precisa ser lido antes do
           que a tela conseguiu montar — senão a lista curta passa por completa. */}
       {falhas.length > 0 && (
@@ -324,17 +324,17 @@ export default function AgendaPendencias({
               <Link
                 to={item.para}
                 className={cn(
-                  'group flex items-center gap-3 rounded-lg border p-3 transition-colors',
+                  'group flex items-center gap-3 rounded-md border p-3 transition-colors duration-150',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                   PELE[item.urgencia].linha,
                 )}
               >
                 <item.icone className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-base font-semibold leading-6 group-hover:underline">
+                  <span className="block truncate text-sm font-semibold leading-5 text-foreground group-hover:underline">
                     {item.titulo}
                   </span>
-                  <span className="block truncate text-sm leading-5 text-muted-foreground">
+                  <span className="block truncate text-xs leading-4 text-muted-foreground">
                     {item.natureza} · {format(item.quando, "dd 'de' MMM", { locale: ptBR })} · {item.contexto}
                   </span>
                 </span>
