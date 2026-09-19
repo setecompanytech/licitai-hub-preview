@@ -28,6 +28,7 @@ import { cn } from '@/lib/utils';
 export type TomSituacao =
   | 'neutro'
   | 'ativo'
+  | 'info'
   | 'sucesso'
   | 'atencao'
   | 'critico'
@@ -35,7 +36,10 @@ export type TomSituacao =
 
 const TOM: Record<TomSituacao, { classe: string; icone: ElementType }> = {
   neutro: { classe: 'bg-muted text-muted-foreground border-border', icone: CircleDot },
-  ativo: { classe: 'bg-primary-tint text-primary border-success-line', icone: CircleDot },
+  ativo: { classe: 'bg-primary-tint text-primary border-primary-line', icone: CircleDot },
+  /* Azul informativo — "em disputa", "em andamento": o que está acontecendo
+     agora sem ser sucesso nem alerta (Design System v3). */
+  info: { classe: 'bg-info-tint text-info-ink border-info-line', icone: CircleDot },
   sucesso: { classe: 'bg-success-tint text-success-ink border-success-line', icone: CheckCircle2 },
   atencao: { classe: 'bg-warning-tint text-warning-ink border-warning-line', icone: Clock },
   critico: { classe: 'bg-destructive-tint text-destructive-ink border-destructive-line', icone: Ban },

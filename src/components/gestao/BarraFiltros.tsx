@@ -22,6 +22,8 @@ interface BarraFiltrosProps {
   busca?: string;
   aoBuscar?: (valor: string) => void;
   placeholderBusca?: string;
+  /** Nome acessível do campo de busca, quando o placeholder não basta. */
+  rotuloBusca?: string;
   /** Selects, chips e intervalos de data. */
   children?: ReactNode;
   /** Quantos filtros estão aplicados agora — move o "Limpar" e o contador. */
@@ -36,6 +38,7 @@ export default function BarraFiltros({
   busca,
   aoBuscar,
   placeholderBusca = 'Buscar...',
+  rotuloBusca,
   children,
   filtrosAplicados = 0,
   aoLimpar,
@@ -63,6 +66,7 @@ export default function BarraFiltros({
               value={busca ?? ''}
               onChange={(e) => aoBuscar(e.target.value)}
               placeholder={placeholderBusca}
+              aria-label={rotuloBusca}
               className="g-controle rounded-[var(--g-raio)] pl-9"
             />
           </div>

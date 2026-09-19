@@ -28,7 +28,7 @@ export interface Indicador {
   /** Linha fina abaixo do valor: base de cálculo, período, comparação. */
   detalhe?: ReactNode;
   icone?: ElementType;
-  tom?: 'neutro' | 'ok' | 'aviso' | 'critico';
+  tom?: 'neutro' | 'ok' | 'info' | 'aviso' | 'critico';
   aoClicar?: () => void;
   ativo?: boolean;
 }
@@ -36,6 +36,7 @@ export interface Indicador {
 const TOM = {
   neutro: 'bg-muted text-muted-foreground',
   ok: 'bg-success-tint text-success-ink',
+  info: 'bg-info-tint text-info-ink',
   aviso: 'bg-warning-tint text-warning-ink',
   critico: 'bg-destructive-tint text-destructive-ink',
 } as const;
