@@ -79,6 +79,7 @@ export default {
         // Navy da marca — estrutura: sidebar, tooltip, título institucional.
         navy: {
           DEFAULT: "hsl(var(--navy))",
+          foreground: "hsl(var(--navy-foreground))",
           hover: "hsl(var(--navy-hover))",
           tint: "hsl(var(--navy-tint))",
         },

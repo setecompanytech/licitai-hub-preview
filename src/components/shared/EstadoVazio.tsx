@@ -14,10 +14,24 @@ interface EstadoVazioProps {
   acao?: ReactNode;
   /** 'compacto' cabe dentro de um cartão; o padrão ocupa a área da tela. */
   tamanho?: 'padrao' | 'compacto';
+  /**
+   * Ocupa toda a altura do contêiner (painel de prévia, coluna de kanban,
+   * aba com altura fixa) em vez de só a própria altura. Quem envolve precisa
+   * ter altura definida — é `h-full`, não mágica.
+   */
+  preencher?: boolean;
   className?: string;
 }
 
-export default function EstadoVazio({ icone, titulo, descricao, acao, tamanho = 'padrao', className }: EstadoVazioProps) {
+export default function EstadoVazio({
+  icone,
+  titulo,
+  descricao,
+  acao,
+  tamanho = 'padrao',
+  preencher = false,
+  className,
+}: EstadoVazioProps) {
   const compacto = tamanho === 'compacto';
   return (
     <div
@@ -25,6 +39,7 @@ export default function EstadoVazio({ icone, titulo, descricao, acao, tamanho = 
       className={cn(
         'flex flex-col items-center justify-center text-center',
         compacto ? 'gap-2 px-4 py-8' : 'gap-3 px-6 py-16',
+        preencher && 'h-full min-h-0',
         className,
       )}
     >

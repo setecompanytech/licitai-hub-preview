@@ -14,8 +14,9 @@ exclusivamente na camada de apresentação. Este manual é o que qualquer pessoa
 | Indicadores | `StatCard` (painel) · `FaixaIndicadores` (Gestão) · `LinhaKpis` · `KpiStrip` (faixa densa) |
 | Tabelas | `TabelaGestao` (com versão de celular) · `ui/table` (Financeiro, Admin) |
 | Filtros | `BarraFiltros` |
-| Estados | `SeloSituacao` · `Badge` (variantes `success/info/warning/danger/muted`) · `StatusBadge` |
-| Vazio / espera | `EstadoVazio` · `Skeleton` / `SkeletonCorpo` |
+| Estados | `SeloSituacao` · `Badge` (variantes `success/info/warning/danger/muted/ia`) · `StatusBadge` |
+| IA | `SeloPraefectusIA` (Badge `ia` + `Sparkles` em teal) |
+| Vazio / espera | `EstadoVazio` (`preencher` ocupa a altura do contêiner) · `Skeleton` / `SkeletonCorpo` |
 
 ---
 
@@ -57,7 +58,7 @@ banco) — ver `docs/rebranding-front-end.md`, seção 8.
 | **Ação** (botão primário, link, foco, seleção, sucesso) | `--primary` #087F5B | `bg-primary`, `text-primary`, `ring-ring` |
 | Superfície da ação (item ativo, realce) | `--primary-tint` / `--primary-line` | `bg-primary-tint border-primary-line` |
 | Teal tecnológico (IA, indicador positivo, ícone) — nunca texto sobre branco | `--teal` #08A88A | `text-teal`, `bg-teal` |
-| Estrutura (sidebar, tooltip, título institucional) | `--navy` #0F1E35 | `bg-navy`, `text-navy`, `bg-navy-tint` |
+| Estrutura (sidebar, tooltip, título institucional) | `--navy` #0F1E35 | `bg-navy`, `text-navy`, `bg-navy-tint`; texto sobre navy em `text-navy-foreground` |
 | Azul corporativo (ícone de módulo, rótulo institucional) | `--brand-blue` #1F4E79 | `text-brand-blue` |
 | Informativo (em disputa, aviso neutro) | `--info` #2563EB + trio | `bg-info-tint text-info-ink border-info-line` |
 | Sucesso | trio `success` | `bg-success-tint text-success-ink border-success-line` |
@@ -94,7 +95,7 @@ grupo (`text-xs font-semibold uppercase tracking-wider text-muted-foreground`).
 | | |
 | --- | --- |
 | Cartão | `rounded-lg` (10px) · `border border-border` · `bg-card` · `shadow-sm`; hover clicável: `hover:border-primary/40 hover:shadow-md` |
-| Botão / campo / select | 40px (`h-10`), `rounded-md` (8px); `sm` 36px; `lg` 44px |
+| Botão / campo / select | 40px (`h-10`), `rounded-md` (8px); `sm` 36px; `lg` 44px; variantes `default` (uma por contexto) · `outline` · `secondary` (tonal) · `ghost` · `destructive` · `ghost-destructive` (lixeira de linha, tinta vermelha sem fundo) · `link` |
 | Chip / badge / selo | `rounded-sm` (6px), 22px, `text-xs font-semibold` |
 | Modal / drawer / menu | `rounded-xl` (12px) · `shadow-xl`; véu `bg-navy/45` |
 | Herói institucional | `rounded-2xl` (16px) — único lugar acima de 12px |
@@ -149,10 +150,13 @@ campos em grade `grid gap-4 sm:grid-cols-2`, seções agrupadas por assunto com
 `DialogFooter` com `Cancelar` (`variant="outline"`) e a ação principal
 (`default`), destrutiva em `destructive`.
 
-**Vazio:** `EstadoVazio` com ícone, título curto e a ação que tira do vazio.
+**Vazio:** `EstadoVazio` com ícone, título curto e a ação que tira do vazio;
+`tamanho="compacto"` dentro de cartão, `preencher` quando o contêiner tem altura
+(painel de prévia, coluna, aba fixa).
 **Espera:** `Skeleton` na forma do conteúdo; nunca spinner grande no centro.
 
-**IA:** selo `Praefectus IA` = `<Badge variant="ia">` (tinta verde discreta) com
+**IA:** selo `Praefectus IA` = `<SeloPraefectusIA />` (`shared/`), que é um
+`<Badge variant="ia">` (tinta verde discreta) com
 ícone `Sparkles` em `text-teal`; superfícies da
 Aurélia em `bg-muted`/`bg-primary-tint`, nunca escuras; balões `rounded-lg`,
 mensagem do usuário na tinta verde, da IA em `bg-muted`.

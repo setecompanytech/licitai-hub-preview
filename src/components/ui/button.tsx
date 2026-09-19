@@ -12,6 +12,8 @@ import { cn } from "@/lib/utils";
  *   secondary    tonal     superfície rebaixada, sem borda (filtros, alternância)
  *   ghost        GHOST     sem fundo
  *   destructive  DANGER    vermelho, só para ação destrutiva
+ *   ghost-destructive      sem fundo, tinta vermelha — a lixeira de uma linha
+ *                          ou o "Remover" discreto de um chip (só-ícone leva aria-label)
  *   link         texto verde sublinhado no hover
  *
  * Altura 40px no padrão, 36px no `sm`, 44px no `lg`; raio 8px; transição de
@@ -27,6 +29,7 @@ const buttonVariants = cva(
         outline: "border border-input bg-card text-foreground shadow-sm hover:border-primary/40 hover:bg-primary-tint hover:text-primary",
         secondary: "bg-muted text-foreground hover:bg-muted/70",
         ghost: "text-foreground hover:bg-muted hover:text-foreground",
+        "ghost-destructive": "text-destructive-ink hover:bg-destructive-tint hover:text-destructive-ink",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {

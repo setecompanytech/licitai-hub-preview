@@ -121,6 +121,7 @@
     --navy: 216 56% 13%;              /* #0F1E35 */
     --navy-hover: 217 49% 21%;        /* #1B2F4F */
     --navy-tint: 217 42% 94%;         /* #E9EEF6 */
+    --navy-foreground: 0 0% 100%;     /* texto sobre o navy */
 
     /* Cores da MARCA — fixas nos dois temas (a logo não muda com o tema). */
     --brand-navy: 216 56% 13%;
@@ -244,6 +245,7 @@
     --navy: 216 56% 10%;
     --navy-hover: 216 45% 18%;
     --navy-tint: 216 35% 16%;
+    --navy-foreground: 210 40% 98%;
 
     --logo-accent: 158 55% 56%;
     --gold: 46 70% 58%;

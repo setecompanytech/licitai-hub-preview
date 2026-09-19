@@ -4,8 +4,12 @@ export interface ItemKpi {
   rotulo: string;
   valor: string;
   icone: React.ElementType;
-  /** Cor do ladrilho do ícone. `neutro` é o padrão — semântica só onde há estado real. */
-  tom?: 'neutro' | 'ok' | 'aviso' | 'info';
+  /**
+   * Cor do ladrilho do ícone. `neutro` é o padrão — semântica só onde há
+   * estado real. `critico` é o vermelho de "vencido/expirado": o mesmo tom
+   * do selo do cartão, para o KPI não dizer âmbar quando a lista diz vermelho.
+   */
+  tom?: 'neutro' | 'ok' | 'aviso' | 'info' | 'critico';
   /** Passando isto, o cartão vira botão de filtro. */
   aoClicar?: () => void;
   /** Destaca o cartão quando o filtro dele está ligado. */
@@ -17,6 +21,7 @@ const TOM = {
   ok: 'bg-success-tint text-success-ink',
   aviso: 'bg-warning-tint text-warning-ink',
   info: 'bg-info-tint text-info-ink',
+  critico: 'bg-destructive-tint text-destructive-ink',
 } as const;
 
 /**
