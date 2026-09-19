@@ -2,8 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { Badge } from '@/components/ui/badge';
 import EstadoVazio from '@/components/shared/EstadoVazio';
 import { Card } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
-  CheckCircle2, AlertTriangle, FileText, CalendarDays, Clock, Loader2, Inbox,
+  CheckCircle2, AlertTriangle, FileText, CalendarDays, Clock, Inbox,
   Brain, ExternalLink, Mail, ChevronDown,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -80,20 +81,33 @@ export default function BoletimList() {
   }, [carregar]);
 
   if (loading) {
+    /* Esqueleto na forma do cartão de boletim: ladrilho, título, meta e selo. */
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+      <div className="space-y-3" role="status">
+        <span className="sr-only">Carregando boletins…</span>
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-3 rounded-lg border border-border bg-card p-4 shadow-sm">
+            <Skeleton className="h-10 w-10 shrink-0 rounded-md" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-3 w-1/3" />
+            </div>
+            <Skeleton className="h-5 w-24 rounded-sm" />
+          </div>
+        ))}
       </div>
     );
   }
 
   if (envios.length === 0) {
     return (
-      <EstadoVazio
-        icone={<Inbox />}
-        titulo="Nenhum boletim enviado ainda"
-        descricao="Configure suas preferências de boletim na aba Configuração para começar a receber."
-      />
+      <div className="rounded-lg border border-border bg-card shadow-sm">
+        <EstadoVazio
+          icone={<Inbox />}
+          titulo="Nenhum boletim enviado ainda"
+          descricao="Configure suas preferências de boletim na aba Configuração para começar a receber."
+        />
+      </div>
     );
   }
 
@@ -106,28 +120,29 @@ export default function BoletimList() {
         const editais = envio.conteudo?.editais ?? [];
         const total = envio.total_itens ?? editais.length;
         return (
-          <Card key={envio.id} className="p-6 transition-shadow hover:shadow-md">
+          <Card key={envio.id} className="p-4 transition-[border-color,box-shadow] duration-150 hover:border-primary/40 hover:shadow-md">
             <button
+              type="button"
               className="w-full rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-expanded={isOpen}
               onClick={() => setAberto(isOpen ? null : envio.id)}
             >
               <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md ${cfg.ladrilho}`}>
-                    <Icon className="w-5 h-5" />
+                <div className="flex min-w-0 items-center gap-3">
+                  <div aria-hidden="true" className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md ${cfg.ladrilho}`}>
+                    <Icon className="h-5 w-5" />
                   </div>
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="truncate text-base font-semibold text-foreground">{cfg.titulo}</span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="truncate text-base font-semibold leading-6 text-foreground">{cfg.titulo}</span>
                       {envio.status === 'erro' && (
                         <Badge variant="danger">falhou</Badge>
                       )}
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                      <CalendarDays className="w-3 h-3" />
+                    <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground tabular-nums">
+                      <CalendarDays className="h-3 w-3" aria-hidden="true" />
                       <span>{new Date(envio.created_at).toLocaleDateString('pt-BR')}</span>
-                      <Clock className="w-3 h-3" />
+                      <Clock className="h-3 w-3" aria-hidden="true" />
                       <span>{new Date(envio.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
                       {total > 0 && (
                         <span className="tabular-nums">· {total} edita{total === 1 ? 'l' : 'is'}</span>
@@ -135,9 +150,9 @@ export default function BoletimList() {
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex shrink-0 items-center gap-2">
                   <Badge variant={cfg.variante}>{cfg.label}</Badge>
-                  <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDown aria-hidden="true" className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
                 </div>
               </div>
             </button>
@@ -151,26 +166,26 @@ export default function BoletimList() {
                 {editais.length > 0 ? (
                   <>
                     {editais.map((e, i) => (
-                      <div key={i} className="flex items-start justify-between gap-3 rounded-md bg-muted p-2 text-sm">
+                      <div key={i} className="flex items-start justify-between gap-3 rounded-md border border-border bg-secondary p-2.5 text-sm">
                         <div className="min-w-0">
                           <p className="line-clamp-2 text-sm font-medium text-foreground">{e.objeto || 'Objeto não informado'}</p>
-                          <p className="text-xs text-muted-foreground truncate">
+                          <p className="truncate text-xs text-muted-foreground">
                             {e.orgao}
                             {e.municipio ? ` · ${e.municipio}` : ''}{e.uf ? `/${e.uf}` : ''}
                           </p>
                         </div>
-                        <div className="text-right shrink-0">
+                        <div className="shrink-0 text-right">
                           {typeof e.valor === 'number' && e.valor > 0 && (
-                            <p className="text-xs font-semibold tabular-nums">{moeda(e.valor)}</p>
+                            <p className="text-xs font-semibold tabular-nums text-foreground">{moeda(e.valor)}</p>
                           )}
                           {e.url && (
                             <a
                               href={e.url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                              className="inline-flex items-center gap-1 rounded-sm text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             >
-                              Abrir edital <ExternalLink className="w-3 h-3" />
+                              Abrir edital <ExternalLink className="h-3 w-3" aria-hidden="true" />
                             </a>
                           )}
                         </div>
@@ -184,7 +199,7 @@ export default function BoletimList() {
                   </>
                 ) : (
                   <div className="flex items-start gap-2 text-xs text-muted-foreground">
-                    <Mail className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                    <Mail className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                     <span>
                       {total > 0
                         ? `Este envio levou ${total} editais, mas é anterior ao arquivamento de conteúdo — o boletim completo está no seu e-mail.`

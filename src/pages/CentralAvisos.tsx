@@ -5,14 +5,18 @@ import EstadoVazio from '@/components/shared/EstadoVazio';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
+import FaixaIndicadores from '@/components/gestao/FaixaIndicadores';
 import { useAlertas, type TipoAlerta, type Alerta, type FiltrosAlertas } from '@/hooks/useAlertas';
 import { toast } from 'sonner';
 import {
   Bell, FileText, AlertTriangle, Ban, XCircle, CheckCircle2, Trophy,
   Archive, Eye, EyeOff, ChevronLeft, ChevronRight, ExternalLink,
-  Loader2, Settings, Filter
+  Settings, Filter, AlertCircle, Building2, MapPin, Hash, Bookmark,
+  Banknote, CalendarDays, Rss,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -20,44 +24,47 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 /**
  * Aparência por tipo de aviso.
  *
- * `tarja` é a faixa colorida na borda esquerda da linha — é o que deixa o tipo
- * legível ao correr o olho pela lista, antes de ler qualquer palavra.
- * `ladrilho` pinta o quadradinho do ícone, e `selo` a etiqueta ao lado do
- * título. Os três saem do MESMO matiz, por isso ficam juntos aqui: separados,
- * cada um seguiria seu caminho na primeira alteração.
+ * `ladrilho` pinta o quadradinho do ícone, e `variante` a etiqueta ao lado do
+ * título. Os dois saem do MESMO trio tinta/tinta-escura, por isso ficam juntos
+ * aqui: separados, cada um seguiria seu caminho na primeira alteração.
  *
- * Alteração usa violeta (`--chart-5`) por ser categoria, não estado: âmbar já
- * é suspensão, e duas coisas diferentes na mesma cor se confundem na lista.
+ * O estado lido/não lido NÃO é cor de tipo (Design System v3): não lido vai
+ * na tinta verde da ação (`bg-primary-tint`), lido fica no cartão branco. A
+ * tarja saturada na borda esquerda saiu junto com o redesign — o ladrilho e o
+ * selo já dizem o tipo, sem uma segunda cor disputando a linha.
+ *
+ * Alteração usa o azul informativo: é categoria, não alerta — âmbar já é
+ * suspensão, e duas coisas diferentes na mesma cor se confundem na lista.
  */
 type VarianteBadge = 'success' | 'warning' | 'danger' | 'info' | 'muted';
 
 const TIPO_CONFIG: Record<
   string,
-  { icon: React.ElementType; label: string; variante: VarianteBadge; tarja: string; ladrilho: string; emoji: string }
+  { icon: React.ElementType; label: string; variante: VarianteBadge; ladrilho: string }
 > = {
   novo_edital: {
-    icon: FileText, label: 'Novo edital', emoji: '🆕', variante: 'success',
-    tarja: 'bg-primary', ladrilho: 'bg-primary-tint text-primary',
+    icon: FileText, label: 'Novo edital', variante: 'success',
+    ladrilho: 'bg-primary-tint text-primary',
   },
   alteracao: {
-    icon: AlertTriangle, label: 'Alteração', emoji: '⚠️', variante: 'info',
-    tarja: 'bg-chart-5', ladrilho: 'bg-chart-5 text-primary-foreground',
+    icon: AlertTriangle, label: 'Alteração', variante: 'info',
+    ladrilho: 'bg-info-tint text-info-ink',
   },
   suspensao: {
-    icon: Ban, label: 'Suspensão', emoji: '🚫', variante: 'warning',
-    tarja: 'bg-warning', ladrilho: 'bg-warning-tint text-warning-ink',
+    icon: Ban, label: 'Suspensão', variante: 'warning',
+    ladrilho: 'bg-warning-tint text-warning-ink',
   },
   cancelamento: {
-    icon: XCircle, label: 'Cancelamento', emoji: '❌', variante: 'danger',
-    tarja: 'bg-destructive', ladrilho: 'bg-destructive-tint text-destructive-ink',
+    icon: XCircle, label: 'Cancelamento', variante: 'danger',
+    ladrilho: 'bg-destructive-tint text-destructive-ink',
   },
   homologacao: {
-    icon: CheckCircle2, label: 'Homologação', emoji: '✅', variante: 'success',
-    tarja: 'bg-success', ladrilho: 'bg-success-tint text-success-ink',
+    icon: CheckCircle2, label: 'Homologação', variante: 'success',
+    ladrilho: 'bg-success-tint text-success-ink',
   },
   resultado: {
-    icon: Trophy, label: 'Resultado', emoji: '📊', variante: 'muted',
-    tarja: 'bg-border', ladrilho: 'bg-muted text-muted-foreground',
+    icon: Trophy, label: 'Resultado', variante: 'muted',
+    ladrilho: 'bg-muted text-muted-foreground',
   },
 };
 
@@ -81,7 +88,7 @@ const horaDe = (iso: string) =>
 
 export default function CentralAvisos() {
   const {
-    alertas, total, naoLidos, urgentes, loading, pagina, totalPaginas,
+    alertas, total, naoLidos, urgentes, loading, erro, pagina, totalPaginas,
     buscarAlertas, marcarComoLido, arquivar, marcarTodosLidos, setPagina,
   } = useAlertas();
 
@@ -122,40 +129,40 @@ export default function CentralAvisos() {
           }
         />
 
-        {/* Resumo — número grande e rótulo embaixo, como no protótipo */}
-        <div className="grid grid-cols-3 gap-4 [&>*]:min-w-0">
-          {[
-            { valor: total, rotulo: 'Total', cor: '' },
-            { valor: naoLidos, rotulo: 'Não lidos', cor: '' },
-            { valor: urgentes, rotulo: 'Urgentes', cor: 'text-destructive' },
-          ].map((s) => (
-            <Card key={s.rotulo} className="px-4 py-6 text-center">
-              <p className={`text-[2rem] font-bold leading-10 tabular-nums ${s.cor}`}>{s.valor}</p>
-              <p className="mt-2 text-sm text-muted-foreground">{s.rotulo}</p>
-            </Card>
-          ))}
-        </div>
+        {/* Resumo — cartão KPI do Design System: rótulo em cima, número
+            tabular, ícone no canto. O tom do ícone marca o que é urgente. */}
+        <FaixaIndicadores
+          itens={[
+            { rotulo: 'Total', valor: total, icone: Bell },
+            { rotulo: 'Não lidos', valor: naoLidos, icone: EyeOff, tom: 'info' },
+            { rotulo: 'Urgentes', valor: urgentes, icone: AlertTriangle, tom: 'critico' },
+          ]}
+        />
 
-        {/* Filter chips */}
-        <div className="flex items-center gap-2 flex-wrap">
+        {/* Filter chips — o ícone Lucide do tipo no lugar do emoji, que é o
+            único "ícone multicolorido" que o Design System não admite. */}
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="ghost" size="sm" aria-expanded={showFilters} onClick={() => setShowFilters(!showFilters)}>
             <Filter aria-hidden="true" /> Filtros {filtroTipos.length > 0 && `(${filtroTipos.length})`}
           </Button>
-          {showFilters && Object.entries(TIPO_CONFIG).map(([tipo, cfg]) => (
-            <Button
-              key={tipo}
-              size="sm"
-              variant={filtroTipos.includes(tipo as TipoAlerta) ? 'default' : 'outline'}
-              aria-pressed={filtroTipos.includes(tipo as TipoAlerta)}
-              onClick={() => toggleTipo(tipo as TipoAlerta)}
-            >
-              {cfg.emoji} {cfg.label}
-            </Button>
-          ))}
+          {showFilters && Object.entries(TIPO_CONFIG).map(([tipo, cfg]) => {
+            const Icone = cfg.icon;
+            return (
+              <Button
+                key={tipo}
+                size="sm"
+                variant={filtroTipos.includes(tipo as TipoAlerta) ? 'default' : 'outline'}
+                aria-pressed={filtroTipos.includes(tipo as TipoAlerta)}
+                onClick={() => toggleTipo(tipo as TipoAlerta)}
+              >
+                <Icone aria-hidden="true" /> {cfg.label}
+              </Button>
+            );
+          })}
         </div>
 
         <Tabs value={tab} onValueChange={v => { setTab(v); setPagina(1); }}>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             {/* Toda aba carrega o próprio contador — no protótipo o número faz
                 parte da aba, e é o que diz se vale a pena entrar nela. */}
             <TabsList>
@@ -172,16 +179,34 @@ export default function CentralAvisos() {
             </TabsList>
             <div className="flex gap-1">
               <Button variant="ghost" size="sm" onClick={marcarTodosLidos}>
-                <Eye className="w-4 h-4" /> Marcar todos como lidos
+                <Eye aria-hidden="true" /> Marcar todos como lidos
               </Button>
             </div>
           </div>
 
           <div className="mt-4 space-y-4">
             {loading ? (
-              <div className="flex justify-center py-10">
-                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+              /* Esqueleto na forma da linha de aviso: ladrilho, título, meta, hora. */
+              <div className="space-y-2" role="status">
+                <span className="sr-only">Carregando avisos…</span>
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="flex items-start gap-3.5 rounded-lg border border-border bg-card px-4 py-3.5 shadow-sm">
+                    <Skeleton className="h-9 w-9 shrink-0 rounded-md" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-4 w-2/3" />
+                      <Skeleton className="h-3.5 w-1/2" />
+                    </div>
+                    <Skeleton className="h-4 w-10" />
+                  </div>
+                ))}
               </div>
+            ) : erro ? (
+              /* Princípio 3 do CLAUDE.md: a falha de carga deixa rastro. A
+                 mensagem vem do hook; o retry é o próprio filtro/aba. */
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" aria-hidden="true" />
+                <AlertDescription>{erro}</AlertDescription>
+              </Alert>
             ) : alertas.length === 0 ? (
               <Card>
                 <EstadoVazio
@@ -209,7 +234,7 @@ export default function CentralAvisos() {
                 }, {}),
               ).map(([dia, doDia]) => (
                 <section key={dia} className="space-y-2">
-                  <h2 className="pt-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  <h2 className="pt-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     {dia}
                   </h2>
 
@@ -223,23 +248,22 @@ export default function CentralAvisos() {
                         role="button"
                         tabIndex={0}
                         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openAlerta(alerta); } }}
-                        className={`group relative flex cursor-pointer items-start gap-3.5 overflow-hidden rounded-lg border border-border bg-card py-3.5 pl-5 pr-4 shadow-sm transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                          alerta.lido ? 'opacity-60 hover:opacity-100' : ''
+                        /* Não lido na tinta verde da ação; lido no cartão
+                           branco. Sem opacidade: texto apagado é texto que
+                           não passa no contraste. */
+                        className={`flex cursor-pointer items-start gap-3.5 rounded-lg border px-4 py-3.5 shadow-sm transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                          alerta.lido
+                            ? 'border-border bg-card hover:bg-muted/60'
+                            : 'border-primary-line bg-primary-tint hover:border-primary/40'
                         }`}
                       >
-                        {/* Tarja do tipo. Some no lido: a cor é chamado de
-                            atenção, e o que já foi lido não chama mais. */}
-                        {!alerta.lido && (
-                          <span className={`absolute left-0 top-0 bottom-0 w-1 ${cfg.tarja}`} aria-hidden="true" />
-                        )}
-
-                        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md ${cfg.ladrilho}`}>
-                          <Icon className="w-4 h-4" />
+                        <div aria-hidden="true" className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md ${cfg.ladrilho}`}>
+                          <Icon className="h-4 w-4" />
                         </div>
 
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className={`text-base leading-snug ${alerta.lido ? 'font-medium' : 'font-semibold'}`}>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className={`text-base leading-5 text-foreground ${alerta.lido ? 'font-medium' : 'font-semibold'}`}>
                               {alerta.titulo}
                             </p>
                             <Badge variant={cfg.variante}>{cfg.label}</Badge>
@@ -248,25 +272,27 @@ export default function CentralAvisos() {
 
                           {/* Órgão · UF · processo numa linha só, como no
                               protótipo — antes eram três etiquetas soltas. */}
-                          <p className="text-sm text-muted-foreground mt-1 truncate">
+                          <p className="mt-1 truncate text-sm text-muted-foreground">
                             {[alerta.orgao, alerta.uf, alerta.numero_processo || alerta.numero_pregao]
                               .filter(Boolean)
                               .join('  ·  ')}
                           </p>
                         </div>
 
-                        <div className="flex items-center gap-1 shrink-0 self-start">
-                          <span className="text-sm text-muted-foreground tabular-nums">
+                        {/* Hora e arquivar sempre visíveis: ação que só aparece
+                            no hover não existe no toque. */}
+                        <div className="flex shrink-0 items-center gap-1 self-start">
+                          <span className="text-xs text-muted-foreground tabular-nums">
                             {horaDe(alerta.created_at)}
                           </span>
                           <Button
-                            size="sm"
+                            size="icon-sm"
                             variant="ghost"
                             aria-label="Arquivar aviso"
-                            className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity h-7 w-7 p-0"
+                            className="text-muted-foreground hover:text-foreground"
                             onClick={e => { e.stopPropagation(); arquivar(alerta.id); }}
                           >
-                            <Archive className="w-3.5 h-3.5" />
+                            <Archive aria-hidden="true" />
                           </Button>
                         </div>
                       </div>
@@ -279,13 +305,13 @@ export default function CentralAvisos() {
 
           {/* Pagination */}
           {totalPaginas > 1 && (
-            <div className="flex items-center justify-center gap-2 mt-4">
-              <Button size="sm" variant="outline" disabled={pagina === 1} onClick={() => setPagina(p => p - 1)}>
-                <ChevronLeft className="w-4 h-4" />
+            <div className="mt-4 flex items-center justify-center gap-2">
+              <Button size="sm" variant="outline" aria-label="Página anterior" disabled={pagina === 1} onClick={() => setPagina(p => p - 1)}>
+                <ChevronLeft aria-hidden="true" />
               </Button>
-              <span className="text-xs text-muted-foreground">{pagina} / {totalPaginas}</span>
-              <Button size="sm" variant="outline" disabled={pagina === totalPaginas} onClick={() => setPagina(p => p + 1)}>
-                <ChevronRight className="w-4 h-4" />
+              <span className="text-sm text-muted-foreground tabular-nums">{pagina} / {totalPaginas}</span>
+              <Button size="sm" variant="outline" aria-label="Próxima página" disabled={pagina === totalPaginas} onClick={() => setPagina(p => p + 1)}>
+                <ChevronRight aria-hidden="true" />
               </Button>
             </div>
           )}
@@ -296,70 +322,73 @@ export default function CentralAvisos() {
           <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
             {selectedAlerta && (() => {
               const cfg = TIPO_CONFIG[selectedAlerta.tipo] || TIPO_CONFIG.novo_edital;
+              const Icone = cfg.icon;
               return (
                 <>
                   <SheetHeader>
-                    <div className="flex items-center gap-2">
-                      <Badge variant={cfg.variante}>
-                        {cfg.emoji} {cfg.label}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant={cfg.variante} className="gap-1">
+                        <Icone className="h-3 w-3" aria-hidden="true" /> {cfg.label}
                       </Badge>
                       {selectedAlerta.urgente && <Badge variant="danger">Urgente</Badge>}
                     </div>
-                    <SheetTitle className="text-left text-base mt-2">{selectedAlerta.titulo}</SheetTitle>
+                    <SheetTitle className="mt-2">{selectedAlerta.titulo}</SheetTitle>
                   </SheetHeader>
-                  <div className="space-y-4 mt-4">
-                    <p className="text-sm text-muted-foreground leading-relaxed">{selectedAlerta.descricao}</p>
+                  <div className="mt-4 space-y-4">
+                    <p className="text-sm leading-relaxed text-muted-foreground">{selectedAlerta.descricao}</p>
 
-                    <div className="space-y-2 rounded-md bg-muted p-3 text-sm">
+                    {/* Ficha do aviso — rótulo com ícone Lucide (sem emoji) e
+                        valor à direita, na superfície rebaixada. */}
+                    <div className="space-y-2 rounded-md border border-border bg-secondary p-3 text-sm">
                       {selectedAlerta.orgao && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">🏛️ Órgão</span>
-                          <span className="font-medium text-right max-w-[60%]">{selectedAlerta.orgao}</span>
+                        <div className="flex justify-between gap-3">
+                          <span className="inline-flex items-center gap-1.5 text-muted-foreground"><Building2 className="h-3.5 w-3.5" aria-hidden="true" />Órgão</span>
+                          <span className="max-w-[60%] text-right font-medium text-foreground">{selectedAlerta.orgao}</span>
                         </div>
                       )}
                       {selectedAlerta.uf && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">📍 UF</span>
-                          <span className="font-medium">{selectedAlerta.uf}</span>
+                        <div className="flex justify-between gap-3">
+                          <span className="inline-flex items-center gap-1.5 text-muted-foreground"><MapPin className="h-3.5 w-3.5" aria-hidden="true" />UF</span>
+                          <span className="font-medium text-foreground">{selectedAlerta.uf}</span>
                         </div>
                       )}
                       {selectedAlerta.numero_processo && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">📋 Processo</span>
-                          <span className="font-medium">{selectedAlerta.numero_processo}</span>
+                        <div className="flex justify-between gap-3">
+                          <span className="inline-flex items-center gap-1.5 text-muted-foreground"><Hash className="h-3.5 w-3.5" aria-hidden="true" />Processo</span>
+                          <span className="font-medium tabular-nums text-foreground">{selectedAlerta.numero_processo}</span>
                         </div>
                       )}
                       {selectedAlerta.numero_pregao && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">🔖 Pregão</span>
-                          <span className="font-medium">{selectedAlerta.numero_pregao}</span>
+                        <div className="flex justify-between gap-3">
+                          <span className="inline-flex items-center gap-1.5 text-muted-foreground"><Bookmark className="h-3.5 w-3.5" aria-hidden="true" />Pregão</span>
+                          <span className="font-medium tabular-nums text-foreground">{selectedAlerta.numero_pregao}</span>
                         </div>
                       )}
                       {selectedAlerta.valor_estimado && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">💰 Valor</span>
-                          <span className="font-bold">R$ {Number(selectedAlerta.valor_estimado).toLocaleString('pt-BR')}</span>
+                        <div className="flex justify-between gap-3">
+                          <span className="inline-flex items-center gap-1.5 text-muted-foreground"><Banknote className="h-3.5 w-3.5" aria-hidden="true" />Valor</span>
+                          <span className="font-semibold tabular-nums text-foreground">R$ {Number(selectedAlerta.valor_estimado).toLocaleString('pt-BR')}</span>
                         </div>
                       )}
                       {selectedAlerta.data_abertura && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">📅 Abertura</span>
-                          <span className="font-medium">{new Date(selectedAlerta.data_abertura).toLocaleDateString('pt-BR')}</span>
+                        <div className="flex justify-between gap-3">
+                          <span className="inline-flex items-center gap-1.5 text-muted-foreground"><CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />Abertura</span>
+                          <span className="font-medium tabular-nums text-foreground">{new Date(selectedAlerta.data_abertura).toLocaleDateString('pt-BR')}</span>
                         </div>
                       )}
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">📡 Fonte</span>
+                      <div className="flex justify-between gap-3">
+                        <span className="inline-flex items-center gap-1.5 text-muted-foreground"><Rss className="h-3.5 w-3.5" aria-hidden="true" />Fonte</span>
                         <Badge variant="muted">{selectedAlerta.fonte}</Badge>
                       </div>
                     </div>
 
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       {selectedAlerta.url_edital && (
-                        <a href={selectedAlerta.url_edital} target="_blank" rel="noopener noreferrer" className="flex-1">
-                          <Button className="w-full">
+                        <Button asChild className="flex-1">
+                          <a href={selectedAlerta.url_edital} target="_blank" rel="noopener noreferrer">
                             <ExternalLink aria-hidden="true" /> Acessar edital
-                          </Button>
-                        </a>
+                          </a>
+                        </Button>
                       )}
                       <Button variant="outline" onClick={() => { arquivar(selectedAlerta.id); setSelectedAlerta(null); }}>
                         <Archive aria-hidden="true" /> Arquivar

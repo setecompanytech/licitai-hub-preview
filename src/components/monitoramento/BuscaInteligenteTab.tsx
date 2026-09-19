@@ -380,7 +380,7 @@ export default function BuscaInteligenteTab() {
         <div className="flex-1 p-4 space-y-4 overflow-y-auto max-h-[60vh]">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full py-8">
-              <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-lg bg-muted">
                 <Sparkles className="w-8 h-8 text-muted-foreground" />
               </div>
               <h2 className="text-lg font-semibold mb-2">O que você procura?</h2>

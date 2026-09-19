@@ -132,7 +132,7 @@ export default function EditalActionsModal({ open, onOpenChange, edital, existin
         </div>
 
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={!!working}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={!!working}>
             Cancelar
           </Button>
         </DialogFooter>

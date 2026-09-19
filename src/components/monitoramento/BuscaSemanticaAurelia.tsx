@@ -113,7 +113,7 @@ export default function BuscaSemanticaAurelia() {
   };
 
   return (
-    <Card className="p-4 sm:p-5 border-border bg-gradient-to-br from-muted/40 via-background to-background">
+    <Card className="border-border bg-card p-4 sm:p-5">
       <div className="flex items-center gap-2 mb-3">
         <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
           <Sparkles className="w-4 h-4 text-muted-foreground" />

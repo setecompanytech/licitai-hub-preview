@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -142,7 +143,7 @@ export default function DiariosOficiais() {
         />
 
         {status && (
-          <div className="flex flex-wrap gap-x-8 gap-y-2 rounded-lg border border-border bg-card p-6 text-sm shadow-sm">
+          <div className="flex flex-wrap gap-x-8 gap-y-2 rounded-lg border border-border bg-card px-4 py-3 text-sm shadow-sm">
             <div><span className="text-muted-foreground">Total no cache:</span>{' '}<strong className="tabular-nums">{status.total_diarios || 0}</strong></div>
             <div><span className="text-muted-foreground">Mais recente:</span>{' '}<strong>{status.mais_recente || '—'}</strong></div>
             {status.por_fonte && Object.entries(status.por_fonte).map(([f, n]) => (
@@ -153,25 +154,25 @@ export default function DiariosOficiais() {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg font-semibold">Filtros de busca</CardTitle>
+            <CardTitle>Filtros de busca</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
               <div className="lg:col-span-2">
-                <Label htmlFor="diarios-termo" className="text-sm">Termo de busca</Label>
+                <Label htmlFor="diarios-termo">Termo de busca</Label>
                 <Input
                   id="diarios-termo"
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && buscar(1)}
                   placeholder="ex.: pregão, medicamentos, obras..."
-                  className="mt-1"
+                  className="mt-1.5"
                 />
               </div>
               <div>
-                <Label htmlFor="diarios-fonte" className="text-sm">Fonte</Label>
+                <Label htmlFor="diarios-fonte">Fonte</Label>
                 <Select value={fonte} onValueChange={setFonte}>
-                  <SelectTrigger id="diarios-fonte" className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="diarios-fonte" className="mt-1.5"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todas</SelectItem>
                     {FONTES.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}
@@ -179,9 +180,9 @@ export default function DiariosOficiais() {
                 </Select>
               </div>
               <div>
-                <Label htmlFor="diarios-tipo" className="text-sm">Tipo</Label>
+                <Label htmlFor="diarios-tipo">Tipo</Label>
                 <Select value={tipo} onValueChange={setTipo}>
-                  <SelectTrigger id="diarios-tipo" className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="diarios-tipo" className="mt-1.5"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos</SelectItem>
                     {TIPOS.map(t => <SelectItem key={t.v} value={t.v}>{t.l}</SelectItem>)}
@@ -198,8 +199,20 @@ export default function DiariosOficiais() {
 
         <div className="space-y-3">
           {loading && (
-            <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground" role="status">
-              <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" /> Carregando…
+            /* Esqueleto na forma dos cartões de publicação que vêm a seguir. */
+            <div className="space-y-3" role="status">
+              <span className="sr-only">Carregando…</span>
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="space-y-2.5 rounded-lg border border-border bg-card p-4 shadow-sm">
+                  <div className="flex flex-wrap gap-2">
+                    <Skeleton className="h-5 w-16 rounded-sm" />
+                    <Skeleton className="h-5 w-28 rounded-sm" />
+                    <Skeleton className="h-5 w-12 rounded-sm" />
+                  </div>
+                  <Skeleton className="h-4 w-4/5" />
+                  <Skeleton className="h-3.5 w-1/3" />
+                </div>
+              ))}
             </div>
           )}
           {!loading && resultados.length === 0 && (
@@ -217,31 +230,31 @@ export default function DiariosOficiais() {
             </div>
           )}
           {!loading && resultados.map((d) => (
-            <Card key={d.id} className="transition-colors hover:border-primary/50">
+            <Card key={d.id} className="transition-[border-color,box-shadow] duration-150 hover:border-primary/40 hover:shadow-md">
               <CardContent className="space-y-2 p-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant="info">{d.fonte}</Badge>
                   {d.tipo_publicacao && <Badge variant="muted">{d.tipo_publicacao.replace(/_/g, ' ')}</Badge>}
                   {d.uf && (
                     <Badge variant="muted" className="gap-1">
-                      <MapPin className="w-3 h-3" aria-hidden="true" />{d.uf}
+                      <MapPin className="h-3 w-3" aria-hidden="true" />{d.uf}
                     </Badge>
                   )}
-                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <CalendarIcon className="w-3 h-3" aria-hidden="true" />
+                  <span className="flex items-center gap-1 text-xs text-muted-foreground tabular-nums">
+                    <CalendarIcon className="h-3.5 w-3.5" aria-hidden="true" />
                     {format(parseISO(d.data_publicacao), 'dd/MM/yyyy', { locale: ptBR })}
                   </span>
                 </div>
-                <p className="line-clamp-2 text-base font-medium text-foreground">{d.objeto || 'Sem descrição'}</p>
+                <p className="line-clamp-2 text-base font-semibold leading-6 text-foreground">{d.objeto || 'Sem descrição'}</p>
                 {d.orgao && (
-                  <p className="flex items-center gap-1 text-sm text-muted-foreground">
-                    <Building2 className="w-3 h-3" aria-hidden="true" />{d.orgao}
+                  <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                    <Building2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />{d.orgao}
                   </p>
                 )}
                 {d.link_html && (
                   <a href={d.link_html} target="_blank" rel="noopener noreferrer"
-                     className="inline-flex items-center gap-1 text-sm text-primary hover:underline">
-                    <ExternalLink className="w-3 h-3" aria-hidden="true" /> Abrir publicação original
+                     className="inline-flex items-center gap-1 rounded-sm text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                    <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" /> Abrir publicação original
                   </a>
                 )}
               </CardContent>
@@ -251,7 +264,7 @@ export default function DiariosOficiais() {
 
         {total > PAGE_SIZE && (
           <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
-            <span className="text-sm text-muted-foreground">
+            <span className="text-sm text-muted-foreground tabular-nums">
               Página {pagina} de {totalPaginas} • {total} resultados
             </span>
             <div className="flex flex-wrap gap-2">

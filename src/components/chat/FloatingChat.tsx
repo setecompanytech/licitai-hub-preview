@@ -150,26 +150,27 @@ export default function FloatingChat({ isLanding = false }: FloatingChatProps) {
             style={fab.lado === 'esquerda'
               ? { left: FAB_MARGEM, right: 'auto' }
               : { right: FAB_MARGEM, left: 'auto' }}
-            className="fixed bottom-6 z-50 w-[380px] max-w-[calc(100vw-2rem)] h-[520px] max-h-[calc(100vh-4rem)] flex flex-col rounded-lg shadow-md border border-border overflow-hidden bg-card"
+            className="fixed bottom-6 z-50 flex h-[520px] max-h-[calc(100vh-4rem)] w-[380px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xl"
           >
-            {/* Header */}
-            <div className="flex flex-shrink-0 items-center justify-between gap-2 bg-primary px-4 py-3 text-primary-foreground">
+            {/* Header — superfície clara da IA (Design System v3, §5): a marca
+                verde fica no ladrilho do avatar, não num cabeçalho sólido. */}
+            <div className="flex flex-shrink-0 items-center justify-between gap-2 border-b border-border bg-card px-4 py-3">
               <div className="flex min-w-0 items-center gap-3">
-                <div aria-hidden="true" className="w-8 h-8 rounded-full bg-primary-foreground/20 flex items-center justify-center">
-                  <Bot className="w-4 h-4" />
+                <div aria-hidden="true" className="flex h-8 w-8 items-center justify-center rounded-md bg-primary-tint text-primary">
+                  <Bot className="h-4 w-4" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold leading-none">Lia — Assistente PRAEFECTUS</p>
-                  <p className="text-xs opacity-80 mt-1">Online • Resposta instantânea</p>
+                  <p className="text-sm font-semibold leading-5 text-foreground">Lia — Assistente PRAEFECTUS</p>
+                  <p className="text-xs leading-4 text-muted-foreground">Online • Resposta instantânea</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
                 aria-label="Fechar o chat"
-                className="flex-shrink-0 rounded-full p-2 transition-colors hover:bg-primary-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground"
+                className="flex-shrink-0 rounded-md p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <X className="w-4 h-4" aria-hidden="true" />
+                <X className="h-4 w-4" aria-hidden="true" />
               </button>
             </div>
 
@@ -185,7 +186,7 @@ export default function FloatingChat({ isLanding = false }: FloatingChatProps) {
                   <div className={cn(
                     'max-w-[80%] rounded-lg px-4 py-2 text-sm',
                     msg.role === 'user'
-                      ? 'bg-primary text-primary-foreground'
+                      ? 'border border-primary-line bg-primary-tint text-foreground'
                       : 'bg-muted text-foreground'
                   )}>
                     {msg.role === 'assistant' ? (
@@ -210,9 +211,9 @@ export default function FloatingChat({ isLanding = false }: FloatingChatProps) {
                   </div>
                   <div className="bg-muted rounded-lg px-4 py-3">
                     <div className="flex gap-1">
-                      <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce [animation-delay:0ms]" />
-                      <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce [animation-delay:150ms]" />
-                      <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce [animation-delay:300ms]" />
+                      <span className="h-2 w-2 animate-bounce rounded-full bg-foreground-tertiary [animation-delay:0ms]" />
+                      <span className="h-2 w-2 animate-bounce rounded-full bg-foreground-tertiary [animation-delay:150ms]" />
+                      <span className="h-2 w-2 animate-bounce rounded-full bg-foreground-tertiary [animation-delay:300ms]" />
                     </div>
                   </div>
                 </div>
@@ -228,7 +229,7 @@ export default function FloatingChat({ isLanding = false }: FloatingChatProps) {
                     type="button"
                     key={q}
                     onClick={() => setInput(q)}
-                    className="rounded-full border border-border px-3 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="rounded-sm border border-border px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     {q}
                   </button>
@@ -237,6 +238,8 @@ export default function FloatingChat({ isLanding = false }: FloatingChatProps) {
             )}
 
             {/* Input */}
+            {/* Composição ao pé: campo de 40px com a anatomia do Input e o
+                botão de enviar do mesmo tamanho. */}
             <div className="flex flex-shrink-0 items-center gap-2 border-t border-border bg-card px-3 py-3">
               <label htmlFor="floating-chat-mensagem" className="sr-only">Sua dúvida para a Lia</label>
               <input
@@ -246,14 +249,14 @@ export default function FloatingChat({ isLanding = false }: FloatingChatProps) {
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Digite sua dúvida..."
-                className="flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+                className="h-10 min-w-0 flex-1 rounded-md border border-input bg-card px-3 text-sm text-foreground shadow-sm transition-colors duration-150 placeholder:text-foreground-tertiary hover:border-foreground-tertiary focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:bg-muted disabled:opacity-60"
                 disabled={isLoading}
               />
               <Button
-                size="sm"
+                size="icon"
                 onClick={handleSend}
                 disabled={!input.trim() || isLoading}
-                className="h-9 w-9 flex-shrink-0 rounded-full p-0"
+                className="flex-shrink-0"
                 aria-label="Enviar a mensagem"
               >
                 {isLoading

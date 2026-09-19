@@ -87,7 +87,7 @@ export default function MunicipiosByUFSelect({
         </p>
 
         <div
-          className={`rounded-md border border-border bg-background min-h-[40px] px-2 py-1.5 flex flex-wrap gap-1.5 items-center ${!ufsVazias ? "cursor-pointer" : ""}`}
+          className={`flex min-h-10 flex-wrap items-center gap-1.5 rounded-md border border-input px-2 py-1.5 shadow-sm transition-colors duration-150 ${!ufsVazias ? "cursor-pointer bg-card hover:border-foreground-tertiary" : "bg-muted"}`}
           onClick={() => { if (!ufsVazias) setOpen((o) => !o); }}
         >
           {selecionados.length === 0 ? (
@@ -100,15 +100,16 @@ export default function MunicipiosByUFSelect({
             selecionados.map((v) => (
               <span
                 key={v}
-                className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-foreground"
+                className="inline-flex items-center gap-1 rounded-sm border border-border bg-muted px-2 py-0.5 text-xs font-semibold text-foreground"
               >
                 {v}
                 <button
                   onClick={(e) => { e.stopPropagation(); onToggle(v); }}
-                  className="rounded-sm hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="rounded-sm hover:text-destructive-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   type="button"
+                  aria-label={`Remover ${v}`}
                 >
-                  <X className="w-3 h-3" />
+                  <X className="h-3 w-3" aria-hidden="true" />
                 </button>
               </span>
             ))
@@ -119,7 +120,7 @@ export default function MunicipiosByUFSelect({
                 variant="ghost"
                 size="sm"
                 onClick={(e) => { e.stopPropagation(); onClear(); }}
-                className="h-8 px-2 text-xs text-muted-foreground hover:text-destructive"
+                className="h-8 px-2 text-xs text-muted-foreground hover:text-destructive-ink"
                 type="button"
               >
                 Excluir
@@ -131,12 +132,13 @@ export default function MunicipiosByUFSelect({
               onClick={(e) => { e.stopPropagation(); if (!ufsVazias) setOpen((o) => !o); }}
               disabled={ufsVazias}
               type="button"
+              aria-expanded={open}
               className="h-8 px-2 text-xs"
             >
               {open ? (
-                <ChevronUp className="w-3 h-3 mr-1" />
+                <ChevronUp aria-hidden="true" />
               ) : (
-                <ChevronDown className="w-3 h-3 mr-1" />
+                <ChevronDown aria-hidden="true" />
               )}
               Selecionar
             </Button>
@@ -146,7 +148,7 @@ export default function MunicipiosByUFSelect({
         {open && !ufsVazias && (
           <div className="rounded-md border border-border bg-card p-3 space-y-2">
             <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
               <Input
                 placeholder="Buscar município…"
                 value={busca}
@@ -156,13 +158,13 @@ export default function MunicipiosByUFSelect({
             </div>
 
             {carregando && (
-              <div className="flex items-center justify-center py-6 text-muted-foreground text-xs gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" />
+              <div className="flex items-center justify-center gap-2 py-6 text-xs text-muted-foreground" role="status">
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
                 Carregando municípios do IBGE…
               </div>
             )}
             {erro && (
-              <p className="text-xs text-destructive">{erro}</p>
+              <p className="text-sm text-destructive-ink" role="alert">{erro}</p>
             )}
 
             {!carregando && !erro && (

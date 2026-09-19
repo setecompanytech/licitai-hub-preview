@@ -195,12 +195,12 @@ export default function LembreteDeConvocacao() {
           <div
             key={c.id}
             className={cn(
-              'animate-fade-in rounded-xl border border-border border-l-[3px] bg-card px-3.5 py-3 shadow-md',
+              'animate-fade-in rounded-lg border border-border border-l-[3px] bg-card px-3.5 py-3 shadow-md',
               caixa,
             )}
           >
             <div className="flex items-start gap-2.5">
-              <Icone className={cn('mt-0.5 h-4 w-4 shrink-0', texto)} />
+              <Icone className={cn('mt-0.5 h-4 w-4 shrink-0', texto)} aria-hidden="true" />
               <div className="min-w-0 flex-1">
                 <p className={cn('text-xs font-semibold', texto)}>{rotulo}</p>
                 {c.edital && (
@@ -211,16 +211,16 @@ export default function LembreteDeConvocacao() {
                   onClick={() => abrir(c)}
                   className="mt-1.5 inline-flex items-center gap-1 rounded-sm text-xs font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  Analisar no Mural &amp; Chat <ArrowRight className="h-3 w-3" />
+                  Analisar no Mural &amp; Chat <ArrowRight className="h-3 w-3" aria-hidden="true" />
                 </button>
               </div>
               <button
                 onClick={() => marcarVisto(c.id)}
                 title="Dispensar este chamado"
                 aria-label="Dispensar este chamado"
-                className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <X className="h-3.5 w-3.5" />
+                <X className="h-3.5 w-3.5" aria-hidden="true" />
               </button>
             </div>
           </div>

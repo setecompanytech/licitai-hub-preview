@@ -199,7 +199,7 @@ export default function PreferenciasAlertas() {
 
           {/* ── Aba: Segmentos & UFs ───────────────────────────────────── */}
           <TabsContent value="segmentos" className="space-y-4">
-            <Card className="space-y-4 p-6">
+            <Card className="space-y-4 p-5">
               <div>
                 <h2 className="text-lg font-semibold text-foreground">Quais licitações você quer monitorar?</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
@@ -231,7 +231,7 @@ export default function PreferenciasAlertas() {
                         type="button"
                         onClick={() => toggleSeg(cod)}
                         aria-label={`Remover ${s?.nome || cod}`}
-                        className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        className="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                       >
                         <Badge variant="muted" className="gap-1">
                           {s?.nome || cod}
@@ -288,7 +288,7 @@ export default function PreferenciasAlertas() {
               )}
             </Card>
 
-            <Card className="space-y-4 p-6">
+            <Card className="space-y-4 p-5">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
                   <MapPin className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
@@ -337,7 +337,7 @@ export default function PreferenciasAlertas() {
 
           {/* ── Aba: CNPJ & Empresa ────────────────────────────────────── */}
           <TabsContent value="empresa" className="space-y-4">
-            <Card className="space-y-4 p-6">
+            <Card className="space-y-4 p-5">
               <div>
                 <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
                   <Building2 className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
@@ -362,7 +362,7 @@ export default function PreferenciasAlertas() {
                     <Button
                       variant="outline"
                       size="icon"
-                      className="h-11 w-11 shrink-0"
+                      className="shrink-0"
                       aria-label="Buscar razão social pelo CNPJ"
                       onClick={buscarCnpj}
                       disabled={buscandoCnpj}
@@ -385,7 +385,7 @@ export default function PreferenciasAlertas() {
               <div className="space-y-3 pt-2">
                 <h3 className="text-base font-semibold text-foreground">Monitoramento no Diário Oficial</h3>
                 {MONITORAMENTOS.map(item => (
-                  <div key={item.key} className="flex items-center justify-between gap-4 rounded-md border border-border bg-muted p-3">
+                  <div key={item.key} className="flex items-center justify-between gap-4 rounded-md border border-border bg-secondary p-3">
                     <div className="min-w-0">
                       <Label htmlFor={`mon-${item.key}`} className="text-sm font-medium">{item.label}</Label>
                       <p className="mt-0.5 text-xs text-muted-foreground">{item.desc}</p>
@@ -403,11 +403,11 @@ export default function PreferenciasAlertas() {
 
           {/* ── Aba: Canais ────────────────────────────────────────────── */}
           <TabsContent value="canais" className="space-y-4">
-            <Card className="space-y-4 p-6">
+            <Card className="space-y-4 p-5">
               <h2 className="text-lg font-semibold text-foreground">Como prefere receber os avisos?</h2>
 
               <div className="space-y-3">
-                <div className="space-y-3 rounded-md border border-border bg-muted p-3">
+                <div className="space-y-3 rounded-md border border-border bg-secondary p-3">
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-2">
                       <Mail className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
@@ -429,10 +429,10 @@ export default function PreferenciasAlertas() {
                   )}
                 </div>
 
-                <div className="space-y-3 rounded-md border border-border bg-muted p-3">
+                <div className="space-y-3 rounded-md border border-border bg-secondary p-3">
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-2">
-                      <MessageCircle className="h-4 w-4 text-success" aria-hidden="true" />
+                      <MessageCircle className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                       <Label htmlFor="canal-whatsapp" className="text-sm font-medium">WhatsApp</Label>
                     </div>
                     <Switch id="canal-whatsapp" checked={form.canal_whatsapp} onCheckedChange={v => setForm(f => ({ ...f, canal_whatsapp: v }))} />
@@ -457,7 +457,7 @@ export default function PreferenciasAlertas() {
                   )}
                 </div>
 
-                <div className="flex items-center justify-between gap-4 rounded-md border border-border bg-muted p-3">
+                <div className="flex items-center justify-between gap-4 rounded-md border border-border bg-secondary p-3">
                   <div className="flex items-center gap-2">
                     <Bell className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                     <Label htmlFor="canal-push" className="text-sm font-medium">Notificações no sistema</Label>

@@ -3,7 +3,9 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Send, Loader2, MapPin, ShoppingBag, X, ChevronDown, Sparkles } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import SeloPraefectusIA from '@/components/shared/SeloPraefectusIA';
+import { Send, Loader2, MapPin, ShoppingBag, X, ChevronDown, Sparkles, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -195,16 +197,18 @@ export default function BoletimConfig() {
 
   return (
     <div className="space-y-4">
-      {/* Boletim IA — destaque Fase 2 */}
-      <Card className="border-border bg-primary-tint p-6">
+      {/* Boletim IA — superfície da IA na tinta verde, selo Praefectus IA e o
+          Sparkles em teal (Design System v3, §5 "IA"). */}
+      <Card className="border-primary-line bg-primary-tint p-5">
         <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-card text-primary">
-            <Sparkles className="w-5 h-5" aria-hidden="true" />
+          <div aria-hidden="true" className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-md border border-primary-line bg-card text-teal">
+            <Sparkles className="h-5 w-5" />
           </div>
-          <div className="flex-1 min-w-0">
-            <h2 className="flex items-center gap-2 text-lg font-semibold">
+          <div className="min-w-0 flex-1">
+            <h2 className="flex flex-wrap items-center gap-2 text-lg font-semibold leading-6 text-foreground">
               Boletim Inteligente AURÉLIA
-              <Badge variant="secondary" className="text-xs uppercase">Novo</Badge>
+              <SeloPraefectusIA />
+              <Badge variant="secondary">Novo</Badge>
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
               Resumo personalizado gerado por IA das oportunidades das últimas 24h, com score de
@@ -216,9 +220,9 @@ export default function BoletimConfig() {
               onClick={enviarBoletimIA}
             >
               {sending === 'ia' ? (
-                <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> Analisando…</>
+                <><Loader2 className="animate-spin" aria-hidden="true" /> Analisando…</>
               ) : (
-                <><Sparkles className="w-3.5 h-3.5 mr-1.5" /> Testar agora</>
+                <><Sparkles aria-hidden="true" /> Testar agora</>
               )}
             </Button>
           </div>
@@ -226,8 +230,8 @@ export default function BoletimConfig() {
       </Card>
 
       {/* Horários de envio */}
-      <Card className="space-y-4 p-6">
-        <h2 className="text-lg font-semibold">Horários de envio</h2>
+      <Card className="space-y-4 p-5">
+        <h2 className="text-lg font-semibold leading-6 text-foreground">Horários de envio</h2>
         <p className="text-sm text-muted-foreground">
           Configure quais boletins deseja receber no e-mail <strong>{user?.email}</strong>
         </p>
@@ -239,7 +243,7 @@ export default function BoletimConfig() {
             { key: 'boletim_tarde' as const, label: 'Boletim da Tarde (17:00)', desc: 'Resultados e homologações do dia', tipo: 'tarde' as const },
             { key: 'notificacao_push' as const, label: 'Notificações Push', desc: 'Alertas em tempo real no navegador', tipo: null },
           ].map((item) => (
-            <div key={item.key} className="flex flex-wrap items-center justify-between gap-3 rounded-md bg-muted p-3">
+            <div key={item.key} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-secondary p-3">
               <div className="flex-1">
                 <p className="text-sm font-medium text-foreground">{item.label}</p>
                 <p className="text-xs text-muted-foreground">{item.desc}</p>
@@ -249,16 +253,15 @@ export default function BoletimConfig() {
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="text-xs h-7 px-2"
                     disabled={sending !== null}
                     onClick={() => enviarTeste(item.tipo!)}
                   >
                     {sending === item.tipo ? (
-                      <Loader2 className="w-3 h-3 animate-spin" />
+                      <Loader2 className="animate-spin" aria-hidden="true" />
                     ) : (
-                      <Send className="w-3 h-3" />
+                      <Send aria-hidden="true" />
                     )}
-                    <span className="ml-1">Teste</span>
+                    <span>Teste</span>
                   </Button>
                 )}
                 <Switch
@@ -272,19 +275,19 @@ export default function BoletimConfig() {
       </Card>
 
       {/* Segmentos de Interesse */}
-      <Card className="space-y-4 p-6">
+      <Card className="space-y-4 p-5">
         <Collapsible open={segmentosOpen} onOpenChange={setSegmentosOpen}>
-          <CollapsibleTrigger className="flex items-center justify-between w-full">
-            <div className="flex items-center gap-2">
-              <ShoppingBag className="w-4 h-4 text-primary" aria-hidden="true" />
-              <h2 className="text-lg font-semibold">Segmentos de interesse</h2>
+          <CollapsibleTrigger className="flex w-full items-center justify-between gap-3 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <div className="flex flex-wrap items-center gap-2">
+              <ShoppingBag className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+              <h2 className="text-lg font-semibold leading-6 text-foreground">Segmentos de interesse</h2>
               {config.segmentos.length > 0 && (
-                <Badge variant="secondary" className="text-xs">
+                <Badge variant="secondary" className="tabular-nums">
                   {config.segmentos.length} selecionado(s)
                 </Badge>
               )}
             </div>
-            <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${segmentosOpen ? 'rotate-180' : ''}`} />
+            <ChevronDown aria-hidden="true" className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${segmentosOpen ? 'rotate-180' : ''}`} />
           </CollapsibleTrigger>
           <p className="mt-1 text-sm text-muted-foreground">
             Selecione os segmentos para receber apenas licitações relevantes ao seu negócio
@@ -297,12 +300,12 @@ export default function BoletimConfig() {
                   return (
                     <Badge
                       key={id}
-                      variant="secondary"
-                      className="text-xs pr-1 cursor-pointer hover:bg-destructive/10"
+                      variant="muted"
+                      className="cursor-pointer gap-1 pr-1 transition-colors hover:border-destructive-line hover:bg-destructive-tint hover:text-destructive-ink"
                       onClick={() => toggleSegmento(id)}
                     >
                       {seg?.label || id}
-                      <X className="w-3 h-3 ml-1" />
+                      <X className="h-3 w-3" aria-hidden="true" />
                     </Badge>
                   );
                 })}
@@ -312,7 +315,7 @@ export default function BoletimConfig() {
               {SEGMENTOS_DISPONIVEIS.map(seg => (
                 <label
                   key={seg.id}
-                  className={`flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-colors ${
+                  className={`flex cursor-pointer items-start gap-3 rounded-md border p-3 transition-colors duration-150 ${
                     config.segmentos.includes(seg.id)
                       ? 'border-primary bg-primary-tint'
                       : 'border-border hover:bg-muted'
@@ -324,35 +327,38 @@ export default function BoletimConfig() {
                     className="mt-0.5"
                   />
                   <div className="min-w-0">
-                    <p className="text-sm font-medium leading-tight text-foreground">{seg.label}</p>
-                    <p className="text-xs text-muted-foreground leading-tight mt-0.5">{seg.desc}</p>
+                    <p className="text-sm font-medium leading-5 text-foreground">{seg.label}</p>
+                    <p className="mt-0.5 text-xs leading-4 text-muted-foreground">{seg.desc}</p>
                   </div>
                 </label>
               ))}
             </div>
             {config.segmentos.length === 0 && (
-              <p className="mt-2 text-sm text-warning-ink">
-                ⚠️ Nenhum segmento selecionado — você receberá todos os avisos sem filtro de segmento.
-              </p>
+              <Alert variant="warning" className="mt-3">
+                <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+                <AlertDescription>
+                  Nenhum segmento selecionado — você receberá todos os avisos sem filtro de segmento.
+                </AlertDescription>
+              </Alert>
             )}
           </CollapsibleContent>
         </Collapsible>
       </Card>
 
       {/* UFs de Interesse */}
-      <Card className="space-y-4 p-6">
+      <Card className="space-y-4 p-5">
         <Collapsible open={ufsOpen} onOpenChange={setUfsOpen}>
-          <CollapsibleTrigger className="flex items-center justify-between w-full">
-            <div className="flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-primary" aria-hidden="true" />
-              <h2 className="text-lg font-semibold">Estados de interesse</h2>
+          <CollapsibleTrigger className="flex w-full items-center justify-between gap-3 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <div className="flex flex-wrap items-center gap-2">
+              <MapPin className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+              <h2 className="text-lg font-semibold leading-6 text-foreground">Estados de interesse</h2>
               {config.ufs_interesse.length > 0 && (
-                <Badge variant="secondary" className="text-xs">
+                <Badge variant="secondary" className="tabular-nums">
                   {config.ufs_interesse.length} UF(s)
                 </Badge>
               )}
             </div>
-            <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${ufsOpen ? 'rotate-180' : ''}`} />
+            <ChevronDown aria-hidden="true" className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${ufsOpen ? 'rotate-180' : ''}`} />
           </CollapsibleTrigger>
           <p className="mt-1 text-sm text-muted-foreground">
             Selecione os estados onde deseja competir em licitações
@@ -363,12 +369,12 @@ export default function BoletimConfig() {
                 {config.ufs_interesse.map(uf => (
                   <Badge
                     key={uf}
-                    variant="secondary"
-                    className="text-xs pr-1 cursor-pointer hover:bg-destructive/10"
+                    variant="muted"
+                    className="cursor-pointer gap-1 pr-1 transition-colors hover:border-destructive-line hover:bg-destructive-tint hover:text-destructive-ink"
                     onClick={() => toggleUf(uf)}
                   >
                     {uf}
-                    <X className="w-3 h-3 ml-1" />
+                    <X className="h-3 w-3" aria-hidden="true" />
                   </Badge>
                 ))}
               </div>
@@ -389,23 +395,26 @@ export default function BoletimConfig() {
               ))}
             </div>
             {config.ufs_interesse.length === 0 && (
-              <p className="mt-2 text-sm text-warning-ink">
-                ⚠️ Nenhuma UF selecionada — você receberá avisos de todos os estados.
-              </p>
+              <Alert variant="warning" className="mt-3">
+                <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+                <AlertDescription>
+                  Nenhuma UF selecionada — você receberá avisos de todos os estados.
+                </AlertDescription>
+              </Alert>
             )}
           </CollapsibleContent>
         </Collapsible>
       </Card>
 
       {/* Filtragem Inteligente */}
-      <Card className="space-y-4 p-6">
-        <h2 className="text-lg font-semibold">Filtragem inteligente</h2>
+      <Card className="space-y-4 p-5">
+        <h2 className="text-lg font-semibold leading-6 text-foreground">Filtragem inteligente</h2>
         <p className="text-sm text-muted-foreground">
           Configurações de filtragem automática baseadas nos dados da sua empresa
         </p>
 
         <div className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-md bg-muted p-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-secondary p-3">
             <div className="flex-1">
               <p className="text-sm font-medium text-foreground">Filtrar alterações por CNPJ</p>
               <p className="text-xs text-muted-foreground">
@@ -419,7 +428,7 @@ export default function BoletimConfig() {
             />
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-md bg-muted p-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-secondary p-3">
             <div className="flex-1">
               <p className="text-sm font-medium text-foreground">Resultados por participação</p>
               <p className="text-xs text-muted-foreground">
@@ -435,14 +444,16 @@ export default function BoletimConfig() {
         </div>
       </Card>
 
-      <Button
-        className="w-full"
-        onClick={saveConfig}
-        disabled={saving}
-      >
-        {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-        Salvar Configuração
-      </Button>
+      {/* Rodapé de ações alinhado à direita, como no formulário do Design System. */}
+      <div className="flex justify-end">
+        <Button
+          onClick={saveConfig}
+          disabled={saving}
+        >
+          {saving ? <Loader2 className="animate-spin" aria-hidden="true" /> : null}
+          Salvar Configuração
+        </Button>
+      </div>
     </div>
   );
 }

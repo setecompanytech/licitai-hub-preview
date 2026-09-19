@@ -5,11 +5,11 @@ import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import EstadoVazio from '@/components/shared/EstadoVazio';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  MessageSquare, Volume2, VolumeX, Megaphone, Info, AlertTriangle, Loader2,
+  MessageSquare, Volume2, VolumeX, Megaphone, Info, AlertTriangle,
 } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import LicitacaoChat from '@/components/licitacoes/LicitacaoChat';
@@ -138,7 +138,7 @@ export default function MonitoramentoChat() {
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="h-11 w-11 flex-shrink-0"
+                className="flex-shrink-0"
                 onClick={alternarMudo}
                 title={somLigado ? 'Silenciar alertas' : 'Reativar o som'}
                 aria-label={somLigado ? 'Silenciar alertas' : 'Reativar o som'}
@@ -185,14 +185,14 @@ export default function MonitoramentoChat() {
           <TabsList>
             {licitacaoId && (
               <TabsTrigger value="processo">
-                <MessageSquare className="w-4 h-4 mr-2" aria-hidden="true" /> Mural do Processo
+                <MessageSquare className="h-4 w-4" aria-hidden="true" /> Mural do Processo
               </TabsTrigger>
             )}
             <TabsTrigger value="chat">
-              <MessageSquare className="w-4 h-4 mr-2" aria-hidden="true" /> Chat do Pregoeiro
+              <MessageSquare className="h-4 w-4" aria-hidden="true" /> Chat do Pregoeiro
             </TabsTrigger>
             <TabsTrigger value="mural">
-              <Megaphone className="w-4 h-4 mr-2" aria-hidden="true" /> Publicações do Portal
+              <Megaphone className="h-4 w-4" aria-hidden="true" /> Publicações do Portal
             </TabsTrigger>
           </TabsList>
         </CabecalhoPagina>
@@ -237,21 +237,34 @@ export default function MonitoramentoChat() {
                 descreveu: "dispara um alerta toda vez que a empresa é
                 convocada". */}
             {loadingMensagens && mensagens.length === 0 ? (
-              <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
-                <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-                Carregando as mensagens dos pregoeiros
+              /* Esqueleto na forma dos balões que vêm a seguir, na largura de leitura. */
+              <div className="max-w-3xl space-y-3" role="status">
+                <span className="sr-only">Carregando as mensagens dos pregoeiros</span>
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="space-y-2 rounded-lg border border-border bg-muted px-4 py-3">
+                    <div className="flex justify-between gap-2">
+                      <Skeleton className="h-5 w-32 rounded-sm" />
+                      <Skeleton className="h-4 w-28" />
+                    </div>
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-2/3" />
+                  </div>
+                ))}
               </div>
             ) : mensagens.length > 0 ? (
-              <div className="space-y-3">
-                <h2 className="text-lg font-semibold text-foreground">
+              /* Fio de mensagens na largura de leitura: a fala do pregoeiro é
+                 o "outro lado" da conversa, em `bg-muted`; a que pede ação
+                 sobe para o trio de alerta. */
+              <div className="max-w-3xl space-y-3">
+                <h2 className="text-lg font-semibold leading-6 text-foreground">
                   Últimas mensagens dos pregoeiros
                 </h2>
                 {mensagens.slice(0, 10).map((msg) => {
                   const pedeAcao = msg.metadata?.requer_acao === true;
                   return (
-                    <Card
+                    <div
                       key={msg.id}
-                      className={`p-4 ${pedeAcao ? 'border-warning-line bg-warning-tint' : ''}`}
+                      className={`rounded-lg border px-4 py-3 ${pedeAcao ? 'border-warning-line bg-warning-tint' : 'border-border bg-muted'}`}
                     >
                       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                         <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -269,26 +282,28 @@ export default function MonitoramentoChat() {
                           {new Date(msg.created_at).toLocaleString('pt-BR')}
                         </span>
                       </div>
-                      <p className="text-sm text-foreground line-clamp-3">{msg.conteudo}</p>
+                      <p className="line-clamp-3 text-sm text-foreground">{msg.conteudo}</p>
                       <Link
                         to={`/processo/${msg.licitacao_id}`}
-                        className="mt-2 inline-block text-sm font-medium text-primary hover:underline"
+                        className="mt-2 inline-block rounded-sm text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
                         Abrir o processo →
                       </Link>
-                    </Card>
+                    </div>
                   );
                 })}
               </div>
             ) : (
-              <EstadoVazio
-                icone={<MessageSquare aria-hidden="true" />}
-                titulo="Nenhuma mensagem de pregoeiro registrada"
-                /* A frase honesta: hoje a lista fica vazia porque nenhum portal
-                   implementado sabe ler a sala. Prometer "aparecerão quando você
-                   monitorar" seria repetir o defeito que esta tela tinha. */
-                descricao="As falas do pregoeiro aparecem aqui quando o robô estiver numa sala de disputa ao vivo. Fora da sessão pública, os portais não expõem o chat."
-              />
+              <div className="rounded-lg border border-border bg-card shadow-sm">
+                <EstadoVazio
+                  icone={<MessageSquare aria-hidden="true" />}
+                  titulo="Nenhuma mensagem de pregoeiro registrada"
+                  /* A frase honesta: hoje a lista fica vazia porque nenhum portal
+                     implementado sabe ler a sala. Prometer "aparecerão quando você
+                     monitorar" seria repetir o defeito que esta tela tinha. */
+                  descricao="As falas do pregoeiro aparecem aqui quando o robô estiver numa sala de disputa ao vivo. Fora da sessão pública, os portais não expõem o chat."
+                />
+              </div>
             )}
           </div>
         </TabsContent>
@@ -305,11 +320,13 @@ export default function MonitoramentoChat() {
               </AlertDescription>
             </Alert>
 
-            <EstadoVazio
-              icone={<Megaphone aria-hidden="true" />}
-              titulo="Nenhuma publicação do portal"
-              descricao="Avisos, esclarecimentos e retificações aparecerão aqui quando detectados nos portais dos processos que você acompanha."
-            />
+            <div className="rounded-lg border border-border bg-card shadow-sm">
+              <EstadoVazio
+                icone={<Megaphone aria-hidden="true" />}
+                titulo="Nenhuma publicação do portal"
+                descricao="Avisos, esclarecimentos e retificações aparecerão aqui quando detectados nos portais dos processos que você acompanha."
+              />
+            </div>
           </div>
         </TabsContent>
       </Tabs>
