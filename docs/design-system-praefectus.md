@@ -16,7 +16,7 @@ exclusivamente na camada de apresentação. Este manual é o que qualquer pessoa
 | Filtros | `BarraFiltros` |
 | Estados | `SeloSituacao` · `Badge` (variantes `success/info/warning/danger/muted/ia`) · `StatusBadge` |
 | IA | `SeloPraefectusIA` (Badge `ia` + `Sparkles` em teal) |
-| Vazio / espera | `EstadoVazio` (`preencher` ocupa a altura do contêiner) · `Skeleton` / `SkeletonCorpo` |
+| Vazio / espera | `EstadoVazio` (`preencher` ocupa a altura do contêiner) · `Skeleton` / `SkeletonCorpo` (página) / `SkeletonTabela` (linhas de 48px com cabeçalho) |
 
 ---
 
@@ -155,6 +155,11 @@ campos em grade `grid gap-4 sm:grid-cols-2`, seções agrupadas por assunto com
 `tamanho="compacto"` dentro de cartão, `preencher` quando o contêiner tem altura
 (painel de prévia, coluna, aba fixa).
 **Espera:** `Skeleton` na forma do conteúdo; nunca spinner grande no centro.
+Tabela ou lista que ainda vai chegar: `<SkeletonTabela linhas={5} colunas={4}
+rotulo="Carregando lançamentos" />` (`shared/`) — o texto de espera antigo vai
+no `rotulo`, lido pelo leitor de tela. Dentro de `TableBody`, o vazio é
+`<TableRow className="hover:bg-transparent"><TableCell colSpan={n} className="p-0">
+<EstadoVazio tamanho="compacto" … /></TableCell></TableRow>`.
 
 **IA:** selo `Praefectus IA` = `<SeloPraefectusIA />` (`shared/`), que é um
 `<Badge variant="ia">` (tinta verde discreta) com
