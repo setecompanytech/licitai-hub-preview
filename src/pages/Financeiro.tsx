@@ -35,8 +35,8 @@ import FinRelatorios from "@/components/financeiro/FinRelatorios";
 import FinTransferencia from "@/components/financeiro/FinTransferencia";
 import FinBaixaLote from "@/components/financeiro/FinBaixaLote";
 import FinImportarPlanilha from "@/components/financeiro/FinImportarPlanilha";
-import FinImportarOMIE from "@/components/financeiro/FinImportarOMIE";
-import FinExportarOMIE from "@/components/financeiro/FinExportarOMIE";
+import FinImportarPlanilhaXlsx from "@/components/financeiro/FinImportarPlanilhaXlsx";
+import FinExportarPlanilhaXlsx from "@/components/financeiro/FinExportarPlanilhaXlsx";
 import FinImportarOFX from "@/components/financeiro/FinImportarOFX";
 import FinCNAB from "@/components/financeiro/FinCNAB";
 import FinPrevistoRealizado from "@/components/financeiro/FinPrevistoRealizado";
@@ -47,7 +47,7 @@ import FinCalculadoraMargem from "@/components/financeiro/FinCalculadoraMargem";
 import FinCommandPalette from "@/components/financeiro/FinCommandPalette";
 import FinOpenFinance from "@/components/financeiro/FinOpenFinance";
 import FinDemonstracoes from "@/components/financeiro/FinDemonstracoes";
-import FinQuadroOmie from "@/components/financeiro/FinQuadroOmie";
+import FinQuadroFinanceiro from "@/components/financeiro/FinQuadroFinanceiro";
 import FinAtividadeUsuarios from "@/components/financeiro/FinAtividadeUsuarios";
 import FinConfigNFe from "@/components/financeiro/FinConfigNFe";
 import FinPixCobranca from "@/components/financeiro/FinPixCobranca";
@@ -88,10 +88,9 @@ const VIEW_MAP: Record<string, () => JSX.Element> = {
   relatorios: () => <FinRelatorios />,
   transferencia: () => <FinTransferencia />,
   baixa_lote: () => <FinBaixaLote />,
-  importar_planilha: () => <FinImportarOMIE />,
+  importar_planilha: () => <FinImportarPlanilhaXlsx />,
   importar_planilha_csv: () => <FinImportarPlanilha />,
-  importar_omie: () => <FinImportarOMIE />,
-  exportar_omie: () => <FinExportarOMIE />,
+  exportar_planilha: () => <FinExportarPlanilhaXlsx />,
   importar_ofx: () => <FinImportarOFX />,
   cnab: () => <FinCNAB />,
   previsto_realizado: () => <FinPrevistoRealizado />,
@@ -102,7 +101,7 @@ const VIEW_MAP: Record<string, () => JSX.Element> = {
   calc_margem: () => <FinCalculadoraMargem />,
   open_finance: () => <FinOpenFinance />,
   demonstracoes: () => <FinDemonstracoes />,
-  quadro_omie: () => <FinQuadroOmie />,
+  quadro_financeiro: () => <FinQuadroFinanceiro />,
   atividade_usuarios: () => <FinAtividadeUsuarios />,
   config_nfe: () => <FinConfigNFe />,
   pix_cobranca: () => <FinPixCobranca />,
@@ -128,7 +127,6 @@ const COMING_SOON: Record<string, { title: string; description: string }> = {
 const VIEW_ALIAS: Record<string, string> = {
   resumo: "panorama",
   dashboard: "panorama",
-  importar_omie: "importar_planilha",
 };
 
 type CabecalhoSubtela = Pick<HubItem, "label" | "description" | "icon">;
@@ -139,9 +137,9 @@ const SUBTELAS_SEM_CARTAO: Record<string, CabecalhoSubtela> = {
     description: "Importação em massa de lançamentos a partir de um arquivo CSV.",
     icon: FileSpreadsheet,
   },
-  exportar_omie: {
-    label: "Exportar para OMIE",
-    description: "Gera o arquivo de lançamentos no formato aceito pela OMIE.",
+  exportar_planilha: {
+    label: "Exportar planilha (.xlsx)",
+    description: "Gera o arquivo de lançamentos no formato do modelo de importação (.xlsx).",
     icon: FileUp,
   },
 };

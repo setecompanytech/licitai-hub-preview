@@ -16,8 +16,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { readExcelAsArrays, writeExcelFile } from "@/lib/excel-utils";
 
 /* ---------------------------------------------------------------------------
- * IMPORTADOR OMIE — Pessoas, Contas a Pagar e Contas a Receber
- * Suporta planilhas .xlsx no padrão OMIE (~40 colunas) com mapeamento
+ * IMPORTADOR DE PLANILHA (.xlsx) — Pessoas, Contas a Pagar e Contas a Receber
+ * Suporta planilhas .xlsx no modelo de ~40 colunas dos ERPs de mercado com mapeamento
  * automático por similaridade de cabeçalho + ajuste manual coluna→campo.
  * --------------------------------------------------------------------------*/
 
@@ -27,11 +27,11 @@ interface CampoDef {
   key: string;
   label: string;
   required?: boolean;
-  aliases: string[]; // termos comuns usados em planilhas OMIE
+  aliases: string[]; // termos comuns usados nas planilhas exportadas por ERPs
   type?: "text" | "number" | "date" | "doc" | "uf" | "email" | "tipo_pessoa";
 }
 
-/* ---------- Schemas (campos esperados x cabeçalhos OMIE) ----------------- */
+/* ---------- Schemas (campos esperados x cabeçalhos da planilha) ----------------- */
 
 const SCHEMA_PESSOAS: CampoDef[] = [
   { key: "tipo", label: "Tipo (cliente/fornecedor)", aliases: ["tipo", "tipo cadastro", "categoria"], type: "tipo_pessoa" },
@@ -164,7 +164,7 @@ function asString(v: any): string {
 
 /* ---------- Componente ----------------------------------------------------- */
 
-export default function FinImportarOMIE() {
+export default function FinImportarPlanilhaXlsx() {
   const empresaId = useEmpresaId();
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -247,7 +247,7 @@ export default function FinImportarOMIE() {
     if (headers.length) setMapping(autoMatch(headers, SCHEMAS[e]));
   }
 
-  /* --------- Modelo OMIE para download --------- */
+  /* --------- Modelo para download --------- */
   async function baixarModelo() {
     const data = [
       schema.map((c) => c.label),
@@ -263,7 +263,7 @@ export default function FinImportarOMIE() {
       }),
     ];
     const widths = schema.map((c) => Math.max(14, c.label.length + 2));
-    await writeExcelFile(`modelo_omie_${entidade}.xlsx`, [
+    await writeExcelFile(`modelo_praefectus_${entidade}.xlsx`, [
       { name: entidade.toUpperCase(), data, colWidths: widths },
     ]);
   }
@@ -354,8 +354,8 @@ export default function FinImportarOMIE() {
       .insert({
         empresa_id: empresaId!,
         origem_tipo: "importacao_csv",
-        job: "FinImportarOMIE",
-        descricao: `Importação OMIE (${entidade}) — ${validas.length} linha(s)`,
+        job: "FinImportarPlanilhaXlsx",
+        descricao: `Importação de planilha (${entidade}) — ${validas.length} linha(s)`,
         usuario_id: usuarioId,
         total_registros: validas.length,
         total_valor: totalValor,
@@ -383,10 +383,13 @@ export default function FinImportarOMIE() {
       valor_multa: d.valor_multa || null,
       valor_desconto: d.valor_desconto || null,
       observacoes: d.observacoes || null,
-      origem: "importacao_omie",
+      // `origem` é o enum financeiro_origem_movimento (manual, ofx, pluggy…):
+      // o valor de antes não existia nele e o INSERT falhava no banco em toda
+      // importação (19/09). Quem diz "veio de planilha" é o `origem_tipo`.
+      origem: "manual",
       origem_tipo: "importacao_csv",
       origem_lote_id: lote.id,
-      origem_job: "FinImportarOMIE",
+      origem_job: "FinImportarPlanilhaXlsx",
       origem_usuario_id: usuarioId,
       origem_timestamp: nowIso,
       origem_metadata: { entidade },
@@ -415,7 +418,7 @@ export default function FinImportarOMIE() {
         <CardHeader>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <CardTitle className="flex items-center gap-2">
-              <FileSpreadsheet className="w-5 h-5 text-muted-foreground" aria-hidden="true" /> Importar planilha OMIE (.xlsx)
+              <FileSpreadsheet className="w-5 h-5 text-muted-foreground" aria-hidden="true" /> Importar planilha (.xlsx)
             </CardTitle>
             <Tabs value={entidade} onValueChange={handleEntidadeChange}>
               <TabsList>
@@ -431,29 +434,29 @@ export default function FinImportarOMIE() {
             <Sparkles className="w-4 h-4" aria-hidden="true" />
             <AlertDescription className="space-y-3">
               <p className="font-semibold">
-                Mapeamento inteligente — reconhece automaticamente as ~40 colunas do padrão OMIE.
+                Mapeamento inteligente — reconhece automaticamente as ~40 colunas do modelo padrão de exportação dos ERPs de mercado.
               </p>
               <ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
-                <li>Aceita planilhas exportadas do OMIE sem alterações</li>
+                <li>Aceita planilhas exportadas de outros sistemas sem alterações</li>
                 <li>Datas em qualquer formato (ISO, dd/mm/aaaa, serial Excel)</li>
                 <li>CNPJ/CPF com ou sem máscara — vínculo automático com pessoas já cadastradas</li>
                 <li>Você pode revisar e ajustar o mapeamento coluna→campo antes de importar</li>
               </ul>
               <Button variant="outline" size="sm" onClick={baixarModelo}>
-                <Download className="w-4 h-4" aria-hidden="true" /> Baixar modelo OMIE ({entidade})
+                <Download className="w-4 h-4" aria-hidden="true" /> Baixar modelo ({entidade})
               </Button>
             </AlertDescription>
           </Alert>
 
           <label
-            htmlFor="fin-omie-xlsx"
+            htmlFor="fin-planilha-xlsx"
             className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed border-border bg-card p-8 text-center transition-colors hover:border-primary hover:bg-primary-tint has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:focus-visible]:ring-offset-2 has-[:focus-visible]:ring-offset-background"
           >
             <Upload className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
             <span className="text-base font-semibold text-foreground">Selecione o arquivo .xlsx</span>
-            <span className="text-sm text-muted-foreground">Clique aqui para escolher a planilha exportada do OMIE</span>
+            <span className="text-sm text-muted-foreground">Clique aqui para escolher a planilha (.xlsx) exportada do seu sistema anterior</span>
             <input
-              id="fin-omie-xlsx"
+              id="fin-planilha-xlsx"
               ref={fileRef}
               type="file"
               accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"

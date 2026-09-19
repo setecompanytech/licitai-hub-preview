@@ -709,7 +709,7 @@ export default function FinImportarOFX() {
           </>
         )}
 
-        {/* ───────── Diálogo estilo Omie: Adicionar como novo lançamento ───────── */}
+        {/* ───────── Diálogo: Adicionar como novo lançamento ───────── */}
         <Dialog
           open={editIdx !== null}
           onOpenChange={(o) => !o && setEditIdx(null)}

@@ -8,7 +8,7 @@ import { Building2, Package } from 'lucide-react';
 /**
  * /produtos — a rota própria do cadastro de produtos.
  *
- * Esta página era uma cópia integral de `ProdutosOmie.tsx`: as mesmas 7
+ * Esta página era uma cópia integral de `ProdutosDeCompra.tsx`: as mesmas 7
  * subabas com as mesmas strings, o mesmo `defaultForm` de 40 campos, a mesma
  * geração de `PRDnnnnn`, os mesmos diálogos de NCM e CEST. A camada de dados
  * das duas era idêntica; o que diferia era só a moldura. Sobrou a moldura.

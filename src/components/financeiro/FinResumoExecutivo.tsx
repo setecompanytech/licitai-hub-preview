@@ -1,5 +1,5 @@
 /**
- * FinResumoExecutivo — Resumo Executivo de Finanças (modelo Omie 11.9).
+ * FinResumoExecutivo — Resumo Executivo de Finanças.
  *
  * Documento imprimível (one-pager institucional) que consolida:
  *   1) Posição financeira (saldo, a receber, a pagar, posição líquida)

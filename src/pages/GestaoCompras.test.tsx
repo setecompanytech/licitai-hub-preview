@@ -68,11 +68,11 @@ vi.mock('@/hooks/useFinanceiro', () => ({
 
 vi.mock('@/components/financeiro/PessoaFormDialog', () => ({ default: () => null }));
 
-vi.mock('@/components/gestao-compras/ProdutosOmie', () => ({
+vi.mock('@/components/gestao-compras/ProdutosDeCompra', () => ({
   default: () => <div>catálogo de produtos</div>,
 }));
 
-vi.mock('@/components/gestao-compras/PedidosOmie', async () => {
+vi.mock('@/components/gestao-compras/PedidosDeCompra', async () => {
   const { forwardRef, useImperativeHandle } = await import('react');
   return {
     default: forwardRef<{ novoPedido: () => void }>((_p, ref) => {

@@ -140,7 +140,7 @@ correspondente ou registrado como pendência.
 - `ui/sidebar.tsx` (22,8 KB) ficou órfão quando a coluna saiu — voltou a ter dono? **Não**: `AppSidebar.tsx` é próprio. Continua órfão.
 
 **Duplicação**
-- `pages/Produtos.tsx` × `components/gestao-compras/ProdutosOmie.tsx`: clones do mesmo cadastro, servidos por rotas com proteção diferente.
+- `pages/Produtos.tsx` × `components/gestao-compras/ProdutosDeCompra.tsx`: clones do mesmo cadastro, servidos por rotas com proteção diferente.
 - Dois sistemas de pedido de compra: `pedidos`/`pedido_itens` (vivo, no quadro) e `pedidos_compra`/`itens_pedido_compra` (legado inline).
 - Duas fontes de fornecedor: `fornecedores` e `financeiro_pessoas`.
 - Três registros de navegação paralelos: `menu.ts`, `paginas.ts` e a lista interna de `GlobalSearch.tsx` — o terceiro já divergiu.

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
-import ProdutosOmie from '@/components/gestao-compras/ProdutosOmie';
-import PedidosOmie, { type PedidosOmieRef } from '@/components/gestao-compras/PedidosOmie';
+import ProdutosDeCompra from '@/components/gestao-compras/ProdutosDeCompra';
+import PedidosDeCompra, { type PedidosDeCompraRef } from '@/components/gestao-compras/PedidosDeCompra';
 import CertificadoDigital from '@/components/gestao-compras/CertificadoDigital';
 import PessoaFormDialog from '@/components/financeiro/PessoaFormDialog';
 import { usePessoas, useDeletePessoa, type Pessoa } from '@/hooks/useFinanceiro';
@@ -161,7 +161,7 @@ const blankItem = (): FormItem => ({ descricao: '', unidade: 'UN', quantidade: '
 // ═══════════════════════════════════════════════════════════════
 // DOIS SISTEMAS DE PEDIDO CONVIVEM NESTE MÓDULO — leia antes de mexer.
 //
-//  · VIVO — `pedidos` / `pedido_itens`, na aba Pedidos (PedidosOmie). Tem
+//  · VIVO — `pedidos` / `pedido_itens`, na aba Pedidos (PedidosDeCompra). Tem
 //    `tipo: 'venda' | 'compra'`, portanto cobre os dois lados, e é lido por
 //    `FinPedidosAFaturar` (faturamento) e por `ContratoPedidos` (kanban do
 //    contrato). É o sistema que o resto do app enxerga.
@@ -182,8 +182,8 @@ const blankItem = (): FormItem => ({ descricao: '', unidade: 'UN', quantidade: '
 // ═══════════════════════════════════════════════════════════════
 export default function GestaoCompras() {
   // A aba Pedidos tem a sua ação principal no CabecalhoPagina; quem abre o
-  // formulário é o próprio PedidosOmie, por esta referência.
-  const pedidosRef = useRef<PedidosOmieRef>(null);
+  // formulário é o próprio PedidosDeCompra, por esta referência.
+  const pedidosRef = useRef<PedidosDeCompraRef>(null);
   const { user } = useAuth();
   const { empresaAtiva } = useEmpresa();
 
@@ -223,7 +223,7 @@ export default function GestaoCompras() {
   // Subabas dos painéis laterais (composição exigida pelas referências).
   const [abaProduto,      setAbaProduto]      = useState<'movimentacoes' | 'vinculos'>('movimentacoes');
   const [abaNfe,          setAbaNfe]          = useState<'resumo' | 'itens' | 'arquivos' | 'historico'>('resumo');
-  // Pedido novo pedido depois de trocar de aba: PedidosOmie só existe quando a
+  // Pedido novo pedido depois de trocar de aba: PedidosDeCompra só existe quando a
   // aba "Pedidos" está montada, então a chamada espera o commit do React.
   const [novoPedidoAoEntrar, setNovoPedidoAoEntrar] = useState(false);
   const [pularOnboarding, setPularOnboarding] = useState(false);
@@ -390,7 +390,7 @@ export default function GestaoCompras() {
   }, [selectedProduto?.id]);
 
   // O "Gerar pedido" do aviso de reposição troca de aba e só então dispara o
-  // formulário: a referência ao PedidosOmie só aponta para algo depois que a
+  // formulário: a referência ao PedidosDeCompra só aponta para algo depois que a
   // aba monta, e o efeito roda depois do commit.
   useEffect(() => {
     if (!novoPedidoAoEntrar || mainTab !== 'pedidos') return;
@@ -1934,10 +1934,10 @@ export default function GestaoCompras() {
           />
 
           {/* ══ ABA PEDIDOS ══ */}
-          {mainTab === 'pedidos' && <PedidosOmie ref={pedidosRef} />}
+          {mainTab === 'pedidos' && <PedidosDeCompra ref={pedidosRef} />}
 
           {/* ══ ABA PRODUTOS ══ */}
-          {mainTab === 'produtos' && <ProdutosOmie aoMudar={loadAll} />}
+          {mainTab === 'produtos' && <ProdutosDeCompra aoMudar={loadAll} />}
 
           {/* ══ ABA FORNECEDORES ══ */}
           {mainTab === 'fornecedores' && (

@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { writeExcelFile } from "@/lib/excel-utils";
 
 /* ---------------------------------------------------------------------------
- * EXPORTADOR OMIE — gera planilhas .xlsx no padrão OMIE para reimportação,
+ * EXPORTADOR DE PLANILHA — gera planilhas .xlsx no mesmo modelo do importador, para reimportação,
  * backup ou análise externa. Suporta Pessoas, Contas a Pagar e a Receber.
  * --------------------------------------------------------------------------*/
 
@@ -77,7 +77,7 @@ const LABEL_STATUS: Record<string, string> = {
   cancelado: "Cancelado",
 };
 
-export default function FinExportarOMIE() {
+export default function FinExportarPlanilhaXlsx() {
   const empresaId = useEmpresaId();
   const [entidade, setEntidade] = useState<Entidade>("a_pagar");
   const [status, setStatus] = useState<Status>("todos");
@@ -173,7 +173,7 @@ export default function FinExportarOMIE() {
     }
     const widths = [22, 20, 38, 30, 18, 18, 14, 20, 14, 28, 16, 22, 32, 8, 18, 22, 12, 22, 6, 14, 10, 14, 28, 16, 14, 30, 40];
     const stamp = hojeLocal();
-    await writeExcelFile(`OMIE_Clientes_Fornecedores_${stamp}.xlsx`, [
+    await writeExcelFile(`Praefectus_Clientes_Fornecedores_${stamp}.xlsx`, [
       { name: "Pessoas", data: rows, colWidths: widths },
     ]);
     toast.success(`${data.length} pessoa(s) exportada(s).`);
@@ -221,7 +221,7 @@ export default function FinExportarOMIE() {
     const widths = [38, 14, 14, 14, 18, 20, 30, 16, 16, 18, 10, 12, 12, 12, 12, 14, 14, 14, 40];
     const stamp = hojeLocal();
     const nome = entidade === "a_pagar" ? "Contas_Pagar" : "Contas_Receber";
-    await writeExcelFile(`OMIE_${nome}_${dataInicio}_${dataFim}.xlsx`, [
+    await writeExcelFile(`Praefectus_${nome}_${dataInicio}_${dataFim}.xlsx`, [
       { name: nome, data: rows, colWidths: widths },
     ]);
     toast.success(`${data.length} lançamento(s) exportado(s).`);
@@ -235,7 +235,7 @@ export default function FinExportarOMIE() {
         <CardHeader>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <CardTitle className="flex items-center gap-2">
-              <FileSpreadsheet className="w-5 h-5 text-muted-foreground" aria-hidden="true" /> Exportar para padrão OMIE (.xlsx)
+              <FileSpreadsheet className="w-5 h-5 text-muted-foreground" aria-hidden="true" /> Exportar planilha (.xlsx)
             </CardTitle>
             <Tabs value={entidade} onValueChange={(v) => { setEntidade(v as Entidade); setPreviewCount(null); }}>
               <TabsList>
@@ -252,7 +252,7 @@ export default function FinExportarOMIE() {
             <Sparkles className="w-4 h-4" aria-hidden="true" />
             <AlertDescription className="space-y-2">
               <p className="font-semibold">
-                Compatível com reimportação no OMIE — mesmas colunas e formatação aceitas pela plataforma.
+                Compatível com reimportação aqui e em ERPs de mercado — mesmas colunas e formatação do modelo de importação.
               </p>
               <ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
                 <li>CNPJ/CPF formatados com máscara, datas em ISO, valores com vírgula decimal</li>
@@ -300,7 +300,7 @@ export default function FinExportarOMIE() {
             </div>
             <Button onClick={exportar} disabled={exporting}>
               {exporting ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Download className="w-4 h-4" aria-hidden="true" />}
-              Exportar para OMIE
+              Exportar planilha
             </Button>
           </div>
         </CardContent>

@@ -1,7 +1,7 @@
 /**
- * FinQuadroOmie — Quadro Financeiro estilo Omie (9 cards principais).
+ * FinQuadroFinanceiro — Quadro Financeiro (9 cartões principais).
  *
- * Implementa o "Modelo Omie" da especificação INTERFACE FINANCEIRO 2 (seção 1):
+ * Implementa o quadro da especificação INTERFACE FINANCEIRO 2 (seção 1):
  *   1. Clientes & Fornecedores  2. Contas a Pagar     3. Contas a Receber
  *   4. Contas Correntes         5. Previsto x Realizado  6. Atividades dos Usuários
  *   7. Bonificação de Vendas       8. Movimentação Financeira (12m)  9. Meus Relatórios
@@ -30,10 +30,10 @@ function navegar(view: string) {
 
 const MESES_CURTO = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 
-function useQuadroOmie() {
+function useQuadroFinanceiro() {
   const empresaId = useEmpresaId();
   return useQuery({
-    queryKey: ["fin-quadro-omie", empresaId],
+    queryKey: ["fin-quadro-financeiro", empresaId],
     enabled: !!empresaId,
     refetchInterval: 60_000,
     queryFn: async () => {
@@ -118,8 +118,8 @@ function useQuadroOmie() {
   });
 }
 
-export default function FinQuadroOmie() {
-  const { data, isLoading } = useQuadroOmie();
+export default function FinQuadroFinanceiro() {
+  const { data, isLoading } = useQuadroFinanceiro();
 
   if (isLoading || !data) {
     return (
@@ -132,11 +132,11 @@ export default function FinQuadroOmie() {
   return (
     <div className="space-y-3">
       <div className="text-sm text-muted-foreground">
-        Visão consolidada inspirada no modelo Omie · atualização automática a cada 60s
+        Visão consolidada da operação · atualização automática a cada 60s
       </div>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         {/* 1. Clientes & Fornecedores */}
-        <CardOmie title="Clientes e Fornecedores" icon={Users} onOpen={() => navegar("pessoas")} cta="Incluir">
+        <CartaoDoQuadro title="Clientes e Fornecedores" icon={Users} onOpen={() => navegar("pessoas")} cta="Incluir">
           <div className="grid grid-cols-2 gap-3 text-center">
             <div className="rounded-md bg-muted p-3">
               <div className="text-[2rem] font-bold leading-10 tabular-nums text-foreground">{data.clientes}</div>
@@ -147,10 +147,10 @@ export default function FinQuadroOmie() {
               <div className="text-xs uppercase tracking-wide text-muted-foreground">Fornecedores</div>
             </div>
           </div>
-        </CardOmie>
+        </CartaoDoQuadro>
 
         {/* 2. Contas a Pagar */}
-        <CardOmie title="Contas a Pagar" icon={ArrowUpCircle} tone="danger" onOpen={() => navegar("a_pagar")} cta="Incluir">
+        <CartaoDoQuadro title="Contas a Pagar" icon={ArrowUpCircle} tone="danger" onOpen={() => navegar("a_pagar")} cta="Incluir">
           <div className="space-y-2">
             <div className="text-[2rem] font-bold leading-10 tabular-nums text-destructive-ink">{formatBRL(data.cp.total)}</div>
             <div className="text-sm text-muted-foreground">{data.cp.qtd} conta(s) em aberto</div>
@@ -158,10 +158,10 @@ export default function FinQuadroOmie() {
               <Badge variant="danger">Em atraso: {formatBRL(data.cp.atraso)}</Badge>
             )}
           </div>
-        </CardOmie>
+        </CartaoDoQuadro>
 
         {/* 3. Contas a Receber */}
-        <CardOmie title="Contas a Receber" icon={ArrowDownCircle} tone="success" onOpen={() => navegar("a_receber")} cta="Incluir">
+        <CartaoDoQuadro title="Contas a Receber" icon={ArrowDownCircle} tone="success" onOpen={() => navegar("a_receber")} cta="Incluir">
           <div className="space-y-2">
             <div className="text-[2rem] font-bold leading-10 tabular-nums text-success-ink">{formatBRL(data.cr.total)}</div>
             <div className="text-sm text-muted-foreground">{data.cr.qtd} conta(s) em aberto</div>
@@ -169,10 +169,10 @@ export default function FinQuadroOmie() {
               <Badge variant="warning">Em atraso: {formatBRL(data.cr.atraso)}</Badge>
             )}
           </div>
-        </CardOmie>
+        </CartaoDoQuadro>
 
         {/* 4. Contas Correntes */}
-        <CardOmie title="Contas Correntes" icon={Wallet} onOpen={() => navegar("contas")} cta="Incluir">
+        <CartaoDoQuadro title="Contas Correntes" icon={Wallet} onOpen={() => navegar("contas")} cta="Incluir">
           <div className="space-y-2">
             <div className="text-[2rem] font-bold leading-10 tabular-nums text-foreground">{formatBRL(data.contas.saldo)}</div>
             <div className="text-sm text-muted-foreground">{data.contas.qtd} conta(s) ativas</div>
@@ -187,38 +187,38 @@ export default function FinQuadroOmie() {
               </ul>
             )}
           </div>
-        </CardOmie>
+        </CartaoDoQuadro>
 
         {/* 5. Previsto x Realizado */}
-        <CardOmie title="Previsto x Realizado" icon={Target} onOpen={() => navegar("previsto_realizado")}>
+        <CartaoDoQuadro title="Previsto x Realizado" icon={Target} onOpen={() => navegar("previsto_realizado")}>
           <div className="space-y-2 text-sm">
             <Linha label="Receitas previstas" valor={data.previstoXrealizado.previstoReceitas} />
             <Linha label="Receitas realizadas" valor={data.previstoXrealizado.realizadoReceitas} tone="success" />
             <Linha label="Despesas previstas" valor={data.previstoXrealizado.previstoDespesas} />
             <Linha label="Despesas realizadas" valor={data.previstoXrealizado.realizadoDespesas} tone="danger" />
           </div>
-        </CardOmie>
+        </CartaoDoQuadro>
 
         {/* 6. Atividade dos Usuários */}
-        <CardOmie title="Atividades dos Usuários" icon={Activity} onOpen={() => navegar("atividade_usuarios")}>
+        <CartaoDoQuadro title="Atividades dos Usuários" icon={Activity} onOpen={() => navegar("atividade_usuarios")}>
           <div className="space-y-2">
             <div className="text-[2rem] font-bold leading-10 tabular-nums text-foreground">{data.atividadesHoje}</div>
             <div className="text-sm text-muted-foreground">eventos registrados hoje</div>
             <div className="text-sm text-muted-foreground">Inclusões, alterações e exclusões em lançamentos, contas e cadastros.</div>
           </div>
-        </CardOmie>
+        </CartaoDoQuadro>
 
         {/* 7. Bonificação de Vendas */}
-        <CardOmie title="Bonificação de Vendas" icon={Receipt} onOpen={() => navegar("comissoes")}>
+        <CartaoDoQuadro title="Bonificação de Vendas" icon={Receipt} onOpen={() => navegar("comissoes")}>
           <div className="space-y-2">
             <div className="text-[2rem] font-bold leading-10 tabular-nums text-foreground">{formatBRL(data.comissoesAbertas)}</div>
             <div className="text-sm text-muted-foreground">a pagar a vendedores</div>
             <div className="text-sm text-muted-foreground">Quitação automática via NF-e Financeiro.</div>
           </div>
-        </CardOmie>
+        </CartaoDoQuadro>
 
         {/* 8. Movimentação Financeira (12 meses) */}
-        <CardOmie title="Movimentação Financeira (12 meses)" icon={BarChart3} onOpen={() => navegar("fluxo_caixa")} className="lg:col-span-2">
+        <CartaoDoQuadro title="Movimentação Financeira (12 meses)" icon={BarChart3} onOpen={() => navegar("fluxo_caixa")} className="lg:col-span-2">
           <div className="h-32">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data.movimentacao} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
@@ -239,23 +239,23 @@ export default function FinQuadroOmie() {
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </CardOmie>
+        </CartaoDoQuadro>
 
         {/* 9. Meus Relatórios */}
-        <CardOmie title="Meus Relatórios" icon={FileDown} onOpen={() => navegar("relatorios")}>
+        <CartaoDoQuadro title="Meus Relatórios" icon={FileDown} onOpen={() => navegar("relatorios")}>
           <div className="space-y-1 text-sm">
             <button type="button" onClick={() => navegar("resumo_exec")} className="block w-full rounded-md px-2 py-1.5 text-left transition-colors hover:bg-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">→ Resumo Executivo</button>
             <button type="button" onClick={() => navegar("dre")} className="block w-full rounded-md px-2 py-1.5 text-left transition-colors hover:bg-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">→ DRE</button>
             <button type="button" onClick={() => navegar("fluxo_caixa")} className="block w-full rounded-md px-2 py-1.5 text-left transition-colors hover:bg-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">→ Fluxo de Caixa</button>
             <button type="button" onClick={() => navegar("atividade_usuarios")} className="block w-full rounded-md px-2 py-1.5 text-left transition-colors hover:bg-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">→ Atividades dos Usuários</button>
           </div>
-        </CardOmie>
+        </CartaoDoQuadro>
       </div>
     </div>
   );
 }
 
-function CardOmie({
+function CartaoDoQuadro({
   title, icon: Icon, children, onOpen, cta = "Abrir", tone, className,
 }: {
   title: string;

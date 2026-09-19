@@ -281,7 +281,7 @@ módulo de Metas do Comercial e concentrados em cinco arquivos:
 | `src/components/financeiro/FinEmissorNFe.tsx` | 2 | `pedido_id` ausente em `financeiro_nfes_emitidas` |
 | `src/components/financeiro/FinPedidosAFaturar.tsx` | 1 | `any` → `never` |
 | `src/components/financeiro/LancamentoDialog.tsx` | 1 | `'movimentacao'` fora do union de tipo |
-| `src/components/gestao-compras/PedidosOmie.tsx` | 2 | tabela `produtos` ausente em `types.ts`; `TS2589` |
+| `src/components/gestao-compras/PedidosDeCompra.tsx` | 2 | tabela `produtos` ausente em `types.ts`; `TS2589` |
 
 **Causa provável:** `src/integrations/supabase/types.ts` está desatualizado em relação ao
 banco — a maior parte some com uma nova geração de tipos.

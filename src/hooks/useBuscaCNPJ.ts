@@ -1,7 +1,7 @@
 /**
  * useBuscaCNPJ — Consulta de CNPJ com fallback BrasilAPI → ReceitaWS.
  *
- * Estratégia (modelo Omie "Pesquisa Atômica" da seção 2 do INTERFACE FINANCEIRO 2):
+ * Estratégia ("Pesquisa Atômica" da seção 2 do INTERFACE FINANCEIRO 2):
  *   1) Tenta primeiro a BrasilAPI (mais rápida, dados normalizados, sem rate limit agressivo).
  *   2) Se falhar (404, 429, timeout, erro de rede), faz fallback para ReceitaWS.
  *   3) Retorna o primeiro resultado bem-sucedido. Se ambas falharem, devolve o último erro.

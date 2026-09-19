@@ -5,7 +5,7 @@ import { interpretarValorColado } from '@/lib/financeiro/valor-colado';
 /**
  * A gramática brasileira de dinheiro nos pontos de ENTRADA.
  *
- * Auditoria de 02/09: os importadores de planilha/OMIE removiam todo ponto
+ * Auditoria de 02/09: os importadores de planilha removiam todo ponto
  * antes de parsear — "3500.00" (Excel en-US) virava 350000, cem vezes maior,
  * sem aviso. E o parser OFX usava parseFloat cru: banco que emite TRNAMT
  * "1234,56" perdia os centavos na vírgula. Os dois agora passam pela mesma

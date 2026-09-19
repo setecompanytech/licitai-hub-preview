@@ -671,7 +671,7 @@ Estes **não** entram no rebrand. Mudá-los quebraria coisa:
 | `components/proposta/PropostaLivePreview.tsx` | prévia do documento impresso — tem que parecer papel, não o tema do app |
 | `components/precificacao/CatalogoDocGenerator.tsx` | DOCX gerado |
 | `components/precificacao/AureliaPrecificacaoChat.tsx` | documento gerado |
-| `components/gestao-compras/PedidosOmie.tsx` | documento gerado |
+| `components/gestao-compras/PedidosDeCompra.tsx` | documento gerado |
 | `pages/AuditoriaBancos.tsx` | documento gerado |
 | `pages/PerfisAlerta.tsx` — só o `CORES_PERFIL` | é **dado, não tema**: a cor escolhida é gravada no banco, e a tela a usa como `p.cor + '20'` para compor o alfa. Token viraria `hsl(var(--x))20`, que não é cor. O resto do arquivo já foi normalizado |
 

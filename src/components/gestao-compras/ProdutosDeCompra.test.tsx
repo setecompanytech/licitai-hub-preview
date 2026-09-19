@@ -12,7 +12,7 @@ import { MemoryRouter } from 'react-router-dom';
  *     Célula vazia lê-se como "ainda não carregou"; o selo diz que o dado
  *     não existe, que é outra coisa. O mesmo vale para a família.
  *
- * Ele roda contra `ProdutosOmie`, que é a entrada embutida do cadastro em
+ * Ele roda contra `ProdutosDeCompra`, que é a entrada embutida do cadastro em
  * `/gestao-compras`. O miolo é o `CadastroProdutos` compartilhado com a rota
  * `/produtos`, então testar por aqui cobre as duas telas: era justamente o
  * ganho de ter unificado as duas cópias.
@@ -114,12 +114,12 @@ vi.mock('@/components/shared/NcmDialog', () => ({ default: () => null }));
 vi.mock('@/components/shared/CestDialog', () => ({ default: () => null }));
 vi.mock('@/components/financeiro/PessoaFormDialog', () => ({ default: () => null }));
 
-import ProdutosOmie from './ProdutosOmie';
+import ProdutosDeCompra from './ProdutosDeCompra';
 
 function montar() {
   return render(
     <MemoryRouter>
-      <ProdutosOmie />
+      <ProdutosDeCompra />
     </MemoryRouter>,
   );
 }

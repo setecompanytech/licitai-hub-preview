@@ -1,5 +1,5 @@
 /**
- * FinAtividadeUsuarios — Relatório de Atividades dos Usuários (modelo Omie 11.10).
+ * FinAtividadeUsuarios — Relatório de Atividades dos Usuários.
  *
  * Lista cronológica de eventos do módulo financeiro (INSERT/UPDATE/DELETE) com
  * agrupamento por Usuário → Data → Tipo, exibindo evento, descrição, valor,

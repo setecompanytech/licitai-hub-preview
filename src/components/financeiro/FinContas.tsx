@@ -177,7 +177,7 @@ export default function FinContas() {
   const [conta, setConta] = useState("");
   const [saldoInicial, setSaldoInicial] = useState(0);
   const [possuiSaldo, setPossuiSaldo] = useState(false);
-  // Outras informações (estilo OMIE)
+  // Outras informações
   const [dataSaldoInicial, setDataSaldoInicial] = useState<string>("");
   const [limiteCredito, setLimiteCredito] = useState(0);
   const [contaVinculadaId, setContaVinculadaId] = useState<string>("");

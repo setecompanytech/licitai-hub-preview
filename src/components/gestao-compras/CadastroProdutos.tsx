@@ -41,7 +41,7 @@ import {
  * POR QUE ESTE ARQUIVO EXISTE
  *
  * Até 13/09 o mesmo cadastro morava DUAS vezes no repo: `src/pages/Produtos.tsx`
- * e `src/components/gestao-compras/ProdutosOmie.tsx`. Não eram telas parecidas
+ * e `src/components/gestao-compras/ProdutosDeCompra.tsx`. Não eram telas parecidas
  * — eram a mesma tela: mesmas 7 subabas com as mesmas strings, mesmo
  * `defaultForm` de 40 campos, mesma geração de código `PRDnnnnn`, mesmos
  * diálogos de NCM e CEST, mesmo payload de 33 colunas. Conferido linha a linha:
@@ -51,13 +51,13 @@ import {
  *
  * Duas cópias do mesmo cadastro não é redundância inofensiva: é a garantia de
  * que a próxima correção fiscal entra em uma e esquece a outra. Foi exatamente
- * o que começou a acontecer — `ProdutosOmie` recebeu três correções que
+ * o que começou a acontecer — `ProdutosDeCompra` recebeu três correções que
  * `Produtos.tsx` não recebeu.
  *
  * Então o cadastro vive aqui, e as duas entradas apenas o vestem:
  *
  *   /produtos        → src/pages/Produtos.tsx        (AppLayout + cabeçalho)
- *   /gestao-compras  → .../ProdutosOmie.tsx          (aba, sem moldura)
+ *   /gestao-compras  → .../ProdutosDeCompra.tsx          (aba, sem moldura)
  *
  * ⚠️ A PROTEÇÃO DE CADA ROTA NÃO MUDA COM A UNIFICAÇÃO. `/produtos` é
  * `ProtectedPages` (só autenticação) e `/gestao-compras` é `PlanPages`

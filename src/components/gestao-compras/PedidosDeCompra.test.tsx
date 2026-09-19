@@ -4,7 +4,7 @@ import { createRef, type Ref } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 
 /**
- * O que este arquivo protege em PedidosOmie.
+ * O que este arquivo protege em PedidosDeCompra.
  *
  * Três coisas que já quebraram, ou que a próxima mexida quebra sem avisar:
  *
@@ -95,22 +95,22 @@ vi.mock('@/hooks/useFinanceiro', () => ({ usePessoas: () => PESSOAS }));
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }));
 
-import PedidosOmie, { type PedidosOmieRef } from './PedidosOmie';
+import PedidosDeCompra, { type PedidosDeCompraRef } from './PedidosDeCompra';
 
 /** Os cinco rótulos, na ordem exata em que o fluxo acontece. */
 const COLUNAS = ['Pedidos', 'Separar Estoque', 'Faturar', 'Faturado', 'Entrega'];
 
-function montar(ref?: Ref<PedidosOmieRef>) {
+function montar(ref?: Ref<PedidosDeCompraRef>) {
   return render(
     <MemoryRouter>
-      <PedidosOmie ref={ref} />
+      <PedidosDeCompra ref={ref} />
     </MemoryRouter>,
   );
 }
 
 const oQuadro = () => screen.getByRole('group', { name: /Quadro de pedidos/i });
 
-describe('PedidosOmie — quadro e lista', () => {
+describe('PedidosDeCompra — quadro e lista', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('abre no quadro e mostra as cinco colunas com os rótulos exatos', async () => {
@@ -180,7 +180,7 @@ describe('PedidosOmie — quadro e lista', () => {
   });
 
   it('expõe novoPedido() pela ref, e chamá-lo abre a escolha do tipo de pedido', async () => {
-    const ref = createRef<PedidosOmieRef>();
+    const ref = createRef<PedidosDeCompraRef>();
     montar(ref);
 
     await waitFor(() => expect(ref.current).not.toBeNull());

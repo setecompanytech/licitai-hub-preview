@@ -543,7 +543,7 @@ export default function FinPessoas() {
                             .replace(/^(\d{2})\.(\d{3})\.(\d{3})\/(\d{4})(\d)/, "$1.$2.$3/$4-$5");
                         }
                         set("documento", masked);
-                        // Auto-consulta ao completar CNPJ (14 dígitos), estilo Omie
+                        // Auto-consulta ao completar CNPJ (14 dígitos)
                         if (d.length === 14 && !buscandoCNPJ) {
                           // pequeno timeout para garantir que o estado esteja atualizado
                           setTimeout(() => handleBuscarCNPJ(), 0);
@@ -661,7 +661,7 @@ export default function FinPessoas() {
                         const raw = e.target.value.replace(/\D/g, "").slice(0, 8);
                         const masked = raw.length > 5 ? `${raw.slice(0, 5)}-${raw.slice(5)}` : raw;
                         setEnd("cep", masked);
-                        // Auto-busca quando completar 8 dígitos (estilo Omie)
+                        // Auto-busca quando completar 8 dígitos
                         if (raw.length === 8 && !buscandoCEP) {
                           handleBuscarCEP(raw);
                         }

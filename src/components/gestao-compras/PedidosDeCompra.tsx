@@ -529,11 +529,14 @@ function ItemDialog({ open, onOpenChange, produtos, initial, onConfirm }: {
  * /gestao-compras — ela precisa nascer no CabecalhoPagina, não numa segunda
  * barra dentro da aba. Por isso o disparo do diálogo sobe por este punho.
  */
-export interface PedidosOmieRef {
+/** Origem do pedido como o seletor a conhece; sem valor, "sistema". */
+const origemNormalizada = (v: string | null | undefined): string => v || 'sistema';
+
+export interface PedidosDeCompraRef {
   novoPedido: () => void;
 }
 
-const PedidosOmie = forwardRef<PedidosOmieRef>(function PedidosOmie(_props, ref) {
+const PedidosDeCompra = forwardRef<PedidosDeCompraRef>(function PedidosDeCompra(_props, ref) {
   const { empresaAtiva } = useEmpresa();
   const { user } = useAuth();
   const { data: todasPessoas = [] } = usePessoas();
@@ -721,7 +724,7 @@ const PedidosOmie = forwardRef<PedidosOmieRef>(function PedidosOmie(_props, ref)
       categoria: p.categoria ?? '', conta_corrente: p.conta_corrente ?? '',
       etapa: p.etapa ?? '', num_pedido_cliente: p.num_pedido_cliente ?? '',
       num_contrato_venda: p.num_contrato_venda ?? '', contato: p.contato ?? '',
-      projeto: p.projeto ?? '', origem_pedido: p.origem_pedido ?? 'sistema',
+      projeto: p.projeto ?? '', origem_pedido: origemNormalizada(p.origem_pedido),
       dados_adicionais_nfe: p.dados_adicionais_nfe ?? '',
       nf_consumo_final: p.nf_consumo_final,
       email_destinatario: p.email_destinatario ?? '',
@@ -1337,7 +1340,7 @@ const PedidosOmie = forwardRef<PedidosOmieRef>(function PedidosOmie(_props, ref)
                     conta_id: faturadoContaId,
                     origem: 'manual' as const,
                     origem_tipo: 'manual' as const,
-                    origem_job: 'PedidosOmie.faturado',
+                    origem_job: 'PedidosDeCompra.faturado',
                     origem_usuario_id: user?.id ?? null,
                     origem_timestamp: new Date().toISOString(),
                     created_by: user?.id ?? null,
@@ -1503,7 +1506,7 @@ const PedidosOmie = forwardRef<PedidosOmieRef>(function PedidosOmie(_props, ref)
                   { label: 'Última alteração', value: new Date(historicoData.updated_at).toLocaleString('pt-BR') },
                   { label: 'Status atual',     value: STATUS_MSG[historicoData.status] ?? historicoData.status },
                   { label: 'Tipo',             value: historicoData.tipo === 'venda' ? 'Pedido de Venda' : 'Pedido de Compra' },
-                  { label: 'Origem',           value: historicoData.origem_pedido ?? 'sistema' },
+                  { label: 'Origem',           value: origemNormalizada(historicoData.origem_pedido) },
                   { label: 'Etapa',            value: historicoData.etapa ?? '—' },
                 ].map(({ label, value }) => (
                   <div key={label} className="flex items-start gap-2 text-sm">
@@ -2268,7 +2271,7 @@ const PedidosOmie = forwardRef<PedidosOmieRef>(function PedidosOmie(_props, ref)
                   <SelectTrigger id="pedido-origem" className="mt-1 w-full sm:w-56"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="sistema">Sistema</SelectItem>
-                    <SelectItem value="omie">Omie</SelectItem>
+                    <SelectItem value="outro_sistema">Outro sistema</SelectItem>
                     <SelectItem value="email">E-mail</SelectItem>
                     <SelectItem value="whatsapp">WhatsApp</SelectItem>
                     <SelectItem value="telefone">Telefone</SelectItem>
@@ -2410,6 +2413,6 @@ const PedidosOmie = forwardRef<PedidosOmieRef>(function PedidosOmie(_props, ref)
   );
 });
 
-PedidosOmie.displayName = 'PedidosOmie';
+PedidosDeCompra.displayName = 'PedidosDeCompra';
 
-export default PedidosOmie;
+export default PedidosDeCompra;
