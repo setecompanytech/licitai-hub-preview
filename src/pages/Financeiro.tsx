@@ -7,7 +7,7 @@ import CabecalhoPagina from "@/components/shared/CabecalhoPagina";
 import EstadoVazio from "@/components/shared/EstadoVazio";
 import { Building2, FileSpreadsheet, FileUp, Landmark, Plus } from "lucide-react";
 import FinHomeHub, { HUB_ITEMS, type HubItem } from "@/components/financeiro/FinHomeHub";
-import FinHeroPainel from "@/components/financeiro/FinHeroPainel";
+import FinPainelInicial from "@/components/financeiro/FinPainelInicial";
 import FinResumoVisor, { getResumoAutoOpen } from "@/components/financeiro/FinResumoVisor";
 import FinPanorama from "@/components/financeiro/FinPanorama";
 import FinCalendarioFinanceiro from "@/components/financeiro/FinCalendarioFinanceiro";
@@ -246,10 +246,15 @@ export default function Financeiro() {
           <CabecalhoPagina
             rota="/financeiro"
             acoes={
-              <Button onClick={() => navigateToView("lancamentos")}>
-                <Plus className="w-4 h-4" aria-hidden="true" />
-                Novo lançamento
-              </Button>
+              <>
+                <Button variant="outline" onClick={() => navigateToView("panorama")}>
+                  Painel completo
+                </Button>
+                <Button onClick={() => navigateToView("lancamentos")}>
+                  <Plus className="w-4 h-4" aria-hidden="true" />
+                  Novo lançamento
+                </Button>
+              </>
             }
           />
         )}
@@ -269,12 +274,13 @@ export default function Financeiro() {
             renderActive()
           ) : (
             <>
-              {/* REBRAND — o herói do protótipo (saldo, projeção, os números do
-                  dia e a curva de 6 meses) entra ACIMA do hub, que continua
-                  inteiro. Aditivo: o hub tem busca, favoritos e recentes que
+              {/* REBRAND — o painel do protótipo (KPIs, fluxo de caixa, o que
+                  vence nos próximos dias, a conferência e as movimentações
+                  mais próximas) entra ACIMA do hub, que continua inteiro.
+                  Aditivo: o hub tem busca, favoritos e recentes que
                   funcionam, e reescrevê-lo para encaixar um cabeçalho seria
                   trocar risco por estética. */}
-              <FinHeroPainel onNavigate={navigateToView} />
+              <FinPainelInicial onNavigate={navigateToView} />
               <FinHomeHub onNavigate={navigateToView} />
             </>
           )}

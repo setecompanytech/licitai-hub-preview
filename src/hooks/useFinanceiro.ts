@@ -1578,6 +1578,47 @@ export function useResumoVisorFinanceiro() {
   });
 }
 
+// ----------------------------------------------------------------------------
+// Próximas movimentações (painel inicial)
+// ----------------------------------------------------------------------------
+export type ProximaMovimentacao = {
+  id: string;
+  descricao: string;
+  tipo: string;
+  valor: number;
+  status: string;
+  dataVencimento: string;
+};
+
+/** As N movimentações mais próximas do vencimento — pagar e receber juntos,
+ * pela mesma ordem em que vão pesar no caixa. Painel inicial só, por isso o
+ * limite é curto; a lista completa é `FinLancamentos`. */
+export function useProximasMovimentacoes(limite = 5) {
+  const empresaId = useEmpresaId();
+  return useQuery({
+    queryKey: ["fin-proximas-movimentacoes", empresaId, limite],
+    enabled: !!empresaId,
+    queryFn: async (): Promise<ProximaMovimentacao[]> => {
+      const { data, error } = await supabase
+        .from("financeiro_lancamentos")
+        .select("id, descricao, tipo, valor, status, data_vencimento")
+        .eq("empresa_id", empresaId!)
+        .in("status", ["previsto", "em_atraso"])
+        .order("data_vencimento", { ascending: true })
+        .limit(limite);
+      if (error) throw error;
+      return (data ?? []).map((l) => ({
+        id: l.id,
+        descricao: l.descricao ?? "Sem descrição",
+        tipo: l.tipo ?? "",
+        valor: Number(l.valor ?? 0),
+        status: l.status ?? "previsto",
+        dataVencimento: l.data_vencimento ?? "",
+      }));
+    },
+  });
+}
+
 export function useRefreshFinanceiroViews() {
   const qc = useQueryClient();
   return useMutation({

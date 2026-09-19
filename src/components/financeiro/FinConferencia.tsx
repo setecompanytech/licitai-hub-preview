@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { AlertTriangle, CheckCircle2, ChevronDown, Info, ShieldAlert, RefreshCw } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Info, ShieldAlert, RefreshCw } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { formatBRL } from '@/lib/financeiro/formatters';
@@ -17,15 +17,25 @@ import { useConferenciaFinanceira, type Achado } from '@/hooks/useConferenciaFin
  * quem vai decidir preço com base nele precisa saber antes, não depois.
  */
 
-const ESTILO: Record<Achado['severidade'], { icone: typeof AlertTriangle; cor: string; fundo: string; rotulo: string }> = {
-  critico:     { icone: ShieldAlert,   cor: 'text-destructive', fundo: 'border-destructive/40 bg-destructive/5', rotulo: 'Crítico' },
-  atencao:     { icone: AlertTriangle, cor: 'text-warning',     fundo: 'border-warning/40 bg-warning/5',         rotulo: 'Atenção' },
-  informativo: { icone: Info,          cor: 'text-info',        fundo: 'border-info/30 bg-info/5',               rotulo: 'Informativo' },
+const ESTILO: Record<Achado['severidade'], {
+  icone: typeof AlertTriangle;
+  borda: string;
+  badge: 'danger' | 'warning' | 'info';
+  rotulo: string;
+}> = {
+  critico:     { icone: ShieldAlert,   borda: 'border-l-destructive', badge: 'danger',  rotulo: 'Prioridade alta' },
+  atencao:     { icone: AlertTriangle, borda: 'border-l-warning',     badge: 'warning', rotulo: 'Atenção' },
+  informativo: { icone: Info,          borda: 'border-l-info',        badge: 'info',    rotulo: 'Informativo' },
 };
 
-export default function FinConferencia() {
+interface Props {
+  /** Navega para a subtela do Financeiro que resolve o achado. Sem ela (uso
+   * fora do painel inicial), a linha some e o botão "Revisar" não aparece. */
+  onNavigate?: (id: string) => void;
+}
+
+export default function FinConferencia({ onNavigate }: Props = {}) {
   const { data: achados, isLoading, error, refetch, isFetching } = useConferenciaFinanceira();
-  const [abertoManual, setAbertoManual] = useState<boolean | null>(null);
 
   if (isLoading) return null;
 
@@ -46,8 +56,6 @@ export default function FinConferencia() {
   }
 
   const lista = achados ?? [];
-  const criticos = lista.filter((a) => a.severidade === 'critico').length;
-  const aberto = abertoManual ?? criticos > 0;
 
   if (lista.length === 0) {
     return (
@@ -66,53 +74,45 @@ export default function FinConferencia() {
   }
 
   return (
-    <div className={cn('rounded-xl border', criticos > 0 ? 'border-destructive/40 bg-destructive/5' : 'border-warning/40 bg-warning/5')}>
-      <button
-        onClick={() => setAbertoManual(!aberto)}
-        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-left"
-      >
-        {criticos > 0
-          ? <ShieldAlert className="w-4 h-4 text-destructive shrink-0" />
-          : <AlertTriangle className="w-4 h-4 text-warning shrink-0" />}
-        <p className="text-xs text-muted-foreground min-w-0">
-          <span className={cn('font-medium', criticos > 0 ? 'text-destructive' : 'text-warning')}>
-            {criticos > 0
-              ? `${criticos} ponto${criticos > 1 ? 's' : ''} que impede${criticos > 1 ? 'm' : ''} o Financeiro de fechar`
-              : `${lista.length} ponto${lista.length > 1 ? 's' : ''} a conferir`}
-          </span>
-          {criticos > 0 && lista.length > criticos && ` · mais ${lista.length - criticos} a conferir`}
-        </p>
-        <ChevronDown className={cn('w-4 h-4 text-muted-foreground ml-auto shrink-0 transition-transform', aberto && 'rotate-180')} />
-      </button>
+    <div className="rounded-lg border border-border bg-card shadow-sm">
+      <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+        <h3 className="text-[15px] font-semibold text-foreground">Central de conferência</h3>
+        <span className="text-xs text-muted-foreground">
+          {lista.length} ponto{lista.length > 1 ? 's' : ''} exige{lista.length > 1 ? 'm' : ''} revisão
+        </span>
+      </div>
 
-      {aberto && (
-        <div className="px-4 pb-3 space-y-2">
-          {lista.map((a, i) => {
-            const e = ESTILO[a.severidade];
-            const Icone = e.icone;
-            return (
-              <div key={`${a.categoria}-${a.referencia ?? i}`} className={cn('rounded-lg border p-2.5 flex gap-2.5', e.fundo)}>
-                <Icone className={cn('w-3.5 h-3.5 shrink-0 mt-0.5', e.cor)} />
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    {a.categoria}
-                  </p>
-                  <p className="text-xs text-foreground mt-0.5 leading-relaxed">{a.descricao}</p>
-                </div>
-                {a.valor != null && (
-                  <span className={cn('text-xs font-semibold tabular-nums whitespace-nowrap shrink-0', e.cor)}>
-                    {formatBRL(Number(a.valor))}
-                  </span>
-                )}
+      <div className="divide-y divide-border">
+        {lista.map((a, i) => {
+          const e = ESTILO[a.severidade];
+          const Icone = e.icone;
+          return (
+            <div
+              key={`${a.categoria}-${a.referencia ?? i}`}
+              className={cn('flex flex-wrap items-center gap-3 border-l-4 px-4 py-3', e.borda)}
+            >
+              <Icone className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-foreground">{a.categoria}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {a.descricao}
+                  {a.valor != null && <span className="font-medium tabular-nums"> · {formatBRL(Number(a.valor))}</span>}
+                </p>
               </div>
-            );
-          })}
-          <p className="text-xs text-muted-foreground pt-1">
-            A conferência refaz as derivações e aponta o que não fecha — ela não corrige nada.
-            Corrigir lançamento é decisão de quem conhece o fato.
-          </p>
-        </div>
-      )}
+              <Badge variant={e.badge}>{e.rotulo}</Badge>
+              {onNavigate && (
+                <Button size="sm" variant="outline" onClick={() => onNavigate('lancamentos')}>
+                  Revisar
+                </Button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <p className="border-t border-border px-4 py-2 text-xs text-muted-foreground">
+        A conferência refaz as derivações e aponta o que não fecha. Ela não corrige nada — corrigir lançamento é decisão de quem conhece o fato.
+      </p>
     </div>
   );
 }

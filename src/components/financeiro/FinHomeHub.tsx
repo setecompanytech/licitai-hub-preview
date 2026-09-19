@@ -4,20 +4,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   Search, LayoutDashboard, ListOrdered, ArrowLeft, Clock, Folder, Wallet, Users, Tags, Banknote, ArrowDownCircle, ArrowUpCircle,
   FolderTree, LineChart, FileBarChart, Briefcase, ScanLine, Plug, FileText, Inbox, BookOpen, Scale, Target,
-  FileDown, Calculator, Eye, ArrowRightLeft, Upload, CheckCheck, FileSpreadsheet, ShieldCheck, Receipt,
-  Building2, Sparkles, Activity, QrCode, History, Landmark, CalendarDays, Star, Clock4, Plus, Zap,
-  TrendingUp, TrendingDown, AlertTriangle, ArrowRight, Command, ChevronRight, Bell, Pin,
+  FileDown, Calculator, Eye, ArrowRightLeft, Upload, FileSpreadsheet, ShieldCheck, Receipt,
+  Building2, Sparkles, Activity, QrCode, History, Landmark, CalendarDays, Star, Clock4, Zap,
+  Command, ChevronRight, Pin,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useResumoVisorFinanceiro } from "@/hooks/useFinanceiro";
-import { formatBRL } from "@/lib/financeiro/formatters";
 import EstadoVazio from "@/components/shared/EstadoVazio";
 import CartaoPasta from "@/components/shared/CartaoPasta";
-import FinConferencia from "./FinConferencia";
 
 export type HubItem = {
   id: string;
@@ -94,15 +90,6 @@ const GROUPS = [
   { id: "cadastros", label: "Cadastros & Configuração", short: "Cadastros", description: "Pessoas, categorias, plano de contas", icon: FolderTree },
 ] as const;
 
-const QUICK_ACTIONS: Array<{ id: string; label: string; icon: React.ComponentType<{ className?: string }>; primary?: boolean }> = [
-  { id: "lancamentos", label: "Novo Lançamento", icon: Plus, primary: true },
-  { id: "conciliacao", label: "Conciliar", icon: CheckCheck },
-  { id: "importar_ofx", label: "Importar OFX", icon: Upload },
-  { id: "emissor_nfe", label: "Emitir NF-e", icon: FileText },
-  { id: "pix_cobranca", label: "Cobrança PIX", icon: QrCode },
-  { id: "baixa_lote", label: "Baixa em lote", icon: Sparkles },
-];
-
 const FAVORITES_KEY = "fin_hub_favorites_v2";
 const RECENTS_KEY = "fin_hub_recents_v2";
 const MAX_RECENTS = 8;
@@ -156,7 +143,6 @@ export default function FinHomeHub({ onNavigate }: FinHomeHubProps) {
   const [favorites, setFavorites] = useState<string[]>(() => loadList(FAVORITES_KEY));
   const [recents, setRecents] = useState<string[]>(() => loadList(RECENTS_KEY));
   const inputRef = useRef<HTMLInputElement>(null);
-  const { data: resumo, isLoading: loadingResumo } = useResumoVisorFinanceiro();
 
   // Atalho `/` foca a busca
   useEffect(() => {
@@ -216,150 +202,8 @@ export default function FinHomeHub({ onNavigate }: FinHomeHubProps) {
     [recents],
   );
 
-  const kpis = useMemo(() => {
-    if (!resumo) return null;
-    return {
-      saldo: resumo.saldoTotal,
-      pagar: resumo.hojePagar.total,
-      pagarQtd: resumo.hojePagar.qtd,
-      receber: resumo.hojeReceber.total,
-      receberQtd: resumo.hojeReceber.qtd,
-      atrasoPagar: resumo.hojePagar.atraso,
-      atrasoReceber: resumo.hojeReceber.atraso,
-      atrasoTotal: resumo.hojePagar.atraso + resumo.hojeReceber.atraso,
-      saldoProjetado: resumo.saldoTotal + resumo.hojeReceber.total - resumo.hojePagar.total,
-    };
-  }, [resumo]);
-
   return (
     <div className="space-y-6">
-      {/* A conferência vem ANTES do saldo, de propósito: saber se o número
-          fecha é condição para lê-lo, não um detalhe a conferir depois. */}
-      <FinConferencia />
-
-      {/* ============ SALDO + AÇÕES RÁPIDAS ============ */}
-      <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-        <div className="grid lg:grid-cols-[1.4fr_1fr] gap-6">
-          {/* Saldo destaque */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-              <span className="relative flex h-2 w-2" aria-hidden="true">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-success" />
-              </span>
-              Saldo consolidado
-            </div>
-            <div className="space-y-1">
-              {loadingResumo ? (
-                <Skeleton className="h-10 w-72" />
-              ) : (
-                <p className="text-[2rem] leading-10 font-bold tabular-nums text-foreground">
-                  {kpis ? formatBRL(kpis.saldo) : "—"}
-                </p>
-              )}
-              {kpis && !loadingResumo && (
-                <p className="text-sm text-muted-foreground">
-                  Projetado para hoje:{" "}
-                  <span className={cn(
-                    "font-medium tabular-nums",
-                    kpis.saldoProjetado >= kpis.saldo ? "text-success" : "text-destructive",
-                  )}>
-                    {formatBRL(kpis.saldoProjetado)}
-                  </span>
-                  {kpis.saldoProjetado >= kpis.saldo
-                    ? <TrendingUp className="inline w-4 h-4 ml-1 text-success" aria-hidden="true" />
-                    : <TrendingDown className="inline w-4 h-4 ml-1 text-destructive" aria-hidden="true" />}
-                </p>
-              )}
-              {/* Número apurado sobre amostra não pode ter a cara de número
-                  exato. O hook marca quais recortes bateram no teto. */}
-              {resumo && resumo.truncado.length > 0 && (
-                <p className="text-xs text-warning flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
-                  Volume acima do teto de consulta em {resumo.truncado.join(", ")} —
-                  inadimplência e runway saem incompletos.
-                </p>
-              )}
-            </div>
-
-            {/* Linha de ações primárias */}
-            <div className="flex flex-wrap items-center gap-2 pt-1">
-              {QUICK_ACTIONS.map((a) => {
-                const Icon = a.icon;
-                return (
-                  <Button
-                    key={a.id}
-                    variant={a.primary ? "default" : "outline"}
-                    onClick={() => handleNavigate(a.id)}
-                  >
-                    <Icon className="w-4 h-4" aria-hidden="true" />
-                    {a.label}
-                  </Button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Mini KPIs lateral */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 self-center">
-            <MiniMetric
-              loading={loadingResumo}
-              icon={ArrowDownCircle}
-              label={`Receber hoje${kpis?.receberQtd ? ` (${kpis.receberQtd})` : ""}`}
-              value={kpis ? formatBRL(kpis.receber) : "—"}
-              tone="positive"
-              onClick={() => handleNavigate("a_receber")}
-            />
-            <MiniMetric
-              loading={loadingResumo}
-              icon={ArrowUpCircle}
-              label={`Pagar hoje${kpis?.pagarQtd ? ` (${kpis.pagarQtd})` : ""}`}
-              value={kpis ? formatBRL(kpis.pagar) : "—"}
-              tone="negative"
-              onClick={() => handleNavigate("a_pagar")}
-            />
-            <MiniMetric
-              loading={loadingResumo}
-              icon={AlertTriangle}
-              // "Atrasos totais" soma o que se deve com o que se tem a receber
-              // — duas coisas de sinal oposto num número só. Como volume de
-              // pendência faz sentido; como valor, não. O rótulo diz qual é.
-              label="Em atraso (pagar + receber)"
-              value={kpis ? formatBRL(kpis.atrasoTotal) : "—"}
-              tone={kpis && kpis.atrasoTotal > 0 ? "warning" : "neutral"}
-              onClick={() => handleNavigate("panorama")}
-            />
-            <MiniMetric
-              loading={loadingResumo}
-              icon={Activity}
-              label="Painel completo"
-              value="Abrir"
-              tone="neutral"
-              isAction
-              onClick={() => handleNavigate("panorama")}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* ============ Alerta de atrasos (contextual) ============ */}
-      {kpis && kpis.atrasoTotal > 0 && (
-        <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-warning-line bg-warning-tint px-4 py-3">
-          <div className="flex items-center gap-2 min-w-0">
-            <Bell className="w-4 h-4 shrink-0 text-warning-ink" aria-hidden="true" />
-            <p className="text-sm min-w-0 text-warning-ink">
-              <span className="font-medium">Há lançamentos em atraso.</span>{" "}
-              <span>
-                {formatBRL(kpis.atrasoPagar)} a pagar e {formatBRL(kpis.atrasoReceber)} a receber.
-              </span>
-            </p>
-          </div>
-          <Button variant="outline" onClick={() => handleNavigate("panorama")}>
-            Resolver <ArrowRight className="w-4 h-4" aria-hidden="true" />
-          </Button>
-        </div>
-      )}
-
       {/* ============ Busca + Command palette hint ============ */}
       <div className="relative">
         <label htmlFor="fin-hub-busca" className="sr-only">Buscar funcionalidade</label>
@@ -576,66 +420,3 @@ function ModuleRow({
   );
 }
 
-function MiniMetric({
-  loading, icon: Icon, label, value, tone, onClick, isAction,
-}: {
-  loading: boolean;
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  value: string;
-  tone: "neutral" | "positive" | "negative" | "warning";
-  onClick?: () => void;
-  isAction?: boolean;
-}) {
-  const toneText = {
-    neutral: "text-foreground",
-    positive: "text-success",
-    negative: "text-destructive",
-    warning: "text-warning",
-  }[tone];
-  const toneIcon = {
-    neutral: "bg-muted text-foreground",
-    positive: "bg-success-tint text-success-ink",
-    negative: "bg-destructive-tint text-destructive-ink",
-    warning: "bg-warning-tint text-warning-ink",
-  }[tone];
-  const toneBorder = {
-    neutral: "border-border hover:border-primary/40",
-    positive: "border-border hover:border-success-line",
-    negative: "border-border hover:border-destructive-line",
-    warning: "border-warning-line hover:border-warning-ink",
-  }[tone];
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "group text-left rounded-lg border bg-card p-4 transition-colors duration-200",
-        "hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-        toneBorder,
-      )}
-    >
-      <div className="flex items-center justify-between gap-2 mb-2">
-        <span className="text-xs font-medium text-muted-foreground truncate">
-          {label}
-        </span>
-        <span className={cn("inline-flex items-center justify-center w-6 h-6 rounded-md shrink-0", toneIcon)}>
-          <Icon className="w-4 h-4" />
-        </span>
-      </div>
-      {loading ? (
-        <Skeleton className="h-6 w-3/4" />
-      ) : (
-        <div className={cn(
-          "font-semibold tabular-nums",
-          isAction ? "text-sm text-primary inline-flex items-center gap-1" : "text-lg",
-          !isAction && toneText,
-        )}>
-          {value}
-          {isAction && <ArrowRight className="w-4 h-4" aria-hidden="true" />}
-        </div>
-      )}
-    </button>
-  );
-}

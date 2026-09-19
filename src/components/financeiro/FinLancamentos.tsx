@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -12,19 +12,20 @@ import {
   Link2,
   Trash2,
   Search,
-  TrendingUp,
-  TrendingDown,
   Wallet,
   Scale,
   Filter,
   CalendarRange,
-  ArrowUpRight,
-  ArrowDownRight,
+  ArrowUp,
+  ArrowDown,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   Layers,
   AlertTriangle,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
   useLancamentos,
   useContas,
@@ -91,6 +92,8 @@ export default function FinLancamentos() {
     campo: "data_competencia",
     dir: "desc",
   });
+  const [pagina, setPagina] = useState(1);
+  const TAMANHO_PAGINA = 20;
 
   const abrirNovo = () => {
     setEditing(null);
@@ -126,6 +129,19 @@ export default function FinLancamentos() {
     return lista;
   }, [lancs, sort]);
 
+  // A página reseta sempre que o recorte muda — senão a pessoa filtra e cai
+  // numa página 3 que já não existe para o novo resultado.
+  useEffect(() => {
+    setPagina(1);
+  }, [filtro, sort]);
+
+  const totalPaginas = Math.max(1, Math.ceil(sortedLancs.length / TAMANHO_PAGINA));
+  const paginaAtual = Math.min(pagina, totalPaginas);
+  const lancsDaPagina = sortedLancs.slice(
+    (paginaAtual - 1) * TAMANHO_PAGINA,
+    paginaAtual * TAMANHO_PAGINA,
+  );
+
   const totalEntradas = useMemo(
     () => lancsAtivos.filter((l) => l.natureza === "receita").reduce((s, l) => s + Number(l.valor), 0),
     [lancsAtivos]
@@ -149,6 +165,16 @@ export default function FinLancamentos() {
     : `${contas.filter((c) => c.ativa).length} conta(s)`;
 
   const temFiltroData = !!(filtro.dataInicio || filtro.dataFim);
+  const temAlgumFiltro = !!(
+    filtro.busca ||
+    (filtro.tipo && filtro.tipo !== "todos") ||
+    (filtro.status && filtro.status !== "todos") ||
+    (filtro.contaId && filtro.contaId !== "todos") ||
+    temFiltroData ||
+    (filtro.origemTipo && filtro.origemTipo !== "todos")
+  );
+  const limparTodosFiltros = () =>
+    setFiltro({ tipo: "todos", status: "todos", origemTipo: "todos", origemLoteId: loteParam });
 
   return (
     <div className="space-y-6">
@@ -164,65 +190,77 @@ export default function FinLancamentos() {
       <Card>
         <CardContent className="p-6 space-y-4">
           {/* Linha principal */}
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative min-w-[200px] flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 w-4 h-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-              <Input
-                aria-label="Buscar lançamento por descrição"
-                placeholder="Buscar por descrição…"
-                className="pl-9"
-                value={filtro.busca ?? ""}
-                onChange={(e) => setFiltro((f) => ({ ...f, busca: e.target.value }))}
-              />
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="min-w-[220px] flex-1 space-y-1">
+              <label htmlFor="fin-lanc-busca" className="text-sm text-muted-foreground">Buscar lançamento</label>
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 w-4 h-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+                <Input
+                  id="fin-lanc-busca"
+                  placeholder="Descrição, categoria ou favorecido"
+                  className="pl-9"
+                  value={filtro.busca ?? ""}
+                  onChange={(e) => setFiltro((f) => ({ ...f, busca: e.target.value }))}
+                />
+              </div>
             </div>
 
-            <Select
-              value={filtro.tipo ?? "todos"}
-              onValueChange={(v) => setFiltro((f) => ({ ...f, tipo: v as LancamentoFiltro["tipo"] }))}
-            >
-              <SelectTrigger className="w-[160px]" aria-label="Filtrar por tipo">
-                <SelectValue placeholder="Tipo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos os tipos</SelectItem>
-                <SelectItem value="a_pagar">A pagar</SelectItem>
-                <SelectItem value="a_receber">A receber</SelectItem>
-                <SelectItem value="movimento_bancario">Movimento</SelectItem>
-                <SelectItem value="transferencia">Transferência</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="space-y-1">
+              <label id="fin-lanc-tipo-label" className="text-sm text-muted-foreground">Tipo</label>
+              <Select
+                value={filtro.tipo ?? "todos"}
+                onValueChange={(v) => setFiltro((f) => ({ ...f, tipo: v as LancamentoFiltro["tipo"] }))}
+              >
+                <SelectTrigger className="w-[160px]" aria-labelledby="fin-lanc-tipo-label">
+                  <SelectValue placeholder="Tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos</SelectItem>
+                  <SelectItem value="a_pagar">A pagar</SelectItem>
+                  <SelectItem value="a_receber">A receber</SelectItem>
+                  <SelectItem value="movimento_bancario">Movimento</SelectItem>
+                  <SelectItem value="transferencia">Transferência</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-            <Select
-              value={filtro.status ?? "todos"}
-              onValueChange={(v) => setFiltro((f) => ({ ...f, status: v as LancamentoFiltro["status"] }))}
-            >
-              <SelectTrigger className="w-[150px]" aria-label="Filtrar por status">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos status</SelectItem>
-                <SelectItem value="previsto">Previsto</SelectItem>
-                <SelectItem value="realizado">Realizado</SelectItem>
-                <SelectItem value="conciliado">Conciliado</SelectItem>
-                <SelectItem value="em_atraso">Em atraso</SelectItem>
-                <SelectItem value="cancelado">Cancelado</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="space-y-1">
+              <label id="fin-lanc-status-label" className="text-sm text-muted-foreground">Status</label>
+              <Select
+                value={filtro.status ?? "todos"}
+                onValueChange={(v) => setFiltro((f) => ({ ...f, status: v as LancamentoFiltro["status"] }))}
+              >
+                <SelectTrigger className="w-[150px]" aria-labelledby="fin-lanc-status-label">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos</SelectItem>
+                  <SelectItem value="previsto">Previsto</SelectItem>
+                  <SelectItem value="realizado">Realizado</SelectItem>
+                  <SelectItem value="conciliado">Conciliado</SelectItem>
+                  <SelectItem value="em_atraso">Em atraso</SelectItem>
+                  <SelectItem value="cancelado">Cancelado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-            <Select
-              value={filtro.contaId ?? "todos"}
-              onValueChange={(v) => setFiltro((f) => ({ ...f, contaId: v }))}
-            >
-              <SelectTrigger className="w-[170px]" aria-label="Filtrar por conta">
-                <SelectValue placeholder="Conta" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todas as contas</SelectItem>
-                {contas.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="space-y-1">
+              <label id="fin-lanc-conta-label" className="text-sm text-muted-foreground">Conta</label>
+              <Select
+                value={filtro.contaId ?? "todos"}
+                onValueChange={(v) => setFiltro((f) => ({ ...f, contaId: v }))}
+              >
+                <SelectTrigger className="w-[170px]" aria-labelledby="fin-lanc-conta-label">
+                  <SelectValue placeholder="Conta" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todas as contas</SelectItem>
+                  {contas.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
             <Button
               variant="outline"
@@ -317,57 +355,60 @@ export default function FinLancamentos() {
         </CardContent>
       </Card>
 
-      {/* ── Stats strip ── */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          label="Entradas"
-          value={formatBRL(totalEntradas)}
-          sub={`${lancsAtivos.filter((l) => l.natureza === "receita").length} lançamentos`}
-          icon={ArrowUpRight}
-          tone="success"
-        />
-        <StatCard
-          label="Saídas"
-          value={formatBRL(totalSaidas)}
-          sub={`${lancsAtivos.filter((l) => l.natureza !== "receita").length} lançamentos`}
-          icon={ArrowDownRight}
-          tone="danger"
-        />
-        <StatCard
-          label="Resultado"
-          value={formatBRL(resultado)}
-          sub={resultado >= 0 ? "Positivo no período" : "Negativo no período"}
-          icon={resultado >= 0 ? TrendingUp : TrendingDown}
-          tone={resultado >= 0 ? "success" : "danger"}
-        />
-        <StatCard
-          label={`Saldo · ${labelSaldo}`}
-          value={formatBRL(saldoExibido)}
-          sub="Saldo atual em conta"
-          icon={Wallet}
-          tone="default"
-        />
+      {/* ── Faixa de KPIs ── */}
+      <Card>
+        <CardContent className="grid grid-cols-1 divide-y divide-border p-0 sm:grid-cols-2 sm:divide-y-0 sm:divide-x lg:grid-cols-4">
+          <StatCell
+            label="Entradas no período"
+            value={formatBRL(totalEntradas)}
+            sub={`${lancsAtivos.filter((l) => l.natureza === "receita").length} lançamentos`}
+            tone="success"
+          />
+          <StatCell
+            label="Saídas no período"
+            value={formatBRL(totalSaidas)}
+            sub={`${lancsAtivos.filter((l) => l.natureza !== "receita").length} lançamentos`}
+            tone="default"
+          />
+          <StatCell
+            label="Resultado no período"
+            value={formatBRL(resultado)}
+            sub="Entradas menos saídas"
+            tone={resultado >= 0 ? "success" : "danger"}
+          />
+          <StatCell
+            label={`Saldo em contas`}
+            value={formatBRL(saldoExibido)}
+            sub={contaSelecionada ? labelSaldo : `${labelSaldo} · saldo atual`}
+            tone="default"
+            icon={Wallet}
+          />
+        </CardContent>
+      </Card>
+
+      {/* ── Resumo do recorte + limpar filtros ── */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm text-muted-foreground">
+          {isLoading
+            ? "Carregando…"
+            : `${lancs.length} lançamento${lancs.length !== 1 ? "s" : ""} encontrado${lancs.length !== 1 ? "s" : ""}`}
+        </p>
+        {temAlgumFiltro && (
+          <Button variant="outline" size="sm" onClick={limparTodosFiltros}>
+            Limpar filtros
+          </Button>
+        )}
       </div>
 
       {/* ── Tabela ── */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 border-b border-border px-6 py-4">
-          <CardTitle className="text-lg font-semibold">
-            {isLoading ? "Carregando…" : `${lancs.length} lançamento${lancs.length !== 1 ? "s" : ""}`}
-          </CardTitle>
-          {lancs.length > 0 && (
-            <span className="text-xs text-muted-foreground">
-              mostrando até 500 registros
-            </span>
-          )}
-        </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[960px] text-sm">
+            <table className="w-full min-w-[900px] text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted text-sm font-semibold text-foreground">
                   <th
-                    className="w-[120px] whitespace-nowrap px-4 py-3 text-left"
+                    className="w-[110px] whitespace-nowrap px-4 py-3 text-left"
                     aria-sort={
                       sort.campo === "data_competencia"
                         ? (sort.dir === "asc" ? "ascending" : "descending")
@@ -385,7 +426,7 @@ export default function FinLancamentos() {
                         )
                       }
                     >
-                      Competência
+                      Data
                       {sort.campo === "data_competencia" ? (
                         sort.dir === "asc"
                           ? <ChevronUp className="w-3 h-3" aria-hidden="true" />
@@ -395,10 +436,9 @@ export default function FinLancamentos() {
                       )}
                     </button>
                   </th>
-                  <th className="w-[120px] whitespace-nowrap px-3 py-3 text-left">Vencimento</th>
-                  <th className="px-3 py-3 text-left">Descrição</th>
-                  <th className="w-[150px] whitespace-nowrap px-3 py-3 text-left">Categoria</th>
-                  <th className="w-[150px] whitespace-nowrap px-3 py-3 text-left">Pessoa / Conta</th>
+                  <th className="w-[100px] whitespace-nowrap px-3 py-3 text-left">2ª data</th>
+                  <th className="px-3 py-3 text-left">Descrição / categoria</th>
+                  <th className="w-[170px] whitespace-nowrap px-3 py-3 text-left">Favorecido / conta</th>
                   <th className="w-[110px] whitespace-nowrap px-3 py-3 text-left">Tipo</th>
                   <th className="w-[120px] whitespace-nowrap px-3 py-3 text-left">Status</th>
                   <th className="w-[140px] whitespace-nowrap px-3 py-3 text-right">Valor</th>
@@ -409,14 +449,14 @@ export default function FinLancamentos() {
                 {isLoading ? (
                   Array.from({ length: 8 }).map((_, i) => (
                     <tr key={i}>
-                      <td colSpan={9} className="px-4 py-2">
+                      <td colSpan={8} className="px-4 py-2">
                         <Skeleton className="h-8 w-full rounded-md" />
                       </td>
                     </tr>
                   ))
                 ) : lancs.length === 0 ? (
                   <tr>
-                    <td colSpan={9}>
+                    <td colSpan={8}>
                       <EstadoVazio
                         icone={<Scale />}
                         titulo="Nenhum lançamento encontrado"
@@ -431,7 +471,7 @@ export default function FinLancamentos() {
                     </td>
                   </tr>
                 ) : (
-                  sortedLancs.map((l) => {
+                  lancsDaPagina.map((l) => {
                     const isIgnorado = l.origem_tipo === "ignorado_conciliacao";
                     const isTransferencia = l.tipo === "transferencia";
                     const isReceita = l.natureza === "receita";
@@ -471,10 +511,14 @@ export default function FinLancamentos() {
                           )}
                         </td>
 
-                        {/* Descrição */}
-                        <td className="max-w-[260px] px-3 py-3">
+                        {/* Descrição / categoria */}
+                        <td className="max-w-[280px] px-3 py-3">
                           <span className="block truncate text-sm font-medium" title={l.descricao}>
                             {l.descricao}
+                          </span>
+                          <span className="block truncate text-xs text-muted-foreground">
+                            {l.categoria?.nome ?? "Sem categoria"}
+                            {l.parcela_numero && l.parcela_total && ` · Parcela ${l.parcela_numero}/${l.parcela_total}`}
                           </span>
                           {isIgnorado && (
                             <Badge variant="muted" className="mt-1 font-normal">
@@ -486,42 +530,44 @@ export default function FinLancamentos() {
                               transferência entre contas
                             </Badge>
                           )}
-                          {l.parcela_numero && l.parcela_total && (
-                            <span className="block text-xs text-muted-foreground">
-                              Parcela {l.parcela_numero}/{l.parcela_total}
-                            </span>
-                          )}
                         </td>
 
-                        {/* Categoria */}
-                        <td className="max-w-[150px] px-3 py-3 text-sm text-muted-foreground">
-                          <span className="block truncate" title={l.categoria?.nome ?? ""}>
-                            {l.categoria?.nome ?? "—"}
-                          </span>
-                        </td>
-
-                        {/* Pessoa / Conta */}
-                        <td className="max-w-[150px] px-3 py-3 text-sm">
+                        {/* Favorecido / conta */}
+                        <td className="max-w-[170px] px-3 py-3 text-sm">
                           {l.pessoa?.nome ? (
                             <span className="block truncate text-foreground" title={l.pessoa.nome}>
                               {l.pessoa.nome}
                             </span>
-                          ) : null}
-                          <span className="block truncate text-muted-foreground" title={l.conta?.nome ?? ""}>
+                          ) : (
+                            <span className="block truncate text-muted-foreground">—</span>
+                          )}
+                          <span className="block truncate text-xs text-muted-foreground" title={l.conta?.nome ?? ""}>
                             {l.conta?.nome ?? "—"}
                           </span>
                         </td>
 
                         {/* Tipo */}
                         <td className="whitespace-nowrap px-3 py-3">
-                          <Badge variant="muted" className="font-normal">
+                          <span className="inline-flex items-center gap-1.5 text-sm text-foreground">
+                            {(l.tipo === "a_pagar" || l.tipo === "a_receber") && (
+                              <span
+                                className={cn(
+                                  "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded",
+                                  l.tipo === "a_receber" ? "bg-success-tint text-success-ink" : "bg-destructive-tint text-destructive-ink",
+                                )}
+                                aria-hidden="true"
+                              >
+                                {l.tipo === "a_receber" ? <ArrowDown className="h-3 w-3" /> : <ArrowUp className="h-3 w-3" />}
+                              </span>
+                            )}
                             {tipoLabel[l.tipo] ?? l.tipo}
-                          </Badge>
+                          </span>
                         </td>
 
                         {/* Status */}
                         <td className="whitespace-nowrap px-3 py-3">
-                          <Badge variant={STATUS_VARIANTE[l.status] ?? "muted"}>
+                          <Badge variant={STATUS_VARIANTE[l.status] ?? "muted"} className="gap-1.5">
+                            <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true" />
                             {statusLabel[l.status] ?? l.status}
                           </Badge>
                         </td>
@@ -602,6 +648,32 @@ export default function FinLancamentos() {
               </tbody>
             </table>
           </div>
+
+          {sortedLancs.length > TAMANHO_PAGINA && (
+            <div className="flex items-center justify-between gap-3 border-t border-border px-4 py-3">
+              <p className="text-sm text-muted-foreground">Página {paginaAtual} de {totalPaginas}</p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={paginaAtual <= 1}
+                  onClick={() => setPagina((p) => Math.max(1, p - 1))}
+                >
+                  <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                  Anterior
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={paginaAtual >= totalPaginas}
+                  onClick={() => setPagina((p) => Math.min(totalPaginas, p + 1))}
+                >
+                  Próxima
+                  <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -666,41 +738,38 @@ export default function FinLancamentos() {
   );
 }
 
-// ─── StatCard ─────────────────────────────────────────────────────────────────
+// ─── StatCell ─────────────────────────────────────────────────────────────────
+// Uma célula da faixa única de KPIs — não um cartão próprio: o modelo aprovado
+// é uma faixa contínua dividida por linhas finas, não quatro cartões soltos.
 
-function StatCard({
+function StatCell({
   label,
   value,
   sub,
-  icon: Icon,
   tone,
+  icon: Icon,
 }: {
   label: string;
   value: string;
   sub: string;
-  icon: React.ElementType;
   tone: "default" | "success" | "danger";
+  /** Só "Saldo em contas" traz ícone no modelo; os demais não. */
+  icon?: React.ElementType;
 }) {
-  const cls = {
-    default: { text: "text-foreground", bg: "bg-muted", icon: "text-muted-foreground" },
-    success: { text: "text-success-ink", bg: "bg-success-tint", icon: "text-success-ink" },
-    danger: { text: "text-destructive-ink", bg: "bg-destructive-tint", icon: "text-destructive-ink" },
+  const cor = {
+    default: "text-foreground",
+    success: "text-success-ink",
+    danger: "text-destructive-ink",
   }[tone];
 
   return (
-    <Card>
-      <CardContent className="p-6">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="truncate text-sm font-medium text-muted-foreground">{label}</p>
-            <p className={`mt-1 text-[2rem] font-bold leading-10 tabular-nums ${cls.text}`}>{value}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{sub}</p>
-          </div>
-          <div className={`shrink-0 rounded-md p-2 ${cls.bg}`}>
-            <Icon className={`w-5 h-5 ${cls.icon}`} aria-hidden="true" />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+    <div className="min-w-0 p-4">
+      <p className="flex items-center gap-1.5 truncate text-sm text-muted-foreground">
+        {Icon && <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />}
+        {label}
+      </p>
+      <p className={cn("mt-1 whitespace-nowrap text-2xl font-bold tabular-nums", cor)}>{value}</p>
+      <p className="mt-0.5 truncate text-xs text-muted-foreground">{sub}</p>
+    </div>
   );
 }
