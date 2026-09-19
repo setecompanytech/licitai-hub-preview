@@ -1,130 +1,154 @@
 import { Link } from 'react-router-dom';
-import { AlertTriangle, CheckCircle2, Clock, FileWarning, RefreshCw } from 'lucide-react';
+import { AlertTriangle, ChevronRight, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
+import BrandLogo from '@/components/shared/BrandLogo';
 import { cn } from '@/lib/utils';
 import { useVencimentosDeDocumentos } from '@/hooks/useVencimentosDeDocumentos';
-import type { SituacaoValidade } from '@/lib/documentos/situacao';
 
 /**
- * Faixa de pendências do topo do painel.
+ * Central de criticidade documental — cartão único do topo do painel,
+ * exatamente como o modelo aprovado: selo com a marca, título e contadores
+ * por severidade numa faixa, e as duas frentes (regularizar agora / renovar
+ * antes que vença) lado a lado abaixo.
  *
- * REGRA QUE ESTE COMPONENTE OBEDECE: nenhum alerta inventado. O que aparece
- * aqui são vencimentos REAIS de documento e certificado — as três fontes que o
- * calendário já lia (documentos de habilitação, certificado digital da empresa
- * e certificado dos portais), agora pelo hook compartilhado, com a mesma
- * contagem dos dois lados.
- *
- * Sem fonte disponível, a faixa não inventa: ou some, ou diz que não conseguiu
- * ler — nunca mostra "0 pendências", que afirmaria que está tudo em dia.
- *
- * As três situações são separadas de propósito, porque a ação é diferente:
- * vencido bloqueia habilitação AGORA; vence hoje ainda dá para usar e é o
- * último dia para renovar; vencendo é planejamento da semana.
+ * "Bloqueante" agrupa vencido + vence_hoje: os dois já impedem habilitação
+ * hoje, e é essa urgência — não a data exata — que separa o vermelho do
+ * amarelo no modelo.
  */
-
-const FAIXAS: {
-  situacao: SituacaoValidade;
-  rotulo: (n: number) => string;
-  descricao: string;
-  icone: typeof AlertTriangle;
-  pele: string;
-}[] = [
-  {
-    situacao: 'vencido',
-    rotulo: (n) => `${n} documento${n > 1 ? 's' : ''} vencido${n > 1 ? 's' : ''}`,
-    descricao: 'Impede habilitação — renove antes da próxima sessão',
-    icone: AlertTriangle,
-    pele: 'border-destructive-line bg-destructive-tint text-destructive-ink',
-  },
-  {
-    situacao: 'vence_hoje',
-    rotulo: (n) => `${n} vence${n > 1 ? 'm' : ''} hoje`,
-    descricao: 'Último dia de validade',
-    icone: Clock,
-    pele: 'border-destructive-line bg-destructive-tint text-destructive-ink',
-  },
-  {
-    situacao: 'vencendo',
-    rotulo: (n) => `${n} vence${n > 1 ? 'm' : ''} em até 30 dias`,
-    descricao: 'Renovação a programar',
-    icone: FileWarning,
-    pele: 'border-warning-line bg-warning-tint text-warning-ink',
-  },
-];
-
 export default function PendenciasPrioritarias() {
   const { documentos, carregando, erro, recarregar } = useVencimentosDeDocumentos();
 
   if (carregando) {
     return (
-      <div role="status" aria-busy="true" className="rounded-xl border border-border bg-card p-4 shadow-sm">
+      <div role="status" aria-busy="true" className="overflow-hidden rounded-lg border border-border bg-card">
         <span className="sr-only">Carregando pendências</span>
-        <div className="flex flex-wrap gap-3">
-          <Skeleton className="h-10 w-56" />
-          <Skeleton className="h-10 w-56" />
-        </div>
+        <div className="skeleton" style={{ height: 68 }} />
+        <div className="skeleton" style={{ height: 64, opacity: 0.7 }} />
       </div>
     );
   }
 
   if (erro) {
-    /* Princípio 3 do CLAUDE.md: falha silenciosa é proibida. Some com a faixa
-       seria dizer "sem pendências" — e a pessoa concluiria que as certidões
-       estão em dia. Isto aqui NÃO é um alerta fictício: é o aviso de que a
-       leitura falhou, com a mensagem real e a retentativa. */
     return (
-      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card p-4 shadow-sm">
-        <AlertTriangle className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
-        <p className="min-w-0 flex-1 text-sm leading-5 text-muted-foreground">
-          Não foi possível ler os vencimentos: {erro.message} Nada aqui significa que está tudo em dia.
-        </p>
-        <Button type="button" variant="outline" size="sm" className="gap-2" onClick={recarregar}>
-          <RefreshCw className="h-4 w-4" aria-hidden="true" />
+      <div className="ds-alert-line red">
+        <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />
+        <div>
+          <strong>Não foi possível ler os vencimentos</strong>
+          <span>{erro.message}</span>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="ml-auto gap-1 shrink-0"
+          onClick={recarregar}
+        >
+          <RefreshCw className="h-3 w-3" aria-hidden="true" />
           Tentar novamente
         </Button>
       </div>
     );
   }
 
-  const contagem = FAIXAS.map((f) => ({
-    ...f,
-    total: documentos.filter((d) => d.situacao === f.situacao).length,
-  })).filter((f) => f.total > 0);
+  const bloqueantes = documentos.filter((d) => d.situacao === 'vencido' || d.situacao === 'vence_hoje').length;
+  const atencao = documentos.filter((d) => d.situacao === 'vencendo').length;
+  const total = bloqueantes + atencao;
 
-  if (contagem.length === 0) {
-    // Uma linha só: a boa notícia não pode ocupar o melhor espaço da tela,
-    // mas sumir sem dizer nada deixaria a dúvida de se foi apurado.
+  if (total === 0) {
     return (
-      <p className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-3 text-sm leading-5 text-muted-foreground shadow-sm">
-        <CheckCircle2 className="h-4 w-4 shrink-0 text-success" aria-hidden="true" />
-        Nenhum documento vencido ou a vencer nos próximos 30 dias.
-      </p>
+      <div
+        className="ds-alert-line"
+        style={{ background: '#ecf8f3', borderColor: '#b9dfd0', color: '#087b62' }}
+      >
+        <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />
+        <div>
+          <strong>Documentação em dia</strong>
+          <span>Nenhum documento vencido ou a vencer nos próximos 30 dias.</span>
+        </div>
+      </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-stretch">
-      {contagem.map((f) => (
-        <div
-          key={f.situacao}
-          className={cn('flex min-w-0 flex-1 items-center gap-3 rounded-xl border p-4 shadow-sm', f.pele)}
-        >
-          <f.icone className="h-5 w-5 shrink-0" aria-hidden="true" />
-          <div className="min-w-0 flex-1">
-            <p className="text-base font-semibold leading-6">{f.rotulo(f.total)}</p>
-            <p className="text-sm leading-5 opacity-90">{f.descricao}</p>
-          </div>
-          {/* O acesso à listagem: a agenda tem a aba Documentos com todos os
-              vencimentos e o link para o registro de cada um. */}
+    <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+      {/* Cabeçalho: selo da marca, título, contadores e a ação principal */}
+      <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3">
+        <span className="brand-mark-badge" aria-hidden="true">
+          <BrandLogo variant="dark" mode="symbol" width={22} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[15px] font-semibold text-foreground">Central de criticidade documental</p>
+          <p className="text-xs text-muted-foreground">
+            {total} pendência{total > 1 ? 's' : ''} pode{total > 1 ? 'm' : ''} afetar sua participação em licitações
+          </p>
+        </div>
+        <div className="flex flex-shrink-0 flex-wrap items-center gap-2">
+          {bloqueantes > 0 && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-destructive-line bg-destructive-tint px-2.5 py-1 text-xs font-semibold text-destructive-ink">
+              <span className="h-1.5 w-1.5 rounded-full bg-destructive" aria-hidden="true" />
+              {bloqueantes} bloqueante{bloqueantes > 1 ? 's' : ''}
+            </span>
+          )}
+          {atencao > 0 && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-warning-line bg-warning-tint px-2.5 py-1 text-xs font-semibold text-warning-ink">
+              <span className="h-1.5 w-1.5 rounded-full bg-warning" aria-hidden="true" />
+              {atencao} atenção
+            </span>
+          )}
+          <Button asChild size="sm">
+            <Link to="/calendario">Revisar documentos</Link>
+          </Button>
+        </div>
+      </div>
+
+      {/* Corpo: uma frente por severidade, lado a lado quando as duas existem */}
+      <div
+        className={cn(
+          'grid divide-y divide-border',
+          bloqueantes > 0 && atencao > 0 && 'sm:grid-cols-2 sm:divide-y-0 sm:divide-x',
+        )}
+      >
+        {bloqueantes > 0 && (
           <Link
             to="/calendario"
-            className="shrink-0 rounded-sm text-sm font-medium underline underline-offset-2 hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex items-center gap-3 border-l-4 border-l-destructive px-4 py-3 transition-colors hover:bg-muted/40"
           >
-            Ver
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-foreground">Regularização necessária</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Documentos vencidos impedem a habilitação da empresa
+              </p>
+            </div>
+            <div className="shrink-0 text-right">
+              <p className="text-sm font-bold tabular-nums text-foreground">
+                {bloqueantes} documento{bloqueantes > 1 ? 's' : ''}
+              </p>
+              <p className="text-[11px] font-medium text-destructive">Bloqueia habilitação</p>
+            </div>
+            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
           </Link>
-        </div>
-      ))}
+        )}
+        {atencao > 0 && (
+          <Link
+            to="/calendario"
+            className="flex items-center gap-3 border-l-4 border-l-warning px-4 py-3 transition-colors hover:bg-muted/40"
+          >
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-foreground">Renovação preventiva</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Documento{atencao > 1 ? 's' : ''} próximo{atencao > 1 ? 's' : ''} do vencimento nos próximos 30 dias
+              </p>
+            </div>
+            <div className="shrink-0 text-right">
+              <p className="text-sm font-bold tabular-nums text-foreground">
+                {atencao} documento{atencao > 1 ? 's' : ''}
+              </p>
+              <p className="text-[11px] font-medium text-warning">Vence em 30 dias</p>
+            </div>
+            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+          </Link>
+        )}
+      </div>
     </div>
   );
 }

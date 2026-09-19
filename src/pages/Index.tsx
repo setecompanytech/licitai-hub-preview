@@ -8,6 +8,7 @@ import PendenciasPrioritarias from '@/components/dashboard/PendenciasPrioritaria
 import QuickAccessGrid from '@/components/dashboard/QuickAccessGrid';
 import AtalhosPessoais from '@/components/dashboard/AtalhosPessoais';
 import ResumoOperacional from '@/components/dashboard/ResumoOperacional';
+import ResumoOperacionalKpiStrip from '@/components/dashboard/ResumoOperacionalKpiStrip';
 import AgendaPendencias from '@/components/dashboard/AgendaPendencias';
 import OportunidadesPainel from '@/components/dashboard/OportunidadesPainel';
 import MapaLicitacoesPorEstado from '@/components/dashboard/MapaLicitacoesPorEstado';
@@ -110,13 +111,13 @@ export default function Index() {
             <>
               <Button
                 type="button"
-                variant={personalizando ? 'default' : 'outline'}
+                variant="default"
                 aria-pressed={personalizando}
                 onClick={() => setPersonalizando((v) => !v)}
                 className="gap-2"
               >
                 <Settings2 className="h-4 w-4" aria-hidden="true" />
-                {personalizando ? 'Concluir personalização' : 'Personalizar atalhos'}
+                {personalizando ? 'Concluir' : '+ Personalizar atalhos'}
               </Button>
               <RelatorioGerencialPDF />
             </>
@@ -153,14 +154,14 @@ export default function Index() {
         )}
 
         {/* ── B. Pendências prioritárias ───────────────────────────────── */}
-        <section data-secao="Pendências" aria-label="Pendências prioritárias" className="mb-8">
+        <section data-secao="Pendências" aria-label="Pendências prioritárias" className="mb-4">
           <PendenciasPrioritarias />
         </section>
 
         {/* ── C. Suas ferramentas ──────────────────────────────────────── */}
-        <section data-secao="Suas ferramentas" className="mb-8">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-xl font-semibold leading-7">Suas ferramentas</h2>
+        <section data-secao="Suas ferramentas" className="mb-5">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-[15px] font-semibold leading-6">Suas ferramentas</h2>
             <button
               type="button"
               onClick={abrirMenuDeFerramentas}
@@ -188,7 +189,10 @@ export default function Index() {
         {/* ── D. Resumo operacional ────────────────────────────────────── */}
         <section data-secao="Resumo operacional" className="mb-8">
           <h2 className="mb-4 text-xl font-semibold leading-7">Resumo operacional</h2>
-          <ResumoOperacional kpis={analyticsKpis} carregando={carregandoProcessos} />
+          {/* KPI strip densa — estilo corporativo do prototype. Mantém toda
+              a lógica de navegação do ResumoOperacional original (os KPIs
+              clicáveis levam à listagem filtrada pelo mesmo predicado). */}
+          <ResumoOperacionalKpiStrip kpis={analyticsKpis} carregando={carregandoProcessos} />
         </section>
 
         {/* ── E. Agenda e pendências ───────────────────────────────────── */}
