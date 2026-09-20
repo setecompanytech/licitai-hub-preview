@@ -24,7 +24,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -32,6 +32,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Skeleton } from '@/components/ui/skeleton';
+import EstadoVazio from '@/components/shared/EstadoVazio';
+import SeloPraefectusIA from '@/components/shared/SeloPraefectusIA';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
@@ -1863,15 +1866,15 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       {empenhosDoContrato.map(e => {
         const cotas = saldosDeEmpenho.filter(s => s.empenho_id === e.id);
         return (
-          <div key={e.id} className={`rounded-[var(--g-raio)] border p-2.5 ${
-            e.cancelado ? 'border-destructive-line bg-destructive-tint' : ''
+          <div key={e.id} className={`rounded-lg border p-3 ${
+            e.cancelado ? 'border-destructive-line bg-destructive-tint' : 'border-border bg-card'
           }`}>
-            <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <span className={`g-corpo font-medium tabular-nums ${
                   e.cancelado ? 'line-through text-muted-foreground' : ''
                 }`}>{e.numero}</span>
-                <Badge variant="outline" className="g-meta">
+                <Badge variant="muted">
                   {ROTULO_DO_EMPENHO[e.tipo as 'ordinario'] ?? e.tipo}
                 </Badge>
                 {/* O painel é o que se olha. Sem isto o empenho cancelado
@@ -1887,16 +1890,16 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     estimativo nasce pequeno e é reforçado — sem isto,
                     aumentá-lo exigiria sobrescrever o valor e apagar que
                     houve reforço. */}
-                <Button size="sm" variant="ghost" className="h-7 g-meta"
+                <Button size="sm" variant="ghost"
                   onClick={() => setMovimentando({
                     id: e.id, numero: e.numero, tipo: e.tipo, contratoId,
                   })}>
-                  <TrendingUp className="w-3 h-3 mr-1" /> Reforço / anulação
+                  <TrendingUp aria-hidden="true" /> Reforço / anulação
                 </Button>
                 {e.arquivo_id ? (
-                  <Button size="sm" variant="ghost" className="h-7 g-meta"
+                  <Button size="sm" variant="ghost"
                     onClick={() => abrirDocumentoDoEmpenho(e.arquivo_id!)}>
-                    <Eye className="w-3 h-3 mr-1" /> Ver documento
+                    <Eye aria-hidden="true" /> Ver documento
                   </Button>
                 ) : (
                   // Empenho sem PDF é autorização que não se prova. Dizer
@@ -1918,7 +1921,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
               </p>
             ) : (
               <>
-                <div className="flex gap-4 flex-wrap mt-1.5">
+                <div className="mt-1.5 flex flex-wrap gap-4">
                   {cotas.map(cota => (
                     <span key={cota.cota} className="g-meta text-muted-foreground">
                       {cota.cota === 'reservada' ? 'Cota reservada' : 'Cota principal'}:{' '}
@@ -2098,16 +2101,16 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
           <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="outline" className="g-controle" onClick={openNewDialog}
               title="Anexar a Ordem de Fornecimento ou Nota de Empenho e registrar o pedido">
-              <Upload className="w-3.5 h-3.5 mr-1.5" /> Registrar ordem/empenho
+              <Upload aria-hidden="true" /> Registrar ordem/empenho
             </Button>
             <Button size="sm" variant="outline" className="g-controle" onClick={() => setPreNfDialogOpen(true)}
               disabled={pedidos.filter(p => p.status !== 'cancelado').length === 0}>
-              <Receipt className="w-3.5 h-3.5 mr-1.5" /> Gerar pré-NF
+              <Receipt aria-hidden="true" /> Gerar pré-NF
             </Button>
             <Button size="sm" variant="outline" className="g-controle"
               title="Abrir Gestão de Compras para criar o pedido pelo funil comercial"
               onClick={() => navigate(`/gestao-compras?novo_contrato=${contratoId}`)}>
-              <ShoppingCart className="w-3.5 h-3.5 mr-1.5" /> Criar no Kanban
+              <ShoppingCart aria-hidden="true" /> Criar no Kanban
             </Button>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -2124,10 +2127,10 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
             />
             {!pedidoAberto.nf_quitada && pedidoAberto.status === 'entregue' && (isFinanceiro || isAdmin) && (
               <Button size="sm" variant="outline"
-                className="g-controle text-success-ink border-success-line hover:bg-success-tint"
+                className="g-controle border-success-line text-success-ink hover:bg-success-tint hover:text-success-ink"
                 onClick={() => openNfDialog(pedidoAberto)}
                 title="Registrar pagamento da NF-e e gerar bonificação">
-                <DollarSign className="w-3.5 h-3.5 mr-1.5" /> Quitar NF
+                <DollarSign aria-hidden="true" /> Quitar NF
               </Button>
             )}
             {(isFinanceiro || isAdmin) && (
@@ -2143,24 +2146,24 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                   data_pedido: pedidoAberto.data_pedido,
                   nota_fiscal: pedidoAberto.nota_fiscal ?? null,
                 })}>
-                <Link2 className="w-3.5 h-3.5 mr-1.5" /> Vincular lançamento
+                <Link2 aria-hidden="true" /> Vincular lançamento
               </Button>
             )}
             {!pedidoAberto.nf_quitada && (
               <Button size="sm" variant="outline" className="g-controle"
                 onClick={() => openEditDialog(pedidoAberto)}
                 title={(isFinanceiro || isAdmin) ? 'Editar pedido' : 'Ver detalhes'}>
-                <Pencil className="w-3.5 h-3.5 mr-1.5" /> {(isFinanceiro || isAdmin) ? 'Editar' : 'Ver detalhes'}
+                <Pencil aria-hidden="true" /> {(isFinanceiro || isAdmin) ? 'Editar' : 'Ver detalhes'}
               </Button>
             )}
             {/* Todo membro exclui — o precedente das publicações (02/09): a
                 exclusão EXIGE motivo e grava snapshot em pedidos_exclusoes para
                 o Admin; o RLS é por membro desde 22/06. */}
             {!pedidoAberto.nf_quitada && (
-              <Button size="sm" variant="outline" className="g-controle text-destructive-ink"
+              <Button size="sm" variant="outline" className="g-controle text-destructive-ink hover:bg-destructive-tint hover:text-destructive-ink"
                 title="Excluir pedido (motivo obrigatório — fica no histórico do Admin)"
                 onClick={() => openDeleteDialog(pedidoAberto.id, pedidoAberto.numero_pedido)}>
-                <Trash2 className="w-3.5 h-3.5 mr-1.5" /> Excluir
+                <Trash2 aria-hidden="true" /> Excluir
               </Button>
             )}
           </div>
@@ -2251,7 +2254,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
             acao={
               <>
                 <Button size="sm" variant="outline" className="g-controle" onClick={() => setPreNfDialogOpen(true)} disabled={pedidos.filter(p => p.status !== 'cancelado').length === 0}>
-                  <Receipt className="w-3.5 h-3.5 mr-1" /> Gerar Pré-NF
+                  <Receipt aria-hidden="true" /> Gerar Pré-NF
                 </Button>
                 {/* Este SAI da tela: leva ao Kanban comercial. O nome "Novo Pedido"
                     era idêntico ao do botão ao lado, que cria aqui mesmo — e os dois
@@ -2259,16 +2262,16 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 <Button size="sm" variant="outline" className="g-controle"
                   title="Abrir Gestão de Compras para criar o pedido pelo funil comercial"
                   onClick={() => navigate(`/gestao-compras?novo_contrato=${contratoId}`)}>
-                  <ShoppingCart className="w-3.5 h-3.5 mr-1" /> Criar no Kanban
+                  <ShoppingCart aria-hidden="true" /> Criar no Kanban
                 </Button>
                 {/* Não é tela legada: é a ÚNICA forma de cadastrar pedido direto
                     no contrato — o botão ao lado navega para Gestão de Compras e
                     cria pelo Kanban. Quem lança pedido retroativo, de contrato que
                     já estava em andamento antes da adesão ao sistema, passa por
                     aqui. */}
-                <Button size="sm" className="g-controle gap-1" onClick={openNewDialog}
+                <Button size="sm" className="g-controle" onClick={openNewDialog}
                   title="Anexar a Ordem de Fornecimento ou Nota de Empenho e registrar o pedido">
-                  <Upload className="w-3.5 h-3.5" /> Registrar Ordem/Empenho
+                  <Upload aria-hidden="true" /> Registrar Ordem/Empenho
                 </Button>
               </>
             }
@@ -2290,7 +2293,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
             <Card className="g-cartao border-warning-line bg-warning-tint p-4">
               <SecaoRecolhivel
                 id={`pedidos-auditoria-${contratoId}`}
-                classNameTitulo="g-titulo-secao text-warning-ink"
+                classNameTitulo="text-base font-semibold leading-6 text-warning-ink"
                 classNameIcone="text-warning-ink"
                 icone={<AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning-ink" aria-hidden="true" />}
                 titulo={<>Auditoria dos lançamentos — {suspeitasDeLancamento.length} ponto(s) a revisar</>}
@@ -2308,12 +2311,27 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
           )}
 
           {loading ? (
-            <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+            <Card className="overflow-hidden" role="status" aria-busy="true">
+              <span className="sr-only">Carregando pedidos…</span>
+              <div className="flex flex-col gap-px bg-border">
+                {Array.from({ length: 5 }, (_, i) => (
+                  <div key={i} className="flex items-center gap-4 bg-card px-4 py-3">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 w-1/3" />
+                    <Skeleton className="ml-auto h-4 w-20" />
+                  </div>
+                ))}
+              </div>
+            </Card>
           ) : pedidos.length === 0 ? (
-            <Card className="g-cartao p-8 text-center g-corpo text-muted-foreground">
-              {empenhosDoContrato.length > 0
-                ? 'Nenhum pedido registrado ainda — o empenho acima autoriza, e cada entrega lançada aqui consome dele.'
-                : 'Nenhum pedido registrado'}
+            <Card>
+              <EstadoVazio
+                tamanho="compacto"
+                icone={<ShoppingCart />}
+                titulo={empenhosDoContrato.length > 0
+                  ? 'Nenhum pedido registrado ainda — o empenho acima autoriza, e cada entrega lançada aqui consome dele.'
+                  : 'Nenhum pedido registrado'}
+              />
             </Card>
           ) : (
             <AreaComPainel
@@ -2322,26 +2340,30 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
               aoFechar={() => setPedidoSelecionado(null)}
             >
               {pedidosFiltrados.length === 0 ? (
-                <Card className="g-cartao p-8 text-center g-corpo text-muted-foreground">
-                  Nenhum pedido corresponde aos filtros aplicados.
+                <Card>
+                  <EstadoVazio tamanho="compacto" titulo="Nenhum pedido corresponde aos filtros aplicados." />
                 </Card>
               ) : (
-              <div className="rounded-[var(--g-raio)] border overflow-x-auto">
+              <div className="overflow-x-auto rounded-lg border border-border bg-card">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="g-corpo whitespace-nowrap cursor-pointer select-none" onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : prev === 'desc' ? null : 'asc')}>
-                        <div className="flex items-center gap-1">
+                      <TableHead className="whitespace-nowrap" aria-sort={sortOrder === 'asc' ? 'ascending' : sortOrder === 'desc' ? 'descending' : undefined}>
+                        <button
+                          type="button"
+                          onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : prev === 'desc' ? null : 'asc')}
+                          className="inline-flex items-center gap-1 rounded transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
                           Pedido
-                          {sortOrder === 'asc' ? <ArrowUp className="w-3 h-3" /> : sortOrder === 'desc' ? <ArrowDown className="w-3 h-3" /> : <ArrowUpDown className="w-3 h-3 text-muted-foreground" />}
-                        </div>
+                          {sortOrder === 'asc' ? <ArrowUp aria-hidden="true" className="h-3.5 w-3.5" /> : sortOrder === 'desc' ? <ArrowDown aria-hidden="true" className="h-3.5 w-3.5" /> : <ArrowUpDown aria-hidden="true" className="h-3.5 w-3.5 opacity-50" />}
+                        </button>
                       </TableHead>
-                      <TableHead className="g-corpo whitespace-nowrap">Item</TableHead>
-                      <TableHead className="g-corpo text-right whitespace-nowrap">Quantidade</TableHead>
-                      <TableHead className="g-corpo text-center whitespace-nowrap">Prazo</TableHead>
-                      <TableHead className="g-corpo text-center whitespace-nowrap">Situação</TableHead>
-                      <TableHead className="g-corpo whitespace-nowrap">NF-e</TableHead>
-                      <TableHead className="g-corpo text-center whitespace-nowrap"
+                      <TableHead className="whitespace-nowrap">Item</TableHead>
+                      <TableHead className="whitespace-nowrap text-right">Quantidade</TableHead>
+                      <TableHead className="whitespace-nowrap text-center">Prazo</TableHead>
+                      <TableHead className="whitespace-nowrap text-center">Situação</TableHead>
+                      <TableHead className="whitespace-nowrap">NF-e</TableHead>
+                      <TableHead className="whitespace-nowrap text-center"
                         title="Em que etapa o pedido está no quadro de operação: aguardando faturamento, separar estoque, faturar, faturado, em entrega. Só os pedidos criados pelo Kanban têm esta etapa.">
                         Etapa operacional
                       </TableHead>
@@ -2350,7 +2372,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                           e o macOS esconde a barra de rolagem, entao os botoes
                           simplesmente sumiam. Acao de linha nao pode depender de
                           alguem descobrir que a tabela rola. */}
-                      <TableHead className="g-corpo sticky right-0 bg-background z-10 w-px">Ações</TableHead>
+                      <TableHead className="sticky right-0 z-10 w-px border-l border-border bg-secondary">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -2371,12 +2393,13 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                           data-state={selecionado ? 'selected' : undefined}
                           className={selecionado ? 'border-l-2 border-l-primary' : undefined}
                         >
-                          <TableCell className="g-corpo font-mono font-medium whitespace-nowrap">
+                          <TableCell className="whitespace-nowrap font-medium tabular-nums">
                             {p.nf_quitada ? (
                               <span className="text-muted-foreground" title="NF quitada — edição bloqueada">{p.numero_pedido}</span>
                             ) : (
                               <button
-                                className="hover:underline text-primary cursor-pointer"
+                                type="button"
+                                className="rounded text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                 onClick={() => abrirOrdem(p)}
                                 title={(p as { arquivo_ordem_id?: string | null }).arquivo_ordem_id
                                   ? 'Abrir a Ordem/Empenho que autorizou este pedido'
@@ -2386,12 +2409,12 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                               </button>
                             )}
                             {p.numero_empenho && (
-                              <div className="g-meta font-sans text-muted-foreground" title="Empenho que autoriza este pedido">
+                              <div className="g-meta text-muted-foreground" title="Empenho que autoriza este pedido">
                                 emp. {p.numero_empenho}
                               </div>
                             )}
                           </TableCell>
-                          <TableCell className="g-corpo min-w-[16rem] max-w-[22rem]">
+                          <TableCell className="min-w-[16rem] max-w-[22rem]">
                             {/* ── Quebrar em duas linhas, não cortar na primeira ────
                                 Em 200px cabia "FORN. NFE N° 000.00…" — o corte caía
                                 exatamente no número, que é a parte que identifica o
@@ -2401,7 +2424,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                             {p.descricao ? (
                               <button
                                 type="button"
-                                className="block w-full text-left hover:underline cursor-pointer line-clamp-2 leading-snug"
+                                className="line-clamp-2 block w-full rounded text-left leading-snug hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                 title="Abrir o detalhe do pedido no painel"
                                 onClick={() => setPedidoSelecionado(p.id)}
                               >
@@ -2410,7 +2433,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                             ) : (
                               <button
                                 type="button"
-                                className="text-muted-foreground hover:underline"
+                                className="rounded text-muted-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                 title="Abrir o detalhe do pedido no painel"
                                 onClick={() => setPedidoSelecionado(p.id)}
                               >
@@ -2421,7 +2444,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                           {/* Quantidade e valor no mesmo bloco: são duas leituras do
                               mesmo fato, e separá-las custava uma coluna que empurrava
                               as ações para fora da tela. */}
-                          <TableCell className="g-corpo text-right whitespace-nowrap tabular-nums">
+                          <TableCell className="whitespace-nowrap text-right tabular-nums">
                             <div>{p.quantidade == null ? '—' : Number(p.quantidade).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</div>
                             <div className="g-meta font-medium text-muted-foreground">{fmt(p.valor_total)}</div>
                           </TableCell>
@@ -2430,7 +2453,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                               10/05/2026" — travava a coluna nessa largura e empurrava
                               a NF-e para baixo da coluna fixa de ações. A DATA
                               continua numa linha só; o aviso quebra. */}
-                          <TableCell className="g-corpo text-center min-w-[9rem] max-w-[11rem]">
+                          <TableCell className="min-w-[9rem] max-w-[11rem] text-center">
                             <div className="whitespace-nowrap">{p.data_pedido ? new Date(p.data_pedido + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</div>
                             {/* O prazo que começou a correr quando este pedido foi
                                 lançado. `dataDeEntrega` só é passada quando o STATUS
@@ -2448,7 +2471,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                           <TableCell className="text-center whitespace-nowrap">
                             <SeloSituacao tom={tomDoStatus(p.status)}>{cfg.label}</SeloSituacao>
                           </TableCell>
-                          <TableCell className="g-corpo">
+                          <TableCell>
                             <div className="space-y-1">
                               {/* ── A coluna da NOTA: número, estado e o documento ──
                                   Aqui é onde a nota vive. O número identifica; a
@@ -2465,7 +2488,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                                 const nd = notaDoPedido[p.id];
                                 const rotulo = (
                                   <>
-                                    <FileText className="w-3 h-3 mr-1 inline" />
+                                    <FileText aria-hidden="true" className="mr-1 inline h-3 w-3" />
                                     {formatarNumeroNfe(nd.numero) ?? nd.numero ?? 'sem número'}
                                   </>
                                 );
@@ -2497,7 +2520,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                                       <Badge variant="outline"
                                         className="g-meta text-foreground border-primary/40 hover:bg-primary-tint cursor-pointer transition-colors">
                                         {rotulo}
-                                        <ExternalLink className="w-3 h-3 ml-1 inline text-primary" />
+                                        <ExternalLink aria-hidden="true" className="ml-1 inline h-3 w-3 text-primary" />
                                       </Badge>
                                     </button>
                                     {quitada}
@@ -2514,7 +2537,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                                   .map((k) => docsPorNumero?.[k]).find(Boolean);
                                 const conteudo = (
                                   <>
-                                    <FileText className="w-3 h-3 mr-1 inline" />
+                                    <FileText aria-hidden="true" className="mr-1 inline h-3 w-3" />
                                     {/* Formato do DANFE. O campo é texto livre e
                                         recebe "125", "NF 000000125" e "125/2026" —
                                         três grafias da mesma nota, que sem
@@ -2554,7 +2577,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                                       <Badge variant="outline"
                                         className="g-meta text-foreground border-primary/40 hover:bg-primary-tint cursor-pointer transition-colors">
                                         {conteudo}
-                                        <ExternalLink className="w-3 h-3 ml-1 inline text-primary" />
+                                        <ExternalLink aria-hidden="true" className="ml-1 inline h-3 w-3 text-primary" />
                                       </Badge>
                                     </button>
                                     {quitada}
@@ -2576,12 +2599,12 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                                     diverge ? 'border-warning-line text-warning-ink' :
                                     nf.status === 'autorizada' ? 'border-success-line text-success-ink' :
                                     nf.status === 'rejeitada' ? 'border-destructive-line text-destructive-ink' :
-                                    'border-muted-foreground/30 text-muted-foreground'
+                                    'border-border text-muted-foreground'
                                   }`}
                                   title={diverge
                                     ? `A nota emitida (${formatarNumeroNfe(nf.numero_nf)}) não é a mesma que foi digitada no pedido (${formatarNumeroNfe(p.nota_fiscal)}).`
                                     : undefined}>
-                                    <FileText className="w-3 h-3 mr-1 inline" />
+                                    <FileText aria-hidden="true" className="mr-1 inline h-3 w-3" />
                                     {formatarNumeroNfe(nf.numero_nf) ?? 'Rascunho'} • {nf.tipo === 'saida' ? 'Saída' : 'Entrada'} {nf.valor_total ? `• ${fmt(nf.valor_total)}` : ''}
                                     {diverge && ' • diverge do pedido'}
                                   </Badge>
@@ -2595,13 +2618,13 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                           <TableCell className="text-center whitespace-nowrap">
                             {p.pedido_id ? (
                               updatingKanban[p.pedido_id] ? (
-                                <Loader2 className="w-3 h-3 animate-spin mx-auto text-muted-foreground" />
+                                <Loader2 aria-hidden="true" className="mx-auto h-4 w-4 animate-spin text-muted-foreground" />
                               ) : (
                                 <Select
                                   value={kanbanStatuses[p.pedido_id] ?? 'pedido'}
                                   onValueChange={(val) => updateKanbanStatus(p.pedido_id!, val)}
                                 >
-                                  <SelectTrigger className={`h-7 g-meta border px-2 py-0 w-fit mx-auto ${kanbanCfg[kanbanStatuses[p.pedido_id] ?? 'pedido']?.color ?? 'bg-muted/50 text-muted-foreground'}`}>
+                                  <SelectTrigger className={`h-7 g-meta border px-2 py-0 w-fit mx-auto ${kanbanCfg[kanbanStatuses[p.pedido_id] ?? 'pedido']?.color ?? 'bg-muted text-muted-foreground'}`}>
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -2612,10 +2635,10 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                                 </Select>
                               )
                             ) : (
-                              <span className="text-muted-foreground/40 g-meta">—</span>
+                              <span className="g-meta text-foreground-tertiary">—</span>
                             )}
                           </TableCell>
-                          <TableCell className="sticky right-0 bg-background z-10 shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.15)]">
+                          <TableCell className="sticky right-0 z-10 border-l border-border bg-card">
                             <div className="flex items-center gap-1">
                               {/* Kit vale antes e depois da quitação: o órgão pede a
                                   segunda via, e a fila do financeiro só mostra o que
@@ -2634,11 +2657,11 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                               {!p.nf_quitada && p.status === 'entregue' && (isFinanceiro || isAdmin) && (
                                 <Button
                                   size="sm" variant="outline"
-                                  className="h-7 px-2 g-meta text-success-ink border-success-line hover:bg-success-tint"
+                                  className="border-success-line text-success-ink hover:bg-success-tint hover:text-success-ink"
                                   onClick={() => openNfDialog(p)}
                                   title="Registrar pagamento da NF-e e gerar bonificação"
                                 >
-                                  <DollarSign className="w-3 h-3 mr-1" /> Quitar NF
+                                  <DollarSign aria-hidden="true" /> Quitar NF
                                 </Button>
                               )}
                               {(isFinanceiro || isAdmin) && (
@@ -2646,8 +2669,9 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                                    recebimento já estar no Financeiro. Vincular em vez
                                    de gerar evita contar a receita duas vezes. */
                                 <Button
-                                  size="icon" variant="ghost" className="h-7 w-7"
+                                  size="icon-sm" variant="ghost"
                                   title="Vincular a lançamento existente no Financeiro"
+                                  aria-label="Vincular a lançamento existente no Financeiro"
                                   onClick={() => setVinculando({
                                     id: p.id,
                                     numero_pedido: p.numero_pedido,
@@ -2656,7 +2680,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                                     nota_fiscal: p.nota_fiscal ?? null,
                                   })}
                                 >
-                                  <Link2 className="w-3.5 h-3.5 text-muted-foreground" />
+                                  <Link2 aria-hidden="true" className="text-muted-foreground" />
                                 </Button>
                               )}
                               {/* Todo membro exclui — o precedente das publicações
@@ -2666,21 +2690,22 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                                   pedir a um admin o que a auditoria já cobre. */}
                               {!p.nf_quitada && (
                                 <Button
-                                  size="icon" variant="ghost" className="h-7 w-7"
+                                  size="icon-sm" variant="ghost-destructive"
                                   title="Excluir pedido (motivo obrigatório — fica no histórico do Admin)"
+                                  aria-label="Excluir pedido"
                                   onClick={() => openDeleteDialog(p.id, p.numero_pedido)}
                                 >
-                                  <Trash2 className="w-3.5 h-3.5 text-destructive-ink" />
+                                  <Trash2 aria-hidden="true" />
                                 </Button>
                               )}
                               {(isFinanceiro || isAdmin) && !p.nf_quitada && (
-                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditDialog(p)} title="Editar pedido">
-                                  <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                                <Button size="icon-sm" variant="ghost" onClick={() => openEditDialog(p)} title="Editar pedido" aria-label="Editar pedido">
+                                  <Pencil aria-hidden="true" className="text-muted-foreground" />
                                 </Button>
                               )}
                               {!(isFinanceiro || isAdmin) && !p.nf_quitada && (
-                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditDialog(p)} title="Ver detalhes">
-                                  <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                                <Button size="icon-sm" variant="ghost" onClick={() => openEditDialog(p)} title="Ver detalhes" aria-label="Ver detalhes">
+                                  <Pencil aria-hidden="true" className="text-muted-foreground" />
                                 </Button>
                               )}
                             </div>
@@ -2711,7 +2736,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
               <SecaoRecolhivel
                 id={`pedidos-empenhos-${contratoId}`}
                 recolhidaPorPadrao
-                classNameTitulo="g-titulo-secao text-foreground"
+                classNameTitulo="text-base font-semibold leading-6 text-foreground"
                 icone={<FileText className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />}
                 titulo={<>Empenhos registrados ({empenhosDoContrato.length}) — autorizam os pedidos acima</>}
               >
@@ -2725,29 +2750,29 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
               <SecaoRecolhivel
                 id={`pedidos-nfs-sync-${contratoId}`}
                 recolhidaPorPadrao
-                classNameTitulo="g-titulo-secao text-foreground"
+                classNameTitulo="text-base font-semibold leading-6 text-foreground"
                 icone={<FileText className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />}
                 titulo={<>Notas fiscais sincronizadas do Financeiro ({nfsSync.length})</>}
               >
                 <div className="mt-3">
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
-                    <div className="text-center p-2 rounded bg-muted/50">
+                  <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    <div className="rounded-md bg-secondary p-3">
                       <p className="g-meta text-muted-foreground">NFs Saída</p>
-                      <p className="g-corpo font-bold tabular-nums">{nfsSync.filter(n => n.tipo === 'saida').length}</p>
+                      <p className="text-lg font-semibold tabular-nums text-foreground">{nfsSync.filter(n => n.tipo === 'saida').length}</p>
                       <p className="g-meta text-muted-foreground">{fmt(nfsSync.filter(n => n.tipo === 'saida').reduce((s, n) => s + (n.valor_total || 0), 0))}</p>
                     </div>
-                    <div className="text-center p-2 rounded bg-muted/50">
+                    <div className="rounded-md bg-secondary p-3">
                       <p className="g-meta text-muted-foreground">NFs Entrada</p>
-                      <p className="g-corpo font-bold tabular-nums">{nfsSync.filter(n => n.tipo === 'entrada').length}</p>
+                      <p className="text-lg font-semibold tabular-nums text-foreground">{nfsSync.filter(n => n.tipo === 'entrada').length}</p>
                       <p className="g-meta text-muted-foreground">{fmt(nfsSync.filter(n => n.tipo === 'entrada').reduce((s, n) => s + (n.valor_total || 0), 0))}</p>
                     </div>
-                    <div className="text-center p-2 rounded bg-muted/50">
+                    <div className="rounded-md bg-secondary p-3">
                       <p className="g-meta text-muted-foreground">Autorizadas</p>
-                      <p className="g-corpo font-bold text-success-ink tabular-nums">{nfsSync.filter(n => n.status === 'autorizada').length}</p>
+                      <p className="text-lg font-semibold tabular-nums text-success-ink">{nfsSync.filter(n => n.status === 'autorizada').length}</p>
                     </div>
-                    <div className="text-center p-2 rounded bg-muted/50">
+                    <div className="rounded-md bg-secondary p-3">
                       <p className="g-meta text-muted-foreground">Pendentes</p>
-                      <p className="g-corpo font-bold text-warning-ink tabular-nums">{nfsSync.filter(n => n.status !== 'autorizada' && n.status !== 'cancelada').length}</p>
+                      <p className="text-lg font-semibold tabular-nums text-warning-ink">{nfsSync.filter(n => n.status !== 'autorizada' && n.status !== 'cancelada').length}</p>
                     </div>
                   </div>
                   <p className="g-meta text-muted-foreground italic">
@@ -2763,7 +2788,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
               <SecaoRecolhivel
                 id={`pedidos-pre-notas-${contratoId}`}
                 recolhidaPorPadrao
-                classNameTitulo="g-titulo-secao text-foreground"
+                classNameTitulo="text-base font-semibold leading-6 text-foreground"
                 icone={<Receipt className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />}
                 titulo={<>Pré-notas fiscais solicitadas ({preNotas.length})</>}
               >
@@ -2778,7 +2803,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     };
                     const st = statusMap[pn.status] || statusMap.pendente;
                     return (
-                      <div key={pn.id} className="flex flex-wrap items-center justify-between gap-2 p-2 rounded border bg-muted/30 g-meta">
+                      <div key={pn.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-secondary px-3 py-2 text-xs">
                         <div className="flex flex-wrap items-center gap-2">
                           <SeloSituacao tom={st.tom}>{st.label}</SeloSituacao>
                           <span>{pn.natureza_operacao}</span>
@@ -2788,12 +2813,12 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                           <span className="text-muted-foreground">{new Date(pn.created_at).toLocaleDateString('pt-BR')}</span>
                           {pn.motivo_devolucao && (
                             <Badge variant="outline" className="g-meta text-warning-ink" title={pn.motivo_devolucao}>
-                              <AlertTriangle className="w-3 h-3 mr-1" /> Devolvida
+                              <AlertTriangle aria-hidden="true" className="mr-1 h-3 w-3" /> Devolvida
                             </Badge>
                           )}
                           {pn.motivo_rejeicao && (
                             <Badge variant="outline" className="g-meta text-destructive-ink" title={pn.motivo_rejeicao}>
-                              <XCircle className="w-3 h-3 mr-1" /> Rejeitada
+                              <XCircle aria-hidden="true" className="mr-1 h-3 w-3" /> Rejeitada
                             </Badge>
                           )}
                         </div>
@@ -2813,11 +2838,25 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
             abatido quando a entrega é lançada contra ele, na subaba Pedidos / Ordens.
           </p>
           {loading ? (
-            <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+            <Card className="overflow-hidden" role="status" aria-busy="true">
+              <span className="sr-only">Carregando empenhos…</span>
+              <div className="flex flex-col gap-px bg-border">
+                {Array.from({ length: 3 }, (_, i) => (
+                  <div key={i} className="flex items-center gap-4 bg-card px-4 py-3">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-4 w-1/4" />
+                    <Skeleton className="ml-auto h-4 w-24" />
+                  </div>
+                ))}
+              </div>
+            </Card>
           ) : empenhosDoContrato.length === 0 ? (
-            <Card className="g-cartao p-8 text-center g-corpo text-muted-foreground">
-              Nenhum empenho registrado. Use “Registrar Ordem/Empenho” na subaba Pedidos / Ordens
-              para anexar a nota de empenho.
+            <Card>
+              <EstadoVazio
+                tamanho="compacto"
+                icone={<FileText />}
+                titulo="Nenhum empenho registrado. Use “Registrar Ordem/Empenho” na subaba Pedidos / Ordens para anexar a nota de empenho."
+              />
             </Card>
           ) : (
             <Card className="g-cartao p-4">{listaDeEmpenhos}</Card>
@@ -2830,26 +2869,26 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
           "Inclusão Manual" digita. O diálogo passou a ser controlado pelo
           estado, porque o gatilho migrou para a barra de filtros. */}
       <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) resetForm(); }}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5 text-muted-foreground" /> Registrar Pedido
+              <FileText aria-hidden="true" className="h-5 w-5 text-muted-foreground" /> Registrar Pedido
             </DialogTitle>
           </DialogHeader>
 
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="w-full">
-              <TabsTrigger value="upload" className="flex-1 g-meta">
-                <Upload className="w-3.5 h-3.5 mr-1" /> Importar Documento
+            <TabsList>
+              <TabsTrigger value="upload">
+                <Upload aria-hidden="true" className="h-4 w-4" /> Importar Documento
               </TabsTrigger>
-              <TabsTrigger value="manual" className="flex-1 g-meta">
-                <Plus className="w-3.5 h-3.5 mr-1" /> Inclusão Manual
+              <TabsTrigger value="manual">
+                <Plus aria-hidden="true" className="h-4 w-4" /> Inclusão Manual
               </TabsTrigger>
             </TabsList>
 
             <TabsContent value="upload" className="space-y-4 mt-3">
-              <div>
-                <Label className="g-meta">Tipo de Documento</Label>
+              <div className="space-y-1.5">
+                <Label>Tipo de Documento</Label>
                 <Select value={form.tipo_documento} onValueChange={v => setForm(f => ({ ...f, tipo_documento: v }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -2860,24 +2899,25 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 </Select>
               </div>
 
-              <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center">
-                <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+              <div className="rounded-lg border-2 border-dashed border-input p-6 text-center">
+                <Upload aria-hidden="true" className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
                 <p className="g-corpo font-medium">Faça upload do documento PDF</p>
                 <p className="g-meta text-muted-foreground mt-1">OF, Nota de Empenho, PRD ou documento similar</p>
                 <input ref={fileInputRef} type="file" accept=".pdf" onChange={handleFileUpload} className="hidden" />
                 <Button variant="outline" className="mt-3" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-                  {uploading ? <><Loader2 className="w-4 h-4 animate-spin mr-1" /> Processando...</> : <><Upload className="w-4 h-4 mr-1" /> Selecionar PDF</>}
+                  {uploading ? <><Loader2 aria-hidden="true" className="animate-spin" /> Processando...</> : <><Upload aria-hidden="true" /> Selecionar PDF</>}
                 </Button>
               </div>
 
               {uploading && (
-                <div className="p-3 rounded-lg bg-muted/50 border text-center">
-                  <Loader2 className="w-5 h-5 animate-spin mx-auto mb-1 text-muted-foreground" />
+                <div className="flex flex-col items-center gap-2 rounded-lg border border-primary-line bg-primary-tint p-4 text-center">
+                  <SeloPraefectusIA />
+                  <Loader2 aria-hidden="true" className="h-5 w-5 animate-spin text-primary" />
                   <p className="g-meta text-muted-foreground">Extraindo dados com IA...</p>
                 </div>
               )}
 
-              <div className="p-3 rounded-lg bg-muted/30 border g-meta text-muted-foreground space-y-1">
+              <div className="space-y-1 rounded-lg border border-border bg-secondary p-3 text-xs text-muted-foreground">
                 <p className="font-medium text-foreground">Documentos suportados:</p>
                 <p>Ordem de Fornecimento (OF), Nota de Empenho (Global, Ordinário, Estimativo), PRD</p>
               </div>
@@ -2885,21 +2925,21 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
 
             <TabsContent value="manual" className="space-y-3 mt-3">
               {extractedData && (
-                <div className="p-3 rounded-lg bg-success-tint border border-success-line">
-                  <p className="g-meta font-medium flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-success-ink" />
+                <div className="rounded-lg border border-success-line bg-success-tint p-3">
+                  <p className="flex items-center gap-1.5 text-sm font-medium text-success-ink">
+                    <CheckCircle2 aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
                     Dados extraídos — revise e corrija se necessário
                   </p>
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="g-meta">N.o Documento *</Label>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label>N.o Documento *</Label>
                   <Input value={form.numero_pedido} onChange={e => setForm(f => ({ ...f, numero_pedido: e.target.value }))} placeholder="OF-001, NE-2025/001" />
                 </div>
-                <div>
-                  <Label className="g-meta">Tipo de Documento</Label>
+                <div className="space-y-1.5">
+                  <Label>Tipo de Documento</Label>
                   <Select value={form.tipo_documento} onValueChange={v => setForm(f => ({ ...f, tipo_documento: v }))}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -2909,12 +2949,12 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     </SelectContent>
                   </Select>
                 </div>
-                <div>
-                  <Label className="g-meta">Data do Pedido</Label>
+                <div className="space-y-1.5">
+                  <Label>Data do Pedido</Label>
                   <Input type="date" value={form.data_pedido} onChange={e => setForm(f => ({ ...f, data_pedido: e.target.value }))} />
                 </div>
-                <div>
-                  <Label className="g-meta">Data de Entrega (prevista)</Label>
+                <div className="space-y-1.5">
+                  <Label>Data de Entrega (prevista)</Label>
                   <Input type="date" value={form.data_entrega} onChange={e => setForm(f => ({ ...f, data_entrega: e.target.value }))} />
                   {/* De onde a data veio. Derivado e digitado se parecem na
                       tela, e quem confere precisa saber em qual está apoiado
@@ -2929,8 +2969,8 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     </p>
                   )}
                 </div>
-                <div>
-                  <Label className="g-meta">Status</Label>
+                <div className="space-y-1.5">
+                  <Label>Status</Label>
                   <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v }))}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -2941,8 +2981,8 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     </SelectContent>
                   </Select>
                 </div>
-                <div>
-                  <Label className="g-meta">Nota Fiscal</Label>
+                <div className="space-y-1.5">
+                  <Label>Nota Fiscal</Label>
                   <Input value={form.nota_fiscal} onChange={e => setForm(f => ({ ...f, nota_fiscal: e.target.value }))} />
                 </div>
               </div>
@@ -2951,7 +2991,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                   Empenhar não é entregar: enquanto a nota criava pedidos, o
                   saldo caía no instante em que o dinheiro era reservado. */}
               {extractedData && documentoCria === 'empenho' && (
-                  <div className="p-3 rounded-lg border border-border bg-muted space-y-2">
+                  <div className="space-y-3 rounded-lg border border-border bg-secondary p-4">
                     <p className="g-meta font-semibold text-foreground">
                       Nota de empenho — <b>autoriza</b>, não consome
                     </p>
@@ -2960,20 +3000,19 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                       contrato é abatido: isso acontece quando as entregas forem lançadas contra
                       ela.
                     </p>
-                    <div className="grid grid-cols-2 gap-2 pt-1">
-                      <div>
-                        <Label className="g-meta">Número do empenho</Label>
+                    <div className="grid gap-4 pt-1 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <Label>Número do empenho</Label>
                         <Input
                           value={form.numero_empenho}
                           onChange={e => setForm(f => ({ ...f, numero_empenho: e.target.value }))}
                           placeholder="2026NE003716"
-                          className="h-8 g-meta"
                         />
                       </div>
-                      <div>
-                        <Label className="g-meta">Espécie</Label>
+                      <div className="space-y-1.5">
+                        <Label>Espécie</Label>
                         <Select value={form.tipo_empenho} onValueChange={v => setForm(f => ({ ...f, tipo_empenho: v }))}>
-                          <SelectTrigger className="h-8 g-meta"><SelectValue placeholder="Escolha a espécie" /></SelectTrigger>
+                          <SelectTrigger><SelectValue placeholder="Escolha a espécie" /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="ordinario" className="g-meta">{ROTULO_DO_EMPENHO.ordinario}</SelectItem>
                             <SelectItem value="global" className="g-meta">{ROTULO_DO_EMPENHO.global}</SelectItem>
@@ -2997,13 +3036,13 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                   nada, e o saldo do empenho fica parado enquanto o material
                   some do estoque. */}
               {documentoCria === 'pedido' && empenhosDoContrato.length > 0 && (
-                  <div>
-                    <Label className="g-meta">Empenho que autoriza este pedido</Label>
+                  <div className="space-y-1.5">
+                    <Label>Empenho que autoriza este pedido</Label>
                     <Select
                       value={form.empenho_id || '__sem__'}
                       onValueChange={v => setForm(f => ({ ...f, empenho_id: v === '__sem__' ? '' : v }))}
                     >
-                      <SelectTrigger className="h-8 g-meta"><SelectValue /></SelectTrigger>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="__sem__" className="g-meta">Sem empenho registrado</SelectItem>
                         {empenhosDoContrato.map(e => (
@@ -3026,31 +3065,31 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 <>
                   <Separator />
                   <div>
-                    <p className="g-meta font-semibold mb-2">
+                    <p className="mb-2 text-sm font-semibold text-foreground">
                       {documentoCria === 'empenho' ? 'Linhas do empenho' : 'Itens Extraídos'} ({extractedItens.length})
                     </p>
                     <div className="space-y-2 max-h-[35vh] overflow-y-auto pr-1">
                       {extractedItens.map((ei, idx) => (
-                        <Card key={ei.key} className="p-3 space-y-2">
+                        <Card key={ei.key} className="space-y-3 p-4">
                           <div className="flex items-center justify-between">
                             <span className="g-meta font-semibold text-muted-foreground">Item {idx + 1}</span>
-                            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => removeExtractedItem(ei.key)}>
-                              <Trash2 className="w-3 h-3 text-destructive-ink" />
+                            <Button size="icon-sm" variant="ghost-destructive" aria-label={`Remover o item ${idx + 1}`} onClick={() => removeExtractedItem(ei.key)}>
+                              <Trash2 aria-hidden="true" />
                             </Button>
                           </div>
-                          <div>
-                            <Label className="g-meta">Descrição</Label>
-                            <Input value={ei.descricao} onChange={e => updateExtractedItem(ei.key, 'descricao', e.target.value)} className="h-8 g-meta" />
+                          <div className="space-y-1.5">
+                            <Label>Descrição</Label>
+                            <Input value={ei.descricao} onChange={e => updateExtractedItem(ei.key, 'descricao', e.target.value)} />
                           </div>
-                          <div className="grid grid-cols-3 gap-2">
-                            <div>
-                              <Label className="g-meta">Item do Contrato</Label>
+                          <div className="grid gap-3 sm:grid-cols-3">
+                            <div className="space-y-1.5">
+                              <Label>Item do Contrato</Label>
                               <Select value={ei.contrato_item_id} onValueChange={v => {
                                 const item = itens.find(i => i.id === v);
                                 updateExtractedItem(ei.key, 'contrato_item_id', v);
                                 if (item) updateExtractedItem(ei.key, 'valor_unitario', String(item.valor_unitario));
                               }}>
-                                <SelectTrigger className="h-8 g-meta"><SelectValue placeholder="Vincular item" /></SelectTrigger>
+                                <SelectTrigger><SelectValue placeholder="Vincular item" /></SelectTrigger>
                                 {/* Descrição de item de merenda tem 400+ caracteres, e o
                                     Radix COPIA o conteúdo da opção para dentro do gatilho:
                                     o line-clamp-2 (caixa -webkit aninhada) furava o recorte
@@ -3069,21 +3108,21 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                                 </SelectContent>
                               </Select>
                             </div>
-                            <div>
-                              <Label className="g-meta">Quantidade</Label>
-                              <Input type="number" value={ei.quantidade} onChange={e => updateExtractedItem(ei.key, 'quantidade', e.target.value)} className="h-8 g-meta" />
+                            <div className="space-y-1.5">
+                              <Label>Quantidade</Label>
+                              <Input type="number" value={ei.quantidade} onChange={e => updateExtractedItem(ei.key, 'quantidade', e.target.value)} />
                             </div>
-                            <div>
-                              <Label className="g-meta">Valor Unit. (R$)</Label>
-                              <MoneyInput value={Number(ei.valor_unitario) || 0} onValueChange={v => updateExtractedItem(ei.key, 'valor_unitario', String(v))} className="h-8 g-meta" />
+                            <div className="space-y-1.5">
+                              <Label>Valor Unit. (R$)</Label>
+                              <MoneyInput value={Number(ei.valor_unitario) || 0} onValueChange={v => updateExtractedItem(ei.key, 'valor_unitario', String(v))} />
                             </div>
                           </div>
                           {/* A cota fica no nível da LINHA porque é aí que ela
                               vive: a principal e a reservada são divisões do
                               mesmo item (LC 123/2006, art. 48, III) e esgotam
                               separadas. */}
-                          <div>
-                            <Label className="g-meta">Cota</Label>
+                          <div className="space-y-1.5">
+                            <Label>Cota</Label>
                             <Select
                               value={ei.cota || '__sem__'}
                               onValueChange={v => {
@@ -3091,7 +3130,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                                 updateExtractedItem(ei.key, 'cota_origem', 'documento');
                               }}
                             >
-                              <SelectTrigger className="h-8 g-meta"><SelectValue /></SelectTrigger>
+                              <SelectTrigger><SelectValue /></SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="__sem__" className="g-meta">Sem divisão de cota</SelectItem>
                                 <SelectItem value="principal" className="g-meta">{ROTULO_DA_COTA.principal}</SelectItem>
@@ -3112,49 +3151,48 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     </div>
                   </div>
 
-                  <div className="p-3 rounded-lg bg-muted/50 border flex justify-between items-center">
+                  <div className="flex items-center justify-between rounded-lg border border-border bg-secondary p-3">
                     <span className="g-meta font-medium">{extractedItens.filter(ei => ei.descricao && (parseFloat(ei.quantidade) || 0) > 0).length} itens válidos</span>
-                    <span className="g-corpo font-bold text-foreground">Total: {fmt(totalExtracted)}</span>
+                    <span className="text-base font-semibold tabular-nums text-foreground">Total: {fmt(totalExtracted)}</span>
                   </div>
 
-                  <div className="col-span-2">
-                    <Label className="g-meta">Observações</Label>
+                  <div className="space-y-1.5">
+                    <Label>Observações</Label>
                     <Textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} />
                   </div>
 
                   {/* Empenho não gera cobrança: não há entrega para faturar.
                       O título nasce quando a OF for lançada contra ele. */}
                   {documentoCria === 'pedido' && (
-                    <div className="flex items-center gap-2 p-2 rounded-md bg-muted/50 border border-border">
+                    <div className="flex items-center gap-2 rounded-md border border-border bg-secondary px-3 py-2">
                       <Checkbox id="ger-cr-batch" checked={gerarContaReceber} onCheckedChange={(v) => setGerarContaReceber(!!v)} />
-                      <Label htmlFor="ger-cr-batch" className="g-meta cursor-pointer">
-                        <DollarSign className="w-3 h-3 inline mr-1" />
+                      <Label htmlFor="ger-cr-batch" className="cursor-pointer">
+                        <DollarSign aria-hidden="true" className="mr-1 inline h-3.5 w-3.5" />
                         Gerar <b>contas a receber</b> (uma por item) no Financeiro vinculadas a este contrato
                       </Label>
                     </div>
                   )}
-                  <div className="flex justify-end gap-2">
+                  <DialogFooter>
                     <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
                     <Button onClick={handleSaveBatch} disabled={saving}>
-                      {saving && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
+                      {saving && <Loader2 aria-hidden="true" className="animate-spin" />}
                       {documentoCria === 'empenho'
                         ? `Registrar empenho (${extractedItens.filter(ei => ei.descricao && (parseFloat(ei.quantidade) || 0) > 0).length} linhas)`
                         : `Registrar ${extractedItens.filter(ei => ei.descricao && (parseFloat(ei.quantidade) || 0) > 0).length} itens`}
                     </Button>
-                  </div>
+                  </DialogFooter>
                 </>
               ) : (
                 <>
                   <Separator />
                   {ataSrpId && itensAta.length > 0 && (
-                    <div className="flex items-center gap-2 p-2 rounded-md bg-muted/30 border">
-                      <span className="g-meta text-muted-foreground shrink-0">Fonte dos valores:</span>
+                    <div className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-secondary px-3 py-2">
+                      <span className="g-meta shrink-0 text-muted-foreground">Fonte dos valores:</span>
                       <div className="flex gap-1">
                         <Button
                           type="button"
                           variant={fonteItens === 'contrato' ? 'secondary' : 'ghost'}
                           size="sm"
-                          className="h-7 g-meta"
                           onClick={() => { setFonteItens('contrato'); setAtaItemSelecionado(''); setForm(f => ({ ...f, contrato_item_id: '' })); }}
                         >
                           Contrato
@@ -3163,7 +3201,6 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                           type="button"
                           variant={fonteItens === 'ata' ? 'secondary' : 'ghost'}
                           size="sm"
-                          className="h-7 g-meta"
                           onClick={() => { setFonteItens('ata'); setOrigemFilter('__todos__'); setAtaItemSelecionado(''); setForm(f => ({ ...f, contrato_item_id: '' })); }}
                         >
                           ATA pai
@@ -3172,8 +3209,8 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     </div>
                   )}
                   {fonteItens === 'contrato' && (
-                    <div>
-                      <Label className="g-meta">Origem do Pedido</Label>
+                    <div className="space-y-1.5">
+                      <Label>Origem do Pedido</Label>
                       <Select value={origemFilter} onValueChange={v => { setOrigemFilter(v); setForm(f => ({ ...f, contrato_item_id: '', origem_aditivo_id: v === '__todos__' || v === '__contrato__' ? '' : v })); }}>
                         <SelectTrigger><SelectValue placeholder="Filtrar por origem" /></SelectTrigger>
                         <SelectContent>
@@ -3186,8 +3223,8 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                       </Select>
                     </div>
                   )}
-                  <div>
-                    <Label className="g-meta">{fonteItens === 'ata' ? 'Item da ATA (Fonte)' : 'Item do Contrato'}</Label>
+                  <div className="space-y-1.5">
+                    <Label>{fonteItens === 'ata' ? 'Item da ATA (Fonte)' : 'Item do Contrato'}</Label>
                     {fonteItens === 'ata' ? (
                       <Select value={ataItemSelecionado} onValueChange={handleItemChangeAta}>
                         <SelectTrigger><SelectValue placeholder="Selecionar item da ATA" /></SelectTrigger>
@@ -3234,37 +3271,37 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                       );
                     })()}
                   </div>
-                  <div className="col-span-2">
-                    <Label className="g-meta">Descrição</Label>
+                  <div className="space-y-1.5">
+                    <Label>Descrição</Label>
                     <Input value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} />
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label className="g-meta">Quantidade</Label>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label>Quantidade</Label>
                       <Input type="number" value={form.quantidade} onChange={e => setForm(f => ({ ...f, quantidade: e.target.value }))} />
                     </div>
-                    <div>
-                      <Label className="g-meta">Valor Unitário (R$)</Label>
+                    <div className="space-y-1.5">
+                      <Label>Valor Unitário (R$)</Label>
                       <MoneyInput value={Number(form.valor_unitario) || 0} onValueChange={v => setForm(f => ({ ...f, valor_unitario: String(v) }))} />
                     </div>
                   </div>
-                  <div className="col-span-2">
-                    <Label className="g-meta">Observações</Label>
+                  <div className="space-y-1.5">
+                    <Label>Observações</Label>
                     <Textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} />
                   </div>
-                  <div className="flex items-center gap-2 p-2 rounded-md bg-muted/50 border border-border">
+                  <div className="flex items-center gap-2 rounded-md border border-border bg-secondary px-3 py-2">
                     <Checkbox id="ger-cr-single" checked={gerarContaReceber} onCheckedChange={(v) => setGerarContaReceber(!!v)} />
-                    <Label htmlFor="ger-cr-single" className="g-meta cursor-pointer">
-                      <DollarSign className="w-3 h-3 inline mr-1" />
+                    <Label htmlFor="ger-cr-single" className="cursor-pointer">
+                      <DollarSign aria-hidden="true" className="mr-1 inline h-3.5 w-3.5" />
                       Gerar <b>conta a receber</b> automaticamente no Financeiro vinculada a este contrato
                     </Label>
                   </div>
-                  <div className="flex justify-end gap-2 mt-2">
+                  <DialogFooter className="mt-2">
                     <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
                     <Button onClick={handleSaveSingle} disabled={saving}>
-                      {saving && <Loader2 className="w-4 h-4 animate-spin mr-1" />} Registrar
+                      {saving && <Loader2 aria-hidden="true" className="animate-spin" />} Registrar
                     </Button>
-                  </div>
+                  </DialogFooter>
                 </>
               )}
             </TabsContent>
@@ -3277,29 +3314,29 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <DollarSign className="w-5 h-5 text-success-ink" />
+              <DollarSign aria-hidden="true" className="h-5 w-5 text-success-ink" />
               Registrar Pagamento de NF-e
             </DialogTitle>
           </DialogHeader>
           {nfDialog && (
             <div className="space-y-4">
-              <div className="p-3 rounded-lg bg-muted/50 border g-meta space-y-1">
+              <div className="space-y-1 rounded-lg border border-border bg-secondary p-3 text-xs">
                 <p><strong>Pedido:</strong> {nfDialog.numero_pedido}</p>
                 <p><strong>Valor do Pedido:</strong> {fmt(nfDialog.valor_total)}</p>
                 {nfDialog.descricao && <p><strong>Descrição:</strong> {nfDialog.descricao}</p>}
               </div>
 
-              <div>
+              <div className="space-y-1.5">
                 <Label>Número da Nota Fiscal *</Label>
                 <Input value={nfNumero} onChange={e => setNfNumero(e.target.value)} placeholder="NF-e 000.000.001" />
               </div>
 
-              <div>
+              <div className="space-y-1.5">
                 <Label>Data do Pagamento *</Label>
                 <Input type="date" value={nfData} onChange={e => setNfData(e.target.value)} />
               </div>
 
-              <div>
+              <div className="space-y-1.5">
                 <Label>Valor Pago (R$) *</Label>
                 <MoneyInput
                   value={Number(nfValorPago) || 0}
@@ -3308,7 +3345,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 />
               </div>
 
-              <div className="p-3 rounded-lg bg-muted/50 border border-border">
+              <div className="rounded-lg border border-border bg-secondary p-3">
                 <p className="g-meta text-muted-foreground">
                   Ao registrar o pagamento, o sistema calculará automaticamente a bonificação do vendedor
                   responsável pelo contrato com base na configuração de bonificação vigente.
@@ -3318,9 +3355,9 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
               <Button
                 onClick={handleMarcarNfQuitada}
                 disabled={solicitandoComissao || !nfNumero.trim() || !nfData || !(parseFloat(nfValorPago) > 0)}
-                className="w-full bg-success hover:bg-success/90 text-success-foreground"
+                className="w-full"
               >
-                {solicitandoComissao ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <DollarSign className="w-4 h-4 mr-1" />}
+                {solicitandoComissao ? <Loader2 aria-hidden="true" className="animate-spin" /> : <DollarSign aria-hidden="true" />}
                 Confirmar Pagamento e Gerar Bonificação
               </Button>
             </div>
@@ -3333,42 +3370,40 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-destructive-ink">
-              <Trash2 className="w-5 h-5" /> Excluir Pedido
+              <Trash2 aria-hidden="true" className="h-5 w-5" /> Excluir Pedido
             </DialogTitle>
           </DialogHeader>
           {deleteDialog && (
             <div className="space-y-4">
-              <div className="p-3 rounded-lg bg-destructive-tint border border-destructive-line g-meta space-y-1">
+              <div className="space-y-1 rounded-lg border border-destructive-line bg-destructive-tint p-3 text-xs">
                 <p className="font-medium text-destructive-ink">Atenção: esta ação não pode ser desfeita.</p>
                 <p className="text-muted-foreground">Pedido: <strong className="text-foreground">{deleteDialog.numero}</strong></p>
               </div>
-              <div>
-                <Label className="g-meta">Motivo da exclusão *</Label>
+              <div className="space-y-1.5">
+                <Label>Motivo da exclusão *</Label>
                 <Textarea
                   value={deleteReason}
                   onChange={e => setDeleteReason(e.target.value)}
                   placeholder="Informe o motivo da exclusão..."
-                  className="mt-1.5 g-meta"
                   rows={3}
                 />
               </div>
               <p className="g-meta text-muted-foreground">
                 Registrado por: <strong>{user?.email}</strong>
               </p>
-              <div className="flex gap-2 justify-end">
-                <Button variant="outline" size="sm" onClick={() => { setDeleteDialog(null); setDeleteReason(''); }} disabled={deleting}>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => { setDeleteDialog(null); setDeleteReason(''); }} disabled={deleting}>
                   Cancelar
                 </Button>
                 <Button
-                  size="sm"
                   variant="destructive"
                   onClick={handleDeleteConfirmed}
                   disabled={!deleteReason.trim() || deleting}
                 >
-                  {deleting && <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />}
+                  {deleting && <Loader2 aria-hidden="true" className="animate-spin" />}
                   Confirmar Exclusão
                 </Button>
-              </div>
+              </DialogFooter>
             </div>
           )}
         </DialogContent>
@@ -3386,20 +3421,20 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
 
       {/* Edit Pedido Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={(v) => { setEditDialogOpen(v); if (!v) setEditingPedido(null); }}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Pencil className="w-5 h-5 text-muted-foreground" /> Editar Pedido
+              <Pencil aria-hidden="true" className="h-5 w-5 text-muted-foreground" /> Editar Pedido
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="g-meta">N.o Documento</Label>
+          <div className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>N.o Documento</Label>
                 <Input value={editForm.numero_pedido} onChange={e => setEditForm(f => ({ ...f, numero_pedido: e.target.value }))} />
               </div>
-              <div>
-                <Label className="g-meta">Status</Label>
+              <div className="space-y-1.5">
+                <Label>Status</Label>
                 <Select value={editForm.status} onValueChange={v => setEditForm(f => ({ ...f, status: v }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -3410,13 +3445,13 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 </Select>
               </div>
             </div>
-            <div>
-              <Label className="g-meta">Descrição</Label>
+            <div className="space-y-1.5">
+              <Label>Descrição</Label>
               <Input value={editForm.descricao} onChange={e => setEditForm(f => ({ ...f, descricao: e.target.value }))} />
             </div>
             {itens.length > 0 && (
-              <div>
-                <Label className="g-meta">Item do Contrato</Label>
+              <div className="space-y-1.5">
+                <Label>Item do Contrato</Label>
                 <Select value={editForm.contrato_item_id} onValueChange={v => {
                   const item = itens.find(i => i.id === v);
                   setEditForm(f => ({ ...f, contrato_item_id: v, valor_unitario: item ? String(item.valor_unitario) : f.valor_unitario }));
@@ -3435,13 +3470,13 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 </Select>
               </div>
             )}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="g-meta">Quantidade</Label>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>Quantidade</Label>
                 <Input type="number" value={editForm.quantidade} onChange={e => setEditForm(f => ({ ...f, quantidade: e.target.value }))} />
               </div>
-              <div>
-                <Label className="g-meta">Valor Unitário</Label>
+              <div className="space-y-1.5">
+                <Label>Valor Unitário</Label>
                 <MoneyInput value={Number(editForm.valor_unitario) || 0} onValueChange={v => setEditForm(f => ({ ...f, valor_unitario: String(v) }))} />
               </div>
             </div>
@@ -3450,12 +3485,12 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 Pedidos anteriores a 30/08 nasceram antes do vínculo
                 empenho_id; aqui a edição resolve os dois lados: escolher o
                 empenho já anexado e reenviar o PDF da ordem. */}
-            <div className="rounded-lg border border-border p-3 space-y-2.5">
-              <p className="g-meta font-semibold">Empenho / Ordem de fornecimento</p>
-              <div>
-                <Label className="g-meta">Empenho que autoriza (já anexados ao contrato)</Label>
+            <div className="space-y-3 rounded-lg border border-border bg-secondary p-4">
+              <p className="text-sm font-semibold text-foreground">Empenho / Ordem de fornecimento</p>
+              <div className="space-y-1.5">
+                <Label>Empenho que autoriza (já anexados ao contrato)</Label>
                 <Select value={editForm.empenho_id || 'nenhum'} onValueChange={v => setEditForm(f => ({ ...f, empenho_id: v === 'nenhum' ? '' : v }))}>
-                  <SelectTrigger className="mt-1 h-8 g-meta"><SelectValue /></SelectTrigger>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="nenhum">— Sem vínculo —</SelectItem>
                     {empenhosDoContrato.map(e => (
@@ -3467,12 +3502,11 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                   É deste empenho que a cota consome — e é ele que o kit de faturamento pré-seleciona.
                 </p>
               </div>
-              <div>
-                <Label className="g-meta">Reenviar o PDF da Ordem/Empenho</Label>
+              <div className="space-y-1.5">
+                <Label>Reenviar o PDF da Ordem/Empenho</Label>
                 <Input
                   type="file"
                   accept="application/pdf"
-                  className="mt-1 h-8 g-meta"
                   disabled={reenviandoOrdem}
                   onChange={e => { const f = e.target.files?.[0]; if (f) void reenviarOrdem(f); e.target.value = ''; }}
                 />
@@ -3499,7 +3533,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
               const estoura = saldo > 0 && total - anterior > saldo;
               if (q <= 0 || u <= 0) return null;
               return (
-                <div className={`rounded-lg border p-2.5 g-meta ${estoura ? 'border-destructive-line bg-destructive-tint' : 'border-border bg-muted/30'}`}>
+                <div className={`rounded-lg border p-3 text-xs ${estoura ? 'border-destructive-line bg-destructive-tint' : 'border-border bg-secondary'}`}>
                   <p className={estoura ? 'text-destructive-ink font-medium' : 'text-muted-foreground'}>
                     {q} × {fmt(u)} = <strong>{fmt(total)}</strong>
                   </p>
@@ -3512,30 +3546,30 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 </div>
               );
             })()}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="g-meta">Data do Pedido</Label>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>Data do Pedido</Label>
                 <Input type="date" value={editForm.data_pedido} onChange={e => setEditForm(f => ({ ...f, data_pedido: e.target.value }))} />
               </div>
-              <div>
-                <Label className="g-meta">Data de Entrega</Label>
+              <div className="space-y-1.5">
+                <Label>Data de Entrega</Label>
                 <Input type="date" value={editForm.data_entrega} onChange={e => setEditForm(f => ({ ...f, data_entrega: e.target.value }))} />
               </div>
             </div>
-            <div>
-              <Label className="g-meta">Nota Fiscal</Label>
+            <div className="space-y-1.5">
+              <Label>Nota Fiscal</Label>
               <Input value={editForm.nota_fiscal} onChange={e => setEditForm(f => ({ ...f, nota_fiscal: e.target.value }))} />
             </div>
-            <div>
-              <Label className="g-meta">Observações</Label>
+            <div className="space-y-1.5">
+              <Label>Observações</Label>
               <Textarea value={editForm.observacoes} onChange={e => setEditForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} />
             </div>
-            <div className="flex justify-end gap-2 pt-2">
+            <DialogFooter className="pt-2">
               <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Cancelar</Button>
               <Button onClick={handleSaveEdit} disabled={savingEdit}>
-                {savingEdit ? <><Loader2 className="w-4 h-4 animate-spin mr-1" /> Salvando...</> : 'Salvar Alterações'}
+                {savingEdit ? <><Loader2 aria-hidden="true" className="animate-spin" /> Salvando...</> : 'Salvar Alterações'}
               </Button>
-            </div>
+            </DialogFooter>
           </div>
         </DialogContent>
       </Dialog>
@@ -3546,7 +3580,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
           lateral; este diálogo continua atendendo quem chega pela lista de
           descrições longas. */}
       <Dialog open={!!lendo} onOpenChange={(o) => !o && setLendo(null)}>
-        <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-xl">
           <DialogHeader>
             <DialogTitle>Pedido {lendo?.numero_pedido}</DialogTitle>
           </DialogHeader>
@@ -3561,7 +3595,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 <p className="whitespace-pre-wrap">{lendo.observacoes}</p>
               </div>
             )}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t g-meta">
+            <div className="grid grid-cols-2 gap-3 border-t border-border pt-3 text-xs sm:grid-cols-4">
               <div>
                 <span className="text-muted-foreground">Quantidade</span>
                 <p className="font-medium">{lendo?.quantidade ?? '—'}</p>

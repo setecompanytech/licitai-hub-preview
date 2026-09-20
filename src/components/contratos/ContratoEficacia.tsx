@@ -299,23 +299,24 @@ export default function ContratoEficacia({ contratoId }: { contratoId: string })
   return (
     <div className="space-y-3">
       {/* A pergunta que importa, respondida antes de tudo. */}
-      <Card className={`p-4 border ${fundo}`}>
+      <Card className={`p-4 shadow-none ${fundo}`}>
         <div className="flex items-start gap-2.5">
-          <Icone className={`w-5 h-5 shrink-0 mt-0.5 ${cor}`} />
+          <Icone aria-hidden="true" className={`mt-0.5 h-5 w-5 shrink-0 ${cor}`} />
           <div className="min-w-0 flex-1">
-            <button type="button" className="w-full flex items-center justify-between gap-2 text-left"
+            <button type="button" className="flex w-full items-center justify-between gap-2 rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               onClick={() => setSituacaoAberta((v) => !v)}
+              aria-expanded={situacaoAberta}
               title={situacaoAberta ? 'Recolher' : 'Expandir'}>
               <p className={`text-sm font-semibold ${cor}`}>{s.titulo}</p>
               {situacaoAberta
-                ? <ChevronUp className="w-4 h-4 shrink-0 text-muted-foreground" />
-                : <ChevronDown className="w-4 h-4 shrink-0 text-muted-foreground" />}
+                ? <ChevronUp aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground" />
+                : <ChevronDown aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground" />}
             </button>
             {situacaoAberta && (
             <>
             <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{s.detalhe}</p>
             {!s.podeExecutar && (
-              <Badge variant="outline" className="mt-2 text-xs border-destructive-line text-destructive-ink">
+              <Badge variant="danger" className="mt-2">
                 Não inicie a execução
               </Badge>
             )}
@@ -336,7 +337,7 @@ export default function ContratoEficacia({ contratoId }: { contratoId: string })
                     O que a leitura encontrou: {leituraDaAssinatura.observacao}
                   </p>
                 )}
-                <Button size="sm" variant="outline" className="h-7 text-xs"
+                <Button size="sm" variant="outline"
                   disabled={conferindo}
                   onClick={confirmarAssinaturas}>
                   {conferindo ? 'registrando…' : 'Conferi — as duas partes assinaram'}
@@ -349,22 +350,23 @@ export default function ContratoEficacia({ contratoId }: { contratoId: string })
         </div>
       </Card>
 
-      <Card className="p-4">
-        <div className="flex items-center justify-between gap-2 mb-3">
-          <button type="button" className="flex-1 flex items-center justify-between gap-2 text-left"
+      <Card className="p-5">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <button type="button" className="flex flex-1 items-center justify-between gap-2 rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onClick={() => setExtratosAbertos((v) => !v)}
+            aria-expanded={extratosAbertos}
             title={extratosAbertos ? 'Recolher' : 'Expandir'}>
-            <h4 className="text-lg font-semibold flex items-center gap-1.5">
-              <Gavel className="w-4 h-4 text-muted-foreground" /> Extratos e publicações
+            <h4 className="flex items-center gap-1.5 text-base font-semibold leading-6 text-foreground">
+              <Gavel aria-hidden="true" className="h-4 w-4 text-muted-foreground" /> Extratos e publicações
             </h4>
             {extratosAbertos
-              ? <ChevronUp className="w-4 h-4 shrink-0 text-muted-foreground" />
-              : <ChevronDown className="w-4 h-4 shrink-0 text-muted-foreground" />}
+              ? <ChevronUp aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground" />
+              : <ChevronDown aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground" />}
           </button>
           {!criando && (
-            <Button size="sm" variant="outline" className="h-7 text-xs nao-imprime"
+            <Button size="sm" variant="outline" className="nao-imprime"
               onClick={() => { setCriando(true); setExtratosAbertos(true); }}>
-              <Plus className="w-3 h-3 mr-1" /> Registrar
+              <Plus aria-hidden="true" /> Registrar
             </Button>
           )}
         </div>
@@ -378,12 +380,12 @@ export default function ContratoEficacia({ contratoId }: { contratoId: string })
             const tem = quantosDe(ex.tipo);
             const completo = tem >= ex.quantos;
             return (
-              <div key={ex.tipo} className="flex items-start gap-2 text-xs">
+              <div key={ex.tipo} className="flex items-start gap-2 text-sm">
                 {completo
-                  ? <ShieldCheck className="w-3.5 h-3.5 text-success-ink shrink-0 mt-0.5" />
-                  : <AlertTriangle className="w-3.5 h-3.5 text-warning-ink shrink-0 mt-0.5" />}
+                  ? <ShieldCheck aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-success-ink" />
+                  : <AlertTriangle aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning-ink" />}
                 <div className="min-w-0">
-                  <p className="font-medium">
+                  <p className="font-medium text-foreground">
                     {ex.rotulo}
                     {ex.quantos > 1 && <span className="text-muted-foreground"> — {tem} de {ex.quantos}</span>}
                     {ex.quantos === 1 && !completo && <span className="text-warning-ink"> — falta</span>}
@@ -396,10 +398,10 @@ export default function ContratoEficacia({ contratoId }: { contratoId: string })
         </div>
 
         {publicacoes.length > 0 && (
-          <div className="mt-4 pt-3 border-t space-y-1.5">
+          <div className="mt-4 space-y-1.5 border-t border-border pt-3">
             {publicacoes.map(p => (
-              <div key={p.id} className="flex items-center gap-2 text-xs">
-                <Badge variant="outline" className="text-xs shrink-0">{p.veiculo}</Badge>
+              <div key={p.id} className="flex items-center gap-2 py-1 text-sm">
+                <Badge variant="muted" className="shrink-0">{p.veiculo}</Badge>
                 <span className="font-medium truncate">
                   {ROTULO_PUBLICACAO[p.tipo as TipoDePublicacao] ?? p.tipo}
                   {p.aditivo_id && ` — ${aditivos.find(a => a.id === p.aditivo_id)?.numero_aditivo ?? ''}`}
@@ -409,23 +411,25 @@ export default function ContratoEficacia({ contratoId }: { contratoId: string })
                 </span>
                 {p.numero && <span className="text-muted-foreground truncate">nº {p.numero}</span>}
                 {p.url && (
-                  <a href={p.url} target="_blank" rel="noreferrer" className="text-primary shrink-0" title="Abrir o link do Diário">
-                    <ExternalLink className="w-3 h-3" />
+                  <a href={p.url} target="_blank" rel="noreferrer" className="shrink-0 rounded text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" title="Abrir o link do Diário" aria-label="Abrir o link do Diário">
+                    <ExternalLink aria-hidden="true" className="h-3.5 w-3.5" />
                   </a>
                 )}
                 {/* O recorte guardado. Link e recorte convivem: o primeiro leva
                     à fonte enquanto ela existir, o segundo prova depois. */}
                 {p.arquivo_id && (
-                  <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 nao-imprime"
+                  <Button variant="ghost" size="icon-sm" className="shrink-0 nao-imprime"
                     title="Ver o recorte publicado"
+                    aria-label="Ver o recorte publicado"
                     onClick={() => abrirRecorte(p.arquivo_id!)}>
-                    <FileText className="w-3 h-3 text-primary" />
+                    <FileText aria-hidden="true" className="text-primary" />
                   </Button>
                 )}
-                <Button variant="ghost" size="icon" className="h-6 w-6 ml-auto shrink-0 nao-imprime"
+                <Button variant="ghost-destructive" size="icon-sm" className="ml-auto shrink-0 nao-imprime"
                   title="Excluir registro de publicação (o motivo fica no histórico)"
+                  aria-label="Excluir registro de publicação"
                   onClick={() => pedirExclusao(p.id)}>
-                  <Trash2 className="w-3 h-3 text-destructive-ink" />
+                  <Trash2 aria-hidden="true" />
                 </Button>
               </div>
             ))}
@@ -433,10 +437,10 @@ export default function ContratoEficacia({ contratoId }: { contratoId: string })
         )}
 
         {criando && (
-          <div className="mt-4 pt-3 border-t space-y-3 nao-imprime">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <Label className="text-xs text-muted-foreground">O que foi publicado</Label>
+          <div className="mt-4 space-y-4 border-t border-border pt-4 nao-imprime">
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="space-y-1.5">
+                <Label>O que foi publicado</Label>
                 <Select value={form.tipo} onValueChange={v => setForm(f => ({ ...f, tipo: v as TipoDePublicacao }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -446,8 +450,8 @@ export default function ContratoEficacia({ contratoId }: { contratoId: string })
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">Onde</Label>
+              <div className="space-y-1.5">
+                <Label>Onde</Label>
                 <Select value={form.veiculo} onValueChange={v => setForm(f => ({ ...f, veiculo: v }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -459,16 +463,16 @@ export default function ContratoEficacia({ contratoId }: { contratoId: string })
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">Data da publicação</Label>
+              <div className="space-y-1.5">
+                <Label>Data da publicação</Label>
                 <Input type="date" value={form.data_publicacao}
                   onChange={e => setForm(f => ({ ...f, data_publicacao: e.target.value }))} />
               </div>
             </div>
 
             {form.tipo === 'extrato_aditivo' && (
-              <div>
-                <Label className="text-xs text-muted-foreground">De qual aditivo</Label>
+              <div className="space-y-1.5">
+                <Label>De qual aditivo</Label>
                 <Select value={form.aditivo_id} onValueChange={v => setForm(f => ({ ...f, aditivo_id: v }))}>
                   <SelectTrigger><SelectValue placeholder="Escolha o aditivo" /></SelectTrigger>
                   <SelectContent>
@@ -480,13 +484,13 @@ export default function ContratoEficacia({ contratoId }: { contratoId: string })
               </div>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs text-muted-foreground">Nº / edição (opcional)</Label>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>Nº / edição (opcional)</Label>
                 <Input value={form.numero} onChange={e => setForm(f => ({ ...f, numero: e.target.value }))} />
               </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">Link (opcional)</Label>
+              <div className="space-y-1.5">
+                <Label>Link (opcional)</Label>
                 <Input placeholder="https://pncp.gov.br/..." value={form.url}
                   onChange={e => setForm(f => ({ ...f, url: e.target.value }))} />
               </div>
@@ -497,13 +501,13 @@ export default function ContratoEficacia({ contratoId }: { contratoId: string })
                 o PNCP reorganiza URL. Numa fiscalização anos depois, o que
                 sustenta a eficácia é o recorte que se guardou — não o endereço
                 que se anotou. */}
-            <div>
-              <Label className="text-xs text-muted-foreground">Recorte publicado (recomendado)</Label>
+            <div className="space-y-1.5">
+              <Label>Recorte publicado (recomendado)</Label>
               <input ref={entradaDoRecorte} type="file" className="hidden"
                 accept=".pdf,.jpg,.jpeg,.png,.webp"
                 onChange={e => { setRecorte(e.target.files?.[0] ?? null); e.target.value = ''; }} />
-              <div className="flex items-center gap-2 mt-1 flex-wrap">
-                <Button type="button" size="sm" variant="outline" className="h-8 text-xs"
+              <div className="flex flex-wrap items-center gap-2">
+                <Button type="button" size="sm" variant="outline"
                   onClick={() => entradaDoRecorte.current?.click()}>
                   {recorte ? 'Trocar arquivo' : 'Escolher arquivo'}
                 </Button>
@@ -515,12 +519,12 @@ export default function ContratoEficacia({ contratoId }: { contratoId: string })
               </div>
             </div>
 
-            <div className="flex gap-2">
-              <Button size="sm" className="h-8 text-xs" onClick={salvar} disabled={salvando}>
-                {salvando ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Registrar'}
-              </Button>
-              <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setCriando(false)}>
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button size="sm" variant="outline" onClick={() => setCriando(false)}>
                 Cancelar
+              </Button>
+              <Button size="sm" onClick={salvar} disabled={salvando}>
+                {salvando ? <Loader2 aria-hidden="true" className="animate-spin" /> : 'Registrar'}
               </Button>
             </div>
           </div>
@@ -529,7 +533,7 @@ export default function ContratoEficacia({ contratoId }: { contratoId: string })
         )}
       </Card>
           {isEmpresaAdmin && exclusoes.length > 0 && (
-        <div className="mt-2 rounded-md border border-border bg-muted/30 px-3 py-2 nao-imprime">
+        <div className="mt-2 rounded-md border border-border bg-secondary px-3 py-2 nao-imprime">
           <p className="text-xs font-medium text-muted-foreground mb-1">
             Histórico de exclusões ({exclusoes.length}) — visível ao administrador
           </p>

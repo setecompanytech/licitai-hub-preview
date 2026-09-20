@@ -18,11 +18,13 @@ const CAMPO_LABELS: Record<string, string> = {
   alerta_aditivo_quantidade: 'Alerta — Aditivo de Quantidade',
 };
 
-const ORIGEM_META: Record<string, { label: string; icon: any; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-  ia_extracao: { label: 'IA — Extração', icon: Sparkles, variant: 'secondary' },
-  recalculo_saldo: { label: 'Recálculo automático', icon: Calculator, variant: 'outline' },
-  recalculo_consumo_ata: { label: 'Consumo da ATA', icon: Calculator, variant: 'outline' },
-  alerta_limite_legal: { label: 'Alerta legal (Lei 14.133/21)', icon: AlertTriangle, variant: 'destructive' },
+// Selos suaves do Design System v3 (trio tint/ink/line) — o mesmo vocabulário
+// do painel de auditoria, para o diálogo não pintar o mesmo evento de outra cor.
+const ORIGEM_META: Record<string, { label: string; icon: any; variant: 'ia' | 'muted' | 'danger' | 'outline' }> = {
+  ia_extracao: { label: 'IA — Extração', icon: Sparkles, variant: 'ia' },
+  recalculo_saldo: { label: 'Recálculo automático', icon: Calculator, variant: 'muted' },
+  recalculo_consumo_ata: { label: 'Consumo da ATA', icon: Calculator, variant: 'muted' },
+  alerta_limite_legal: { label: 'Alerta legal (Lei 14.133/21)', icon: AlertTriangle, variant: 'danger' },
 };
 
 const fmtBRL = (v: any) =>
@@ -143,7 +145,7 @@ export default function EventoAuditoriaDetalheDialog({
   }, [open, evento]);
 
   if (!evento) return null;
-  const meta = ORIGEM_META[evento.origem] || { label: evento.origem, icon: ScrollText, variant: 'outline' as const };
+  const meta = ORIGEM_META[evento.origem] || { label: evento.origem, icon: ScrollText, variant: 'muted' as const };
   const Icon = meta.icon;
   const isAlerta = evento.origem === 'alerta_limite_legal';
   const pctConsumo =
@@ -155,16 +157,16 @@ export default function EventoAuditoriaDetalheDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-base">
-            <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+          <DialogTitle className="flex items-center gap-2">
+            <Icon aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground" />
             Detalhes do Evento — {CAMPO_LABELS[evento.campo] || evento.campo}
           </DialogTitle>
-          <DialogDescription className="flex items-center gap-2 flex-wrap">
-            <Badge variant={meta.variant} className="text-xs">{meta.label}</Badge>
+          <DialogDescription className="flex flex-wrap items-center gap-2">
+            <Badge variant={meta.variant}>{meta.label}</Badge>
             <span className="text-xs text-muted-foreground">{fmtDate(evento.created_at)}</span>
             {evento.arquivo_nome && (
               <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                <FileText className="h-3 w-3" /> {evento.arquivo_nome}
+                <FileText aria-hidden="true" className="h-3 w-3" /> {evento.arquivo_nome}
               </span>
             )}
           </DialogDescription>
@@ -190,7 +192,7 @@ export default function EventoAuditoriaDetalheDialog({
                     (auditoriaTexto) e as colunas domadas, o par respira — e em
                     fonte comum: diário é texto para gente, não código. */}
                 <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-3 items-stretch">
-                  <div className="border rounded-md p-3 bg-muted/30 min-w-0">
+                  <div className="min-w-0 rounded-md border border-border bg-secondary p-3">
                     <div className="text-xs text-muted-foreground mb-1">
                       {isAlerta ? 'Limite legal' : ctx?.eventoAnterior ? `Estado anterior (${fmtDate(ctx.eventoAnterior.created_at)})` : 'Valor anterior'}
                     </div>
@@ -203,9 +205,9 @@ export default function EventoAuditoriaDetalheDialog({
                     </div>
                   </div>
                   <div className="hidden md:flex items-center justify-center text-muted-foreground">
-                    <ArrowRight className="h-5 w-5" />
+                    <ArrowRight aria-hidden="true" className="h-5 w-5" />
                   </div>
-                  <div className={`border rounded-md p-3 min-w-0 ${isAlerta ? 'bg-destructive-tint border-destructive-line' : 'bg-muted/50 border-border'}`}>
+                  <div className={`min-w-0 rounded-md border p-3 ${isAlerta ? 'border-destructive-line bg-destructive-tint' : 'border-border bg-secondary'}`}>
                     <div className="text-xs text-muted-foreground mb-1">
                       {isAlerta ? 'Situação detectada' : 'Estado atual'}
                     </div>
@@ -222,22 +224,22 @@ export default function EventoAuditoriaDetalheDialog({
               {ctx?.ataAtual && (
                 <section>
                   <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1">
-                    <FileSignature className="h-3.5 w-3.5" /> Snapshot atual do registro
+                    <FileSignature aria-hidden="true" className="h-3.5 w-3.5" /> Snapshot atual do registro
                   </h4>
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 text-xs">
-                    <div className="border rounded-md p-2">
+                    <div className="rounded-md border border-border bg-card p-3">
                       <div className="text-muted-foreground">Nº do registro</div>
                       <div className="font-medium">{ctx.ataAtual.numero_contrato || '—'}</div>
                     </div>
-                    <div className="border rounded-md p-2">
+                    <div className="rounded-md border border-border bg-card p-3">
                       <div className="text-muted-foreground">Valor original</div>
                       <div>{fmtBRL(ctx.ataAtual.valor_global_original)}</div>
                     </div>
-                    <div className="border rounded-md p-2">
+                    <div className="rounded-md border border-border bg-card p-3">
                       <div className="text-muted-foreground">Valor global</div>
                       <div>{fmtBRL(ctx.ataAtual.valor_global)}</div>
                     </div>
-                    <div className="border rounded-md p-2">
+                    <div className="rounded-md border border-border bg-card p-3">
                       <div className="text-muted-foreground">Consumido {pctConsumo ? `(${pctConsumo}%)` : ''}</div>
                       <div className="font-semibold text-foreground">{fmtBRL(ctx.ataAtual.valor_consumido)}</div>
                     </div>
@@ -249,9 +251,9 @@ export default function EventoAuditoriaDetalheDialog({
               {ctx?.itemAtual && (
                 <section>
                   <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1">
-                    <Package className="h-3.5 w-3.5" /> Item afetado
+                    <Package aria-hidden="true" className="h-3.5 w-3.5" /> Item afetado
                   </h4>
-                  <div className="border rounded-md p-3 space-y-2 bg-muted/30">
+                  <div className="space-y-2 rounded-md border border-border bg-secondary p-3">
                     <div className="text-sm font-medium">
                       {ctx.itemAtual.codigo_item ? `[${ctx.itemAtual.codigo_item}] ` : ''}{ctx.itemAtual.descricao || '—'}
                     </div>
@@ -273,7 +275,7 @@ export default function EventoAuditoriaDetalheDialog({
                   </h4>
                   <ul className="space-y-1.5">
                     {ctx.contratosDerivados.map((c) => (
-                      <li key={c.id} className="border rounded-md p-2 text-xs flex items-start justify-between gap-2 bg-muted/20">
+                      <li key={c.id} className="flex items-start justify-between gap-2 rounded-md border border-border bg-secondary p-3 text-xs">
                         <div className="min-w-0 flex-1">
                           <div className="font-medium truncate" title={c.numero_contrato || undefined}>{c.numero_contrato || '(sem número)'}</div>
                           <div className="text-muted-foreground truncate" title={c.objeto || undefined}>{c.objeto || '—'}</div>
@@ -288,7 +290,7 @@ export default function EventoAuditoriaDetalheDialog({
                         <div className="text-right shrink-0">
                           <div>{fmtBRL(c.valor_global)}</div>
                           {c.status && (
-                            <Badge variant="outline" className="text-xs mt-0.5">
+                            <Badge variant="muted" className="mt-0.5">
                               {statusEfetivo(c.status, (c as { data_fim?: string | null }).data_fim)}
                             </Badge>
                           )}
@@ -307,11 +309,11 @@ export default function EventoAuditoriaDetalheDialog({
                   </h4>
                   <ul className="space-y-1.5">
                     {ctx.aditivos.map((a) => (
-                      <li key={a.id} className="border rounded-md p-2 text-xs bg-muted/20">
+                      <li key={a.id} className="rounded-md border border-border bg-secondary p-3 text-xs">
                         <div className="flex items-center justify-between gap-2 mb-1">
                           <div className="font-medium">
                             Aditivo nº {a.numero_aditivo || '?'}
-                            {a.tipo && <Badge variant="outline" className="text-xs ml-2">{a.tipo}</Badge>}
+                            {a.tipo && <Badge variant="muted" className="ml-2">{a.tipo}</Badge>}
                           </div>
                           <span className="text-muted-foreground text-xs">{fmtDate(a.created_at)}</span>
                         </div>
@@ -328,7 +330,7 @@ export default function EventoAuditoriaDetalheDialog({
               )}
 
               {(!ctx?.contratosDerivados.length && !ctx?.aditivos.length && !ctx?.itemAtual) && !loading && (
-                <div className="text-xs text-muted-foreground text-center py-4">
+                <div className="py-4 text-sm text-muted-foreground">
                   Nenhum contrato derivado ou aditivo relacionado encontrado para este evento.
                 </div>
               )}

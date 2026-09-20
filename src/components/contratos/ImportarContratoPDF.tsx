@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Upload, FileText, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import SeloPraefectusIA from '@/components/shared/SeloPraefectusIA';
 import { extractTextFromFile } from '@/lib/pdf-text-extractor';
 
 type ExtractedData = {
@@ -232,22 +233,22 @@ export default function ImportarContratoPDF({ onExtracted, onCadastroManual }: I
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
       <DialogTrigger asChild>
         <Button variant="outline">
-          <Upload className="w-4 h-4" /> Importar Contrato
+          <Upload aria-hidden="true" /> Importar Contrato
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileText className="w-5 h-5" /> Importar Contrato por Documento
+            <FileText aria-hidden="true" className="h-5 w-5 text-muted-foreground" /> Importar Contrato por Documento
           </DialogTitle>
         </DialogHeader>
 
         {step === 'upload' && (
-          <div className="py-4 space-y-4">
-            <div className="rounded-lg border border-border bg-muted/20 p-3">
+          <div className="space-y-4 py-4">
+            <div className="space-y-1.5 rounded-lg border border-border bg-secondary p-4">
               <Label>O documento está organizado por *</Label>
               <Select value={tipoEstrutura} onValueChange={(v: 'itens' | 'lotes') => setTipoEstrutura(v)}>
-                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="itens">Itens (individuais)</SelectItem>
                   <SelectItem value="lotes">Lotes (grupos de itens)</SelectItem>
@@ -261,10 +262,10 @@ export default function ImportarContratoPDF({ onExtracted, onCadastroManual }: I
             </div>
             <label
               htmlFor="pdf-upload"
-              className="flex flex-col items-center justify-center border-2 border-dashed border-border rounded-lg p-8 cursor-pointer hover:border-primary hover:bg-primary-tint transition-colors"
+              className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-input p-8 transition-colors duration-150 hover:border-primary hover:bg-primary-tint"
             >
               <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary" aria-hidden="true">
-                <Upload className="w-6 h-6" />
+                <Upload className="h-6 w-6" />
               </span>
               <p className="text-sm font-medium">Clique ou arraste o documento do contrato</p>
               <p className="text-xs text-muted-foreground mt-1">PDF, DOC, DOCX ou TXT até 20MB</p>
@@ -281,9 +282,10 @@ export default function ImportarContratoPDF({ onExtracted, onCadastroManual }: I
         )}
 
         {step === 'extracting' && (
-          <div className="py-8 space-y-4">
+          <div className="space-y-4 rounded-lg border border-primary-line bg-primary-tint p-4">
+            <SeloPraefectusIA />
             <div className="flex items-center gap-3">
-              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+              <Loader2 aria-hidden="true" className="h-5 w-5 animate-spin text-primary" />
               <div className="flex-1">
                 <p className="text-sm font-medium">Processando: {fileName}</p>
                 <p className="text-xs text-muted-foreground">
@@ -296,13 +298,13 @@ export default function ImportarContratoPDF({ onExtracted, onCadastroManual }: I
         )}
 
         {step === 'done' && extracted && (
-          <div className="py-4 space-y-4">
+          <div className="space-y-4 py-4">
             <div className="flex items-center gap-2 text-sm text-success-ink">
-              <CheckCircle2 className="w-5 h-5" />
+              <CheckCircle2 aria-hidden="true" className="h-5 w-5" />
               <span className="font-medium">Extração concluída!</span>
             </div>
 
-            <div className="bg-muted/50 rounded-lg p-4 space-y-2 text-sm">
+            <div className="space-y-2 rounded-lg border border-border bg-secondary p-4 text-sm">
               {extracted.numero_contrato && (
                 <div><span className="text-muted-foreground">Nº Contrato:</span> <strong>{extracted.numero_contrato}</strong></div>
               )}
@@ -332,32 +334,32 @@ export default function ImportarContratoPDF({ onExtracted, onCadastroManual }: I
                 <div><span className="text-muted-foreground">Modalidade:</span> {extracted.modalidade}</div>
               )}
               <div className="flex gap-2 pt-1 flex-wrap">
-                <Badge variant="outline" className="text-xs text-foreground">
+                <Badge variant="muted">
                   Estrutura: {tipoEstrutura === 'lotes' ? 'Lotes' : 'Itens'}
                 </Badge>
-                <Badge variant="secondary" className="text-xs">{filledFields} campos extraídos</Badge>
-                {totalItens > 0 && <Badge variant="secondary" className="text-xs">{totalItens} {tipoEstrutura === 'lotes' ? 'itens em lotes' : 'itens'} encontrados</Badge>}
-                {extracted.vigencia_meses != null && <Badge variant="secondary" className="text-xs">{extracted.vigencia_meses} meses</Badge>}
+                <Badge variant="muted">{filledFields} campos extraídos</Badge>
+                {totalItens > 0 && <Badge variant="muted">{totalItens} {tipoEstrutura === 'lotes' ? 'itens em lotes' : 'itens'} encontrados</Badge>}
+                {extracted.vigencia_meses != null && <Badge variant="muted">{extracted.vigencia_meses} meses</Badge>}
               </div>
               {aviso && (
                 <p className={`mt-2 flex items-start gap-1.5 text-xs ${itensRecusados ? 'text-destructive-ink' : 'text-warning-ink'}`}>
-                  <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+                  <AlertTriangle aria-hidden="true" className="mt-0.5 h-3 w-3 shrink-0" />
                   <span>{aviso}</span>
                 </p>
               )}
             </div>
 
-            <div className="flex justify-end gap-2">
+            <DialogFooter>
               <Button variant="outline" onClick={reset}>Tentar Outro</Button>
               <Button onClick={handleConfirm}>Aplicar ao Formulário</Button>
-            </div>
+            </DialogFooter>
           </div>
         )}
 
         {step === 'error' && (
-          <div className="py-6 space-y-4">
+          <div className="space-y-4 py-6">
             <div className="flex items-center gap-2 text-sm text-destructive-ink">
-              <AlertTriangle className="w-5 h-5" />
+              <AlertTriangle aria-hidden="true" className="h-5 w-5" />
               <span className="font-medium">Erro na extração</span>
             </div>
             <p className="text-sm text-muted-foreground">{errorMsg}</p>
@@ -365,14 +367,14 @@ export default function ImportarContratoPDF({ onExtracted, onCadastroManual }: I
                 contrato, e a leitura automática é meio, não fim. Sem esta
                 saída, a pessoa fechava o diálogo sem saber que o "+ Novo"
                 faz o mesmo à mão. */}
-            <div className="flex flex-wrap gap-2">
+            <DialogFooter>
+              <Button variant="outline" onClick={reset}>Tentar outro arquivo</Button>
               {onCadastroManual && (
                 <Button onClick={() => { setOpen(false); reset(); onCadastroManual(); }}>
                   Cadastrar manualmente
                 </Button>
               )}
-              <Button variant="outline" onClick={reset}>Tentar outro arquivo</Button>
-            </div>
+            </DialogFooter>
           </div>
         )}
       </DialogContent>

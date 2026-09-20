@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { Wrench, Loader2, RefreshCw, Link2, AlertCircle, CheckCircle2, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -180,15 +181,15 @@ export default function ManutencaoAtaSrpDialog({ ataId, ataNumero, onAtualizou }
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2">
-          <Wrench className="w-4 h-4" />
+        <Button variant="outline" size="sm">
+          <Wrench aria-hidden="true" />
           Manutenção da ATA
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-5xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Wrench className="w-5 h-5" />
+            <Wrench aria-hidden="true" className="h-5 w-5 text-muted-foreground" />
             Manutenção e revisão da ATA {ataNumero ? `nº ${ataNumero}` : ''}
           </DialogTitle>
           <DialogDescription>
@@ -197,22 +198,22 @@ export default function ManutencaoAtaSrpDialog({ ataId, ataNumero, onAtualizou }
         </DialogHeader>
 
         <Tabs value={tab} onValueChange={setTab} className="mt-2">
-          <TabsList className="grid grid-cols-2 w-full">
-            <TabsTrigger value="recalculo" className="gap-2">
-              <RefreshCw className="w-4 h-4" /> Recalcular saldos
+          <TabsList>
+            <TabsTrigger value="recalculo">
+              <RefreshCw aria-hidden="true" className="h-4 w-4" /> Recalcular saldos
             </TabsTrigger>
-            <TabsTrigger value="orfaos" className="gap-2">
-              <Link2 className="w-4 h-4" /> Órfãos & revisão IA
+            <TabsTrigger value="orfaos">
+              <Link2 aria-hidden="true" className="h-4 w-4" /> Órfãos & revisão IA
             </TabsTrigger>
           </TabsList>
 
           {/* RECÁLCULO */}
           <TabsContent value="recalculo" className="space-y-4 pt-4">
-            <Card className="p-4 space-y-3">
+            <Card className="space-y-3 p-5">
               <div className="flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-muted-foreground mt-0.5 shrink-0" />
-                <div className="text-sm space-y-1">
-                  <p className="font-medium">Quando usar</p>
+                <AlertCircle aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
+                <div className="space-y-1 text-sm">
+                  <p className="font-medium text-foreground">Quando usar</p>
                   <p className="text-muted-foreground">
                     Reexecuta os cálculos de quantidade consumida, saldo financeiro e valor consumido total.
                     Útil quando você importou dados antigos ou suspeita de divergências de saldo.
@@ -222,7 +223,7 @@ export default function ManutencaoAtaSrpDialog({ ataId, ataNumero, onAtualizou }
               </div>
               <div className="flex flex-wrap gap-2 pt-1">
                 <Button onClick={() => executarRecalculo('ata')} disabled={recalculando}>
-                  {recalculando ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                  {recalculando ? <Loader2 aria-hidden="true" className="animate-spin" /> : <RefreshCw aria-hidden="true" />}
                   Recalcular esta ATA
                 </Button>
                 <Button
@@ -230,17 +231,17 @@ export default function ManutencaoAtaSrpDialog({ ataId, ataNumero, onAtualizou }
                   disabled={recalculando}
                   variant="outline"
                 >
-                  {recalculando ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                  {recalculando ? <Loader2 aria-hidden="true" className="animate-spin" /> : <RefreshCw aria-hidden="true" />}
                   Recalcular todas as minhas ATAs
                 </Button>
               </div>
             </Card>
 
             {resultadoRecalc && (
-              <Card className="p-4 bg-success-tint border-success-line">
+              <Card className="border-success-line bg-success-tint p-4 shadow-none">
                 <div className="flex items-start gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-success-ink mt-0.5 shrink-0" />
-                  <div className="text-sm space-y-1">
+                  <CheckCircle2 aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-success-ink" />
+                  <div className="space-y-1 text-sm">
                     <p className="font-medium text-success-ink">Recálculo concluído</p>
                     <ul className="text-muted-foreground space-y-0.5">
                       <li>ATAs processadas: <strong>{resultadoRecalc.atas_processadas}</strong></li>
@@ -260,25 +261,23 @@ export default function ManutencaoAtaSrpDialog({ ataId, ataNumero, onAtualizou }
                 Contratos sem ATA de origem e itens de contratos derivados sem vínculo a um item da ATA.
               </p>
               <Button onClick={carregarOrfaos} disabled={carregandoOrfaos} variant="outline">
-                {carregandoOrfaos ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                {carregandoOrfaos ? <Loader2 aria-hidden="true" className="animate-spin" /> : <RefreshCw aria-hidden="true" />}
                 Recarregar
               </Button>
             </div>
 
             {/* Contratos órfãos */}
-            <Card className="p-4 space-y-3">
+            <Card className="space-y-3 p-5">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold flex items-center gap-2">
+                <h3 className="flex items-center gap-2 text-base font-semibold leading-6 text-foreground">
                   Contratos sem ATA de origem
-                  <Badge variant="secondary">{contratosOrfaos.length}</Badge>
+                  <Badge variant="muted">{contratosOrfaos.length}</Badge>
                 </h3>
               </div>
               {carregandoOrfaos ? (
                 <div className="space-y-2" aria-busy="true" aria-label="Carregando"><Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" /></div>
               ) : contratosOrfaos.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-3 text-center">
-                  Nenhum contrato órfão encontrado para esta ATA (mesmo órgão).
-                </p>
+                <EstadoVazio tamanho="compacto" titulo="Nenhum contrato órfão encontrado para esta ATA (mesmo órgão)." />
               ) : (
                 <Table>
                   <TableHeader>
@@ -300,8 +299,8 @@ export default function ManutencaoAtaSrpDialog({ ataId, ataNumero, onAtualizou }
                         <TableCell className="text-right tabular-nums">{fmt(c.valor_global || 0)}</TableCell>
                         <TableCell className="text-xs">
                           {c.sugestao_ata?.ata_id === ataId ? (
-                            <Badge variant="outline" className="gap-1">
-                              <Sparkles className="w-3 h-3" />
+                            <Badge variant="ia" className="gap-1">
+                              <Sparkles aria-hidden="true" className="h-3 w-3 text-teal" />
                               Esta ATA ({Math.round((c.sugestao_ata.similaridade_objeto || 0) * 100)}%)
                             </Badge>
                           ) : (
@@ -315,7 +314,7 @@ export default function ManutencaoAtaSrpDialog({ ataId, ataNumero, onAtualizou }
                             disabled={aplicandoId === c.id}
                             onClick={() => aplicarVinculoContrato(c.id, ataId)}
                           >
-                            {aplicandoId === c.id ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Vincular a esta ATA'}
+                            {aplicandoId === c.id ? <Loader2 aria-hidden="true" className="animate-spin" /> : 'Vincular a esta ATA'}
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -326,19 +325,17 @@ export default function ManutencaoAtaSrpDialog({ ataId, ataNumero, onAtualizou }
             </Card>
 
             {/* Itens órfãos */}
-            <Card className="p-4 space-y-3">
+            <Card className="space-y-3 p-5">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold flex items-center gap-2">
+                <h3 className="flex items-center gap-2 text-base font-semibold leading-6 text-foreground">
                   Itens sem vínculo ao item da ATA
-                  <Badge variant="secondary">{itensOrfaos.length}</Badge>
+                  <Badge variant="muted">{itensOrfaos.length}</Badge>
                 </h3>
               </div>
               {carregandoOrfaos ? (
                 <div className="space-y-2" aria-busy="true" aria-label="Carregando"><Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" /></div>
               ) : itensOrfaos.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-3 text-center">
-                  Todos os itens dos contratos derivados estão vinculados.
-                </p>
+                <EstadoVazio tamanho="compacto" titulo="Todos os itens dos contratos derivados estão vinculados." />
               ) : (
                 <Table>
                   <TableHeader>
@@ -359,11 +356,11 @@ export default function ManutencaoAtaSrpDialog({ ataId, ataNumero, onAtualizou }
                         <TableCell className="text-xs max-w-[260px]">
                           {i.sugestao ? (
                             <div className="flex items-center gap-1.5">
-                              <Sparkles className="w-3 h-3 text-muted-foreground shrink-0" />
+                              <Sparkles aria-hidden="true" className="h-3 w-3 shrink-0 text-teal" />
                               <span className="truncate" title={i.sugestao.ata_descricao}>
                                 {i.sugestao.ata_descricao}
                               </span>
-                              <Badge variant="outline" className="text-xs">
+                              <Badge variant="muted">
                                 {Math.round(i.sugestao.similaridade * 100)}%
                               </Badge>
                             </div>
@@ -378,7 +375,7 @@ export default function ManutencaoAtaSrpDialog({ ataId, ataNumero, onAtualizou }
                             disabled={!i.sugestao || aplicandoId === i.id}
                             onClick={() => i.sugestao && aplicarVinculoItem(i.id, i.sugestao.ata_item_id)}
                           >
-                            {aplicandoId === i.id ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Aprovar vínculo'}
+                            {aplicandoId === i.id ? <Loader2 aria-hidden="true" className="animate-spin" /> : 'Aprovar vínculo'}
                           </Button>
                         </TableCell>
                       </TableRow>

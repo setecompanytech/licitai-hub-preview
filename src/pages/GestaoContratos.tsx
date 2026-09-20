@@ -33,7 +33,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -678,7 +678,7 @@ export default function GestaoContratos() {
                   <button
                     type="button"
                     onClick={() => abrirContrato(ataOrigem)}
-                    className="flex items-center gap-1 text-primary hover:underline"
+                    className="flex items-center gap-1 rounded text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     title="Abrir ATA SRP de origem"
                   >
                     <ScrollText aria-hidden="true" className="h-3.5 w-3.5" />
@@ -693,7 +693,7 @@ export default function GestaoContratos() {
                     <button
                       type="button"
                       onClick={() => navigate(`/processo/${c.licitacao_id}`)}
-                      className="flex items-center gap-1 text-primary hover:underline"
+                      className="flex items-center gap-1 rounded text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       title="Abrir a pasta do processo de origem"
                     >
                       <Link2 aria-hidden="true" className="h-3.5 w-3.5" />
@@ -702,7 +702,7 @@ export default function GestaoContratos() {
                     <button
                       type="button"
                       onClick={() => navigate(`/processo/${c.licitacao_id}?aba=documentos`)}
-                      className="flex items-center gap-1 text-primary hover:underline"
+                      className="flex items-center gap-1 rounded text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       title="Edital, Termo de Referência e demais anexos do certame"
                     >
                       <FileText aria-hidden="true" className="h-3.5 w-3.5" />
@@ -1168,13 +1168,13 @@ export default function GestaoContratos() {
       largura: '3rem',
       render: (linha) => (podeExcluir(linha.registro) ? (
         <Button
-          size="sm"
-          variant="ghost"
+          size="icon-sm"
+          variant="ghost-destructive"
           aria-label={`Excluir ${linha.registro.numero_contrato}`}
           title="Excluir contrato"
           onClick={(e) => { e.stopPropagation(); setAExcluir(linha.registro); }}
         >
-          <Trash2 aria-hidden="true" className="h-4 w-4 text-destructive" />
+          <Trash2 aria-hidden="true" className="h-4 w-4" />
         </Button>
       ) : null),
     },
@@ -1207,7 +1207,7 @@ export default function GestaoContratos() {
             />
             {/* Sem DialogTrigger: o diálogo já é controlado por `dialogOpen`, e
                 assim ele fica fora do cabeçalho, com o formulário inteiro. */}
-            <Button onClick={() => setDialogOpen(true)}><Plus className="w-4 h-4 mr-2" /> Novo contrato</Button>
+            <Button onClick={() => setDialogOpen(true)}><Plus aria-hidden="true" /> Novo contrato</Button>
           </>
         }
       >
@@ -1215,24 +1215,24 @@ export default function GestaoContratos() {
       </CabecalhoPagina>
 
       <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) { resetForm(); setPendingItens([]); setArquivoAssinado(null); } }}>
-          <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogContent className="max-w-2xl">
             <DialogHeader><DialogTitle>Cadastrar {isAtaForm ? 'ATA SRP' : 'Contrato Administrativo'}</DialogTitle></DialogHeader>
 
-            <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 p-3 rounded-lg border border-border bg-muted">
-              <div>
+            <div className="mt-3 grid gap-4 rounded-lg border border-border bg-secondary p-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
                 <Label>Tipo de Documento *</Label>
                 <Select value={form.tipo_documento} onValueChange={(v: 'contrato' | 'ata_srp') => setForm(f => ({ ...f, tipo_documento: v, ata_srp_id: v === 'ata_srp' ? '' : f.ata_srp_id }))}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="contrato">Contrato Administrativo</SelectItem>
                     <SelectItem value="ata_srp">ATA SRP — Sistema de Registro de Preços</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              <div>
+              <div className="space-y-1.5">
                 <Label>Estrutura *</Label>
                 <Select value={form.tipo_estrutura} onValueChange={(v: 'itens' | 'lotes') => setForm(f => ({ ...f, tipo_estrutura: v }))}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="itens">Itens (individuais)</SelectItem>
                     <SelectItem value="lotes">Lotes (grupos de itens)</SelectItem>
@@ -1242,7 +1242,7 @@ export default function GestaoContratos() {
               {/* O que cada instrumento é, com o amparo legal — cadastrar ATA
                   como contrato quebra o controle de saldo, porque a ATA não
                   obriga a comprar e o contrato sim. */}
-              <div className="md:col-span-2 rounded-lg bg-card border border-border p-4 space-y-1.5">
+              <div className="space-y-1.5 rounded-lg border border-border bg-card p-4 sm:col-span-2">
                 <p className="text-sm font-medium">
                   {INSTRUMENTOS[isAtaForm ? 'ata_srp' : 'contrato'].nome}
                   <span className="ml-2 text-xs font-normal text-muted-foreground">
@@ -1269,12 +1269,11 @@ export default function GestaoContratos() {
                 </p>
               </div>
 
-              <div className="md:col-span-2">
+              <div className="space-y-1.5 sm:col-span-2">
                 <Label>{isAtaForm ? 'ATA SRP assinada (opcional)' : 'Contrato assinado (opcional)'}</Label>
                 <Input
                   type="file"
                   accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                  className="mt-1"
                   onChange={(e) => setArquivoAssinado(e.target.files?.[0] ?? null)}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
@@ -1285,13 +1284,13 @@ export default function GestaoContratos() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-              <div>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
                 <Label>{isAtaForm ? 'Nº ATA *' : 'Nº Contrato *'}</Label>
                 <Input value={form.numero_contrato} onChange={e => setForm(f => ({ ...f, numero_contrato: e.target.value }))} placeholder={isAtaForm ? 'ATA-001/2025' : 'CT-001/2025'} />
                 {pareceAtaMasEstaComoContrato && (
                   <p className="text-xs text-warning-ink mt-1 flex items-start gap-1">
-                    <AlertTriangle className="w-3 h-3 shrink-0 mt-0.5" />
+                    <AlertTriangle aria-hidden="true" className="mt-0.5 h-3 w-3 shrink-0" />
                     <span>
                       O número diz “ATA”, mas o tipo está como Contrato. São instrumentos
                       diferentes: a ata segue o Decreto 11.462/2023 (acréscimo vedado, adesão
@@ -1301,8 +1300,8 @@ export default function GestaoContratos() {
                   </p>
                 )}
               </div>
-              <div><Label>Órgão {isAtaForm ? 'Gerenciador' : 'Contratante'} *</Label><Input value={form.orgao_contratante} onChange={e => setForm(f => ({ ...f, orgao_contratante: e.target.value }))} /></div>
-              <div>
+              <div className="space-y-1.5"><Label>Órgão {isAtaForm ? 'Gerenciador' : 'Contratante'} *</Label><Input value={form.orgao_contratante} onChange={e => setForm(f => ({ ...f, orgao_contratante: e.target.value }))} /></div>
+              <div className="space-y-1.5">
                 <Label>Vendedor responsável</Label>
                 {isAdmin ? (
                   <Select
@@ -1318,17 +1317,17 @@ export default function GestaoContratos() {
                     </SelectContent>
                   </Select>
                 ) : (
-                  <Input value={nomeDoProprio} disabled className="bg-muted" />
+                  <Input value={nomeDoProprio} disabled />
                 )}
                 <p className="text-xs text-muted-foreground mt-1">
                   Conta o contrato nas metas dessa pessoa e define quem recebe a bonificação.
                 </p>
               </div>
-              <div className="md:col-span-2"><Label>Objeto *</Label><Textarea value={form.objeto} onChange={e => setForm(f => ({ ...f, objeto: e.target.value }))} rows={2} /></div>
+              <div className="space-y-1.5 sm:col-span-2"><Label>Objeto *</Label><Textarea value={form.objeto} onChange={e => setForm(f => ({ ...f, objeto: e.target.value }))} rows={2} /></div>
 
               {isAtaForm && (
                 <>
-                  <div><Label>Validade da ATA (meses)</Label><Input type="number" value={form.validade_ata_meses} onChange={e => setForm(f => ({ ...f, validade_ata_meses: e.target.value }))} placeholder="12" /></div>
+                  <div className="space-y-1.5"><Label>Validade da ATA (meses)</Label><Input type="number" value={form.validade_ata_meses} onChange={e => setForm(f => ({ ...f, validade_ata_meses: e.target.value }))} placeholder="12" /></div>
                   <div className="flex items-center gap-3 mt-6">
                     <Switch id="permite-carona" checked={form.permite_carona} onCheckedChange={v => setForm(f => ({ ...f, permite_carona: v }))} />
                     <Label htmlFor="permite-carona" className="text-sm cursor-pointer">Permite carona / adesão</Label>
@@ -1338,7 +1337,7 @@ export default function GestaoContratos() {
                       ao sistema perceber, depois, que uma execução declarada como
                       imediata virou entrega parcelada — caso em que o contrato
                       formal é obrigatório. */}
-                  <div className="md:col-span-2">
+                  <div className="space-y-1.5 sm:col-span-2">
                     <Label>Forma de execução *</Label>
                     <Select
                       value={form.forma_execucao}
@@ -1347,7 +1346,7 @@ export default function GestaoContratos() {
                         art95_fundamento: v === 'empenho' ? f.art95_fundamento : '',
                       }))}
                     >
-                      <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {Object.entries(FORMAS_EXECUCAO).map(([k, v]) => (
                           <SelectItem key={k} value={k}>{v.nome}</SelectItem>
@@ -1360,13 +1359,13 @@ export default function GestaoContratos() {
                   </div>
 
                   {form.forma_execucao === 'empenho' && (
-                    <div className="md:col-span-2 rounded-lg border border-warning-line bg-warning-tint p-4">
+                    <div className="space-y-1.5 rounded-lg border border-warning-line bg-warning-tint p-4 sm:col-span-2">
                       <Label>Hipótese que dispensa o contrato *</Label>
                       <Select
                         value={form.art95_fundamento}
                         onValueChange={(v) => setForm(f => ({ ...f, art95_fundamento: v }))}
                       >
-                        <SelectTrigger className="mt-1">
+                        <SelectTrigger>
                           <SelectValue placeholder="Selecione a hipótese do art. 95" />
                         </SelectTrigger>
                         <SelectContent>
@@ -1390,7 +1389,7 @@ export default function GestaoContratos() {
               )}
 
               {!isAtaForm && atasDisponiveis.length > 0 && (
-                <div className="md:col-span-2">
+                <div className="space-y-1.5 sm:col-span-2">
                   <Label>ATA SRP de origem (opcional)</Label>
                   <Select value={form.ata_srp_id || 'none'} onValueChange={v => setForm(f => ({ ...f, ata_srp_id: v === 'none' ? '' : v }))}>
                     <SelectTrigger><SelectValue placeholder="Não vinculado a ATA" /></SelectTrigger>
@@ -1408,7 +1407,7 @@ export default function GestaoContratos() {
               )}
 
               {/* Licitação vinculada */}
-              <div className="md:col-span-2">
+              <div className="space-y-1.5 sm:col-span-2">
                 <Label>Processo Licitatório de origem (opcional)</Label>
                 <div className="space-y-1">
                   <Input
@@ -1417,7 +1416,7 @@ export default function GestaoContratos() {
                     onChange={e => setLicitacaoSearch(e.target.value)}
                   />
                   {licitacaoSearch && (
-                    <div className="border border-border rounded-md max-h-40 overflow-y-auto divide-y divide-border">
+                    <div className="max-h-40 divide-y divide-border overflow-y-auto rounded-md border border-border bg-card">
                       {licitacoes
                         .filter(l => `${l.numero} ${l.orgao} ${l.objeto}`.toLowerCase().includes(licitacaoSearch.toLowerCase()))
                         .slice(0, 6)
@@ -1425,7 +1424,7 @@ export default function GestaoContratos() {
                           <button
                             key={l.id}
                             type="button"
-                            className={`w-full text-left px-3 py-2 text-sm hover:bg-muted ${form.licitacao_id === l.id ? 'bg-primary-tint font-semibold' : ''}`}
+                            className={`w-full px-3 py-2 text-left text-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${form.licitacao_id === l.id ? 'bg-primary-tint font-semibold' : ''}`}
                             onClick={() => { setForm(f => ({ ...f, licitacao_id: l.id })); setLicitacaoSearch(''); }}
                           >
                             <span className="font-medium">{l.numero}</span>
@@ -1441,11 +1440,11 @@ export default function GestaoContratos() {
                   {form.licitacao_id && !licitacaoSearch && (() => {
                     const l = licitacoes.find(x => x.id === form.licitacao_id);
                     return l ? (
-                      <div className="flex items-center gap-2 text-sm bg-muted border border-border rounded-md px-3 py-2">
-                        <Link2 className="w-3 h-3 text-muted-foreground shrink-0" />
+                      <div className="flex items-center gap-2 rounded-md border border-border bg-secondary px-3 py-2 text-sm">
+                        <Link2 aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                         <span className="font-medium text-foreground">{l.numero}</span>
                         <span className="text-muted-foreground">— {l.orgao}</span>
-                        <button type="button" className="ml-auto text-muted-foreground hover:text-destructive" onClick={() => setForm(f => ({ ...f, licitacao_id: '' }))}>✕</button>
+                        <button type="button" aria-label="Desvincular o processo" className="ml-auto rounded text-muted-foreground transition-colors hover:text-destructive-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => setForm(f => ({ ...f, licitacao_id: '' }))}>✕</button>
                       </div>
                     ) : null;
                   })()}
@@ -1453,12 +1452,12 @@ export default function GestaoContratos() {
                 <p className="text-xs text-muted-foreground mt-1">Vincula este contrato ao processo licitatório original para rastreabilidade e sincronização com a precificação.</p>
               </div>
 
-              <div><Label>Valor Global (R$)</Label><Input inputMode="decimal" value={form.valor_global ? formatInputBRL(form.valor_global) : ''} onChange={e => setForm(f => ({ ...f, valor_global: parseBRLInput(e.target.value) }))} placeholder="0,00" /></div>
-              <div><Label>Valor Consumido (R$)</Label><Input inputMode="decimal" value={form.valor_consumido ? formatInputBRL(form.valor_consumido) : ''} onChange={e => setForm(f => ({ ...f, valor_consumido: parseBRLInput(e.target.value) }))} placeholder="0,00" /></div>
+              <div className="space-y-1.5"><Label>Valor Global (R$)</Label><Input inputMode="decimal" value={form.valor_global ? formatInputBRL(form.valor_global) : ''} onChange={e => setForm(f => ({ ...f, valor_global: parseBRLInput(e.target.value) }))} placeholder="0,00" /></div>
+              <div className="space-y-1.5"><Label>Valor Consumido (R$)</Label><Input inputMode="decimal" value={form.valor_consumido ? formatInputBRL(form.valor_consumido) : ''} onChange={e => setForm(f => ({ ...f, valor_consumido: parseBRLInput(e.target.value) }))} placeholder="0,00" /></div>
               {/* O fim NÃO é calculado aqui: ele é derivado de
                   calcularVigencia, acima. Duas fontes escrevendo o mesmo campo
                   faziam o resultado depender da ordem de preenchimento. */}
-              <div><Label>Data Assinatura</Label><Input type="date" value={form.data_assinatura} onChange={e => {
+              <div className="space-y-1.5"><Label>Data Assinatura</Label><Input type="date" value={form.data_assinatura} onChange={e => {
                 const assinatura = e.target.value;
                 const updates: Record<string, string> = { data_assinatura: assinatura };
                 // Início no dia seguinte à assinatura é a praxe do cadastro;
@@ -1466,8 +1465,8 @@ export default function GestaoContratos() {
                 if (assinatura) updates.data_inicio = somarDias(assinatura, 1) ?? '';
                 setForm(f => ({ ...f, ...updates }));
               }} /></div>
-              <div><Label>Data Início</Label><Input type="date" value={form.data_inicio} readOnly className="bg-muted" /></div>
-              <div>
+              <div className="space-y-1.5"><Label>Data Início</Label><Input type="date" value={form.data_inicio} readOnly className="bg-muted" /></div>
+              <div className="space-y-1.5">
                 <Label>Data Fim</Label>
                 <Input type="date" value={form.data_fim} readOnly className="bg-muted" />
                 {vigenciaCalculada.inferido && form.data_fim && (
@@ -1478,10 +1477,10 @@ export default function GestaoContratos() {
                 )}
                 {avisoAta && <p className="text-xs text-warning-ink mt-1">{avisoAta}</p>}
               </div>
-              <div className="md:col-span-2">
+              <div className="space-y-1.5 sm:col-span-2">
                 <Label>Espécie do objeto</Label>
                 <Select value={form.especie_objeto} onValueChange={v => setForm(f => ({ ...f, especie_objeto: v }))}>
-                  <SelectTrigger className="mt-1"><SelectValue placeholder="Define o prazo máximo possível" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Define o prazo máximo possível" /></SelectTrigger>
                   <SelectContent>
                     {Object.entries(ESPECIES_OBJETO).map(([k, v]) => (
                       <SelectItem key={k} value={k}>{v.nome}</SelectItem>
@@ -1497,10 +1496,10 @@ export default function GestaoContratos() {
                 )}
                 {avisoVigencia && <p className="text-xs text-warning-ink mt-1">{avisoVigencia}</p>}
               </div>
-              <div className="md:col-span-2">
+              <div className="space-y-1.5 sm:col-span-2">
                 <Label>Forma de fornecimento</Label>
                 <Select value={form.forma_fornecimento || 'nao_informado'} onValueChange={v => setForm(f => ({ ...f, forma_fornecimento: v === 'nao_informado' ? '' : v }))}>
-                  <SelectTrigger className="mt-1"><SelectValue placeholder="O contrato costuma dizer na cláusula de entrega" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="O contrato costuma dizer na cláusula de entrega" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="nao_informado">— Não informado —</SelectItem>
                     <SelectItem value="unico">Entrega única (integral)</SelectItem>
@@ -1515,33 +1514,33 @@ export default function GestaoContratos() {
                       : 'Se não informado, o painel pergunta quando o saldo se esgotar.'}
                 </p>
               </div>
-              <div><Label>Vigência (meses)</Label><Input type="number" value={form.vigencia_meses} onChange={e => setForm(f => ({ ...f, vigencia_meses: e.target.value }))} /></div>
-              <div><Label>Status</Label><Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="vigente">Vigente</SelectItem><SelectItem value="vencendo">Vencendo</SelectItem><SelectItem value="encerrado">Encerrado</SelectItem><SelectItem value="suspenso">Suspenso</SelectItem></SelectContent></Select></div>
-              <div><Label>Modalidade</Label><Input value={form.modalidade} onChange={e => setForm(f => ({ ...f, modalidade: e.target.value }))} placeholder="Pregão Eletrônico" /></div>
+              <div className="space-y-1.5"><Label>Vigência (meses)</Label><Input type="number" value={form.vigencia_meses} onChange={e => setForm(f => ({ ...f, vigencia_meses: e.target.value }))} /></div>
+              <div className="space-y-1.5"><Label>Status</Label><Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="vigente">Vigente</SelectItem><SelectItem value="vencendo">Vencendo</SelectItem><SelectItem value="encerrado">Encerrado</SelectItem><SelectItem value="suspenso">Suspenso</SelectItem></SelectContent></Select></div>
+              <div className="space-y-1.5"><Label>Modalidade</Label><Input value={form.modalidade} onChange={e => setForm(f => ({ ...f, modalidade: e.target.value }))} placeholder="Pregão Eletrônico" /></div>
               <LocalDoOrgao
                 uf={form.uf}
                 municipio={form.municipio}
                 onChange={(patch) => setForm(f => ({ ...f, ...patch }))}
               />
-              <div><Label>Fiscal - Nome</Label><Input value={form.fiscal_nome} onChange={e => setForm(f => ({ ...f, fiscal_nome: e.target.value }))} /></div>
-              <div><Label>Fiscal - E-mail</Label><Input value={form.fiscal_email} onChange={e => setForm(f => ({ ...f, fiscal_email: e.target.value }))} /></div>
-              <div><Label>Fiscal - Telefone</Label><Input value={form.fiscal_telefone} onChange={e => setForm(f => ({ ...f, fiscal_telefone: e.target.value }))} /></div>
-              <div className="md:col-span-2"><Label>Observações</Label><Textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} /></div>
+              <div className="space-y-1.5"><Label>Fiscal - Nome</Label><Input value={form.fiscal_nome} onChange={e => setForm(f => ({ ...f, fiscal_nome: e.target.value }))} /></div>
+              <div className="space-y-1.5"><Label>Fiscal - E-mail</Label><Input value={form.fiscal_email} onChange={e => setForm(f => ({ ...f, fiscal_email: e.target.value }))} /></div>
+              <div className="space-y-1.5"><Label>Fiscal - Telefone</Label><Input value={form.fiscal_telefone} onChange={e => setForm(f => ({ ...f, fiscal_telefone: e.target.value }))} /></div>
+              <div className="space-y-1.5 sm:col-span-2"><Label>Observações</Label><Textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} /></div>
             </div>
             {pendingItens.length > 0 && (
-              <div className="mt-3 p-3 rounded-lg bg-muted border border-border">
-                <p className="text-sm font-medium flex items-center gap-2 text-foreground">
-                  <Package className="w-4 h-4" /> {pendingItens.length} itens extraídos do PDF
+              <div className="mt-3 rounded-lg border border-border bg-secondary p-4">
+                <p className="flex items-center gap-2 text-sm font-medium text-foreground">
+                  <Package aria-hidden="true" className="h-4 w-4 text-muted-foreground" /> {pendingItens.length} itens extraídos do PDF
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
                   Serão cadastrados automaticamente na aba "Itens" ao salvar.
                 </p>
               </div>
             )}
-            <div className="flex justify-end gap-2 mt-4">
+            <DialogFooter className="mt-4">
               <Button variant="outline" onClick={() => { setDialogOpen(false); setPendingItens([]); resetForm(); }}>Cancelar</Button>
-              <Button onClick={handleSave} disabled={saving}>{saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}Salvar {isAtaForm ? 'ATA' : 'Contrato'}</Button>
-            </div>
+              <Button onClick={handleSave} disabled={saving}>{saving ? <Loader2 aria-hidden="true" className="animate-spin" /> : null}Salvar {isAtaForm ? 'ATA' : 'Contrato'}</Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
 
@@ -1664,7 +1663,7 @@ export default function GestaoContratos() {
                 descricao={filtrosAplicados > 0
                   ? 'Nenhum contrato ou ATA atende a esta busca. Limpe os filtros para ver a carteira inteira.'
                   : 'Cadastre o primeiro contrato ou importe o PDF do documento assinado.'}
-                acao={<Button onClick={() => setDialogOpen(true)}><Plus className="w-4 h-4 mr-2" /> Novo contrato</Button>}
+                acao={<Button onClick={() => setDialogOpen(true)}><Plus aria-hidden="true" /> Novo contrato</Button>}
               />
             }
             rodape={
@@ -1679,10 +1678,10 @@ export default function GestaoContratos() {
 
       {/* ── Lixeira: excluído por engano tem volta ─────────────────────────── */}
       {!loading && excluidos.length > 0 && (
-        <section className="mt-6 rounded-lg border border-border bg-card p-6 shadow-sm">
-          <div className="flex flex-wrap items-center gap-2 mb-3">
-            <Trash2 className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
-            <h2 className="text-lg font-semibold">Lixeira</h2>
+        <section className="mt-6 rounded-lg border border-border bg-card p-5 shadow-sm">
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <Trash2 className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+            <h2 className="text-lg font-semibold leading-6 text-foreground">Lixeira</h2>
             <Badge variant="muted">{excluidos.length}</Badge>
             <span className="text-sm text-muted-foreground">
               Fora das telas e dos cálculos — restaurar devolve tudo, inclusive a fatia na ATA.
@@ -1690,8 +1689,8 @@ export default function GestaoContratos() {
           </div>
           <div className="divide-y divide-border">
             {excluidos.map(c => (
-              <div key={c.id} className="flex items-center gap-3 py-3 flex-wrap">
-                <span className="text-sm font-medium">
+              <div key={c.id} className="flex min-h-[var(--g-linha)] flex-wrap items-center gap-3 py-2.5">
+                <span className="text-sm font-medium text-foreground">
                   {rotuloDoDocumento(c.tipo_documento, c.tipo_documento === 'ata_srp' ? (c.numero_ata || c.numero_contrato) : c.numero_contrato)}
                 </span>
                 <span className="text-sm text-muted-foreground truncate max-w-[280px]" title={nomeDoOrgao(c.orgao_contratante)}>{nomeDoOrgao(c.orgao_contratante)}</span>
@@ -1704,7 +1703,7 @@ export default function GestaoContratos() {
                   <Button size="sm" variant="outline" onClick={() => restaurar(c.id)}>
                     Restaurar
                   </Button>
-                  <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive"
+                  <Button size="sm" variant="ghost-destructive"
                     onClick={() => excluirDefinitivo(c)}>
                     Excluir definitivamente
                   </Button>
@@ -1845,7 +1844,7 @@ function ContratosDerivadosList({ ataId, contratos, onSelect }: { ataId: string;
                 key={c.id}
                 type="button"
                 onClick={() => onSelect(c)}
-                className="g-cartao flex w-full items-start justify-between gap-3 p-4 text-left transition-colors hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="g-cartao flex w-full items-start justify-between gap-3 p-4 text-left transition-[border-color,box-shadow] duration-150 hover:border-primary/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <span className="min-w-0 flex-1">
                   <span className="flex flex-wrap items-center gap-2">

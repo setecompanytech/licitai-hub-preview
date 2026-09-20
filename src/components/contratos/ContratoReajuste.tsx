@@ -269,23 +269,23 @@ Central do Brasil — apuração do índice pelo ${calculo.fonte.split('·')[0].
   const semNada = !dados?.indice_reajuste && !dados?.data_base_reajuste;
 
   return (
-    <Card className="p-4">
-      <div className="flex items-center justify-between mb-3">
-        <h4 className="text-lg font-semibold flex items-center gap-1.5">
-          <TrendingUp className="w-4 h-4 text-muted-foreground" /> Reajuste por índice
+    <Card className="p-5">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <h4 className="flex items-center gap-1.5 text-base font-semibold leading-6 text-foreground">
+          <TrendingUp aria-hidden="true" className="h-4 w-4 text-muted-foreground" /> Reajuste por índice
         </h4>
         {!editando && (
-          <Button variant="ghost" size="icon" className="h-5 w-5 nao-imprime" onClick={abrir} title="Editar">
-            <Pencil className="w-3 h-3" />
+          <Button variant="ghost" size="icon-sm" className="nao-imprime" onClick={abrir} title="Editar" aria-label="Editar a cláusula de reajuste">
+            <Pencil aria-hidden="true" />
           </Button>
         )}
       </div>
 
       {editando ? (
-        <div className="space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <Label className="text-xs text-muted-foreground">Índice da cláusula</Label>
+        <div className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label>Índice da cláusula</Label>
               {/* Filtro padronizado (pedido de 12/09): os índices oficiais com
                   série no SGS entram por seleção — sigla digitada à mão errava
                   grafia ("IGPM") e a calculadora não achava a série. Cláusula
@@ -320,28 +320,28 @@ Central do Brasil — apuração do índice pelo ${calculo.fonte.split('·')[0].
                 </p>
               )}
             </div>
-            <div>
+            <div className="space-y-1.5">
               {/* A data-base é a da PROPOSTA/orçamento, não a da assinatura:
                   trocar uma pela outra desloca o aniversário em meses. */}
-              <Label className="text-xs text-muted-foreground">Data-base (proposta/orçamento)</Label>
+              <Label>Data-base (proposta/orçamento)</Label>
               <Input type="date" value={form.dataBase}
                 onChange={(e) => setForm((f) => ({ ...f, dataBase: e.target.value }))} />
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button size="sm" className="h-8 text-xs" onClick={salvar} disabled={salvando}>
-              {salvando ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5 mr-1" />}
-              Salvar
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button size="sm" variant="outline" onClick={() => setEditando(false)} aria-label="Cancelar edição">
+              <X aria-hidden="true" />
             </Button>
-            <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setEditando(false)}>
-              <X className="w-3.5 h-3.5" />
+            <Button size="sm" onClick={salvar} disabled={salvando}>
+              {salvando ? <Loader2 aria-hidden="true" className="animate-spin" /> : <Check aria-hidden="true" />}
+              Salvar
             </Button>
           </div>
         </div>
       ) : semNada ? (
         <div className="text-xs text-muted-foreground space-y-1">
           <p className="flex items-center gap-1.5 text-warning-ink">
-            <AlertTriangle className="w-3.5 h-3.5" /> Cláusula de reajuste não registrada
+            <AlertTriangle aria-hidden="true" className="h-3.5 w-3.5 shrink-0" /> Cláusula de reajuste não registrada
           </p>
           <p>
             {/* Art. 25, §7º: "o contrato deverá conter cláusula que estabeleça o
@@ -355,8 +355,8 @@ Central do Brasil — apuração do índice pelo ${calculo.fonte.split('·')[0].
           <BotaoReanalisar />
         </div>
       ) : (
-        <div className="space-y-2 text-xs">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="space-y-3 text-sm">
+          <div className="grid gap-3 sm:grid-cols-3">
             <div>
               <span className="text-muted-foreground">Índice:</span>
               <p className="font-medium">{dados?.indice_reajuste ?? '—'}</p>
@@ -374,9 +374,9 @@ Central do Brasil — apuração do índice pelo ${calculo.fonte.split('·')[0].
           </div>
 
           {situacao?.devido ? (
-            <div className="rounded-md border border-warning-line bg-warning-tint p-2.5 space-y-1">
-              <p className="font-semibold text-warning-ink flex items-center gap-1.5">
-                <AlertTriangle className="w-3.5 h-3.5" />
+            <div className="space-y-2 rounded-md border border-warning-line bg-warning-tint p-3">
+              <p className="flex items-center gap-1.5 font-semibold text-warning-ink">
+                <AlertTriangle aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
                 Reajuste devido desde {dataBr(situacao.aniversario)}
                 {situacao.mesesDesdeAniversario > 0 && ` — há ${situacao.mesesDesdeAniversario} ${situacao.mesesDesdeAniversario === 1 ? 'mês' : 'meses'}`}
               </p>
@@ -401,10 +401,10 @@ Central do Brasil — apuração do índice pelo ${calculo.fonte.split('·')[0].
 
               {/* Calculadora EXATA: série oficial entre o marco e o aniversário
                   (razão dos números-índices) — o número do requerimento. */}
-              <div className="rounded-md border border-border bg-card p-2.5 space-y-2 nao-imprime">
+              <div className="space-y-2 rounded-md border border-border bg-card p-3 nao-imprime">
                 {!calculo ? (
-                  <Button size="sm" variant="outline" className="h-8 text-xs" onClick={calcularExato} disabled={calculando}>
-                    {calculando ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <TrendingUp className="w-3.5 h-3.5 mr-1" />}
+                  <Button size="sm" variant="outline" onClick={calcularExato} disabled={calculando}>
+                    {calculando ? <Loader2 aria-hidden="true" className="animate-spin" /> : <TrendingUp aria-hidden="true" />}
                     Calcular pela série oficial (SGS/BCB)
                   </Button>
                 ) : (
@@ -419,15 +419,15 @@ Central do Brasil — apuração do índice pelo ${calculo.fonte.split('·')[0].
                     </p>
                     {!calculo.completo && (
                       <p className="text-warning-ink flex items-center gap-1">
-                        <AlertTriangle className="w-3 h-3 shrink-0" />
+                        <AlertTriangle aria-hidden="true" className="h-3 w-3 shrink-0" />
                         Série divulgada até {calculo.serie_ate ?? '—'} — fator parcial
                         ({calculo.meses.length}/{calculo.meses_esperados} meses). Refaça após a divulgação.
                       </p>
                     )}
-                    <div className="flex items-end gap-2 flex-wrap">
-                      <div>
-                        <Label className="text-xs text-muted-foreground">Base de cálculo (R$) — use o saldo a executar</Label>
-                        <Input className="h-8 w-40 text-xs tabular-nums" value={baseCalculo}
+                    <div className="flex flex-wrap items-end gap-2">
+                      <div className="space-y-1.5">
+                        <Label>Base de cálculo (R$) — use o saldo a executar</Label>
+                        <Input className="w-40 tabular-nums" value={baseCalculo}
                           onChange={(e) => setBaseCalculo(e.target.value)} placeholder="0,00" />
                       </div>
                       {(() => {
@@ -441,14 +441,14 @@ Central do Brasil — apuração do índice pelo ${calculo.fonte.split('·')[0].
                         );
                       })()}
                     </div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setMemoriaAberta((v) => !v)}>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button size="sm" variant="ghost" onClick={() => setMemoriaAberta((v) => !v)}>
                         {memoriaAberta ? 'Ocultar memória de cálculo' : `Memória de cálculo (${calculo.meses.length} meses)`}
                       </Button>
-                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={gerarEstudo}>
+                      <Button size="sm" variant="outline" onClick={gerarEstudo}>
                         Gerar estudo técnico
                       </Button>
-                      <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground" onClick={() => { setCalculo(null); setMemoriaAberta(false); }}>
+                      <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => { setCalculo(null); setMemoriaAberta(false); }}>
                         Refazer
                       </Button>
                     </div>
@@ -478,12 +478,12 @@ Central do Brasil — apuração do índice pelo ${calculo.fonte.split('·')[0].
                 )}
               </div>
 
-              <Link to="/indices-repactuacao" className="text-primary inline-flex items-center gap-1 nao-imprime">
-                Abrir índices e simulador <ExternalLink className="w-3 h-3" />
+              <Link to="/indices-repactuacao" className="inline-flex items-center gap-1 rounded text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring nao-imprime">
+                Abrir índices e simulador <ExternalLink aria-hidden="true" className="h-3.5 w-3.5" />
               </Link>
             </div>
           ) : situacao ? (
-            <Badge variant="outline" className="text-xs border-success-line text-success-ink">
+            <Badge variant="success">
               Em dia — próximo aniversário em {dataBr(situacao.aniversario)}
             </Badge>
           ) : (

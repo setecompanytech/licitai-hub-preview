@@ -172,28 +172,28 @@ export default function ContratoEntrega({ contratoId }: { contratoId: string }) 
   ] as Array<[string, string | null]>).filter((e): e is [string, string] => !!e[1]) : [];
 
   return (
-    <Card className="p-4">
-      <div className="flex items-center justify-between mb-3">
-        <h4 className="text-lg font-semibold flex items-center gap-2">
-          <Truck className="w-4 h-4 text-muted-foreground" /> Condições de entrega
+    <Card className="p-5">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <h4 className="flex items-center gap-2 text-base font-semibold leading-6 text-foreground">
+          <Truck aria-hidden="true" className="h-4 w-4 text-muted-foreground" /> Condições de entrega
         </h4>
         {!editando && (
-          <Button variant="ghost" size="icon" className="h-9 w-9 nao-imprime" onClick={abrir} title="Editar" aria-label="Editar condições de entrega">
-            <Pencil className="w-4 h-4" />
+          <Button variant="ghost" size="icon-sm" className="nao-imprime" onClick={abrir} title="Editar" aria-label="Editar condições de entrega">
+            <Pencil aria-hidden="true" />
           </Button>
         )}
       </div>
 
       {editando ? (
-        <div className="space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div>
+        <div className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="space-y-1.5">
               <Label>Prazo de entrega</Label>
               <Input type="number" min={1} max={1825} placeholder="dias"
                 value={form.prazo_entrega_dias ?? ''}
                 onChange={e => setForm(f => ({ ...f, prazo_entrega_dias: e.target.value ? Number(e.target.value) : null }))} />
             </div>
-            <div>
+            <div className="space-y-1.5">
               <Label>Contagem</Label>
               <Select value={form.prazo_entrega_unidade ?? 'corridos'}
                 onValueChange={v => setForm(f => ({ ...f, prazo_entrega_unidade: v }))}>
@@ -204,21 +204,21 @@ export default function ContratoEntrega({ contratoId }: { contratoId: string }) 
                 </SelectContent>
               </Select>
             </div>
-            <div>
+            <div className="space-y-1.5">
               <Label>Ateste pelo órgão (art. 140)</Label>
               <Input type="number" min={1} max={1825} placeholder="dias"
                 value={form.prazo_recebimento_dias ?? ''}
                 onChange={e => setForm(f => ({ ...f, prazo_recebimento_dias: e.target.value ? Number(e.target.value) : null }))} />
             </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="space-y-1.5">
               <Label>Prazo de pagamento</Label>
               <Input type="number" min={1} max={365} placeholder="dias"
                 value={form.prazo_pagamento_dias ?? ''}
                 onChange={e => setForm(f => ({ ...f, prazo_pagamento_dias: e.target.value ? Number(e.target.value) : null }))} />
             </div>
-            <div>
+            <div className="space-y-1.5">
               <Label>Contagem</Label>
               <Select value={form.prazo_pagamento_unidade ?? 'corridos'}
                 onValueChange={v => setForm(f => ({ ...f, prazo_pagamento_unidade: v }))}>
@@ -229,7 +229,7 @@ export default function ContratoEntrega({ contratoId }: { contratoId: string }) 
                 </SelectContent>
               </Select>
             </div>
-            <div>
+            <div className="space-y-1.5">
               {/* Sem padrão de propósito: trocar ateste por nota fiscal
                   desloca a previsão de entrada em semanas. */}
               <Label>Contado a partir</Label>
@@ -245,27 +245,27 @@ export default function ContratoEntrega({ contratoId }: { contratoId: string }) 
               </Select>
             </div>
           </div>
-          <div>
+          <div className="space-y-1.5">
             <Label>Local de entrega</Label>
             <Input placeholder="Endereço, unidade ou a regra do contrato"
               value={form.local_entrega ?? ''}
               onChange={e => setForm(f => ({ ...f, local_entrega: e.target.value }))} />
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button size="sm" onClick={salvar} disabled={salvando}>
-              {salvando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-              Salvar
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => setEditando(false)} aria-label="Cancelar edição">
-              <X className="w-4 h-4" />
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button size="sm" variant="outline" onClick={() => setEditando(false)} aria-label="Cancelar edição">
+              <X aria-hidden="true" />
               Cancelar
+            </Button>
+            <Button size="sm" onClick={salvar} disabled={salvando}>
+              {salvando ? <Loader2 aria-hidden="true" className="animate-spin" /> : <Check aria-hidden="true" />}
+              Salvar
             </Button>
           </div>
         </div>
       ) : semNada ? (
         <div className="text-sm text-muted-foreground space-y-1">
           <p className="flex items-center gap-2 font-medium text-warning-ink">
-            <AlertTriangle className="w-4 h-4" /> Nenhuma condição de entrega registrada
+            <AlertTriangle aria-hidden="true" className="h-4 w-4 shrink-0" /> Nenhuma condição de entrega registrada
           </p>
           <p>
             Sem elas, a aba Pedidos não calcula a data-limite de cada pedido. Os documentos já
@@ -341,7 +341,7 @@ export default function ContratoEntrega({ contratoId }: { contratoId: string }) 
                 </span>
               </p>
               <Button size="sm" variant="outline" className="nao-imprime" onClick={() => descartarPrazo(p)} disabled={descartando === p.chave}>
-                {descartando === p.chave ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                {descartando === p.chave ? <Loader2 aria-hidden="true" className="animate-spin" /> : <Trash2 aria-hidden="true" />}
                 Descartar este prazo
               </Button>
             </div>
@@ -352,7 +352,7 @@ export default function ContratoEntrega({ contratoId }: { contratoId: string }) 
               nem que a lei tem uma resposta quando ela falta. */}
           {!dados!.prazo_pagamento_dias && (
             <p className="text-xs text-warning-ink flex items-start gap-1.5">
-              <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0" />
+              <AlertTriangle aria-hidden="true" className="mt-0.5 h-3 w-3 shrink-0" />
               <span>
                 Sem prazo de pagamento o Contas a Receber não tem data para projetar — e projetar
                 sobre um número inventado é pior do que não projetar. Enquanto não for preenchido,
@@ -367,7 +367,7 @@ export default function ContratoEntrega({ contratoId }: { contratoId: string }) 
               Sem ela o prazo é um número que ninguém consegue contestar — e
               prazo errado só se descobre no dia em que já era. */}
           {evidencias.length > 0 && (
-            <div className="pt-2 border-t space-y-1">
+            <div className="space-y-1 border-t border-border pt-2">
               <p className="text-xs text-muted-foreground">Conforme o documento:</p>
               {evidencias.map(([rotulo, texto]) => (
                 <p key={rotulo} className="text-xs text-muted-foreground border-l-2 border-border pl-2">

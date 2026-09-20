@@ -193,28 +193,28 @@ export default function RelatorioConsumoAtaDialog({ ataId, ataNumero }: Props) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button size="sm" variant="outline">
-          <FileBarChart2 className="w-4 h-4" /> Relatório de Consumo
+          <FileBarChart2 aria-hidden="true" /> Relatório de Consumo
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-base">
-            <FileBarChart2 className="w-5 h-5 text-muted-foreground" />
+          <DialogTitle className="flex items-center gap-2">
+            <FileBarChart2 aria-hidden="true" className="h-5 w-5 text-muted-foreground" />
             Relatório de Consumo da ATA
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4 pt-2">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
               <Label>Data início</Label>
               <Input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)} />
             </div>
-            <div>
+            <div className="space-y-1.5">
               <Label>Data fim</Label>
               <Input type="date" value={dataFim} onChange={e => setDataFim(e.target.value)} />
             </div>
           </div>
-          <div className="bg-muted/40 rounded-md p-3 text-sm text-muted-foreground space-y-1">
+          <div className="space-y-1 rounded-md border border-border bg-secondary p-3 text-sm text-muted-foreground">
             <p className="font-medium text-foreground">O relatório inclui:</p>
             <ul className="list-disc pl-4 space-y-0.5">
               <li>Resumo por contrato derivado (qtd itens e valor consumido)</li>
@@ -225,17 +225,17 @@ export default function RelatorioConsumoAtaDialog({ ataId, ataNumero }: Props) {
             <p className="text-xs mt-1 italic">Otimizado: agregação no banco + paginação ({PAGE_SIZE}/req) + índices.</p>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <Button onClick={() => exportar('pdf')} disabled={loading} variant="default" className="gap-1.5">
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+            <Button onClick={() => exportar('pdf')} disabled={loading} variant="default">
+              {loading ? <Loader2 aria-hidden="true" className="animate-spin" /> : <FileText aria-hidden="true" />}
               PDF
             </Button>
-            <Button onClick={() => exportar('csv')} disabled={loading} variant="outline" className="gap-1.5">
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />}
+            <Button onClick={() => exportar('csv')} disabled={loading} variant="outline">
+              {loading ? <Loader2 aria-hidden="true" className="animate-spin" /> : <FileSpreadsheet aria-hidden="true" />}
               CSV
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground text-center flex items-center justify-center gap-1">
-            <Download className="w-3 h-3" /> Os arquivos são baixados automaticamente
+          <p className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Download aria-hidden="true" className="h-3 w-3 shrink-0" /> Os arquivos são baixados automaticamente
           </p>
         </div>
       </DialogContent>

@@ -4,12 +4,13 @@ import { Input } from '@/components/ui/input';
 import { MoneyInput } from '@/components/ui/money-input';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
@@ -189,29 +190,31 @@ export default function GerarPreNotaDialog({ open, onOpenChange, contratoId, ped
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileText className="w-5 h-5 text-muted-foreground" />
+            <FileText aria-hidden="true" className="h-5 w-5 text-muted-foreground" />
             Gerar Pré-Nota Fiscal
           </DialogTitle>
         </DialogHeader>
 
-        <div className="p-3 rounded-lg bg-muted/50 border border-border text-sm text-muted-foreground">
+        <div className="rounded-lg border border-border bg-secondary p-4 text-sm text-muted-foreground">
           <p className="font-medium text-foreground mb-1">Fluxo de aprovação</p>
           <p>A Pré-NF será enviada ao setor <strong>Financeiro</strong> para revisão. O financeiro pode aprovar, rejeitar ou devolver para correção antes de emitir a NF-e/NFS-e oficial.</p>
         </div>
 
         {/* 1. Selecionar Pedidos (faturamento parcial) */}
         <div className="space-y-3">
-          <h4 className="text-lg font-semibold flex items-center gap-2">
-            <Package className="w-4 h-4 text-muted-foreground" />
+          <h4 className="flex items-center gap-2 text-base font-semibold leading-6 text-foreground">
+            <Package aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
             Selecionar Pedidos para Faturar
-            <Badge variant="outline" className="text-xs">{selected.length} selecionados</Badge>
+            <Badge variant="muted">{selected.length} selecionados</Badge>
           </h4>
 
           {eligiblePedidos.length === 0 ? (
-            <Card className="p-4 text-center text-sm text-muted-foreground">Nenhum pedido elegível para faturamento</Card>
+            <Card>
+              <EstadoVazio tamanho="compacto" titulo="Nenhum pedido elegível para faturamento" />
+            </Card>
           ) : (
             <div className="space-y-2 max-h-[30vh] overflow-y-auto pr-1">
               {eligiblePedidos.map(p => {
@@ -227,8 +230,8 @@ export default function GerarPreNotaDialog({ open, onOpenChange, contratoId, ped
                       />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-mono font-medium">{p.numero_pedido}</span>
-                          <span className="text-xs font-medium">{fmt(p.valor_total)}</span>
+                          <span className="text-sm font-medium tabular-nums">{p.numero_pedido}</span>
+                          <span className="text-sm font-medium tabular-nums">{fmt(p.valor_total)}</span>
                         </div>
                         <p className="text-xs text-muted-foreground truncate" title={p.descricao || item?.descricao || undefined}>{p.descricao || item?.descricao || '—'}</p>
                         {sel?.selected && (
@@ -247,10 +250,10 @@ export default function GerarPreNotaDialog({ open, onOpenChange, contratoId, ped
                               <span className="text-xs text-muted-foreground">de {p.quantidade} {item?.unidade || 'UN'}</span>
                             </div>
                             {erroDe(`pedido:${p.id}:quantidade`) && (
-                              <p className="text-xs font-bold text-destructive-ink mt-1">{erroDe(`pedido:${p.id}:quantidade`)}</p>
+                              <p className="mt-1 text-xs font-semibold text-destructive-ink">{erroDe(`pedido:${p.id}:quantidade`)}</p>
                             )}
                             {erroDe(`pedido:${p.id}:preco`) && (
-                              <p className="text-xs font-bold text-destructive-ink mt-1">{erroDe(`pedido:${p.id}:preco`)}</p>
+                              <p className="mt-1 text-xs font-semibold text-destructive-ink">{erroDe(`pedido:${p.id}:preco`)}</p>
                             )}
                           </div>
                         )}
@@ -263,10 +266,10 @@ export default function GerarPreNotaDialog({ open, onOpenChange, contratoId, ped
           )}
 
           {selected.length > 0 && (
-            <Card className="p-3 bg-muted/50 border-border">
-              <div className="flex justify-between items-center text-xs">
+            <Card className="bg-secondary p-3 shadow-none">
+              <div className="flex items-center justify-between text-xs">
                 <span className="font-medium">{selected.length} pedidos selecionados</span>
-                <span className="font-bold text-foreground">{fmt(totalValue)}</span>
+                <span className="font-semibold tabular-nums text-foreground">{fmt(totalValue)}</span>
               </div>
             </Card>
           )}
@@ -291,11 +294,11 @@ export default function GerarPreNotaDialog({ open, onOpenChange, contratoId, ped
 
         {/* 2. Natureza da Operação */}
         <div className="space-y-3">
-          <h4 className="text-lg font-semibold flex items-center gap-2">
-            <FileText className="w-4 h-4 text-muted-foreground" />
+          <h4 className="flex items-center gap-2 text-base font-semibold leading-6 text-foreground">
+            <FileText aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
             Dados da Operação
           </h4>
-          <div>
+          <div className="space-y-1.5">
             <Label>Natureza da Operação <span className="text-destructive-ink">*</span></Label>
             <Select value={natureza} onValueChange={setNatureza}>
               <SelectTrigger className={erroDe('natureza') ? 'border-destructive' : ''}><SelectValue placeholder="Selecione..." /></SelectTrigger>
@@ -304,11 +307,11 @@ export default function GerarPreNotaDialog({ open, onOpenChange, contratoId, ped
               </SelectContent>
             </Select>
           </div>
-          <div>
+          <div className="space-y-1.5">
             <Label>Observações / Instruções ao Financeiro</Label>
             <Textarea value={observacoes} onChange={e => setObservacoes(e.target.value)} rows={2} placeholder="Informações relevantes para emissão da NF (prazo, condição especial...)" />
           </div>
-          <div>
+          <div className="space-y-1.5">
             <Label>Justificativa</Label>
             <Textarea value={justificativa} onChange={e => setJustificativa(e.target.value)} rows={2} placeholder="Motivo/justificativa da solicitação" />
           </div>
@@ -318,12 +321,12 @@ export default function GerarPreNotaDialog({ open, onOpenChange, contratoId, ped
 
         {/* 3. Transporte/Entrega */}
         <div className="space-y-3">
-          <h4 className="text-lg font-semibold flex items-center gap-2">
-            <Truck className="w-4 h-4 text-muted-foreground" />
+          <h4 className="flex items-center gap-2 text-base font-semibold leading-6 text-foreground">
+            <Truck aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
             Dados de Entrega / Transporte
           </h4>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
               <Label>Modalidade de Frete</Label>
               <Select value={freteModalidade} onValueChange={setFreteModalidade}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -335,17 +338,17 @@ export default function GerarPreNotaDialog({ open, onOpenChange, contratoId, ped
                 </SelectContent>
               </Select>
             </div>
-            <div>
+            <div className="space-y-1.5">
               <Label>Valor do Frete (R$)</Label>
               <MoneyInput value={parseFloat(freteValor) || 0} onValueChange={v => setFreteValor(String(v))} />
             </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
               <Label>Transportadora</Label>
               <Input value={transportadora} onChange={e => setTransportadora(e.target.value)} placeholder="Nome da transportadora" />
             </div>
-            <div>
+            <div className="space-y-1.5">
               <Label>Endereço de Entrega</Label>
               <Input value={enderecoEntrega} onChange={e => setEnderecoEntrega(e.target.value)} placeholder="Endereço completo" />
             </div>
@@ -355,31 +358,31 @@ export default function GerarPreNotaDialog({ open, onOpenChange, contratoId, ped
         <Separator />
 
         {/* Resumo */}
-        <Card className="p-3 bg-muted/30">
-          <div className="flex justify-between items-center text-xs mb-1">
+        <Card className="bg-secondary p-4 shadow-none">
+          <div className="mb-1 flex items-center justify-between text-xs">
             <span>Subtotal dos itens:</span>
-            <span className="font-medium">{fmt(totalValue)}</span>
+            <span className="font-medium tabular-nums">{fmt(totalValue)}</span>
           </div>
-          <div className="flex justify-between items-center text-xs mb-1">
+          <div className="mb-1 flex items-center justify-between text-xs">
             <span>Frete:</span>
-            <span>{fmt(parseFloat(freteValor) || 0)}</span>
+            <span className="tabular-nums">{fmt(parseFloat(freteValor) || 0)}</span>
           </div>
           <Separator className="my-2" />
-          <div className="flex justify-between items-center">
+          <div className="flex items-center justify-between">
             <span className="text-sm font-semibold">Total Pré-NF:</span>
-            <span className="text-xl font-bold text-foreground tabular-nums">{fmt(totalValue + (parseFloat(freteValor) || 0))}</span>
+            <span className="text-2xl font-semibold leading-8 tabular-nums text-foreground">{fmt(totalValue + (parseFloat(freteValor) || 0))}</span>
           </div>
         </Card>
 
         {/* Actions */}
-        <div className="flex justify-end gap-2 pt-2">
+        <DialogFooter className="pt-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button onClick={handleSubmit} disabled={saving || errosDeEmissao.length > 0}
             title={errosDeEmissao.length > 0 ? 'Corrija os pontos em vermelho para emitir' : undefined}>
-            {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Send className="w-4 h-4 mr-1" />}
+            {saving ? <Loader2 aria-hidden="true" className="animate-spin" /> : <Send aria-hidden="true" />}
             Enviar ao Financeiro
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

@@ -56,16 +56,16 @@ export default function AvisoDePrazoDeEntrega({ contrato, dataDoPedido, dataDeEn
   if (compacto) {
     return (
       <span className={`inline-flex items-center gap-1 text-xs ${cor}`} title={s.frase}>
-        <Icone className="w-3 h-3 shrink-0" />
+        <Icone aria-hidden="true" className="h-3 w-3 shrink-0" />
         {s.estado === 'sem_prazo' ? 'sem prazo' : s.frase}
       </span>
     );
   }
 
   return (
-    <div className={`rounded-lg border p-3 space-y-1.5 ${fundo}`}>
-      <p className={`text-sm font-medium flex items-center gap-1.5 ${cor}`}>
-        <Icone className="w-4 h-4 shrink-0" />
+    <div className={`space-y-1.5 rounded-lg border p-3 ${fundo}`}>
+      <p className={`flex items-center gap-1.5 text-sm font-medium ${cor}`}>
+        <Icone aria-hidden="true" className="h-4 w-4 shrink-0" />
         {s.frase}
       </p>
 
@@ -78,8 +78,8 @@ export default function AvisoDePrazoDeEntrega({ contrato, dataDoPedido, dataDeEn
       ) : (
         <>
           {contrato?.local_entrega && (
-            <p className="text-xs text-muted-foreground flex items-start gap-1.5">
-              <MapPin className="w-3 h-3 mt-0.5 shrink-0" />
+            <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+              <MapPin aria-hidden="true" className="mt-0.5 h-3 w-3 shrink-0" />
               <span>Entregar em: {contrato.local_entrega}</span>
             </p>
           )}

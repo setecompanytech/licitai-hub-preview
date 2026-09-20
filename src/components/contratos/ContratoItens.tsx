@@ -4,12 +4,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Skeleton } from '@/components/ui/skeleton';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
@@ -619,14 +621,14 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
       <BlocoDoPainel titulo="Ações">
         <div className="flex flex-wrap gap-2">
           <Button size="sm" variant="outline" className="g-controle" onClick={() => abrirEdicao(itemVisualizado)}>
-            <Pencil className="w-3.5 h-3.5 mr-1.5" /> Editar item
+            <Pencil aria-hidden="true" /> Editar item
           </Button>
           <Button size="sm" variant="outline" className="g-controle" title="Duplicar item (aditivo)" onClick={() => handleDuplicate(itemVisualizado)}>
-            <Copy className="w-3.5 h-3.5 mr-1.5" /> Duplicar
+            <Copy aria-hidden="true" /> Duplicar
           </Button>
-          <Button size="sm" variant="outline" className="g-controle text-destructive-ink"
+          <Button size="sm" variant="outline" className="g-controle text-destructive-ink hover:bg-destructive-tint hover:text-destructive-ink"
             onClick={() => { handleDelete(itemVisualizado.id); setItemVisualizado(null); }}>
-            <Trash2 className="w-3.5 h-3.5 mr-1.5" /> Excluir
+            <Trash2 aria-hidden="true" /> Excluir
           </Button>
         </div>
       </BlocoDoPainel>
@@ -693,7 +695,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
 
       {isContratoComATA && (
         <p className="g-meta text-warning-ink flex items-center gap-1">
-          <Link2 className="w-3 h-3" /> Contrato vinculado à ATA SRP — itens devem ser selecionados da ATA de origem
+          <Link2 aria-hidden="true" className="h-3 w-3 shrink-0" /> Contrato vinculado à ATA SRP — itens devem ser selecionados da ATA de origem
         </p>
       )}
 
@@ -716,23 +718,23 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                 size="sm"
                 variant={consolidado ? 'secondary' : 'outline'}
                 onClick={() => { setConsolidado(v => !v); setSituacao('todas'); }}
-                className="g-controle gap-1.5"
+                className="g-controle"
                 title={consolidado
                   ? 'Mostrando uma linha por item físico, no estado vigente'
                   : 'Mostrando todos os registros, inclusive as versões criadas por aditivo'}
               >
-                {consolidado ? <Layers className="w-3.5 h-3.5" /> : <History className="w-3.5 h-3.5" />}
+                {consolidado ? <Layers aria-hidden="true" /> : <History aria-hidden="true" />}
                 {consolidado ? 'Consolidado' : 'Todos os registros'}
               </Button>
             )}
             {isContratoComATA && ataItens.length > 0 && (
               <Button size="sm" variant="outline" className="g-controle" onClick={handleImportarDaAta} disabled={importing}>
-                {importing ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Download className="w-3.5 h-3.5 mr-1" />}
+                {importing ? <Loader2 aria-hidden="true" className="animate-spin" /> : <Download aria-hidden="true" />}
                 Importar itens da ATA
               </Button>
             )}
             <Button size="sm" className="g-controle" onClick={() => setDialogOpen(true)}>
-              <Plus className="w-3.5 h-3.5 mr-1" /> Novo Item
+              <Plus aria-hidden="true" /> Novo Item
             </Button>
           </>
         }
@@ -760,12 +762,27 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
       </BarraFiltros>
 
       {loading ? (
-        <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+        <Card className="overflow-hidden" role="status" aria-busy="true">
+          <span className="sr-only">Carregando itens…</span>
+          <div className="flex flex-col gap-px bg-border">
+            {Array.from({ length: 5 }, (_, i) => (
+              <div key={i} className="flex items-center gap-4 bg-card px-4 py-3">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-1/3" />
+                <Skeleton className="ml-auto h-4 w-20" />
+              </div>
+            ))}
+          </div>
+        </Card>
       ) : itens.length === 0 ? (
-        <Card className="g-cartao p-8 text-center g-corpo text-muted-foreground">
-          {isContratoComATA && ataItens.length > 0
-            ? 'Nenhum item ainda. Use "Importar itens da ATA" para começar.'
-            : 'Nenhum item cadastrado'}
+        <Card>
+          <EstadoVazio
+            tamanho="compacto"
+            icone={<Package />}
+            titulo={isContratoComATA && ataItens.length > 0
+              ? 'Nenhum item ainda. Use "Importar itens da ATA" para começar.'
+              : 'Nenhum item cadastrado'}
+          />
         </Card>
       ) : (
         <TooltipProvider>
@@ -784,29 +801,29 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                 </p>
               )}
               {itensVisiveis.length === 0 ? (
-                <Card className="g-cartao p-8 text-center g-corpo text-muted-foreground">
-                  Nenhum item corresponde à busca “{busca}”.
+                <Card>
+                  <EstadoVazio tamanho="compacto" titulo={<>Nenhum item corresponde à busca “{busca}”.</>} />
                 </Card>
               ) : (
-              <div className="rounded-[var(--g-raio)] border overflow-x-auto">
+              <div className="overflow-x-auto rounded-lg border border-border bg-card">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="g-meta whitespace-nowrap">Situação</TableHead>
-                      {meta?.tipo_estrutura === 'lotes' && <TableHead className="g-meta whitespace-nowrap">Lote</TableHead>}
+                      <TableHead className="whitespace-nowrap">Situação</TableHead>
+                      {meta?.tipo_estrutura === 'lotes' && <TableHead className="whitespace-nowrap">Lote</TableHead>}
                       {/* Pares que são um assunto só viram UMA coluna com duas
                           linhas (unitário em cima, total embaixo): treze colunas
                           empurravam Saldo e o lápis para a rolagem horizontal, que o
                           macOS esconde — a tabela parecia quebrada e a edição ficava
                           inalcançável. O que ela existe para mostrar e permitir tem
                           de caber SEM rolar. */}
-                      <TableHead className="g-meta whitespace-nowrap">Item</TableHead>
-                      <TableHead className="g-meta text-right whitespace-nowrap">Qtd</TableHead>
-                      {podeVerCustos && <TableHead className="g-meta text-right whitespace-nowrap">Custo</TableHead>}
-                      <TableHead className="g-meta text-right whitespace-nowrap">Valor</TableHead>
-                      <TableHead className="g-meta text-right whitespace-nowrap">Consumido</TableHead>
-                      <TableHead className="g-meta text-right whitespace-nowrap">Saldo</TableHead>
-                      <TableHead className="g-meta w-10 sticky right-0 bg-card border-l border-border"></TableHead>
+                      <TableHead className="whitespace-nowrap">Item</TableHead>
+                      <TableHead className="whitespace-nowrap text-right">Qtd</TableHead>
+                      {podeVerCustos && <TableHead className="whitespace-nowrap text-right">Custo</TableHead>}
+                      <TableHead className="whitespace-nowrap text-right">Valor</TableHead>
+                      <TableHead className="whitespace-nowrap text-right">Consumido</TableHead>
+                      <TableHead className="whitespace-nowrap text-right">Saldo</TableHead>
+                      <TableHead className="sticky right-0 w-10 border-l border-border bg-secondary"><span className="sr-only">Ações</span></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -891,7 +908,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                     data-state={selecionado ? 'selected' : undefined}
                     className={`${lowStock ? 'bg-warning-tint' : ''} ${selecionado ? 'border-l-2 border-l-primary' : ''}`}
                   >
-                    <TableCell className="g-meta whitespace-nowrap">
+                    <TableCell className="whitespace-nowrap">
                       {tooltipContent ? (
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -908,18 +925,18 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                       )}
                     </TableCell>
                     {meta?.tipo_estrutura === 'lotes' && (
-                      <TableCell className="g-meta whitespace-nowrap">
+                      <TableCell className="whitespace-nowrap">
                         {item.numero_lote
-                          ? <Badge variant="secondary" className="g-meta font-normal">Lote {item.numero_lote}</Badge>
+                          ? <Badge variant="muted">Lote {item.numero_lote}</Badge>
                           : <span className="text-muted-foreground">—</span>}
                       </TableCell>
                     )}
-                    <TableCell className="g-meta max-w-[280px]">
+                    <TableCell className="max-w-[280px]">
                       <button
                         type="button"
                         onClick={() => setItemVisualizado(item)}
                         title="Abrir o detalhe do item no painel"
-                        className="truncate block w-full text-left font-medium text-foreground hover:text-primary hover:underline"
+                        className="block w-full truncate rounded text-left font-medium text-foreground hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
                         {item.descricao}
                       </button>
@@ -943,7 +960,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                         </span>
                       )}
                     </TableCell>
-                    <TableCell className="g-meta text-right whitespace-nowrap tabular-nums">
+                    <TableCell className="whitespace-nowrap text-right tabular-nums">
                       {camadaSel ? (
                         <>
                           {nf(camadaSel.capacidade)}
@@ -973,7 +990,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                       )}
                     </TableCell>
                     {podeVerCustos && (
-                      <TableCell className="g-meta text-right whitespace-nowrap text-muted-foreground">
+                      <TableCell className="whitespace-nowrap text-right tabular-nums text-muted-foreground">
                         <div>{item.custo_unitario != null ? fmt(item.custo_unitario) : '—'}<span>/un</span></div>
                         {/* O "/un" rotula a primeira linha; sem rótulo na segunda,
                             item de quantidade zero mostrava R$ 0,00 sobre R$ 0,00
@@ -989,7 +1006,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                         </div>
                       </TableCell>
                     )}
-                    <TableCell className="g-meta text-right whitespace-nowrap font-medium">
+                    <TableCell className="whitespace-nowrap text-right font-medium tabular-nums">
                       {fmt(item.valor_unitario)}<span className="text-muted-foreground">/un</span>
                       {(() => {
                         // Divergência contrato × ATA tem DUAS histórias, e a nota
@@ -1024,7 +1041,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                       })()}
                       <div className="g-meta text-muted-foreground"><span>total </span><span className="text-foreground">{fmt(camadaSel ? camadaSel.capacidade * (item.valor_unitario || 0) : item.valor_total)}</span></div>
                     </TableCell>
-                    <TableCell className="g-meta text-right whitespace-nowrap tabular-nums">
+                    <TableCell className="whitespace-nowrap text-right tabular-nums">
                       {camadaSel ? (
                         camadaSel.capacidade > 0 ? (
                           <>
@@ -1045,7 +1062,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                         </>
                       )}
                     </TableCell>
-                    <TableCell className={`g-meta text-right font-medium whitespace-nowrap tabular-nums ${lowStock ? 'text-warning-ink' : 'text-success-ink'}`}>
+                    <TableCell className={`whitespace-nowrap text-right font-medium tabular-nums ${lowStock ? 'text-warning-ink' : 'text-success-ink'}`}>
                       {camadaSel ? (
                         camadaSel.capacidade > 0 ? (
                           <>
@@ -1063,16 +1080,16 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                         </>
                       )}
                     </TableCell>
-                    <TableCell className="sticky right-0 bg-card border-l border-border">
+                    <TableCell className="sticky right-0 border-l border-border bg-card">
                       <div className="flex items-center gap-0.5">
-                        <Button size="icon" variant="ghost" className="h-7 w-7" title="Duplicar item (aditivo)" onClick={() => handleDuplicate(item)}>
-                          <Copy className="w-3.5 h-3.5" />
+                        <Button size="icon-sm" variant="ghost" title="Duplicar item (aditivo)" aria-label="Duplicar item (aditivo)" onClick={() => handleDuplicate(item)}>
+                          <Copy aria-hidden="true" />
                         </Button>
-                        <Button size="icon" variant="ghost" className="h-7 w-7" title="Editar item" onClick={() => abrirEdicao(item)}>
-                          <Pencil className="w-3.5 h-3.5" />
+                        <Button size="icon-sm" variant="ghost" title="Editar item" aria-label="Editar item" onClick={() => abrirEdicao(item)}>
+                          <Pencil aria-hidden="true" />
                         </Button>
-                        <Button size="icon" variant="ghost" className="h-7 w-7" title="Excluir item" onClick={() => handleDelete(item.id)}>
-                          <Trash2 className="w-3.5 h-3.5 text-destructive-ink" />
+                        <Button size="icon-sm" variant="ghost-destructive" title="Excluir item" aria-label="Excluir item" onClick={() => handleDelete(item.id)}>
+                          <Trash2 aria-hidden="true" />
                         </Button>
                       </div>
                     </TableCell>
@@ -1095,16 +1112,16 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
 
       {/* Cadastro de item */}
       <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); }}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Cadastrar Item {meta?.tipo_documento === 'ata_srp' ? 'da ATA' : 'do Contrato'}</DialogTitle></DialogHeader>
-          <div className="grid grid-cols-2 gap-3 mt-3">
+          <div className="mt-3 grid gap-4 sm:grid-cols-2">
             {/* Busca de produto sincronizado */}
-            <div className="col-span-2">
+            <div className="space-y-1.5 sm:col-span-2">
               <Label className="flex items-center gap-1.5">
                 <Search className="w-3.5 h-3.5 text-muted-foreground" /> Buscar Produto do Catálogo
                 {form.produto_id && <span className="g-meta text-success-ink font-normal">(vinculado)</span>}
               </Label>
-              <div className="relative mt-1">
+              <div className="relative">
                 <Input
                   value={prodSearch}
                   onChange={e => { setProdSearch(e.target.value); setProdPopover(true); setForm(f => ({ ...f, produto_id: '', descricao: e.target.value })); }}
@@ -1114,13 +1131,13 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                   className={form.produto_id ? 'border-success-line bg-success-tint' : ''}
                 />
                 {prodPopover && (
-                  <div className="absolute z-50 w-full bg-popover border rounded-md shadow-lg mt-1 max-h-52 overflow-y-auto">
+                  <div className="absolute z-50 mt-1 max-h-52 w-full overflow-y-auto rounded-lg border border-border bg-popover shadow-lg">
                     {filteredProdutos.length > 0 ? (
                       filteredProdutos.map(p => (
                         <button
                           key={p.id}
                           type="button"
-                          className="w-full text-left px-3 py-2 g-meta hover:bg-primary-tint flex items-center gap-2"
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
                           onMouseDown={() => onSelectProduto(p)}
                         >
                           {p.codigo && <span className="font-mono text-muted-foreground shrink-0">[{p.codigo}]</span>}
@@ -1129,7 +1146,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                         </button>
                       ))
                     ) : (
-                      <div className="px-3 py-3 g-meta text-muted-foreground text-center">
+                      <div className="px-3 py-3 text-sm text-muted-foreground">
                         Produto não encontrado — será criado automaticamente ao salvar.
                       </div>
                     )}
@@ -1142,7 +1159,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
             </div>
 
             {isContratoComATA && (
-              <div className="col-span-2">
+              <div className="space-y-1.5 sm:col-span-2">
                 <Label>Item da ATA de origem *</Label>
                 <Select value={form.ata_item_id} onValueChange={onSelectAtaItem}>
                   <SelectTrigger><SelectValue placeholder="Selecionar item da ATA" /></SelectTrigger>
@@ -1162,7 +1179,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                 </p>
               </div>
             )}
-            <div className="col-span-2">
+            <div className="space-y-1.5 sm:col-span-2">
               <Label>Origem (Aditivo)</Label>
               <Select value={form.origem_aditivo_id} onValueChange={v => setForm(f => ({ ...f, origem_aditivo_id: v === '__contrato__' ? '' : v }))}>
                 <SelectTrigger><SelectValue placeholder="Selecionar origem" /></SelectTrigger>
@@ -1174,15 +1191,15 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                 </SelectContent>
               </Select>
             </div>
-            <div className="col-span-2">
+            <div className="space-y-1.5 sm:col-span-2">
               <Label>Descrição *</Label>
               <Input value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} disabled={isContratoComATA && !!form.ata_item_id} />
             </div>
-            <div>
+            <div className="space-y-1.5">
               <Label>Código</Label>
               <Input value={form.codigo_item} onChange={e => setForm(f => ({ ...f, codigo_item: e.target.value }))} placeholder="ITEM-01" disabled={isContratoComATA && !!form.ata_item_id} />
             </div>
-            <div>
+            <div className="space-y-1.5">
               <Label>Unidade</Label>
               <Select value={form.unidade} onValueChange={v => setForm(f => ({ ...f, unidade: v }))} disabled={isContratoComATA && !!form.ata_item_id}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -1193,11 +1210,11 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                 </SelectContent>
               </Select>
             </div>
-            <div>
+            <div className="space-y-1.5">
               <Label>Quantidade</Label>
               <Input type="number" value={form.quantidade_contratada} onChange={e => setForm(f => ({ ...f, quantidade_contratada: e.target.value }))} />
             </div>
-            <div>
+            <div className="space-y-1.5">
               <Label>Valor Unitário Venda (R$)</Label>
               <MoneyInput value={Number(form.valor_unitario) || 0} onValueChange={v => setForm(f => ({ ...f, valor_unitario: String(v) }))} disabled={isContratoComATA && !!form.ata_item_id} />
               {isContratoComATA && !!form.ata_item_id && (
@@ -1210,22 +1227,22 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
               )}
             </div>
             {podeVerCustos && (
-              <div className="col-span-2">
+              <div className="space-y-1.5 sm:col-span-2">
                 <Label>Custo Unitário (R$) <span className="g-meta text-muted-foreground">(opcional — apenas Financeiro/Admin)</span></Label>
                 <MoneyInput value={Number(form.custo_unitario) || 0} onValueChange={v => setForm(f => ({ ...f, custo_unitario: String(v) }))} placeholder="R$ 0,00" />
               </div>
             )}
-            <div className="col-span-2">
+            <div className="space-y-1.5 sm:col-span-2">
               <Label>Observações</Label>
               <Textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} />
             </div>
           </div>
-          <div className="flex justify-end gap-2 mt-3">
+          <DialogFooter className="mt-3">
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
             <Button onClick={handleSave} disabled={saving}>
-              {saving && <Loader2 className="w-4 h-4 animate-spin mr-1" />} Salvar
+              {saving && <Loader2 aria-hidden="true" className="animate-spin" />} Salvar
             </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -1233,18 +1250,18 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
       <Dialog open={!!editItem} onOpenChange={(v) => !v && setEditItem(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-base">Editar item</DialogTitle>
+            <DialogTitle>Editar item</DialogTitle>
           </DialogHeader>
           {editItem && (
-            <div className="space-y-3">
-              <p className="g-corpo font-medium">{editItem.descricao}</p>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
+            <div className="space-y-4">
+              <p className="g-corpo font-medium text-foreground">{editItem.descricao}</p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
                   <Label>Quantidade</Label>
                   <Input type="number" value={editForm.quantidade}
                     onChange={e => setEditForm(f => ({ ...f, quantidade: e.target.value }))} />
                 </div>
-                <div>
+                <div className="space-y-1.5">
                   <Label>Valor Unitário (R$)</Label>
                   {isContratoComATA && !!editItem.ata_item_id && !temAditivoForaDoObjeto ? (
                     <>
@@ -1273,23 +1290,23 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                 </div>
               </div>
               {podeVerCustos && (
-                <div>
+                <div className="space-y-1.5">
                   <Label>Custo Unitário (R$)</Label>
                   <Input type="number" step="0.01" value={editForm.custo_unitario}
                     onChange={e => setEditForm(f => ({ ...f, custo_unitario: e.target.value }))} />
                 </div>
               )}
-              <div>
+              <div className="space-y-1.5">
                 <Label>Observações</Label>
                 <Textarea rows={2} value={editForm.observacoes}
                   onChange={e => setEditForm(f => ({ ...f, observacoes: e.target.value }))} />
               </div>
-              <div className="flex justify-end gap-2">
+              <DialogFooter>
                 <Button variant="outline" onClick={() => setEditItem(null)}>Cancelar</Button>
                 <Button onClick={salvarEdicao} disabled={savingEdit}>
-                  {savingEdit ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Salvar'}
+                  {savingEdit ? <Loader2 aria-hidden="true" className="animate-spin" /> : 'Salvar'}
                 </Button>
-              </div>
+              </DialogFooter>
             </div>
           )}
         </DialogContent>

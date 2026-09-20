@@ -38,7 +38,7 @@ export default function DeOndeVem({
   if (itens.length === 0) return null;
 
   return (
-    <div className="rounded-lg border border-border bg-muted p-4">
+    <div className="rounded-lg border border-border bg-secondary p-4">
       <h4 className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         <Info className="h-4 w-4 shrink-0" aria-hidden="true" />
         De onde vêm estes números

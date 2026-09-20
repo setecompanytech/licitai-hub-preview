@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MoneyInput } from '@/components/ui/money-input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
@@ -182,9 +183,9 @@ export default function MovimentosDoEmpenho({ empenho, onFechar, onMudou }: Prop
 
   return (
     <Dialog open onOpenChange={(v) => { if (!v) { limpar(); onFechar(); } }}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle className="text-base">
+          <DialogTitle>
             Movimentos do empenho {empenho.numero}
           </DialogTitle>
         </DialogHeader>
@@ -209,48 +210,46 @@ export default function MovimentosDoEmpenho({ empenho, onFechar, onMudou }: Prop
               reforcos: vigente.reforcos,
               anulacoes: vigente.anulacoes,
             }) && (
-              <div className="flex items-start gap-2 rounded-md border border-destructive-line bg-destructive-tint p-3" role="alert">
-                <Ban className="w-4 h-4 text-destructive-ink shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-semibold text-destructive-ink">Empenho cancelado</p>
-                  <p className="text-xs text-muted-foreground">
-                    A anulação cobre todo o valor empenhado. Ele não autoriza mais nenhuma entrega —
-                    e entregar sob empenho cancelado é despesa sem cobertura (Lei 4.320/64, art. 60).
-                  </p>
-                </div>
-              </div>
+              <Alert variant="destructive">
+                <Ban aria-hidden="true" />
+                <AlertTitle>Empenho cancelado</AlertTitle>
+                <AlertDescription>
+                  A anulação cobre todo o valor empenhado. Ele não autoriza mais nenhuma entrega —
+                  e entregar sob empenho cancelado é despesa sem cobertura (Lei 4.320/64, art. 60).
+                </AlertDescription>
+              </Alert>
             )}
 
             {vigente && (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-                <div>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="rounded-md bg-secondary p-3">
                   <p className="text-xs text-muted-foreground">Nota original</p>
-                  <p className="font-medium tabular-nums whitespace-nowrap">{brl(vigente.valor_original)}</p>
+                  <p className="text-base font-semibold tabular-nums text-foreground">{brl(vigente.valor_original)}</p>
                 </div>
-                <div>
+                <div className="rounded-md bg-secondary p-3">
                   <p className="text-xs text-muted-foreground">Reforços</p>
-                  <p className="font-medium tabular-nums text-success-ink whitespace-nowrap">
+                  <p className="text-base font-semibold tabular-nums text-success-ink">
                     {vigente.reforcos > 0 ? `+ ${brl(vigente.reforcos)}` : '—'}
                   </p>
                 </div>
-                <div>
+                <div className="rounded-md bg-secondary p-3">
                   <p className="text-xs text-muted-foreground">Anulações</p>
-                  <p className="font-medium tabular-nums text-warning-ink whitespace-nowrap">
+                  <p className="text-base font-semibold tabular-nums text-warning-ink">
                     {vigente.anulacoes > 0 ? `− ${brl(vigente.anulacoes)}` : '—'}
                   </p>
                 </div>
-                <div>
+                <div className="rounded-md bg-secondary p-3">
                   <p className="text-xs text-muted-foreground">Empenhado hoje</p>
-                  <p className="font-semibold tabular-nums whitespace-nowrap">{brl(vigente.valor_vigente)}</p>
+                  <p className="text-base font-semibold tabular-nums text-foreground">{brl(vigente.valor_vigente)}</p>
                 </div>
               </div>
             )}
 
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h4 className="text-lg font-semibold">Movimentos ({movimentos.length})</h4>
+              <h4 className="text-base font-semibold leading-6 text-foreground">Movimentos ({movimentos.length})</h4>
               {!criando && (
                 <Button size="sm" variant="outline" onClick={() => setCriando(true)}>
-                  <Plus className="w-4 h-4" /> Lançar reforço ou anulação
+                  <Plus aria-hidden="true" /> Lançar reforço ou anulação
                 </Button>
               )}
             </div>
@@ -267,11 +266,11 @@ export default function MovimentosDoEmpenho({ empenho, onFechar, onMudou }: Prop
             ) : (
               <div className="space-y-1.5">
                 {movimentos.map(m => (
-                  <div key={m.id} className="flex flex-wrap items-center gap-2 text-sm border border-border rounded-md p-2">
+                  <div key={m.id} className="flex min-h-[var(--g-linha)] flex-wrap items-center gap-2 rounded-md border border-border px-3 py-2 text-sm">
                     {m.tipo === 'anulacao'
-                      ? <TrendingDown className="w-4 h-4 text-warning-ink shrink-0" />
-                      : <TrendingUp className="w-4 h-4 text-success-ink shrink-0" />}
-                    <Badge variant="outline" className="shrink-0">{ROTULO[m.tipo] ?? m.tipo}</Badge>
+                      ? <TrendingDown aria-hidden="true" className="h-4 w-4 shrink-0 text-warning-ink" />
+                      : <TrendingUp aria-hidden="true" className="h-4 w-4 shrink-0 text-success-ink" />}
+                    <Badge variant="muted" className="shrink-0">{ROTULO[m.tipo] ?? m.tipo}</Badge>
                     {m.numero && <span className="tabular-nums shrink-0">{m.numero}</span>}
                     <span className="text-muted-foreground shrink-0">{dataBr(m.data_movimento)}</span>
                     {m.observacao && <span className="text-muted-foreground truncate" title={m.observacao}>{m.observacao}</span>}
@@ -281,14 +280,14 @@ export default function MovimentosDoEmpenho({ empenho, onFechar, onMudou }: Prop
                       {m.tipo === 'anulacao' ? '−' : '+'} {brl(m.valor)}
                     </span>
                     {m.arquivo_id && (
-                      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0"
+                      <Button variant="ghost" size="icon-sm" className="shrink-0"
                         title="Ver a nota" aria-label="Ver a nota" onClick={() => abrirNota(m.arquivo_id!)}>
-                        <FileText className="w-4 h-4 text-primary" />
+                        <FileText aria-hidden="true" className="text-primary" />
                       </Button>
                     )}
-                    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0"
+                    <Button variant="ghost-destructive" size="icon-sm" className="shrink-0"
                       title="Excluir movimento" aria-label="Excluir movimento" onClick={() => excluir(m.id)}>
-                      <Trash2 className="w-4 h-4 text-destructive-ink" />
+                      <Trash2 aria-hidden="true" />
                     </Button>
                   </div>
                 ))}
@@ -296,9 +295,9 @@ export default function MovimentosDoEmpenho({ empenho, onFechar, onMudou }: Prop
             )}
 
             {criando && (
-              <div className="border-t pt-3 space-y-3">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
+              <div className="space-y-4 border-t border-border pt-4">
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="space-y-1.5">
                     <Label>O que houve</Label>
                     <Select value={tipo} onValueChange={v => setTipo(v as 'reforco' | 'anulacao')}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
@@ -308,19 +307,19 @@ export default function MovimentosDoEmpenho({ empenho, onFechar, onMudou }: Prop
                       </SelectContent>
                     </Select>
                   </div>
-                  <div>
+                  <div className="space-y-1.5">
                     <Label>Nº da nota</Label>
                     <Input value={numero} onChange={e => setNumero(e.target.value)}
                       placeholder="2025NE000210" />
                   </div>
-                  <div>
+                  <div className="space-y-1.5">
                     <Label>Data</Label>
                     <Input type="date" value={data} onChange={e => setData(e.target.value)} />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
                     <Label>Valor</Label>
                     <MoneyInput value={valor} onValueChange={setValor} />
                     {/* O sinal vem do TIPO, nunca do número digitado. */}
@@ -328,7 +327,7 @@ export default function MovimentosDoEmpenho({ empenho, onFechar, onMudou }: Prop
                       Sempre positivo — {tipo === 'anulacao' ? 'a anulação subtrai' : 'o reforço soma'} pelo tipo.
                     </p>
                   </div>
-                  <div>
+                  <div className="space-y-1.5">
                     <Label>Observação</Label>
                     <Input value={observacao} onChange={e => setObservacao(e.target.value)}
                       placeholder={tipo === 'anulacao' ? 'Encerramento do exercício' : ''}
@@ -336,11 +335,11 @@ export default function MovimentosDoEmpenho({ empenho, onFechar, onMudou }: Prop
                   </div>
                 </div>
 
-                <div>
+                <div className="space-y-1.5">
                   <Label>A nota (recomendado)</Label>
                   <input ref={entradaDoArquivo} type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png"
                     onChange={e => { setArquivo(e.target.files?.[0] ?? null); e.target.value = ''; }} />
-                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Button type="button" size="sm" variant="outline"
                       onClick={() => entradaDoArquivo.current?.click()}>
                       {arquivo ? 'Trocar arquivo' : 'Escolher arquivo'}
@@ -353,11 +352,11 @@ export default function MovimentosDoEmpenho({ empenho, onFechar, onMudou }: Prop
                   </div>
                 </div>
 
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap justify-end gap-2">
+                  <Button variant="outline" onClick={limpar}>Cancelar</Button>
                   <Button onClick={salvar} disabled={salvando}>
-                    {salvando && <Loader2 className="w-4 h-4 animate-spin" />} Registrar
+                    {salvando && <Loader2 aria-hidden="true" className="animate-spin" />} Registrar
                   </Button>
-                  <Button variant="ghost" onClick={limpar}>Cancelar</Button>
                 </div>
               </div>
             )}

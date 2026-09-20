@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { MoneyInput } from '@/components/ui/money-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import SeloPraefectusIA from '@/components/shared/SeloPraefectusIA';
 import { AlertTriangle, CheckCircle2, FileText, Loader2 } from 'lucide-react';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
@@ -134,10 +135,11 @@ export default function DocumentDetectionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-xl">
         <DialogHeader>
+          <SeloPraefectusIA className="self-start" />
           <DialogTitle className="flex items-center gap-2">
-            <FileText className="w-5 h-5 text-muted-foreground" />
+            <FileText aria-hidden="true" className="h-5 w-5 text-muted-foreground" />
             IA detectou: {labelDetected}
           </DialogTitle>
           <DialogDescription>
@@ -147,11 +149,11 @@ export default function DocumentDetectionDialog({
 
         {/* Caso 1: tipo divergente do registro pai */}
         {typeMismatch && (
-          <Card className="p-4 border-warning-line bg-warning-tint space-y-3">
+          <Card className="space-y-3 border-warning-line bg-warning-tint p-4 shadow-none">
             <div className="flex items-start gap-2">
-              <AlertTriangle className="w-4 h-4 text-warning-ink shrink-0 mt-0.5" />
-              <div className="text-sm space-y-1">
-                <p className="font-semibold">Documento de tipo diferente do registro atual</p>
+              <AlertTriangle aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-warning-ink" />
+              <div className="space-y-1 text-sm">
+                <p className="font-semibold text-warning-ink">Documento de tipo diferente do registro atual</p>
                 <p className="text-muted-foreground">
                   Você está nesta página de um <strong>{parentTipoDocumento === 'ata_srp' ? 'ATA SRP' : 'Contrato'}</strong>,
                   mas o arquivo enviado parece ser um <strong>{labelDetected}</strong>.
@@ -172,7 +174,7 @@ export default function DocumentDetectionDialog({
               {detection.tipo_estrutura_detectado && (
                 <div className="flex items-center gap-1.5 pt-1">
                   🧩 Estrutura detectada:
-                  <Badge variant="outline" className="text-xs">
+                  <Badge variant="muted">
                     {detection.tipo_estrutura_detectado === 'lotes' ? 'Lotes (agrupados)' : 'Itens (individuais)'}
                   </Badge>
                   {typeof detection.tipo_estrutura_confianca === 'number' && (
@@ -196,8 +198,8 @@ export default function DocumentDetectionDialog({
             registrado — quantidade × saldo, preço × registrado, valor × teto.
             É a análise que o dono do produto pediu ANTES de o registro existir. */}
         {confronto && (
-          <Card className={`p-4 space-y-2 ${confronto.valorExcede || confronto.comProblema > 0 ? 'border-destructive-line bg-destructive-tint' : 'border-success-line bg-success-tint'}`}>
-            <p className="text-sm font-semibold">Confronto com a ATA</p>
+          <Card className={`space-y-2 p-4 shadow-none ${confronto.valorExcede || confronto.comProblema > 0 ? 'border-destructive-line bg-destructive-tint' : 'border-success-line bg-success-tint'}`}>
+            <p className="text-sm font-semibold text-foreground">Confronto com a ATA</p>
             <div className="text-sm space-y-1">
               <div className={confronto.valorExcede ? 'text-destructive-ink font-medium' : ''}>
                 💰 Valor do contrato {fmt(confronto.valorContrato)} × saldo da ata {fmt(confronto.saldoAta)}
@@ -237,11 +239,11 @@ export default function DocumentDetectionDialog({
 
         {/* Caso 2: aditivo detectado */}
         {isAditivo && (
-          <Card className="p-4 border-success-line bg-success-tint space-y-3">
+          <Card className="space-y-3 border-success-line bg-success-tint p-4 shadow-none">
             <div className="flex items-start gap-2">
-              <CheckCircle2 className="w-4 h-4 text-success-ink shrink-0 mt-0.5" />
+              <CheckCircle2 aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-success-ink" />
               <div className="text-sm">
-                <p className="font-semibold">A IA pré-preencheu os dados do aditivo abaixo.</p>
+                <p className="font-semibold text-success-ink">A IA pré-preencheu os dados do aditivo abaixo.</p>
                 <p className="text-muted-foreground">Revise, ajuste se necessário e confirme o registro.</p>
                 {detection.aditivo?.contrato_referencia && (
                   <p className="text-muted-foreground mt-1">
@@ -256,39 +258,39 @@ export default function DocumentDetectionDialog({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="sm:col-span-2">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5 sm:col-span-2">
                 <Label>Número/Identificação</Label>
                 <Input value={adForm.numero_aditivo} onChange={e => setAdForm(f => ({ ...f, numero_aditivo: e.target.value }))} />
               </div>
-              <div>
+              <div className="space-y-1.5">
                 <Label>Valor Acréscimo (R$)</Label>
                 <MoneyInput value={parseFloat(adForm.valor_acrescimo) || 0} onValueChange={v => setAdForm(f => ({ ...f, valor_acrescimo: String(v) }))} />
               </div>
-              <div>
+              <div className="space-y-1.5">
                 <Label>Valor Supressão (R$)</Label>
                 <MoneyInput value={parseFloat(adForm.valor_supressao) || 0} onValueChange={v => setAdForm(f => ({ ...f, valor_supressao: String(v) }))} />
               </div>
-              <div>
+              <div className="space-y-1.5">
                 <Label>Qtde Acréscimo</Label>
                 <Input type="number" step="0.01" value={adForm.quantidade_acrescimo} onChange={e => setAdForm(f => ({ ...f, quantidade_acrescimo: e.target.value }))} />
               </div>
-              <div>
+              <div className="space-y-1.5">
                 <Label>Qtde Supressão</Label>
                 <Input type="number" step="0.01" value={adForm.quantidade_supressao} onChange={e => setAdForm(f => ({ ...f, quantidade_supressao: e.target.value }))} />
               </div>
-              <div className="sm:col-span-2">
+              <div className="space-y-1.5 sm:col-span-2">
                 <Label>Nova Data Fim (se houver prorrogação)</Label>
                 <Input type="date" value={adForm.nova_data_fim} onChange={e => setAdForm(f => ({ ...f, nova_data_fim: e.target.value }))} />
               </div>
-              <div className="sm:col-span-2">
+              <div className="space-y-1.5 sm:col-span-2">
                 <Label>Justificativa</Label>
                 <Textarea rows={2} value={adForm.justificativa} onChange={e => setAdForm(f => ({ ...f, justificativa: e.target.value }))} />
               </div>
             </div>
             <p className="text-sm text-muted-foreground">
               Este aditivo será registrado como pertencente ao{' '}
-              <Badge variant="outline" className="text-xs">
+              <Badge variant="muted">
                 {parentTipoDocumento === 'ata_srp' ? 'ATA SRP' : 'Contrato'} atual
               </Badge>{' '}
               e atualizará os saldos.
@@ -313,7 +315,7 @@ export default function DocumentDetectionDialog({
               onClick={async () => { setWorking(true); try { await onCreateLinkedRegistry(detection); } finally { setWorking(false); } }}
               disabled={working}
             >
-              {working && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {working && <Loader2 aria-hidden="true" className="animate-spin" />}
               Criar registro separado e vincular
             </Button>
           )}
@@ -336,7 +338,7 @@ export default function DocumentDetectionDialog({
               }}
               disabled={working}
             >
-              {working && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {working && <Loader2 aria-hidden="true" className="animate-spin" />}
               Confirmar registro do aditivo
             </Button>
           )}

@@ -26,7 +26,7 @@ export default function BotaoReanalisar() {
         setSearchParams(next);
       }}
     >
-      <ScanSearch className="w-4 h-4" />
+      <ScanSearch aria-hidden="true" />
       Reanalisar documentos anexados
     </Button>
   );

@@ -142,7 +142,7 @@ export default function VincularLancamentoDialog({
       <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Link2 className="w-4 h-4" />
+            <Link2 aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
             Vincular a lançamento existente
           </DialogTitle>
           <DialogDescription>
@@ -163,7 +163,7 @@ export default function VincularLancamentoDialog({
             <Skeleton className="h-16 w-full" />
           </div>
         ) : ordenados.length === 0 ? (
-          <div className="py-8 text-center text-sm text-muted-foreground">
+          <div className="py-8 text-sm text-muted-foreground">
             Nenhum lançamento a receber disponível para vincular. Ou todos já
             pertencem a outros pedidos, ou o recebimento ainda não foi lançado
             no Financeiro.
@@ -173,16 +173,16 @@ export default function VincularLancamentoDialog({
             {ordenados.map((t) => (
               <label
                 key={t.id}
-                className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors duration-150 ${
                   escolhidos.has(t.id) ? 'border-primary bg-primary-tint' : 'border-border hover:bg-muted'
                 }`}
               >
                 <Checkbox checked={escolhidos.has(t.id)} onCheckedChange={() => alternar(t.id)} className="mt-0.5" />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-medium truncate" title={t.descricao}>{t.descricao}</span>
+                    <span className="truncate text-sm font-medium text-foreground" title={t.descricao}>{t.descricao}</span>
                     <span className="text-sm font-semibold tabular-nums">{fmt(Number(t.valor))}</span>
-                    <Badge variant="outline" className="text-xs">{t.status}</Badge>
+                    <Badge variant="muted">{t.status}</Badge>
                     {t.contrato_pedido_id === pedido.id && (
                       <Badge variant="success">já vinculado</Badge>
                     )}
@@ -204,13 +204,13 @@ export default function VincularLancamentoDialog({
         {/* A conferência da soma avisa e não bloqueia: desconto, retenção e
             glosa fazem a soma divergir legitimamente. */}
         <div
-          className={`shrink-0 rounded-lg border p-3 text-sm flex items-start gap-2 ${
+          className={`flex shrink-0 items-start gap-2 rounded-lg border p-3 text-sm ${
             soma.fecha ? 'border-success-line bg-success-tint' : 'border-warning-line bg-warning-tint'
           }`}
         >
           {soma.fecha
-            ? <CheckCircle2 className="w-4 h-4 text-success-ink shrink-0 mt-0.5" />
-            : <AlertTriangle className="w-4 h-4 text-warning-ink shrink-0 mt-0.5" />}
+            ? <CheckCircle2 aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-success-ink" />
+            : <AlertTriangle aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-warning-ink" />}
           <div>
             <p className={soma.fecha ? 'text-success-ink' : 'text-warning-ink'}>{soma.frase}</p>
             {selecionados.length > 0 && (
@@ -222,14 +222,14 @@ export default function VincularLancamentoDialog({
         </div>
 
         <div className="shrink-0 flex flex-wrap justify-end gap-2">
-          <Button variant="ghost" onClick={onFechar}>Cancelar</Button>
+          <Button variant="outline" onClick={onFechar}>Cancelar</Button>
           <Button
             onClick={salvar}
             disabled={salvando || (escolhidos.size === 0 && jaVinculados.length === 0)}
           >
-            {salvando ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
-              : escolhidos.size === 0 ? <Unlink className="w-3.5 h-3.5 mr-1.5" />
-              : <Link2 className="w-3.5 h-3.5 mr-1.5" />}
+            {salvando ? <Loader2 aria-hidden="true" className="animate-spin" />
+              : escolhidos.size === 0 ? <Unlink aria-hidden="true" />
+              : <Link2 aria-hidden="true" />}
             {escolhidos.size === 0 ? 'Remover vínculos' : `Vincular ${escolhidos.size}`}
           </Button>
         </div>

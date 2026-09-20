@@ -58,7 +58,7 @@ export default function LocalDoOrgao({ uf, municipio, onChange }: Props) {
 
   return (
     <>
-      <div>
+      <div className="space-y-1.5">
         <Label>UF</Label>
         <Select
           value={uf || undefined}
@@ -66,7 +66,7 @@ export default function LocalDoOrgao({ uf, municipio, onChange }: Props) {
           // guardar um endereço que não existe.
           onValueChange={(v) => onChange({ uf: v, municipio: '' })}
         >
-          <SelectTrigger className="mt-1"><SelectValue placeholder="Selecione o estado" /></SelectTrigger>
+          <SelectTrigger><SelectValue placeholder="Selecione o estado" /></SelectTrigger>
           <SelectContent className="max-h-72">
             {UFS_BRASIL.map((e) => (
               <SelectItem key={e.uf} value={e.uf}>{e.uf} — {e.nome}</SelectItem>
@@ -75,7 +75,7 @@ export default function LocalDoOrgao({ uf, municipio, onChange }: Props) {
         </Select>
       </div>
 
-      <div>
+      <div className="space-y-1.5">
         <Label>Município</Label>
         <Popover open={aberto} onOpenChange={(o) => { setAberto(o); if (o) setBusca(''); }}>
           <PopoverTrigger asChild>
@@ -83,15 +83,15 @@ export default function LocalDoOrgao({ uf, municipio, onChange }: Props) {
               type="button"
               variant="outline"
               disabled={!uf}
-              className={cn('mt-1 w-full justify-between font-normal', !municipio && 'text-muted-foreground')}
+              className={cn('w-full justify-between font-normal', !municipio && 'text-muted-foreground')}
             >
               {municipio || (uf ? 'Selecione o município' : 'Escolha a UF primeiro')}
-              <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
+              <ChevronsUpDown aria-hidden="true" className="h-4 w-4 shrink-0 opacity-50" />
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
             <div className="flex items-center gap-2 border-b border-border px-3">
-              <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <Search aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground" />
               <Input
                 autoFocus
                 value={busca}
@@ -103,7 +103,7 @@ export default function LocalDoOrgao({ uf, municipio, onChange }: Props) {
             <div className="max-h-64 overflow-y-auto py-1">
               {carregando && (
                 <div className="flex items-center gap-2 px-3 py-3 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Carregando municípios de {uf}…
+                  <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /> Carregando municípios de {uf}…
                 </div>
               )}
               {erro && <p className="px-3 py-3 text-sm text-destructive-ink">{erro}</p>}
@@ -115,9 +115,9 @@ export default function LocalDoOrgao({ uf, municipio, onChange }: Props) {
                   key={m.id}
                   type="button"
                   onClick={() => { onChange({ municipio: m.nome }); setAberto(false); }}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
                 >
-                  <Check className={cn('h-4 w-4 shrink-0', m.nome === municipio ? 'opacity-100' : 'opacity-0')} />
+                  <Check aria-hidden="true" className={cn('h-4 w-4 shrink-0', m.nome === municipio ? 'opacity-100' : 'opacity-0')} />
                   {m.nome}
                 </button>
               ))}

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import SeloPraefectusIA from '@/components/shared/SeloPraefectusIA';
 import { Sparkles, Layers } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -29,17 +30,18 @@ export default function EstruturaDocumentoCard({ contratoId }: { contratoId: str
   if (!c || (!c.tipo_estrutura_detectado_ia && !c.tipo_estrutura)) return null;
 
   return (
-    <Card className="p-4 border border-border bg-muted/40">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <Card className="border-primary-line bg-primary-tint p-4 shadow-none">
+      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div className="flex items-start gap-2">
-          <Sparkles className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
-          <div className="space-y-0.5">
-            <p className="text-sm font-semibold flex flex-wrap items-center gap-2">
+          <Sparkles aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-teal" />
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-foreground">
               Estrutura do documento
-              <Badge variant="outline" className="text-xs font-normal">
+              <Badge variant="muted">
                 Atual: {c.tipo_estrutura === 'lotes' ? 'Lotes (agrupados)' : 'Itens (individuais)'}
               </Badge>
-            </p>
+              <SeloPraefectusIA />
+            </div>
             {c.tipo_estrutura_detectado_ia && (
               <p className="text-xs text-muted-foreground">
                 IA detectou: <strong>{c.tipo_estrutura_detectado_ia === 'lotes' ? 'Lotes' : 'Itens'}</strong>
@@ -54,7 +56,7 @@ export default function EstruturaDocumentoCard({ contratoId }: { contratoId: str
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Layers className="w-3.5 h-3.5 text-muted-foreground" />
+          <Layers aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
           <Select
             value={(c.tipo_estrutura as string) || 'itens'}
             onValueChange={async (v: 'itens' | 'lotes') => {

@@ -27,7 +27,7 @@ export default function SecaoDoDocumento({ numero, titulo, children, className }
       <div className="mb-2 flex items-center gap-2">
         <span
           className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-sm
-                     bg-muted px-1 text-xs font-bold tabular-nums text-muted-foreground"
+                     bg-muted px-1 text-xs font-semibold tabular-nums text-muted-foreground"
         >
           {numero}
         </span>

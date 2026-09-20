@@ -15,6 +15,8 @@ import AbasGestao from '@/components/gestao/AbasGestao';
 import AreaComPainel from '@/components/gestao/AreaComPainel';
 import SeloSituacao, { ValorIndisponivel } from '@/components/gestao/SeloSituacao';
 import { BlocoDoPainel } from '@/components/gestao/ListaDeCampos';
+import EstadoVazio from '@/components/shared/EstadoVazio';
+import SeloPraefectusIA from '@/components/shared/SeloPraefectusIA';
 
 const CAMPO_LABELS: Record<string, string> = {
   auto_vinculacao_ata: 'Vínculo automático com a ATA',
@@ -39,11 +41,13 @@ const CAMPO_LABELS: Record<string, string> = {
   alerta_aditivo_quantidade: 'Alerta — Aditivo de Quantidade',
 };
 
-const ORIGEM_META: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: any }> = {
-  ia_extracao: { label: 'IA — Extração', variant: 'secondary', icon: Sparkles },
-  recalculo_saldo: { label: 'Recálculo automático', variant: 'outline', icon: Calculator },
-  recalculo_consumo_ata: { label: 'Consumo da ATA', variant: 'outline', icon: Calculator },
-  alerta_limite_legal: { label: 'Alerta legal (Lei 14.133/21)', variant: 'destructive', icon: AlertTriangle },
+// Selos suaves do Design System v3 (trio tint/ink/line): IA em `ia`, rotina
+// em `muted`, alerta legal em `danger` — nunca a pílula vermelha sólida.
+const ORIGEM_META: Record<string, { label: string; variant: 'ia' | 'muted' | 'danger' | 'outline'; icon: any }> = {
+  ia_extracao: { label: 'IA — Extração', variant: 'ia', icon: Sparkles },
+  recalculo_saldo: { label: 'Recálculo automático', variant: 'muted', icon: Calculator },
+  recalculo_consumo_ata: { label: 'Consumo da ATA', variant: 'muted', icon: Calculator },
+  alerta_limite_legal: { label: 'Alerta legal (Lei 14.133/21)', variant: 'danger', icon: AlertTriangle },
 };
 
 /**
@@ -202,8 +206,8 @@ export default function ContratoIaAuditoriaPanel({
    */
   const metaDaOrigem = (r: AuditoriaRow) =>
     r.campo?.startsWith('alerta_ata_')
-      ? { label: 'Alerta legal (Decreto 11.462/23)', variant: 'destructive' as const, icon: AlertTriangle }
-      : ORIGEM_META[r.origem] || { label: r.origem, variant: 'outline' as const, icon: ScrollText };
+      ? { label: 'Alerta legal (Decreto 11.462/23)', variant: 'danger' as const, icon: AlertTriangle }
+      : ORIGEM_META[r.origem] || { label: r.origem, variant: 'muted' as const, icon: ScrollText };
 
   /** Situação em texto + ícone + cor — nunca só cor. */
   const situacaoDoEvento = (r: AuditoriaRow) =>
@@ -242,13 +246,13 @@ export default function ContratoIaAuditoriaPanel({
         </BlocoDoPainel>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <div className="g-cartao p-3">
+          <div className="rounded-lg border border-border bg-card p-3">
             <p className="g-meta text-muted-foreground">
               {isAlerta ? 'Limite legal' : 'Antes (contrato atual)'}
             </p>
             <p className="g-corpo mt-1 break-words">{formatVal(r.campo, r.valor_anterior)}</p>
           </div>
-          <div className={`g-cartao p-3 ${isAlerta ? 'border-destructive-line bg-destructive-tint' : 'border-primary/40'}`}>
+          <div className={`rounded-lg border p-3 ${isAlerta ? 'border-destructive-line bg-destructive-tint' : 'border-primary-line bg-primary-tint'}`}>
             <p className="g-meta text-muted-foreground">
               {isAlerta ? 'Situação detectada' : 'Proposto (novo aditivo)'}
             </p>
@@ -261,7 +265,7 @@ export default function ContratoIaAuditoriaPanel({
         <BlocoDoPainel titulo="Documento fonte">
           {r.arquivo_nome ? (
             <p className={`g-corpo inline-flex items-center gap-1.5 ${arquivoDisponivel ? '' : 'text-warning-ink'}`}>
-              {arquivoDisponivel ? <FileText className="h-4 w-4 shrink-0" /> : <FileX className="h-4 w-4 shrink-0" />}
+              {arquivoDisponivel ? <FileText aria-hidden="true" className="h-4 w-4 shrink-0" /> : <FileX aria-hidden="true" className="h-4 w-4 shrink-0" />}
               <span className={arquivoDisponivel ? '' : 'line-through opacity-80'}>{r.arquivo_nome}</span>
               {!arquivoDisponivel && (
                 // Sem o aviso, a linha exibe o nome de um PDF que já não está
@@ -277,11 +281,11 @@ export default function ContratoIaAuditoriaPanel({
 
         <div className="flex flex-wrap gap-2">
           <Button size="sm" variant="outline" className="g-controle" onClick={() => setEventoEmConferencia(r)}>
-            <Eye className="mr-1.5 h-3.5 w-3.5" /> Conferir alteração
+            <Eye aria-hidden="true" /> Conferir alteração
           </Button>
           {aoVerDocumento && arquivoDisponivel && (
             <Button size="sm" variant="outline" className="g-controle" onClick={() => aoVerDocumento(r.arquivo_id!)}>
-              <FileText className="mr-1.5 h-3.5 w-3.5" /> Ver documento
+              <FileText aria-hidden="true" /> Ver documento
             </Button>
           )}
         </div>
@@ -290,12 +294,13 @@ export default function ContratoIaAuditoriaPanel({
   })();
 
   return (
-    <Card className="g-cartao p-4">
+    <Card className="p-5">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          <Sparkles className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-          <h3 className="g-titulo-secao text-foreground">Auditoria &amp; Recálculos Automáticos</h3>
-          <Badge variant="secondary">{rows.length}</Badge>
+          <Sparkles className="h-4 w-4 shrink-0 text-teal" aria-hidden="true" />
+          <h3 className="text-base font-semibold leading-6 text-foreground">Auditoria &amp; Recálculos Automáticos</h3>
+          <Badge variant="muted">{rows.length}</Badge>
+          <SeloPraefectusIA />
           {counts.alertas > 0 && (
             <SeloSituacao tom="critico">
               {counts.alertas} alerta{counts.alertas > 1 ? 's' : ''} legal{counts.alertas > 1 ? 'is' : ''}
@@ -309,18 +314,18 @@ export default function ContratoIaAuditoriaPanel({
               size="sm"
               onClick={handleReprocessarTodos}
               disabled={reprocessando}
-              className="shrink-0 gap-1"
+              className="shrink-0"
               title="Reprocessar todos os contratos: limpa alertas indevidos de aditivos de prazo/vigência e recalcula conforme Lei 14.133/21"
             >
-              {reprocessando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+              {reprocessando ? <Loader2 aria-hidden="true" className="animate-spin" /> : <Wand2 aria-hidden="true" />}
               <span className="hidden whitespace-nowrap sm:inline">Reprocessar aditivos</span>
             </Button>
           )}
-          <Button variant="ghost" size="sm" onClick={load} disabled={loading} className="shrink-0" aria-label="Atualizar lista" title="Atualizar lista">
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+          <Button variant="ghost" size="icon-sm" onClick={load} disabled={loading} className="shrink-0" aria-label="Atualizar lista" title="Atualizar lista">
+            {loading ? <Loader2 aria-hidden="true" className="animate-spin" /> : <RefreshCw aria-hidden="true" />}
           </Button>
-          <Button variant="ghost" size="sm" onClick={alternarRecolhido} className="shrink-0"
-            title={recolhido ? 'Abrir a lista' : 'Recolher a lista'} aria-expanded={!recolhido}>
+          <Button variant="ghost" size="icon-sm" onClick={alternarRecolhido} className="shrink-0"
+            title={recolhido ? 'Abrir a lista' : 'Recolher a lista'} aria-label={recolhido ? 'Abrir a lista' : 'Recolher a lista'} aria-expanded={!recolhido}>
             <IconeRecolher aberto={!recolhido} className="h-4 w-4" />
           </Button>
         </div>
@@ -346,9 +351,7 @@ export default function ContratoIaAuditoriaPanel({
               <Skeleton className="h-11 w-full" />
             </div>
           ) : filtered.length === 0 ? (
-            <div className="g-corpo py-6 text-center text-muted-foreground">
-              Nenhum evento registrado nesta categoria.
-            </div>
+            <EstadoVazio tamanho="compacto" titulo="Nenhum evento registrado nesta categoria." />
           ) : (
             // A tabela da referência — Data · Evento · Origem · Responsável ·
             // Situação —, com o comparativo no painel ao lado. Antes eram
@@ -360,16 +363,16 @@ export default function ContratoIaAuditoriaPanel({
               tituloPainel="Comparar alteração"
               aoFechar={() => setEventoSelecionado(null)}
             >
-              <div className="max-h-[28rem] overflow-y-auto rounded-[var(--g-raio)] border">
+              <div className="max-h-[28rem] overflow-y-auto rounded-lg border border-border">
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="g-meta whitespace-nowrap">Data</TableHead>
-                        <TableHead className="g-meta whitespace-nowrap">Evento</TableHead>
-                        <TableHead className="g-meta whitespace-nowrap">Origem</TableHead>
-                        <TableHead className="g-meta whitespace-nowrap">Responsável</TableHead>
-                        <TableHead className="g-meta whitespace-nowrap">Situação</TableHead>
+                        <TableHead className="whitespace-nowrap">Data</TableHead>
+                        <TableHead className="whitespace-nowrap">Evento</TableHead>
+                        <TableHead className="whitespace-nowrap">Origem</TableHead>
+                        <TableHead className="whitespace-nowrap">Responsável</TableHead>
+                        <TableHead className="whitespace-nowrap">Situação</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -386,10 +389,10 @@ export default function ContratoIaAuditoriaPanel({
                             onClick={() => setEventoSelecionado(r)}
                             className={`cursor-pointer ${selecionado ? 'border-l-2 border-l-primary' : ''}`}
                           >
-                            <TableCell className="g-meta whitespace-nowrap tabular-nums text-muted-foreground">
+                            <TableCell className="whitespace-nowrap tabular-nums text-muted-foreground">
                               {new Date(r.created_at).toLocaleString('pt-BR')}
                             </TableCell>
-                            <TableCell className="g-corpo max-w-[18rem]">
+                            <TableCell className="max-w-[18rem]">
                               <span className="block truncate font-medium text-foreground">
                                 {CAMPO_LABELS[r.campo] || r.campo}
                               </span>
@@ -405,13 +408,13 @@ export default function ContratoIaAuditoriaPanel({
                                 </span>
                               )}
                             </TableCell>
-                            <TableCell className="g-meta whitespace-nowrap">
-                              <Badge variant={meta.variant} className="g-meta gap-1">
+                            <TableCell className="whitespace-nowrap">
+                              <Badge variant={meta.variant} className="gap-1">
                                 <meta.icon className="h-3 w-3" aria-hidden="true" />
                                 {meta.label}
                               </Badge>
                             </TableCell>
-                            <TableCell className="g-meta whitespace-nowrap text-muted-foreground">
+                            <TableCell className="whitespace-nowrap text-muted-foreground">
                               {responsavel ? (
                                 <span className="inline-flex items-center gap-1.5">
                                   <IconeResponsavel className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
@@ -421,7 +424,7 @@ export default function ContratoIaAuditoriaPanel({
                                 <ValorIndisponivel razao="Origem não catalogada" />
                               )}
                             </TableCell>
-                            <TableCell className="g-meta whitespace-nowrap">
+                            <TableCell className="whitespace-nowrap">
                               <SeloSituacao tom={situacao.tom} explicacao={situacao.explicacao}>
                                 {situacao.rotulo}
                               </SeloSituacao>

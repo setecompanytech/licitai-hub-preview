@@ -8,7 +8,7 @@ import { MoneyInput } from '@/components/ui/money-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -19,7 +19,7 @@ import {
   comecarReleitura, progredirReleitura, terminarReleitura,
 } from '@/lib/contratos/releitura';
 import {
-  Upload, Download, FileText, Trash2, Pencil, Loader2, File, DollarSign, Package, Calendar, Layers, FilePlus2, RefreshCw, Repeat, Eye, Sparkles
+  Upload, Download, FileText, Trash2, Pencil, Loader2, File, DollarSign, Package, Calendar, Layers, FilePlus2, RefreshCw, Repeat, Eye, Sparkles, MoreHorizontal
 } from 'lucide-react';
 import DocumentDetectionDialog, { type DetectionResult } from './DocumentDetectionDialog';
 import { confrontarContratoComAta, type ConfrontoComAta } from '@/lib/contratos/confronto';
@@ -34,6 +34,11 @@ import AreaComPainel from '@/components/gestao/AreaComPainel';
 import FaixaIndicadores from '@/components/gestao/FaixaIndicadores';
 import { ValorIndisponivel } from '@/components/gestao/SeloSituacao';
 import ListaDeCampos, { BlocoDoPainel } from '@/components/gestao/ListaDeCampos';
+import { Skeleton } from '@/components/ui/skeleton';
+import EstadoVazio from '@/components/shared/EstadoVazio';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 const logger = createLogger('ContratoArquivos');
 
@@ -66,7 +71,7 @@ const fmtQty = (v: number) => new Intl.NumberFormat('pt-BR').format(v);
 
 // Tipos disponíveis para CONTRATOS ADMINISTRATIVOS
 const TIPOS_ARQUIVO_CONTRATO: Record<string, { label: string; color: string; isAditivo?: boolean; tipoAditivo?: string; semLimite?: boolean }> = {
-  contrato_original: { label: 'Contrato Original', color: 'bg-foreground/10 text-foreground' },
+  contrato_original: { label: 'Contrato Original', color: 'bg-muted text-foreground' },
   ata_srp: { label: 'ATA SRP (referência)', color: 'bg-warning-tint text-warning-ink' },
   // ── O rótulo é o INSTITUTO e o ARTIGO ────────────────────────────────────
   //
@@ -1395,10 +1400,10 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
    * componente — trocar de subaba no meio do preenchimento não perde nada.
    */
   const areaDeRegistro = (
-    <Card className="g-cartao p-4 space-y-4">
-      <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3">
-        <div className="flex-1">
-          <Label className="g-meta font-semibold mb-1 block">Registro de Documento / Aditivo</Label>
+    <Card className="space-y-4 p-5">
+      <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-end">
+        <div className="flex-1 space-y-1.5">
+          <Label className="block">Registro de Documento / Aditivo</Label>
           <Select value={uploadTipo} onValueChange={(v) => { setUploadTipo(v); setPendingFile(null); setAditivoForm(emptyAditivoForm); }}>
             <SelectTrigger className="w-full sm:w-[260px]">
               <SelectValue />
@@ -1419,7 +1424,7 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
           )}
           {TIPOS_ARQUIVO[uploadTipo]?.semLimite && (
             <p className="g-meta text-warning-ink mt-1 flex items-center gap-1">
-              <RefreshCw className="w-3 h-3" />
+              <RefreshCw aria-hidden="true" className="h-3 w-3 shrink-0" />
               Não sujeito ao limite de 25% do art. 125, Lei 14.133/21.
             </p>
           )}
@@ -1456,7 +1461,7 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
             size="sm"
             className="g-controle"
           >
-            {uploading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Upload className="w-4 h-4 mr-2" />}
+            {uploading ? <Loader2 aria-hidden="true" className="animate-spin" /> : <Upload aria-hidden="true" />}
             Enviar Arquivo
           </Button>
         </div>
@@ -1464,15 +1469,15 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
 
       {/* Aditivo detail fields - shown when aditivo type selected */}
       {showAditivoFields && (
-        <div className="border rounded-[var(--g-raio)] p-4 space-y-4 bg-muted/30">
-          <p className="g-meta font-semibold text-muted-foreground">Dados do Aditivo {pendingFile && <Badge variant="outline" className="ml-2 g-meta">Arquivo: {pendingFile.name}</Badge>}</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <Label className="g-meta">Nº/Identificação</Label>
+        <div className="space-y-4 rounded-lg border border-border bg-secondary p-4">
+          <p className="text-sm font-semibold text-foreground">Dados do Aditivo {pendingFile && <Badge variant="muted" className="ml-2">Arquivo: {pendingFile.name}</Badge>}</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label>Nº/Identificação</Label>
               <Input value={aditivoForm.numero_aditivo} onChange={(e) => setAditivoForm(f => ({ ...f, numero_aditivo: e.target.value }))} placeholder="1º Aditivo" />
             </div>
-            <div>
-              <Label className="g-meta">Data Assinatura</Label>
+            <div className="space-y-1.5">
+              <Label>Data Assinatura</Label>
               <Input type="date" value={aditivoForm.data_assinatura} onChange={(e) => setAditivoForm(f => ({ ...f, data_assinatura: e.target.value }))} />
             </div>
 
@@ -1480,22 +1485,22 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
               <>
                 {/* Calculator for reequilíbrio types */}
                 {TIPOS_ARQUIVO_SEM_LIMITE.includes(uploadTipo) && (
-                  <div className="sm:col-span-2 rounded-[var(--g-raio)] border border-warning-line bg-warning-tint p-3 space-y-2">
+                  <div className="space-y-3 rounded-lg border border-warning-line bg-warning-tint p-4 sm:col-span-2">
                     <p className="g-meta font-semibold text-warning-ink flex items-center gap-1">
-                      <RefreshCw className="w-3 h-3" /> Calculadora de Reequilíbrio
+                      <RefreshCw aria-hidden="true" className="h-3 w-3 shrink-0" /> Calculadora de Reequilíbrio
                     </p>
                     {precificacaoMargem !== null && (
                       <p className="g-meta text-warning-ink">
                         Margem média da precificação vinculada: <strong>{precificacaoMargem}%</strong>
                       </p>
                     )}
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <Label className="g-meta text-muted-foreground">Custo atual (R$/un)</Label>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <Label>Custo atual (R$/un)</Label>
                         <MoneyInput value={parseFloat(calcCustoAtual) || 0} onValueChange={v => setCalcCustoAtual(String(v))} placeholder="R$ 0,00" />
                       </div>
-                      <div>
-                        <Label className="g-meta text-muted-foreground">Novo custo (R$/un)</Label>
+                      <div className="space-y-1.5">
+                        <Label>Novo custo (R$/un)</Label>
                         <MoneyInput value={parseFloat(calcCustoNovo) || 0} onValueChange={v => setCalcCustoNovo(String(v))} placeholder="R$ 0,00" />
                       </div>
                     </div>
@@ -1506,7 +1511,7 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
                       const precoNovo = (parseFloat(calcCustoNovo) || 0) * markup;
                       const diferenca = precoNovo - precoAtual;
                       return (
-                        <div className="flex items-center gap-3 g-meta flex-wrap">
+                        <div className="flex flex-wrap items-center gap-3 text-xs">
                           <span className="text-muted-foreground">Preço atual: <strong>{fmt(precoAtual)}</strong></span>
                           <span className="text-muted-foreground">Novo preço: <strong>{fmt(precoNovo)}</strong></span>
                           <span className={diferenca >= 0 ? 'text-success-ink font-semibold' : 'text-destructive-ink font-semibold'}>
@@ -1516,7 +1521,7 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
                             type="button"
                             size="sm"
                             variant="outline"
-                            className="g-meta h-6 px-2 border-border text-primary"
+                            className="text-primary"
                             onClick={() => setAditivoForm(f => ({ ...f, valor_acrescimo: diferenca > 0 ? String(diferenca) : '0', valor_supressao: diferenca < 0 ? String(Math.abs(diferenca)) : '0' }))}
                           >
                             Aplicar
@@ -1526,12 +1531,12 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
                     })()}
                   </div>
                 )}
-                <div>
-                  <Label className="g-meta">Valor Acréscimo (R$)</Label>
+                <div className="space-y-1.5">
+                  <Label>Valor Acréscimo (R$)</Label>
                   <MoneyInput value={parseFloat(aditivoForm.valor_acrescimo) || 0} onValueChange={v => setAditivoForm(f => ({ ...f, valor_acrescimo: String(v) }))} placeholder="R$ 0,00" />
                 </div>
-                <div>
-                  <Label className="g-meta">Valor Supressão (R$)</Label>
+                <div className="space-y-1.5">
+                  <Label>Valor Supressão (R$)</Label>
                   <MoneyInput value={parseFloat(aditivoForm.valor_supressao) || 0} onValueChange={v => setAditivoForm(f => ({ ...f, valor_supressao: String(v) }))} placeholder="R$ 0,00" />
                 </div>
               </>
@@ -1539,39 +1544,39 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
 
             {showQtyFields(uploadTipo) && (
               <>
-                <div>
-                  <Label className="g-meta">Qtde Acréscimo</Label>
+                <div className="space-y-1.5">
+                  <Label>Qtde Acréscimo</Label>
                   <Input type="number" step="1" value={aditivoForm.quantidade_acrescimo} onChange={(e) => setAditivoForm(f => ({ ...f, quantidade_acrescimo: e.target.value }))} placeholder="0" />
                 </div>
-                <div>
-                  <Label className="g-meta">Qtde Supressão</Label>
+                <div className="space-y-1.5">
+                  <Label>Qtde Supressão</Label>
                   <Input type="number" step="1" value={aditivoForm.quantidade_supressao} onChange={(e) => setAditivoForm(f => ({ ...f, quantidade_supressao: e.target.value }))} placeholder="0" />
                 </div>
               </>
             )}
 
             {(showDateField(uploadTipo) || isAditivoType(uploadTipo)) && (
-              <div>
-                <Label className="g-meta">Nova Data Fim (se prorrogação)</Label>
+              <div className="space-y-1.5">
+                <Label>Nova Data Fim (se prorrogação)</Label>
                 <Input type="date" value={aditivoForm.nova_data_fim} onChange={(e) => setAditivoForm(f => ({ ...f, nova_data_fim: e.target.value }))} />
               </div>
             )}
 
-            <div className="sm:col-span-2">
-              <Label className="g-meta">Justificativa / Fundamentação</Label>
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label>Justificativa / Fundamentação</Label>
               <Textarea value={aditivoForm.justificativa} onChange={(e) => setAditivoForm(f => ({ ...f, justificativa: e.target.value }))} rows={2} placeholder="Fundamentação legal do aditivo" />
             </div>
-            <div className="sm:col-span-2">
-              <Label className="g-meta">Observações</Label>
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label>Observações</Label>
               <Textarea value={aditivoForm.observacoes} onChange={(e) => setAditivoForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} />
             </div>
           </div>
 
           {/* Live preview */}
           {(showValueFields(uploadTipo) || showQtyFields(uploadTipo)) && (
-            <Card className="p-3 bg-muted/50">
+            <Card className="bg-secondary p-3 shadow-none">
               <p className="g-meta text-muted-foreground mb-1 font-medium">Resumo do Aditivo</p>
-              <div className="flex flex-wrap gap-4 g-meta">
+              <div className="flex flex-wrap gap-4 text-xs">
                 {showValueFields(uploadTipo) && (
                   <span className={`font-semibold ${(parseFloat(aditivoForm.valor_acrescimo) || 0) - (parseFloat(aditivoForm.valor_supressao) || 0) >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>
                     Saldo Valor: {fmt((parseFloat(aditivoForm.valor_acrescimo) || 0) - (parseFloat(aditivoForm.valor_supressao) || 0))}
@@ -1591,7 +1596,7 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
               Cancelar
             </Button>
             <Button size="sm" className="g-controle" onClick={handleConfirmAditivo} disabled={uploading}>
-              {uploading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+              {uploading && <Loader2 aria-hidden="true" className="animate-spin" />}
               {pendingFile ? 'Enviar e Registrar Aditivo' : 'Registrar Aditivo (sem arquivo)'}
             </Button>
           </div>
@@ -1613,11 +1618,11 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
         <BlocoDoPainel
           titulo={
             <span className="inline-flex items-center gap-2">
-              <span className="rounded-[var(--g-raio)] bg-muted p-1.5"><Icon className="h-4 w-4" aria-hidden="true" /></span>
+              <span className="rounded-md bg-muted p-1.5"><Icon className="h-4 w-4" aria-hidden="true" /></span>
               {a.numero_aditivo}
             </span>
           }
-          acao={<Badge variant="outline" className="g-meta">{tipoLabel}</Badge>}
+          acao={<Badge variant="muted">{tipoLabel}</Badge>}
         >
           <ListaDeCampos
             campos={[
@@ -1656,7 +1661,7 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
             ? <p className="g-corpo whitespace-pre-wrap leading-relaxed">{a.justificativa}</p>
             : <ValorIndisponivel razao="Não registrada" />}
           {a.observacoes && (
-            <div className="rounded-[var(--g-raio)] border bg-muted/30 p-3">
+            <div className="rounded-md border border-border bg-secondary p-3">
               <p className="g-meta text-muted-foreground mb-1">Observações</p>
               <p className="g-meta whitespace-pre-wrap">{a.observacoes}</p>
             </div>
@@ -1675,9 +1680,9 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
               title="Visualizar o documento deste aditivo"
               className="g-corpo inline-flex items-center gap-1.5 text-primary hover:underline"
             >
-              <FileText className="w-4 h-4 shrink-0" />
+              <FileText aria-hidden="true" className="h-4 w-4 shrink-0" />
               <span className="truncate">{arq.nome_arquivo}</span>
-              <Eye className="w-4 h-4 shrink-0" />
+              <Eye aria-hidden="true" className="h-4 w-4 shrink-0" />
             </button>
           ) : (
             <div className="flex flex-col gap-2">
@@ -1690,7 +1695,7 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
                   toast.success('Arquivo vinculado ao aditivo.');
                   loadData();
                 }}>
-                  <SelectTrigger className="g-controle rounded-[var(--g-raio)]">
+                  <SelectTrigger className="g-controle">
                     <SelectValue placeholder="Vincular arquivo…" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1707,9 +1712,9 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
         </BlocoDoPainel>
 
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="outline" className="g-controle text-destructive-ink"
+          <Button size="sm" variant="outline" className="g-controle text-destructive-ink hover:bg-destructive-tint hover:text-destructive-ink"
             onClick={() => { handleDeleteAditivo(a.id); setAditivoSelecionado(null); }}>
-            <Trash2 className="w-3.5 h-3.5 mr-1.5" /> Excluir termo
+            <Trash2 aria-hidden="true" /> Excluir termo
           </Button>
         </div>
       </div>
@@ -1755,31 +1760,45 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
           />
 
           {loading ? (
-            <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+            <Card className="overflow-hidden" role="status" aria-busy="true">
+              <span className="sr-only">Carregando documentos…</span>
+              <div className="flex flex-col gap-px bg-border">
+                {Array.from({ length: 4 }, (_, i) => (
+                  <div key={i} className="flex items-center gap-4 bg-card px-4 py-3">
+                    <Skeleton className="h-4 w-1/3" />
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="ml-auto h-4 w-16" />
+                  </div>
+                ))}
+              </div>
+            </Card>
           ) : arquivos.length === 0 ? (
-            <Card className="g-cartao p-8 text-center">
-              <File className="w-10 h-10 text-muted-foreground/30 mx-auto mb-2" />
-              <p className="g-corpo text-muted-foreground">Nenhum documento anexado a este contrato</p>
-              <p className="g-meta text-muted-foreground mt-1">Envie o contrato original, aditivos e outros documentos.</p>
+            <Card>
+              <EstadoVazio
+                tamanho="compacto"
+                icone={<File />}
+                titulo="Nenhum documento anexado a este contrato"
+                descricao="Envie o contrato original, aditivos e outros documentos."
+              />
             </Card>
           ) : arquivosVisiveis.length === 0 ? (
-            <Card className="g-cartao p-8 text-center g-corpo text-muted-foreground">
-              Nenhum documento corresponde à busca “{buscaArquivo}”.
+            <Card>
+              <EstadoVazio tamanho="compacto" titulo={<>Nenhum documento corresponde à busca “{buscaArquivo}”.</>} />
             </Card>
           ) : (
             /* Os documentos eram cartões empilhados de ~90px cada: dez anexos
                davam quase uma tela inteira só de molduras. Em tabela, a mesma
                informação — nome, tipo, tamanho, data, descrição — cabe em
                linhas de 44px, e as seis ações continuam todas na linha. */
-            <div className="rounded-[var(--g-raio)] border overflow-x-auto">
+            <div className="overflow-x-auto rounded-lg border border-border bg-card">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="g-meta whitespace-nowrap">Documento</TableHead>
-                    <TableHead className="g-meta whitespace-nowrap">Tipo</TableHead>
-                    <TableHead className="g-meta text-right whitespace-nowrap">Tamanho</TableHead>
-                    <TableHead className="g-meta whitespace-nowrap">Data</TableHead>
-                    <TableHead className="g-meta sticky right-0 bg-card border-l border-border">Ações</TableHead>
+                    <TableHead className="whitespace-nowrap">Documento</TableHead>
+                    <TableHead className="whitespace-nowrap">Tipo</TableHead>
+                    <TableHead className="whitespace-nowrap text-right">Tamanho</TableHead>
+                    <TableHead className="whitespace-nowrap">Data</TableHead>
+                    <TableHead className="sticky right-0 border-l border-border bg-secondary">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1787,15 +1806,15 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
                     const tipoConfig = TIPOS_ARQUIVO[arq.tipo] || TIPOS_ARQUIVO.outro;
                     return (
                       <TableRow key={arq.id}>
-                        <TableCell className="g-corpo max-w-[24rem]">
+                        <TableCell className="max-w-[24rem]">
                           <div className="flex items-start gap-2">
-                            <FileText className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" aria-hidden="true" />
+                            <FileText className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                             <div className="min-w-0">
                               <button
                                 type="button"
                                 onClick={() => handleVisualizar(arq)}
                                 title="Visualizar em tela"
-                                className="block w-full truncate text-left font-medium text-foreground hover:text-primary hover:underline"
+                                className="block w-full truncate rounded text-left font-medium text-foreground hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                               >
                                 {arq.nome_arquivo}
                               </button>
@@ -1809,54 +1828,75 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
                                   espera correta é indistinguível de travamento. */}
                               {releituraDe(arq.id) && (
                                 <p className="g-meta text-primary mt-0.5 flex items-center gap-1.5">
-                                  <Loader2 className="w-3 h-3 animate-spin shrink-0" />
+                                  <Loader2 aria-hidden="true" className="h-3 w-3 shrink-0 animate-spin" />
                                   {releituraDe(arq.id)!.mensagem}
                                 </p>
                               )}
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="g-meta whitespace-nowrap">
-                          <Badge className={`g-meta ${tipoConfig.color}`}>{tipoConfig.label}</Badge>
+                        <TableCell className="whitespace-nowrap">
+                          <Badge className={tipoConfig.color}>{tipoConfig.label}</Badge>
                         </TableCell>
-                        <TableCell className="g-meta text-right whitespace-nowrap tabular-nums text-muted-foreground">
+                        <TableCell className="whitespace-nowrap text-right tabular-nums text-muted-foreground">
                           {formatBytes(arq.tamanho_bytes)}
                         </TableCell>
-                        <TableCell className="g-meta whitespace-nowrap tabular-nums text-muted-foreground">
+                        <TableCell className="whitespace-nowrap tabular-nums text-muted-foreground">
                           {new Date(arq.created_at).toLocaleDateString('pt-BR')}
                         </TableCell>
-                        <TableCell className="sticky right-0 bg-card border-l border-border">
+                        <TableCell className="sticky right-0 border-l border-border bg-card">
+                          {/* Seis ações numa linha viravam uma fileira de ícones
+                              cinzentos. O Design System v3 pede até três à vista e
+                              o resto num menu "⋯": ficam Reler, Visualizar e Baixar;
+                              Substituir, Editar e Excluir moram no menu — mesmos
+                              handlers, mesmos `disabled` e `title`. */}
                           <div className="flex gap-0.5">
                             {/* Reler o que já está guardado. Sem isto, alimentar o
                                 Dashboard com o que a leitura passou a extrair exigia
                                 APAGAR o documento e anexá-lo de novo — destruir o
                                 registro do dossiê para reprocessar um arquivo que nunca
                                 saiu do lugar. */}
-                            <Button size="icon" variant="ghost" className="h-8 w-8"
+                            <Button size="icon-sm" variant="ghost"
                               onClick={() => handleReler(arq)}
                               disabled={!!releituraDe(arq.id) || autoridadeDoArquivo(arq.tipo, parentTipoDocumento ?? 'contrato') === 'nenhuma'}
                               title={autoridadeDoArquivo(arq.tipo, parentTipoDocumento ?? 'contrato') === 'nenhuma'
                                 ? 'Empenho, ordem de fornecimento e publicação não alimentam os dados do contrato — só o instrumento e seus aditivos'
-                                : 'Reler com a IA e preencher os campos em branco do contrato'}>
+                                : 'Reler com a IA e preencher os campos em branco do contrato'}
+                              aria-label="Reler com a IA">
                               {releituraDe(arq.id)
-                                ? <Loader2 className="w-4 h-4 animate-spin" />
-                                : <Sparkles className="w-4 h-4" />}
+                                ? <Loader2 aria-hidden="true" className="animate-spin" />
+                                : <Sparkles aria-hidden="true" className="text-teal" />}
                             </Button>
-                            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleVisualizar(arq)} title="Visualizar em tela">
-                              <Eye className="w-4 h-4" />
+                            <Button size="icon-sm" variant="ghost" onClick={() => handleVisualizar(arq)} title="Visualizar em tela" aria-label="Visualizar em tela">
+                              <Eye aria-hidden="true" />
                             </Button>
-                            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleDownload(arq)} title="Baixar">
-                              <Download className="w-4 h-4" />
+                            <Button size="icon-sm" variant="ghost" onClick={() => handleDownload(arq)} title="Baixar" aria-label="Baixar">
+                              <Download aria-hidden="true" />
                             </Button>
-                            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleReplaceFile(arq)} disabled={replacingId === arq.id} title="Substituir arquivo + reextrair valores">
-                              {replacingId === arq.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Repeat className="w-4 h-4" />}
-                            </Button>
-                            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(arq)} title="Editar">
-                              <Pencil className="w-4 h-4" />
-                            </Button>
-                            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleDelete(arq)} title="Excluir">
-                              <Trash2 className="w-4 h-4 text-destructive-ink" />
-                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button size="icon-sm" variant="ghost" aria-label={`Mais ações de ${arq.nome_arquivo}`}>
+                                  <MoreHorizontal aria-hidden="true" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onSelect={() => handleReplaceFile(arq)} disabled={replacingId === arq.id} title="Substituir arquivo + reextrair valores">
+                                  {replacingId === arq.id ? <Loader2 aria-hidden="true" className="animate-spin" /> : <Repeat aria-hidden="true" />}
+                                  Substituir arquivo + reextrair valores
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => openEdit(arq)} title="Editar">
+                                  <Pencil aria-hidden="true" /> Editar
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onSelect={() => handleDelete(arq)}
+                                  title="Excluir"
+                                  className="text-destructive-ink focus:text-destructive-ink [&>svg]:text-destructive-ink"
+                                >
+                                  <Trash2 aria-hidden="true" /> Excluir
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -1891,15 +1931,26 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
           {areaDeRegistro}
 
           {loading ? (
-            <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+            <Card className="overflow-hidden" role="status" aria-busy="true">
+              <span className="sr-only">Carregando termos aditivos…</span>
+              <div className="flex flex-col gap-px bg-border">
+                {Array.from({ length: 3 }, (_, i) => (
+                  <div key={i} className="flex items-center gap-4 bg-card px-4 py-3">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-4 w-1/4" />
+                    <Skeleton className="ml-auto h-4 w-20" />
+                  </div>
+                ))}
+              </div>
+            </Card>
           ) : aditivos.length === 0 ? (
-            <Card className="g-cartao p-8 text-center">
-              <FilePlus2 className="w-10 h-10 text-muted-foreground/30 mx-auto mb-2" />
-              <p className="g-corpo text-muted-foreground">Nenhum termo aditivo registrado</p>
-              <p className="g-meta text-muted-foreground mt-1">
-                Escolha um tipo de aditivo acima e envie o termo — apostilamentos e aditivos moram
-                na mesma lista, distinguidos pelo tipo.
-              </p>
+            <Card>
+              <EstadoVazio
+                tamanho="compacto"
+                icone={<FilePlus2 />}
+                titulo="Nenhum termo aditivo registrado"
+                descricao="Escolha um tipo de aditivo acima e envie o termo — apostilamentos e aditivos moram na mesma lista, distinguidos pelo tipo."
+              />
             </Card>
           ) : (
             <AreaComPainel
@@ -1907,17 +1958,17 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
               tituloPainel="Termo aditivo"
               aoFechar={() => setAditivoSelecionado(null)}
             >
-              <div className="rounded-[var(--g-raio)] border overflow-x-auto">
+              <div className="overflow-x-auto rounded-lg border border-border bg-card">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="g-meta whitespace-nowrap">Termo</TableHead>
-                      <TableHead className="g-meta whitespace-nowrap">Tipo</TableHead>
-                      <TableHead className="g-meta text-right whitespace-nowrap">Efeito no valor</TableHead>
-                      <TableHead className="g-meta text-right whitespace-nowrap">Efeito na quantidade</TableHead>
-                      <TableHead className="g-meta whitespace-nowrap">Vigência / assinatura</TableHead>
-                      <TableHead className="g-meta whitespace-nowrap">Documento</TableHead>
-                      <TableHead className="g-meta sticky right-0 bg-card border-l border-border">Ações</TableHead>
+                      <TableHead className="whitespace-nowrap">Termo</TableHead>
+                      <TableHead className="whitespace-nowrap">Tipo</TableHead>
+                      <TableHead className="whitespace-nowrap text-right">Efeito no valor</TableHead>
+                      <TableHead className="whitespace-nowrap text-right">Efeito na quantidade</TableHead>
+                      <TableHead className="whitespace-nowrap">Vigência / assinatura</TableHead>
+                      <TableHead className="whitespace-nowrap">Documento</TableHead>
+                      <TableHead className="sticky right-0 border-l border-border bg-secondary">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1934,12 +1985,12 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
                           data-state={selecionado ? 'selected' : undefined}
                           className={selecionado ? 'border-l-2 border-l-primary' : undefined}
                         >
-                          <TableCell className="g-corpo max-w-[16rem]">
+                          <TableCell className="max-w-[16rem]">
                             <button
                               type="button"
                               onClick={() => setAditivoSelecionado(a.id)}
                               title="Abrir o termo no painel"
-                              className="flex w-full items-center gap-2 text-left font-medium text-foreground hover:text-primary hover:underline"
+                              className="flex w-full items-center gap-2 rounded text-left font-medium text-foreground hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             >
                               <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                               <span className="truncate">{a.numero_aditivo}</span>
@@ -1952,16 +2003,16 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
                                 type="button"
                                 onClick={() => setJustificativaAberta(a)}
                                 title="Ler a justificativa completa"
-                                className="g-meta mt-0.5 block w-full truncate text-left text-muted-foreground hover:text-foreground hover:underline"
+                                className="g-meta mt-0.5 block w-full truncate rounded text-left text-muted-foreground hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                               >
                                 {a.justificativa}
                               </button>
                             )}
                           </TableCell>
-                          <TableCell className="g-meta whitespace-nowrap">
-                            <Badge variant="outline" className="g-meta">{tipoLabel}</Badge>
+                          <TableCell className="whitespace-nowrap">
+                            <Badge variant="muted">{tipoLabel}</Badge>
                           </TableCell>
-                          <TableCell className="g-meta text-right whitespace-nowrap tabular-nums">
+                          <TableCell className="whitespace-nowrap text-right tabular-nums">
                             {(a.valor_acrescimo || 0) > 0 && <div className="text-success-ink">+{fmt(a.valor_acrescimo)}</div>}
                             {(a.valor_supressao || 0) > 0 && <div className="text-destructive-ink">-{fmt(a.valor_supressao)}</div>}
                             {(a.valor_acrescimo || 0) === 0 && (a.valor_supressao || 0) === 0 ? (
@@ -1972,7 +2023,7 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
                               </div>
                             )}
                           </TableCell>
-                          <TableCell className="g-meta text-right whitespace-nowrap tabular-nums">
+                          <TableCell className="whitespace-nowrap text-right tabular-nums">
                             {(a.quantidade_acrescimo || 0) > 0 && <div className="text-success-ink">+{fmtQty(a.quantidade_acrescimo)}</div>}
                             {(a.quantidade_supressao || 0) > 0 && <div className="text-destructive-ink">-{fmtQty(a.quantidade_supressao)}</div>}
                             {(a.quantidade_acrescimo || 0) === 0 && (a.quantidade_supressao || 0) === 0 ? (
@@ -1983,7 +2034,7 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
                               </div>
                             )}
                           </TableCell>
-                          <TableCell className="g-meta whitespace-nowrap tabular-nums text-muted-foreground">
+                          <TableCell className="whitespace-nowrap tabular-nums text-muted-foreground">
                             <div>
                               {a.nova_data_fim
                                 ? `nova vigência: ${new Date(a.nova_data_fim + 'T00:00:00').toLocaleDateString('pt-BR')}`
@@ -1995,7 +2046,7 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
                                 : 'sem data de assinatura'}
                             </div>
                           </TableCell>
-                          <TableCell className="g-meta max-w-[14rem]">
+                          <TableCell className="max-w-[14rem]">
                             {arq ? (
                               <button
                                 type="button"
@@ -2003,22 +2054,22 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
                                 title="Visualizar o documento deste aditivo"
                                 className="inline-flex max-w-full items-center gap-1.5 text-primary hover:underline"
                               >
-                                <FileText className="w-3 h-3 shrink-0" />
+                                <FileText aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
                                 <span className="truncate">{arq.nome_arquivo}</span>
                               </button>
                             ) : (
                               <span className="text-warning-ink">sem arquivo vinculado</span>
                             )}
                           </TableCell>
-                          <TableCell className="sticky right-0 bg-card border-l border-border">
+                          <TableCell className="sticky right-0 border-l border-border bg-card">
                             <div className="flex gap-0.5">
-                              <Button size="icon" variant="ghost" className="h-8 w-8" title="Abrir o termo no painel"
+                              <Button size="icon-sm" variant="ghost" title="Abrir o termo no painel" aria-label="Abrir o termo no painel"
                                 onClick={() => setAditivoSelecionado(a.id)}>
-                                <Eye className="w-4 h-4" />
+                                <Eye aria-hidden="true" />
                               </Button>
-                              <Button size="icon" variant="ghost" className="h-8 w-8" title="Excluir termo"
+                              <Button size="icon-sm" variant="ghost-destructive" title="Excluir termo" aria-label="Excluir termo"
                                 onClick={() => handleDeleteAditivo(a.id)}>
-                                <Trash2 className="w-4 h-4 text-destructive-ink" />
+                                <Trash2 aria-hidden="true" />
                               </Button>
                             </div>
                           </TableCell>
@@ -2039,9 +2090,9 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
 
       {/* Leitura integral da justificativa do termo */}
       <Dialog open={!!justificativaAberta} onOpenChange={(v) => !v && setJustificativaAberta(null)}>
-        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="text-base">
+            <DialogTitle>
               Justificativa — {justificativaAberta?.numero_aditivo || 'Termo Aditivo'}
             </DialogTitle>
           </DialogHeader>
@@ -2049,12 +2100,12 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
             <div className="space-y-3">
               <p className="g-corpo leading-relaxed whitespace-pre-wrap">{justificativaAberta.justificativa}</p>
               {justificativaAberta.observacoes && (
-                <div className="border rounded-md p-3 bg-muted/30 g-meta">
+                <div className="rounded-md border border-border bg-secondary p-3 text-xs">
                   <div className="text-muted-foreground mb-1">Observações</div>
                   <p className="whitespace-pre-wrap">{justificativaAberta.observacoes}</p>
                 </div>
               )}
-              <div className="flex flex-wrap gap-x-4 gap-y-1 g-meta text-muted-foreground">
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                 {justificativaAberta.nova_data_fim && (
                   <span>Nova vigência: {new Date(justificativaAberta.nova_data_fim + 'T00:00:00').toLocaleDateString('pt-BR')}</span>
                 )}
@@ -2070,7 +2121,7 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
       <Dialog open={!!visualizando} onOpenChange={(v) => !v && setVisualizando(null)}>
         <DialogContent className="max-w-5xl h-[85vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle className="text-base truncate pr-8">{visualizando?.nome}</DialogTitle>
+            <DialogTitle className="truncate pr-8">{visualizando?.nome}</DialogTitle>
           </DialogHeader>
           {visualizando && (
             <iframe
@@ -2083,11 +2134,11 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
       </Dialog>
 
       <Dialog open={editDialog.open} onOpenChange={(v) => setEditDialog({ open: v, arquivo: v ? editDialog.arquivo : null })}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Editar Documento</DialogTitle></DialogHeader>
-          <div className="space-y-4 mt-2">
-            <div>
-              <Label className="g-meta">Tipo do Documento</Label>
+          <div className="mt-2 space-y-4">
+            <div className="space-y-1.5">
+              <Label>Tipo do Documento</Label>
               <Select value={editTipo} onValueChange={(v) => {
                 setEditTipo(v);
                 if (isAditivoType(v) && !editLinkedAditivoId) {
@@ -2103,38 +2154,38 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
               </Select>
               {TIPOS_ARQUIVO[editTipo]?.semLimite && (
                 <p className="g-meta text-warning-ink mt-1 flex items-center gap-1">
-                  <RefreshCw className="w-3 h-3" />
+                  <RefreshCw aria-hidden="true" className="h-3 w-3 shrink-0" />
                   Não sujeito ao limite de 25% do art. 125, Lei 14.133/21.
                 </p>
               )}
             </div>
-            <div>
-              <Label className="g-meta">Descrição (opcional)</Label>
+            <div className="space-y-1.5">
+              <Label>Descrição (opcional)</Label>
               <Input value={editDescricao} onChange={(e) => setEditDescricao(e.target.value)} placeholder="Ex: 1º Aditivo de Prazo" />
             </div>
 
             {/* Aditivo fields in edit */}
             {isAditivoType(editTipo) && (
-              <div className="border rounded-[var(--g-raio)] p-4 space-y-3 bg-muted/30">
-                <p className="g-meta font-semibold text-muted-foreground">Dados do Aditivo</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <Label className="g-meta">Nº/Identificação</Label>
+              <div className="space-y-4 rounded-lg border border-border bg-secondary p-4">
+                <p className="text-sm font-semibold text-foreground">Dados do Aditivo</p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label>Nº/Identificação</Label>
                     <Input value={editAditivoForm.numero_aditivo} onChange={(e) => setEditAditivoForm(f => ({ ...f, numero_aditivo: e.target.value }))} placeholder="1º Aditivo" />
                   </div>
-                  <div>
-                    <Label className="g-meta">Data Assinatura</Label>
+                  <div className="space-y-1.5">
+                    <Label>Data Assinatura</Label>
                     <Input type="date" value={editAditivoForm.data_assinatura} onChange={(e) => setEditAditivoForm(f => ({ ...f, data_assinatura: e.target.value }))} />
                   </div>
 
                   {showValueFields(editTipo) && (
                     <>
-                      <div>
-                        <Label className="g-meta">Valor Acréscimo (R$)</Label>
+                      <div className="space-y-1.5">
+                        <Label>Valor Acréscimo (R$)</Label>
                         <MoneyInput value={parseFloat(editAditivoForm.valor_acrescimo) || 0} onValueChange={v => setEditAditivoForm(f => ({ ...f, valor_acrescimo: String(v) }))} placeholder="R$ 0,00" />
                       </div>
-                      <div>
-                        <Label className="g-meta">Valor Supressão (R$)</Label>
+                      <div className="space-y-1.5">
+                        <Label>Valor Supressão (R$)</Label>
                         <MoneyInput value={parseFloat(editAditivoForm.valor_supressao) || 0} onValueChange={v => setEditAditivoForm(f => ({ ...f, valor_supressao: String(v) }))} placeholder="R$ 0,00" />
                       </div>
                     </>
@@ -2142,12 +2193,12 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
 
                   {showQtyFields(editTipo) && (
                     <>
-                      <div>
-                        <Label className="g-meta">Qtde Acréscimo</Label>
+                      <div className="space-y-1.5">
+                        <Label>Qtde Acréscimo</Label>
                         <Input type="number" step="1" value={editAditivoForm.quantidade_acrescimo} onChange={(e) => setEditAditivoForm(f => ({ ...f, quantidade_acrescimo: e.target.value }))} placeholder="0" />
                       </div>
-                      <div>
-                        <Label className="g-meta">Qtde Supressão</Label>
+                      <div className="space-y-1.5">
+                        <Label>Qtde Supressão</Label>
                         <Input type="number" step="1" value={editAditivoForm.quantidade_supressao} onChange={(e) => setEditAditivoForm(f => ({ ...f, quantidade_supressao: e.target.value }))} placeholder="0" />
                       </div>
                     </>
@@ -2155,26 +2206,26 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
 
                   {(showDateField(editTipo) || isAditivoType(editTipo)) && (
                     <div>
-                      <Label className="g-meta">Nova Data Fim (se prorrogação)</Label>
+                      <Label>Nova Data Fim (se prorrogação)</Label>
                       <Input type="date" value={editAditivoForm.nova_data_fim} onChange={(e) => setEditAditivoForm(f => ({ ...f, nova_data_fim: e.target.value }))} />
                     </div>
                   )}
 
-                  <div className="sm:col-span-2">
-                    <Label className="g-meta">Justificativa / Fundamentação</Label>
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label>Justificativa / Fundamentação</Label>
                     <Textarea value={editAditivoForm.justificativa} onChange={(e) => setEditAditivoForm(f => ({ ...f, justificativa: e.target.value }))} rows={2} placeholder="Fundamentação legal do aditivo" />
                   </div>
-                  <div className="sm:col-span-2">
-                    <Label className="g-meta">Observações</Label>
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label>Observações</Label>
                     <Textarea value={editAditivoForm.observacoes} onChange={(e) => setEditAditivoForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} />
                   </div>
                 </div>
 
                 {/* Preview */}
                 {(showValueFields(editTipo) || showQtyFields(editTipo)) && (
-                  <Card className="p-3 bg-muted/50">
+                  <Card className="bg-secondary p-3 shadow-none">
                     <p className="g-meta text-muted-foreground mb-1 font-medium">Resumo do Aditivo</p>
-                    <div className="flex flex-wrap gap-4 g-meta">
+                    <div className="flex flex-wrap gap-4 text-xs">
                       {showValueFields(editTipo) && (
                         <span className={`font-semibold ${(parseFloat(editAditivoForm.valor_acrescimo) || 0) - (parseFloat(editAditivoForm.valor_supressao) || 0) >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>
                           Saldo Valor: {fmt((parseFloat(editAditivoForm.valor_acrescimo) || 0) - (parseFloat(editAditivoForm.valor_supressao) || 0))}
@@ -2191,24 +2242,24 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
               </div>
             )}
 
-            <div>
-              <Label className="g-meta">Substituir arquivo</Label>
+            <div className="space-y-1.5">
+              <Label>Substituir arquivo</Label>
               <div className="mt-1">
                 <input ref={editFileRef} type="file" accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png" className="hidden" onChange={(e) => setEditFile(e.target.files?.[0] || null)} />
                 <Button variant="outline" size="sm" onClick={() => editFileRef.current?.click()}>
-                  <Upload className="w-4 h-4 mr-2" />
+                  <Upload aria-hidden="true" />
                   {editFile ? editFile.name : 'Selecionar novo arquivo'}
                 </Button>
               </div>
               <p className="g-meta text-muted-foreground mt-1">Deixe em branco para manter o arquivo atual.</p>
             </div>
-            <div className="flex justify-end gap-2">
+            <DialogFooter>
               <Button variant="outline" onClick={() => setEditDialog({ open: false, arquivo: null })}>Cancelar</Button>
               <Button onClick={handleSaveEdit} disabled={saving}>
-                {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                {saving && <Loader2 aria-hidden="true" className="animate-spin" />}
                 Salvar
               </Button>
-            </div>
+            </DialogFooter>
           </div>
         </DialogContent>
       </Dialog>

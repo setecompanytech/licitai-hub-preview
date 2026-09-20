@@ -5,6 +5,9 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { MoneyInput } from '@/components/ui/money-input';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { supabase } from '@/integrations/supabase/client';
 import { situacaoDaVigencia, tetoDecenal } from '@/lib/contratos/vigencia';
 import { excessoDeExecucao } from '@/lib/contratos/excesso-de-execucao';
@@ -336,8 +339,31 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
       custoPago, custoComprometido, custoDoFinanceiro, custoPrevistoDoEntregue, desvioDeCusto, excesso, decenal, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, vigencia, prazoDecorrido, fisicoParado, itensAlertaSaldo, alertasSaldoVisiveis, entregaUnicaConcluida, entregaUnicaEmAndamento, pedidosEntregues, pedidosAtivosTotal, perguntarFormaFornecimento, pedidosPorMes, valorGlobalEfetivo, totalAditivoValorAcrescimo, totalAditivoValorSupressao, totalAditivoQtdAcrescimo, totalAditivoQtdSupressao, reajuste, reajusteDevido };
   }, [data]);
 
-  if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
-  if (!calc) return <Card className="p-8 text-center text-muted-foreground">Contrato não encontrado</Card>;
+  if (loading) {
+    // Espera na forma do conteúdo — três indicadores e os dois cartões —, não
+    // um spinner no centro (Design System v3).
+    return (
+      <div role="status" aria-busy="true" className="flex flex-col gap-4">
+        <span className="sr-only">Carregando o resumo do contrato…</span>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Skeleton className="h-24" />
+          <Skeleton className="h-24" />
+          <Skeleton className="h-24" />
+        </div>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Skeleton className="h-64" />
+          <Skeleton className="h-64" />
+        </div>
+      </div>
+    );
+  }
+  if (!calc) {
+    return (
+      <Card>
+        <EstadoVazio tamanho="compacto" titulo="Contrato não encontrado" />
+      </Card>
+    );
+  }
 
   const { c, pedidosAtivos, faturamento, totalCustos, totalCustosTabela, custosDiretos, custoPedidos,
     custoPago, custoComprometido, custoDoFinanceiro, custoPrevistoDoEntregue, desvioDeCusto, excesso,
@@ -620,29 +646,27 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
       </section>
 
       {entregaUnicaEmAndamento && (
-        <div className="rounded-[var(--g-raio)] p-4 border bg-muted border-border nao-imprime">
-          <p className="g-corpo font-semibold text-foreground flex items-center gap-1.5">
-            <CheckCircle2 className="w-4 h-4" /> Entrega única — fornecimento integral pedido, entrega em andamento
-          </p>
-          <p className="g-meta text-muted-foreground mt-1">
+        <Alert className="nao-imprime">
+          <CheckCircle2 aria-hidden="true" />
+          <AlertTitle>Entrega única — fornecimento integral pedido, entrega em andamento</AlertTitle>
+          <AlertDescription className="text-muted-foreground">
             Os pedidos lançados cobrem todo o fornecimento ({pedidosEntregues} de {pedidosAtivosTotal} entregues).
             Saldo esgotado aqui é compromisso, não conclusão: o contrato conclui quando os pedidos forem marcados
             como Entregues, na aba Pedidos.
-          </p>
-        </div>
+          </AlertDescription>
+        </Alert>
       )}
 
       {entregaUnicaConcluida && (
-        <div className="rounded-[var(--g-raio)] p-4 border bg-success-tint border-success-line nao-imprime">
-          <p className="g-corpo font-semibold text-success-ink flex items-center gap-1.5">
-            <CheckCircle2 className="w-4 h-4" /> Entrega única concluída
-          </p>
-          <p className="g-meta text-muted-foreground mt-1">
+        <Alert variant="success" className="nao-imprime">
+          <CheckCircle2 aria-hidden="true" />
+          <AlertTitle>Entrega única concluída</AlertTitle>
+          <AlertDescription>
             O fornecimento integral foi entregue e o saldo se esgotou — aqui isso é conclusão,
             não alerta. Se não restam outras obrigações, o contrato pode ser marcado como
             Encerrado (lápis do Valor Global → status).
-          </p>
-        </div>
+          </AlertDescription>
+        </Alert>
       )}
 
       {/* ── Coluna principal + painel de contexto ────────────────────────────
@@ -661,9 +685,9 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
             <div className="flex flex-col gap-4">
               {/* Os dois cartões lado a lado da referência. */}
               <div className="grid items-start gap-4 lg:grid-cols-2">
-                <Card className="g-cartao flex flex-col gap-3 p-4">
+                <Card className="flex flex-col gap-3 p-5">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h3 className="g-titulo-secao text-foreground">Execução do contrato</h3>
+                    <h3 className="text-base font-semibold leading-6 text-foreground">Execução do contrato</h3>
                     <SeloSituacao
                       tom={pctConsumo >= 100 ? 'critico' : pctConsumo >= 80 ? 'atencao' : 'ativo'}
                       explicacao="Percentual do valor global já consumido pelos pedidos lançados"
@@ -692,7 +716,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
                               className="h-8 w-36 text-sm"
                               autoFocus
                             />
-                            <Button size="icon" className="h-8 w-8 shrink-0" onClick={async () => {
+                            <Button size="icon" className="h-8 w-8 shrink-0" aria-label="Salvar o valor global" onClick={async () => {
                               const newVal = parseFloat(globalInput) || 0;
                               const { error } = await supabase.from('contratos').update({ valor_global: newVal, valor_global_original: newVal } as any).eq('id', contratoId);
                               if (error) { toast.error('Erro ao atualizar'); return; }
@@ -701,9 +725,9 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
                               // Relê o contrato: o gatilho recalcula saldo e consumo.
                               const res = await supabase.from('contratos').select('*').eq('id', contratoId).single();
                               if (res.data) setData(prev => prev ? { ...prev, contrato: res.data } : prev);
-                            }}><Check className="w-3.5 h-3.5" /></Button>
-                            <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={() => setEditingGlobal(false)}>
-                              <X className="w-3.5 h-3.5" />
+                            }}><Check aria-hidden="true" className="h-3.5 w-3.5" /></Button>
+                            <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" aria-label="Cancelar a edição do valor global" onClick={() => setEditingGlobal(false)}>
+                              <X aria-hidden="true" className="h-3.5 w-3.5" />
                             </Button>
                           </span>
                         ) : (
@@ -713,9 +737,10 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
                               <Button
                                 variant="ghost" size="icon" className="h-6 w-6 nao-imprime"
                                 title="Editar o valor global do contrato"
+                                aria-label="Editar o valor global do contrato"
                                 onClick={() => { setEditingGlobal(true); setGlobalInput(String(c.valor_global || 0)); }}
                               >
-                                <Pencil className="w-3 h-3" />
+                                <Pencil aria-hidden="true" className="h-3 w-3" />
                               </Button>
                             )}
                           </span>
@@ -751,7 +776,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
                           <span className="inline-flex items-center gap-2">
                             {data!.itens.length}
                             {itensAlertaSaldo.length > 0 && (
-                              <Badge className="g-meta bg-warning-tint text-warning-ink">
+                              <Badge variant="warning">
                                 {itensAlertaSaldo.length} em alerta
                               </Badge>
                             )}
@@ -767,9 +792,9 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
                   />
                 </Card>
 
-                <Card className="g-cartao flex flex-col gap-3 p-4">
+                <Card className="flex flex-col gap-3 p-5">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h3 className="g-titulo-secao flex items-center gap-2 text-foreground">
+                    <h3 className="flex items-center gap-2 text-base font-semibold leading-6 text-foreground">
                       <ListChecks className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                       Próximas ações
                     </h3>
@@ -823,33 +848,33 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
                   <SecaoRecolhivel
                     id={`contrato-consumo-ata-${contratoId}`}
                     manterNoPapel
-                    classNameTitulo="g-titulo-secao text-foreground"
+                    classNameTitulo="text-base font-semibold leading-6 text-foreground"
                     titulo={<>Consumo da ata</>}
                   >
-                    <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                      <Card className="p-4 border-l-4 border-l-accent">
-                        <div className="g-meta text-muted-foreground mb-1">Consumido pelos contratos derivados</div>
-                        <p className="text-lg font-bold tabular-nums">{fmt(consumoDerivados)}</p>
+                    <div className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-4">
+                      <Card className="flex flex-col gap-1 p-4">
+                        <div className="text-sm font-medium leading-5 text-muted-foreground">Consumido pelos contratos derivados</div>
+                        <p className="text-2xl font-semibold leading-8 tabular-nums text-foreground">{fmt(consumoDerivados)}</p>
                         <p className="g-meta text-muted-foreground">
                           {derivados.length} contrato{derivados.length === 1 ? '' : 's'} · {valorGlobalEfetivo > 0 ? ((consumoDerivados / valorGlobalEfetivo) * 100).toFixed(1) : '0'}% do registrado
                         </p>
                       </Card>
-                      <Card className="p-4 border-l-4 border-l-warning">
-                        <div className="g-meta text-muted-foreground mb-1">Empenhos diretos (entrega única)</div>
+                      <Card className="flex flex-col gap-1 p-4">
+                        <div className="text-sm font-medium leading-5 text-muted-foreground">Empenhos diretos (entrega única)</div>
                         {pedidosAtivos.length > 0 ? (
                           <>
-                            <p className="text-lg font-bold tabular-nums">{fmt(empenhosDiretos)}</p>
+                            <p className="text-2xl font-semibold leading-8 tabular-nums text-foreground">{fmt(empenhosDiretos)}</p>
                             <p className="g-meta text-muted-foreground">{pedidosAtivos.length} empenho{pedidosAtivos.length === 1 ? '' : 's'} consumindo a ata sem contrato</p>
                           </>
                         ) : (
                           <>
-                            <p className="text-lg font-bold text-muted-foreground">—</p>
+                            <p className="text-2xl font-semibold leading-8 text-muted-foreground">—</p>
                             <p className="g-meta text-muted-foreground">nenhum — todo o consumo vem dos contratos</p>
                           </>
                         )}
                       </Card>
-                      <Card className="p-4">
-                        <div className="g-meta text-muted-foreground mb-1">Contratos derivados</div>
+                      <Card className="flex flex-col gap-1 p-4">
+                        <div className="text-sm font-medium leading-5 text-muted-foreground">Contratos derivados</div>
                         {derivados.length === 0 ? (
                           <p className="g-corpo text-muted-foreground">nenhum ainda</p>
                         ) : (
@@ -866,9 +891,9 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
                           </div>
                         )}
                       </Card>
-                      <Card className={`p-4 border-l-4 ${saldoAta > 0.005 ? 'border-l-success' : 'border-l-destructive'}`}>
-                        <div className="g-meta text-muted-foreground mb-1">Saldo da ata</div>
-                        <p className={`text-lg font-bold tabular-nums ${saldoAta > 0.005 ? 'text-success-ink' : saldoAta < -0.005 ? 'text-destructive-ink' : ''}`}>{fmt(saldoAta)}</p>
+                      <Card className="flex flex-col gap-1 p-4">
+                        <div className="text-sm font-medium leading-5 text-muted-foreground">Saldo da ata</div>
+                        <p className={`text-2xl font-semibold leading-8 tabular-nums ${saldoAta > 0.005 ? 'text-success-ink' : saldoAta < -0.005 ? 'text-destructive-ink' : 'text-foreground'}`}>{fmt(saldoAta)}</p>
                         <p className="g-meta text-muted-foreground">registrado − derivados − empenhos diretos</p>
                       </Card>
                     </div>
@@ -886,20 +911,20 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
                 <SecaoRecolhivel
                   id={`contrato-resultado-${contratoId}`}
                   manterNoPapel
-                  classNameTitulo="g-titulo-secao text-foreground"
+                  classNameTitulo="text-base font-semibold leading-6 text-foreground"
                   titulo={<>Resultado financeiro</>}
                 >
                   <div className="mt-3 flex flex-col gap-3">
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                      <Card className="p-4 border-l-4 border-l-accent">
-                        <div className="g-meta text-muted-foreground mb-1">Faturamento</div>
-                        <p className="text-lg font-bold tabular-nums">{fmt(faturamento)}</p>
+                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                      <Card className="flex flex-col gap-1 p-4">
+                        <div className="text-sm font-medium leading-5 text-muted-foreground">Faturamento</div>
+                        <p className="text-2xl font-semibold leading-8 tabular-nums text-foreground">{fmt(faturamento)}</p>
                         {/* Regra 2 do comando: o indicador declara a base. */}
                         <p className="g-meta text-muted-foreground">soma dos pedidos não cancelados</p>
                       </Card>
-                      <Card className="p-4 border-l-4 border-l-destructive">
-                        <div className="g-meta text-muted-foreground mb-1">Custos Totais</div>
-                        <p className="text-lg font-bold text-destructive-ink tabular-nums">
+                      <Card className="flex flex-col gap-1 p-4">
+                        <div className="text-sm font-medium leading-5 text-muted-foreground">Custos Totais</div>
+                        <p className="text-2xl font-semibold leading-8 tabular-nums text-destructive-ink">
                           {custoApurado ? fmt(totalCustos) : <ValorIndisponivel />}
                         </p>
                         {/* Um cartão, a quebra embaixo. Margem é o que se olha de relance;
@@ -925,17 +950,17 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
                       {/* Lucro sem custo apurado não é lucro: seria o faturamento
                           inteiro, com margem de 100%, dito com a mesma cara de
                           um número conferido. */}
-                      <Card className={`p-4 border-l-4 ${lucroBruto >= 0 ? 'border-l-success' : 'border-l-destructive'}`}>
-                        <div className="g-meta text-muted-foreground mb-1">Lucro Bruto</div>
-                        <p className={`text-lg font-bold tabular-nums ${lucroBruto >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>
+                      <Card className="flex flex-col gap-1 p-4">
+                        <div className="text-sm font-medium leading-5 text-muted-foreground">Lucro Bruto</div>
+                        <p className={`text-2xl font-semibold leading-8 tabular-nums ${lucroBruto >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>
                           {custoApurado ? fmt(lucroBruto) : <ValorIndisponivel />}
                         </p>
                         {custoApurado && <p className="g-meta text-muted-foreground">Margem: {margemBruta.toFixed(1)}%</p>}
                         <p className="g-meta text-muted-foreground">faturamento − custos diretos</p>
                       </Card>
-                      <Card className={`p-4 border-l-4 ${lucroLiquido >= 0 ? 'border-l-success' : 'border-l-destructive'}`}>
-                        <div className="g-meta text-muted-foreground mb-1">Lucro Líquido</div>
-                        <p className={`text-lg font-bold tabular-nums ${lucroLiquido >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>
+                      <Card className="flex flex-col gap-1 p-4">
+                        <div className="text-sm font-medium leading-5 text-muted-foreground">Lucro Líquido</div>
+                        <p className={`text-2xl font-semibold leading-8 tabular-nums ${lucroLiquido >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>
                           {custoApurado ? fmt(lucroLiquido) : <ValorIndisponivel />}
                         </p>
                         {custoApurado && <p className="g-meta text-muted-foreground">Margem: {margemLiquida.toFixed(1)}%</p>}
@@ -955,11 +980,11 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
                         dele daria um desvio que não existe. */}
                     {custoPrevistoDoEntregue > 0 && (
                       <Card className="p-4">
-                        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                          <h4 className="g-titulo-secao text-foreground">Custo previsto × realizado</h4>
+                        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                          <h4 className="text-base font-semibold leading-6 text-foreground">Custo previsto × realizado</h4>
                           <span className="g-meta text-muted-foreground">sobre o que já foi entregue</span>
                         </div>
-                        <div className="grid grid-cols-3 gap-3">
+                        <div className="grid gap-4 sm:grid-cols-3">
                           <div>
                             <p className="g-meta text-muted-foreground">Previsto na proposta</p>
                             <p className="g-corpo font-semibold tabular-nums">{fmt(custoPrevistoDoEntregue)}</p>
@@ -1008,9 +1033,9 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
 
               {/* Aviso para não-financeiros — só onde há custo escondido (contrato) */}
               {!isAtaSrp && !podeVerCustos && (
-                <Card className="p-4 border border-dashed border-muted-foreground/30">
+                <Card className="border-dashed border-input p-4 shadow-none">
                   <div className="g-meta flex items-center gap-2 text-muted-foreground">
-                    <Lock className="w-4 h-4" />
+                    <Lock aria-hidden="true" className="h-4 w-4 shrink-0" />
                     <span>Custos, margens e lucratividade são visíveis apenas para o setor Financeiro e Administradores.</span>
                   </div>
                 </Card>
@@ -1044,7 +1069,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
               impresso sai com os alertas ainda que a tela os esconda. */}
           {(alertasSaldoVisiveis.length > 0 || vigencia.vencido || vigencia.vencendo || fisicoParado || reajusteDevido || excesso.excede) && (
             <SecaoDoDocumento numero="1" titulo="Alertas">
-              <div className={`rounded-[var(--g-raio)] border p-4 ${vigencia.vencido ? 'bg-destructive-tint border-destructive-line' : 'bg-warning-tint border-warning-line'}`}>
+              <div className={`rounded-lg border p-4 ${vigencia.vencido ? 'bg-destructive-tint border-destructive-line' : 'bg-warning-tint border-warning-line'}`}>
                 <SecaoRecolhivel
                   id={`contrato-alertas-${contratoId}`}
                   recolhidaPorPadrao
@@ -1132,18 +1157,20 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
                   id={`contrato-composicao-custos-${contratoId}`}
                   recolhidaPorPadrao
                   manterNoPapel
-                  classNameTitulo="g-titulo-secao text-foreground"
+                  classNameTitulo="text-base font-semibold leading-6 text-foreground"
                   icone={<Receipt className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />}
                   titulo={<>Distribuição por natureza de custo — {fmt(totalCustos)}</>}
                 >
                   <div className="mt-3 space-y-2">
                     {[
-                      { label: 'Custos Diretos (Pedidos)', valor: custoPedidos, color: 'bg-primary' },
-                      { label: 'Custos Diretos (Outros)', valor: custosDiretos, color: 'bg-accent' },
-                      { label: 'Desp. Administrativas', valor: despAdmin, color: 'bg-secondary' },
-                      { label: 'Frete / Logística', valor: frete, color: 'bg-warning' },
-                      { label: 'Tributos', valor: tributos, color: 'bg-destructive' },
-                      { label: 'Outros', valor: totalCustosTabela - custosDiretos - despAdmin - frete - tributos, color: 'bg-muted-foreground' },
+                      // Séries categóricas na paleta de gráfico do DS: `accent`
+                      // repetia o primário e `secondary` sumia sobre o trilho `muted`.
+                      { label: 'Custos Diretos (Pedidos)', valor: custoPedidos, color: 'bg-chart-1' },
+                      { label: 'Custos Diretos (Outros)', valor: custosDiretos, color: 'bg-chart-3' },
+                      { label: 'Desp. Administrativas', valor: despAdmin, color: 'bg-chart-2' },
+                      { label: 'Frete / Logística', valor: frete, color: 'bg-chart-4' },
+                      { label: 'Tributos', valor: tributos, color: 'bg-chart-5' },
+                      { label: 'Outros', valor: totalCustosTabela - custosDiretos - despAdmin - frete - tributos, color: 'bg-chart-8' },
                     ].filter(x => x.valor > 0).map(item => {
                       const pct = totalCustos > 0 ? (item.valor / totalCustos) * 100 : 0;
                       return (
@@ -1168,12 +1195,12 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
               id={`contrato-evolucao-mensal-${contratoId}`}
               recolhidaPorPadrao
               manterNoPapel
-              classNameTitulo="g-titulo-secao text-foreground"
+              classNameTitulo="text-base font-semibold leading-6 text-foreground"
               titulo={<>Valores mês a mês</>}
             >
               <div className="mt-3">
                 {isAtaSrp && pedidosAtivos.length === 0 ? (
-                  <Card className="g-meta p-6 text-center text-muted-foreground">
+                  <Card className="p-5 text-sm text-muted-foreground">
                     O consumo desta ata acontece pelos contratos derivados — acompanhe a execução mensal no
                     dashboard de cada contrato. Esta seção passa a valer quando houver empenho direto de
                     entrega única contra a ata.
@@ -1194,7 +1221,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
 
         {/* ── Painel de contexto ───────────────────────────────────────────── */}
         <aside className="flex min-w-0 flex-col gap-4 xl:sticky xl:top-[calc(var(--g-topo)+1rem)]">
-          <Card className="g-cartao flex flex-col gap-4 p-4">
+          <Card className="flex flex-col gap-5 p-5">
             <BlocoDoPainel titulo="Informações gerais">
               <ListaDeCampos
                 campos={[
@@ -1219,12 +1246,13 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
                 o ofício cita. */}
             <SecaoDoDocumento numero="5" titulo="Vigência">
               <div className="flex items-center justify-between gap-2">
-                <h3 className="g-titulo-secao flex items-center gap-1.5 text-foreground">
+                <h3 className="flex items-center gap-1.5 text-base font-semibold leading-6 text-foreground">
                   <Calendar className="h-4 w-4 text-muted-foreground" aria-hidden="true" /> Vigência
                 </h3>
                 {!editandoVigencia && (
-                  <Button variant="ghost" size="icon" className="h-7 w-7 nao-imprime"
+                  <Button variant="ghost" size="icon-sm" className="nao-imprime"
                     title="Editar as datas de vigência"
+                    aria-label="Editar as datas de vigência"
                     onClick={() => {
                       setVigForm({
                         assinatura: c.data_assinatura?.slice(0, 10) || '',
@@ -1233,7 +1261,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
                       });
                       setEditandoVigencia(true);
                     }}>
-                    <Pencil className="w-3.5 h-3.5" />
+                    <Pencil aria-hidden="true" className="h-4 w-4" />
                   </Button>
                 )}
               </div>
@@ -1251,13 +1279,13 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
                   {([['Assinatura', 'assinatura'], ['Início', 'inicio'], ['Fim', 'fim']] as const).map(([rot, chave]) => (
                     <div key={chave}>
                       <span className="g-meta mb-0.5 block text-muted-foreground">{rot}</span>
-                      <input type="date" className="g-meta h-9 rounded-[var(--g-raio)] border border-input bg-background px-2"
+                      <input type="date" className="h-9 rounded-md border border-input bg-card px-2 text-sm text-foreground shadow-sm transition-colors duration-150 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
                         aria-label={rot}
                         value={vigForm[chave]}
                         onChange={e => setVigForm(f => ({ ...f, [chave]: e.target.value }))} />
                     </div>
                   ))}
-                  <Button size="sm" className="h-9" disabled={salvandoVigencia} onClick={async () => {
+                  <Button size="sm" className="h-9" aria-label="Salvar as datas de vigência" disabled={salvandoVigencia} onClick={async () => {
                     setSalvandoVigencia(true);
                     const { error } = await supabase.from('contratos').update({
                       data_assinatura: vigForm.assinatura || null,
@@ -1272,10 +1300,10 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
                     const res = await supabase.from('contratos').select('*').eq('id', contratoId).single();
                     if (res.data) setData(prev => prev ? { ...prev, contrato: res.data } : prev);
                   }}>
-                    {salvandoVigencia ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                    {salvandoVigencia ? <Loader2 aria-hidden="true" className="animate-spin" /> : <Check aria-hidden="true" />}
                   </Button>
-                  <Button size="sm" variant="ghost" className="h-9" onClick={() => setEditandoVigencia(false)}>
-                    <X className="w-3.5 h-3.5" />
+                  <Button size="sm" variant="ghost" className="h-9" aria-label="Cancelar a edição da vigência" onClick={() => setEditandoVigencia(false)}>
+                    <X aria-hidden="true" />
                   </Button>
                 </div>
               )}
@@ -1320,7 +1348,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
               Só destinos que existem de verdade. A aba do contrato mora em
               `?aba=`, então cada link recarrega a MESMA tela na aba certa — e o
               voltar do navegador funciona. */}
-          <Card className="g-cartao flex flex-col gap-2 p-4 nao-imprime">
+          <Card className="flex flex-col gap-2 p-5 nao-imprime">
             <BlocoDoPainel titulo="Links de contexto">
               <ul className="flex flex-col">
                 {isAtaSrp ? (
