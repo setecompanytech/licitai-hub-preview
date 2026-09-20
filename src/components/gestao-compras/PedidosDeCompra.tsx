@@ -109,12 +109,12 @@ function SelectPadrao({ valor, onChange, opcoes, placeholder, cfop }: {
           </Button>
         </div>
         {sugestoes.length > 0 && (
-          <div className="absolute z-50 mt-1 w-full rounded-md border border-border bg-popover shadow-md max-h-64 overflow-y-auto">
+          <div className="absolute z-50 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-border bg-popover p-1 shadow-lg">
             {sugestoes.map(sug => (
               <button
                 type="button"
                 key={sug.codigo}
-                className="flex w-full items-baseline gap-2 px-3 py-2 text-left text-xs hover:bg-muted focus-visible:outline-none focus-visible:bg-muted"
+                className="flex w-full items-baseline gap-2 rounded-sm px-3 py-2 text-left text-xs transition-colors duration-100 hover:bg-muted focus-visible:outline-none focus-visible:bg-muted"
                 // onMouseDown + preventDefault: o clique vence o blur do input.
                 onMouseDown={e => {
                   e.preventDefault();
@@ -142,10 +142,13 @@ function SelectPadrao({ valor, onChange, opcoes, placeholder, cfop }: {
   );
 }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import EstadoVazio from '@/components/shared/EstadoVazio';
 import TabelaGestao, { type ColunaGestao } from '@/components/gestao/TabelaGestao';
+import ListaDeCampos from '@/components/gestao/ListaDeCampos';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { CalendarDays } from 'lucide-react';
@@ -236,20 +239,17 @@ type ItemForm = {
 //
 // Cada etapa tem cor própria (09/09): o quadro era cinza-sobre-cinza e as
 // colunas de largura fixa deixavam um vão morto à direita — parecia
-// transparente. A cor da etapa pinta a barra do topo, o cabeçalho e a
-// lateral dos cartões, contando o fluxo de relance.
-// Identidade 12/09: chips nas famílias tint/ink (nada de alfa composto na
-// mão). Faturar e Entrega dividiam o mesmo verde depois que `accent` virou
-// `primary`; Entrega passa ao navy para o fluxo continuar legível de relance.
-const COLUNAS_QUADRO: { key: Pedido['status']; label: string; barra: string; texto: string; chip: string; borda: string }[] = [
-  { key: 'pedido',          label: 'Pedidos',         barra: 'bg-info',    texto: 'text-foreground',       chip: 'bg-muted text-foreground',                  borda: 'border-l-info' },
-  { key: 'separar_estoque', label: 'Separar Estoque', barra: 'bg-warning', texto: 'text-warning-ink',      chip: 'bg-warning-tint text-warning-ink',          borda: 'border-l-warning' },
-  { key: 'faturar',         label: 'Faturar',         barra: 'bg-primary', texto: 'text-primary',          chip: 'bg-primary-tint text-primary',              borda: 'border-l-primary' },
-  { key: 'faturado',        label: 'Faturado',        barra: 'bg-success', texto: 'text-success-ink',      chip: 'bg-success-tint text-success-ink',          borda: 'border-l-success' },
-  // `text-navy` sobre o tint só funciona no claro: no escuro o navy é quase
-  // preto e o rótulo sumia. A cor da etapa fica na barra e no tint; o texto
-  // usa `foreground`, que vira claro no tema escuro.
-  { key: 'entrega',         label: 'Entrega',         barra: 'bg-navy',    texto: 'text-foreground',       chip: 'bg-navy-tint text-foreground',              borda: 'border-l-navy' },
+// transparente. No Design System v3 (19/09) a cor da etapa mora no PONTO ao
+// lado do título da coluna — a mesma anatomia do Kanban de licitações —, e a
+// coluna é a superfície rebaixada (`secondary`) com cartões brancos. Faturar
+// e Entrega dividiam o mesmo verde depois que `accent` virou `primary`;
+// Entrega fica no navy para o fluxo continuar legível de relance.
+const COLUNAS_QUADRO: { key: Pedido['status']; label: string; ponto: string }[] = [
+  { key: 'pedido',          label: 'Pedidos',         ponto: 'bg-info' },
+  { key: 'separar_estoque', label: 'Separar Estoque', ponto: 'bg-warning' },
+  { key: 'faturar',         label: 'Faturar',         ponto: 'bg-primary' },
+  { key: 'faturado',        label: 'Faturado',        ponto: 'bg-success' },
+  { key: 'entrega',         label: 'Entrega',         ponto: 'bg-navy' },
 ];
 
 const STATUS_MSG: Record<string, string> = {
@@ -378,9 +378,9 @@ function PessoaCombobox({ pessoas, value, onChange }: {
         <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
       </div>
       {open && filtered.length > 0 && (
-        <div className="absolute z-50 top-full left-0 mt-1 w-full rounded-md border border-border bg-popover shadow-md max-h-48 overflow-y-auto text-sm">
+        <div className="absolute left-0 top-full z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-border bg-popover p-1 text-sm shadow-lg">
           {filtered.map(p => (
-            <button type="button" key={p.id} className="w-full text-left px-3 py-2 hover:bg-muted focus-visible:outline-none focus-visible:bg-muted transition-colors"
+            <button type="button" key={p.id} className="w-full rounded-sm px-3 py-2 text-left transition-colors duration-100 hover:bg-muted focus-visible:outline-none focus-visible:bg-muted"
               onClick={() => { onChange(p.id); setInputVal(p.nome); setQ(''); setOpen(false); }}>
               <div className="font-medium text-sm">{p.nome}</div>
               {p.documento && <div className="text-xs text-muted-foreground">{p.documento}</div>}
@@ -432,15 +432,15 @@ function ItemDialog({ open, onOpenChange, produtos, initial, onConfirm }: {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col p-0 gap-0">
-        <DialogHeader className="px-4 py-3 border-b border-border">
+      <DialogContent className="flex max-w-2xl flex-col gap-0 p-0">
+        <DialogHeader className="border-b border-border px-5 py-4">
           <DialogTitle>
             {initial?.id ? 'Editar Item' : 'Incluir Item'}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex flex-col flex-1 overflow-hidden">
-          <div className="px-4 pt-3 pb-3 border-b border-border space-y-2">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div className="space-y-2 border-b border-border px-5 py-3">
             <div className="relative">
               <Label htmlFor="item-busca-produto" className="sr-only">Buscar produto</Label>
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
@@ -468,35 +468,35 @@ function ItemDialog({ open, onOpenChange, produtos, initial, onConfirm }: {
             </div>
           </div>
 
-          <div className="px-4 py-3 space-y-4 overflow-y-auto">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
+          <div className="space-y-4 overflow-y-auto px-5 py-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
                 <Label htmlFor="item-codigo">Código</Label>
-                <Input id="item-codigo" value={item.codigo_produto} onChange={e => setItem(i => ({ ...i, codigo_produto: e.target.value }))} className="mt-1" />
+                <Input id="item-codigo" value={item.codigo_produto} onChange={e => setItem(i => ({ ...i, codigo_produto: e.target.value }))} />
               </div>
-              <div>
+              <div className="space-y-1.5">
                 <Label htmlFor="item-unidade">Unidade</Label>
-                <Input id="item-unidade" value={item.unidade} onChange={e => setItem(i => ({ ...i, unidade: e.target.value }))} className="mt-1" />
+                <Input id="item-unidade" value={item.unidade} onChange={e => setItem(i => ({ ...i, unidade: e.target.value }))} />
               </div>
             </div>
-            <div>
+            <div className="space-y-1.5">
               <Label htmlFor="item-descricao">Descrição do Produto *</Label>
-              <Input id="item-descricao" value={item.descricao} onChange={e => setItem(i => ({ ...i, descricao: e.target.value }))} className="mt-1" />
+              <Input id="item-descricao" value={item.descricao} onChange={e => setItem(i => ({ ...i, descricao: e.target.value }))} />
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="space-y-1.5">
                 <Label htmlFor="item-qtd">Quantidade</Label>
                 <Input id="item-qtd" value={item.quantidade} onChange={e => setItem(i => ({ ...i, quantidade: e.target.value }))}
-                  className="mt-1 text-right tabular-nums" type="number" min="0" step="0.001" />
+                  className="text-right tabular-nums" type="number" min="0" step="0.001" />
               </div>
-              <div>
+              <div className="space-y-1.5">
                 <Label htmlFor="item-preco">Preço Unitário</Label>
                 <Input id="item-preco" value={item.preco_unitario} onChange={e => setItem(i => ({ ...i, preco_unitario: inputM(e.target.value) }))}
-                  className="mt-1 text-right tabular-nums" inputMode="numeric" />
+                  className="text-right tabular-nums" inputMode="numeric" />
               </div>
-              <div>
+              <div className="space-y-1.5">
                 <Label htmlFor="item-total">Valor Total</Label>
-                <Input id="item-total" value={fmtM(valorTotal)} readOnly className="mt-1 text-right tabular-nums bg-muted text-muted-foreground" />
+                <Input id="item-total" value={fmtM(valorTotal)} readOnly className="bg-muted text-right tabular-nums text-muted-foreground" />
               </div>
             </div>
             <div>
@@ -511,12 +511,12 @@ function ItemDialog({ open, onOpenChange, produtos, initial, onConfirm }: {
           </div>
         </div>
 
-        <div className="flex flex-wrap justify-end gap-2 px-4 py-3 border-t border-border">
+        <DialogFooter className="border-t border-border px-5 py-4">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button onClick={handleConfirm}>
             {initial?.id ? 'Salvar' : 'Incluir'}
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
@@ -1178,19 +1178,19 @@ const PedidosDeCompra = forwardRef<PedidosDeCompraRef>(function PedidosDeCompra(
     <Dialog open={!!deleteConfirmId} onOpenChange={v => { if (!v) { setDeleteConfirmId(null); setDeleteMotivo(''); } }}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-destructive">
-            <Trash2 className="w-5 h-5" aria-hidden="true" /> Excluir Pedido
+          <DialogTitle className="flex items-center gap-2 text-destructive-ink">
+            <Trash2 className="h-5 w-5" aria-hidden="true" /> Excluir Pedido
           </DialogTitle>
         </DialogHeader>
-        <div className="space-y-3 py-1">
+        <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
             Esta ação também removerá o vínculo deste pedido dentro da <strong>Gestão de Contratos</strong>, caso exista.
           </p>
-          <div>
-            <Label htmlFor="pedido-delete-motivo">Motivo da exclusão <span className="text-destructive">*</span></Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="pedido-delete-motivo">Motivo da exclusão <span className="text-destructive-ink">*</span></Label>
             <Textarea
               id="pedido-delete-motivo"
-              className="mt-1 resize-none"
+              className="resize-none"
               rows={3}
               placeholder="Descreva o motivo para excluir este pedido..."
               value={deleteMotivo}
@@ -1198,15 +1198,15 @@ const PedidosDeCompra = forwardRef<PedidosDeCompraRef>(function PedidosDeCompra(
             />
           </div>
         </div>
-        <div className="flex flex-wrap justify-end gap-2 pt-1">
+        <DialogFooter>
           <Button variant="outline" onClick={() => { setDeleteConfirmId(null); setDeleteMotivo(''); }}>
             Cancelar
           </Button>
           <Button variant="destructive" onClick={confirmarDelete} disabled={deletingPedido || !deleteMotivo.trim()}>
-            {deletingPedido ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+            {deletingPedido ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Trash2 aria-hidden="true" />}
             Excluir
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
@@ -1218,17 +1218,17 @@ const PedidosDeCompra = forwardRef<PedidosDeCompraRef>(function PedidosDeCompra(
         <DialogHeader>
           <DialogTitle>Faturar Pedido</DialogTitle>
         </DialogHeader>
-        <div className="space-y-3 py-1">
+        <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
             Ao mover para <strong>Faturado</strong>, o sistema pode emitir a NF-e automaticamente
             se houver um certificado A3 vinculado à conta.
           </p>
-          <div role="status" className="rounded-md border border-warning-line bg-warning-tint p-4 text-sm text-warning-ink flex items-start gap-2">
-            <Zap className="w-4 h-4 shrink-0 mt-1" aria-hidden="true" />
+          <div role="status" className="flex items-start gap-2 rounded-md border border-warning-line bg-warning-tint p-4 text-sm text-warning-ink">
+            <Zap className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
             <span>Nenhum certificado A3 vinculado. A NF-e <strong>não será emitida</strong> automaticamente.</span>
           </div>
         </div>
-        <div className="flex flex-wrap justify-end gap-2 pt-1">
+        <DialogFooter>
           <Button variant="outline" onClick={() => { setNfeAlertOpen(false); setPendingFaturarId(null); }}>
             Cancelar
           </Button>
@@ -1255,9 +1255,9 @@ const PedidosDeCompra = forwardRef<PedidosDeCompraRef>(function PedidosDeCompra(
                 setPendingFaturarId(null);
               }
             }}>
-            <Zap className="w-4 h-4" /> Faturar mesmo assim
+            <Zap aria-hidden="true" /> Faturar mesmo assim
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
@@ -1272,12 +1272,12 @@ const PedidosDeCompra = forwardRef<PedidosDeCompraRef>(function PedidosDeCompra(
         <DialogHeader>
           <DialogTitle>Lançar Conta a Receber</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 py-1">
+        <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
             Pedido faturado com sucesso. Deseja registrar uma conta a receber no Financeiro?
           </p>
           {faturadoPedido && (
-            <div className="rounded-md border border-border bg-muted p-4 text-sm space-y-1">
+            <div className="space-y-1 rounded-md border border-border bg-secondary p-4 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Pedido</span>
                 <span className="font-medium tabular-nums">#{faturadoPedido.numero}</span>
@@ -1314,7 +1314,7 @@ const PedidosDeCompra = forwardRef<PedidosDeCompraRef>(function PedidosDeCompra(
             />
           </div>
         </div>
-        <div className="flex flex-wrap justify-end gap-2 pt-1">
+        <DialogFooter>
           <Button variant="ghost" onClick={() => { setFaturadoContaOpen(false); setPendingFaturarId(null); }}>
             Pular
           </Button>
@@ -1361,11 +1361,11 @@ const PedidosDeCompra = forwardRef<PedidosDeCompraRef>(function PedidosDeCompra(
               }
             }}>
             {savingFaturado
-              ? <Loader2 className="w-4 h-4 animate-spin" />
-              : <Check className="w-4 h-4" />}
+              ? <Loader2 className="animate-spin" aria-hidden="true" />
+              : <Check aria-hidden="true" />}
             Gerar {parseInt(faturadoParcelas) > 1 ? `${faturadoParcelas} parcelas` : 'conta'}
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
@@ -1376,31 +1376,31 @@ const PedidosDeCompra = forwardRef<PedidosDeCompraRef>(function PedidosDeCompra(
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle>Novo Pedido</DialogTitle>
+          <DialogDescription>Selecione o tipo de pedido:</DialogDescription>
         </DialogHeader>
-        <p className="text-sm text-muted-foreground">Selecione o tipo de pedido:</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+        <div className="grid gap-3 sm:grid-cols-2">
           <Button
             type="button"
             variant="outline"
             onClick={() => openNovo('compra')}
-            className="h-auto flex-col gap-3 rounded-lg p-5 whitespace-normal hover:border-primary"
+            className="h-auto flex-col gap-3 whitespace-normal rounded-lg p-5 hover:border-primary"
           >
-            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary"><ShoppingBag className="w-6 h-6 !size-6" aria-hidden="true" /></span>
+            <span className="flex h-10 w-10 items-center justify-center rounded-md bg-primary-tint text-primary"><ShoppingBag className="!size-5" aria-hidden="true" /></span>
             <span className="text-center">
-              <span className="block font-semibold text-sm">Pedido de Compra</span>
-              <span className="block text-xs font-normal text-muted-foreground mt-1">Vincular fornecedor</span>
+              <span className="block text-sm font-semibold">Pedido de Compra</span>
+              <span className="mt-1 block text-xs font-normal text-muted-foreground">Vincular fornecedor</span>
             </span>
           </Button>
           <Button
             type="button"
             variant="outline"
             onClick={() => openNovo('venda')}
-            className="h-auto flex-col gap-3 rounded-lg p-5 whitespace-normal hover:border-primary"
+            className="h-auto flex-col gap-3 whitespace-normal rounded-lg p-5 hover:border-primary"
           >
-            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary"><ShoppingCart className="w-6 h-6 !size-6" aria-hidden="true" /></span>
+            <span className="flex h-10 w-10 items-center justify-center rounded-md bg-primary-tint text-primary"><ShoppingCart className="!size-5" aria-hidden="true" /></span>
             <span className="text-center">
-              <span className="block font-semibold text-sm">Pedido de Venda</span>
-              <span className="block text-xs font-normal text-muted-foreground mt-1">Vincular cliente</span>
+              <span className="block text-sm font-semibold">Pedido de Venda</span>
+              <span className="mt-1 block text-xs font-normal text-muted-foreground">Vincular cliente</span>
             </span>
           </Button>
         </div>
@@ -1454,13 +1454,13 @@ const PedidosDeCompra = forwardRef<PedidosDeCompraRef>(function PedidosDeCompra(
                       ? `${(f.size / 1024 / 1024).toFixed(1)} MB`
                       : `${Math.max(1, Math.round(f.size / 1024))} KB`}
                   </span>
-                  <Button asChild size="sm" variant="ghost" className="w-9 px-0">
+                  <Button asChild size="icon-sm" variant="ghost">
                     <a href={f.url} target="_blank" rel="noopener noreferrer" aria-label={`Baixar ${f.name}`}>
-                      <Download className="w-4 h-4" />
+                      <Download aria-hidden="true" />
                     </a>
                   </Button>
                   <Button
-                    size="sm" variant="ghost" className="w-9 px-0" aria-label={`Remover ${f.name}`}
+                    size="icon-sm" variant="ghost-destructive" aria-label={`Remover ${f.name}`}
                     onClick={async () => {
                       const path = `${empresaAtiva!.id}/${editingId}/${f.name}`;
                       await supabase.storage.from('pedidos-anexos').remove([path]);
@@ -1468,7 +1468,7 @@ const PedidosDeCompra = forwardRef<PedidosDeCompraRef>(function PedidosDeCompra(
                       await loadAnexos();
                     }}
                   >
-                    <Trash2 className="w-4 h-4 text-destructive" />
+                    <Trash2 aria-hidden="true" />
                   </Button>
                 </div>
               ))}
@@ -1500,22 +1500,21 @@ const PedidosDeCompra = forwardRef<PedidosDeCompraRef>(function PedidosDeCompra(
             </div>
           ) : (
             <>
-              <div className="space-y-3 rounded-md border border-border bg-muted p-4">
-                {[
-                  { label: 'Criado em',       value: new Date(historicoData.created_at).toLocaleString('pt-BR') },
-                  { label: 'Última alteração', value: new Date(historicoData.updated_at).toLocaleString('pt-BR') },
-                  { label: 'Status atual',     value: STATUS_MSG[historicoData.status] ?? historicoData.status },
-                  { label: 'Tipo',             value: historicoData.tipo === 'venda' ? 'Pedido de Venda' : 'Pedido de Compra' },
-                  { label: 'Origem',           value: origemNormalizada(historicoData.origem_pedido) },
-                  { label: 'Etapa',            value: historicoData.etapa ?? '—' },
-                ].map(({ label, value }) => (
-                  <div key={label} className="flex items-start gap-2 text-sm">
-                    <span className="text-muted-foreground w-36 shrink-0">{label}</span>
-                    <span className="font-medium">{value}</span>
-                  </div>
-                ))}
+              {/* Rótulo à esquerda, valor à direita — o `ListaDeCampos` dos
+                  painéis de Gestão (Design System v3). */}
+              <div className="rounded-md border border-border bg-secondary px-4 py-1">
+                <ListaDeCampos
+                  campos={[
+                    { rotulo: 'Criado em',        valor: new Date(historicoData.created_at).toLocaleString('pt-BR') },
+                    { rotulo: 'Última alteração', valor: new Date(historicoData.updated_at).toLocaleString('pt-BR') },
+                    { rotulo: 'Status atual',     valor: STATUS_MSG[historicoData.status] ?? historicoData.status },
+                    { rotulo: 'Tipo',             valor: historicoData.tipo === 'venda' ? 'Pedido de Venda' : 'Pedido de Compra' },
+                    { rotulo: 'Origem',           valor: origemNormalizada(historicoData.origem_pedido) },
+                    { rotulo: 'Etapa',            valor: historicoData.etapa ?? '—' },
+                  ]}
+                />
               </div>
-              <p className="text-xs text-muted-foreground rounded-md bg-muted p-3">
+              <p className="rounded-md bg-muted p-3 text-xs text-muted-foreground">
                 Registro detalhado de alterações requer configuração de auditoria no banco de dados.
               </p>
             </>
@@ -1579,11 +1578,11 @@ const PedidosDeCompra = forwardRef<PedidosDeCompraRef>(function PedidosDeCompra(
         chave: 'acoes', titulo: 'Ações', alinhamento: 'direita', largura: '110px', prioridade: 'sempre',
         render: p => (
           <div className="flex items-center justify-end gap-1" onClick={e => e.stopPropagation()}>
-            <Button type="button" variant="ghost" size="sm" className="w-9 px-0" aria-label={`Editar pedido ${p.numero}`} onClick={() => openEdit(p)}>
-              <Pencil className="w-4 h-4" />
+            <Button type="button" variant="ghost" size="icon-sm" aria-label={`Editar pedido ${p.numero}`} onClick={() => openEdit(p)}>
+              <Pencil aria-hidden="true" />
             </Button>
-            <Button type="button" variant="ghost" size="sm" className="w-9 px-0" aria-label={`Excluir pedido ${p.numero}`} onClick={() => handleDelete(p.id)}>
-              <Trash2 className="w-4 h-4 text-destructive" />
+            <Button type="button" variant="ghost-destructive" size="icon-sm" aria-label={`Excluir pedido ${p.numero}`} onClick={() => handleDelete(p.id)}>
+              <Trash2 aria-hidden="true" />
             </Button>
           </div>
         ),
@@ -1624,24 +1623,26 @@ const PedidosDeCompra = forwardRef<PedidosDeCompraRef>(function PedidosDeCompra(
               que precisa aparecer para separar esta tela do Kanban de
               licitações. `aria-pressed` continua contando o estado a quem lê
               a tela por leitor de tela. */}
-          <div role="group" aria-label="Modo de visualização dos pedidos" className="flex items-center gap-1 rounded-[var(--g-raio)] border border-input p-1">
+          {/* Alternância em `secondary` (tonal): o verde sólido fica para a
+              única ação principal da tela, o "Novo pedido" do cabeçalho. */}
+          <div role="group" aria-label="Modo de visualização dos pedidos" className="flex items-center gap-1 rounded-md border border-input bg-card p-1">
             <Button
-              type="button" size="sm" variant={viewMode === 'list' ? 'default' : 'ghost'}
+              type="button" size="sm" variant={viewMode === 'list' ? 'secondary' : 'ghost'}
               className="h-8"
               aria-pressed={viewMode === 'list'}
               title="Ver os pedidos em lista"
               onClick={() => setViewMode('list')}
             >
-              <List className="w-4 h-4" aria-hidden="true" /> Lista
+              <List aria-hidden="true" /> Lista
             </Button>
             <Button
-              type="button" size="sm" variant={viewMode === 'kanban' ? 'default' : 'ghost'}
+              type="button" size="sm" variant={viewMode === 'kanban' ? 'secondary' : 'ghost'}
               className="h-8"
               aria-pressed={viewMode === 'kanban'}
               title="Ver os pedidos no quadro de atendimento e entrega"
               onClick={() => setViewMode('kanban')}
             >
-              <LayoutGrid className="w-4 h-4" aria-hidden="true" /> Quadro
+              <LayoutGrid aria-hidden="true" /> Quadro
             </Button>
           </div>
           {/* "Novo pedido" não se repete aqui: é a ação principal declarada
@@ -1661,14 +1662,14 @@ const PedidosDeCompra = forwardRef<PedidosDeCompraRef>(function PedidosDeCompra(
         )}
 
         {/* Filtros + Somatório */}
-        <div className="flex flex-wrap items-center gap-3 rounded-[var(--g-raio)] border border-border bg-card px-4 py-3">
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 shadow-sm">
           {/* Filtro tipo */}
           <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
-            <span className="text-sm text-muted-foreground whitespace-nowrap">Tipo:</span>
+            <Filter className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <span className="whitespace-nowrap text-sm text-muted-foreground">Tipo:</span>
             <div role="group" aria-label="Filtrar por tipo" className="flex items-center gap-1 rounded-md border border-input p-1">
               {([['', 'Todos'], ['compra', 'Compra'], ['venda', 'Venda']] as const).map(([val, lbl]) => (
-                <Button key={val} type="button" size="sm" variant={tipoFilter === val ? 'default' : 'ghost'}
+                <Button key={val} type="button" size="sm" variant={tipoFilter === val ? 'secondary' : 'ghost'}
                   className="h-8"
                   aria-pressed={tipoFilter === val}
                   onClick={() => setTipoFilter(val)}>
@@ -1680,14 +1681,14 @@ const PedidosDeCompra = forwardRef<PedidosDeCompraRef>(function PedidosDeCompra(
 
           {/* Filtro data */}
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm text-muted-foreground whitespace-nowrap">Previsão:</span>
+            <span className="whitespace-nowrap text-sm text-muted-foreground">Previsão:</span>
             <DatePickerBtn value={dateFrom} onChange={setDateFrom} placeholder="Data inicial" />
             <span className="text-sm text-muted-foreground">até</span>
             <DatePickerBtn value={dateTo} onChange={setDateTo} placeholder="Data final" />
             {(dateFrom || dateTo) && (
-              <Button type="button" variant="ghost" size="sm" className="w-9 px-0" aria-label="Limpar período"
+              <Button type="button" variant="ghost" size="icon-sm" aria-label="Limpar período"
                 onClick={() => { setDateFrom(''); setDateTo(''); }}>
-                <X className="w-4 h-4" />
+                <X aria-hidden="true" />
               </Button>
             )}
           </div>
@@ -1756,11 +1757,11 @@ const PedidosDeCompra = forwardRef<PedidosDeCompraRef>(function PedidosDeCompra(
               return dp ? (
                 <div
                   style={{ position: 'fixed', left: ghostPos.x + 12, top: ghostPos.y + 8, zIndex: 9999, pointerEvents: 'none', width: 210 }}
-                  className="bg-card border-2 border-primary rounded-lg p-3 shadow-md opacity-90 rotate-1"
+                  className="rotate-1 rounded-md border border-primary/60 bg-card p-3 opacity-95 shadow-lg"
                 >
                   <p className="text-xs font-semibold text-muted-foreground">Pedido Nº {dp.numero}</p>
-                  {getPessoaNome(dp.pessoa_id) && <p className="text-xs font-medium mt-1 truncate">{getPessoaNome(dp.pessoa_id)}</p>}
-                  <p className="text-xs font-bold mt-1 tabular-nums">R$ {fmtM(dp.valor_total)}</p>
+                  {getPessoaNome(dp.pessoa_id) && <p className="mt-1 truncate text-xs font-medium">{getPessoaNome(dp.pessoa_id)}</p>}
+                  <p className="mt-1 text-xs font-semibold tabular-nums">R$ {fmtM(dp.valor_total)}</p>
                 </div>
               ) : null;
             })()}
@@ -1768,22 +1769,23 @@ const PedidosDeCompra = forwardRef<PedidosDeCompraRef>(function PedidosDeCompra(
             {colunasDoQuadro.map((col, colIdx) => (
               <div key={col.key}
                 data-col={col.key}
-                className={`flex flex-col flex-1 min-w-[260px] rounded-[var(--g-raio)] border overflow-hidden transition-colors ${draggingId && dragOverCol === col.key ? 'bg-primary-tint border-primary' : 'bg-card border-border shadow-sm'}`}
+                // Coluna do Design System v3: superfície rebaixada com um fio
+                // fino; a cor da etapa fica no ponto ao lado do título.
+                className={`flex flex-1 flex-col min-w-[260px] overflow-hidden rounded-lg border transition-colors duration-150 ${draggingId && dragOverCol === col.key ? 'border-primary bg-primary-tint ring-2 ring-ring' : 'border-border/70 bg-secondary'}`}
               >
-                {/* Barra de cor da etapa + cabeçalho */}
-                <div className={`h-1.5 ${col.barra}`} aria-hidden="true" />
-                <div className="flex items-center justify-between px-3 py-3 border-b border-border bg-muted">
-                  <h3 className={`g-corpo font-bold ${col.texto}`}>{col.label}</h3>
-                  <span className={`g-meta font-semibold px-2 py-1 rounded-full tabular-nums ${col.chip}`}>
+                <div className="flex items-center gap-2 px-3 pb-2 pt-3">
+                  <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${col.ponto}`} aria-hidden="true" />
+                  <h3 className="text-sm font-semibold leading-5 text-foreground">{col.label}</h3>
+                  <Badge variant="muted" className="ml-auto tabular-nums">
                     {col.items.length}
                     <span className="sr-only"> pedido(s) em {col.label}</span>
-                  </span>
+                  </Badge>
                 </div>
 
                 {/* Cards */}
-                <div className="flex-1 overflow-y-auto p-2 space-y-2">
+                <div className="flex-1 space-y-2 overflow-y-auto px-3 pb-2">
                   {col.items.length === 0 ? (
-                    <div className="border border-dashed border-border rounded-md py-8 text-center text-xs text-muted-foreground mx-1 mt-1">
+                    <div className="rounded-md border border-dashed border-input py-6 text-center g-meta text-muted-foreground">
                       Nenhum pedido nesta etapa
                     </div>
                   ) : col.items.map(p => {
@@ -1796,12 +1798,12 @@ const PedidosDeCompra = forwardRef<PedidosDeCompraRef>(function PedidosDeCompra(
                       <div key={p.id}
                         onPointerDown={e => { if (!(e.target as HTMLElement).closest('button')) startDrag(e, p.id); }}
                         onDoubleClick={() => { if (!draggingId) openEdit(p); }}
-                        className={`bg-card border border-border border-l-4 ${col.borda} rounded-lg p-3 shadow-sm hover:shadow-md transition-all select-none touch-none ${draggingId === p.id ? 'opacity-40 scale-95 cursor-grabbing' : 'cursor-grab'}`}
+                        className={`rounded-md border border-border bg-card p-3 shadow-sm transition-all hover:shadow-md select-none touch-none ${draggingId === p.id ? 'opacity-40 scale-95 cursor-grabbing' : 'cursor-grab'}`}
                       >
                         <div className="flex items-start justify-between gap-1">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-sm font-bold text-foreground">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-sm font-semibold text-foreground">
                                 Pedido Nº {p.numero}
                               </span>
                               <Badge variant={p.tipo === 'venda' ? 'success' : 'info'}>
@@ -1814,10 +1816,10 @@ const PedidosDeCompra = forwardRef<PedidosDeCompraRef>(function PedidosDeCompra(
                               )}
                             </div>
                             {pessoaNome && (
-                              <p className="text-sm font-medium mt-1 leading-tight truncate">{pessoaNome}</p>
+                              <p className="mt-1 truncate text-sm font-medium leading-5 text-foreground">{pessoaNome}</p>
                             )}
-                            <p className={`text-xs mt-1 ${isHoje ? 'text-warning-ink font-semibold' : 'text-muted-foreground'}`}>{statusMsg}</p>
-                            <p className="text-base font-bold mt-2 text-foreground tabular-nums">
+                            <p className={`mt-1 text-xs ${isHoje ? 'font-semibold text-warning-ink' : 'text-muted-foreground'}`}>{statusMsg}</p>
+                            <p className="mt-2 text-base font-semibold tabular-nums text-foreground">
                               R$ {fmtM(p.valor_total)}
                               {/* Condição como está escrita — "em 30 Diasx" era o
                                   sufixo cego de quando o campo só guardava número. */}
@@ -1827,7 +1829,7 @@ const PedidosDeCompra = forwardRef<PedidosDeCompraRef>(function PedidosDeCompra(
                             </p>
                           </div>
                           <Button
-                            type="button" variant="ghost" size="sm" className="w-9 px-0 shrink-0"
+                            type="button" variant="ghost" size="icon-sm" className="shrink-0"
                             aria-label={`Ações do pedido ${p.numero}`}
                             aria-expanded={menuOpen}
                             onClick={e => {
@@ -1835,11 +1837,11 @@ const PedidosDeCompra = forwardRef<PedidosDeCompraRef>(function PedidosDeCompra(
                               setKanbanMenu(menuOpen ? null : p.id);
                             }}
                           >
-                            <MoreVertical className="w-4 h-4" />
+                            <MoreVertical aria-hidden="true" />
                           </Button>
                         </div>
                         {menuOpen && (
-                          <div className="mt-2 border-t border-border pt-2 flex flex-col gap-1">
+                          <div className="mt-2 flex flex-col gap-1 border-t border-border pt-2">
                             <Button type="button" variant="ghost" size="sm" className="w-full justify-start font-normal"
                               onClick={() => { setKanbanMenu(null); openEdit(p); }}
                             >
@@ -1856,10 +1858,10 @@ const PedidosDeCompra = forwardRef<PedidosDeCompraRef>(function PedidosDeCompra(
                                 <ChevronsUpDown className="w-4 h-4 text-muted-foreground" aria-hidden="true" /> Mover → {s.label}
                               </Button>
                             ))}
-                            <Button type="button" variant="ghost" size="sm" className="w-full justify-start font-normal text-destructive hover:text-destructive hover:bg-destructive-tint"
+                            <Button type="button" variant="ghost-destructive" size="sm" className="w-full justify-start font-normal"
                               onClick={() => handleDelete(p.id)}
                             >
-                              <Trash2 className="w-4 h-4" aria-hidden="true" /> Excluir
+                              <Trash2 aria-hidden="true" /> Excluir
                             </Button>
                           </div>
                         )}
@@ -1876,10 +1878,10 @@ const PedidosDeCompra = forwardRef<PedidosDeCompraRef>(function PedidosDeCompra(
                     acredita ter faturado. Sobrou o único que sempre funcionou.
                     Faturamento em lote volta quando existir de verdade; hoje
                     se fatura pelo cartão ou pelo formulário do pedido. */}
-                <div className="p-2 border-t border-border">
+                <div className="border-t border-border/70 px-3 py-2">
                   {colIdx === 0 ? (
                     <Button type="button" size="sm" className="w-full" onClick={() => setTipoOpen(true)}>
-                      <Plus className="w-4 h-4" /> Novo Pedido
+                      <Plus aria-hidden="true" /> Novo Pedido
                     </Button>
                   ) : (
                     <div className="h-9" aria-hidden="true" />
@@ -1943,9 +1945,9 @@ const PedidosDeCompra = forwardRef<PedidosDeCompraRef>(function PedidosDeCompra(
       />
 
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between px-4 py-3 border-b border-border bg-muted shrink-0 gap-3">
-        <div className="flex items-center gap-2 min-w-0">
-          <h2 className="text-lg font-semibold truncate">{formTitle}</h2>
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border bg-secondary px-4 py-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <h2 className="truncate text-lg font-semibold leading-6 text-foreground">{formTitle}</h2>
         </div>
 
         {/* Status changer — só exibe ao editar um pedido existente */}
@@ -1992,11 +1994,11 @@ const PedidosDeCompra = forwardRef<PedidosDeCompraRef>(function PedidosDeCompra(
           {/* Top section */}
           <div className="p-4 border-b border-border space-y-4">
             {/* Pessoa + date */}
-            <div className="flex flex-col sm:flex-row sm:items-end gap-3">
-              <div className="hidden sm:block shrink-0">
-                <User className="w-11 h-11 text-muted-foreground border border-border rounded-md p-2" aria-hidden="true" />
-              </div>
-              <div className="flex-1 space-y-1 min-w-0">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+              <span className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground sm:flex" aria-hidden="true">
+                <User className="h-5 w-5" />
+              </span>
+              <div className="min-w-0 flex-1 space-y-1.5">
                 <Label>{isVenda ? 'Cliente' : 'Fornecedor'}</Label>
                 <div className="flex flex-wrap items-center gap-2">
                   <PessoaCombobox
@@ -2014,42 +2016,42 @@ const PedidosDeCompra = forwardRef<PedidosDeCompraRef>(function PedidosDeCompra(
                   )}
                 </div>
               </div>
-              <div className="shrink-0">
+              <div className="shrink-0 space-y-1.5">
                 <Label htmlFor="pedido-previsao">Previsão de Faturamento</Label>
                 <Input
                   id="pedido-previsao"
                   type="date"
                   value={form.previsao_faturamento}
                   onChange={e => setForm(f => ({ ...f, previsao_faturamento: e.target.value }))}
-                  className="mt-1 w-full sm:w-44"
+                  className="w-full sm:w-44"
                 />
               </div>
             </div>
 
             {/* Vínculo com Contrato (opcional) */}
-            <div className="flex flex-wrap items-center gap-2 px-3 py-2 rounded-md bg-muted border border-border">
-              <Link2 className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
-              <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">Contrato vinculado:</span>
+            <div className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-secondary px-3 py-2">
+              <Link2 className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <span className="whitespace-nowrap text-sm font-medium text-muted-foreground">Contrato vinculado:</span>
               {form.contrato_id ? (
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <span className="text-sm font-semibold text-foreground truncate">
+                <div className="flex min-w-0 flex-1 items-center gap-2">
+                  <span className="truncate text-sm font-semibold text-foreground">
                     {contratos.find(c => c.id === form.contrato_id)?.numero_contrato ?? '—'}
                     {contratos.find(c => c.id === form.contrato_id)?.orgao_contratante
                       ? ` · ${contratos.find(c => c.id === form.contrato_id)!.orgao_contratante}`
                       : ''}
                   </span>
                   <Button
-                    type="button" variant="ghost" size="sm" className="w-9 px-0 shrink-0"
+                    type="button" variant="ghost" size="icon-sm" className="shrink-0"
                     onClick={() => setForm(f => ({ ...f, contrato_id: '' }))}
                     aria-label="Remover vínculo com contrato"
                     title="Remover vínculo"
                   >
-                    <X className="w-4 h-4" />
+                    <X aria-hidden="true" />
                   </Button>
                 </div>
               ) : (
                 <Select value="" onValueChange={v => setForm(f => ({ ...f, contrato_id: v }))}>
-                  <SelectTrigger className="flex-1 max-w-sm bg-background" aria-label="Vincular a contrato">
+                  <SelectTrigger className="max-w-sm flex-1" aria-label="Vincular a contrato">
                     <SelectValue placeholder="Nenhum — selecione para vincular (opcional)" />
                   </SelectTrigger>
                   <SelectContent>
@@ -2074,24 +2076,24 @@ const PedidosDeCompra = forwardRef<PedidosDeCompraRef>(function PedidosDeCompra(
                 { label: 'Total de ICMS ST',        val: '0,00',            editable: false },
                 { label: 'Valor Total do Pedido',   val: fmtM(valorTotal),  editable: false },
               ] as const).map(t => (
-                <div key={t.label}>
+                <div key={t.label} className="space-y-1.5">
                   <Label className="leading-tight">{t.label}</Label>
                   {t.editable ? (
                     <Input
                       aria-label={t.label}
                       value={form.valor_desconto}
                       onChange={e => setForm(f => ({ ...f, valor_desconto: inputM(e.target.value) }))}
-                      className="mt-1 text-right tabular-nums" inputMode="numeric"
+                      className="text-right tabular-nums" inputMode="numeric"
                     />
                   ) : (
-                    <Input aria-label={t.label} value={t.val!} readOnly className="mt-1 text-right tabular-nums bg-muted text-muted-foreground" />
+                    <Input aria-label={t.label} value={t.val!} readOnly className="bg-muted text-right tabular-nums text-muted-foreground" />
                   )}
                 </div>
               ))}
             </div>
 
             {/* Vendedor / Parcelas / Cenário */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid gap-4 md:grid-cols-3">
               <div>
                 <Label>{isVenda ? 'Vendedor' : 'Comprador'}</Label>
                 <SelectPadrao
@@ -2130,7 +2132,10 @@ const PedidosDeCompra = forwardRef<PedidosDeCompraRef>(function PedidosDeCompra(
 
           {/* Tabs */}
           <Tabs defaultValue="itens">
-            <TabsList className="mx-4 mt-3 shrink-0">
+            {/* Fila sublinhada da ui, rolável de lado quando as sete abas não
+                cabem — sem embrulhar numa segunda linha sem filete. */}
+            <div className="px-4 pt-3">
+            <TabsList className="flex-nowrap overflow-x-auto">
               {[
                 { value: 'itens',        label: `Itens da ${isVenda ? 'Venda' : 'Compra'}` },
                 { value: 'departamentos', label: 'Departamentos'          },
@@ -2145,70 +2150,75 @@ const PedidosDeCompra = forwardRef<PedidosDeCompraRef>(function PedidosDeCompra(
                 </TabsTrigger>
               ))}
             </TabsList>
+            </div>
 
             {/* Itens */}
-            <TabsContent value="itens" className="p-4 m-0">
-              <div className="flex flex-wrap items-center gap-2 mb-3">
+            <TabsContent value="itens" className="m-0 p-4">
+              <div className="mb-3 flex flex-wrap items-center gap-2">
                 <Button size="sm"
                   onClick={() => { setEditingItem(undefined); setItemDialogOpen(true); }}>
-                  <Plus className="w-4 h-4" /> Novo Item
+                  <Plus aria-hidden="true" /> Novo Item
                 </Button>
                 <Button size="sm" variant="outline" disabled={!selectedItem}
                   onClick={() => { setEditingItem(selectedItemObj); setItemDialogOpen(true); }}>
-                  <Pencil className="w-4 h-4" /> Editar Item
+                  <Pencil aria-hidden="true" /> Editar Item
                 </Button>
-                <Button size="sm" variant="outline" className="text-destructive hover:text-destructive"
+                <Button size="sm" variant="ghost-destructive"
                   disabled={!selectedItem}
                   onClick={() => selectedItem && removeItem(selectedItem)}>
-                  <Trash2 className="w-4 h-4" /> Excluir Item
+                  <Trash2 aria-hidden="true" /> Excluir Item
                 </Button>
               </div>
 
-              <div className="rounded-md border border-border overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-muted border-b border-border">
-                    <tr>
-                      <th className="text-left py-3 px-2 text-sm font-semibold w-24">Produto</th>
-                      <th className="text-left py-3 px-2 text-sm font-semibold">Descrição do Produto</th>
-                      <th className="text-center py-3 px-2 text-sm font-semibold w-24">Quantidade</th>
-                      <th className="text-left py-3 px-2 text-sm font-semibold">Local de Estoque</th>
-                      <th className="text-right py-3 px-2 text-sm font-semibold w-28">Preço Unitário</th>
-                      <th className="text-right py-3 px-2 text-sm font-semibold w-24">Valor Total</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
+              {/* Tabela do Design System (`ui/table`): cabeçalho em superfície
+                  rebaixada, rótulos 12/600, linhas de 48px, números à direita
+                  com dígitos tabulares e a rolagem presa ao contêiner. */}
+              <div className="overflow-hidden rounded-md border border-border">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead className="w-24">Produto</TableHead>
+                      <TableHead>Descrição do Produto</TableHead>
+                      <TableHead className="w-24 text-center">Quantidade</TableHead>
+                      <TableHead>Local de Estoque</TableHead>
+                      <TableHead className="w-28 text-right">Preço Unitário</TableHead>
+                      <TableHead className="w-24 text-right">Valor Total</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {itens.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="p-0">
+                      <TableRow className="hover:bg-transparent">
+                        <TableCell colSpan={6} className="p-0">
                           <EstadoVazio
                             tamanho="compacto"
                             titulo="Nenhum item no pedido"
                             descricao="Use “Novo Item” para incluir produtos do catálogo."
                           />
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     ) : itens.map(item => {
                       const vt = parseM(item.quantidade) * parseM(item.preco_unitario);
                       const isSel = selectedItem === item._key;
                       return (
-                        <tr key={item._key}
+                        <TableRow key={item._key}
                           aria-selected={isSel}
-                          className={`cursor-pointer transition-colors ${isSel ? 'bg-primary-tint border-l-2 border-l-primary' : 'hover:bg-muted'}`}
+                          data-state={isSel ? 'selected' : undefined}
+                          className={`cursor-pointer ${isSel ? 'border-l-2 border-l-primary bg-primary-tint' : ''}`}
                           onClick={() => setSelectedItem(isSel ? null : item._key)}
                           onDoubleClick={() => { setEditingItem(item); setItemDialogOpen(true); }}
                         >
-                          <td className="py-2 px-2 text-foreground font-medium">{item.codigo_produto || '—'}</td>
-                          <td className="py-2 px-2">{item.descricao}</td>
-                          <td className="py-2 px-2 text-center tabular-nums">{item.quantidade} {item.unidade}</td>
-                          <td className="py-2 px-2 text-muted-foreground text-xs">{item.local_estoque}</td>
-                          <td className="py-2 px-2 text-right tabular-nums">{item.preco_unitario}</td>
-                          <td className="py-2 px-2 text-right tabular-nums font-medium">{fmtM(vt)}</td>
-                        </tr>
+                          <TableCell nowrap className="font-medium text-foreground">{item.codigo_produto || '—'}</TableCell>
+                          <TableCell>{item.descricao}</TableCell>
+                          <TableCell nowrap className="text-center tabular-nums">{item.quantidade} {item.unidade}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground">{item.local_estoque}</TableCell>
+                          <TableCell nowrap className="text-right tabular-nums">{item.preco_unitario}</TableCell>
+                          <TableCell nowrap className="text-right font-medium tabular-nums">{fmtM(vt)}</TableCell>
+                        </TableRow>
                       );
                     })}
-                  </tbody>
-                </table>
-                <div className="border-t border-border px-3 py-2 bg-muted text-xs text-muted-foreground">
+                  </TableBody>
+                </Table>
+                <div className="border-t border-border bg-secondary px-3 py-2 text-xs text-muted-foreground">
                   {itens.length === 0
                     ? 'Nenhum registro encontrado'
                     : `1 - ${itens.length} de ${itens.length} registro${itens.length !== 1 ? 's' : ''}`}
@@ -2227,8 +2237,8 @@ const PedidosDeCompra = forwardRef<PedidosDeCompraRef>(function PedidosDeCompra(
             </TabsContent>
 
             {/* Informações Adicionais */}
-            <TabsContent value="adicional" className="p-4 m-0 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <TabsContent value="adicional" className="m-0 space-y-4 p-4">
+              <div className="grid gap-4 md:grid-cols-3">
                 <div>
                   <Label>Categoria</Label>
                   <SelectPadrao
@@ -2238,37 +2248,37 @@ const PedidosDeCompra = forwardRef<PedidosDeCompraRef>(function PedidosDeCompra(
                     placeholder="Escolher categoria…"
                   />
                 </div>
-                <div>
+                <div className="space-y-1.5">
                   <Label htmlFor="pedido-conta-corrente">Conta Corrente</Label>
-                  <Input id="pedido-conta-corrente" value={form.conta_corrente} onChange={e => setForm(f => ({ ...f, conta_corrente: e.target.value }))} className="mt-1" />
+                  <Input id="pedido-conta-corrente" value={form.conta_corrente} onChange={e => setForm(f => ({ ...f, conta_corrente: e.target.value }))} />
                 </div>
-                <div>
+                <div className="space-y-1.5">
                   <Label htmlFor="pedido-etapa">Etapa</Label>
-                  <Input id="pedido-etapa" value={form.etapa} onChange={e => setForm(f => ({ ...f, etapa: e.target.value }))} className="mt-1" />
+                  <Input id="pedido-etapa" value={form.etapa} onChange={e => setForm(f => ({ ...f, etapa: e.target.value }))} />
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
+              <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+                <div className="space-y-1.5">
                   <Label htmlFor="pedido-num-cliente">Nº do Pedido do Cliente</Label>
-                  <Input id="pedido-num-cliente" value={form.num_pedido_cliente} onChange={e => setForm(f => ({ ...f, num_pedido_cliente: e.target.value }))} className="mt-1" />
+                  <Input id="pedido-num-cliente" value={form.num_pedido_cliente} onChange={e => setForm(f => ({ ...f, num_pedido_cliente: e.target.value }))} />
                 </div>
-                <div>
+                <div className="space-y-1.5">
                   <Label htmlFor="pedido-num-contrato">Nº do Contrato de Venda</Label>
-                  <Input id="pedido-num-contrato" value={form.num_contrato_venda} onChange={e => setForm(f => ({ ...f, num_contrato_venda: e.target.value }))} className="mt-1" />
+                  <Input id="pedido-num-contrato" value={form.num_contrato_venda} onChange={e => setForm(f => ({ ...f, num_contrato_venda: e.target.value }))} />
                 </div>
-                <div>
+                <div className="space-y-1.5">
                   <Label htmlFor="pedido-contato">Contato</Label>
-                  <Input id="pedido-contato" value={form.contato} onChange={e => setForm(f => ({ ...f, contato: e.target.value }))} className="mt-1" />
+                  <Input id="pedido-contato" value={form.contato} onChange={e => setForm(f => ({ ...f, contato: e.target.value }))} />
                 </div>
-                <div>
+                <div className="space-y-1.5">
                   <Label htmlFor="pedido-projeto">Projeto +</Label>
-                  <Input id="pedido-projeto" value={form.projeto} onChange={e => setForm(f => ({ ...f, projeto: e.target.value }))} className="mt-1" />
+                  <Input id="pedido-projeto" value={form.projeto} onChange={e => setForm(f => ({ ...f, projeto: e.target.value }))} />
                 </div>
               </div>
-              <div>
+              <div className="space-y-1.5">
                 <Label htmlFor="pedido-origem">Origem do Pedido</Label>
                 <Select value={form.origem_pedido} onValueChange={v => setForm(f => ({ ...f, origem_pedido: v }))}>
-                  <SelectTrigger id="pedido-origem" className="mt-1 w-full sm:w-56"><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="pedido-origem" className="w-full sm:w-56"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="sistema">Sistema</SelectItem>
                     <SelectItem value="outro_sistema">Outro sistema</SelectItem>
@@ -2279,13 +2289,13 @@ const PedidosDeCompra = forwardRef<PedidosDeCompraRef>(function PedidosDeCompra(
                   </SelectContent>
                 </Select>
               </div>
-              <div>
+              <div className="space-y-1.5">
                 <Label htmlFor="pedido-dados-nfe">Dados Adicionais para a Nota Fiscal</Label>
                 <Textarea
                   id="pedido-dados-nfe"
                   value={form.dados_adicionais_nfe}
                   onChange={e => setForm(f => ({ ...f, dados_adicionais_nfe: e.target.value }))}
-                  className="mt-1 min-h-20 resize-none"
+                  className="min-h-20 resize-none"
                 />
               </div>
               <div className="flex items-center gap-2">
@@ -2298,62 +2308,62 @@ const PedidosDeCompra = forwardRef<PedidosDeCompraRef>(function PedidosDeCompra(
             </TabsContent>
 
             {/* Parcelas */}
-            <TabsContent value="parcelas" className="p-4 m-0">
-              <div className="rounded-md border border-border overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-muted border-b border-border">
-                    <tr>
-                      <th className="text-left py-3 px-3 text-sm font-semibold">Parcela</th>
-                      <th className="text-left py-3 px-3 text-sm font-semibold">Vencimento</th>
-                      <th className="text-right py-3 px-3 text-sm font-semibold">Valor</th>
-                      <th className="text-left py-3 px-3 text-sm font-semibold">Forma de Pagamento</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+            <TabsContent value="parcelas" className="m-0 p-4">
+              <div className="overflow-hidden rounded-md border border-border">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead>Parcela</TableHead>
+                      <TableHead>Vencimento</TableHead>
+                      <TableHead className="text-right">Valor</TableHead>
+                      <TableHead>Forma de Pagamento</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {valorTotal > 0 ? (
-                      <tr className="border-b border-border">
-                        <td className="py-2 px-3 tabular-nums">1/1</td>
-                        <td className="py-2 px-3 tabular-nums">{fmtDateBR(form.previsao_faturamento)}</td>
-                        <td className="py-2 px-3 text-right tabular-nums font-medium">R$ {fmtM(valorTotal)}</td>
-                        <td className="py-2 px-3 text-muted-foreground">{form.numero_parcelas}</td>
-                      </tr>
+                      <TableRow>
+                        <TableCell nowrap className="tabular-nums">1/1</TableCell>
+                        <TableCell nowrap className="tabular-nums">{fmtDateBR(form.previsao_faturamento)}</TableCell>
+                        <TableCell nowrap className="text-right font-medium tabular-nums">R$ {fmtM(valorTotal)}</TableCell>
+                        <TableCell className="text-muted-foreground">{form.numero_parcelas}</TableCell>
+                      </TableRow>
                     ) : (
-                      <tr>
-                        <td colSpan={4} className="p-0">
+                      <TableRow className="hover:bg-transparent">
+                        <TableCell colSpan={4} className="p-0">
                           <EstadoVazio
                             tamanho="compacto"
                             titulo="Nenhum dado de parcelas"
                             descricao="As parcelas aparecem depois que o pedido tem valor."
                           />
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     )}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               </div>
             </TabsContent>
 
             {/* Observações */}
-            <TabsContent value="obs" className="p-4 m-0">
+            <TabsContent value="obs" className="m-0 space-y-1.5 p-4">
               <Label htmlFor="pedido-observacoes">Observações</Label>
               <Textarea
                 id="pedido-observacoes"
                 value={form.observacoes}
                 onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))}
-                className="mt-1 min-h-40 resize-none"
+                className="min-h-40 resize-none"
                 placeholder="Observações gerais do pedido..."
               />
             </TabsContent>
 
             {/* E-mail */}
-            <TabsContent value="email" className="p-4 m-0 space-y-4">
-              <div>
+            <TabsContent value="email" className="m-0 space-y-4 p-4">
+              <div className="space-y-1.5">
                 <Label htmlFor="pedido-emails">Utilizar os seguintes endereços de e-mail</Label>
                 <Textarea
                   id="pedido-emails"
                   value={form.email_destinatario}
                   onChange={e => setForm(f => ({ ...f, email_destinatario: e.target.value }))}
-                  className="mt-1 min-h-20 resize-none"
+                  className="min-h-20 resize-none"
                   placeholder="seuemail@empresa.com.br"
                 />
               </div>
@@ -2364,16 +2374,18 @@ const PedidosDeCompra = forwardRef<PedidosDeCompraRef>(function PedidosDeCompra(
                   Enviar e-mail com o boleto de cobrança (juntamente com o DANFE e o XML da NF-e)
                 </Label>
               </div>
-              <div className="rounded-md border border-warning-line bg-warning-tint p-4 text-sm text-warning-ink">
-                Apenas o DANFE e o XML da NF-e serão enviados por meio do Portal para o cliente
-              </div>
+              <Alert variant="warning">
+                <AlertDescription>
+                  Apenas o DANFE e o XML da NF-e serão enviados por meio do Portal para o cliente
+                </AlertDescription>
+              </Alert>
             </TabsContent>
           </Tabs>
 
           {/* Bottom status bar */}
-          <div className="border-t px-4 py-2 bg-muted border-border shrink-0">
-            <p className="text-xs text-muted-foreground flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-muted-foreground shrink-0" aria-hidden="true" />
+          <div className="shrink-0 border-t border-border bg-secondary px-4 py-2">
+            <p className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="h-2 w-2 shrink-0 rounded-full bg-muted-foreground" aria-hidden="true" />
               {form.previsao_faturamento
                 ? `Previsão de faturamento: ${fmtDateBR(form.previsao_faturamento)}`
                 : 'Sem previsão definida'}
@@ -2397,11 +2409,11 @@ const PedidosDeCompra = forwardRef<PedidosDeCompraRef>(function PedidosDeCompra(
               <>
                 <div className="hidden md:block border-t border-border my-1" aria-hidden="true" />
                 <Button
-                  type="button" variant="ghost" size="sm"
+                  type="button" variant="ghost-destructive" size="sm"
                   onClick={() => handleDelete(editingId)}
-                  className="md:w-full justify-start font-normal text-destructive hover:text-destructive hover:bg-destructive-tint"
+                  className="md:w-full justify-start font-normal"
                 >
-                  <Trash2 className="w-4 h-4 shrink-0" aria-hidden="true" />
+                  <Trash2 className="shrink-0" aria-hidden="true" />
                   <span>Excluir</span>
                 </Button>
               </>

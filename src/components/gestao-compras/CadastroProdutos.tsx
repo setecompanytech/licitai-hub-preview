@@ -7,7 +7,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Skeleton } from '@/components/ui/skeleton';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { usePessoas } from '@/hooks/useFinanceiro';
@@ -15,6 +19,7 @@ import PessoaFormDialog from '@/components/financeiro/PessoaFormDialog';
 import NcmDialog from '@/components/shared/NcmDialog';
 import CestDialog from '@/components/shared/CestDialog';
 import EstadoVazio from '@/components/shared/EstadoVazio';
+import SkeletonTabela from '@/components/shared/SkeletonTabela';
 import TabelaGestao, { type ColunaGestao, type OrdenacaoTabela } from '@/components/gestao/TabelaGestao';
 import AreaComPainel from '@/components/gestao/AreaComPainel';
 import BarraFiltros from '@/components/gestao/BarraFiltros';
@@ -26,7 +31,7 @@ import { toast } from 'sonner';
 import {
   Plus, Trash2, Loader2, Pencil, Copy, UserMinus, ClipboardList, Upload, Package,
   Search, Link as LinkIcon, X, Globe, Info, History, FileText, ShoppingCart, Boxes,
-  ExternalLink, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
+  ExternalLink, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, MoreHorizontal,
 } from 'lucide-react';
 import { UNIDADES, unidadesMaisUsadas } from '@/lib/unidades';
 import {
@@ -162,10 +167,16 @@ function Ajuda({ texto }: { texto: string }) {
   );
 }
 
+/**
+ * Campo do formulário: rótulo em cima, controle de 40px embaixo (Design
+ * System v3). Era rótulo flutuante sobre a borda do campo — o que exigia
+ * `pt-1` em todo input e `bg-background` na moldura para o rótulo não deixar
+ * uma faixa sobre o painel branco.
+ */
 function Field({ label, children, className = '' }: { label: string; children: React.ReactNode; className?: string }) {
   return (
-    <div className={`relative ${className}`}>
-      <span className="absolute -top-2 left-2 g-meta text-muted-foreground bg-background px-1 z-10">{label}</span>
+    <div className={`flex flex-col gap-1.5 ${className}`}>
+      <span className="text-sm font-medium leading-none text-foreground">{label}</span>
       {children}
     </div>
   );
@@ -204,7 +215,7 @@ function UnidadeCombobox({ value, onChange }: { value: string; onChange: (v: str
           // duas unidades, quando tem 58.
           onFocus={() => { setOpen(true); setSearch(''); }}
           onChange={e => { setSearch(e.target.value); setOpen(true); onChange(e.target.value); }}
-          className="g-controle pt-1 pr-10"
+          className="g-controle pr-10"
           placeholder="PC"
           aria-label="Unidade"
         />
@@ -215,24 +226,24 @@ function UnidadeCombobox({ value, onChange }: { value: string; onChange: (v: str
         </Button>
       </div>
       {open && (
-        <div className="absolute z-50 top-full left-0 mt-1 w-56 rounded-[var(--g-raio)] border border-border bg-popover shadow-md max-h-60 overflow-y-auto g-corpo">
+        <div className="absolute left-0 top-full z-50 mt-1 max-h-60 w-56 overflow-y-auto rounded-lg border border-border bg-popover p-1 shadow-lg g-corpo">
           {topFiltered.length > 0 && (
             <>
-              <div className="px-3 py-2 g-meta font-semibold text-muted-foreground uppercase tracking-wide">Mais Utilizadas</div>
+              <div className="px-3 py-2 g-meta font-semibold uppercase tracking-wider text-muted-foreground">Mais Utilizadas</div>
               {topFiltered.map(u => (
-                <button type="button" key={u.value} className={`w-full text-left px-3 py-2 hover:bg-muted focus-visible:outline-none focus-visible:bg-muted transition-colors ${value === u.value ? 'bg-primary-tint text-primary font-medium' : ''}`}
+                <button type="button" key={u.value} className={`w-full rounded-sm px-3 py-2 text-left transition-colors duration-100 hover:bg-muted focus-visible:outline-none focus-visible:bg-muted ${value === u.value ? 'bg-primary-tint font-medium text-primary' : ''}`}
                   onClick={() => { onChange(u.value); setSearch(u.value); setOpen(false); }}>
                   {u.label}
                 </button>
               ))}
-              {todasFiltered.length > 0 && <div className="border-t border-border mx-2 my-1" />}
+              {todasFiltered.length > 0 && <div className="mx-2 my-1 border-t border-border" />}
             </>
           )}
           {todasFiltered.length > 0 && (
             <>
-              <div className="px-3 py-2 g-meta font-semibold text-muted-foreground uppercase tracking-wide">Todas as Unidades</div>
+              <div className="px-3 py-2 g-meta font-semibold uppercase tracking-wider text-muted-foreground">Todas as Unidades</div>
               {todasFiltered.map(u => (
-                <button type="button" key={u.value} className={`w-full text-left px-3 py-2 hover:bg-muted focus-visible:outline-none focus-visible:bg-muted transition-colors ${value === u.value ? 'bg-primary-tint text-primary font-medium' : ''}`}
+                <button type="button" key={u.value} className={`w-full rounded-sm px-3 py-2 text-left transition-colors duration-100 hover:bg-muted focus-visible:outline-none focus-visible:bg-muted ${value === u.value ? 'bg-primary-tint font-medium text-primary' : ''}`}
                   onClick={() => { onChange(u.value); setSearch(u.value); setOpen(false); }}>
                   {u.label}
                 </button>
@@ -741,16 +752,13 @@ const CadastroProdutos = forwardRef<CadastroProdutosRef, { aoMudar?: () => void 
     const codigoDisplay = editingId ? (produtos.find(p => p.id === editingId)?.codigo ?? '—') : codigoNovo;
     const produtoEmEdicao = editingId ? produtos.find(p => p.id === editingId) ?? null : null;
 
-    // bg-background (não bg-card): os rótulos flutuantes do `Field` pintam
-    // `bg-background` por cima da borda do campo — sobre um painel branco
-    // apareceria uma faixa off-white acima de cada input.
     return (
-      <div className="g-cartao bg-background overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-border bg-muted">
+      <div className="g-cartao overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-secondary px-4 py-3">
           <h2 className="g-titulo-secao">{editingId ? 'Editar produto' : 'Incluir produto'}</h2>
           <div className="flex items-center gap-2">
             <span className="g-meta text-muted-foreground tabular-nums">{codigoDisplay || 'Novo'}</span>
-            <Button variant="ghost" size="sm" onClick={closeForm}>Fechar <X className="w-4 h-4" /></Button>
+            <Button variant="ghost" size="sm" onClick={closeForm}>Fechar <X aria-hidden="true" /></Button>
           </div>
         </div>
 
@@ -760,16 +768,16 @@ const CadastroProdutos = forwardRef<CadastroProdutosRef, { aoMudar?: () => void 
           <div className="flex flex-col lg:flex-row gap-4">
             <div className="flex-1 space-y-4 min-w-0">
               <Field label="Descrição do Produto">
-                <Input value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} className="g-controle pt-1" aria-label="Descrição do Produto" />
+                <Input value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} className="g-controle" aria-label="Descrição do Produto" />
               </Field>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                 <Field label="Código do Produto">
-                  <Input value={codigoDisplay} readOnly aria-label="Código do Produto" className="g-controle pt-1 bg-muted text-muted-foreground" />
+                  <Input value={codigoDisplay} readOnly aria-label="Código do Produto" className="g-controle bg-muted text-muted-foreground" />
                 </Field>
                 <Field label="Código EAN (GTIN)">
                   <div className="relative">
-                    <Input value={form.codigo_ean} onChange={e => setForm(f => ({ ...f, codigo_ean: e.target.value }))} className="g-controle pt-1 pr-9" aria-label="Código EAN (GTIN)" />
+                    <Input value={form.codigo_ean} onChange={e => setForm(f => ({ ...f, codigo_ean: e.target.value }))} className="g-controle pr-9" aria-label="Código EAN (GTIN)" />
                     <Globe className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
                   </div>
                 </Field>
@@ -782,7 +790,7 @@ const CadastroProdutos = forwardRef<CadastroProdutosRef, { aoMudar?: () => void 
                     <Input
                       value={form.preco_venda}
                       onChange={e => setForm(f => ({ ...f, preco_venda: formatMoeda(e.target.value) }))}
-                      className="g-controle pt-1 pl-9 text-right tabular-nums"
+                      className="g-controle pl-9 text-right tabular-nums"
                       placeholder="0,00"
                       inputMode="numeric"
                       aria-label="Preço Unitário de Venda"
@@ -797,7 +805,7 @@ const CadastroProdutos = forwardRef<CadastroProdutosRef, { aoMudar?: () => void 
                     <Input
                       value={form.ncm ? `${form.ncm}${form.ncm_descricao ? ' ' + form.ncm_descricao : ''}` : ''}
                       readOnly
-                      className="g-controle pt-1 pl-9 cursor-pointer truncate"
+                      className="g-controle pl-9 cursor-pointer truncate"
                       placeholder="Selecionar NCM..."
                       aria-label="Código NCM"
                     />
@@ -805,7 +813,7 @@ const CadastroProdutos = forwardRef<CadastroProdutosRef, { aoMudar?: () => void 
                   </div>
                 </Field>
                 <Field label="Família de Produto">
-                  <Input value={form.familia_produto} onChange={e => setForm(f => ({ ...f, familia_produto: e.target.value }))} className="g-controle pt-1" placeholder="Opcional" aria-label="Família de Produto" />
+                  <Input value={form.familia_produto} onChange={e => setForm(f => ({ ...f, familia_produto: e.target.value }))} className="g-controle" placeholder="Opcional" aria-label="Família de Produto" />
                   <p className="g-meta text-muted-foreground mt-1">Opcional (mas importante para os seus relatórios de estoque e de faturamento)</p>
                 </Field>
               </div>
@@ -839,7 +847,8 @@ const CadastroProdutos = forwardRef<CadastroProdutosRef, { aoMudar?: () => void 
 
           {/* As 7 subabas do produto — rótulos e ordem inalterados. */}
           <Tabs defaultValue="estoque" className="w-full">
-            <TabsList className="h-auto w-full flex-wrap justify-start">
+            {/* Fila sublinhada da ui, rolável de lado quando as sete abas não cabem. */}
+            <TabsList className="flex-nowrap overflow-x-auto">
               {[
                 { value: 'estoque', label: 'Estoque' },
                 { value: 'fornecedores', label: 'Fornecedores' },
@@ -856,7 +865,7 @@ const CadastroProdutos = forwardRef<CadastroProdutosRef, { aoMudar?: () => void 
                 apurado exibido como 0,00 afirma que o produto não custou nada. */}
             <TabsContent value="estoque" className="g-cartao p-4 mt-2 space-y-4">
               <div>
-                <h3 className="g-titulo-secao mb-1">Saldo em estoque</h3>
+                <h3 className="mb-1 text-lg font-semibold leading-6 text-foreground">Saldo em estoque</h3>
                 <p className="g-corpo text-muted-foreground">
                   O saldo é movimentado pelas entradas de NF-e e pelas baixas de pedido — não se digita aqui.
                 </p>
@@ -889,10 +898,10 @@ const CadastroProdutos = forwardRef<CadastroProdutosRef, { aoMudar?: () => void 
 
             {/* Fornecedores */}
             <TabsContent value="fornecedores" className="g-cartao p-4 mt-2">
-              <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-                <h3 className="g-titulo-secao">Fornecedores vinculados</h3>
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-lg font-semibold leading-6 text-foreground">Fornecedores vinculados</h3>
                 <Button variant="outline" onClick={() => { setFornBusca(''); setVincularOpen(true); }}>
-                  <LinkIcon className="w-4 h-4" /> Vincular Fornecedor
+                  <LinkIcon aria-hidden="true" /> Vincular Fornecedor
                 </Button>
               </div>
               {form.fornecedoresVinculados.length === 0 ? (
@@ -915,8 +924,8 @@ const CadastroProdutos = forwardRef<CadastroProdutosRef, { aoMudar?: () => void 
                         <p className="g-corpo font-medium">{f.nome}</p>
                         {f.documento && <p className="g-meta text-muted-foreground">{f.documento}</p>}
                       </div>
-                      <Button variant="ghost" size="sm" className="w-9 px-0 shrink-0" aria-label={`Desvincular ${f.nome}`} onClick={() => desvincularFornecedor(f.id)}>
-                        <X className="w-4 h-4" />
+                      <Button variant="ghost" size="icon-sm" className="shrink-0" aria-label={`Desvincular ${f.nome}`} onClick={() => desvincularFornecedor(f.id)}>
+                        <X aria-hidden="true" />
                       </Button>
                     </div>
                   ))}
@@ -937,7 +946,7 @@ const CadastroProdutos = forwardRef<CadastroProdutosRef, { aoMudar?: () => void 
                   descricao="O histórico de compras aparece depois que o produto existe no catálogo."
                 />
               ) : vinculos.carregando ? (
-                <p role="status" className="g-corpo text-muted-foreground">Carregando compras deste produto…</p>
+                <SkeletonTabela linhas={3} colunas={5} rotulo="Carregando compras deste produto…" />
               ) : vinculos.erro ? (
                 <EstadoVazio
                   tamanho="compacto"
@@ -953,30 +962,32 @@ const CadastroProdutos = forwardRef<CadastroProdutosRef, { aoMudar?: () => void 
                   descricao="Este produto ainda não entrou em nenhum pedido de compra."
                 />
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full g-corpo">
+                /* Tabela do Design System (`ui/table`): cabeçalho em superfície
+                   rebaixada, rótulos 12/600 sem caixa alta, linhas de 48px. */
+                <div className="overflow-hidden rounded-md border border-border">
+                  <Table>
                     <caption className="sr-only">Pedidos de compra que contêm este produto</caption>
-                    <thead>
-                      <tr className="border-b border-border bg-muted/40">
-                        <th scope="col" className="g-meta px-3 py-2 text-left font-semibold uppercase tracking-wide text-muted-foreground">Pedido</th>
-                        <th scope="col" className="g-meta px-3 py-2 text-left font-semibold uppercase tracking-wide text-muted-foreground">Data</th>
-                        <th scope="col" className="g-meta px-3 py-2 text-left font-semibold uppercase tracking-wide text-muted-foreground">Situação</th>
-                        <th scope="col" className="g-meta px-3 py-2 text-right font-semibold uppercase tracking-wide text-muted-foreground">Qtd.</th>
-                        <th scope="col" className="g-meta px-3 py-2 text-right font-semibold uppercase tracking-wide text-muted-foreground">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
+                    <TableHeader>
+                      <TableRow className="hover:bg-transparent">
+                        <TableHead>Pedido</TableHead>
+                        <TableHead>Data</TableHead>
+                        <TableHead>Situação</TableHead>
+                        <TableHead className="text-right">Qtd.</TableHead>
+                        <TableHead className="text-right">Total</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
                       {historicoCompras.map(c => (
-                        <tr key={c.id} className="border-b border-border last:border-0">
-                          <td className="px-3 py-2 font-medium tabular-nums">#{c.numero ?? '—'}</td>
-                          <td className="px-3 py-2 text-muted-foreground">{fmtData(c.data)}</td>
-                          <td className="px-3 py-2 text-muted-foreground">{c.status ?? '—'}</td>
-                          <td className="px-3 py-2 text-right tabular-nums">{c.quantidade}</td>
-                          <td className="px-3 py-2 text-right tabular-nums font-semibold">R$ {fmtPreco(c.valor_total)}</td>
-                        </tr>
+                        <TableRow key={c.id}>
+                          <TableCell nowrap className="font-medium tabular-nums">#{c.numero ?? '—'}</TableCell>
+                          <TableCell nowrap className="text-muted-foreground">{fmtData(c.data)}</TableCell>
+                          <TableCell className="text-muted-foreground">{c.status ?? '—'}</TableCell>
+                          <TableCell nowrap className="text-right tabular-nums">{c.quantidade}</TableCell>
+                          <TableCell nowrap className="text-right font-semibold tabular-nums">R$ {fmtPreco(c.valor_total)}</TableCell>
+                        </TableRow>
                       ))}
-                    </tbody>
-                  </table>
+                    </TableBody>
+                  </Table>
                 </div>
               )}
             </TabsContent>
@@ -984,22 +995,22 @@ const CadastroProdutos = forwardRef<CadastroProdutosRef, { aoMudar?: () => void 
             {/* Informações Adicionais */}
             <TabsContent value="info" className="g-cartao p-4 mt-2 space-y-4">
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <Field label="Peso Líquido (Kg)"><Input value={form.peso_liquido} onChange={e => setForm(f => ({ ...f, peso_liquido: e.target.value }))} className="g-controle pt-1" /></Field>
-                <Field label="Peso Bruto (Kg)"><Input value={form.peso_bruto} onChange={e => setForm(f => ({ ...f, peso_bruto: e.target.value }))} className="g-controle pt-1" /></Field>
+                <Field label="Peso Líquido (Kg)"><Input value={form.peso_liquido} onChange={e => setForm(f => ({ ...f, peso_liquido: e.target.value }))} className="g-controle" /></Field>
+                <Field label="Peso Bruto (Kg)"><Input value={form.peso_bruto} onChange={e => setForm(f => ({ ...f, peso_bruto: e.target.value }))} className="g-controle" /></Field>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <Field label="Altura (cm)"><Input value={form.altura} onChange={e => setForm(f => ({ ...f, altura: e.target.value }))} className="g-controle pt-1" /></Field>
-                <Field label="Largura (cm)"><Input value={form.largura} onChange={e => setForm(f => ({ ...f, largura: e.target.value }))} className="g-controle pt-1" /></Field>
-                <Field label="Profundidade (cm)"><Input value={form.profundidade} onChange={e => setForm(f => ({ ...f, profundidade: e.target.value }))} className="g-controle pt-1" /></Field>
+                <Field label="Altura (cm)"><Input value={form.altura} onChange={e => setForm(f => ({ ...f, altura: e.target.value }))} className="g-controle" /></Field>
+                <Field label="Largura (cm)"><Input value={form.largura} onChange={e => setForm(f => ({ ...f, largura: e.target.value }))} className="g-controle" /></Field>
+                <Field label="Profundidade (cm)"><Input value={form.profundidade} onChange={e => setForm(f => ({ ...f, profundidade: e.target.value }))} className="g-controle" /></Field>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <Field label="Dias de Crossdocking"><Input value={form.dias_crossdocking} onChange={e => setForm(f => ({ ...f, dias_crossdocking: e.target.value }))} className="g-controle pt-1" /></Field>
-                <Field label="Lead Time de Ressuprimento"><Input value={form.lead_time_ressuprimento} onChange={e => setForm(f => ({ ...f, lead_time_ressuprimento: e.target.value }))} className="g-controle pt-1" /></Field>
+                <Field label="Dias de Crossdocking"><Input value={form.dias_crossdocking} onChange={e => setForm(f => ({ ...f, dias_crossdocking: e.target.value }))} className="g-controle" /></Field>
+                <Field label="Lead Time de Ressuprimento"><Input value={form.lead_time_ressuprimento} onChange={e => setForm(f => ({ ...f, lead_time_ressuprimento: e.target.value }))} className="g-controle" /></Field>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <Field label="Marca"><Input value={form.marca} onChange={e => setForm(f => ({ ...f, marca: e.target.value }))} className="g-controle pt-1" placeholder="Opcional" /></Field>
-                <Field label="Modelo"><Input value={form.modelo} onChange={e => setForm(f => ({ ...f, modelo: e.target.value }))} className="g-controle pt-1" placeholder="Opcional" /></Field>
-                <Field label="Dias de Garantia"><Input value={form.dias_garantia} onChange={e => setForm(f => ({ ...f, dias_garantia: e.target.value }))} className="g-controle pt-1" /></Field>
+                <Field label="Marca"><Input value={form.marca} onChange={e => setForm(f => ({ ...f, marca: e.target.value }))} className="g-controle" placeholder="Opcional" /></Field>
+                <Field label="Modelo"><Input value={form.modelo} onChange={e => setForm(f => ({ ...f, modelo: e.target.value }))} className="g-controle" placeholder="Opcional" /></Field>
+                <Field label="Dias de Garantia"><Input value={form.dias_garantia} onChange={e => setForm(f => ({ ...f, dias_garantia: e.target.value }))} className="g-controle" /></Field>
               </div>
             </TabsContent>
 
@@ -1018,7 +1029,7 @@ const CadastroProdutos = forwardRef<CadastroProdutosRef, { aoMudar?: () => void 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Field label="Origem da Mercadoria">
                   <Select value={form.origem_mercadoria} onValueChange={v => setForm(f => ({ ...f, origem_mercadoria: v }))}>
-                    <SelectTrigger className="g-controle pt-1"><SelectValue placeholder="Opcional" /></SelectTrigger>
+                    <SelectTrigger className="g-controle"><SelectValue placeholder="Opcional" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="0">0 — Nacional</SelectItem>
                       <SelectItem value="1">1 — Estrangeira (importação direta)</SelectItem>
@@ -1034,7 +1045,7 @@ const CadastroProdutos = forwardRef<CadastroProdutosRef, { aoMudar?: () => void 
                 </Field>
                 <Field label="Tipo do Produto">
                   <Select value={form.tipo_produto} onValueChange={v => setForm(f => ({ ...f, tipo_produto: v }))}>
-                    <SelectTrigger className="g-controle pt-1"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="g-controle"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="00">00 — Mercadoria para Revenda</SelectItem>
                       <SelectItem value="01">01 — Matéria-Prima</SelectItem>
@@ -1058,7 +1069,7 @@ const CadastroProdutos = forwardRef<CadastroProdutosRef, { aoMudar?: () => void 
                     <Input
                       value={form.cest ? `${form.cest}${form.cest_descricao ? ' ' + form.cest_descricao : ''}` : ''}
                       readOnly
-                      className="g-controle pt-1 pl-9 cursor-pointer truncate"
+                      className="g-controle pl-9 cursor-pointer truncate"
                       placeholder="Selecionar CEST..."
                       aria-label="CEST"
                     />
@@ -1066,18 +1077,18 @@ const CadastroProdutos = forwardRef<CadastroProdutosRef, { aoMudar?: () => void 
                   </div>
                 </Field>
                 <Field label="Número da FCI">
-                  <Input value={form.numero_fci} onChange={e => setForm(f => ({ ...f, numero_fci: e.target.value }))} className="g-controle pt-1" placeholder="Opcional" />
+                  <Input value={form.numero_fci} onChange={e => setForm(f => ({ ...f, numero_fci: e.target.value }))} className="g-controle" placeholder="Opcional" />
                 </Field>
               </div>
               <div className="border-t border-border pt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Field label="CST ICMS"><Input value={form.cst_icms} onChange={e => setForm(f => ({ ...f, cst_icms: e.target.value }))} className="g-controle pt-1" placeholder="00" /></Field>
-                <Field label="CSOSN"><Input value={form.csosn} onChange={e => setForm(f => ({ ...f, csosn: e.target.value }))} className="g-controle pt-1" placeholder="102" /></Field>
-                <Field label="CST PIS"><Input value={form.cst_pis} onChange={e => setForm(f => ({ ...f, cst_pis: e.target.value }))} className="g-controle pt-1" placeholder="07" /></Field>
-                <Field label="CST COFINS"><Input value={form.cst_cofins} onChange={e => setForm(f => ({ ...f, cst_cofins: e.target.value }))} className="g-controle pt-1" placeholder="07" /></Field>
-                <Field label="CFOP"><Input value={form.cfop} onChange={e => setForm(f => ({ ...f, cfop: e.target.value }))} className="g-controle pt-1" placeholder="0000" /></Field>
-                <Field label="Alíq. ICMS %"><Input value={form.p_icms} onChange={e => setForm(f => ({ ...f, p_icms: e.target.value }))} className="g-controle pt-1" placeholder="0" /></Field>
-                <Field label="Alíq. PIS %"><Input value={form.p_pis} onChange={e => setForm(f => ({ ...f, p_pis: e.target.value }))} className="g-controle pt-1" placeholder="0" /></Field>
-                <Field label="Alíq. COFINS %"><Input value={form.p_cofins} onChange={e => setForm(f => ({ ...f, p_cofins: e.target.value }))} className="g-controle pt-1" placeholder="0" /></Field>
+                <Field label="CST ICMS"><Input value={form.cst_icms} onChange={e => setForm(f => ({ ...f, cst_icms: e.target.value }))} className="g-controle" placeholder="00" /></Field>
+                <Field label="CSOSN"><Input value={form.csosn} onChange={e => setForm(f => ({ ...f, csosn: e.target.value }))} className="g-controle" placeholder="102" /></Field>
+                <Field label="CST PIS"><Input value={form.cst_pis} onChange={e => setForm(f => ({ ...f, cst_pis: e.target.value }))} className="g-controle" placeholder="07" /></Field>
+                <Field label="CST COFINS"><Input value={form.cst_cofins} onChange={e => setForm(f => ({ ...f, cst_cofins: e.target.value }))} className="g-controle" placeholder="07" /></Field>
+                <Field label="CFOP"><Input value={form.cfop} onChange={e => setForm(f => ({ ...f, cfop: e.target.value }))} className="g-controle" placeholder="0000" /></Field>
+                <Field label="Alíq. ICMS %"><Input value={form.p_icms} onChange={e => setForm(f => ({ ...f, p_icms: e.target.value }))} className="g-controle" placeholder="0" /></Field>
+                <Field label="Alíq. PIS %"><Input value={form.p_pis} onChange={e => setForm(f => ({ ...f, p_pis: e.target.value }))} className="g-controle" placeholder="0" /></Field>
+                <Field label="Alíq. COFINS %"><Input value={form.p_cofins} onChange={e => setForm(f => ({ ...f, p_cofins: e.target.value }))} className="g-controle" placeholder="0" /></Field>
               </div>
             </TabsContent>
 
@@ -1105,7 +1116,7 @@ const CadastroProdutos = forwardRef<CadastroProdutosRef, { aoMudar?: () => void 
 
         {/* Modal: Vincular Fornecedor */}
         <Dialog open={vincularOpen} onOpenChange={o => { setVincularOpen(o); if (!o) setFornBusca(''); }}>
-          <DialogContent className="max-w-md max-h-[80vh] flex flex-col">
+          <DialogContent className="flex max-w-md flex-col">
             <DialogHeader>
               <DialogTitle>Vincular Fornecedor</DialogTitle>
             </DialogHeader>
@@ -1209,19 +1220,34 @@ const CadastroProdutos = forwardRef<CadastroProdutosRef, { aoMudar?: () => void 
     {
       chave: 'acoes', titulo: 'Ações', alinhamento: 'direita', largura: '140px', prioridade: 'sempre',
       render: p => (
+        /* Quatro ações por linha: a principal (editar) fica à vista e as
+           demais vão para o menu "⋯" — anatomia da tabela do Design System v3. */
         <div className="flex items-center justify-end gap-1" onClick={e => e.stopPropagation()}>
-          <Button type="button" variant="ghost" size="sm" className="w-9 px-0" aria-label={`Editar ${p.descricao}`} onClick={() => openEdit(p)}>
-            <Pencil className="w-4 h-4" />
+          <Button type="button" variant="ghost" size="icon-sm" aria-label={`Editar ${p.descricao}`} onClick={() => openEdit(p)}>
+            <Pencil aria-hidden="true" />
           </Button>
-          <Button type="button" variant="ghost" size="sm" className="w-9 px-0" aria-label={`Duplicar ${p.descricao}`} onClick={() => openDuplicate(p)}>
-            <Copy className="w-4 h-4" />
-          </Button>
-          <Button type="button" variant="ghost" size="sm" className="w-9 px-0" aria-label={`${p.ativo ? 'Inativar' : 'Reativar'} ${p.descricao}`} onClick={() => handleInativar(p.id)}>
-            <UserMinus className="w-4 h-4" />
-          </Button>
-          <Button type="button" variant="ghost" size="sm" className="w-9 px-0" aria-label={`Excluir ${p.descricao}`} onClick={() => handleDelete(p.id)}>
-            <Trash2 className="w-4 h-4 text-destructive" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" variant="ghost" size="icon-sm" aria-label={`Mais ações para ${p.descricao}`}>
+                <MoreHorizontal aria-hidden="true" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem aria-label={`Duplicar ${p.descricao}`} onClick={() => openDuplicate(p)}>
+                <Copy aria-hidden="true" /> Duplicar
+              </DropdownMenuItem>
+              <DropdownMenuItem aria-label={`${p.ativo ? 'Inativar' : 'Reativar'} ${p.descricao}`} onClick={() => handleInativar(p.id)}>
+                <UserMinus aria-hidden="true" /> {p.ativo ? 'Inativar' : 'Reativar'}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-destructive-ink focus:bg-destructive-tint focus:text-destructive-ink [&>svg]:text-destructive-ink"
+                aria-label={`Excluir ${p.descricao}`}
+                onClick={() => handleDelete(p.id)}
+              >
+                <Trash2 aria-hidden="true" /> Excluir
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       ),
     },
@@ -1355,9 +1381,20 @@ const CadastroProdutos = forwardRef<CadastroProdutosRef, { aoMudar?: () => void 
             tabela. As caixas contam; aqui se vê o que foi contado. */}
         <TabsContent value="vinculos" className="mt-3 flex flex-col gap-4">
           {vinculos.carregando ? (
-            <p role="status" className="g-corpo text-muted-foreground">Carregando vínculos…</p>
+            /* Espera na forma dos três blocos que vêm: título e uma linha cada. */
+            <div role="status" aria-busy="true" className="flex flex-col gap-3">
+              <span className="sr-only">Carregando vínculos…</span>
+              <Skeleton className="h-4 w-40" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-40" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-40" />
+              <Skeleton className="h-4 w-full" />
+            </div>
           ) : vinculos.erro ? (
-            <p role="status" className="g-corpo text-warning-ink">Não foi possível consultar os vínculos deste produto.</p>
+            <Alert variant="warning">
+              <AlertDescription>Não foi possível consultar os vínculos deste produto.</AlertDescription>
+            </Alert>
           ) : (
             <>
               <BlocoDoPainel titulo={`Itens de contrato (${vinculos.contratos.length})`}>
@@ -1420,13 +1457,15 @@ const CadastroProdutos = forwardRef<CadastroProdutosRef, { aoMudar?: () => void 
     valor: number | null,
     detalhe: string,
   ) => (
-    <div className="g-cartao flex items-start gap-3 p-4">
-      <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--g-raio)] bg-muted text-muted-foreground">
+    /* Cartão KPI do Design System v3: rótulo em cima, valor 24/600 com dígitos
+       tabulares, ícone num ladrilho de 32px no canto superior direito. */
+    <div className="g-cartao relative flex min-h-[96px] items-start px-4 py-3">
+      <span aria-hidden="true" className="absolute right-3 top-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
         <Icone className="h-4 w-4" />
       </span>
-      <div className="min-w-0 flex-1">
-        <p className="g-meta text-muted-foreground">{rotulo}</p>
-        <p className="text-xl font-bold leading-7 tabular-nums text-foreground">
+      <div className="flex min-w-0 flex-1 flex-col gap-1 pr-10">
+        <p className="g-meta font-medium text-muted-foreground">{rotulo}</p>
+        <p className="text-3xl font-semibold leading-8 tabular-nums text-foreground">
           {valor === null ? <ValorIndisponivel razao="Consulta pendente" /> : valor}
         </p>
         <p className="g-meta text-muted-foreground">{detalhe}</p>
@@ -1468,10 +1507,11 @@ const CadastroProdutos = forwardRef<CadastroProdutosRef, { aoMudar?: () => void 
           </>
         }
       >
-        <div className="flex items-center gap-2">
-          <Label htmlFor="produtos-situacao" className="g-corpo text-muted-foreground whitespace-nowrap">Situação</Label>
+        {/* Rótulo em cima do campo, como os demais filtros de Gestão. */}
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="produtos-situacao" className="g-meta text-muted-foreground">Situação</Label>
           <Select value={situacao} onValueChange={v => { setSituacao(v as typeof situacao); setPage(1); }}>
-            <SelectTrigger id="produtos-situacao" className="g-controle w-40 rounded-[var(--g-raio)]">
+            <SelectTrigger id="produtos-situacao" className="g-controle w-40">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -1519,11 +1559,11 @@ const CadastroProdutos = forwardRef<CadastroProdutosRef, { aoMudar?: () => void 
                   : `${(curPage - 1) * PAGE_SIZE + 1}–${Math.min(curPage * PAGE_SIZE, filtered.length)} de ${filtered.length}`}
               </span>
               <div className="flex items-center gap-1">
-                <Button variant="ghost" size="sm" className="w-9 px-0" aria-label="Primeira página" disabled={curPage <= 1} onClick={() => setPage(1)}><ChevronsLeft className="w-4 h-4" /></Button>
-                <Button variant="ghost" size="sm" className="w-9 px-0" aria-label="Página anterior" disabled={curPage <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}><ChevronLeft className="w-4 h-4" /></Button>
-                <span aria-current="page" className="rounded-[var(--g-raio)] bg-primary px-2 py-1 g-meta font-medium tabular-nums text-primary-foreground">{curPage}</span>
-                <Button variant="ghost" size="sm" className="w-9 px-0" aria-label="Próxima página" disabled={curPage >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))}><ChevronRight className="w-4 h-4" /></Button>
-                <Button variant="ghost" size="sm" className="w-9 px-0" aria-label="Última página" disabled={curPage >= totalPages} onClick={() => setPage(totalPages)}><ChevronsRight className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="icon-sm" aria-label="Primeira página" disabled={curPage <= 1} onClick={() => setPage(1)}><ChevronsLeft aria-hidden="true" /></Button>
+                <Button variant="ghost" size="icon-sm" aria-label="Página anterior" disabled={curPage <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}><ChevronLeft aria-hidden="true" /></Button>
+                <span aria-current="page" className="inline-flex h-9 min-w-[2.25rem] items-center justify-center rounded-md bg-primary px-2 text-sm font-semibold tabular-nums text-primary-foreground">{curPage}</span>
+                <Button variant="ghost" size="icon-sm" aria-label="Próxima página" disabled={curPage >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))}><ChevronRight aria-hidden="true" /></Button>
+                <Button variant="ghost" size="icon-sm" aria-label="Última página" disabled={curPage >= totalPages} onClick={() => setPage(totalPages)}><ChevronsRight aria-hidden="true" /></Button>
               </div>
             </>
           }
@@ -1547,7 +1587,7 @@ const CadastroProdutos = forwardRef<CadastroProdutosRef, { aoMudar?: () => void 
 
       {/* Prévia da importação — nada é gravado antes desta confirmação. */}
       <Dialog open={Boolean(previaImport)} onOpenChange={o => { if (!o) setPreviaImport(null); }}>
-        <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
+        <DialogContent className="flex max-w-lg flex-col">
           <DialogHeader>
             <DialogTitle>Importar planilha de produtos</DialogTitle>
           </DialogHeader>
@@ -1558,35 +1598,37 @@ const CadastroProdutos = forwardRef<CadastroProdutosRef, { aoMudar?: () => void 
                 {previaImport.rejeitadas.length > 0 ? ` e ${previaImport.rejeitadas.length} linha(s) serão ignoradas.` : '.'}
               </p>
               {previaImport.rejeitadas.length > 0 && (
-                <div className="min-h-0 flex-1 overflow-y-auto rounded-[var(--g-raio)] border border-border">
-                  <table className="w-full g-corpo">
+                /* A altura máxima vai no scroller que ui/table cria: a rolagem
+                   fica presa ao contêiner e o cabeçalho, preso ao topo. */
+                <div className="min-h-0 overflow-hidden rounded-md border border-border [&>div]:max-h-64">
+                  <Table>
                     <caption className="sr-only">Linhas que não serão importadas</caption>
-                    <thead className="sticky top-0 bg-muted">
-                      <tr>
-                        <th scope="col" className="g-meta px-3 py-2 text-left font-semibold uppercase tracking-wide text-muted-foreground">Linha</th>
-                        <th scope="col" className="g-meta px-3 py-2 text-left font-semibold uppercase tracking-wide text-muted-foreground">Descrição</th>
-                        <th scope="col" className="g-meta px-3 py-2 text-left font-semibold uppercase tracking-wide text-muted-foreground">Motivo</th>
-                      </tr>
-                    </thead>
-                    <tbody>
+                    <TableHeader className="sticky top-0 z-10">
+                      <TableRow className="hover:bg-transparent">
+                        <TableHead>Linha</TableHead>
+                        <TableHead>Descrição</TableHead>
+                        <TableHead>Motivo</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
                       {previaImport.rejeitadas.map(r => (
-                        <tr key={`${r.linha}-${r.motivo}`} className="border-t border-border">
-                          <td className="px-3 py-2 tabular-nums">{r.linha}</td>
-                          <td className="px-3 py-2 truncate">{r.descricao || <span className="text-muted-foreground">—</span>}</td>
-                          <td className="px-3 py-2 text-muted-foreground">{MOTIVO_LEGIVEL[r.motivo]}</td>
-                        </tr>
+                        <TableRow key={`${r.linha}-${r.motivo}`}>
+                          <TableCell nowrap className="tabular-nums">{r.linha}</TableCell>
+                          <TableCell truncate>{r.descricao || <span className="text-muted-foreground">—</span>}</TableCell>
+                          <TableCell className="text-muted-foreground">{MOTIVO_LEGIVEL[r.motivo]}</TableCell>
+                        </TableRow>
                       ))}
-                    </tbody>
-                  </table>
+                    </TableBody>
+                  </Table>
                 </div>
               )}
-              <div className="flex flex-wrap justify-end gap-2 pt-1">
+              <DialogFooter>
                 <Button variant="outline" onClick={() => setPreviaImport(null)}>Cancelar</Button>
                 <Button disabled={previaImport.novas.length === 0 || gravandoImport} onClick={confirmarImportacao}>
-                  {gravandoImport ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                  {gravandoImport ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Upload aria-hidden="true" />}
                   Importar {previaImport.novas.length} produto(s)
                 </Button>
-              </div>
+              </DialogFooter>
             </>
           )}
         </DialogContent>

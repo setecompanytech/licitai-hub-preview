@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -7,12 +7,14 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Skeleton } from '@/components/ui/skeleton';
 import EstadoVazio from '@/components/shared/EstadoVazio';
+import SkeletonTabela from '@/components/shared/SkeletonTabela';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
-import { AlertCircle, ArrowLeft, Loader2, Pencil, Plus, Search, Sparkles } from 'lucide-react';
+// `ListPlus`, não `Sparkles`: o brilho é o selo da IA no Design System v3, e
+// semear condições padrão não tem IA nenhuma por trás.
+import { AlertCircle, ArrowLeft, ListPlus, Loader2, Pencil, Plus, Search } from 'lucide-react';
 
 export type CondicaoPagamento = {
   id: string;
@@ -222,38 +224,35 @@ export default function CondicoesPagamento({
 
   return (
     <Dialog open={aberto} onOpenChange={v => !v && aoFechar()}>
-      <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle>Cadastro das Condições de Pagamento</DialogTitle>
         </DialogHeader>
 
         {!editando ? (
           <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row flex-wrap gap-2">
-              <div className="relative flex-1 min-w-[200px]">
+            <div className="flex flex-col flex-wrap gap-2 sm:flex-row">
+              <div className="relative min-w-[200px] flex-1">
                 <Label htmlFor="busca-condicao" className="sr-only">Pesquisar condição</Label>
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
                 <Input id="busca-condicao" value={busca} onChange={e => setBusca(e.target.value)} placeholder="Pesquisar por descrição…" className="pl-9" />
               </div>
               <Button onClick={() => { setForm(formVazio()); setEditando(true); }}>
-                <Plus className="w-4 h-4" /> Cadastrar
+                <Plus aria-hidden="true" /> Cadastrar
               </Button>
               {linhas.length === 0 && (
                 <Button variant="outline" onClick={criarPadrao} disabled={salvando}>
-                  <Sparkles className="w-4 h-4" /> Criar condições padrão
+                  <ListPlus aria-hidden="true" /> Criar condições padrão
                 </Button>
               )}
             </div>
 
-            <div className="rounded-[var(--g-raio)] border border-border overflow-x-auto">
-              {carregando ? (
-                <div role="status" aria-busy="true" className="space-y-2 p-4">
-                  <span className="sr-only">Carregando</span>
-                  <Skeleton className="h-10" />
-                  <Skeleton className="h-10" />
-                  <Skeleton className="h-10" />
-                </div>
-              ) : filtradas.length === 0 ? (
+            {/* Espera na forma da tabela que vem (linhas de 48px com cabeçalho). */}
+            {carregando ? (
+              <SkeletonTabela linhas={3} colunas={6} rotulo="Carregando" />
+            ) : (
+            <div className="overflow-hidden rounded-md border border-border">
+              {filtradas.length === 0 ? (
                 <EstadoVazio
                   tamanho="compacto"
                   titulo="Nenhuma condição cadastrada"
@@ -277,16 +276,16 @@ export default function CondicoesPagamento({
                       const ok = Math.abs(total - 100) <= 0.01;
                       return (
                         <TableRow key={l.id} className="cursor-pointer" onClick={() => abrirEdicao(l)}>
-                          <TableCell className="g-corpo tabular-nums">{l.codigo}</TableCell>
-                          <TableCell className="g-corpo font-medium">{l.descricao}</TableCell>
-                          <TableCell className="g-corpo text-muted-foreground">{l.forma_pagamento || '—'}</TableCell>
-                          <TableCell className="g-corpo text-muted-foreground">
+                          <TableCell nowrap className="tabular-nums">{l.codigo}</TableCell>
+                          <TableCell className="font-medium">{l.descricao}</TableCell>
+                          <TableCell className="text-muted-foreground">{l.forma_pagamento || '—'}</TableCell>
+                          <TableCell className="text-muted-foreground">
                             {l.parcelas.map(p => `${p.dias}d`).join(' / ')}
                           </TableCell>
-                          <TableCell className={`g-corpo text-right tabular-nums ${ok ? '' : 'text-destructive-ink font-semibold'}`}>
+                          <TableCell nowrap className={`text-right tabular-nums ${ok ? '' : 'font-semibold text-destructive-ink'}`}>
                             {total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </TableCell>
-                          <TableCell><Pencil className="w-4 h-4 text-muted-foreground" aria-hidden="true" /></TableCell>
+                          <TableCell><Pencil className="h-4 w-4 text-muted-foreground" aria-hidden="true" /></TableCell>
                         </TableRow>
                       );
                     })}
@@ -294,6 +293,7 @@ export default function CondicoesPagamento({
                 </Table>
               )}
             </div>
+            )}
             {filtradas.some(l => Math.abs(l.parcelas.reduce((s, p) => s + (Number(p.percentual) || 0), 0) - 100) > 0.01) && (
               <Alert variant="destructive">
                 <AlertCircle className="w-4 h-4" aria-hidden="true" />
@@ -303,17 +303,19 @@ export default function CondicoesPagamento({
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="sm:col-span-2">
+            {/* Formulário do Design System: rótulo em cima do campo, grade
+                de duas colunas que colapsa no celular. */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5 sm:col-span-2">
                 <Label htmlFor="cond-descricao">Descrição *</Label>
                 <Input id="cond-descricao" value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))}
-                  placeholder="Ex.: BOLETO 30 DIAS" className="mt-1" />
+                  placeholder="Ex.: BOLETO 30 DIAS" />
               </div>
-              <div>
+              <div className="space-y-1.5">
                 <Label>Condição pagamento</Label>
                 <Select value={form.tipo} onValueChange={(v: CondicaoPagamento['tipo']) =>
                   setForm(f => ({ ...f, tipo: v, parcelas: ajustarParcelas(v, f.parcelas.length, f.parcelas[0]?.dias ?? 30, 30) }))}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="a_vista">À Vista</SelectItem>
                     <SelectItem value="a_prazo">A Prazo</SelectItem>
@@ -321,68 +323,67 @@ export default function CondicoesPagamento({
                   </SelectContent>
                 </Select>
               </div>
-              <div>
+              <div className="space-y-1.5">
                 <Label>Forma de pagamento</Label>
                 <Select value={form.forma_pagamento || undefined} onValueChange={v => setForm(f => ({ ...f, forma_pagamento: v }))}>
-                  <SelectTrigger className="mt-1"><SelectValue placeholder="Selecionar…" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Selecionar…" /></SelectTrigger>
                   <SelectContent>
                     {FORMAS_PAGAMENTO.map(fp => <SelectItem key={fp} value={fp}>{fp}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
-              <div>
+              <div className="space-y-1.5">
                 <Label>Vencimento sábado</Label>
                 <Select value={form.vencimento_sabado} onValueChange={v => setForm(f => ({ ...f, vencimento_sabado: v }))}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>{REGRAS_FDS.map(r => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div>
+              <div className="space-y-1.5">
                 <Label>Vencimento domingo</Label>
                 <Select value={form.vencimento_domingo} onValueChange={v => setForm(f => ({ ...f, vencimento_domingo: v }))}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>{REGRAS_FDS.map(r => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               {form.tipo === 'parcelado' && (
-                <div>
+                <div className="space-y-1.5">
                   <Label htmlFor="cond-num-parcelas">Número parcelas</Label>
                   <Input id="cond-num-parcelas" type="number" min={2} max={60} value={form.parcelas.length}
-                    onChange={e => setForm(f => ({ ...f, parcelas: ajustarParcelas('parcelado', parseInt(e.target.value) || 2, f.parcelas[0]?.dias ?? 30, 30) }))}
-                    className="mt-1" />
+                    onChange={e => setForm(f => ({ ...f, parcelas: ajustarParcelas('parcelado', parseInt(e.target.value) || 2, f.parcelas[0]?.dias ?? 30, 30) }))} />
                 </div>
               )}
-              <div>
+              <div className="space-y-1.5">
                 <Label htmlFor="cond-dia-venc">Dia de vencimento <span className="font-normal text-muted-foreground">(opcional — grampeia no dia fixo)</span></Label>
                 <Input id="cond-dia-venc" type="number" min={1} max={31} value={form.dia_vencimento}
-                  onChange={e => setForm(f => ({ ...f, dia_vencimento: e.target.value }))} className="mt-1" placeholder="—" />
+                  onChange={e => setForm(f => ({ ...f, dia_vencimento: e.target.value }))} placeholder="—" />
               </div>
-              <div>
+              <div className="space-y-1.5">
                 <Label htmlFor="cond-juro">Juro diário (%)</Label>
-                <Input id="cond-juro" value={form.juro_diario} onChange={e => setForm(f => ({ ...f, juro_diario: e.target.value }))} className="mt-1" />
+                <Input id="cond-juro" value={form.juro_diario} onChange={e => setForm(f => ({ ...f, juro_diario: e.target.value }))} />
               </div>
-              <div>
+              <div className="space-y-1.5">
                 <Label htmlFor="cond-acrescimo">Percentual de acréscimo (%)</Label>
-                <Input id="cond-acrescimo" value={form.percentual_acrescimo} onChange={e => setForm(f => ({ ...f, percentual_acrescimo: e.target.value }))} className="mt-1" />
+                <Input id="cond-acrescimo" value={form.percentual_acrescimo} onChange={e => setForm(f => ({ ...f, percentual_acrescimo: e.target.value }))} />
               </div>
             </div>
 
             {/* Parcelas — dias e percentuais editáveis; a soma tem de fechar 100 */}
-            <div className="rounded-[var(--g-raio)] border border-border p-4 space-y-3">
+            <div className="space-y-3 rounded-lg border border-border p-4">
               <p className="g-corpo font-semibold">Parcelas (dias × percentual)</p>
               {form.parcelas.map((p, i) => (
                 <div key={i} className="grid grid-cols-2 gap-3">
-                  <div>
+                  <div className="space-y-1.5">
                     <Label htmlFor={`parcela-dias-${i}`} className="g-meta text-muted-foreground">Parcela {i + 1} — dias</Label>
                     <Input id={`parcela-dias-${i}`} type="number" min={0} value={p.dias}
                       onChange={e => setForm(f => ({ ...f, parcelas: f.parcelas.map((x, j) => j === i ? { ...x, dias: parseInt(e.target.value) || 0 } : x) }))}
-                      className="mt-1 tabular-nums" />
+                      className="tabular-nums" />
                   </div>
-                  <div>
+                  <div className="space-y-1.5">
                     <Label htmlFor={`parcela-pct-${i}`} className="g-meta text-muted-foreground">Percentual (%)</Label>
                     <Input id={`parcela-pct-${i}`} type="number" min={0} max={100} step="0.01" value={p.percentual}
                       onChange={e => setForm(f => ({ ...f, parcelas: f.parcelas.map((x, j) => j === i ? { ...x, percentual: parseFloat(e.target.value) || 0 } : x) }))}
-                      className="mt-1 tabular-nums" />
+                      className="tabular-nums" />
                   </div>
                 </div>
               ))}
@@ -392,21 +393,21 @@ export default function CondicoesPagamento({
               </p>
             </div>
 
-            <div className="flex flex-wrap justify-between gap-2">
+            <DialogFooter className="sm:justify-between">
               <Button variant="outline" onClick={() => { setEditando(false); setForm(formVazio()); }}>
-                <ArrowLeft className="w-4 h-4" /> Voltar à lista
+                <ArrowLeft aria-hidden="true" /> Voltar à lista
               </Button>
               <Button onClick={salvar} disabled={salvando || !fecha100}>
-                {salvando && <Loader2 className="w-4 h-4 animate-spin" />} Salvar
+                {salvando && <Loader2 className="animate-spin" aria-hidden="true" />} Salvar
               </Button>
-            </div>
+            </DialogFooter>
           </div>
         )}
 
         {!editando && linhas.length > 0 && (
           <div className="flex justify-end">
             <Button variant="outline" onClick={criarPadrao} disabled={salvando}>
-              <Sparkles className="w-4 h-4" /> Completar com condições padrão
+              <ListPlus aria-hidden="true" /> Completar com condições padrão
             </Button>
           </div>
         )}

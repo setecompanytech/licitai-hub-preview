@@ -10,10 +10,11 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -34,6 +35,7 @@ import {
 } from '@/lib/fiscal/credito-icms';
 import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import EstadoVazio from '@/components/shared/EstadoVazio';
+import SkeletonTabela from '@/components/shared/SkeletonTabela';
 import { trilhaDaRota } from '@/lib/navegacao/paginas';
 import { useAbaNaUrl } from '@/lib/navegacao/aba-na-url';
 import AbasGestao from '@/components/gestao/AbasGestao';
@@ -1332,9 +1334,9 @@ export default function GestaoCompras() {
 
         <div className="grid grid-cols-2 gap-2">
           {caixas.map(c => (
-            <div key={c.rotulo} className={`rounded-[var(--g-raio)] px-3 py-2 ${c.tom}`}>
-              <p className="g-meta opacity-80">{c.rotulo}</p>
-              <p className="truncate text-xl font-bold leading-7 tabular-nums">{c.valor}</p>
+            <div key={c.rotulo} className={`rounded-md px-3 py-2 ${c.tom}`}>
+              <p className="g-meta font-medium opacity-80">{c.rotulo}</p>
+              <p className="truncate text-2xl font-semibold leading-7 tabular-nums">{c.valor}</p>
               <p className="g-meta opacity-80">{p.unidade}</p>
             </div>
           ))}
@@ -1367,13 +1369,13 @@ export default function GestaoCompras() {
           <Button variant="outline" size="sm" onClick={() => { setMovForm(f => ({ ...f, produto_id: p.id })); setMovOpen(true); }}>
             <Plus className="h-4 w-4" /> Movimentação
           </Button>
-          <Button variant="ghost" size="sm" aria-label={`Excluir ${p.descricao}`} onClick={() => setProdutoAExcluir(p)}>
-            <Trash2 className="h-4 w-4 text-destructive" />
+          <Button variant="ghost-destructive" size="icon-sm" aria-label={`Excluir ${p.descricao}`} onClick={() => setProdutoAExcluir(p)}>
+            <Trash2 aria-hidden="true" />
           </Button>
         </div>
 
         <Tabs value={abaProduto} onValueChange={v => setAbaProduto(v as typeof abaProduto)}>
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList>
             <TabsTrigger value="movimentacoes">Movimentações</TabsTrigger>
             <TabsTrigger value="vinculos">Vínculos</TabsTrigger>
           </TabsList>
@@ -1391,7 +1393,7 @@ export default function GestaoCompras() {
                   const sinal = m.tipo === 'entrada' ? '+' : m.tipo === 'saida' ? '-' : (m.quantidade >= 0 ? '+' : '−');
                   return (
                     <li key={m.id} className="flex items-start gap-3 py-2.5">
-                      <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${cfg.bg}`}>
+                      <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${cfg.bg}`}>
                         <Icone className={`h-4 w-4 ${cfg.color}`} aria-hidden="true" />
                       </span>
                       <div className="min-w-0 flex-1">
@@ -1510,13 +1512,15 @@ export default function GestaoCompras() {
               <PackagePlus className="h-4 w-4" /> Conferir entrada
             </Button>
           )}
-          <Button variant="ghost" size="sm" aria-label={`Excluir NF-e ${n.numero}`} onClick={() => setNfeAExcluir(n)}>
-            <Trash2 className="h-4 w-4 text-destructive" />
+          <Button variant="ghost-destructive" size="icon-sm" aria-label={`Excluir NF-e ${n.numero}`} onClick={() => setNfeAExcluir(n)}>
+            <Trash2 aria-hidden="true" />
           </Button>
         </div>
 
         <Tabs value={abaNfe} onValueChange={v => setAbaNfe(v as typeof abaNfe)}>
-          <TabsList className="grid w-full grid-cols-4">
+          {/* Fila sublinhada da ui: rola de lado no painel estreito em vez de
+              espremer quatro abas numa grade fixa. */}
+          <TabsList className="flex-nowrap overflow-x-auto">
             <TabsTrigger value="resumo">Resumo</TabsTrigger>
             <TabsTrigger value="itens">Itens ({itens.length})</TabsTrigger>
             <TabsTrigger value="arquivos">XML/PDF</TabsTrigger>
@@ -1651,8 +1655,8 @@ export default function GestaoCompras() {
           <Button variant="outline" size="sm" onClick={() => { setEditingPessoa(f); setPessoaOpen(true); }}>
             <Pencil className="h-4 w-4" /> Editar
           </Button>
-          <Button variant="ghost" size="sm" aria-label={`Excluir ${f.nome}`} onClick={() => setFornAExcluir(f)}>
-            <Trash2 className="h-4 w-4 text-destructive" />
+          <Button variant="ghost-destructive" size="icon-sm" aria-label={`Excluir ${f.nome}`} onClick={() => setFornAExcluir(f)}>
+            <Trash2 aria-hidden="true" />
           </Button>
         </div>
 
@@ -1738,22 +1742,24 @@ export default function GestaoCompras() {
                   <SelectItem value="cancelado">Cancelado</SelectItem>
                 </SelectContent>
               </Select>
-              <Button variant="ghost" aria-label="Excluir pedido" onClick={() => setPedidoAExcluir(p)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+              <Button variant="ghost-destructive" size="icon" aria-label="Excluir pedido" onClick={() => setPedidoAExcluir(p)}><Trash2 aria-hidden="true" /></Button>
             </>
           }
         >
           <div className="flex flex-wrap items-center gap-3">
-            <Badge variant={cfg.variant}><Icon className="w-3 h-3 mr-1" />{cfg.label}</Badge>
-            {isAtrasado && <Badge variant="danger"><AlertTriangle className="w-3 h-3 mr-1" />Atrasado</Badge>}
-            <div className="ml-auto rounded-lg border border-border bg-card px-4 py-2 text-right">
-              <p className="text-xs text-muted-foreground">Valor total</p>
-              <p className="text-[2rem] leading-10 font-bold tabular-nums">{fmtCurrency(p.valor_total)}</p>
+            <Badge variant={cfg.variant}><Icon className="h-3 w-3" aria-hidden="true" />{cfg.label}</Badge>
+            {isAtrasado && <Badge variant="danger"><AlertTriangle className="h-3 w-3" aria-hidden="true" />Atrasado</Badge>}
+            {/* O valor do pedido na anatomia do cartão KPI: rótulo em cima,
+                número 28/600 com dígitos tabulares (Design System v3). */}
+            <div className="ml-auto rounded-lg border border-border bg-card px-4 py-3 text-right shadow-sm">
+              <p className="text-sm font-medium leading-5 text-muted-foreground">Valor total</p>
+              <p className="text-[1.75rem] font-semibold leading-9 tabular-nums text-foreground">{fmtCurrency(p.valor_total)}</p>
             </div>
           </div>
         </CabecalhoPagina>
 
-        <Card className="p-6">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2"><Package className="w-5 h-5 text-muted-foreground" aria-hidden="true" /> Itens do pedido</h2>
+        <Card className="p-5">
+          <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold leading-6 text-foreground"><Package className="h-5 w-5 text-muted-foreground" aria-hidden="true" /> Itens do pedido</h2>
           {itensPedido.length === 0 ? (
             <EstadoVazio
               tamanho="compacto"
@@ -1762,50 +1768,53 @@ export default function GestaoCompras() {
               descricao="Este pedido foi salvo sem itens."
             />
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border text-sm font-semibold">
-                    <th className="text-left py-2 pr-4">Descrição</th>
-                    <th className="text-center py-2 px-2 w-16">Un.</th>
-                    <th className="text-right py-2 px-2 w-20">Qtd.</th>
-                    <th className="text-right py-2 px-2 w-32">Preço unit.</th>
-                    <th className="text-right py-2 pl-2 w-32">Total</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
+            /* Tabela do Design System (`ui/table`): cabeçalho em superfície
+               rebaixada, rótulos 12/600, linhas de 48px, números à direita com
+               dígitos tabulares e a rolagem presa ao contêiner. */
+            <div className="overflow-hidden rounded-md border border-border">
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead>Descrição</TableHead>
+                    <TableHead className="w-16 text-center">Un.</TableHead>
+                    <TableHead className="w-20 text-right">Qtd.</TableHead>
+                    <TableHead className="w-32 text-right">Preço unit.</TableHead>
+                    <TableHead className="w-32 text-right">Total</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {itensPedido.map(item => (
-                    <tr key={item.id}>
-                      <td className="py-2 pr-4">{item.descricao}</td>
-                      <td className="py-2 px-2 text-center text-muted-foreground">{item.unidade}</td>
-                      <td className="py-2 px-2 text-right tabular-nums">{item.quantidade.toLocaleString('pt-BR')}</td>
-                      <td className="py-2 px-2 text-right tabular-nums">{fmtCurrency(item.preco_unitario)}</td>
-                      <td className="py-2 pl-2 text-right tabular-nums font-medium">{fmtCurrency(item.preco_total)}</td>
-                    </tr>
+                    <TableRow key={item.id}>
+                      <TableCell>{item.descricao}</TableCell>
+                      <TableCell nowrap className="text-center text-muted-foreground">{item.unidade}</TableCell>
+                      <TableCell nowrap className="text-right tabular-nums">{item.quantidade.toLocaleString('pt-BR')}</TableCell>
+                      <TableCell nowrap className="text-right tabular-nums">{fmtCurrency(item.preco_unitario)}</TableCell>
+                      <TableCell nowrap className="text-right font-medium tabular-nums">{fmtCurrency(item.preco_total)}</TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-                <tfoot>
-                  <tr className="border-t border-border">
-                    <td colSpan={4} className="py-2 text-right text-sm text-muted-foreground pr-2 font-medium">Total do pedido</td>
-                    <td className="py-2 pl-2 text-right tabular-nums font-bold text-foreground">{fmtCurrency(p.valor_total)}</td>
-                  </tr>
-                </tfoot>
-              </table>
+                </TableBody>
+                <TableFooter>
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell colSpan={4} className="text-right text-muted-foreground">Total do pedido</TableCell>
+                    <TableCell nowrap className="text-right tabular-nums text-foreground">{fmtCurrency(p.valor_total)}</TableCell>
+                  </TableRow>
+                </TableFooter>
+              </Table>
             </div>
           )}
         </Card>
 
         {/* Dialog: entrega → estoque */}
         <Dialog open={entregaOpen} onOpenChange={o => { if (!o) setEntregaOpen(false); }}>
-          <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogContent className="max-w-lg">
             <DialogHeader>
               <DialogTitle>Registrar recebimento no estoque</DialogTitle>
+              <DialogDescription>Vincule cada item do pedido a um produto do catálogo para registrar a entrada no estoque. Itens sem vínculo serão ignorados.</DialogDescription>
             </DialogHeader>
-            <p className="text-sm text-muted-foreground mb-3">Vincule cada item do pedido a um produto do catálogo para registrar a entrada no estoque. Itens sem vínculo serão ignorados.</p>
             <div className="space-y-3">
               {entregaMappings.map((m, idx) => (
-                <div key={m.item.id} className="rounded-lg border border-border p-4 space-y-2">
-                  <p className="text-sm font-medium">{m.item.descricao}</p>
+                <div key={m.item.id} className="space-y-2 rounded-lg border border-border p-4">
+                  <p className="text-sm font-medium text-foreground">{m.item.descricao}</p>
                   <p className="text-xs text-muted-foreground tabular-nums">{m.item.quantidade} {m.item.unidade} · {fmtCurrency(m.item.preco_unitario)}/un</p>
                   <Label htmlFor={`entrega-prod-${idx}`}>Produto do catálogo</Label>
                   <Select value={m.produtoId} onValueChange={v => setEntregaMappings(arr => arr.map((x, i) => i === idx ? { ...x, produtoId: v } : x))}>
@@ -1824,12 +1833,12 @@ export default function GestaoCompras() {
                 </div>
               ))}
             </div>
-            <div className="flex flex-wrap justify-end gap-2 mt-4">
+            <DialogFooter>
               <Button variant="outline" onClick={() => setEntregaOpen(false)}>Pular</Button>
               <Button onClick={handleConfirmarEntrega} disabled={savingEntrega}>
-                {savingEntrega && <Loader2 className="w-4 h-4 animate-spin mr-2" />} Registrar no Estoque
+                {savingEntrega && <Loader2 className="animate-spin" aria-hidden="true" />} Registrar no Estoque
               </Button>
-            </div>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
 
@@ -1877,34 +1886,34 @@ export default function GestaoCompras() {
           />
         </Card>
       ) : loading ? (
-        <div role="status" aria-busy="true" className="space-y-4">
-          <span className="sr-only">Carregando</span>
+        /* Espera na forma do que vem — a fila de abas, os indicadores e a
+           tabela de linhas de 48px — em vez de um bloco cinza único. */
+        <div aria-busy="true" className="flex min-w-0 flex-col gap-4">
           <Skeleton className="h-11 w-full max-w-xl rounded-md" />
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Skeleton className="h-28 rounded-lg" />
-            <Skeleton className="h-28 rounded-lg" />
-            <Skeleton className="h-28 rounded-lg" />
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Skeleton className="h-24 rounded-lg" />
+            <Skeleton className="h-24 rounded-lg" />
+            <Skeleton className="h-24 rounded-lg" />
           </div>
-          <Skeleton className="h-64 rounded-lg" />
+          <SkeletonTabela linhas={6} colunas={5} rotulo="Carregando" />
         </div>
       ) : isOnboarding ? (
-        <div className="min-h-[60vh] flex flex-col justify-center">
-          <OnboardingCompras
-            onCadastrarFornecedor={() => { setEditingPessoa(null); setPessoaOpen(true); }}
-            // Quem começa agora entra pelo sistema VIVO de pedidos (aba
-            // Pedidos, tabela `pedidos`), não pelo formulário legado de
-            // `pedidos_compra`, cujos registros nenhuma lista exibe.
-            onNovoPedido={() => { setPularOnboarding(true); setMainTab('pedidos'); setNovoPedidoAoEntrar(true); }}
-            onEstoque={() => { setPularOnboarding(true); setMainTab('estoque'); openNovoProduto(); }}
-            onImportarNfe={() => { resetNfeDialog(); setNfeOpen(true); }}
-          />
-        </div>
+        <OnboardingCompras
+          onCadastrarFornecedor={() => { setEditingPessoa(null); setPessoaOpen(true); }}
+          // Quem começa agora entra pelo sistema VIVO de pedidos (aba
+          // Pedidos, tabela `pedidos`), não pelo formulário legado de
+          // `pedidos_compra`, cujos registros nenhuma lista exibe.
+          onNovoPedido={() => { setPularOnboarding(true); setMainTab('pedidos'); setNovoPedidoAoEntrar(true); }}
+          onEstoque={() => { setPularOnboarding(true); setMainTab('estoque'); openNovoProduto(); }}
+          onImportarNfe={() => { resetNfeDialog(); setNfeOpen(true); }}
+        />
       ) : (
         <div className="flex min-w-0 flex-col gap-4">
           {/* Princípio 3: a carga que falhou diz o que aconteceu e oferece
               nova tentativa, em vez de deixar a tela parecendo vazia. */}
           {erroCarga && (
             <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" aria-hidden="true" />
               <AlertDescription className="flex flex-wrap items-center gap-3">
                 <span className="min-w-0 flex-1">Não foi possível carregar os dados de compras: {erroCarga}</span>
                 <Button size="sm" variant="outline" onClick={() => void loadAll()}>Tentar novamente</Button>
@@ -2051,15 +2060,19 @@ export default function GestaoCompras() {
                   aoLimpar={() => { setEstoqSearch(''); setEstoqSituacao('todas'); }}
                   acao={<Button onClick={openNovoProduto}><Plus className="h-4 w-4" /> Novo produto</Button>}
                 >
-                  <Select value={estoqSituacao} onValueChange={setEstoqSituacao}>
-                    <SelectTrigger className="g-controle w-52" aria-label="Situação do estoque"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="todas">Todas as situações</SelectItem>
-                      <SelectItem value="alerta">Abaixo do mínimo</SelectItem>
-                      <SelectItem value="sem_saldo">Sem saldo</SelectItem>
-                      <SelectItem value="inativos">Inativos</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  {/* Rótulo em cima do campo, como os demais filtros de Gestão. */}
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="estoque-situacao" className="g-meta text-muted-foreground">Situação do estoque</Label>
+                    <Select value={estoqSituacao} onValueChange={setEstoqSituacao}>
+                      <SelectTrigger id="estoque-situacao" className="g-controle w-52" aria-label="Situação do estoque"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todas">Todas as situações</SelectItem>
+                        <SelectItem value="alerta">Abaixo do mínimo</SelectItem>
+                        <SelectItem value="sem_saldo">Sem saldo</SelectItem>
+                        <SelectItem value="inativos">Inativos</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </BarraFiltros>
 
                 {/* Falhou a apuração da reserva: a tela diz, com o erro do
@@ -2197,21 +2210,27 @@ export default function GestaoCompras() {
                     </>
                   }
                 >
-                  <div className="flex flex-wrap items-center gap-2">
+                  {/* Rótulo em cima de cada campo: a barra alinha tudo pela base. */}
+                  <div className="flex flex-col gap-1.5">
                     <Label htmlFor="nfe-de" className="g-meta text-muted-foreground">Emissão de</Label>
                     <Input id="nfe-de" type="date" value={nfeDe} onChange={e => setNfeDe(e.target.value)} className="g-controle w-40" />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
                     <Label htmlFor="nfe-ate" className="g-meta text-muted-foreground">até</Label>
                     <Input id="nfe-ate" type="date" value={nfeAte} onChange={e => setNfeAte(e.target.value)} className="g-controle w-40" />
                   </div>
-                  <Select value={nfeSituacao} onValueChange={setNfeSituacao}>
-                    <SelectTrigger className="g-controle w-56" aria-label="Situação do estoque"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="todas">Todas as situações</SelectItem>
-                      <SelectItem value="pendente">Entrada a conferir</SelectItem>
-                      <SelectItem value="lancada">Estoque lançado</SelectItem>
-                      <SelectItem value="sem_xml">Sem XML</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="nfe-situacao" className="g-meta text-muted-foreground">Situação do estoque</Label>
+                    <Select value={nfeSituacao} onValueChange={setNfeSituacao}>
+                      <SelectTrigger id="nfe-situacao" className="g-controle w-56" aria-label="Situação do estoque"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todas">Todas as situações</SelectItem>
+                        <SelectItem value="pendente">Entrada a conferir</SelectItem>
+                        <SelectItem value="lancada">Estoque lançado</SelectItem>
+                        <SelectItem value="sem_xml">Sem XML</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </BarraFiltros>
 
                 <TabelaGestao
@@ -2273,18 +2292,18 @@ export default function GestaoCompras() {
                           {!nfesComEstoque.has(n.id) && n.xml && (
                             <Button size="sm" variant="outline" className="whitespace-nowrap"
                               onClick={() => abrirLancamentoEstoque(n)}>
-                              <PackagePlus className="h-4 w-4" /> Conferir
+                              <PackagePlus aria-hidden="true" /> Conferir
                             </Button>
                           )}
                           {n.xml && (
-                            <Button size="sm" variant="ghost" className="w-9 px-0" aria-label={`Baixar XML da NF-e ${n.numero}`}
+                            <Button size="icon-sm" variant="ghost" aria-label={`Baixar XML da NF-e ${n.numero}`}
                               onClick={() => baixarXml(n)}>
-                              <Download className="h-4 w-4" />
+                              <Download aria-hidden="true" />
                             </Button>
                           )}
-                          <Button size="sm" variant="ghost" className="w-9 px-0" aria-label={`Excluir NF-e ${n.numero}`}
+                          <Button size="icon-sm" variant="ghost-destructive" aria-label={`Excluir NF-e ${n.numero}`}
                             onClick={() => setNfeAExcluir(n)}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
+                            <Trash2 aria-hidden="true" />
                           </Button>
                         </span>
                       ),
@@ -2397,33 +2416,36 @@ export default function GestaoCompras() {
 
       {/* Dialog: Novo Pedido */}
       <Dialog open={pedidoOpen} onOpenChange={o => { setPedidoOpen(o); if (!o) resetPedidoForm(); }}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl">
           <DialogHeader><DialogTitle>Novo Pedido de Compra</DialogTitle></DialogHeader>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
-            <div className="md:col-span-2">
+          {/* Formulário do Design System: rótulo em cima do campo, grade de
+              duas colunas que colapsa no celular. */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5 sm:col-span-2">
               <Label>Fornecedor *</Label>
               <Select value={pedidoForm.fornecedor_id} onValueChange={v => setPedidoForm(f => ({ ...f, fornecedor_id: v }))}>
                 <SelectTrigger><SelectValue placeholder="Selecione o fornecedor" /></SelectTrigger>
                 <SelectContent>{fornecedores.filter(f => f.ativo).map(f => <SelectItem key={f.id} value={f.id}>{f.razao_social}{f.categoria ? ` — ${f.categoria}` : ''}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div className="md:col-span-2">
+            <div className="space-y-1.5 sm:col-span-2">
               <Label>Contrato vinculado (opcional)</Label>
               <Select value={pedidoForm.contrato_id || 'none'} onValueChange={v => setPedidoForm(f => ({ ...f, contrato_id: v === 'none' ? '' : v }))}>
                 <SelectTrigger><SelectValue placeholder="Nenhum contrato" /></SelectTrigger>
                 <SelectContent><SelectItem value="none">— Sem contrato —</SelectItem>{contratos.map(c => <SelectItem key={c.id} value={c.id}>{c.numero_contrato} — {c.orgao_contratante}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div><Label>Data do Pedido</Label><Input type="date" value={pedidoForm.data_pedido} onChange={e => setPedidoForm(f => ({ ...f, data_pedido: e.target.value }))} /></div>
-            <div><Label>Entrega Prevista</Label><Input type="date" value={pedidoForm.data_entrega_prevista} onChange={e => setPedidoForm(f => ({ ...f, data_entrega_prevista: e.target.value }))} /></div>
-            <div className="md:col-span-2"><Label>Descrição / Observações</Label><Textarea value={pedidoForm.observacoes} onChange={e => setPedidoForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} placeholder="Descreva o objeto deste pedido..." /></div>
+            <div className="space-y-1.5"><Label>Data do Pedido</Label><Input type="date" value={pedidoForm.data_pedido} onChange={e => setPedidoForm(f => ({ ...f, data_pedido: e.target.value }))} /></div>
+            <div className="space-y-1.5"><Label>Entrega Prevista</Label><Input type="date" value={pedidoForm.data_entrega_prevista} onChange={e => setPedidoForm(f => ({ ...f, data_entrega_prevista: e.target.value }))} /></div>
+            <div className="space-y-1.5 sm:col-span-2"><Label>Descrição / Observações</Label><Textarea value={pedidoForm.observacoes} onChange={e => setPedidoForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} placeholder="Descreva o objeto deste pedido..." /></div>
           </div>
-          <div className="mt-4">
-            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <div>
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <Label className="text-sm font-semibold">Itens do Pedido *</Label>
-              <Button type="button" size="sm" variant="outline" onClick={() => setFormItens(i => [...i, blankItem()])}><Plus className="w-4 h-4" /> Adicionar Item</Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => setFormItens(i => [...i, blankItem()])}><Plus aria-hidden="true" /> Adicionar Item</Button>
             </div>
-            <div className="hidden sm:grid grid-cols-12 gap-2 mb-1 text-sm text-muted-foreground px-1">
+            {/* Rótulos de coluna 12/600, como o cabeçalho de uma tabela. */}
+            <div className="mb-1 hidden grid-cols-12 gap-2 px-1 text-xs font-semibold text-muted-foreground sm:grid">
               <span className="col-span-5">Descrição</span><span className="col-span-2">Unidade</span><span className="col-span-2 text-right">Quantidade</span><span className="col-span-2 text-right">Preço unit.</span><span className="col-span-1" />
             </div>
             <div className="space-y-2">
@@ -2431,26 +2453,26 @@ export default function GestaoCompras() {
                 const sub = parseNum(item.quantidade) * parseNum(item.preco_unitario);
                 return (
                   <div key={idx} className="space-y-1">
-                    <div className="grid grid-cols-12 gap-2 items-center">
+                    <div className="grid grid-cols-12 items-center gap-2">
                       <div className="col-span-12 sm:col-span-5"><Input aria-label={`Descrição do item ${idx + 1}`} placeholder="Descrição do item" value={item.descricao} onChange={e => setFormItens(arr => arr.map((x, i) => i === idx ? { ...x, descricao: e.target.value } : x))} /></div>
                       <div className="col-span-4 sm:col-span-2"><Input aria-label={`Unidade do item ${idx + 1}`} placeholder="UN" value={item.unidade} onChange={e => setFormItens(arr => arr.map((x, i) => i === idx ? { ...x, unidade: e.target.value } : x))} /></div>
                       <div className="col-span-3 sm:col-span-2"><Input aria-label={`Quantidade do item ${idx + 1}`} type="number" min="0" step="1" placeholder="Qtd." value={item.quantidade} onChange={e => setFormItens(arr => arr.map((x, i) => i === idx ? { ...x, quantidade: e.target.value } : x))} className="text-right tabular-nums" /></div>
                       <div className="col-span-4 sm:col-span-2"><Input aria-label={`Preço unitário do item ${idx + 1}`} type="number" min="0" step="0.01" placeholder="R$ unit." value={item.preco_unitario} onChange={e => setFormItens(arr => arr.map((x, i) => i === idx ? { ...x, preco_unitario: e.target.value } : x))} className="text-right tabular-nums" /></div>
-                      <div className="col-span-1 flex justify-center"><Button type="button" size="sm" variant="ghost" className="w-9 px-0" aria-label={`Remover item ${idx + 1}`} disabled={formItens.length === 1} onClick={() => setFormItens(arr => arr.filter((_, i) => i !== idx))}><X className="w-4 h-4 text-destructive" /></Button></div>
+                      <div className="col-span-1 flex justify-center"><Button type="button" size="icon-sm" variant="ghost-destructive" aria-label={`Remover item ${idx + 1}`} disabled={formItens.length === 1} onClick={() => setFormItens(arr => arr.filter((_, i) => i !== idx))}><X aria-hidden="true" /></Button></div>
                     </div>
-                    {sub > 0 && <p className="text-right text-xs text-muted-foreground tabular-nums pr-10">= {fmtCurrency(sub)}</p>}
+                    {sub > 0 && <p className="pr-10 text-right text-xs text-muted-foreground tabular-nums">= {fmtCurrency(sub)}</p>}
                   </div>
                 );
               })}
             </div>
             {formItens.some(i => i.descricao.trim()) && (
-              <div className="mt-3 rounded-md bg-muted px-3 py-2 text-sm font-semibold text-right tabular-nums">Total: {fmtCurrency(formItens.reduce((s, i) => s + parseNum(i.quantidade) * parseNum(i.preco_unitario), 0))}</div>
+              <div className="mt-3 rounded-md border border-border bg-secondary px-3 py-2 text-right text-sm font-semibold tabular-nums">Total: {fmtCurrency(formItens.reduce((s, i) => s + parseNum(i.quantidade) * parseNum(i.preco_unitario), 0))}</div>
             )}
           </div>
-          <div className="flex flex-wrap justify-end gap-2 mt-4">
+          <DialogFooter>
             <Button variant="outline" onClick={() => { setPedidoOpen(false); resetPedidoForm(); }}>Cancelar</Button>
-            <Button onClick={handleSavePedido} disabled={saving}>{saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}Salvar Pedido</Button>
-          </div>
+            <Button onClick={handleSavePedido} disabled={saving}>{saving && <Loader2 className="animate-spin" aria-hidden="true" />}Salvar Pedido</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -2470,7 +2492,7 @@ export default function GestaoCompras() {
 
       {/* Dialog: NF-e — wizard 3 etapas para XML, form flat para manual */}
       <Dialog open={nfeOpen} onOpenChange={o => { setNfeOpen(o); if (!o) resetNfeDialog(); }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>
               {nfeMode === 'manual' ? 'Importar NF-e Recebida' :
@@ -2482,13 +2504,13 @@ export default function GestaoCompras() {
 
           {/* Barra de progresso para modo XML */}
           {nfeMode === 'xml' && (
-            <div className="flex items-center gap-2 mt-1 mb-3">
-              <div className="flex gap-1 flex-1">
+            <div className="flex items-center gap-3">
+              <div className="flex flex-1 gap-1" aria-hidden="true">
                 {([1, 2, 3] as const).map(s => (
-                  <div key={s} className={`h-1.5 flex-1 rounded-full transition-colors ${nfeStep >= s ? 'bg-primary' : 'bg-muted'}`} />
+                  <div key={s} className={`h-1.5 flex-1 rounded-sm transition-colors duration-150 ${nfeStep >= s ? 'bg-primary' : 'bg-muted'}`} />
                 ))}
               </div>
-              <span className="text-xs text-muted-foreground shrink-0">Etapa {nfeStep} / 3</span>
+              <span className="shrink-0 text-xs font-medium text-muted-foreground tabular-nums">Etapa {nfeStep} / 3</span>
             </div>
           )}
 
@@ -2506,7 +2528,7 @@ export default function GestaoCompras() {
 
               {nfeMode === 'xml' && (
                 <div
-                  className={`rounded-lg border-2 border-dashed p-8 text-center transition-colors ${nfePdfLoading ? 'border-border bg-muted cursor-wait' : `cursor-pointer ${nfeDragging ? 'border-primary bg-primary-tint' : 'border-border hover:border-primary hover:bg-primary-tint'}`}`}
+                  className={`rounded-md border border-dashed p-6 text-center transition-colors duration-150 ${nfePdfLoading ? 'border-input bg-muted cursor-wait' : `cursor-pointer ${nfeDragging ? 'border-primary bg-primary-tint' : 'border-input hover:border-primary hover:bg-primary-tint'}`}`}
                   onClick={() => { if (!nfePdfLoading) fileRef.current?.click(); }}
                   onDragOver={e => { e.preventDefault(); if (!nfePdfLoading) setNfeDragging(true); }}
                   onDragLeave={() => setNfeDragging(false)}
@@ -2514,18 +2536,18 @@ export default function GestaoCompras() {
                 >
                   {nfePdfLoading ? (
                     <>
-                      <div className="flex justify-center mb-3">
-                        <Loader2 className="w-10 h-10 animate-spin text-muted-foreground" />
-                      </div>
-                      <p className="text-sm font-medium">Extraindo dados do DANFE...</p>
-                      <p className="text-xs text-muted-foreground mt-1">Aguarde, isso pode levar alguns segundos</p>
+                      {/* A espera ocupa o ladrilho do ícone de envio, na tinta
+                          da ação — sem spinner grande no centro (Design System v3). */}
+                      <span className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-md bg-primary-tint text-primary" aria-hidden="true"><Loader2 className="h-5 w-5 animate-spin" /></span>
+                      <p className="text-base font-semibold text-foreground">Extraindo dados do DANFE...</p>
+                      <p className="mt-1 text-sm text-muted-foreground">Aguarde, isso pode levar alguns segundos</p>
                     </>
                   ) : (
                     <>
-                      <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary"><Upload className="w-6 h-6" aria-hidden="true" /></span>
-                      <p className="text-sm font-medium">Clique ou arraste o arquivo aqui</p>
-                      <p className="text-xs text-muted-foreground mt-1">O sistema detecta o fornecedor e os produtos automaticamente</p>
-                      <p className="text-xs text-muted-foreground">Formatos aceitos: XML (NF-e 4.0) ou PDF (DANFE)</p>
+                      <span className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-md bg-muted text-muted-foreground" aria-hidden="true"><Upload className="h-5 w-5" /></span>
+                      <p className="text-base font-semibold text-foreground">Clique ou arraste o arquivo aqui</p>
+                      <p className="mt-1 text-sm text-muted-foreground">O sistema detecta o fornecedor e os produtos automaticamente</p>
+                      <p className="text-sm text-muted-foreground">Formatos aceitos: XML (NF-e 4.0) ou PDF (DANFE)</p>
                     </>
                   )}
                   <input ref={fileRef} type="file" accept=".xml,.pdf" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleNfeFile(f); e.target.value = ''; }} />
@@ -2534,17 +2556,17 @@ export default function GestaoCompras() {
 
               {nfeMode === 'manual' && (
                 <>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div><Label>Número *</Label><Input value={nfeForm.numero} onChange={e => setNfeForm(f => ({ ...f, numero: e.target.value }))} placeholder="000001" /></div>
-                    <div><Label>Série</Label><Input value={nfeForm.serie} onChange={e => setNfeForm(f => ({ ...f, serie: e.target.value }))} /></div>
-                    <div className="sm:col-span-2"><Label>Chave de Acesso (44 dígitos)</Label><Input value={nfeForm.chave_acesso} onChange={e => setNfeForm(f => ({ ...f, chave_acesso: e.target.value }))} placeholder="00000000000000000000000000000000000000000000" maxLength={44} /></div>
-                    <div><Label>Data de Emissão</Label><Input type="date" value={nfeForm.data_emissao} onChange={e => setNfeForm(f => ({ ...f, data_emissao: e.target.value }))} /></div>
-                    <div><Label>Valor Total *</Label><Input type="number" min="0" step="0.01" value={nfeForm.valor_total} onChange={e => setNfeForm(f => ({ ...f, valor_total: e.target.value }))} /></div>
-                    <div><Label>CNPJ Emitente</Label><Input value={nfeForm.cnpj_emitente} onChange={e => setNfeForm(f => ({ ...f, cnpj_emitente: e.target.value }))} placeholder="00.000.000/0001-00" /></div>
-                    <div><Label>Razão Social Emitente</Label><Input value={nfeForm.nome_emitente} onChange={e => setNfeForm(f => ({ ...f, nome_emitente: e.target.value }))} /></div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5"><Label>Número *</Label><Input value={nfeForm.numero} onChange={e => setNfeForm(f => ({ ...f, numero: e.target.value }))} placeholder="000001" /></div>
+                    <div className="space-y-1.5"><Label>Série</Label><Input value={nfeForm.serie} onChange={e => setNfeForm(f => ({ ...f, serie: e.target.value }))} /></div>
+                    <div className="space-y-1.5 sm:col-span-2"><Label>Chave de Acesso (44 dígitos)</Label><Input value={nfeForm.chave_acesso} onChange={e => setNfeForm(f => ({ ...f, chave_acesso: e.target.value }))} placeholder="00000000000000000000000000000000000000000000" maxLength={44} /></div>
+                    <div className="space-y-1.5"><Label>Data de Emissão</Label><Input type="date" value={nfeForm.data_emissao} onChange={e => setNfeForm(f => ({ ...f, data_emissao: e.target.value }))} /></div>
+                    <div className="space-y-1.5"><Label>Valor Total *</Label><Input type="number" min="0" step="0.01" value={nfeForm.valor_total} onChange={e => setNfeForm(f => ({ ...f, valor_total: e.target.value }))} /></div>
+                    <div className="space-y-1.5"><Label>CNPJ Emitente</Label><Input value={nfeForm.cnpj_emitente} onChange={e => setNfeForm(f => ({ ...f, cnpj_emitente: e.target.value }))} placeholder="00.000.000/0001-00" /></div>
+                    <div className="space-y-1.5"><Label>Razão Social Emitente</Label><Input value={nfeForm.nome_emitente} onChange={e => setNfeForm(f => ({ ...f, nome_emitente: e.target.value }))} /></div>
                   </div>
-                  <div className="border-t border-border pt-4 space-y-4">
-                    <div>
+                  <div className="space-y-4 border-t border-border pt-4">
+                    <div className="space-y-1.5">
                       <Label>Vincular a pedido (opcional)</Label>
                       <Select value={nfeForm.pedido_id || 'none'} onValueChange={v => setNfeForm(f => ({ ...f, pedido_id: v === 'none' ? '' : v }))}>
                         <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
@@ -2557,12 +2579,12 @@ export default function GestaoCompras() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="flex flex-wrap justify-end gap-2">
+                    <DialogFooter>
                       <Button variant="outline" onClick={() => { setNfeOpen(false); resetNfeDialog(); }}>Cancelar</Button>
                       <Button onClick={handleSaveNfe} disabled={saving}>
-                        {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />} Salvar NF-e
+                        {saving && <Loader2 className="animate-spin" aria-hidden="true" />} Salvar NF-e
                       </Button>
-                    </div>
+                    </DialogFooter>
                   </div>
                 </>
               )}
@@ -2612,7 +2634,7 @@ export default function GestaoCompras() {
                 </div>
               )}
 
-              <div>
+              <div className="space-y-1.5">
                 <Label>Vincular a pedido (opcional)</Label>
                 <Select value={nfeForm.pedido_id || 'none'} onValueChange={v => setNfeForm(f => ({ ...f, pedido_id: v === 'none' ? '' : v }))}>
                   <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
@@ -2626,18 +2648,18 @@ export default function GestaoCompras() {
                 </Select>
               </div>
 
-              <div className="flex flex-wrap justify-between gap-2 pt-4 border-t border-border">
+              <DialogFooter className="border-t border-border pt-4 sm:justify-between">
                 <Button variant="ghost" onClick={() => { setNfeParsed(null); setNfeXmlStr(''); setNfeStep(1); setNfeFornMatch(null); setNfeCriarForn(false); setNfeItemMaps([]); }}>
-                  <ArrowLeft className="w-4 h-4" /> Trocar arquivo
+                  <ArrowLeft aria-hidden="true" /> Trocar arquivo
                 </Button>
                 {nfeParsed.itens.length > 0 ? (
                   <Button onClick={() => setNfeStep(3)}>Próximo: Produtos →</Button>
                 ) : (
                   <Button onClick={handleSaveNfe} disabled={saving}>
-                    {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />} Salvar NF-e
+                    {saving && <Loader2 className="animate-spin" aria-hidden="true" />} Salvar NF-e
                   </Button>
                 )}
-              </div>
+              </DialogFooter>
             </div>
           )}
 
@@ -2800,12 +2822,12 @@ export default function GestaoCompras() {
                   </div>
                 ))}
               </div>
-              <div className="flex flex-wrap justify-between gap-2 pt-4 border-t border-border">
-                <Button variant="ghost" onClick={() => setNfeStep(2)}><ArrowLeft className="w-4 h-4" /> Voltar</Button>
+              <DialogFooter className="border-t border-border pt-4 sm:justify-between">
+                <Button variant="ghost" onClick={() => setNfeStep(2)}><ArrowLeft aria-hidden="true" /> Voltar</Button>
                 <Button onClick={handleSaveNfe} disabled={saving}>
-                  {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />} Salvar NF-e
+                  {saving && <Loader2 className="animate-spin" aria-hidden="true" />} Salvar NF-e
                 </Button>
-              </div>
+              </DialogFooter>
             </div>
           )}
         </DialogContent>
@@ -2825,11 +2847,11 @@ type ProdutoDialogProps = {
 function ProdutoDialog({ open, onOpenChange, editing, form, setForm, saving, onSave, onClose }: ProdutoDialogProps) {
   return (
     <Dialog open={open} onOpenChange={o => { onOpenChange(o); if (!o) onClose(); }}>
-      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-lg">
         <DialogHeader><DialogTitle>{editing ? 'Editar Produto' : 'Novo Produto'}</DialogTitle></DialogHeader>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
-          <div className="sm:col-span-2"><Label>Descrição *</Label><Input value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} /></div>
-          <div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5 sm:col-span-2"><Label>Descrição *</Label><Input value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} /></div>
+          <div className="space-y-1.5">
             <Label>Código</Label>
             <Input
               value={form.codigo}
@@ -2837,32 +2859,33 @@ function ProdutoDialog({ open, onOpenChange, editing, form, setForm, saving, onS
               onChange={e => { if (editing) setForm(f => ({ ...f, codigo: e.target.value })); }}
               className={!editing ? 'bg-muted cursor-default select-none' : ''}
             />
-            {!editing && <p className="text-xs text-muted-foreground mt-1">Gerado automaticamente pelo sistema</p>}
+            {!editing && <p className="text-xs text-muted-foreground">Gerado automaticamente pelo sistema</p>}
           </div>
-          <div><Label>Unidade</Label><Input value={form.unidade} onChange={e => setForm(f => ({ ...f, unidade: e.target.value }))} placeholder="UN, KG, M², L..." /></div>
-          <div><Label>Categoria</Label><Input value={form.categoria} onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))} placeholder="ex: Material, EPI..." /></div>
-          <div><Label>Saldo Mínimo</Label><Input type="number" min="0" step="0.01" value={form.saldo_minimo} onChange={e => setForm(f => ({ ...f, saldo_minimo: e.target.value }))} /></div>
-          <div className="sm:col-span-2"><Label>Preço de Custo unitário (R$)</Label><Input type="number" min="0" step="0.01" value={form.preco_custo_medio} onChange={e => setForm(f => ({ ...f, preco_custo_medio: e.target.value }))} placeholder="0,00" /></div>
-          <div className="flex items-center gap-3 sm:col-span-2 mt-1"><Switch id="prod-ativo" checked={form.ativo} onCheckedChange={v => setForm(f => ({ ...f, ativo: v }))} /><Label htmlFor="prod-ativo" className="cursor-pointer">Produto ativo</Label></div>
-          <div className="sm:col-span-2 border-t border-border pt-4 mt-1">
-            <p className="text-sm font-semibold text-muted-foreground mb-3">Dados Fiscais (preenchidos automaticamente via NF-e)</p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-              <div><Label>NCM</Label><Input value={form.ncm} onChange={e => setForm(f => ({ ...f, ncm: e.target.value }))} placeholder="00000000" /></div>
-              <div><Label>CFOP</Label><Input value={form.cfop} onChange={e => setForm(f => ({ ...f, cfop: e.target.value }))} placeholder="0000" /></div>
-              <div><Label>CST ICMS</Label><Input value={form.cst_icms} onChange={e => setForm(f => ({ ...f, cst_icms: e.target.value }))} placeholder="00" /></div>
-              <div><Label>CSOSN</Label><Input value={form.csosn} onChange={e => setForm(f => ({ ...f, csosn: e.target.value }))} placeholder="102" /></div>
-              <div><Label>Alíq. ICMS %</Label><Input type="number" value={form.p_icms} onChange={e => setForm(f => ({ ...f, p_icms: e.target.value }))} placeholder="12" /></div>
-              <div><Label>Alíq. PIS %</Label><Input type="number" value={form.p_pis} onChange={e => setForm(f => ({ ...f, p_pis: e.target.value }))} placeholder="0.65" /></div>
-              <div><Label>Alíq. COFINS %</Label><Input type="number" value={form.p_cofins} onChange={e => setForm(f => ({ ...f, p_cofins: e.target.value }))} placeholder="3.00" /></div>
-              <div><Label>CST PIS</Label><Input value={form.cst_pis} onChange={e => setForm(f => ({ ...f, cst_pis: e.target.value }))} placeholder="07" /></div>
-              <div><Label>CST COFINS</Label><Input value={form.cst_cofins} onChange={e => setForm(f => ({ ...f, cst_cofins: e.target.value }))} placeholder="07" /></div>
+          <div className="space-y-1.5"><Label>Unidade</Label><Input value={form.unidade} onChange={e => setForm(f => ({ ...f, unidade: e.target.value }))} placeholder="UN, KG, M², L..." /></div>
+          <div className="space-y-1.5"><Label>Categoria</Label><Input value={form.categoria} onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))} placeholder="ex: Material, EPI..." /></div>
+          <div className="space-y-1.5"><Label>Saldo Mínimo</Label><Input type="number" min="0" step="0.01" value={form.saldo_minimo} onChange={e => setForm(f => ({ ...f, saldo_minimo: e.target.value }))} /></div>
+          <div className="space-y-1.5 sm:col-span-2"><Label>Preço de Custo unitário (R$)</Label><Input type="number" min="0" step="0.01" value={form.preco_custo_medio} onChange={e => setForm(f => ({ ...f, preco_custo_medio: e.target.value }))} placeholder="0,00" /></div>
+          <div className="flex items-center gap-3 sm:col-span-2"><Switch id="prod-ativo" checked={form.ativo} onCheckedChange={v => setForm(f => ({ ...f, ativo: v }))} /><Label htmlFor="prod-ativo" className="cursor-pointer">Produto ativo</Label></div>
+          <div className="border-t border-border pt-4 sm:col-span-2">
+            {/* Eyebrow de grupo: a única caixa alta permitida (manual §3). */}
+            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dados Fiscais (preenchidos automaticamente via NF-e)</h3>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+              <div className="space-y-1.5"><Label>NCM</Label><Input value={form.ncm} onChange={e => setForm(f => ({ ...f, ncm: e.target.value }))} placeholder="00000000" /></div>
+              <div className="space-y-1.5"><Label>CFOP</Label><Input value={form.cfop} onChange={e => setForm(f => ({ ...f, cfop: e.target.value }))} placeholder="0000" /></div>
+              <div className="space-y-1.5"><Label>CST ICMS</Label><Input value={form.cst_icms} onChange={e => setForm(f => ({ ...f, cst_icms: e.target.value }))} placeholder="00" /></div>
+              <div className="space-y-1.5"><Label>CSOSN</Label><Input value={form.csosn} onChange={e => setForm(f => ({ ...f, csosn: e.target.value }))} placeholder="102" /></div>
+              <div className="space-y-1.5"><Label>Alíq. ICMS %</Label><Input type="number" value={form.p_icms} onChange={e => setForm(f => ({ ...f, p_icms: e.target.value }))} placeholder="12" /></div>
+              <div className="space-y-1.5"><Label>Alíq. PIS %</Label><Input type="number" value={form.p_pis} onChange={e => setForm(f => ({ ...f, p_pis: e.target.value }))} placeholder="0.65" /></div>
+              <div className="space-y-1.5"><Label>Alíq. COFINS %</Label><Input type="number" value={form.p_cofins} onChange={e => setForm(f => ({ ...f, p_cofins: e.target.value }))} placeholder="3.00" /></div>
+              <div className="space-y-1.5"><Label>CST PIS</Label><Input value={form.cst_pis} onChange={e => setForm(f => ({ ...f, cst_pis: e.target.value }))} placeholder="07" /></div>
+              <div className="space-y-1.5"><Label>CST COFINS</Label><Input value={form.cst_cofins} onChange={e => setForm(f => ({ ...f, cst_cofins: e.target.value }))} placeholder="07" /></div>
             </div>
           </div>
         </div>
-        <div className="flex flex-wrap justify-end gap-2 mt-4">
+        <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
-          <Button onClick={onSave} disabled={saving}>{saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}Salvar</Button>
-        </div>
+          <Button onClick={onSave} disabled={saving}>{saving && <Loader2 className="animate-spin" aria-hidden="true" />}Salvar</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
@@ -2880,27 +2903,28 @@ function MovDialog({ open, onOpenChange, form, setForm, saving, onSave, produtos
     <Dialog open={open} onOpenChange={o => { onOpenChange(o); }}>
       <DialogContent className="max-w-md">
         <DialogHeader><DialogTitle>Nova Movimentação de Estoque</DialogTitle></DialogHeader>
-        <div className="space-y-4 mt-3">
-          <div>
+        <div className="space-y-4">
+          <div className="space-y-1.5">
             <Label>Produto *</Label>
             <Select value={form.produto_id} onValueChange={v => setForm(f => ({ ...f, produto_id: v }))}>
               <SelectTrigger><SelectValue placeholder="Selecione o produto" /></SelectTrigger>
               <SelectContent>{produtos.map(p => <SelectItem key={p.id} value={p.id}>{p.descricao}{p.codigo ? ` (${p.codigo})` : ''}</SelectItem>)}</SelectContent>
             </Select>
           </div>
-          <div>
+          <div className="space-y-1.5">
             <Label>Tipo *</Label>
             <Select value={form.tipo} onValueChange={(v: any) => setForm(f => ({ ...f, tipo: v }))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="entrada"><span className="flex items-center gap-2"><TrendingUp className="w-4 h-4 text-success" aria-hidden="true" />Entrada</span></SelectItem>
-                <SelectItem value="saida"><span className="flex items-center gap-2"><TrendingDown className="w-4 h-4 text-destructive" aria-hidden="true" />Saída</span></SelectItem>
-                <SelectItem value="ajuste"><span className="flex items-center gap-2"><RotateCcw className="w-4 h-4 text-muted-foreground" aria-hidden="true" />Ajuste</span></SelectItem>
+                {/* Tinta `*-ink` sobre o fundo claro do menu — nunca `text-success` cru. */}
+                <SelectItem value="entrada"><span className="flex items-center gap-2"><TrendingUp className="h-4 w-4 text-success-ink" aria-hidden="true" />Entrada</span></SelectItem>
+                <SelectItem value="saida"><span className="flex items-center gap-2"><TrendingDown className="h-4 w-4 text-destructive-ink" aria-hidden="true" />Saída</span></SelectItem>
+                <SelectItem value="ajuste"><span className="flex items-center gap-2"><RotateCcw className="h-4 w-4 text-muted-foreground" aria-hidden="true" />Ajuste</span></SelectItem>
               </SelectContent>
             </Select>
           </div>
           {form.tipo === 'ajuste' && (
-            <div>
+            <div className="space-y-1.5">
               <Label>Tipo de Ajuste</Label>
               <Select value={form.ajuste_dir} onValueChange={(v: any) => setForm(f => ({ ...f, ajuste_dir: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -2911,25 +2935,25 @@ function MovDialog({ open, onOpenChange, form, setForm, saving, onSave, produtos
               </Select>
             </div>
           )}
-          <div>
+          <div className="space-y-1.5">
             <Label>Quantidade *</Label>
             <Input type="number" min="0.001" step="0.001" value={form.quantidade} onChange={e => setForm(f => ({ ...f, quantidade: e.target.value }))} placeholder="0" />
           </div>
           {(form.tipo === 'entrada' || form.tipo === 'ajuste') && (
-            <div>
+            <div className="space-y-1.5">
               <Label>Preço Unitário (opcional)</Label>
               <Input type="number" min="0" step="0.01" value={form.preco_unitario} onChange={e => setForm(f => ({ ...f, preco_unitario: e.target.value }))} placeholder="R$ 0,00" />
             </div>
           )}
-          <div>
+          <div className="space-y-1.5">
             <Label>Observações</Label>
             <Textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} placeholder="Motivo, referência, etc." />
           </div>
         </div>
-        <div className="flex flex-wrap justify-end gap-2 mt-4">
+        <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={onSave} disabled={saving}>{saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}Registrar</Button>
-        </div>
+          <Button onClick={onSave} disabled={saving}>{saving && <Loader2 className="animate-spin" aria-hidden="true" />}Registrar</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
@@ -2955,29 +2979,34 @@ function OnboardingCompras({ onCadastrarFornecedor, onNovoPedido, onEstoque, onI
   ];
 
   return (
-    <div className="max-w-2xl mx-auto px-4">
-      <p className="text-base text-muted-foreground text-center mb-12">Siga as etapas abaixo para configurar seu fluxo de compras.</p>
-      <ol>
-        {steps.map((step, idx) => {
-          const StepIcon = step.icon;
-          const isLast   = idx === steps.length - 1;
-          return (
-            <li key={idx} className="flex gap-4">
-              <div className="flex flex-col items-center">
-                <div className="flex items-center justify-center w-11 h-11 rounded-full bg-primary-tint text-primary text-sm font-bold flex-shrink-0">{idx + 1}</div>
-                {!isLast && <div className="w-px flex-1 bg-border my-2 min-h-8" />}
-              </div>
-              <div className={`flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 flex-1 ${isLast ? 'pb-0' : 'pb-8'}`}>
-                <div className="flex items-start gap-3 flex-1">
-                  <StepIcon className="w-5 h-5 text-muted-foreground mt-1 flex-shrink-0" aria-hidden="true" />
-                  <div><p className="text-base font-semibold leading-tight">{step.title}</p><p className="text-sm text-muted-foreground mt-1">{step.desc}</p></div>
+    /* Guia de primeiros passos num cartão do sistema (Design System v3):
+       alinhado à esquerda como toda tela operacional, passos numerados em
+       ladrilhos `rounded-md` na tinta da ação. */
+    <div className="mx-auto w-full max-w-2xl">
+      <Card className="p-5 sm:p-6">
+        <p className="mb-8 text-base text-muted-foreground">Siga as etapas abaixo para configurar seu fluxo de compras.</p>
+        <ol>
+          {steps.map((step, idx) => {
+            const StepIcon = step.icon;
+            const isLast   = idx === steps.length - 1;
+            return (
+              <li key={idx} className="flex gap-4">
+                <div className="flex flex-col items-center">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary-tint text-sm font-semibold text-primary tabular-nums">{idx + 1}</div>
+                  {!isLast && <div className="my-2 min-h-8 w-px flex-1 bg-border" />}
                 </div>
-                <Button variant="outline" onClick={step.onClick} className="shrink-0 self-start sm:self-auto">{step.btn}</Button>
-              </div>
-            </li>
-          );
-        })}
-      </ol>
+                <div className={`flex flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:gap-6 ${isLast ? 'pb-0' : 'pb-8'}`}>
+                  <div className="flex flex-1 items-start gap-3">
+                    <StepIcon className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                    <div><p className="text-base font-semibold leading-5 text-foreground">{step.title}</p><p className="mt-1 text-sm text-muted-foreground">{step.desc}</p></div>
+                  </div>
+                  <Button variant="outline" onClick={step.onClick} className="shrink-0 self-start sm:self-auto">{step.btn}</Button>
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+      </Card>
     </div>
   );
 }

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -18,7 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
 import {
-  ShieldCheck, Upload, Eye, EyeOff, Loader2, Trash2, Key, HardDrive, FileSignature,
+  ShieldCheck, Upload, Eye, EyeOff, Loader2, Trash2, Key, HardDrive, FileSignature, AlertTriangle,
 } from 'lucide-react';
 
 // Espelho de public.certificados_digitais (migration de 07/07). As três
@@ -227,13 +227,13 @@ export default function CertificadoDigital() {
     <div className="flex flex-col gap-6">
       {/* ── Envio do A1 ───────────────────────────────────────── */}
       <Dialog open={uploadOpen} onOpenChange={o => { if (!o) fecharEnvio(); else setUploadOpen(true); }}>
-        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Key className="h-5 w-5 text-muted-foreground" aria-hidden="true" /> Adicionar certificado A1
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-1">
+          <div className="space-y-4">
             <Alert variant="info">
               <AlertDescription>
                 O arquivo <strong>.pfx</strong> ou <strong>.p12</strong> guarda o certificado A1. Ele fica
@@ -241,18 +241,20 @@ export default function CertificadoDigital() {
               </AlertDescription>
             </Alert>
 
-            <div>
+            <div className="space-y-1.5">
               <Label>Arquivo do certificado (.pfx / .p12)</Label>
+              {/* Zona de envio do Design System: fio tracejado fino, ícone num
+                  ladrilho neutro, foco visível. */}
               <button
                 type="button"
-                className="g-corpo mt-1 w-full rounded-[var(--g-raio)] border-2 border-dashed border-border p-4 text-center transition-colors hover:border-primary hover:bg-primary-tint"
+                className="g-corpo w-full rounded-md border border-dashed border-input p-6 text-center transition-colors duration-150 hover:border-primary hover:bg-primary-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 onClick={() => fileRef.current?.click()}
               >
                 {file
                   ? <span className="font-medium text-foreground">{file.name}</span>
                   : (
-                    <span className="flex flex-col items-center gap-1">
-                      <Upload className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
+                    <span className="flex flex-col items-center gap-2">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-md bg-muted text-muted-foreground" aria-hidden="true"><Upload className="h-5 w-5" /></span>
                       <span className="g-meta text-muted-foreground">Clique para selecionar</span>
                     </span>
                   )}
@@ -261,9 +263,9 @@ export default function CertificadoDigital() {
                 onChange={e => setFile(e.target.files?.[0] ?? null)} />
             </div>
 
-            <div>
+            <div className="space-y-1.5">
               <Label htmlFor="cert-senha">Senha do certificado</Label>
-              <div className="relative mt-1">
+              <div className="relative">
                 <Input
                   id="cert-senha"
                   type={showSenha ? 'text' : 'password'}
@@ -278,7 +280,7 @@ export default function CertificadoDigital() {
                   {showSenha ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
               </div>
-              <p className="g-meta mt-1 text-muted-foreground">
+              <p className="g-meta text-muted-foreground">
                 A senha não é armazenada — é usada apenas no momento da assinatura.
               </p>
             </div>
@@ -291,32 +293,32 @@ export default function CertificadoDigital() {
                   para ler estes dados. Sem a validade aqui, a tela não consegue avisar do vencimento.
                 </p>
               </div>
-              <div>
+              <div className="space-y-1.5">
                 <Label htmlFor="cert-titular">Titular</Label>
-                <Input id="cert-titular" className="g-controle mt-1" value={form.nome_titular}
+                <Input id="cert-titular" className="g-controle" value={form.nome_titular}
                   onChange={e => setForm(f => ({ ...f, nome_titular: e.target.value }))}
                   placeholder="Razão social do titular" />
               </div>
-              <div>
+              <div className="space-y-1.5">
                 <Label htmlFor="cert-cnpj">CNPJ do titular</Label>
-                <Input id="cert-cnpj" className="g-controle mt-1" value={form.cnpj_titular}
+                <Input id="cert-cnpj" className="g-controle" value={form.cnpj_titular}
                   onChange={e => setForm(f => ({ ...f, cnpj_titular: e.target.value }))}
                   placeholder="00.000.000/0001-00" />
               </div>
-              <div>
+              <div className="space-y-1.5">
                 <Label htmlFor="cert-validade">Válido até</Label>
-                <Input id="cert-validade" type="date" className="g-controle mt-1" value={form.validade}
+                <Input id="cert-validade" type="date" className="g-controle" value={form.validade}
                   onChange={e => setForm(f => ({ ...f, validade: e.target.value }))} />
               </div>
             </div>
           </div>
-          <div className="flex flex-wrap justify-end gap-2 pt-1">
+          <DialogFooter>
             <Button variant="outline" onClick={fecharEnvio}>Cancelar</Button>
             <Button disabled={!file || !senha || uploading} onClick={handleUpload}>
-              {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+              {uploading ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Upload aria-hidden="true" />}
               Enviar certificado
             </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -351,6 +353,7 @@ export default function CertificadoDigital() {
 
       {erroCarga && (
         <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" aria-hidden="true" />
           <AlertDescription className="flex flex-wrap items-center gap-3">
             <span className="min-w-0 flex-1">Não foi possível carregar os certificados: {erroCarga}</span>
             <Button size="sm" variant="outline" onClick={() => void loadCerts()}>Tentar novamente</Button>
@@ -365,7 +368,7 @@ export default function CertificadoDigital() {
           <section className="g-cartao flex flex-col gap-3 p-4">
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div className="min-w-0">
-                <h3 className="g-titulo-secao flex items-center gap-2 text-foreground">
+                <h3 className="flex items-center gap-2 text-lg font-semibold leading-6 text-foreground">
                   <ShieldCheck className="h-5 w-5 text-muted-foreground" aria-hidden="true" /> Certificado A1
                 </h3>
                 <p className="g-meta text-muted-foreground">Arquivo .pfx guardado na empresa</p>
@@ -404,10 +407,10 @@ export default function CertificadoDigital() {
                           </p>
                         </div>
                         <Button
-                          variant="ghost" size="sm" aria-label={`Remover certificado ${cert.nome_titular ?? cert.tipo}`}
-                          className="w-9 shrink-0 px-0" onClick={() => setAExcluir(cert)}
+                          variant="ghost-destructive" size="icon-sm" aria-label={`Remover certificado ${cert.nome_titular ?? cert.tipo}`}
+                          className="shrink-0" onClick={() => setAExcluir(cert)}
                         >
-                          <Trash2 className="h-4 w-4 text-destructive" />
+                          <Trash2 aria-hidden="true" />
                         </Button>
                       </div>
                       <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -432,7 +435,7 @@ export default function CertificadoDigital() {
               automaticamente"), e nenhuma linha de código fazia isso. */}
           <section className="g-cartao flex flex-col gap-3 p-4">
             <div className="min-w-0">
-              <h3 className="g-titulo-secao flex items-center gap-2 text-foreground">
+              <h3 className="flex items-center gap-2 text-lg font-semibold leading-6 text-foreground">
                 <HardDrive className="h-5 w-5 text-muted-foreground" aria-hidden="true" /> Certificado A3
               </h3>
               <p className="g-meta text-muted-foreground">Token USB ou cartão, fora do Praefectus</p>
@@ -459,10 +462,10 @@ export default function CertificadoDigital() {
                     <span className="g-corpo min-w-0 truncate text-foreground">
                       {cert.nome_titular ?? 'Registro A3'}
                     </span>
-                    <Button variant="ghost" size="sm" className="w-9 shrink-0 px-0"
+                    <Button variant="ghost-destructive" size="icon-sm" className="shrink-0"
                       aria-label={`Remover registro A3 ${cert.nome_titular ?? ''}`}
                       onClick={() => setAExcluir(cert)}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
+                      <Trash2 aria-hidden="true" />
                     </Button>
                   </li>
                 ))}
