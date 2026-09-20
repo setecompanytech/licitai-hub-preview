@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   ExternalLink, Star, Truck, ShieldCheck, Store, TrendingDown,
   Package, LayoutGrid, List, Percent, ArrowUpDown, ImageIcon, Loader2, Plus,
@@ -69,10 +70,11 @@ function RatingStars({ rating }: { rating: number }) {
       {[1, 2, 3, 4, 5].map((s) => (
         <Star
           key={s}
-          className={`w-3 h-3 ${s <= Math.floor(rating) ? 'fill-warning text-warning' : 'text-muted-foreground/30'}`}
+          aria-hidden="true"
+          className={`h-3 w-3 ${s <= Math.floor(rating) ? 'fill-warning text-warning' : 'text-border'}`}
         />
       ))}
-      <span className="text-xs text-muted-foreground ml-1">{rating.toFixed(1)}</span>
+      <span className="ml-1 text-xs text-muted-foreground tabular-nums">{rating.toFixed(1)}</span>
     </div>
   );
 }
@@ -271,15 +273,15 @@ function ImageGallery({ item, className, onClick }: { item: FornecedorML; classN
           onError={() => handleError(currentImg)}
         />
       ) : (
-        <Package className="w-16 h-16 text-muted-foreground/20 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+        <Package className="absolute left-1/2 top-1/2 h-16 w-16 -translate-x-1/2 -translate-y-1/2 text-foreground-tertiary" aria-hidden="true" />
       )}
       {hasMultiple && (
-        <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex gap-1">
+        <div className="absolute bottom-1.5 left-1/2 flex -translate-x-1/2 gap-1" aria-hidden="true">
           {validImages.map((_, i) => (
             <span
               key={i}
-              className={`w-1.5 h-1.5 rounded-full transition-all ${
-                i === safeIdx ? 'bg-primary w-3' : 'bg-foreground/30'
+              className={`h-1.5 w-1.5 rounded-full transition-all ${
+                i === safeIdx ? 'w-3 bg-primary' : 'bg-foreground-tertiary'
               }`}
             />
           ))}
@@ -294,43 +296,47 @@ function GoogleShoppingCard({ item, isCheapest, onOpenFicha, onQuickAdd, onSaveT
   const desconto = getDiscountPercent(item);
 
   return (
-    <div className="group relative flex flex-col bg-card border border-border/40 rounded-xl overflow-hidden hover:shadow-lg hover:border-primary/30 transition-all duration-200">
+    /* Cartão compacto do DS: raio 10px, borda de 1px, sombra discreta; hover
+       clicável na borda verde. Selos suaves (tinta/linha) no lugar dos sólidos. */
+    <div className="group relative flex flex-col overflow-hidden rounded-lg border border-border bg-card shadow-sm transition-[border-color,box-shadow] duration-150 hover:border-primary/40 hover:shadow-md">
       {/* Discount badge */}
       {desconto > 0 && (
-        <div className="absolute top-2 left-2 z-10">
-          <Badge className="bg-destructive/90 text-destructive-foreground text-xs font-bold px-1.5 py-0.5">
+        <div className="absolute left-2 top-2 z-10">
+          <Badge variant="danger" className="tabular-nums">
             {desconto}% OFF
           </Badge>
         </div>
       )}
       {isCheapest && (
-        <div className="absolute top-2 right-2 z-10">
-          <Badge className="bg-success/90 text-success-foreground text-xs font-bold px-1.5 py-0.5">
-            <TrendingDown className="w-3 h-3 mr-0.5" /> Menor
+        <div className="absolute right-2 top-2 z-10">
+          <Badge variant="success">
+            <TrendingDown className="h-3 w-3" aria-hidden="true" /> Menor
           </Badge>
         </div>
       )}
 
-      {/* Add to proposal - floating button */}
+      {/* Add to proposal - floating button (aparece no hover e no foco). */}
       <button
+        type="button"
         onClick={(e) => { e.stopPropagation(); onQuickAdd(); }}
-        className="absolute top-2 right-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity bg-accent text-accent-foreground rounded-full w-7 h-7 flex items-center justify-center shadow-md hover:scale-110"
+        className="absolute top-2 z-20 flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground opacity-0 shadow-sm transition-opacity duration-150 hover:bg-primary-hover focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100"
         title="Adicionar à Proposta"
+        aria-label="Adicionar à Proposta"
         style={{ right: isCheapest ? '70px' : '8px' }}
       >
-        <Plus className="w-4 h-4" />
+        <Plus className="h-4 w-4" aria-hidden="true" />
       </button>
 
       {/* Image area - sliding gallery */}
       <ImageGallery
         item={item}
-        className="w-full aspect-square bg-muted/10 flex items-center justify-center border-b border-border/20 cursor-pointer"
+        className="flex aspect-square w-full cursor-pointer items-center justify-center border-b border-border bg-secondary"
         onClick={onOpenFicha}
       />
 
       {/* Content - clickable */}
-      <div className="flex flex-col flex-1 p-3 gap-1.5 cursor-pointer" onClick={onOpenFicha}>
-        <h3 className="text-xs font-normal text-foreground leading-snug line-clamp-2 group-hover:text-primary transition-colors min-h-[2.5rem]">
+      <div className="flex flex-1 cursor-pointer flex-col gap-1.5 p-3" onClick={onOpenFicha}>
+        <h3 className="line-clamp-2 min-h-[2.25rem] text-sm font-medium leading-[1.125rem] text-foreground transition-colors group-hover:text-primary">
           {item.produto}
         </h3>
 
@@ -342,31 +348,31 @@ function GoogleShoppingCard({ item, isCheapest, onOpenFicha, onQuickAdd, onSaveT
 
         <div className="mt-auto">
           {item.preco_original && item.preco_original > item.preco && (
-            <p className="text-xs text-muted-foreground line-through leading-none">
+            <p className="text-xs leading-none text-muted-foreground line-through tabular-nums">
               {formatCurrency(item.preco_original)}
             </p>
           )}
-          <p className="text-lg font-semibold text-foreground leading-tight">
+          <p className="text-lg font-semibold leading-tight text-foreground tabular-nums">
             {formatCurrency(item.preco)}
           </p>
           {item.parcelas && (
-            <p className="text-xs text-success font-medium mt-0.5">
+            <p className="mt-0.5 text-xs font-medium text-success-ink">
               em {item.parcelas}
             </p>
           )}
         </div>
 
-        <div className="flex items-center gap-1 mt-1">
-          <Store className="w-3 h-3 text-muted-foreground" />
-          <span className="text-xs text-muted-foreground truncate">{item.loja}</span>
+        <div className="mt-1 flex items-center gap-1">
+          <Store className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
+          <span className="truncate text-xs text-muted-foreground">{item.loja}</span>
           {item.vendedor_qualificado && (
-            <ShieldCheck className="w-3 h-3 text-success ml-auto flex-shrink-0" />
+            <ShieldCheck className="ml-auto h-3 w-3 flex-shrink-0 text-success-ink" aria-label="Vendedor qualificado" />
           )}
         </div>
 
         {isFreteGratis(item.frete) ? (
-          <div className="flex items-center gap-1 text-success">
-            <Truck className="w-3 h-3" />
+          <div className="flex items-center gap-1 text-success-ink">
+            <Truck className="h-3 w-3" aria-hidden="true" />
             <span className="text-xs font-semibold">Frete grátis</span>
           </div>
         ) : item.frete ? (
@@ -375,33 +381,34 @@ function GoogleShoppingCard({ item, isCheapest, onOpenFicha, onQuickAdd, onSaveT
       </div>
 
       {/* Footer actions */}
-      <div className="border-t border-border/20 px-3 py-2 flex gap-1">
+      <div className="flex gap-1 border-t border-border px-2 py-1.5">
         <Button
           size="sm"
           variant="ghost"
-          className="flex-1 text-primary hover:text-primary hover:bg-primary/10 text-xs h-7"
+          className="flex-1 text-primary hover:bg-primary-tint hover:text-primary"
           onClick={onOpenFicha}
         >
-          <ImageIcon className="w-3 h-3 mr-1" />
+          <ImageIcon aria-hidden="true" />
           Ficha Técnica
         </Button>
         <Button
-          size="sm"
+          size="icon-sm"
           variant="ghost"
-          className="text-success hover:text-success hover:bg-success/10 text-xs h-7 px-2"
           onClick={(e) => { e.stopPropagation(); onSaveToCatalog(); }}
           title="Salvar no Catálogo"
+          aria-label="Salvar no Catálogo"
         >
-          <Save className="w-3.5 h-3.5" />
+          <Save aria-hidden="true" />
         </Button>
         <Button
-          size="sm"
+          size="icon-sm"
           variant="ghost"
-          className="text-accent hover:text-accent hover:bg-accent/10 text-xs h-7 px-2"
+          className="text-primary hover:bg-primary-tint hover:text-primary"
           onClick={(e) => { e.stopPropagation(); onQuickAdd(); }}
           title="Adicionar à Proposta"
+          aria-label="Adicionar à Proposta"
         >
-          <Plus className="w-3.5 h-3.5" />
+          <Plus aria-hidden="true" />
         </Button>
       </div>
     </div>
@@ -413,24 +420,26 @@ function MercadoLivreCard({ item, isCheapest, onOpenFicha, onQuickAdd, onSaveToC
   const desconto = getDiscountPercent(item);
 
   return (
-    <div className="group flex gap-4 p-4 bg-card border border-border/40 rounded-lg hover:shadow-md hover:border-primary/30 transition-all duration-200 relative">
+    /* No celular a imagem sobe e as ações descem em fila; a partir de `sm`
+       volta a ser imagem · conteúdo · ações lado a lado. */
+    <div className="group relative flex flex-col gap-4 rounded-lg border border-border bg-card p-4 shadow-sm transition-[border-color,box-shadow] duration-150 hover:border-primary/40 hover:shadow-md sm:flex-row">
       {/* Image - sliding gallery */}
       <ImageGallery
         item={item}
-        className="flex-shrink-0 w-[160px] h-[160px] bg-muted/10 rounded-md flex items-center justify-center border border-border/20 cursor-pointer"
+        className="flex h-[160px] w-[160px] flex-shrink-0 cursor-pointer items-center justify-center rounded-md border border-border bg-secondary"
         onClick={onOpenFicha}
       />
 
       {/* Content */}
-      <div className="flex-1 min-w-0 flex flex-col justify-between">
+      <div className="flex min-w-0 flex-1 flex-col justify-between">
         <div>
           <h3
-            className="text-sm font-normal text-foreground leading-snug line-clamp-2 group-hover:text-primary transition-colors cursor-pointer"
+            className="line-clamp-2 cursor-pointer text-base font-medium leading-5 text-foreground transition-colors group-hover:text-primary"
             onClick={onOpenFicha}
           >
             {item.produto}
           </h3>
-          <div className="flex items-center gap-2 mb-2 flex-wrap mt-1">
+          <div className="mb-2 mt-1 flex flex-wrap items-center gap-2">
             {item.marca && (
               <span className="text-xs text-muted-foreground">
                 por <span className="font-medium">{item.marca}</span>
@@ -446,28 +455,28 @@ function MercadoLivreCard({ item, isCheapest, onOpenFicha, onQuickAdd, onSaveToC
         <div className="my-2">
           {item.preco_original && item.preco_original > item.preco && (
             <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground line-through">
+              <span className="text-xs text-muted-foreground line-through tabular-nums">
                 {formatCurrency(item.preco_original)}
               </span>
-              <Badge className="bg-success/10 text-success border-success/20 text-xs px-1.5">
+              <Badge variant="success" className="tabular-nums">
                 {desconto}% OFF
               </Badge>
             </div>
           )}
-          <p className="text-2xl font-light text-foreground tracking-tight">
+          <p className="text-2xl font-semibold leading-8 tabular-nums text-foreground">
             {formatCurrency(item.preco)}
           </p>
           {item.parcelas && (
-            <p className="text-xs text-success font-medium mt-0.5">
+            <p className="mt-0.5 text-xs font-medium text-success-ink">
               em {item.parcelas}
             </p>
           )}
         </div>
 
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex flex-wrap items-center gap-3">
           {isFreteGratis(item.frete) ? (
-            <div className="flex items-center gap-1 text-success">
-              <Truck className="w-3.5 h-3.5" />
+            <div className="flex items-center gap-1 text-success-ink">
+              <Truck className="h-3.5 w-3.5" aria-hidden="true" />
               <span className="text-xs font-semibold">Frete grátis</span>
             </div>
           ) : (
@@ -476,54 +485,52 @@ function MercadoLivreCard({ item, isCheapest, onOpenFicha, onQuickAdd, onSaveToC
             )
           )}
           <div className="flex items-center gap-1 text-muted-foreground">
-            <Store className="w-3 h-3" />
+            <Store className="h-3 w-3" aria-hidden="true" />
             <span className="text-xs">{item.loja}</span>
           </div>
           {item.vendedor_qualificado && (
-            <div className="flex items-center gap-1 text-success">
-              <ShieldCheck className="w-3 h-3" />
+            <div className="flex items-center gap-1 text-success-ink">
+              <ShieldCheck className="h-3 w-3" aria-hidden="true" />
               <span className="text-xs font-medium">MercadoLíder</span>
             </div>
           )}
           {isCheapest && (
-            <Badge className="bg-success/10 text-success border-success/20 text-xs">
-              <TrendingDown className="w-3 h-3 mr-0.5" /> Menor preço
+            <Badge variant="success">
+              <TrendingDown className="h-3 w-3" aria-hidden="true" /> Menor preço
             </Badge>
           )}
         </div>
       </div>
 
       {/* Right actions */}
-      <div className="flex flex-col items-end justify-between flex-shrink-0">
-        <Badge variant="outline" className="text-xs">
+      <div className="flex flex-shrink-0 flex-row items-center justify-between gap-2 sm:flex-col sm:items-end">
+        <Badge variant="outline">
           {item.condicao || 'Novo'}
         </Badge>
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-wrap gap-1 sm:flex-col">
           <Button
             size="sm"
-            className="bg-accent hover:bg-accent/90 text-accent-foreground text-xs"
             onClick={(e) => { e.stopPropagation(); onQuickAdd(); }}
           >
-            <Plus className="w-3.5 h-3.5 mr-1" />
+            <Plus aria-hidden="true" />
             Proposta
           </Button>
           <Button
             size="sm"
             variant="outline"
-            className="text-success hover:text-success hover:bg-success/10 text-xs"
             onClick={(e) => { e.stopPropagation(); onSaveToCatalog(); }}
           >
-            <Save className="w-3.5 h-3.5 mr-1" />
+            <Save aria-hidden="true" />
             Catálogo
           </Button>
           <Button
             size="sm"
             variant="ghost"
-            className="text-primary hover:text-primary hover:bg-primary/10"
+            className="text-primary hover:bg-primary-tint hover:text-primary"
             onClick={onOpenFicha}
           >
-            <ImageIcon className="w-3.5 h-3.5 mr-1" />
-            <span className="text-xs">Ficha</span>
+            <ImageIcon aria-hidden="true" />
+            Ficha
           </Button>
         </div>
       </div>
@@ -534,33 +541,35 @@ function MercadoLivreCard({ item, isCheapest, onOpenFicha, onQuickAdd, onSaveToC
 /* ─── Resumo de Preços ─── */
 function ResumoPrecos({ resumo }: { resumo: PesquisaMLResult['resumo'] }) {
   return (
-    <div className="bg-gradient-to-r from-primary/5 to-success/5 border border-primary/20 rounded-lg p-4 space-y-3">
-      <h4 className="text-sm font-semibold flex items-center gap-2 text-foreground">
+    /* Sem gradiente: cartão neutro com quatro KPIs (rótulo 13/500, valor
+       24/600 tabular, tinta `*-ink`) alinhados à esquerda. */
+    <div className="space-y-3 rounded-lg border border-border bg-card p-4 shadow-sm">
+      <h4 className="flex items-center gap-2 text-base font-semibold leading-6 text-foreground">
         Resumo de Preços
       </h4>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="text-center p-2 bg-card rounded-md border border-border/30">
-          <p className="text-xs text-muted-foreground uppercase tracking-wider">Menor Preço</p>
-          <p className="text-lg font-bold text-success">{formatCurrency(resumo.menor_preco)}</p>
-          <p className="text-xs text-muted-foreground">{resumo.fornecedor_menor}</p>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div className="rounded-md border border-border bg-secondary p-3">
+          <p className="text-sm font-medium text-muted-foreground">Menor Preço</p>
+          <p className="mt-1 text-2xl font-semibold leading-8 tabular-nums text-success-ink">{formatCurrency(resumo.menor_preco)}</p>
+          <p className="mt-1 truncate text-xs text-muted-foreground">{resumo.fornecedor_menor}</p>
         </div>
-        <div className="text-center p-2 bg-card rounded-md border border-border/30">
-          <p className="text-xs text-muted-foreground uppercase tracking-wider">Maior Preço</p>
-          <p className="text-lg font-bold text-destructive">{formatCurrency(resumo.maior_preco)}</p>
-          <p className="text-xs text-muted-foreground">{resumo.fornecedor_maior}</p>
+        <div className="rounded-md border border-border bg-secondary p-3">
+          <p className="text-sm font-medium text-muted-foreground">Maior Preço</p>
+          <p className="mt-1 text-2xl font-semibold leading-8 tabular-nums text-destructive-ink">{formatCurrency(resumo.maior_preco)}</p>
+          <p className="mt-1 truncate text-xs text-muted-foreground">{resumo.fornecedor_maior}</p>
         </div>
-        <div className="text-center p-2 bg-card rounded-md border border-border/30">
-          <p className="text-xs text-muted-foreground uppercase tracking-wider">Preço Médio</p>
-          <p className="text-lg font-bold text-foreground">{formatCurrency(resumo.preco_medio)}</p>
+        <div className="rounded-md border border-border bg-secondary p-3">
+          <p className="text-sm font-medium text-muted-foreground">Preço Médio</p>
+          <p className="mt-1 text-2xl font-semibold leading-8 tabular-nums text-foreground">{formatCurrency(resumo.preco_medio)}</p>
         </div>
-        <div className="text-center p-2 bg-card rounded-md border border-border/30">
-          <p className="text-xs text-muted-foreground uppercase tracking-wider">Variação</p>
-          <p className="text-lg font-bold text-foreground">{resumo.variacao}</p>
+        <div className="rounded-md border border-border bg-secondary p-3">
+          <p className="text-sm font-medium text-muted-foreground">Variação</p>
+          <p className="mt-1 text-2xl font-semibold leading-8 tabular-nums text-foreground">{resumo.variacao}</p>
         </div>
       </div>
       {resumo.recomendacao && (
-        <div className="bg-card rounded-md border border-border/30 p-3">
-          <p className="text-xs text-muted-foreground">
+        <div className="rounded-md border border-border bg-secondary p-3">
+          <p className="text-sm text-muted-foreground">
             <span className="font-medium text-foreground">Recomendação:</span> {resumo.recomendacao}
           </p>
         </div>
@@ -569,18 +578,18 @@ function ResumoPrecos({ resumo }: { resumo: PesquisaMLResult['resumo'] }) {
   );
 }
 
-/* ─── Loading Skeleton ─── */
+/* ─── Loading Skeleton — na forma do cartão da grade ─── */
 function LoadingSkeleton() {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 animate-pulse">
+    <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4" role="status" aria-live="polite" aria-label="Pesquisando nos marketplaces">
       {[1, 2, 3, 4, 5, 6].map((i) => (
-        <div key={i} className="bg-card border border-border/40 rounded-xl overflow-hidden">
-          <div className="w-full aspect-square bg-muted" />
-          <div className="p-3 space-y-2">
-            <div className="h-3 bg-muted rounded w-full" />
-            <div className="h-3 bg-muted rounded w-3/4" />
-            <div className="h-5 bg-muted rounded w-1/2 mt-3" />
-            <div className="h-3 bg-muted rounded w-2/3" />
+        <div key={i} className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+          <Skeleton className="aspect-square w-full rounded-none" />
+          <div className="space-y-2 p-3">
+            <Skeleton className="h-3 w-full" />
+            <Skeleton className="h-3 w-3/4" />
+            <Skeleton className="mt-3 h-5 w-1/2" />
+            <Skeleton className="h-3 w-2/3" />
           </div>
         </div>
       ))}
@@ -685,39 +694,38 @@ export function PesquisaResultML({
     return (
       <div className="space-y-4">
         {/* Header */}
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="min-w-0">
+            <h3 className="text-base font-semibold leading-6 text-foreground">
               Resultados para "<span className="text-foreground">{data.produto}</span>"
             </h3>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               {data.fornecedores.length} fornecedores encontrados · Pesquisa em {data.data_pesquisa}
               {isLoadingImages && (
                 <span className="ml-2 inline-flex items-center gap-1 text-muted-foreground">
-                  <Loader2 className="w-3 h-3 animate-spin" />
+                  <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
                   Buscando imagens reais...
                 </span>
               )}
             </p>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               size="sm"
               variant="outline"
               onClick={handleSaveAllToCatalog}
               disabled={savingAll}
-              className="text-xs"
             >
-              {savingAll ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1" />}
+              {savingAll ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Save aria-hidden="true" />}
               Arquivar Cotação
             </Button>
           </div>
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex flex-wrap items-center gap-3">
             {/* Sort */}
             <div className="flex items-center gap-1.5">
-              <ArrowUpDown className="w-3.5 h-3.5 text-muted-foreground" />
+              <ArrowUpDown className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
               <Select value={sortMode} onValueChange={(v) => setSortMode(v as any)}>
-                <SelectTrigger className="w-[170px] h-8 text-xs">
+                <SelectTrigger aria-label="Ordenar resultados" className="h-9 w-[170px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -727,39 +735,39 @@ export function PesquisaResultML({
                 </SelectContent>
               </Select>
             </div>
-            {/* View toggle */}
-            <div className="flex border border-border rounded-md overflow-hidden">
-              <button
+            {/* View toggle — controle segmentado sóbrio (o mesmo do Financeiro):
+                a opção ativa é o segmento branco em relevo, o verde fica para a
+                ação principal. */}
+            <div className="inline-flex flex-wrap gap-1 rounded-md bg-muted p-1" role="group" aria-label="Modo de exibição dos resultados">
+              <Button
+                type="button"
+                size="sm"
+                variant={viewMode === 'grid' ? 'outline' : 'ghost'}
+                aria-pressed={viewMode === 'grid'}
                 onClick={() => setViewMode('grid')}
-                className={`flex items-center gap-1 px-2.5 py-1.5 text-xs transition-colors ${
-                  viewMode === 'grid'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-card text-muted-foreground hover:bg-muted'
-                }`}
                 title="Google Shopping"
               >
-                <LayoutGrid className="w-3.5 h-3.5" />
+                <LayoutGrid aria-hidden="true" />
                 Grid
-              </button>
-              <button
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={viewMode === 'list' ? 'outline' : 'ghost'}
+                aria-pressed={viewMode === 'list'}
                 onClick={() => setViewMode('list')}
-                className={`flex items-center gap-1 px-2.5 py-1.5 text-xs transition-colors ${
-                  viewMode === 'list'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-card text-muted-foreground hover:bg-muted'
-                }`}
                 title="Mercado Livre"
               >
-                <List className="w-3.5 h-3.5" />
+                <List aria-hidden="true" />
                 Lista
-              </button>
+              </Button>
             </div>
           </div>
         </div>
 
         {/* Products */}
         {viewMode === 'grid' ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {sorted.map((item, i) => (
               <GoogleShoppingCard
                 key={i}

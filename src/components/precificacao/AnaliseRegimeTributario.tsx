@@ -7,10 +7,11 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import {
-  Search, Bot, Loader2, ShieldCheck, AlertTriangle, CheckCircle2, ExternalLink,
+  Search, Bot, Loader2, AlertTriangle, CheckCircle2, ExternalLink,
   FileText, Scale, Info, Globe, BookOpen, Gavel, ChevronDown,
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import SeloPraefectusIA from '@/components/shared/SeloPraefectusIA';
 import { streamAIChat } from '@/lib/ai-stream';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -344,8 +345,8 @@ Formato: texto estruturado com tópicos numerados.`;
     const { label } = getTratamentoLabel(tratamento);
     return (
       <Badge variant={TRATAMENTO_VARIANT[tratamento] ?? 'info'} className="font-medium">
-        {tratamento === 'ISENTO' && <CheckCircle2 className="w-3 h-3 mr-1" aria-hidden="true" />}
-        {tratamento === 'ST' && <AlertTriangle className="w-3 h-3 mr-1" aria-hidden="true" />}
+        {tratamento === 'ISENTO' && <CheckCircle2 className="h-3 w-3" aria-hidden="true" />}
+        {tratamento === 'ST' && <AlertTriangle className="h-3 w-3" aria-hidden="true" />}
         {label} {aliquota > 0 ? `(${aliquota}%)` : ''}
       </Badge>
     );
@@ -353,18 +354,16 @@ Formato: texto estruturado com tópicos numerados.`;
 
   return (
     <div className="space-y-4">
-      {/* ── Header ── */}
-      <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+      {/* ── Header — recurso de IA: o selo "Praefectus IA" no lugar do chip. ── */}
+      <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <Scale className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
-            <h3 className="text-lg font-semibold">
+            <Scale className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+            <h3 className="text-base font-semibold leading-6 text-foreground">
               Análise de Regime Tributário — {ufCalculo}
             </h3>
           </div>
-          <Badge variant="muted">
-            <ShieldCheck className="w-3 h-3 mr-1" aria-hidden="true" /> IA Tributária
-          </Badge>
+          <SeloPraefectusIA />
         </div>
         <p className="text-sm text-muted-foreground">
           Identifica automaticamente o tratamento tributário (isenção, ST, redução de BC, diferimento) para cada item com base no NCM, UF e regime.
@@ -372,18 +371,18 @@ Formato: texto estruturado com tópicos numerados.`;
 
         {/* Legislation info */}
         {temDados && ufData && (
-          <div className="mt-3 bg-muted rounded-lg p-3 space-y-1">
-            <p className="text-xs text-muted-foreground">
+          <div className="mt-3 space-y-1 rounded-md bg-secondary p-3">
+            <p className="text-sm text-muted-foreground">
               <strong className="text-foreground">Base legal:</strong> {ufData.legislacao_base}
             </p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               <strong className="text-foreground">Alíquota padrão:</strong> {ufData.aliquota_padrao}%
               {ufData.fundo_combate_pobreza > 0 && ` (+${ufData.fundo_combate_pobreza}% FCP)`}
             </p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               <strong className="text-foreground">Categorias mapeadas:</strong> {ufData.regras.length} regras tributárias
             </p>
-            <p className="text-xs text-muted-foreground italic">
+            <p className="text-xs text-muted-foreground">
               Última atualização: {ufData.ultima_atualizacao}
             </p>
           </div>
@@ -392,56 +391,56 @@ Formato: texto estruturado com tópicos numerados.`;
 
       {/* ── Panorama tributário do estado ── */}
       {temDados && (
-        <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+        <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
           <button
             type="button"
             onClick={() => setPanoramaOpen(!panoramaOpen)}
             aria-expanded={panoramaOpen}
-            className="w-full flex items-center justify-between group rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="group flex w-full items-center justify-between rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
-            <h4 className="text-lg font-semibold flex items-center gap-2">
-              <FileText className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+            <h4 className="flex items-center gap-2 text-base font-semibold leading-6 text-foreground">
+              <FileText className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
               Panorama Tributário — {ufCalculo} ({ufNome})
             </h4>
-            <ChevronDown className={`w-5 h-5 text-muted-foreground transition-transform duration-200 ${panoramaOpen ? 'rotate-0' : '-rotate-90'}`} aria-hidden="true" />
+            <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform duration-200 ${panoramaOpen ? 'rotate-0' : '-rotate-90'}`} aria-hidden="true" />
           </button>
           {panoramaOpen && (
-            <div className="overflow-x-auto rounded-lg border border-border mt-3">
+            <div className="mt-3 overflow-hidden rounded-md border border-border bg-card">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-muted">
-                    <TableHead className="text-sm font-semibold h-10">Categoria</TableHead>
-                    <TableHead className="text-sm font-semibold h-10">Tratamento</TableHead>
-                    <TableHead className="text-sm font-semibold h-10 text-right">Alíq. Efetiva</TableHead>
-                    <TableHead className="text-sm font-semibold h-10">Fundamentação</TableHead>
+                  <TableRow>
+                    <TableHead>Categoria</TableHead>
+                    <TableHead>Tratamento</TableHead>
+                    <TableHead className="text-right">Alíq. Efetiva</TableHead>
+                    <TableHead>Fundamentação</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {regrasUF.filter(r => !r.categoria.startsWith('servicos_')).map((regra, idx) => (
                     <TableRow key={idx}>
-                      <TableCell className="text-sm py-2 font-medium">
+                      <TableCell className="font-medium">
                         {getCategoriaLabel(regra.categoria)}
                       </TableCell>
-                      <TableCell className="text-sm py-2">
+                      <TableCell>
                         <TratamentoBadge tratamento={regra.tratamento} aliquota={regra.aliquota_efetiva} />
                       </TableCell>
-                      <TableCell className="text-sm py-2 text-right font-bold tabular-nums">
+                      <TableCell className="text-right font-semibold tabular-nums" nowrap>
                         {regra.aliquota_efetiva === 0 ? 'Isento' : `${regra.aliquota_efetiva}%`}
                         {regra.aliquota_st_mva && (
-                          <span className="text-muted-foreground ml-1">(MVA {regra.aliquota_st_mva}%)</span>
+                          <span className="ml-1 font-normal text-muted-foreground">(MVA {regra.aliquota_st_mva}%)</span>
                         )}
                       </TableCell>
-                      <TableCell className="text-sm py-2 text-muted-foreground max-w-[200px] truncate">
+                      <TableCell className="max-w-[200px] text-muted-foreground" truncate>
                         <TooltipProvider>
                           <Tooltip>
-                            <TooltipTrigger className="text-left">
+                            <TooltipTrigger className="rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                               {regra.fundamentacao.length > 50
                                 ? regra.fundamentacao.substring(0, 50) + '...'
                                 : regra.fundamentacao}
                             </TooltipTrigger>
                             <TooltipContent side="bottom" className="max-w-xs">
                               <p className="text-xs">{regra.fundamentacao}</p>
-                              {regra.observacoes && <p className="text-xs mt-1 text-muted-foreground">{regra.observacoes}</p>}
+                              {regra.observacoes && <p className="mt-1 text-xs text-muted-foreground">{regra.observacoes}</p>}
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
@@ -457,10 +456,10 @@ Formato: texto estruturado com tópicos numerados.`;
 
       {/* ── NCM Input por Item ── */}
       {itens.some(i => i.descricao.trim()) && (
-        <div className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <h4 className="text-lg font-semibold flex items-center gap-2">
-              <Search className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+        <div className="space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm">
+          <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+            <h4 className="flex items-center gap-2 text-base font-semibold leading-6 text-foreground">
+              <Search className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
               Classificação NCM dos Itens
             </h4>
             <Button
@@ -468,7 +467,7 @@ Formato: texto estruturado com tópicos numerados.`;
               onClick={analisarComIA}
               disabled={loading}
             >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Bot className="w-4 h-4" aria-hidden="true" />}
+              {loading ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Bot aria-hidden="true" />}
               Analisar com IA
             </Button>
           </div>
@@ -480,35 +479,35 @@ Formato: texto estruturado com tópicos numerados.`;
             const autoLoading = ncmAutoLoading[idx];
 
             return (
-              <div key={idx} className="bg-muted rounded-lg p-3 space-y-2">
+              <div key={idx} className="space-y-2 rounded-md border border-border bg-secondary p-3">
                 <div className="flex flex-wrap items-center gap-3">
-                  <span className="text-sm font-medium text-foreground flex-1 min-w-[160px] truncate">
+                  <span className="min-w-[160px] flex-1 truncate text-sm font-medium text-foreground">
                     {item.descricao}
                   </span>
-                  <div className="w-full sm:w-44 relative">
+                  <div className="relative w-full sm:w-44">
                     <Input
                       aria-label={`NCM do item ${item.descricao}`}
                       value={ncmInputs[idx] || ''}
                       onChange={e => updateNcm(idx, e.target.value)}
                       placeholder="NCM: 0000.00.00"
-                      className="h-9 text-sm pr-8"
+                      className="pr-9 tabular-nums"
                     />
                     {autoLoading && (
-                      <Loader2 className="w-4 h-4 animate-spin absolute right-2 top-2.5 text-muted-foreground" aria-hidden="true" />
+                      <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-muted-foreground" aria-hidden="true" />
                     )}
                   </div>
                 </div>
 
                 {/* Resultado auto-search NCM (portais oficiais + IA) */}
                 {autoResult && !resultadoIA && (
-                  <div className="bg-card rounded-lg p-3 space-y-2 border border-border">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Globe className="w-3.5 h-3.5 text-muted-foreground" />
-                      <span className="text-xs font-semibold text-foreground">
+                  <div className="space-y-2 rounded-md border border-border bg-card p-3">
+                    <div className="mb-1 flex flex-wrap items-center gap-2">
+                      <Globe className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                      <span className="text-sm font-semibold text-foreground">
                         Consulta Automática — Fontes Oficiais
                       </span>
                       {autoResult.fontes && (
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="tabular-nums">
                           {autoResult.fontes.length} fonte(s)
                         </Badge>
                       )}
@@ -516,7 +515,7 @@ Formato: texto estruturado com tópicos numerados.`;
 
                     {/* Descrição oficial NCM */}
                     {autoResult.descricao_ncm && (
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-sm text-muted-foreground">
                         <strong className="text-foreground">Descrição TIPI:</strong> {autoResult.descricao_ncm}
                       </p>
                     )}
@@ -524,7 +523,7 @@ Formato: texto estruturado com tópicos numerados.`;
                     {/* Sugestões de NCM */}
                     {autoResult.sugestoes_ncm && autoResult.sugestoes_ncm.length > 0 && !autoResult.descricao_ncm && (
                       <div className="space-y-1">
-                        <p className="text-xs font-medium text-foreground">Sugestões de NCM:</p>
+                        <p className="text-sm font-medium text-foreground">Sugestões de NCM:</p>
                         {autoResult.sugestoes_ncm.map((sug, sIdx) => (
                           <Button
                             key={sIdx}
@@ -532,9 +531,9 @@ Formato: texto estruturado com tópicos numerados.`;
                             variant="ghost"
                             size="sm"
                             onClick={() => updateNcm(idx, sug.codigo)}
-                            className="h-auto w-full justify-start whitespace-normal px-2 py-1 text-left text-xs font-normal text-muted-foreground"
+                            className="h-auto w-full justify-start whitespace-normal px-2 py-1 text-left text-sm font-normal text-muted-foreground"
                           >
-                            <span><strong>{sug.codigo}</strong> — {sug.descricao}</span>
+                            <span><strong className="tabular-nums">{sug.codigo}</strong> — {sug.descricao}</span>
                           </Button>
                         ))}
                       </div>
@@ -542,11 +541,11 @@ Formato: texto estruturado com tópicos numerados.`;
 
                     {/* Tributos grid */}
                     {(autoResult.icms || autoResult.ipi || autoResult.pis_cofins) && (
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
                         {autoResult.icms && (
-                          <div className="bg-muted rounded-md p-2">
-                            <p className="text-xs font-semibold text-muted-foreground uppercase">ICMS</p>
-                            <p className="text-xs font-bold text-foreground">
+                          <div className="rounded-md bg-muted p-2">
+                            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">ICMS</p>
+                            <p className="text-sm font-semibold tabular-nums text-foreground">
                               {autoResult.icms.isento ? 'Isento' : `${autoResult.icms.aliquota_interna || 0}%`}
                             </p>
                             {autoResult.icms.reducao_bc && (
@@ -555,23 +554,23 @@ Formato: texto estruturado com tópicos numerados.`;
                           </div>
                         )}
                         {autoResult.ipi && (
-                          <div className="bg-muted rounded-md p-2">
-                            <p className="text-xs font-semibold text-muted-foreground uppercase">IPI</p>
-                            <p className="text-xs font-bold text-foreground">{autoResult.ipi.aliquota ?? 0}%</p>
+                          <div className="rounded-md bg-muted p-2">
+                            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">IPI</p>
+                            <p className="text-sm font-semibold tabular-nums text-foreground">{autoResult.ipi.aliquota ?? 0}%</p>
                           </div>
                         )}
                         {autoResult.pis_cofins && (
-                          <div className="bg-muted rounded-md p-2">
-                            <p className="text-xs font-semibold text-muted-foreground uppercase">PIS/COFINS</p>
-                            <p className="text-xs font-bold text-foreground">
+                          <div className="rounded-md bg-muted p-2">
+                            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">PIS/COFINS</p>
+                            <p className="text-sm font-semibold tabular-nums text-foreground">
                               {(autoResult.pis_cofins.pis ?? 0)}% / {(autoResult.pis_cofins.cofins ?? 0)}%
                             </p>
                           </div>
                         )}
                         {autoResult.st?.aplicavel && (
-                          <div className="bg-destructive-tint rounded-md p-2 border border-destructive-line">
-                            <p className="text-xs font-semibold text-destructive-ink uppercase">ST</p>
-                            <p className="text-xs font-bold text-destructive-ink">
+                          <div className="rounded-md border border-destructive-line bg-destructive-tint p-2">
+                            <p className="text-xs font-semibold uppercase tracking-wider text-destructive-ink">ST</p>
+                            <p className="text-sm font-semibold tabular-nums text-destructive-ink">
                               MVA: {autoResult.st.mva ?? '—'}%
                             </p>
                             {autoResult.cest && (
@@ -585,8 +584,8 @@ Formato: texto estruturado com tópicos numerados.`;
                     {/* Benefícios fiscais */}
                     {autoResult.beneficios_fiscais && autoResult.beneficios_fiscais.length > 0 && (
                       <div className="flex items-start gap-1.5">
-                        <CheckCircle2 className="w-3 h-3 text-success mt-0.5 shrink-0" />
-                        <p className="text-xs text-muted-foreground">
+                        <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-success-ink" aria-hidden="true" />
+                        <p className="text-sm text-muted-foreground">
                           <strong className="text-foreground">Benefícios:</strong>{' '}
                           {autoResult.beneficios_fiscais.join('; ')}
                         </p>
@@ -596,8 +595,8 @@ Formato: texto estruturado com tópicos numerados.`;
                     {/* Riscos fiscais */}
                     {autoResult.riscos_fiscais && (
                       <div className="flex items-start gap-1.5">
-                        <AlertTriangle className="w-3 h-3 text-warning mt-0.5 shrink-0" />
-                        <p className="text-xs text-muted-foreground italic">
+                        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning-ink" aria-hidden="true" />
+                        <p className="text-sm text-muted-foreground">
                           {autoResult.riscos_fiscais}
                         </p>
                       </div>
@@ -606,8 +605,8 @@ Formato: texto estruturado com tópicos numerados.`;
                     {/* Fundamentação legal */}
                     {autoResult.analise_ia?.icms_fundamentacao && (
                       <div className="flex items-start gap-1.5">
-                        <Gavel className="w-3 h-3 text-muted-foreground mt-0.5 shrink-0" />
-                        <p className="text-xs text-muted-foreground">
+                        <Gavel className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                        <p className="text-sm text-muted-foreground">
                           <strong className="text-foreground">Base legal:</strong>{' '}
                           {autoResult.analise_ia.icms_fundamentacao}
                         </p>
@@ -616,12 +615,12 @@ Formato: texto estruturado com tópicos numerados.`;
 
                     {/* Fontes consultadas */}
                     {autoResult.fontes && autoResult.fontes.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-1">
+                      <div className="mt-1 flex flex-wrap gap-1">
                         {autoResult.fontes.map((fonte, fIdx) => (
-                          <Badge key={fIdx} variant="outline" className="text-xs gap-1">
-                            {fonte.tipo === 'api_oficial' && <Globe className="w-2.5 h-2.5" />}
-                            {fonte.tipo === 'legislacao_oficial' && <BookOpen className="w-2.5 h-2.5" />}
-                            {fonte.tipo === 'ia_especializada' && <Bot className="w-2.5 h-2.5" />}
+                          <Badge key={fIdx} variant="outline">
+                            {fonte.tipo === 'api_oficial' && <Globe className="h-3 w-3" aria-hidden="true" />}
+                            {fonte.tipo === 'legislacao_oficial' && <BookOpen className="h-3 w-3" aria-hidden="true" />}
+                            {fonte.tipo === 'ia_especializada' && <Bot className="h-3 w-3" aria-hidden="true" />}
                             {fonte.nome}
                           </Badge>
                         ))}
@@ -630,8 +629,8 @@ Formato: texto estruturado com tópicos numerados.`;
 
                     {/* Links de referência */}
                     {autoResult.fontes_referencia && (
-                      <details className="text-xs">
-                        <summary className="text-muted-foreground cursor-pointer hover:text-foreground">
+                      <details className="text-sm">
+                        <summary className="cursor-pointer rounded-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                           Ver fontes de referência ({autoResult.fontes_referencia.length})
                         </summary>
                         <div className="mt-1 space-y-0.5 pl-3">
@@ -641,9 +640,9 @@ Formato: texto estruturado com tópicos numerados.`;
                               href={ref.url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="flex items-center gap-1 text-primary hover:underline"
+                              className="flex items-center gap-1 rounded-sm text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             >
-                              <ExternalLink className="w-3 h-3" aria-hidden="true" />
+                              <ExternalLink className="h-3 w-3" aria-hidden="true" />
                               {ref.nome}
                             </a>
                           ))}
@@ -655,9 +654,9 @@ Formato: texto estruturado com tópicos numerados.`;
 
                 {/* Resultado local (base de dados) - fallback */}
                 {regraLocal && !resultadoIA && !autoResult && (
-                  <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex flex-wrap items-center gap-2">
                     <TratamentoBadge tratamento={regraLocal.tratamento} aliquota={regraLocal.aliquota_efetiva} />
-                    <Badge variant="outline" className="text-xs">{getCategoriaLabel(regraLocal.categoria)}</Badge>
+                    <Badge variant="outline">{getCategoriaLabel(regraLocal.categoria)}</Badge>
                     <span className="text-xs text-muted-foreground">{regraLocal.fundamentacao}</span>
                   </div>
                 )}
@@ -665,19 +664,19 @@ Formato: texto estruturado com tópicos numerados.`;
                 {/* Resultado da IA batch */}
                 {resultadoIA && (
                   <div className="space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex flex-wrap items-center gap-2">
                       <TratamentoBadge tratamento={resultadoIA.tratamento} aliquota={resultadoIA.aliquota_efetiva} />
-                      <Badge variant="outline" className="text-xs">NCM: {resultadoIA.ncm}</Badge>
-                      <Badge variant="outline" className="text-xs">{resultadoIA.categoria}</Badge>
+                      <Badge variant="outline" className="tabular-nums">NCM: {resultadoIA.ncm}</Badge>
+                      <Badge variant="outline">{resultadoIA.categoria}</Badge>
                       {resultadoIA.st_mva && (
-                        <Badge variant="danger">MVA: {resultadoIA.st_mva}%</Badge>
+                        <Badge variant="danger" className="tabular-nums">MVA: {resultadoIA.st_mva}%</Badge>
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      <strong>Base legal:</strong> {resultadoIA.fundamentacao}
+                    <p className="text-sm text-muted-foreground">
+                      <strong className="text-foreground">Base legal:</strong> {resultadoIA.fundamentacao}
                     </p>
                     {resultadoIA.observacoes && (
-                      <p className="text-xs text-muted-foreground italic">{resultadoIA.observacoes}</p>
+                      <p className="text-xs text-muted-foreground">{resultadoIA.observacoes}</p>
                     )}
                   </div>
                 )}
@@ -687,11 +686,12 @@ Formato: texto estruturado com tópicos numerados.`;
         </div>
       )}
 
-      {/* ── Consulta manual NCM/Produto ── */}
-      <div className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-3">
-        <h4 className="text-lg font-semibold flex items-center gap-2">
-          <Bot className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+      {/* ── Consulta manual NCM/Produto — recurso de IA ── */}
+      <div className="space-y-3 rounded-lg border border-border bg-card p-5 shadow-sm">
+        <h4 className="flex flex-wrap items-center gap-2 text-base font-semibold leading-6 text-foreground">
+          <Bot className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
           Consulta Tributária por NCM/Produto
+          <SeloPraefectusIA />
         </h4>
         <p className="text-sm text-muted-foreground">
           Consulte o tratamento tributário específico de qualquer produto ou NCM no estado {ufCalculo}, incluindo ST, isenções, reduções de BC e fundamentação legal.
@@ -702,21 +702,21 @@ Formato: texto estruturado com tópicos numerados.`;
             value={consultaManual}
             onChange={e => setConsultaManual(e.target.value)}
             placeholder="Ex: Notebook NCM 8471.30 ou 'cimento Portland'"
-            className="flex-1 min-w-[200px]"
+            className="min-w-[200px] flex-1"
             onKeyDown={e => e.key === 'Enter' && consultarManual()}
           />
           <Button
             onClick={consultarManual}
             disabled={loadingManual}
           >
-            {loadingManual ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Search className="w-4 h-4" aria-hidden="true" />}
+            {loadingManual ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Search aria-hidden="true" />}
             Consultar
           </Button>
         </div>
 
         {resultadoManual && (
-          <div className="bg-muted rounded-lg p-4 space-y-2 max-h-80 overflow-y-auto">
-            <div className="prose prose-sm max-w-none dark:prose-invert text-sm whitespace-pre-wrap">
+          <div className="max-h-80 space-y-2 overflow-y-auto rounded-md border border-primary-line bg-primary-tint p-4">
+            <div className="prose prose-sm max-w-none whitespace-pre-wrap text-sm dark:prose-invert">
               {resultadoManual}
             </div>
           </div>
@@ -724,9 +724,9 @@ Formato: texto estruturado com tópicos numerados.`;
       </div>
 
       {/* ── Notas legais ── */}
-      <div className="bg-muted rounded-lg p-3 flex items-start gap-2">
-        <Info className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" aria-hidden="true" />
-        <div className="text-xs text-muted-foreground space-y-1">
+      <div className="flex items-start gap-2 rounded-md border border-border bg-secondary p-3">
+        <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+        <div className="space-y-1 text-sm text-muted-foreground">
           <p>
             <strong>Aviso:</strong> Esta análise é baseada na legislação vigente e em dados públicos dos RICMS estaduais e Convênios CONFAZ. 
             Consulte um contador para validação formal antes de utilizar em processos licitatórios.

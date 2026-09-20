@@ -10,6 +10,7 @@ import {
 import {
   Upload, FileSpreadsheet, Loader2, CheckCircle, AlertTriangle, Download, Info,
 } from 'lucide-react';
+import LinhaKpis from '@/components/shared/LinhaKpis';
 import { toast } from 'sonner';
 import { writeExcelFromJson, readExcelFile } from '@/lib/excel-utils';
 
@@ -146,19 +147,19 @@ export default function ImportacoesManager() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">
-        <Upload className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
-        <h3 className="text-lg font-semibold">Importação de Dados</h3>
+        <Upload className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+        <h3 className="text-lg font-semibold leading-6 text-foreground">Importação de Dados</h3>
       </div>
 
-      <div className="space-y-4 rounded-lg border border-border bg-muted p-6">
+      <div className="space-y-4 rounded-lg border border-border bg-secondary p-5">
         <div className="flex items-start gap-3">
-          <Info className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-0.5" aria-hidden="true" />
-          <div className="text-sm space-y-1">
-            <p className="font-medium">Formato aceito: XLSX ou CSV</p>
-            <p className="text-muted-foreground text-xs">
+          <Info className="mt-0.5 h-5 w-5 flex-shrink-0 text-muted-foreground" aria-hidden="true" />
+          <div className="min-w-0 space-y-1 text-sm">
+            <p className="font-medium text-foreground">Formato aceito: XLSX ou CSV</p>
+            <p className="text-sm text-muted-foreground">
               Colunas esperadas: <code className="rounded-sm border border-border bg-card px-1 py-0.5 text-xs">source_name, supplier_name, product_title, brand, sku, price, freight, total_price, stock, delivery_days, uf, product_url, collected_at</code>
             </p>
-            <p className="text-muted-foreground text-xs">Campos obrigatórios: <strong>product_title</strong> e <strong>price</strong> (ou total_price).</p>
+            <p className="text-sm text-muted-foreground">Campos obrigatórios: <strong>product_title</strong> e <strong>price</strong> (ou total_price).</p>
           </div>
         </div>
 
@@ -171,39 +172,32 @@ export default function ImportacoesManager() {
             className="hidden"
           />
           <Button onClick={() => fileRef.current?.click()} disabled={importing}>
-            {importing ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <FileSpreadsheet className="w-4 h-4" aria-hidden="true" />}
+            {importing ? <Loader2 className="animate-spin" aria-hidden="true" /> : <FileSpreadsheet aria-hidden="true" />}
             {importing ? 'Importando...' : 'Upload Planilha'}
           </Button>
           <Button variant="outline" onClick={downloadTemplate}>
-            <Download className="w-4 h-4" aria-hidden="true" /> Baixar Template
+            <Download aria-hidden="true" /> Baixar Template
           </Button>
         </div>
       </div>
 
       {result && (
         <div className="space-y-4">
-          {/* Summary */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="rounded-lg border border-border bg-card p-4 text-center shadow-sm">
-              <p className="text-[2rem] leading-10 font-bold tabular-nums">{result.total}</p>
-              <p className="text-xs text-muted-foreground">Total de registros</p>
-            </div>
-            <div className="rounded-lg border border-success-line bg-success-tint p-4 text-center">
-              <p className="text-[2rem] leading-10 font-bold tabular-nums text-success-ink">{result.importados}</p>
-              <p className="text-xs text-muted-foreground">Importados</p>
-            </div>
-            <div className={`${result.erros.length > 0 ? 'border-destructive-line bg-destructive-tint' : 'border-border bg-card shadow-sm'} rounded-lg border p-4 text-center`}>
-              <p className={`text-[2rem] leading-10 font-bold tabular-nums ${result.erros.length > 0 ? 'text-destructive-ink' : ''}`}>{result.erros.length}</p>
-              <p className="text-xs text-muted-foreground">Erros</p>
-            </div>
-          </div>
+          {/* Summary — cartões KPI do DS (`LinhaKpis`), os mesmos números. */}
+          <LinhaKpis
+            itens={[
+              { rotulo: 'Total de registros', valor: String(result.total), icone: FileSpreadsheet },
+              { rotulo: 'Importados', valor: String(result.importados), icone: CheckCircle, tom: 'ok' },
+              { rotulo: 'Erros', valor: String(result.erros.length), icone: AlertTriangle, tom: result.erros.length > 0 ? 'critico' : 'neutro' },
+            ]}
+          />
 
           {/* Errors */}
           {result.erros.length > 0 && (
             <div className="max-h-40 space-y-1 overflow-y-auto rounded-lg border border-destructive-line bg-destructive-tint p-4" role="alert">
               {result.erros.map((err, i) => (
                 <div key={i} className="flex items-center gap-2 text-sm text-destructive-ink">
-                  <AlertTriangle className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
+                  <AlertTriangle className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
                   {err}
                 </div>
               ))}
@@ -213,37 +207,37 @@ export default function ImportacoesManager() {
           {/* Preview */}
           {result.items.length > 0 && (
             <div>
-              <h4 className="mb-2 text-base font-semibold">Preview dos dados importados</h4>
-              <div className="overflow-x-auto rounded-lg border border-border">
+              <h4 className="mb-2 text-base font-semibold leading-6 text-foreground">Preview dos dados importados</h4>
+              <div className="overflow-hidden rounded-md border border-border bg-card">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="text-sm font-semibold">Produto</TableHead>
-                      <TableHead className="text-sm font-semibold">Marca</TableHead>
-                      <TableHead className="text-sm font-semibold text-right">Preço</TableHead>
-                      <TableHead className="text-sm font-semibold text-right">Frete</TableHead>
-                      <TableHead className="text-sm font-semibold">Fornecedor</TableHead>
-                      <TableHead className="text-sm font-semibold">Fonte</TableHead>
-                      <TableHead className="text-sm font-semibold">UF</TableHead>
+                      <TableHead>Produto</TableHead>
+                      <TableHead>Marca</TableHead>
+                      <TableHead className="text-right">Preço</TableHead>
+                      <TableHead className="text-right">Frete</TableHead>
+                      <TableHead>Fornecedor</TableHead>
+                      <TableHead>Fonte</TableHead>
+                      <TableHead>UF</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {result.items.slice(0, 20).map((item, idx) => (
                       <TableRow key={idx}>
-                        <TableCell className="text-sm max-w-[250px] truncate">{item.product_title}</TableCell>
-                        <TableCell className="text-sm">{item.brand || '—'}</TableCell>
-                        <TableCell className="text-right text-sm tabular-nums">R$ {item.price.toFixed(2)}</TableCell>
-                        <TableCell className="text-right text-sm tabular-nums">R$ {item.freight.toFixed(2)}</TableCell>
-                        <TableCell className="text-sm">{item.supplier_name || '—'}</TableCell>
-                        <TableCell className="text-sm">{item.source_name || '—'}</TableCell>
-                        <TableCell className="text-sm">{item.uf || '—'}</TableCell>
+                        <TableCell className="max-w-[250px]" truncate>{item.product_title}</TableCell>
+                        <TableCell>{item.brand || '—'}</TableCell>
+                        <TableCell className="text-right tabular-nums" nowrap>R$ {item.price.toFixed(2)}</TableCell>
+                        <TableCell className="text-right tabular-nums" nowrap>R$ {item.freight.toFixed(2)}</TableCell>
+                        <TableCell>{item.supplier_name || '—'}</TableCell>
+                        <TableCell>{item.source_name || '—'}</TableCell>
+                        <TableCell>{item.uf || '—'}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
               </div>
               {result.items.length > 20 && (
-                <p className="text-xs text-muted-foreground mt-1">Mostrando 20 de {result.items.length} registros.</p>
+                <p className="mt-1 text-xs text-muted-foreground">Mostrando 20 de {result.items.length} registros.</p>
               )}
             </div>
           )}

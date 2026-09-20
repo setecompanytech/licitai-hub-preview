@@ -11,6 +11,7 @@ import { Loader2, Search, Building2, Calendar, MapPin, ExternalLink, TrendingDow
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import HistoricoDoOrgao from '@/components/precificacao/HistoricoDoOrgao';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { cn } from '@/lib/utils';
 import { fetchMunicipiosUF, UFS_BRASIL, type IBGEMunicipio } from '@/lib/ibge-municipios';
 
@@ -169,8 +170,8 @@ export default function PainelPrecosGov({ ufInicial = TODOS, municipioInicial = 
   return (
     <div className="space-y-4">
       {/* Info banner */}
-      <div className="flex items-start gap-2 p-3 bg-muted border border-border rounded-lg text-xs text-muted-foreground">
-        <FileCheck className="w-4 h-4 mt-0.5 text-muted-foreground flex-shrink-0" />
+      <div className="flex items-start gap-2 rounded-lg border border-border bg-secondary p-3 text-sm text-muted-foreground">
+        <FileCheck className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground" aria-hidden="true" />
         <p>
           Consulta direta à <strong>API oficial do PNCP</strong> (Portal Nacional de Contratações Públicas).
           Retorna <strong>preços unitários homologados</strong> de ATAs/SRP e contratos reais firmados por órgãos públicos.
@@ -178,10 +179,11 @@ export default function PainelPrecosGov({ ufInicial = TODOS, municipioInicial = 
       </div>
 
       {/* Search bar */}
-      <div className="flex gap-2 flex-wrap">
-        <div className="relative flex-1 min-w-0">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+      <div className="flex flex-wrap gap-2">
+        <div className="relative min-w-[200px] flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
           <Input
+            aria-label="Produto ou serviço a consultar"
             placeholder="Ex: Papel A4, Notebook, Monitor, Serviço de limpeza..."
             value={termo}
             onChange={(e) => setTermo(e.target.value)}
@@ -190,7 +192,7 @@ export default function PainelPrecosGov({ ufInicial = TODOS, municipioInicial = 
           />
         </div>
         <Select value={anoInicio} onValueChange={setAnoInicio}>
-          <SelectTrigger className="w-[100px]">
+          <SelectTrigger aria-label="Ano inicial" className="w-[100px]">
             <SelectValue placeholder="De" />
           </SelectTrigger>
           <SelectContent>
@@ -200,7 +202,7 @@ export default function PainelPrecosGov({ ufInicial = TODOS, municipioInicial = 
           </SelectContent>
         </Select>
         <Select value={anoFim} onValueChange={setAnoFim}>
-          <SelectTrigger className="w-[100px]">
+          <SelectTrigger aria-label="Ano final" className="w-[100px]">
             <SelectValue placeholder="Até" />
           </SelectTrigger>
           <SelectContent>
@@ -209,23 +211,23 @@ export default function PainelPrecosGov({ ufInicial = TODOS, municipioInicial = 
             ))}
           </SelectContent>
         </Select>
-        <Button onClick={handleSearch} disabled={loading} className="bg-primary hover:bg-primary/90">
+        <Button onClick={handleSearch} disabled={loading}>
           {loading ? (
-            <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Consultando PNCP...</>
+            <><Loader2 className="animate-spin" aria-hidden="true" /> Consultando PNCP...</>
           ) : (
-            <><Building2 className="w-4 h-4 mr-1" /> Consultar PNCP</>
+            <><Building2 aria-hidden="true" /> Consultar PNCP</>
           )}
         </Button>
       </div>
 
       {/* Filtro geográfico da consulta PNCP */}
-      <div className="flex gap-2 items-center flex-wrap">
-        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <MapPin className="w-3.5 h-3.5" /> Localidade da contratação:
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+          <MapPin className="h-4 w-4" aria-hidden="true" /> Localidade da contratação:
         </span>
 
         <Select value={uf} onValueChange={handleUfChange}>
-          <SelectTrigger className="w-[190px] h-9">
+          <SelectTrigger aria-label="Estado" className="w-full sm:w-[190px]">
             <SelectValue placeholder="Estado" />
           </SelectTrigger>
           <SelectContent>
@@ -244,7 +246,7 @@ export default function PainelPrecosGov({ ufInicial = TODOS, municipioInicial = 
               role="combobox"
               aria-expanded={municipioOpen}
               disabled={uf === TODOS || loadingMunicipios}
-              className="w-[210px] h-9 justify-between font-normal"
+              className="w-full justify-between font-normal sm:w-[210px]"
             >
               <span className="truncate">
                 {uf === TODOS
@@ -256,9 +258,9 @@ export default function PainelPrecosGov({ ufInicial = TODOS, municipioInicial = 
                       : municipio}
               </span>
               {loadingMunicipios ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin flex-shrink-0 opacity-70" />
+                <Loader2 className="flex-shrink-0 animate-spin text-muted-foreground" aria-hidden="true" />
               ) : (
-                <ChevronsUpDown className="w-3.5 h-3.5 flex-shrink-0 opacity-50" />
+                <ChevronsUpDown className="flex-shrink-0 text-muted-foreground" aria-hidden="true" />
               )}
             </Button>
           </PopoverTrigger>
@@ -293,13 +295,12 @@ export default function PainelPrecosGov({ ufInicial = TODOS, municipioInicial = 
 
         {(uf !== TODOS || municipio !== TODOS) && (
           <>
-            <Badge variant="outline" className="text-xs font-normal">
+            <Badge variant="outline" className="font-normal">
               Filtrando por {escopoLabel}
             </Badge>
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 text-xs"
               onClick={() => { setUf(TODOS); setMunicipio(TODOS); }}
             >
               Limpar
@@ -308,83 +309,69 @@ export default function PainelPrecosGov({ ufInicial = TODOS, municipioInicial = 
         )}
       </div>
 
-      {/* Resumo */}
+      {/* Resumo — cartão com KPIs (rótulo 13/500, valor 24/600 tabular, tinta ink). */}
       {resumo && (
-        <div className="bg-muted/30 border border-border rounded-lg p-4">
-          <h4 className="text-sm font-semibold flex items-center gap-2 text-foreground mb-3">
-            <BarChart3 className="w-4 h-4 text-muted-foreground" />
+        <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
+          <h4 className="mb-3 flex items-center gap-2 text-base font-semibold leading-6 text-foreground">
+            <BarChart3 className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
             Resumo — Preços Homologados PNCP ({resumo.periodo || `${anoInicio}-${anoFim}`})
           </h4>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            <div className="text-center p-2 bg-card rounded-md border border-border/30">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Menor Preço</p>
-              <p className="text-lg font-bold text-success">{formatCurrency(resumo.menor_preco)}</p>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
+            <div className="rounded-md border border-border bg-secondary p-3">
+              <p className="text-sm font-medium text-muted-foreground">Menor Preço</p>
+              <p className="mt-1 text-2xl font-semibold leading-8 tabular-nums text-success-ink">{formatCurrency(resumo.menor_preco)}</p>
             </div>
-            <div className="text-center p-2 bg-card rounded-md border border-border/30">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Maior Preço</p>
-              <p className="text-lg font-bold text-destructive">{formatCurrency(resumo.maior_preco)}</p>
+            <div className="rounded-md border border-border bg-secondary p-3">
+              <p className="text-sm font-medium text-muted-foreground">Maior Preço</p>
+              <p className="mt-1 text-2xl font-semibold leading-8 tabular-nums text-destructive-ink">{formatCurrency(resumo.maior_preco)}</p>
             </div>
-            <div className="text-center p-2 bg-card rounded-md border border-border/30">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Preço Médio</p>
-              <p className="text-lg font-bold text-foreground">{formatCurrency(resumo.preco_medio)}</p>
+            <div className="rounded-md border border-border bg-secondary p-3">
+              <p className="text-sm font-medium text-muted-foreground">Preço Médio</p>
+              <p className="mt-1 text-2xl font-semibold leading-8 tabular-nums text-foreground">{formatCurrency(resumo.preco_medio)}</p>
             </div>
             {resumo.mediana != null && (
-              <div className="text-center p-2 bg-card rounded-md border border-border/30">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">Mediana</p>
-                <p className="text-lg font-bold text-foreground">{formatCurrency(resumo.mediana)}</p>
+              <div className="rounded-md border border-border bg-secondary p-3">
+                <p className="text-sm font-medium text-muted-foreground">Mediana</p>
+                <p className="mt-1 text-2xl font-semibold leading-8 tabular-nums text-foreground">{formatCurrency(resumo.mediana)}</p>
               </div>
             )}
-            <div className="text-center p-2 bg-card rounded-md border border-border/30">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Registros</p>
-              <p className="text-lg font-bold text-foreground">{resumo.total_registros}</p>
-              <p className="text-xs text-muted-foreground">PNCP Oficial</p>
+            <div className="rounded-md border border-border bg-secondary p-3">
+              <p className="text-sm font-medium text-muted-foreground">Registros</p>
+              <p className="mt-1 text-2xl font-semibold leading-8 tabular-nums text-foreground">{resumo.total_registros}</p>
+              <p className="mt-1 text-xs text-muted-foreground">PNCP Oficial</p>
             </div>
           </div>
         </div>
       )}
 
-      {/* Results list */}
+      {/* Results list — cartões compactos; selos nas variantes semânticas. */}
       {resultados.length > 0 && (
         <div className="space-y-2">
-          <p className="text-xs text-muted-foreground">
+          <p className="text-sm text-muted-foreground tabular-nums">
             {resultados.length} itens com preço unitário encontrados no PNCP ({anoInicio}–{anoFim}) — {escopoLabel}
           </p>
           {resultados.map((r, i) => {
             const isCheapest = resumo ? r.preco_unitario === resumo.menor_preco : false;
             const isHomologado = r.situacao === 'Homologado';
             return (
-              <div key={i} className="flex items-center justify-between p-3 bg-card border border-border/40 rounded-lg hover:shadow-sm transition-shadow">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground line-clamp-2">{r.descricao}</p>
-                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+              <div key={i} className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-border bg-card p-3 shadow-sm transition-[border-color,box-shadow] duration-150 hover:border-primary/40 hover:shadow-md">
+                <div className="min-w-0 flex-1">
+                  <p className="line-clamp-2 text-sm font-medium text-foreground">{r.descricao}</p>
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
                     {r.tipo_registro && (
-                      <Badge
-                        variant="outline"
-                        className={
-                          r.tipo_registro === 'ATA/SRP'
-                            ? 'text-xs bg-info/10 text-info border-info/20'
-                            : 'text-xs bg-muted text-muted-foreground border-border'
-                        }
-                      >
+                      <Badge variant={r.tipo_registro === 'ATA/SRP' ? 'info' : 'muted'}>
                         {r.tipo_registro}
                       </Badge>
                     )}
-                    <Badge
-                      variant="outline"
-                      className={
-                        isHomologado
-                          ? 'text-xs bg-success/10 text-success border-success/20'
-                          : 'text-xs bg-warning/10 text-warning border-warning/20'
-                      }
-                    >
+                    <Badge variant={isHomologado ? 'success' : 'warning'}>
                       {isHomologado ? (
-                        <><Scale className="w-3 h-3 mr-0.5" /> Homologado</>
+                        <><Scale className="h-3 w-3" aria-hidden="true" /> Homologado</>
                       ) : (
-                        <><AlertTriangle className="w-3 h-3 mr-0.5" /> Estimado</>
+                        <><AlertTriangle className="h-3 w-3" aria-hidden="true" /> Estimado</>
                       )}
                     </Badge>
-                    <span className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Building2 className="w-3 h-3" /> {r.orgao}
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Building2 className="h-3 w-3" aria-hidden="true" /> {r.orgao}
                     </span>
                     {r.fornecedor && (
                       <span className="text-xs text-muted-foreground">venceu: {r.fornecedor}</span>
@@ -395,39 +382,39 @@ export default function PainelPrecosGov({ ufInicial = TODOS, municipioInicial = 
                       </span>
                     )}
                     {(r.municipio || r.uf) && (
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <MapPin className="w-3 h-3" />
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <MapPin className="h-3 w-3" aria-hidden="true" />
                         {r.municipio && r.uf ? `${r.municipio}/${r.uf}` : r.municipio || r.uf}
                       </span>
                     )}
                     {r.data_compra && (
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Calendar className="w-3 h-3" /> {new Date(r.data_compra).toLocaleDateString('pt-BR')}
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground tabular-nums">
+                        <Calendar className="h-3 w-3" aria-hidden="true" /> {new Date(r.data_compra).toLocaleDateString('pt-BR')}
                       </span>
                     )}
                     {r.modalidade && (
                       <span className="text-xs text-muted-foreground">{r.modalidade}</span>
                     )}
                     {r.quantidade > 1 && (
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs text-muted-foreground tabular-nums">
                         Qtd: {r.quantidade.toLocaleString('pt-BR')} {r.unidade}
                       </span>
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-3 ml-3 flex-shrink-0">
+                <div className="flex flex-shrink-0 items-center gap-3">
                   <div className="text-right">
                     <p className="text-xs text-muted-foreground">Preço unit.</p>
-                    <p className="text-lg font-semibold text-foreground">{formatCurrency(r.preco_unitario)}</p>
+                    <p className="text-lg font-semibold tabular-nums text-foreground">{formatCurrency(r.preco_unitario)}</p>
                     {isCheapest && (
-                      <Badge className="bg-success/10 text-success border-success/20 text-xs">
-                        <TrendingDown className="w-3 h-3 mr-0.5" /> Menor
+                      <Badge variant="success">
+                        <TrendingDown className="h-3 w-3" aria-hidden="true" /> Menor
                       </Badge>
                     )}
                   </div>
                   {r.url && r.url !== '#' && (
-                    <Button size="sm" variant="ghost" onClick={() => window.open(r.url, '_blank')} title="Ver no PNCP">
-                      <ExternalLink className="w-3.5 h-3.5" />
+                    <Button size="icon-sm" variant="ghost" onClick={() => window.open(r.url, '_blank')} title="Ver no PNCP" aria-label="Ver no PNCP">
+                      <ExternalLink aria-hidden="true" />
                     </Button>
                   )}
                 </div>
@@ -439,13 +426,18 @@ export default function PainelPrecosGov({ ufInicial = TODOS, municipioInicial = 
 
       {/* Empty state */}
       {!loading && resultados.length === 0 && !resumo && (
-        <div className="text-center py-8 text-muted-foreground">
-          <Building2 className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p className="text-sm">Consulte preços unitários homologados em ATAs e contratos públicos</p>
-          <p className="text-xs mt-1">
-            Dados oficiais do PNCP — últimos 3 anos
-            {uf !== TODOS && ` • filtrando por ${escopoLabel}`}
-          </p>
+        <div className="rounded-lg border border-dashed border-border">
+          <EstadoVazio
+            tamanho="compacto"
+            icone={<Building2 />}
+            titulo="Consulte preços unitários homologados em ATAs e contratos públicos"
+            descricao={
+              <>
+                Dados oficiais do PNCP — últimos 3 anos
+                {uf !== TODOS && ` • filtrando por ${escopoLabel}`}
+              </>
+            }
+          />
         </div>
       )}
 

@@ -8,6 +8,10 @@ import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
+  Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table';
+import EstadoVazio from '@/components/shared/EstadoVazio';
+import {
   Upload, FileText, Loader2, X, Sparkles, Download, Trash2,
   Plus, CheckCircle, Edit3, Save, Package, FileSpreadsheet,
   ShoppingCart, TrendingDown, TrendingUp, Minus, ExternalLink, Link2, AlertCircle, AlertTriangle, Bot,
@@ -767,20 +771,20 @@ export default function PlanilhaCustosEdital({
         // entradas de extração saem do palco: viram "Opções avançadas". Limpar
         // esvazia a planilha e elas voltam ao lugar — porque voltam a ser úteis.
         licitacaoId && itens.length > 0 ? (
-          <details className="rounded-lg border border-border/60 bg-muted/20">
-            <summary className="cursor-pointer select-none px-3 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors">
+          <details className="rounded-lg border border-border bg-secondary">
+            <summary className="cursor-pointer select-none rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <span className="font-medium text-foreground">{itens.length} item(ns) na planilha</span>
               {sourceLabel ? ` — ${sourceLabel}` : ''} · Opções avançadas de extração (reextrair, upload manual, limpar)
             </summary>
-            <div className="p-3 space-y-3 border-t border-border/60">
-              <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2">
-                <div>
-                  <p className="text-xs font-medium text-foreground">Processo vinculado</p>
-                  <p className="text-xs text-muted-foreground">
+            <div className="space-y-3 border-t border-border p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground">Processo vinculado</p>
+                  <p className="text-sm text-muted-foreground">
                     Recarregue os itens do processo ou limpe para começar do zero.
                   </p>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex shrink-0 flex-wrap items-center gap-2">
                   <LimparItensExtraidosButton
                     licitacaoId={licitacaoId}
                     fontes={['licitacao_itens', 'catalogo_itens_precificados']}
@@ -794,9 +798,9 @@ export default function PlanilhaCustosEdital({
                     disabled={isExtracting}
                   >
                     {isExtracting ? (
-                      <><Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> Carregando...</>
+                      <><Loader2 className="animate-spin" aria-hidden="true" /> Carregando...</>
                     ) : (
-                      <><Link2 className="w-3.5 h-3.5 mr-1" /> Recarregar do processo</>
+                      <><Link2 aria-hidden="true" /> Recarregar do processo</>
                     )}
                   </Button>
                 </div>
@@ -804,10 +808,10 @@ export default function PlanilhaCustosEdital({
               <button
                 type="button"
                 onClick={() => fileRef.current?.click()}
-                className="w-full border-2 border-dashed border-border rounded-xl p-4 flex flex-col items-center gap-1.5 hover:border-accent/50 hover:bg-muted/30 transition-colors"
+                className="flex w-full flex-col items-center gap-1.5 rounded-lg border border-dashed border-input bg-card p-4 transition-colors duration-150 hover:border-primary/40 hover:bg-primary-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <Upload className="w-5 h-5 text-muted-foreground" />
-                <span className="text-xs font-semibold text-foreground">Enviar Edital/TR/Anexo (substitui a extração)</span>
+                <Upload className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+                <span className="text-sm font-semibold text-foreground">Enviar Edital/TR/Anexo (substitui a extração)</span>
                 <span className="text-xs text-muted-foreground">PDF, Word, Excel, Imagens (JPG/PNG), TXT — Máx. 20MB</span>
               </button>
             </div>
@@ -815,14 +819,14 @@ export default function PlanilhaCustosEdital({
         ) : (
         <div className="space-y-3">
           {licitacaoId && (
-            <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2">
-              <div>
-                <p className="text-xs font-medium text-foreground">Processo vinculado pronto para uso</p>
-                <p className="text-xs text-muted-foreground">
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-secondary px-3 py-2">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-foreground">Processo vinculado pronto para uso</p>
+                <p className="text-sm text-muted-foreground">
                   Use o edital já associado ao processo para extrair itens sem novo upload.
                 </p>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
                 <LimparItensExtraidosButton
                   licitacaoId={licitacaoId}
                   fontes={['licitacao_itens', 'catalogo_itens_precificados']}
@@ -836,27 +840,28 @@ export default function PlanilhaCustosEdital({
                   disabled={isExtracting}
                 >
                   {isExtracting ? (
-                    <><Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> Carregando...</>
+                    <><Loader2 className="animate-spin" aria-hidden="true" /> Carregando...</>
                   ) : (
-                    <><Link2 className="w-3.5 h-3.5 mr-1" /> Usar processo vinculado</>
+                    <><Link2 aria-hidden="true" /> Usar processo vinculado</>
                   )}
                 </Button>
               </div>
             </div>
           )}
 
+          {/* Zona de upload: cartão tracejado; o hover usa a tinta da ação. */}
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
-            className="w-full border-2 border-dashed border-border rounded-xl p-6 flex flex-col items-center gap-2 hover:border-accent/50 hover:bg-muted/30 transition-colors"
+            className="flex w-full flex-col items-center gap-2 rounded-lg border border-dashed border-input bg-card p-6 transition-colors duration-150 hover:border-primary/40 hover:bg-primary-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-              <Upload className="w-6 h-6 text-muted-foreground" />
-            </div>
-            <span className="text-sm font-semibold text-foreground">
+            <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary" aria-hidden="true">
+              <Upload className="h-6 w-6" />
+            </span>
+            <span className="text-base font-semibold text-foreground">
               Envie o Edital, Termo de Referência ou Anexo
             </span>
-            <span className="text-xs text-muted-foreground">
+            <span className="text-sm text-muted-foreground">
               A IA extrairá itens com descrição, quantidade, unidade e valores de referência
             </span>
             <span className="text-xs text-muted-foreground">
@@ -866,30 +871,30 @@ export default function PlanilhaCustosEdital({
         </div>
         )
       ) : (
-        <div className="bg-muted/30 rounded-xl p-4 border border-border/50">
-          <div className="flex items-center gap-3">
-            <FileText className="w-8 h-8 text-muted-foreground shrink-0" />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{file.name}</p>
+        <div className="rounded-lg border border-border bg-secondary p-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <FileText className="h-8 w-8 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-foreground">{file.name}</p>
               <p className="text-xs text-muted-foreground">
                 {(file.size / 1024).toFixed(0)} KB
                 {itens.length > 0 && (
-                  <span className="text-success ml-2">✓ {itens.length} itens extraídos</span>
+                  <span className="ml-2 text-success-ink">✓ {itens.length} itens extraídos</span>
                 )}
               </p>
             </div>
-            <div className="flex gap-2 shrink-0">
+            <div className="flex shrink-0 gap-2">
               {itens.length === 0 && (
                 <Button onClick={handleExtract} disabled={isExtracting} size="sm">
                   {isExtracting ? (
-                    <><Loader2 className="w-4 h-4 animate-spin mr-1" /> Extraindo...</>
+                    <><Loader2 className="animate-spin" aria-hidden="true" /> Extraindo...</>
                   ) : (
-                    <><Sparkles className="w-4 h-4 mr-1" /> Extrair Itens</>
+                    <><Sparkles aria-hidden="true" /> Extrair Itens</>
                   )}
                 </Button>
               )}
-              <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleRemoveFile}>
-                <X className="w-4 h-4" />
+              <Button variant="ghost" size="icon-sm" onClick={handleRemoveFile} aria-label="Remover arquivo">
+                <X aria-hidden="true" />
               </Button>
             </div>
           </div>
@@ -899,75 +904,71 @@ export default function PlanilhaCustosEdital({
       {/* Planilha de Custos Table */}
       {itens.length > 0 && (
         <>
-          {/* Actions bar */}
-          <div className="flex items-center justify-between flex-wrap gap-2 bg-card border border-border/40 rounded-lg p-3">
-            <div className="flex items-center gap-2">
-              <FileSpreadsheet className="w-5 h-5 text-muted-foreground" />
-              <span className="text-sm font-semibold">{itens.length} itens</span>
+          {/* Actions bar — uma ação principal (Cotar Todos); o resto em contorno. */}
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-card p-3 shadow-sm">
+            <div className="flex flex-wrap items-center gap-2">
+              <FileSpreadsheet className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+              <span className="text-sm font-semibold text-foreground tabular-nums">{itens.length} itens</span>
             {sourceLabel && (
-              <Badge variant="outline" className="text-xs">
+              <Badge variant="outline" truncate>
                 {sourceLabel}
               </Badge>
             )}
               {totalRef > 0 && (
-                <Badge variant="outline" className="text-xs">
+                <Badge variant="outline" className="tabular-nums">
                   Ref: {formatCurrency(totalRef)}
                 </Badge>
               )}
               {totalGeral > 0 && (
                 <Badge
-                  className={`text-xs border-0 flex items-center gap-0.5 ${
-                    totalRef > 0 && totalGeral > totalRef
-                      ? 'bg-destructive/20 text-destructive'
-                      : 'bg-success/20 text-success'
-                  }`}
+                  variant={totalRef > 0 && totalGeral > totalRef ? 'danger' : 'success'}
+                  className="tabular-nums"
                 >
-                  {totalRef > 0 && totalGeral > totalRef && <AlertTriangle className="w-3 h-3" />}
+                  {totalRef > 0 && totalGeral > totalRef && <AlertTriangle className="h-3 w-3" aria-hidden="true" />}
                   Total: {formatCurrency(totalGeral)}
                   {totalRef > 0 && totalGeral > totalRef && <span>↑ acima do contrato</span>}
                 </Badge>
               )}
             {lastSaved && (
-              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+              <span className="inline-flex items-center gap-1 rounded-sm bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                 {saving ? 'Salvando...' : `Salvo ${lastSaved.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`}
               </span>
             )}
             </div>
-            <div className="flex gap-2 flex-wrap">
+            <div className="flex flex-wrap gap-2">
               <Button
                 size="sm"
                 variant="default"
                 onClick={handleCotarTodos}
                 disabled={isCotando}
-                className="bg-primary hover:bg-primary/90"
               >
                 {isCotando ? (
-                  <><Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> Cotando...</>
+                  <><Loader2 className="animate-spin" aria-hidden="true" /> Cotando...</>
                 ) : (
-                  <><ShoppingCart className="w-3.5 h-3.5 mr-1" /> Cotar Todos</>
+                  <><ShoppingCart aria-hidden="true" /> Cotar Todos</>
                 )}
               </Button>
               <Button variant="outline" size="sm" onClick={addEmptyItem}>
-                <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar Item
+                <Plus aria-hidden="true" /> Adicionar Item
               </Button>
               <Button variant="outline" size="sm" onClick={handleExportExcel}>
-                <Download className="w-3.5 h-3.5 mr-1" /> Exportar Excel
+                <Download aria-hidden="true" /> Exportar Excel
               </Button>
               <Button
                 size="sm"
-                className="bg-accent hover:bg-accent/90 text-accent-foreground"
+                variant="outline"
                 onClick={handleAddAllToProposta}
               >
-                <Package className="w-3.5 h-3.5 mr-1" /> Enviar à Proposta
+                <Package aria-hidden="true" /> Enviar à Proposta
               </Button>
             </div>
           </div>
 
           {/* Cotação progress */}
           {isCotando && (
-            <div className="space-y-2">
+            <div className="space-y-2" role="status" aria-live="polite">
               <Progress value={cotacaoProgress} className="h-2" />
-              <p className="text-xs text-muted-foreground text-center">
+              <p className="text-xs text-muted-foreground tabular-nums">
                 Cotando itens... {cotacaoProgress}%
               </p>
             </div>
@@ -975,16 +976,16 @@ export default function PlanilhaCustosEdital({
 
           {/* Cotação messages */}
           {cotacaoMsgs.length > 0 && (
-            <div className="bg-muted/20 border border-border/30 rounded-lg p-3 max-h-40 overflow-y-auto space-y-0.5">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-semibold text-foreground">Resultado da Cotação</span>
-                <Button variant="ghost" size="sm" className="h-5 px-2 text-xs" onClick={() => setCotacaoMsgs([])}>
+            <div className="max-h-40 space-y-0.5 overflow-y-auto rounded-md border border-border bg-secondary p-3">
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <span className="text-sm font-semibold text-foreground">Resultado da Cotação</span>
+                <Button variant="ghost" size="sm" onClick={() => setCotacaoMsgs([])}>
                   Limpar
                 </Button>
               </div>
               {cotacaoMsgs.map((msg, i) => (
                 <div key={i} className="space-y-0.5">
-                  <p className="text-xs text-muted-foreground">{msg.text}</p>
+                  <p className="text-sm text-muted-foreground">{msg.text}</p>
                   {msg.fontes && msg.fontes.length > 0 && (
                     <div className="flex flex-wrap gap-x-3 gap-y-0.5 pl-3">
                       {msg.fontes.map((f, fi) => (
@@ -994,16 +995,16 @@ export default function PlanilhaCustosEdital({
                             href={f.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-xs text-primary/70 hover:text-primary flex items-center gap-0.5 underline-offset-2 hover:underline"
+                            className="flex items-center gap-0.5 rounded-sm text-xs text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             title={f.titulo}
                           >
-                            <ExternalLink className="w-2.5 h-2.5 shrink-0" />
+                            <ExternalLink className="h-3 w-3 shrink-0" aria-hidden="true" />
                             {FONTE_LABELS[f.fonte] ?? f.fonte} — {formatCurrency(f.preco)}
                           </a>
                         ) : (
                           <span
                             key={fi}
-                            className="text-xs text-muted-foreground flex items-center gap-0.5"
+                            className="flex items-center gap-0.5 text-xs text-muted-foreground"
                             title={f.titulo}
                           >
                             {FONTE_LABELS[f.fonte] ?? f.fonte} — {formatCurrency(f.preco)}
@@ -1017,98 +1018,99 @@ export default function PlanilhaCustosEdital({
             </div>
           )}
 
-          {/* Table */}
-          <div className="border border-border/40 rounded-lg overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-muted/50 border-b border-border/40">
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-muted-foreground w-12 whitespace-nowrap">Item</th>
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-muted-foreground min-w-[200px]">Descrição</th>
-                  <th className="text-center px-3 py-2 text-xs font-semibold text-muted-foreground w-16">Qtd</th>
-                  <th className="text-center px-3 py-2 text-xs font-semibold text-muted-foreground w-20">Unidade</th>
-                  <th className="text-right px-3 py-2 text-xs font-semibold text-muted-foreground w-28">
-                    <span className="text-muted-foreground">Vlr Unit Ref</span>
-                  </th>
-                  <th className="text-right px-3 py-2 text-xs font-semibold text-muted-foreground w-28">
-                    <span className="text-muted-foreground">Vlr Total Ref</span>
-                  </th>
-                  <th className="text-center px-3 py-2 text-xs font-semibold text-muted-foreground w-28">Marca</th>
-                  <th className="text-right px-3 py-2 text-xs font-semibold text-foreground w-28">Vlr Unitário</th>
-                  <th className="text-right px-3 py-2 text-xs font-semibold text-foreground w-28">Vlr Total</th>
-                  <th className="px-3 py-2 text-xs font-semibold text-muted-foreground min-w-[110px]">Fonte</th>
-                  <th className="px-3 py-2 text-xs font-semibold text-muted-foreground min-w-[140px]">Avaliação</th>
-                  <th className="text-center px-3 py-2 text-xs font-semibold text-muted-foreground w-10"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/30">
+          {/* Table — tabela editável na anatomia v3 (`ui/table`): cabeçalho
+              rebaixado, rótulos 12/600, campos de 40px em célula `px-2 py-1.5`,
+              números à direita, rolagem presa ao contêiner. */}
+          <div className="overflow-hidden rounded-md border border-border bg-card">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-12">Item</TableHead>
+                  <TableHead className="min-w-[200px]">Descrição</TableHead>
+                  <TableHead className="w-16 text-right">Qtd</TableHead>
+                  <TableHead className="w-20">Unidade</TableHead>
+                  <TableHead className="w-28 text-right">Vlr Unit Ref</TableHead>
+                  <TableHead className="w-28 text-right">Vlr Total Ref</TableHead>
+                  <TableHead className="w-28">Marca</TableHead>
+                  <TableHead className="w-28 text-right text-foreground">Vlr Unitário</TableHead>
+                  <TableHead className="w-28 text-right text-foreground">Vlr Total</TableHead>
+                  <TableHead className="min-w-[110px]">Fonte</TableHead>
+                  <TableHead className="min-w-[140px]">Avaliação</TableHead>
+                  <TableHead className="w-10"><span className="sr-only">Ações</span></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {itens.map((it, idx) => (
-                  <tr
-                    key={idx}
-                    className="hover:bg-muted/20 transition-colors"
-                  >
-                    <td className="px-3 py-2 text-center font-medium text-muted-foreground">{it.item}</td>
-                    <td className="px-3 py-2">
+                  <TableRow key={idx}>
+                    <TableCell className="px-2 py-1.5 font-medium tabular-nums text-muted-foreground">{it.item}</TableCell>
+                    <TableCell className="px-2 py-1.5">
                       {editingIdx === idx ? (
                         <Input
+                          aria-label="Descrição do item"
                           value={it.descricao}
                           onChange={(e) => updateItem(idx, 'descricao', e.target.value)}
-                          className="h-7 text-xs"
+                          className="min-w-[200px]"
                         />
                       ) : (
-                        <span
-                          className="text-xs cursor-pointer hover:text-primary line-clamp-2"
+                        <button
+                          type="button"
+                          className="line-clamp-2 rounded-sm text-left text-sm text-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                           onClick={() => setEditingIdx(idx)}
                           title={it.descricao}
                         >
                           {it.descricao}
-                        </span>
+                        </button>
                       )}
-                    </td>
-                    <td className="px-3 py-2 text-center">
+                    </TableCell>
+                    <TableCell className="px-2 py-1.5">
                       <Input
+                        aria-label="Quantidade"
                         type="number"
                         value={it.quantidade}
                         onChange={(e) => updateItem(idx, 'quantidade', Number(e.target.value) || 1)}
-                        className="h-7 text-xs text-center w-16 mx-auto"
+                        className="ml-auto w-16 text-right tabular-nums"
                         min={1}
                       />
-                    </td>
-                    <td className="px-3 py-2 text-center">
+                    </TableCell>
+                    <TableCell className="px-2 py-1.5">
                       <Input
+                        aria-label="Unidade"
                         value={it.unidade}
                         onChange={(e) => updateItem(idx, 'unidade', e.target.value)}
-                        className="h-7 text-xs text-center w-20 mx-auto"
+                        className="w-20"
                       />
-                    </td>
-                    <td className="px-3 py-2 text-right text-xs text-muted-foreground">
+                    </TableCell>
+                    <TableCell className="px-2 py-1.5 text-right tabular-nums text-muted-foreground" nowrap>
                       {it.valorUnitarioRef != null ? formatCurrency(it.valorUnitarioRef) : '—'}
-                    </td>
-                    <td className="px-3 py-2 text-right text-xs text-muted-foreground">
+                    </TableCell>
+                    <TableCell className="px-2 py-1.5 text-right tabular-nums text-muted-foreground" nowrap>
                       {it.valorTotalRef != null ? formatCurrency(it.valorTotalRef) : '—'}
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="flex flex-col items-center gap-0.5">
+                    </TableCell>
+                    <TableCell className="px-2 py-1.5">
+                      <div className="flex flex-col gap-0.5">
                         <Input
+                          aria-label="Marca"
                           value={it.marca}
                           onChange={(e) => updateItem(idx, 'marca', e.target.value)}
-                          className="h-7 text-xs text-center w-24 mx-auto"
+                          className="w-24"
                           placeholder="Digitar..."
                         />
                         {!it.marca && (
-                          <span className="text-xs text-warning/80 italic whitespace-nowrap">
+                          <span className="whitespace-nowrap text-xs text-warning-ink">
                             Edital não informa
                           </span>
                         )}
                       </div>
-                    </td>
-                    <td className="px-3 py-2">
+                    </TableCell>
+                    <TableCell className="px-2 py-1.5">
                       <MoneyInput
+                        aria-label="Valor unitário"
                         value={it.valorUnitario ?? 0}
                         onValueChange={(v) => updateItem(idx, 'valorUnitario', v || null)}
-                        className="h-7 text-xs w-28 ml-auto bg-muted/40 border-border font-medium"
+                        className="ml-auto w-28 text-right font-medium tabular-nums"
                       />
-                    </td>
-                    <td className="px-3 py-2 text-right text-xs font-semibold">
+                    </TableCell>
+                    <TableCell className="px-2 py-1.5 text-right font-semibold tabular-nums" nowrap>
                       {it.valorTotal != null && it.valorTotal > 0 ? (
                         <div className="flex flex-col items-end gap-0.5">
                           <span className="text-foreground">{formatCurrency(it.valorTotal)}</span>
@@ -1117,8 +1119,8 @@ export default function PlanilhaCustosEdital({
                             const isLower = diff < -1;
                             const isHigher = diff > 1;
                             return (
-                              <span className={`text-xs flex items-center gap-0.5 ${isLower ? 'text-success' : isHigher ? 'text-destructive' : 'text-muted-foreground'}`}>
-                                {isLower ? <TrendingDown className="w-3 h-3" /> : isHigher ? <TrendingUp className="w-3 h-3" /> : <Minus className="w-3 h-3" />}
+                              <span className={`flex items-center gap-0.5 text-xs ${isLower ? 'text-success-ink' : isHigher ? 'text-destructive-ink' : 'text-muted-foreground'}`}>
+                                {isLower ? <TrendingDown className="h-3 w-3" aria-hidden="true" /> : isHigher ? <TrendingUp className="h-3 w-3" aria-hidden="true" /> : <Minus className="h-3 w-3" aria-hidden="true" />}
                                 {diff > 0 ? '+' : ''}{diff.toFixed(1)}%
                               </span>
                             );
@@ -1127,14 +1129,14 @@ export default function PlanilhaCustosEdital({
                       ) : it.cotacaoFalhou ? (
                         <div
                           title="Não foi possível encontrar preço em fontes verificáveis. Para itens controlados, consulte CMED/ANVISA manualmente."
-                          className="text-xs text-warning/80 flex items-center gap-0.5 justify-end cursor-help"
+                          className="flex cursor-help items-center justify-end gap-0.5 text-xs font-normal text-warning-ink"
                         >
-                          <AlertCircle className="w-3 h-3" />
+                          <AlertCircle className="h-3 w-3" aria-hidden="true" />
                           Não encontrado
                         </div>
                       ) : '—'}
-                    </td>
-                    <td className="px-3 py-2 min-w-[110px] text-center">
+                    </TableCell>
+                    <TableCell className="min-w-[110px] px-2 py-1.5">
                       {it.fontes && it.fontes.length > 0 ? (
                         <div className="space-y-1.5">
                           {it.fontes.slice(0, 1).map((f, fi) => (
@@ -1145,7 +1147,7 @@ export default function PlanilhaCustosEdital({
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   title={f.titulo}
-                                  className="block text-xs font-medium text-primary hover:text-primary/80 hover:underline"
+                                  className="block rounded-sm text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                 >
                                   {f.vendedor || FONTE_LABELS[f.fonte] || f.fonte}
                                 </a>
@@ -1155,30 +1157,32 @@ export default function PlanilhaCustosEdital({
                                 </span>
                               )}
                               {f.nota != null && (
-                                <div className="flex items-center justify-center gap-0.5">
-                                  <span className="text-xs text-warning">{'★'.repeat(Math.round(f.nota))}{'☆'.repeat(5 - Math.round(f.nota))}</span>
-                                  <span className="text-xs text-muted-foreground">{f.nota.toFixed(1)}{f.total_avaliacoes ? ` (${f.total_avaliacoes})` : ''}</span>
+                                <div className="flex items-center gap-0.5">
+                                  <span className="text-xs text-warning-ink" aria-hidden="true">{'★'.repeat(Math.round(f.nota))}{'☆'.repeat(5 - Math.round(f.nota))}</span>
+                                  <span className="text-xs text-muted-foreground tabular-nums">{f.nota.toFixed(1)}{f.total_avaliacoes ? ` (${f.total_avaliacoes})` : ''}</span>
                                 </div>
                               )}
                             </div>
                           ))}
                         </div>
                       ) : null}
-                    </td>
-                    <td className="px-3 py-2 min-w-[160px] max-w-[220px]">
+                    </TableCell>
+                    <TableCell className="min-w-[160px] max-w-[220px] px-2 py-1.5">
                       {it.avaliacao ? (() => {
                         const av = it.avaliacao!;
-                        const scoreColorCls = av.score >= 80
-                          ? 'text-success bg-success/10'
+                        // Mesmos degraus de antes (80/60/40); só a cor virou
+                        // variante semântica do Badge (tinta/linha do DS).
+                        const variante = av.score >= 80
+                          ? 'success'
                           : av.score >= 60
-                          ? 'text-info bg-info/10'
+                          ? 'info'
                           : av.score >= 40
-                          ? 'text-warning bg-warning/10'
-                          : 'text-destructive bg-destructive/10';
+                          ? 'warning'
+                          : 'danger';
                         return (
                           <Popover>
                             <PopoverTrigger asChild>
-                              <Badge className={`text-xs cursor-pointer ${scoreColorCls}`}>
+                              <Badge variant={variante} className="cursor-pointer tabular-nums" role="button" tabIndex={0}>
                                 {av.score}% confiança
                               </Badge>
                             </PopoverTrigger>
@@ -1187,131 +1191,135 @@ export default function PlanilhaCustosEdital({
                             </PopoverContent>
                           </Popover>
                         );
-                      })() : <span className="text-xs text-muted-foreground/40">—</span>}
-                    </td>
-                    <td className="px-3 py-2 text-center">
+                      })() : <span className="text-xs text-foreground-tertiary">—</span>}
+                    </TableCell>
+                    <TableCell className="px-2 py-1.5 text-right">
                       <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
+                        variant="ghost-destructive"
+                        size="icon-sm"
                         onClick={() => removeItem(idx)}
+                        aria-label={`Remover item ${it.item}`}
                       >
-                        <Trash2 className="w-3 h-3 text-destructive/60" />
+                        <Trash2 aria-hidden="true" />
                       </Button>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
+              </TableBody>
               {/* Footer totals */}
-              <tfoot>
-                <tr className="bg-muted/30 border-t-2 border-border/60 font-semibold">
-                  <td colSpan={4} className="px-3 py-2 text-right text-xs text-muted-foreground">
+              <TableFooter>
+                <TableRow className="hover:bg-secondary">
+                  <TableCell colSpan={4} className="text-right text-xs text-muted-foreground">
                     TOTAL GERAL →
-                  </td>
-                  <td className="px-3 py-2 text-right text-xs text-muted-foreground">
+                  </TableCell>
+                  <TableCell className="text-right text-xs text-muted-foreground">
                     {/* empty */}
-                  </td>
-                  <td className="px-3 py-2 text-right text-xs text-muted-foreground font-bold">
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums text-muted-foreground" nowrap>
                     {totalRef > 0 ? formatCurrency(totalRef) : '—'}
-                  </td>
-                  <td className="px-3 py-2">{/* marca col */}</td>
-                  <td className="px-3 py-2">{/* unit price col */}</td>
-                  <td className={`px-3 py-2 text-right text-sm font-bold ${totalRef > 0 && totalGeral > totalRef ? 'text-destructive' : 'text-foreground'}`}>
+                  </TableCell>
+                  <TableCell>{/* marca col */}</TableCell>
+                  <TableCell>{/* unit price col */}</TableCell>
+                  <TableCell className={`text-right tabular-nums ${totalRef > 0 && totalGeral > totalRef ? 'text-destructive-ink' : 'text-foreground'}`} nowrap>
                     {totalGeral > 0 ? (
                       <div className="flex flex-col items-end leading-tight">
                         <span>{formatCurrency(totalGeral)}</span>
                         {totalRef > 0 && totalGeral > totalRef && (
-                          <span className="text-xs font-normal text-destructive/80">acima do contrato</span>
+                          <span className="text-xs font-normal text-destructive-ink">acima do contrato</span>
                         )}
                       </div>
                     ) : '—'}
-                  </td>
-                  <td></td>{/* link col */}
-                  <td></td>{/* avaliacao col */}
-                  <td></td>
-                </tr>
-              </tfoot>
-            </table>
+                  </TableCell>
+                  <TableCell></TableCell>{/* link col */}
+                  <TableCell></TableCell>{/* avaliacao col */}
+                  <TableCell></TableCell>
+                </TableRow>
+              </TableFooter>
+            </Table>
            </div>
 
           {/* Sources / References Table */}
           {itens.some(it => it.fontes && it.fontes.length > 0) && (
-            <div className="border border-border/40 rounded-lg overflow-hidden">
-              <div className="bg-muted/40 px-3 py-2 border-b border-border/40 flex items-center gap-2">
-                <Link2 className="w-4 h-4 text-muted-foreground" />
-                <span className="text-xs font-semibold text-foreground">Fontes de Referência — Links das Cotações</span>
+            <div className="overflow-hidden rounded-md border border-border bg-card">
+              <div className="flex items-center gap-2 border-b border-border bg-secondary px-3 py-2">
+                <Link2 className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                <span className="text-sm font-semibold text-foreground">Fontes de Referência — Links das Cotações</span>
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="bg-muted/20 border-b border-border/30">
-                      <th className="text-left px-3 py-1.5 font-semibold text-muted-foreground w-12 whitespace-nowrap">Item</th>
-                      <th className="text-left px-3 py-1.5 font-semibold text-muted-foreground">Fonte</th>
-                      <th className="text-left px-3 py-1.5 font-semibold text-muted-foreground min-w-[200px]">Produto</th>
-                      <th className="text-right px-3 py-1.5 font-semibold text-muted-foreground w-24">Preço</th>
-                      <th className="text-center px-3 py-1.5 font-semibold text-muted-foreground w-24">Avaliação</th>
-                      <th className="text-center px-3 py-1.5 font-semibold text-muted-foreground w-16">Link</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/20">
-                    {itens.filter(it => it.fontes && it.fontes.length > 0).flatMap(it =>
-                      (it.fontes || []).map((f, fi) => (
-                        <tr key={`${it.item}-${fi}`} className="hover:bg-muted/10">
-                          <td className="px-3 py-1.5 text-center font-medium text-muted-foreground">{fi === 0 ? it.item : ''}</td>
-                          <td className="px-3 py-1.5">
-                            <Badge variant="outline" className="text-xs py-0">
-                              {f.vendedor || FONTE_LABELS[f.fonte] || f.fonte}
-                            </Badge>
-                          </td>
-                          <td className="px-3 py-1.5 text-muted-foreground truncate max-w-[300px]" title={f.titulo}>
-                            {f.titulo}
-                          </td>
-                          <td className="px-3 py-1.5 text-right font-medium">{formatCurrency(f.preco)}</td>
-                          <td className="px-3 py-1.5 text-center">
-                            {fi === 0 && it.avaliacao ? (() => {
-                              const av = it.avaliacao!;
-                              const scoreColorCls = av.score >= 80
-                                ? 'text-success bg-success/10'
-                                : av.score >= 60
-                                ? 'text-info bg-info/10'
-                                : av.score >= 40
-                                ? 'text-warning bg-warning/10'
-                                : 'text-destructive bg-destructive/10';
-                              return (
-                                <Popover>
-                                  <PopoverTrigger asChild>
-                                    <Badge className={`text-xs py-0 cursor-pointer ${scoreColorCls}`}>
-                                      {av.score}%
-                                    </Badge>
-                                  </PopoverTrigger>
-                                  <PopoverContent side="left" className="w-72 text-sm leading-relaxed">
-                                    {av.justificativa}
-                                  </PopoverContent>
-                                </Popover>
-                              );
-                            })() : <span className="text-muted-foreground/40">—</span>}
-                          </td>
-                          <td className="px-3 py-1.5 text-center">
-                            {f.url ? (
-                              <a href={f.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80 inline-flex">
-                                <ExternalLink className="w-3.5 h-3.5" />
-                              </a>
-                            ) : (
-                              <span className="text-muted-foreground/40">—</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-12">Item</TableHead>
+                    <TableHead>Fonte</TableHead>
+                    <TableHead className="min-w-[200px]">Produto</TableHead>
+                    <TableHead className="w-24 text-right">Preço</TableHead>
+                    <TableHead className="w-24">Avaliação</TableHead>
+                    <TableHead className="w-16 text-right">Link</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {itens.filter(it => it.fontes && it.fontes.length > 0).flatMap(it =>
+                    (it.fontes || []).map((f, fi) => (
+                      <TableRow key={`${it.item}-${fi}`}>
+                        <TableCell className="font-medium tabular-nums text-muted-foreground">{fi === 0 ? it.item : ''}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" truncate>
+                            {f.vendedor || FONTE_LABELS[f.fonte] || f.fonte}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="max-w-[300px] text-muted-foreground" truncate title={f.titulo}>
+                          {f.titulo}
+                        </TableCell>
+                        <TableCell className="text-right font-medium tabular-nums" nowrap>{formatCurrency(f.preco)}</TableCell>
+                        <TableCell>
+                          {fi === 0 && it.avaliacao ? (() => {
+                            const av = it.avaliacao!;
+                            const variante = av.score >= 80
+                              ? 'success'
+                              : av.score >= 60
+                              ? 'info'
+                              : av.score >= 40
+                              ? 'warning'
+                              : 'danger';
+                            return (
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Badge variant={variante} className="cursor-pointer tabular-nums" role="button" tabIndex={0}>
+                                    {av.score}%
+                                  </Badge>
+                                </PopoverTrigger>
+                                <PopoverContent side="left" className="w-72 text-sm leading-relaxed">
+                                  {av.justificativa}
+                                </PopoverContent>
+                              </Popover>
+                            );
+                          })() : <span className="text-foreground-tertiary">—</span>}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {f.url ? (
+                            <a
+                              href={f.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              aria-label={`Abrir cotação em ${f.vendedor || FONTE_LABELS[f.fonte] || f.fonte}`}
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            >
+                              <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                            </a>
+                          ) : (
+                            <span className="text-foreground-tertiary">—</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
             </div>
           )}
 
           {/* Instructions */}
-          <div className="bg-muted/20 border border-border/30 rounded-lg p-3 text-xs text-muted-foreground space-y-1">
-            <p className="font-semibold text-foreground text-xs mb-1">📋 Instruções</p>
+          <div className="space-y-1 rounded-md border border-border bg-secondary p-3 text-sm text-muted-foreground">
+            <p className="mb-1 text-sm font-semibold text-foreground">📋 Instruções</p>
             <p>• Use <strong className="text-foreground">"Cotar Todos"</strong> para o sistema buscar preços automaticamente no Google Shopping, Mercado Livre e demais plataformas.</p>
             <p>• A cotação preenche <strong>Marca</strong>, <strong>Valor Unitário</strong> e <strong>Valor Total</strong> automaticamente, exibindo a <strong>% de diferença</strong> vs referência.</p>
             <p>• Os valores de referência do edital (quando disponíveis) são exibidos nas colunas <strong className="text-foreground">"Vlr Unit Ref"</strong> e <strong className="text-foreground">"Vlr Total Ref"</strong>.</p>
@@ -1323,10 +1331,11 @@ export default function PlanilhaCustosEdital({
 
       {/* Empty state */}
       {!file && itens.length === 0 && (
-        <div className="text-center py-6 text-muted-foreground">
-          <FileSpreadsheet className="w-10 h-10 mx-auto mb-2 opacity-30" />
-          <p className="text-xs">Envie um documento e a IA gerará automaticamente a planilha de custos com todos os itens estruturados</p>
-        </div>
+        <EstadoVazio
+          tamanho="compacto"
+          icone={<FileSpreadsheet />}
+          titulo="Envie um documento e a IA gerará automaticamente a planilha de custos com todos os itens estruturados"
+        />
       )}
     </div>
   );

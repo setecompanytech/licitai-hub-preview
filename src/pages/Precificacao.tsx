@@ -4,6 +4,9 @@ import { format } from 'date-fns';
 import AppLayout from '@/components/layout/AppLayout';
 import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import ProcessoContextoBanner from '@/components/shared/ProcessoContextoBanner';
+import EstadoVazio from '@/components/shared/EstadoVazio';
+import LinhaKpis from '@/components/shared/LinhaKpis';
+import SeloPraefectusIA from '@/components/shared/SeloPraefectusIA';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -611,10 +614,12 @@ export default function Precificacao() {
           ) : undefined}
         >
           <div className="space-y-2">
-            <TabsList>
+            {/* Fila sublinhada da ui; as oito abas rolam de lado no celular em
+                vez de quebrar em duas linhas com o filete solto. */}
+            <TabsList className="flex-nowrap overflow-x-auto [scrollbar-width:thin]">
               {ABAS.map((aba) => (
-                <TabsTrigger key={aba.id} value={aba.id} className="gap-2">
-                  <aba.icone className="w-4 h-4" aria-hidden="true" /> {aba.label}
+                <TabsTrigger key={aba.id} value={aba.id} className="shrink-0">
+                  <aba.icone className="h-4 w-4" aria-hidden="true" /> {aba.label}
                 </TabsTrigger>
               ))}
             </TabsList>
@@ -631,8 +636,8 @@ export default function Precificacao() {
             </Button>
             <ChevronRight className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
             <span className="text-foreground font-medium">{selectedCategory}</span>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full" aria-label="Remover filtro de categoria" onClick={() => setSelectedCategory('todos')}>
-              <X className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+            <Button variant="ghost" size="icon-sm" aria-label="Remover filtro de categoria" onClick={() => setSelectedCategory('todos')}>
+              <X className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
             </Button>
           </div>
         )}
@@ -642,7 +647,7 @@ export default function Precificacao() {
             para dizer algo que só se lê uma vez. Vira uma linha; quem quiser a
             lista abre. */}
         {!aiParsedData && !isSearchingAI && !showHistory && (
-          <details className="group rounded-lg border border-border bg-muted px-3 py-2">
+          <details className="group rounded-lg border border-border bg-secondary px-3 py-2">
             <summary className="flex cursor-pointer list-none items-center gap-2 text-xs text-muted-foreground">
               <Globe className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
               <span>Pesquisa em tempo real em <strong className="font-semibold text-foreground">+30 marketplaces e varejistas</strong></span>
@@ -696,10 +701,10 @@ export default function Precificacao() {
 
         {/* Saved Searches History */}
         {showHistory && (
-          <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-              <History className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
-              <h3 className="text-lg font-semibold">Pesquisas Salvas</h3>
+          <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
+            <div className="mb-4 flex items-center gap-2">
+              <History className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+              <h3 className="text-base font-semibold leading-6 text-foreground">Pesquisas Salvas</h3>
               {loadingHistory && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" aria-hidden="true" />}
             </div>
             <div className="flex flex-wrap items-center gap-3 mb-4">
@@ -733,11 +738,11 @@ export default function Precificacao() {
               )}
             </div>
             {savedSearches.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nenhuma pesquisa salva ainda.</p>
+              <EstadoVazio tamanho="compacto" icone={<History />} titulo="Nenhuma pesquisa salva ainda." />
             ) : (
               <div className="space-y-2">
                 {savedSearches.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between gap-2 p-3 rounded-lg border border-border hover:bg-muted transition-colors">
+                  <div key={item.id} className="flex items-center justify-between gap-2 rounded-lg border border-border p-3 transition-colors duration-150 hover:bg-muted/60">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{item.termo_busca}</p>
                       <p className="text-xs text-muted-foreground">
@@ -746,11 +751,11 @@ export default function Precificacao() {
                       </p>
                     </div>
                     <div className="flex gap-1 ml-2">
-                      <Button size="sm" variant="ghost" onClick={() => handleViewSearch(item)} title="Visualizar" aria-label={`Visualizar pesquisa ${item.termo_busca}`}>
-                        <Eye className="w-4 h-4" aria-hidden="true" />
+                      <Button size="icon-sm" variant="ghost" onClick={() => handleViewSearch(item)} title="Visualizar" aria-label={`Visualizar pesquisa ${item.termo_busca}`}>
+                        <Eye className="h-4 w-4" aria-hidden="true" />
                       </Button>
-                      <Button size="sm" variant="ghost" onClick={() => handleDeleteSearch(item.id)} title="Excluir" aria-label={`Excluir pesquisa ${item.termo_busca}`} className="text-destructive hover:text-destructive hover:bg-destructive-tint">
-                        <Trash2 className="w-4 h-4" aria-hidden="true" />
+                      <Button size="icon-sm" variant="ghost-destructive" onClick={() => handleDeleteSearch(item.id)} title="Excluir" aria-label={`Excluir pesquisa ${item.termo_busca}`}>
+                        <Trash2 className="h-4 w-4" aria-hidden="true" />
                       </Button>
                     </div>
                   </div>
@@ -769,7 +774,7 @@ export default function Precificacao() {
                 <div className="sticky top-4 max-h-[calc(100vh-6rem)] overflow-y-auto pr-1 space-y-3 scrollbar-thin">
                   {/* Active filters summary */}
                   {hasActiveFilters && (
-                    <div className="bg-muted border border-border rounded-lg p-3 flex items-center justify-between">
+                    <div className="flex items-center justify-between rounded-md border border-border bg-secondary p-3">
                       <span className="text-xs text-foreground font-medium">Filtros ativos</span>
                       <Button variant="link" size="sm" className="h-auto p-0 text-xs" onClick={resetAllFilters}>Limpar todos</Button>
                     </div>
@@ -778,7 +783,7 @@ export default function Precificacao() {
                   {/* Categories */}
                   {categoryTree.subs.length > 0 && (
                     <div className="rounded-lg border border-border bg-card p-3 shadow-sm">
-                      <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                      <h4 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                         <Tag className="w-3 h-3 text-muted-foreground" aria-hidden="true" />
                         {categoryTree.main || 'Categorias'}
                       </h4>
@@ -787,7 +792,7 @@ export default function Precificacao() {
                           <Button variant="ghost" type="button"
                             onClick={() => setSelectedCategory('todos')}
                             className={cn(
-                              "h-auto w-full justify-between px-2 py-1.5 text-xs font-normal",
+                              "h-auto w-full justify-between px-2 py-1.5 text-sm font-normal",
                               selectedCategory === 'todos'
                                 ? "bg-primary-tint text-primary font-semibold hover:bg-primary-tint hover:text-primary"
                                 : "text-foreground"
@@ -802,7 +807,7 @@ export default function Precificacao() {
                             <Button variant="ghost" type="button"
                               onClick={() => setSelectedCategory(sub.name)}
                               className={cn(
-                                "h-auto w-full justify-between px-2 py-1.5 text-xs font-normal",
+                                "h-auto w-full justify-between px-2 py-1.5 text-sm font-normal",
                                 selectedCategory === sub.name
                                   ? "bg-primary-tint text-primary font-semibold hover:bg-primary-tint hover:text-primary"
                                   : "text-foreground"
@@ -819,7 +824,7 @@ export default function Precificacao() {
 
                   {/* Price Range */}
                   <div className="rounded-lg border border-border bg-card p-3 shadow-sm">
-                    <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <h4 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       <DollarSign className="w-3 h-3 text-muted-foreground" />
                       Faixa de preço
                     </h4>
@@ -850,7 +855,7 @@ export default function Precificacao() {
                   {/* Condição */}
                   {availableConditions.length > 0 && (
                     <div className="rounded-lg border border-border bg-card p-3 shadow-sm">
-                      <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                      <h4 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                         <Package className="w-3 h-3 text-muted-foreground" />
                         Condição
                       </h4>
@@ -859,7 +864,7 @@ export default function Precificacao() {
                           <Button variant="ghost" type="button"
                             onClick={() => setFilterCondicao('todos')}
                             className={cn(
-                              "h-auto w-full justify-start gap-2 px-2 py-1.5 text-xs font-normal",
+                              "h-auto w-full justify-start gap-2 px-2 py-1.5 text-sm font-normal",
                               filterCondicao === 'todos'
                                 ? "bg-primary-tint text-primary font-semibold hover:bg-primary-tint hover:text-primary"
                                 : "text-foreground"
@@ -874,7 +879,7 @@ export default function Precificacao() {
                             <Button variant="ghost" type="button"
                               onClick={() => setFilterCondicao(cond as any)}
                               className={cn(
-                                "h-auto w-full justify-start gap-2 px-2 py-1.5 text-xs font-normal",
+                                "h-auto w-full justify-start gap-2 px-2 py-1.5 text-sm font-normal",
                                 filterCondicao === cond
                                   ? "bg-primary-tint text-primary font-semibold hover:bg-primary-tint hover:text-primary"
                                   : "text-foreground"
@@ -891,14 +896,14 @@ export default function Precificacao() {
 
                   {/* Frete Grátis */}
                   <div className="rounded-lg border border-border bg-card p-3 shadow-sm">
-                    <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <h4 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       <Truck className="w-3 h-3 text-muted-foreground" />
                       Envio
                     </h4>
                     <Button variant="ghost" type="button"
                       onClick={() => setFilterFreteGratis(!filterFreteGratis)}
                       className={cn(
-                        "h-auto w-full justify-start gap-2 px-2 py-1.5 text-xs font-normal",
+                        "h-auto w-full justify-start gap-2 px-2 py-1.5 text-sm font-normal",
                         filterFreteGratis
                           ? "bg-success-tint text-success-ink font-semibold hover:bg-success-tint hover:text-success-ink"
                           : "text-foreground"
@@ -912,7 +917,7 @@ export default function Precificacao() {
                   {/* Lojas */}
                   {availableLojas.length > 0 && (
                     <div className="rounded-lg border border-border bg-card p-3 shadow-sm">
-                      <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                      <h4 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                         <Store className="w-3 h-3 text-muted-foreground" />
                         Lojas
                       </h4>
@@ -922,7 +927,7 @@ export default function Precificacao() {
                             <Button variant="ghost" type="button"
                               onClick={() => toggleLojaFilter(loja.name)}
                               className={cn(
-                                "h-auto w-full justify-start gap-2 px-2 py-1.5 text-xs font-normal",
+                                "h-auto w-full justify-start gap-2 px-2 py-1.5 text-sm font-normal",
                                 filterLojas.includes(loja.name)
                                   ? "bg-primary-tint text-primary font-semibold hover:bg-primary-tint hover:text-primary"
                                   : "text-foreground"
@@ -946,7 +951,7 @@ export default function Precificacao() {
                   {/* Marcas */}
                   {availableMarcas.length > 0 && (
                     <div className="rounded-lg border border-border bg-card p-3 shadow-sm">
-                      <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                      <h4 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                         <Award className="w-3 h-3 text-muted-foreground" />
                         Marcas
                       </h4>
@@ -956,7 +961,7 @@ export default function Precificacao() {
                             <Button variant="ghost" type="button"
                               onClick={() => toggleMarcaFilter(marca.name)}
                               className={cn(
-                                "h-auto w-full justify-start gap-2 px-2 py-1.5 text-xs font-normal",
+                                "h-auto w-full justify-start gap-2 px-2 py-1.5 text-sm font-normal",
                                 filterMarcas.includes(marca.name)
                                   ? "bg-primary-tint text-primary font-semibold hover:bg-primary-tint hover:text-primary"
                                   : "text-foreground"
@@ -982,11 +987,11 @@ export default function Precificacao() {
 
             {/* Results Content */}
             <div className="flex-1 min-w-0">
-              <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-                <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <ShoppingCart className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
-                    <h3 className="text-lg font-semibold">Resultados dos Marketplaces</h3>
+                    <ShoppingCart className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+                    <h3 className="text-base font-semibold leading-6 text-foreground">Resultados dos Marketplaces</h3>
                     {isSearchingAI && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" aria-hidden="true" />}
                   </div>
                   {aiResult && !isSearchingAI && (
@@ -1013,7 +1018,7 @@ export default function Precificacao() {
 
         {/* Pending items banner */}
         {hasPending && (
-          <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-primary-tint border border-primary/20 rounded-lg">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary-line bg-primary-tint p-4">
             <div className="flex items-center gap-2 text-sm">
               <FileText className="w-4 h-4 text-primary" aria-hidden="true" />
               <span><strong>{pendingItems.length}</strong> {pendingItems.length === 1 ? 'item adicionado' : 'itens adicionados'} à proposta</span>
@@ -1028,9 +1033,9 @@ export default function Precificacao() {
           {filtered.map((item) => (
             <div key={item.id} className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
               {/* Item header */}
-              <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-b border-border">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
                 <div>
-                  <p className="font-semibold text-sm">{item.descricao}</p>
+                  <p className="text-sm font-semibold">{item.descricao}</p>
                   <p className="text-xs text-muted-foreground">
                     {item.quantidade} {item.unidade}(s) · Preço médio: {formatCurrency(item.precoMedio)}
                   </p>
@@ -1038,15 +1043,15 @@ export default function Precificacao() {
                 <div className="flex items-center gap-4 text-xs">
                   <div className="text-right tabular-nums">
                     <p className="text-muted-foreground">Mínimo</p>
-                    <p className="font-semibold text-success">{formatCurrency(item.precoMin)}</p>
+                    <p className="font-semibold text-success-ink">{formatCurrency(item.precoMin)}</p>
                   </div>
                   <div className="text-right tabular-nums">
                     <p className="text-muted-foreground">Máximo</p>
-                    <p className="font-semibold text-destructive">{formatCurrency(item.precoMax)}</p>
+                    <p className="font-semibold text-destructive-ink">{formatCurrency(item.precoMax)}</p>
                   </div>
                   <div className="text-right tabular-nums">
                     <p className="text-muted-foreground">Total Estimado</p>
-                    <p className="font-bold">{formatCurrency(item.precoMedio * item.quantidade)}</p>
+                    <p className="font-semibold text-foreground">{formatCurrency(item.precoMedio * item.quantidade)}</p>
                   </div>
                 </div>
               </div>
@@ -1054,7 +1059,7 @@ export default function Precificacao() {
               {/* Fontes */}
               <div className="divide-y divide-border">
                 {item.fontes.map((f, i) => (
-                  <div key={i} className="flex flex-wrap items-center justify-between gap-3 px-6 py-3">
+                  <div key={i} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
                     <div className="flex items-center gap-3">
                       <Badge variant={fonteVariant[f.fonte] || 'muted'}>
                         {f.fonte}
@@ -1076,8 +1081,8 @@ export default function Precificacao() {
                           Menor preço
                         </Badge>
                       )}
-                      <Button size="sm" variant="ghost" aria-label={`Abrir anúncio em ${f.fonte}`}>
-                        <ExternalLink className="w-4 h-4" aria-hidden="true" />
+                      <Button size="icon-sm" variant="ghost" aria-label={`Abrir anúncio em ${f.fonte}`}>
+                        <ExternalLink className="h-4 w-4" aria-hidden="true" />
                       </Button>
                       <Button size="sm" variant="outline" onClick={() => handleAddToProposta(item, f.preco)} title="Adicionar à Proposta Técnica">
                         <Plus className="w-4 h-4" aria-hidden="true" /> Proposta
@@ -1103,7 +1108,7 @@ export default function Precificacao() {
           </TabsContent>
 
           <TabsContent value="govbr">
-            <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+            <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
               <PainelPrecosGov ufInicial={selectedEstado} municipioInicial={selectedCidade} />
             </div>
           </TabsContent>
@@ -1112,13 +1117,13 @@ export default function Precificacao() {
 
 
           <TabsContent value="cotacoes-listas">
-            <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+            <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
               <CotacoesUnificado />
             </div>
           </TabsContent>
 
           <TabsContent value="calculadora">
-            <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+            <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
               <CalculadoraUnificada
                 licitacaoId={processoId}
                 licitacaoNumero={processoMeta.numero}
@@ -1128,7 +1133,7 @@ export default function Precificacao() {
           </TabsContent>
 
           <TabsContent value="catalogo">
-            <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+            <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
               <CatalogoPrecificados
                 licitacaoId={processoId}
                 licitacaoNumero={processoMeta.numero}
@@ -1138,7 +1143,7 @@ export default function Precificacao() {
           </TabsContent>
 
           <TabsContent value="inteligencia">
-            <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+            <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
               <InteligenciaUnificada />
             </div>
           </TabsContent>
@@ -1159,44 +1164,39 @@ export default function Precificacao() {
                 relógio era o pior: mostrava a hora de uma cotação que nunca houve,
                 dando ao usuário a impressão de que o sistema acabara de atualizar
                 preços. Os números nascem da planilha, então vivem na aba dela. */}
+            {/* Cartões KPI do Design System v3 (`LinhaKpis`): rótulo 13/500,
+                valor 28/600 tabular, ícone num ladrilho — o mesmo cartão das
+                outras telas. Os valores são os de antes, só mudaram de casa. */}
             {itensNaPlanilha > 0 && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                {[
+              <LinhaKpis
+                itens={[
                   {
-                    label: 'Itens Pesquisados',
-                    value: statsPlanilha ? `${statsPlanilha.itensPesquisados}${statsPlanilha.totalItens ? `/${statsPlanilha.totalItens}` : ''}` : '—',
-                    icon: Package,
+                    rotulo: 'Itens Pesquisados',
+                    valor: statsPlanilha ? `${statsPlanilha.itensPesquisados}${statsPlanilha.totalItens ? `/${statsPlanilha.totalItens}` : ''}` : '—',
+                    icone: Package,
                   },
                   {
-                    label: 'Fontes Consultadas',
-                    value: statsPlanilha ? String(statsPlanilha.fontesConsultadas) : '—',
-                    icon: ShoppingCart,
+                    rotulo: 'Fontes Consultadas',
+                    valor: statsPlanilha ? String(statsPlanilha.fontesConsultadas) : '—',
+                    icone: ShoppingCart,
                   },
                   {
-                    label: 'Economia Potencial',
-                    value: statsPlanilha && statsPlanilha.economia > 0
+                    rotulo: 'Economia Potencial',
+                    valor: statsPlanilha && statsPlanilha.economia > 0
                       ? statsPlanilha.economia.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
                       : '—',
-                    icon: TrendingDown,
-                    color: 'text-success',
+                    icone: TrendingDown,
+                    tom: 'ok',
                   },
                   {
-                    label: 'Última Atualização',
-                    value: statsPlanilha?.atualizadoEm
+                    rotulo: 'Última Atualização',
+                    valor: statsPlanilha?.atualizadoEm
                       ? statsPlanilha.atualizadoEm.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
                       : '—',
-                    icon: RefreshCw,
+                    icone: RefreshCw,
                   },
-                ].map((s) => (
-                  <div key={s.label} className="rounded-lg border border-border bg-card p-4 shadow-sm">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs text-muted-foreground">{s.label}</span>
-                      <s.icon className={cn('w-4 h-4', s.color || 'text-muted-foreground')} aria-hidden="true" />
-                    </div>
-                    <p className="text-[2rem] leading-10 font-bold whitespace-nowrap tabular-nums">{s.value}</p>
-                  </div>
-                ))}
-              </div>
+                ]}
+              />
             )}
 
             {/* REBRAND — os dois gráficos do protótipo. Mesma condição dos cartões
@@ -1206,14 +1206,16 @@ export default function Precificacao() {
               <PrecoGraficos stats={statsPlanilha} />
             )}
 
-            <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+            <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
               <EditalItensViewer licitacaoId={processoId ?? null} />
             </div>
           {/* Planilha de Custos — Extração por IA */}
-          <div className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-3">
-            <div className="flex flex-wrap items-center gap-2 mb-1">
-              <Sparkles className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
-              <h3 className="text-lg font-semibold">Planilha de Custos — Extração por IA</h3>
+          <div className="space-y-3 rounded-lg border border-border bg-card p-5 shadow-sm">
+            {/* Recurso de IA: o selo "Praefectus IA" identifica a extração. */}
+            <div className="mb-1 flex flex-wrap items-center gap-2">
+              <Sparkles className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+              <h3 className="text-base font-semibold leading-6 text-foreground">Planilha de Custos — Extração por IA</h3>
+              <SeloPraefectusIA />
               <Badge variant="muted" className="ml-auto">Upload + Extração + Cotação</Badge>
             </div>
             <p className="text-sm text-muted-foreground">

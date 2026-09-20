@@ -82,14 +82,14 @@ export default function HistoricoDoOrgao({
   };
 
   return (
-    <Card className="p-6">
+    <Card className="p-5">
       <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="flex items-center gap-2 text-lg font-semibold">
-          <History className="w-5 h-5 text-primary" aria-hidden="true" /> Histórico do órgão
+        <h3 className="flex items-center gap-2 text-base font-semibold leading-6 text-foreground">
+          <History className="h-5 w-5 text-muted-foreground" aria-hidden="true" /> Histórico do órgão
         </h3>
         {buscou && !buscando && (
           <Button size="sm" variant="ghost" onClick={buscar}>
-            <RefreshCw className="w-4 h-4" aria-hidden="true" /> Buscar de novo
+            <RefreshCw aria-hidden="true" /> Buscar de novo
           </Button>
         )}
       </div>
@@ -100,27 +100,27 @@ export default function HistoricoDoOrgao({
       </p>
 
       {permitirEditarCnpj && (
-        <div className="mb-4 w-full sm:max-w-sm">
-          <Label htmlFor="historico-cnpj" className="text-sm">CNPJ do órgão</Label>
+        <div className="mb-4 w-full space-y-1.5 sm:max-w-sm">
+          <Label htmlFor="historico-cnpj">CNPJ do órgão</Label>
           <Input
             id="historico-cnpj"
             value={cnpj}
             onChange={(e) => setCnpj(e.target.value)}
             placeholder="Opcional — vazio = todos os órgãos"
-            className="mt-1"
+            className="tabular-nums"
           />
         </div>
       )}
 
       {!buscou && !buscando && (
         <Button variant="outline" onClick={buscar}>
-          <History className="w-4 h-4" aria-hidden="true" /> Buscar histórico
+          <History aria-hidden="true" /> Buscar histórico
         </Button>
       )}
 
       {buscando && (
         <p className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
-          <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Comparando descrições no acervo…
+          <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Comparando descrições no acervo…
         </p>
       )}
 
@@ -144,14 +144,14 @@ export default function HistoricoDoOrgao({
       {irmaos.length > 0 && (
         <div className="space-y-2">
           {provedor === 'textual' && (
-            <p className="text-xs text-warning">
+            <p className="text-xs text-warning-ink">
               Comparação semântica indisponível agora — resultados por palavras da descrição.
             </p>
           )}
           {irmaos.map((h) => (
-            <div key={h.id} className="flex items-start gap-3 rounded-md border border-border px-3 py-2 text-sm">
+            <div key={h.id} className="flex items-start gap-3 rounded-md border border-border bg-card px-3 py-2 text-sm">
               <div className="min-w-0 flex-1">
-                <p className="font-medium line-clamp-2">{h.objeto || '—'}</p>
+                <p className="line-clamp-2 font-medium text-foreground">{h.objeto || '—'}</p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {[h.orgao, h.municipio && h.uf ? `${h.municipio}/${h.uf}` : h.uf].filter(Boolean).join(' · ')}
                 </p>
@@ -174,8 +174,8 @@ export default function HistoricoDoOrgao({
                 )}
                 {h.url_pncp && (
                   <a href={h.url_pncp} target="_blank" rel="noreferrer"
-                    className="flex items-center justify-end gap-1 text-xs text-primary hover:underline">
-                    PNCP <ExternalLink className="w-3 h-3" aria-hidden="true" />
+                    className="flex items-center justify-end gap-1 rounded-sm text-xs text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                    PNCP <ExternalLink className="h-3 w-3" aria-hidden="true" />
                   </a>
                 )}
               </div>

@@ -168,121 +168,123 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
   };
 
   const viabilidadeIcon = parecer.viabilidade === 'VIÁVEL'
-    ? <CheckCircle className="w-4 h-4 text-success" />
+    ? <CheckCircle className="h-4 w-4 text-success-ink" aria-hidden="true" />
     : parecer.viabilidade === 'INVIÁVEL'
-    ? <XCircle className="w-4 h-4 text-destructive" />
-    : <AlertTriangle className="w-4 h-4 text-warning" />;
+    ? <XCircle className="h-4 w-4 text-destructive-ink" aria-hidden="true" />
+    : <AlertTriangle className="h-4 w-4 text-warning-ink" aria-hidden="true" />;
 
+  // Trio tinta/tinta-escura/linha do estado (Design System v3).
   const viabilidadeColor = parecer.viabilidade === 'VIÁVEL'
-    ? 'bg-success/10 text-success border-success/20'
+    ? 'border-success-line bg-success-tint text-success-ink'
     : parecer.viabilidade === 'INVIÁVEL'
-    ? 'bg-destructive/10 text-destructive border-destructive/20'
-    : 'bg-warning/10 text-warning border-warning/20';
+    ? 'border-destructive-line bg-destructive-tint text-destructive-ink'
+    : 'border-warning-line bg-warning-tint text-warning-ink';
 
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="bg-card rounded-xl border border-border/50 p-5">
-        <div className="flex items-center justify-between mb-4">
+      <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <Calculator className="w-5 h-5 text-muted-foreground" />
-            <h4 className="font-semibold text-sm">Planilha de Composição de Custo — Motor Determinístico</h4>
+            <Calculator className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+            <h4 className="text-base font-semibold leading-6 text-foreground">Planilha de Composição de Custo — Motor Determinístico</h4>
           </div>
-          <Badge className="bg-muted text-foreground border-border text-xs">{regimeLabel} • {ufCalculo}</Badge>
+          <Badge variant="secondary">{regimeLabel} • {ufCalculo}</Badge>
         </div>
 
-        {/* Export & Sync Buttons */}
-        <div className="flex flex-wrap gap-2 mb-4 p-3 bg-muted/30 rounded-lg border border-border/30">
-          <Button variant="outline" size="sm" onClick={handleExportPDF} className="text-xs">
-            <FileText className="w-3.5 h-3.5 mr-1 text-destructive" /> PDF
+        {/* Export & Sync Buttons — uma ação principal (Enviar), o resto em contorno. */}
+        <div className="mb-4 flex flex-wrap gap-2 rounded-md border border-border bg-secondary p-3">
+          <Button variant="outline" size="sm" onClick={handleExportPDF}>
+            <FileText aria-hidden="true" /> PDF
           </Button>
-          <Button variant="outline" size="sm" onClick={handleExportWord} className="text-xs">
-            <FileText className="w-3.5 h-3.5 mr-1 text-muted-foreground" /> Word
+          <Button variant="outline" size="sm" onClick={handleExportWord}>
+            <FileText aria-hidden="true" /> Word
           </Button>
-          <Button variant="outline" size="sm" onClick={handleExportExcel} className="text-xs">
-            <FileSpreadsheet className="w-3.5 h-3.5 mr-1 text-muted-foreground" /> Excel
+          <Button variant="outline" size="sm" onClick={handleExportExcel}>
+            <FileSpreadsheet aria-hidden="true" /> Excel
           </Button>
           <div className="flex-1" />
-          <Button size="sm" onClick={enviarParaProposta} className="bg-accent hover:bg-accent/90 text-accent-foreground text-xs">
-            <Send className="w-3.5 h-3.5 mr-1" /> Enviar para Proposta
+          <Button size="sm" onClick={enviarParaProposta}>
+            <Send aria-hidden="true" /> Enviar para Proposta
           </Button>
         </div>
 
         {/* Info banner about manual editing */}
-        <div className="bg-muted/50 border border-border rounded-lg p-3 flex items-start gap-2 mb-4">
-          <Info className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
-          <p className="text-xs text-muted-foreground">
-            <strong className="text-foreground">Preço e lucro editáveis:</strong> Clique no ícone <Pencil className="w-3 h-3 inline" /> ao lado do preço unitário <strong>ou da margem de lucro</strong> para ajustar manualmente. O sistema recalculará todos os valores automaticamente.
+        <div className="mb-4 flex items-start gap-2 rounded-md border border-border bg-secondary p-3">
+          <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <p className="text-sm text-muted-foreground">
+            <strong className="text-foreground">Preço e lucro editáveis:</strong> Clique no ícone <Pencil className="inline h-3.5 w-3.5" aria-hidden="true" /> ao lado do preço unitário <strong>ou da margem de lucro</strong> para ajustar manualmente. O sistema recalculará todos os valores automaticamente.
           </p>
         </div>
 
         {/* Itens Tables */}
         {itens.map((item, idx) => (
           <div key={idx} className="mb-6 last:mb-0">
-            <div className="flex items-center gap-2 mb-2">
-              <Badge variant="outline" className="text-xs font-mono">Item {idx + 1}</Badge>
-              <span className="text-sm font-semibold">{item.descricao}</span>
-              <span className="text-xs text-muted-foreground ml-auto">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <Badge variant="outline" className="tabular-nums">Item {idx + 1}</Badge>
+              <span className="text-sm font-semibold text-foreground">{item.descricao}</span>
+              <span className="ml-auto text-xs text-muted-foreground tabular-nums">
                 {item.quantidade} {item.unidade}
               </span>
               {item.modoPreco === 'manual' && (
-                <Badge className="bg-muted text-foreground text-xs border-border">
-                  <Pencil className="w-2.5 h-2.5 mr-0.5" /> Preço Manual
+                <Badge variant="secondary">
+                  <Pencil className="h-3 w-3" aria-hidden="true" /> Preço Manual
                 </Badge>
               )}
             </div>
 
-            <div className="rounded-lg border border-border overflow-hidden">
+            <div className="overflow-hidden rounded-md border border-border bg-card">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-muted/60">
-                    <TableHead className="text-xs font-bold h-9 w-[40%]">Componente</TableHead>
-                    <TableHead className="text-xs font-bold h-9 text-right w-[20%]">Base de Cálculo</TableHead>
-                    <TableHead className="text-xs font-bold h-9 text-right w-[15%]">Alíquota (%)</TableHead>
-                    <TableHead className="text-xs font-bold h-9 text-right w-[25%]">Valor (R$)</TableHead>
+                  <TableRow>
+                    <TableHead className="w-[40%]">Componente</TableHead>
+                    <TableHead className="w-[20%] text-right">Base de Cálculo</TableHead>
+                    <TableHead className="w-[15%] text-right">Alíquota (%)</TableHead>
+                    <TableHead className="w-[25%] text-right">Valor (R$)</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {item.componentes.map((comp) => (
-                    <TableRow key={comp.id} className={`hover:bg-muted/30 ${comp.editavel && item.modoPreco === 'manual' ? 'bg-muted/40' : ''}`}>
-                      <TableCell className="text-xs py-2 font-medium">
+                    <TableRow key={comp.id} className={comp.editavel && item.modoPreco === 'manual' ? 'bg-primary-tint/40' : ''}>
+                      <TableCell className="font-medium">
                         <TooltipProvider>
                           <Tooltip>
-                            <TooltipTrigger className="text-left">
+                            <TooltipTrigger className="rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                               {comp.componente}
                             </TooltipTrigger>
                             <TooltipContent side="right" className="max-w-xs">
-                              <p className="text-xs font-mono">{comp.formula}</p>
+                              <p className="font-mono text-xs">{comp.formula}</p>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
                       </TableCell>
-                      <TableCell className="text-xs py-2 text-right font-mono">
+                      <TableCell className="text-right tabular-nums" nowrap>
                         {fmt(comp.baseCalculo)}
                       </TableCell>
-                      <TableCell className="text-xs py-2 text-right font-mono">
+                      <TableCell className="text-right tabular-nums" nowrap>
                         {comp.editavel ? (
                           <div className="flex items-center justify-end gap-1">
                             {editingMargemIndex === idx ? (
                               <>
                                 <Input
+                                  aria-label="Margem de lucro (%)"
                                   value={editMargemValue}
                                   onChange={e => setEditMargemValue(e.target.value.replace(/[^0-9,.-]/g, ''))}
-                                  className="h-6 w-16 text-right text-xs font-mono px-1"
+                                  className="h-9 w-20 px-2 text-right tabular-nums"
                                   autoFocus
                                   placeholder="10,00"
                                   onKeyDown={e => { if (e.key === 'Enter') confirmEditMargem(idx); if (e.key === 'Escape') setEditingMargemIndex(null); }}
                                 />
                                 <span className="text-xs">%</span>
-                                <Button variant="ghost" size="sm" onClick={() => confirmEditMargem(idx)} className="h-5 w-5 p-0 text-accent">
-                                  <CheckCircle className="w-3 h-3" />
+                                <Button variant="ghost" size="icon-sm" onClick={() => confirmEditMargem(idx)} className="text-primary hover:text-primary" aria-label="Confirmar margem">
+                                  <CheckCircle aria-hidden="true" />
                                 </Button>
                               </>
                             ) : (
                               <>
                                 <span>{fmtPct(comp.aliquota)}</span>
-                                <Button variant="ghost" size="sm" onClick={() => startEditMargem(idx, comp.aliquota ?? 0)} className="h-5 w-5 p-0 text-muted-foreground hover:text-primary" title="Editar margem de lucro">
-                                  <Pencil className="w-2.5 h-2.5" />
+                                <Button variant="ghost" size="icon-sm" onClick={() => startEditMargem(idx, comp.aliquota ?? 0)} className="text-muted-foreground hover:text-primary" title="Editar margem de lucro" aria-label="Editar margem de lucro">
+                                  <Pencil aria-hidden="true" />
                                 </Button>
                               </>
                             )}
@@ -291,7 +293,7 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
                           fmtPct(comp.aliquota)
                         )}
                       </TableCell>
-                      <TableCell className={`text-xs py-2 text-right font-mono font-semibold ${comp.editavel && comp.valor < 0 ? 'text-destructive' : ''}`}>
+                      <TableCell className={`text-right font-semibold tabular-nums ${comp.editavel && comp.valor < 0 ? 'text-destructive-ink' : ''}`} nowrap>
                         {fmt(comp.valor)}
                       </TableCell>
                     </TableRow>
@@ -300,45 +302,46 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
                 <TableFooter>
                   {/* Preço Sugerido */}
                   {item.modoPreco === 'manual' && (
-                    <TableRow className="bg-muted/30 border-t border-border">
-                      <TableCell colSpan={3} className="text-xs py-1.5 text-muted-foreground italic">
+                    <TableRow className="hover:bg-secondary">
+                      <TableCell colSpan={3} className="font-normal text-muted-foreground">
                         Preço Sugerido (calculado)
                       </TableCell>
-                      <TableCell className="text-xs py-1.5 text-right font-mono text-muted-foreground italic">
+                      <TableCell className="text-right font-normal tabular-nums text-muted-foreground" nowrap>
                         {fmt(item.precoUnitarioSugerido)}
                       </TableCell>
                     </TableRow>
                   )}
 
                   {/* Preço Unitário Final — EDITABLE */}
-                  <TableRow className="bg-muted/40 border-t-2 border-border">
-                    <TableCell colSpan={3} className="text-xs py-2 font-bold">
+                  <TableRow className="hover:bg-secondary">
+                    <TableCell colSpan={3} className="font-semibold">
                       Preço Unitário {item.modoPreco === 'manual' ? '(Manual)' : '(Sugerido)'}
                     </TableCell>
-                    <TableCell className="text-xs py-2 text-right">
+                    <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1.5">
                         {editingIndex === idx ? (
                           <>
                             <Input
+                              aria-label="Preço unitário"
                               value={editValue}
                               onChange={e => setEditValue(formatCurrencyInput(e.target.value))}
-                              className="h-7 w-28 text-right text-xs font-mono"
+                              className="h-9 w-28 text-right tabular-nums"
                               autoFocus
                               onKeyDown={e => { if (e.key === 'Enter') confirmEdit(idx); if (e.key === 'Escape') setEditingIndex(null); }}
                             />
-                            <Button variant="ghost" size="sm" onClick={() => confirmEdit(idx)} className="h-6 w-6 p-0 text-accent">
-                              <CheckCircle className="w-3.5 h-3.5" />
+                            <Button variant="ghost" size="icon-sm" onClick={() => confirmEdit(idx)} className="text-primary hover:text-primary" aria-label="Confirmar preço">
+                              <CheckCircle aria-hidden="true" />
                             </Button>
                           </>
                         ) : (
                           <>
-                            <span className="font-mono font-bold text-foreground">{fmt(item.precoUnitarioFinal)}</span>
-                            <Button variant="ghost" size="sm" onClick={() => startEdit(idx, item.precoUnitarioFinal)} className="h-6 w-6 p-0 text-muted-foreground hover:text-primary">
-                              <Pencil className="w-3 h-3" />
+                            <span className="font-semibold tabular-nums text-foreground">{fmt(item.precoUnitarioFinal)}</span>
+                            <Button variant="ghost" size="icon-sm" onClick={() => startEdit(idx, item.precoUnitarioFinal)} className="text-muted-foreground hover:text-primary" aria-label="Editar preço unitário">
+                              <Pencil aria-hidden="true" />
                             </Button>
                             {item.modoPreco === 'manual' && (
-                              <Button variant="ghost" size="sm" onClick={() => revertToSuggested(idx)} className="h-6 w-6 p-0 text-muted-foreground hover:text-accent" title="Reverter ao sugerido">
-                                <RotateCcw className="w-3 h-3" />
+                              <Button variant="ghost" size="icon-sm" onClick={() => revertToSuggested(idx)} className="text-muted-foreground hover:text-primary" title="Reverter ao sugerido" aria-label="Reverter ao sugerido">
+                                <RotateCcw aria-hidden="true" />
                               </Button>
                             )}
                           </>
@@ -348,21 +351,21 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
                   </TableRow>
 
                   {/* Preço Total */}
-                  <TableRow className="bg-muted">
-                    <TableCell colSpan={3} className="text-xs py-2 font-bold">
+                  <TableRow className="hover:bg-secondary">
+                    <TableCell colSpan={3} className="font-semibold">
                       Preço Total ({item.quantidade} {item.unidade})
                     </TableCell>
-                    <TableCell className="text-xs py-2 text-right font-mono font-bold text-foreground">
+                    <TableCell className="text-right font-semibold tabular-nums text-foreground" nowrap>
                       {fmt(item.precoTotal)}
                     </TableCell>
                   </TableRow>
 
                   {/* BDI */}
-                  <TableRow className="bg-muted/20">
-                    <TableCell colSpan={3} className="text-xs py-1.5 text-muted-foreground">
+                  <TableRow className="hover:bg-secondary">
+                    <TableCell colSpan={3} className="font-normal text-muted-foreground">
                       BDI ({item.bdiPercentual.toFixed(2).replace('.', ',')}%)
                     </TableCell>
-                    <TableCell className="text-xs py-1.5 text-right font-mono text-muted-foreground">
+                    <TableCell className="text-right font-normal tabular-nums text-muted-foreground" nowrap>
                       {fmt(item.bdiValor)}
                     </TableCell>
                   </TableRow>
@@ -379,33 +382,34 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
                   {alertas.map((al, ai) => (
                     <div
                       key={ai}
-                      className={`rounded-lg border p-2.5 flex items-start gap-2 ${
+                      role="alert"
+                      className={`flex items-start gap-2 rounded-lg border p-3 ${
                         al.tipo === 'erro'
-                          ? 'bg-destructive/10 border-destructive/20'
+                          ? 'border-destructive-line bg-destructive-tint'
                           : al.tipo === 'atencao'
-                          ? 'bg-warning/10 border-warning/20'
-                          : 'bg-muted/50 border-border/50'
+                          ? 'border-warning-line bg-warning-tint'
+                          : 'border-border bg-secondary'
                       }`}
                     >
                       {al.tipo === 'erro' ? (
-                        <XCircle className="w-3.5 h-3.5 text-destructive shrink-0 mt-0.5" />
+                        <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive-ink" aria-hidden="true" />
                       ) : al.tipo === 'atencao' ? (
-                        <AlertTriangle className="w-3.5 h-3.5 text-warning shrink-0 mt-0.5" />
+                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning-ink" aria-hidden="true" />
                       ) : (
-                        <Info className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
+                        <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                       )}
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-xs font-semibold ${
-                          al.tipo === 'erro' ? 'text-destructive' : al.tipo === 'atencao' ? 'text-warning' : 'text-muted-foreground'
+                      <div className="min-w-0 flex-1">
+                        <p className={`text-sm font-semibold ${
+                          al.tipo === 'erro' ? 'text-destructive-ink' : al.tipo === 'atencao' ? 'text-warning-ink' : 'text-foreground'
                         }`}>
                           {al.titulo}
                         </p>
-                        <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">{al.mensagem}</p>
-                        <p className="text-xs text-muted-foreground italic mt-1">📜 {al.fundamentacao}</p>
+                        <p className="mt-0.5 text-sm leading-5 text-muted-foreground">{al.mensagem}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">📜 {al.fundamentacao}</p>
                       </div>
                     </div>
                   ))}
-                  <p className="text-xs text-muted-foreground italic pl-1">
+                  <p className="pl-1 text-xs text-muted-foreground">
                     ℹ Alertas informativos — a decisão final é de responsabilidade exclusiva do usuário.
                   </p>
                 </div>
@@ -416,65 +420,65 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
       </div>
 
       {/* Resumo Geral */}
-      <div className="bg-card rounded-xl border border-border/50 p-5">
-        <h4 className="font-semibold text-sm mb-3">Resumo Geral da Formação de Preço</h4>
+      <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
+        <h4 className="mb-3 text-base font-semibold leading-6 text-foreground">Resumo Geral da Formação de Preço</h4>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {/* Left: Summary */}
-          <div className="rounded-lg border border-border overflow-hidden">
+          <div className="overflow-hidden rounded-md border border-border bg-card">
             <Table>
               <TableHeader>
-                <TableRow className="bg-muted/60">
-                  <TableHead className="text-xs font-bold h-9">Componente</TableHead>
-                  <TableHead className="text-xs font-bold h-9 text-right">Valor (R$)</TableHead>
+                <TableRow>
+                  <TableHead>Componente</TableHead>
+                  <TableHead className="text-right">Valor (R$)</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 <TableRow>
-                  <TableCell className="text-xs py-2">Custo Total dos Materiais</TableCell>
-                  <TableCell className="text-xs py-2 text-right font-mono">{fmt(resumo.custoTotalMateriais)}</TableCell>
+                  <TableCell>Custo Total dos Materiais</TableCell>
+                  <TableCell className="text-right tabular-nums" nowrap>{fmt(resumo.custoTotalMateriais)}</TableCell>
                 </TableRow>
                 {resumo.freteTotal > 0 && (
                   <TableRow>
-                    <TableCell className="text-xs py-2">Frete ({resumo.fretePercentual}%)</TableCell>
-                    <TableCell className="text-xs py-2 text-right font-mono">{fmt(resumo.freteTotal)}</TableCell>
+                    <TableCell>Frete ({resumo.fretePercentual}%)</TableCell>
+                    <TableCell className="text-right tabular-nums" nowrap>{fmt(resumo.freteTotal)}</TableCell>
                   </TableRow>
                 )}
                 {resumo.despesasAdm > 0 && (
                   <TableRow>
-                    <TableCell className="text-xs py-2">Despesas Administrativas ({resumo.despesasAdmPercentual}%)</TableCell>
-                    <TableCell className="text-xs py-2 text-right font-mono">{fmt(resumo.despesasAdm)}</TableCell>
+                    <TableCell>Despesas Administrativas ({resumo.despesasAdmPercentual}%)</TableCell>
+                    <TableCell className="text-right tabular-nums" nowrap>{fmt(resumo.despesasAdm)}</TableCell>
                   </TableRow>
                 )}
                 <TableRow>
-                  <TableCell className="text-xs py-2">Total de Tributos</TableCell>
-                  <TableCell className="text-xs py-2 text-right font-mono text-destructive font-semibold">{fmt(resumo.totalTributos)}</TableCell>
+                  <TableCell>Total de Tributos</TableCell>
+                  <TableCell className="text-right font-semibold tabular-nums text-destructive-ink" nowrap>{fmt(resumo.totalTributos)}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell className="text-xs py-2">BDI ({resumo.bdiPercentual.toFixed(2).replace('.', ',')}%)</TableCell>
-                  <TableCell className="text-xs py-2 text-right font-mono">{fmt(resumo.bdiTotal)}</TableCell>
+                  <TableCell>BDI ({resumo.bdiPercentual.toFixed(2).replace('.', ',')}%)</TableCell>
+                  <TableCell className="text-right tabular-nums" nowrap>{fmt(resumo.bdiTotal)}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell className="text-xs py-2">
+                  <TableCell>
                     Margem de Lucro Resultante ({resumo.margemLucroResultante.toFixed(2).replace('.', ',')}%)
                     {resumo.margemLucroResultante !== resumo.margemLucroSugerida && (
-                      <span className="text-xs text-muted-foreground ml-1">(sugerido: {resumo.margemLucroSugerida}%)</span>
+                      <span className="ml-1 text-xs text-muted-foreground">(sugerido: {resumo.margemLucroSugerida}%)</span>
                     )}
                   </TableCell>
-                  <TableCell className={`text-xs py-2 text-right font-mono font-semibold ${resumo.margemLucroResultante < 0 ? 'text-destructive' : 'text-success'}`}>
+                  <TableCell className={`text-right font-semibold tabular-nums ${resumo.margemLucroResultante < 0 ? 'text-destructive-ink' : 'text-success-ink'}`} nowrap>
                     {fmt(resumo.precoTotalFormado - resumo.custoTotalMateriais - resumo.totalTributos - resumo.freteTotal - resumo.despesasAdm)}
                   </TableCell>
                 </TableRow>
               </TableBody>
               <TableFooter>
-                <TableRow className="bg-muted border-t-2 border-border">
-                  <TableCell className="text-[12px] py-2.5 font-bold">PREÇO TOTAL FORMADO</TableCell>
-                  <TableCell className="text-[12px] py-2.5 text-right font-mono font-bold text-foreground">{fmt(resumo.precoTotalFormado)}</TableCell>
+                <TableRow className="hover:bg-secondary">
+                  <TableCell className="font-semibold">PREÇO TOTAL FORMADO</TableCell>
+                  <TableCell className="text-right font-semibold tabular-nums text-foreground" nowrap>{fmt(resumo.precoTotalFormado)}</TableCell>
                 </TableRow>
               </TableFooter>
             </Table>
-            <div className="px-3 py-2 bg-muted/30 border-t border-border">
-              <p className="text-xs text-muted-foreground italic">
+            <div className="border-t border-border bg-secondary px-3 py-2">
+              <p className="text-xs text-muted-foreground">
                 Por extenso: {valorPorExtenso(resumo.precoTotalFormado)}
               </p>
             </div>
@@ -482,35 +486,35 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
 
           {/* Right: Tributos + Parecer */}
           <div className="space-y-3">
-            <div className="rounded-lg border border-border overflow-hidden">
+            <div className="overflow-hidden rounded-md border border-border bg-card">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-muted/60">
-                    <TableHead className="text-xs font-bold h-9">Tributo</TableHead>
-                    <TableHead className="text-xs font-bold h-9 text-right">Alíquota</TableHead>
-                    <TableHead className="text-xs font-bold h-9 text-right">Valor (R$)</TableHead>
+                  <TableRow>
+                    <TableHead>Tributo</TableHead>
+                    <TableHead className="text-right">Alíquota</TableHead>
+                    <TableHead className="text-right">Valor (R$)</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {resumo.tributosPorImposto.map((t, i) => (
                     <TableRow key={i}>
-                      <TableCell className="text-xs py-2 font-medium">
+                      <TableCell className="font-medium">
                         <TooltipProvider>
                           <Tooltip>
-                            <TooltipTrigger className="text-left">{t.imposto}</TooltipTrigger>
+                            <TooltipTrigger className="rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{t.imposto}</TooltipTrigger>
                             <TooltipContent side="bottom" className="max-w-xs"><p className="text-xs">{t.info}</p></TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
                       </TableCell>
-                      <TableCell className="text-xs py-2 text-right font-mono">{fmtPct(t.aliquota)}</TableCell>
-                      <TableCell className="text-xs py-2 text-right font-mono">{fmt(t.valor)}</TableCell>
+                      <TableCell className="text-right tabular-nums" nowrap>{fmtPct(t.aliquota)}</TableCell>
+                      <TableCell className="text-right tabular-nums" nowrap>{fmt(t.valor)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
                 <TableFooter>
-                  <TableRow className="bg-destructive/5">
-                    <TableCell colSpan={2} className="text-xs py-2 font-bold">Total Tributos</TableCell>
-                    <TableCell className="text-xs py-2 text-right font-mono font-bold text-destructive">{fmt(resumo.totalTributos)}</TableCell>
+                  <TableRow className="hover:bg-secondary">
+                    <TableCell colSpan={2} className="font-semibold">Total Tributos</TableCell>
+                    <TableCell className="text-right font-semibold tabular-nums text-destructive-ink" nowrap>{fmt(resumo.totalTributos)}</TableCell>
                   </TableRow>
                 </TableFooter>
               </Table>
@@ -522,23 +526,24 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
                 {parecer.alertasGlobais.map((al, ai) => (
                   <div
                     key={ai}
-                    className={`rounded-lg border p-3 flex items-start gap-2 ${
+                    role="alert"
+                    className={`flex items-start gap-2 rounded-lg border p-3 ${
                       al.tipo === 'erro'
-                        ? 'bg-destructive/10 border-destructive/20'
+                        ? 'border-destructive-line bg-destructive-tint'
                         : al.tipo === 'atencao'
-                        ? 'bg-warning/10 border-warning/20'
-                        : 'bg-muted/50 border-border/50'
+                        ? 'border-warning-line bg-warning-tint'
+                        : 'border-border bg-secondary'
                     }`}
                   >
                     {al.tipo === 'erro' ? (
-                      <XCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                      <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive-ink" aria-hidden="true" />
                     ) : (
-                      <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning-ink" aria-hidden="true" />
                     )}
                     <div>
-                      <p className={`text-xs font-bold ${al.tipo === 'erro' ? 'text-destructive' : 'text-warning'}`}>{al.titulo}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{al.mensagem}</p>
-                      <p className="text-xs text-muted-foreground italic mt-1">📜 {al.fundamentacao}</p>
+                      <p className={`text-sm font-semibold ${al.tipo === 'erro' ? 'text-destructive-ink' : 'text-warning-ink'}`}>{al.titulo}</p>
+                      <p className="mt-0.5 text-sm text-muted-foreground">{al.mensagem}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">📜 {al.fundamentacao}</p>
                     </div>
                   </div>
                 ))}
@@ -546,33 +551,33 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
             )}
 
             {/* Parecer */}
-            <div className={`rounded-lg border p-3 ${viabilidadeColor}`}>
-              <div className="flex items-center gap-2 mb-1.5">
+            <div className={`rounded-lg border p-3 ${viabilidadeColor}`} role="status">
+              <div className="mb-1.5 flex flex-wrap items-center gap-2">
                 {viabilidadeIcon}
-                <span className="text-xs font-bold">Parecer: {parecer.viabilidade}</span>
-                <span className="text-xs ml-auto font-mono">
+                <span className="text-sm font-semibold">Parecer: {parecer.viabilidade}</span>
+                <span className="ml-auto text-sm tabular-nums">
                   Margem Líquida: {parecer.margemLiquida.toFixed(2).replace('.', ',')}%
                 </span>
               </div>
               {parecer.alertaInexequibilidade && (
-                <p className="text-xs font-semibold mb-1">
+                <p className="mb-1 text-sm font-semibold">
                   ⚠ ALERTA — Art. 59, Lei 14.133/2021: Proposta com indícios de inexequibilidade.
                 </p>
               )}
-              <p className="text-xs leading-relaxed">{parecer.observacoes}</p>
+              <p className="text-sm leading-5">{parecer.observacoes}</p>
               <div className="mt-2 flex flex-wrap gap-1">
                 {parecer.fundamentacaoLegal.map((f, i) => (
-                  <Badge key={i} variant="outline" className="text-xs px-1.5 py-0.5">{f}</Badge>
+                  <Badge key={i} variant="outline">{f}</Badge>
                 ))}
               </div>
-              <p className="text-xs text-muted-foreground italic mt-2 border-t border-current/10 pt-1.5">
+              <p className="mt-2 border-t border-border pt-1.5 text-xs text-muted-foreground">
                 ⚖ Os alertas são informativos e baseados na legislação vigente. A decisão final sobre os valores é de responsabilidade exclusiva do usuário.
               </p>
             </div>
 
             {/* Methodology note */}
-            <div className="bg-muted/20 rounded-lg p-3 border border-border/30">
-              <p className="text-xs text-muted-foreground">
+            <div className="rounded-md border border-border bg-secondary p-3">
+              <p className="text-sm text-muted-foreground">
                 <strong className="text-foreground">Metodologia:</strong> Mark-up Divisor (cálculo "por dentro"). Fórmula: Preço = Custo ÷ (1 − Σ alíquotas%). Tributos, frete, despesas e margem são calculados sobre o preço final formado.
               </p>
             </div>
@@ -580,9 +585,9 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
         </div>
       </div>
 
-      <p className="text-xs text-muted-foreground text-center">
+      <p className="text-xs text-muted-foreground">
         Motor determinístico com alíquotas reais para {ufCalculo} ({ufNome}). Consulta oficial:{' '}
-        <a href="https://piloto-cbs.tributos.gov.br/servico/calculadora-consumo/calculadora/regime-geral" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">
+        <a href="https://piloto-cbs.tributos.gov.br/servico/calculadora-consumo/calculadora/regime-geral" target="_blank" rel="noopener noreferrer" className="rounded-sm text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
           Calculadora da Receita Federal
         </a>.
       </p>

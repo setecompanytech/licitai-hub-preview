@@ -10,6 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
+import { Skeleton } from '@/components/ui/skeleton';
+import EstadoVazio from '@/components/shared/EstadoVazio';
+import SeloPraefectusIA from '@/components/shared/SeloPraefectusIA';
 import {
   Package, Search, Trash2, FileText, Filter, Loader2, ShoppingCart, Plus, Sparkles, Globe, Upload, BookOpen
 } from 'lucide-react';
@@ -315,13 +318,13 @@ Responda APENAS em JSON:
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-2 min-w-0">
-          <Package className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-          <h3 className="font-semibold text-xs sm:text-sm whitespace-nowrap">Catálogo de Itens Precificados</h3>
-          <Badge variant="outline" className="text-xs">{items.length} itens</Badge>
+      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <Package className="h-5 w-5 flex-shrink-0 text-muted-foreground" aria-hidden="true" />
+          <h3 className="text-base font-semibold leading-6 text-foreground">Catálogo de Itens Precificados</h3>
+          <Badge variant="outline" className="tabular-nums">{items.length} itens</Badge>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex flex-wrap items-center gap-2">
           <Button size="sm" onClick={() => {
             const sel = filteredItems.filter(i => selectedItems.has(i.id));
             if (sel.length === 0 && items.length > 0) {
@@ -331,43 +334,44 @@ Responda APENAS em JSON:
             } else {
               toast.error('Nenhum item no catálogo.');
             }
-          }} variant="outline" className="border-accent/30 text-accent hover:bg-accent/10 text-xs">
-            <BookOpen className="w-3.5 h-3.5 mr-1" /> Ficha / Folder
+          }} variant="outline">
+            <BookOpen aria-hidden="true" /> Ficha / Folder
           </Button>
-          <Button size="sm" onClick={() => setShowConsulta(!showConsulta)} variant={showConsulta ? 'default' : 'outline'}
-            className={showConsulta ? 'bg-accent hover:bg-accent/90 text-accent-foreground text-xs' : 'text-xs'}>
-            <Sparkles className="w-3.5 h-3.5 mr-1" /> Consulta IA
+          <Button size="sm" onClick={() => setShowConsulta(!showConsulta)} variant={showConsulta ? 'default' : 'outline'} aria-pressed={showConsulta}>
+            <Sparkles aria-hidden="true" /> Consulta IA
           </Button>
-          <Button size="sm" onClick={loadItems} variant="outline" disabled={loading} className="text-xs">
-            {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
-            <span className="ml-1">Atualizar</span>
+          <Button size="sm" onClick={loadItems} variant="outline" disabled={loading}>
+            {loading ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Search aria-hidden="true" />}
+            Atualizar
           </Button>
         </div>
       </div>
 
-      {/* ── Consulta Inteligente Panel ── */}
+      {/* ── Consulta Inteligente Panel — bloco de IA: superfície tingida da
+          ação e o selo "Praefectus IA" no lugar do chip. ── */}
       {showConsulta && (
-        <div className="bg-muted/30 border border-border rounded-xl p-5 space-y-4">
-          <div className="flex items-center gap-2">
-            <Globe className="w-5 h-5 text-muted-foreground" />
-            <h4 className="font-semibold text-sm">Consulta Inteligente — Extração de Itens do Edital</h4>
-            <Badge variant="outline" className="text-xs ml-auto">IA + Pesquisa Real</Badge>
+        <div className="space-y-4 rounded-lg border border-primary-line bg-primary-tint p-5">
+          <div className="flex flex-wrap items-center gap-2">
+            <Globe className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+            <h4 className="text-base font-semibold leading-6 text-foreground">Consulta Inteligente — Extração de Itens do Edital</h4>
+            <SeloPraefectusIA className="ml-auto" />
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Cole o objeto do edital ou faça upload do documento. A IA extrairá os itens e pesquisará preços reais na internet para montar seu catálogo de referência.
           </p>
 
           <Textarea
+            aria-label="Objeto do edital ou lista de itens"
             placeholder="Cole aqui o objeto da licitação ou lista de itens do edital...&#10;&#10;Ex: Aquisição de material de expediente, incluindo 500 resmas de papel A4 75g, 200 canetas esferográficas azuis..."
             value={consultaTexto}
             onChange={e => setConsultaTexto(e.target.value)}
-            className="min-h-[100px] text-sm"
+            className="min-h-[100px]"
           />
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <input ref={fileRef} type="file" accept=".pdf,.doc,.docx,.txt" onChange={e => setConsultaFile(e.target.files?.[0] || null)} className="hidden" />
             <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
-              <Upload className="w-3.5 h-3.5 mr-1" />
+              <Upload aria-hidden="true" />
               {consultaFile ? consultaFile.name : 'Upload Edital'}
             </Button>
             {consultaFile && (
@@ -379,9 +383,8 @@ Responda APENAS em JSON:
               <Button
                 onClick={handleConsultaInteligente}
                 disabled={isConsulting || (!consultaTexto.trim() && !consultaFile)}
-                className="bg-accent hover:bg-accent/90 text-accent-foreground"
               >
-                {isConsulting ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Pesquisando...</> : <><Search className="w-4 h-4 mr-1" /> Extrair e Cotar</>}
+                {isConsulting ? <><Loader2 className="animate-spin" aria-hidden="true" /> Pesquisando...</> : <><Search aria-hidden="true" /> Extrair e Cotar</>}
               </Button>
             </div>
           </div>
@@ -389,36 +392,36 @@ Responda APENAS em JSON:
           {/* Results */}
           {consultaResults.length > 0 && (
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold">{consultaResults.filter(r => r.found).length} de {consultaResults.length} itens cotados</span>
-                <Button size="sm" onClick={salvarResultadosNoCatalogo} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-                  <Plus className="w-3.5 h-3.5 mr-1" /> Salvar Todos no Catálogo
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-sm font-semibold text-foreground tabular-nums">{consultaResults.filter(r => r.found).length} de {consultaResults.length} itens cotados</span>
+                <Button size="sm" onClick={salvarResultadosNoCatalogo}>
+                  <Plus aria-hidden="true" /> Salvar Todos no Catálogo
                 </Button>
               </div>
-              <div className="overflow-x-auto rounded-lg border border-border/50">
+              <div className="overflow-hidden rounded-md border border-border bg-card">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead className="text-xs font-semibold h-8">Item</TableHead>
-                      <TableHead className="text-xs font-semibold h-8">Descrição</TableHead>
-                      <TableHead className="text-xs font-semibold h-8 text-center">Qtd</TableHead>
-                      <TableHead className="text-xs font-semibold h-8 text-right">Preço Mín.</TableHead>
-                      <TableHead className="text-xs font-semibold h-8 text-right">Preço Médio</TableHead>
-                      <TableHead className="text-xs font-semibold h-8 text-right">Preço Máx.</TableHead>
-                      <TableHead className="text-xs font-semibold h-8 text-center">Fontes</TableHead>
+                    <TableRow>
+                      <TableHead>Item</TableHead>
+                      <TableHead>Descrição</TableHead>
+                      <TableHead className="text-right">Qtd</TableHead>
+                      <TableHead className="text-right">Preço Mín.</TableHead>
+                      <TableHead className="text-right">Preço Médio</TableHead>
+                      <TableHead className="text-right">Preço Máx.</TableHead>
+                      <TableHead className="text-right">Fontes</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {consultaResults.map((r, i) => (
                       <TableRow key={i} className={r.found ? '' : 'opacity-50'}>
-                        <TableCell className="text-xs py-1.5">{r.item}</TableCell>
-                        <TableCell className="text-xs py-1.5 max-w-[250px] truncate">{r.descricao}</TableCell>
-                        <TableCell className="text-xs py-1.5 text-center">{r.quantidade}</TableCell>
-                        <TableCell className="text-xs py-1.5 text-right">{r.found ? formatCurrency(r.preco_min) : '—'}</TableCell>
-                        <TableCell className="text-xs py-1.5 text-right font-medium">{r.found ? formatCurrency(r.preco_medio) : '—'}</TableCell>
-                        <TableCell className="text-xs py-1.5 text-right">{r.found ? formatCurrency(r.preco_max) : '—'}</TableCell>
-                        <TableCell className="text-xs py-1.5 text-center">
-                          <Badge variant={r.found ? 'default' : 'outline'} className="text-xs">
+                        <TableCell className="tabular-nums">{r.item}</TableCell>
+                        <TableCell className="max-w-[250px]" truncate>{r.descricao}</TableCell>
+                        <TableCell className="text-right tabular-nums">{r.quantidade}</TableCell>
+                        <TableCell className="text-right tabular-nums" nowrap>{r.found ? formatCurrency(r.preco_min) : '—'}</TableCell>
+                        <TableCell className="text-right font-medium tabular-nums" nowrap>{r.found ? formatCurrency(r.preco_medio) : '—'}</TableCell>
+                        <TableCell className="text-right tabular-nums" nowrap>{r.found ? formatCurrency(r.preco_max) : '—'}</TableCell>
+                        <TableCell className="text-right">
+                          <Badge variant={r.found ? 'success' : 'muted'} className="tabular-nums">
                             {r.fontes}
                           </Badge>
                         </TableCell>
@@ -432,15 +435,15 @@ Responda APENAS em JSON:
         </div>
       )}
 
-      {/* Filters */}
+      {/* Filters — busca larga à esquerda, controles de 40px em fila. */}
       <div className="flex flex-wrap gap-2">
-        <div className="relative flex-1 min-w-0">
-          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Buscar no catálogo..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-8 h-9" />
+        <div className="relative min-w-[200px] flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+          <Input aria-label="Buscar no catálogo" placeholder="Buscar no catálogo..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-9" />
         </div>
         <Select value={filterTipo} onValueChange={setFilterTipo}>
-          <SelectTrigger className="w-[180px] h-9">
-            <Filter className="w-3.5 h-3.5 mr-1" />
+          <SelectTrigger aria-label="Tipo" className="w-full sm:w-[180px]">
+            <Filter className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
             <SelectValue placeholder="Tipo" />
           </SelectTrigger>
           <SelectContent>
@@ -451,14 +454,14 @@ Responda APENAS em JSON:
           </SelectContent>
         </Select>
         {licitacaoId ? (
-          <Badge variant="outline" className="h-9 px-3 text-xs gap-1.5 font-normal">
-            <FileText className="w-3.5 h-3.5" />
+          <Badge variant="outline" className="h-10 gap-1.5 px-3 font-normal">
+            <FileText className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
             Itens deste processo{licitacaoNumero ? `: ${licitacaoNumero}` : ''}
           </Badge>
         ) : (
         <Select value={filterLicitacao} onValueChange={setFilterLicitacao}>
-          <SelectTrigger className="w-[220px] h-9">
-            <FileText className="w-3.5 h-3.5 mr-1" />
+          <SelectTrigger aria-label="Licitação" className="w-full sm:w-[220px]">
+            <FileText className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
             <SelectValue placeholder="Licitação" />
           </SelectTrigger>
           <SelectContent>
@@ -473,85 +476,93 @@ Responda APENAS em JSON:
         )}
       </div>
 
-      {/* Selection actions */}
+      {/* Selection actions — superfície de seleção na tinta da ação. */}
       {selectedItems.size > 0 && (
-        <div className="flex items-center justify-between bg-muted border border-border rounded-lg px-4 py-2.5">
-          <span className="text-xs font-medium">
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-primary-line bg-primary-tint px-4 py-2.5">
+          <span className="text-sm font-medium text-foreground tabular-nums">
             {selectedItems.size} item(ns) selecionado(s) · Total: {formatCurrency(totalSelecionado)}
           </span>
-          <Button size="sm" onClick={enviarSelecionados} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-            <ShoppingCart className="w-3.5 h-3.5 mr-1" /> Enviar à Proposta Comercial
+          <Button size="sm" onClick={enviarSelecionados}>
+            <ShoppingCart aria-hidden="true" /> Enviar à Proposta Comercial
           </Button>
         </div>
       )}
 
       {/* Table */}
       {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        /* Esqueleto na forma da tabela (cabeçalho + linhas de 48px). */
+        <div className="space-y-2" role="status" aria-live="polite" aria-label="Carregando catálogo">
+          <Skeleton className="h-11 w-full" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
         </div>
       ) : filteredItems.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
-          <Package className="w-10 h-10 mx-auto mb-2 opacity-30" />
-          <p className="text-sm">Nenhum item no catálogo.</p>
-          <p className="text-xs mt-1">Use as calculadoras ou a Consulta Inteligente para adicionar itens.</p>
+        <div className="rounded-lg border border-dashed border-border">
+          <EstadoVazio
+            tamanho="compacto"
+            icone={<Package />}
+            titulo="Nenhum item no catálogo."
+            descricao="Use as calculadoras ou a Consulta Inteligente para adicionar itens."
+          />
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border/50">
+        <div className="overflow-hidden rounded-md border border-border bg-card">
           <Table>
             <TableHeader>
-              <TableRow className="bg-muted/50">
+              <TableRow>
                 <TableHead className="w-10">
-                  <input type="checkbox" checked={selectedItems.size === filteredItems.length && filteredItems.length > 0} onChange={selectAll} className="rounded border-border" />
+                  <input type="checkbox" aria-label="Selecionar todos os itens" checked={selectedItems.size === filteredItems.length && filteredItems.length > 0} onChange={selectAll} className="h-4 w-4 rounded-sm border-input accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
                 </TableHead>
-                <TableHead className="text-xs font-semibold h-8">Descrição</TableHead>
-                <TableHead className="text-xs font-semibold h-8 text-center">Qtd</TableHead>
-                <TableHead className="text-xs font-semibold h-8 text-center">Und</TableHead>
-                <TableHead className="text-xs font-semibold h-8">Marca</TableHead>
-                <TableHead className="text-xs font-semibold h-8 text-right">Custo Unit.</TableHead>
-                <TableHead className="text-xs font-semibold h-8 text-right">Preço Unit.</TableHead>
-                <TableHead className="text-xs font-semibold h-8 text-right">Total</TableHead>
-                <TableHead className="text-xs font-semibold h-8">Tipo</TableHead>
-                <TableHead className="text-xs font-semibold h-8">Licitação</TableHead>
-                <TableHead className="text-xs font-semibold h-8 w-10"></TableHead>
+                <TableHead>Descrição</TableHead>
+                <TableHead className="text-right">Qtd</TableHead>
+                <TableHead>Und</TableHead>
+                <TableHead>Marca</TableHead>
+                <TableHead className="text-right">Custo Unit.</TableHead>
+                <TableHead className="text-right">Preço Unit.</TableHead>
+                <TableHead className="text-right">Total</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead>Licitação</TableHead>
+                <TableHead className="w-10"><span className="sr-only">Ações</span></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredItems.map(item => (
-                <TableRow key={item.id} className={selectedItems.has(item.id) ? 'bg-accent/5' : ''}>
-                  <TableCell className="py-1.5">
-                    <input type="checkbox" checked={selectedItems.has(item.id)} onChange={() => toggleSelect(item.id)} className="rounded border-border" />
+                <TableRow key={item.id} data-state={selectedItems.has(item.id) ? 'selected' : undefined}>
+                  <TableCell>
+                    <input type="checkbox" aria-label={`Selecionar ${item.descricao}`} checked={selectedItems.has(item.id)} onChange={() => toggleSelect(item.id)} className="h-4 w-4 rounded-sm border-input accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
                   </TableCell>
-                  <TableCell className="text-xs py-1.5 max-w-[250px]">
+                  <TableCell className="max-w-[250px]">
                     <div className="flex items-center gap-2">
                       {(item as any).detalhes?.image_url && (
                         <img
                           src={(item as any).detalhes.image_url}
                           alt=""
-                          className="w-10 h-10 object-contain rounded border border-border/30 shrink-0"
+                          className="h-10 w-10 shrink-0 rounded-sm border border-border object-contain"
                           onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                         />
                       )}
-                      <span className="truncate">{item.descricao}</span>
+                      <span className="truncate" title={item.descricao}>{item.descricao}</span>
                     </div>
                   </TableCell>
-                  <TableCell className="text-xs py-1.5 text-center">{item.quantidade}</TableCell>
-                  <TableCell className="text-xs py-1.5 text-center">{item.unidade}</TableCell>
-                  <TableCell className="text-xs py-1.5">{item.marca || '—'}</TableCell>
-                  <TableCell className="text-xs py-1.5 text-right">{formatCurrency(item.custo_unitario)}</TableCell>
-                  <TableCell className="text-xs py-1.5 text-right font-medium">{formatCurrency(item.preco_unitario)}</TableCell>
-                  <TableCell className="text-xs py-1.5 text-right font-semibold text-foreground">{formatCurrency(item.preco_total)}</TableCell>
-                  <TableCell className="py-1.5">
-                    <Badge variant="outline" className="text-xs">
+                  <TableCell className="text-right tabular-nums">{item.quantidade}</TableCell>
+                  <TableCell>{item.unidade}</TableCell>
+                  <TableCell>{item.marca || '—'}</TableCell>
+                  <TableCell className="text-right tabular-nums" nowrap>{formatCurrency(item.custo_unitario)}</TableCell>
+                  <TableCell className="text-right font-medium tabular-nums" nowrap>{formatCurrency(item.preco_unitario)}</TableCell>
+                  <TableCell className="text-right font-semibold tabular-nums text-foreground" nowrap>{formatCurrency(item.preco_total)}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline">
                       {TIPO_LABELS[item.tipo_calculo] || item.tipo_calculo}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-xs py-1.5 max-w-[120px] truncate text-muted-foreground">
+                  <TableCell className="max-w-[120px] text-muted-foreground" truncate>
                     {item.licitacao_numero || '—'}
                   </TableCell>
-                  <TableCell className="py-1.5">
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(item.id)}>
-                      <Trash2 className="w-3 h-3" />
+                  <TableCell className="text-right">
+                    <Button variant="ghost-destructive" size="icon-sm" onClick={() => handleDelete(item.id)} aria-label={`Excluir ${item.descricao} do catálogo`}>
+                      <Trash2 aria-hidden="true" />
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -562,9 +573,9 @@ Responda APENAS em JSON:
       )}
 
       {filteredItems.length > 0 && (
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>{filteredItems.length} itens exibidos</span>
-          <span className="font-medium text-foreground">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
+          <span className="tabular-nums">{filteredItems.length} itens exibidos</span>
+          <span className="font-medium text-foreground tabular-nums">
             Total: {formatCurrency(filteredItems.reduce((s, i) => s + i.preco_total, 0))}
           </span>
         </div>

@@ -4,7 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import EstadoVazio from '@/components/shared/EstadoVazio';
+import SeloPraefectusIA from '@/components/shared/SeloPraefectusIA';
 import {
   FileText, BookOpen, Layout, Loader2, Download, Sparkles,
   Package, Image as ImageIcon, ClipboardList, RefreshCw, Palette,
@@ -733,25 +736,29 @@ Responda APENAS em JSON válido, sem markdown:
     const info = DOC_TYPES[type];
     const Icon = info.icon;
     return (
+      /* Cartão de escolha: raio 10px, borda de 1px; o escolhido acende a
+         tinta da ação com um anel fino (não `border-2` nem sombra pesada). */
       <button
+        type="button"
         onClick={onClick}
-        className={`relative flex flex-col items-center gap-3 p-5 rounded-xl border-2 transition-all duration-200 hover:shadow-lg ${
+        aria-pressed={selected}
+        className={`relative flex flex-col items-center gap-3 rounded-lg border p-5 transition-[border-color,box-shadow] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
           selected
-            ? 'border-accent bg-accent/10 shadow-md ring-2 ring-accent/30'
-            : 'border-border/50 bg-card hover:border-accent/40'
+            ? 'border-primary bg-primary-tint ring-1 ring-primary/30'
+            : 'border-border bg-card shadow-sm hover:border-primary/40 hover:shadow-md'
         }`}
       >
         {selected && (
-          <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-accent flex items-center justify-center">
-            <span className="text-accent-foreground text-xs font-bold">✓</span>
+          <div className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-sm bg-primary" aria-hidden="true">
+            <span className="text-xs font-semibold text-primary-foreground">✓</span>
           </div>
         )}
-        <div className={`w-14 h-14 rounded-xl flex items-center justify-center ${selected ? 'bg-accent/20' : 'bg-muted/50'}`}>
-          <Icon className={`w-7 h-7 ${selected ? 'text-accent' : 'text-muted-foreground'}`} />
+        <div className={`flex h-14 w-14 items-center justify-center rounded-md ${selected ? 'bg-card' : 'bg-muted'}`}>
+          <Icon className={`h-7 w-7 ${selected ? 'text-primary' : 'text-muted-foreground'}`} aria-hidden="true" />
         </div>
         <div className="text-center">
-          <p className="text-sm font-semibold">{info.label}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">{info.desc}</p>
+          <p className="text-sm font-semibold text-foreground">{info.label}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{info.desc}</p>
         </div>
       </button>
     );
@@ -759,34 +766,35 @@ Responda APENAS em JSON válido, sem markdown:
 
   return (
     <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) resetState(); }}>
-      <DialogContent className="max-w-5xl max-h-[90vh] p-0 overflow-hidden">
+      <DialogContent className="max-h-[90vh] max-w-5xl overflow-hidden p-0">
         <ScrollArea className="max-h-[90vh]">
-          <div className="p-6 space-y-5">
-            {/* Header */}
+          <div className="space-y-5 p-6">
+            {/* Header — gerador com IA: leva o selo "Praefectus IA". */}
             <DialogHeader>
-              <DialogTitle className="text-base font-semibold flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-accent" />
+              <DialogTitle className="flex flex-wrap items-center gap-2">
+                <Sparkles className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
                 Gerador de Documentos — Estilo Canva + ABNT
+                <SeloPraefectusIA />
               </DialogTitle>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 Crie fichas técnicas, folders e catálogos profissionais com dados reais da internet. Conforme ABNT NBR 14724.
               </p>
             </DialogHeader>
 
             {/* Step indicator */}
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {(['template', 'customize', 'preview'] as const).map((s, i) => (
                 <div key={s} className="flex items-center gap-2">
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
-                    step === s ? 'bg-accent text-accent-foreground' :
-                    (['template', 'customize', 'preview'].indexOf(step) > i) ? 'bg-accent/30 text-accent' : 'bg-muted text-muted-foreground'
-                  }`}>
+                  <div className={`flex h-7 w-7 items-center justify-center rounded-md text-xs font-semibold transition-colors ${
+                    step === s ? 'bg-primary text-primary-foreground' :
+                    (['template', 'customize', 'preview'].indexOf(step) > i) ? 'bg-primary-tint text-primary' : 'bg-muted text-muted-foreground'
+                  }`} aria-current={step === s ? 'step' : undefined}>
                     {i + 1}
                   </div>
-                  <span className={`text-xs font-medium ${step === s ? 'text-foreground' : 'text-muted-foreground'}`}>
+                  <span className={`text-sm font-medium ${step === s ? 'text-foreground' : 'text-muted-foreground'}`}>
                     {s === 'template' ? 'Modelo' : s === 'customize' ? 'Personalizar' : 'Gerar & Baixar'}
                   </span>
-                  {i < 2 && <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
+                  {i < 2 && <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />}
                 </div>
               ))}
             </div>
@@ -796,67 +804,70 @@ Responda APENAS em JSON válido, sem markdown:
               <div className="space-y-5">
                 {/* Document type */}
                 <div>
-                  <label className="text-xs font-semibold text-muted-foreground mb-3 block">ESCOLHA O TIPO DE DOCUMENTO</label>
-                  <div className="grid grid-cols-3 gap-3">
+                  <p className="mb-3 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">ESCOLHA O TIPO DE DOCUMENTO</p>
+                  <div className="grid gap-3 sm:grid-cols-3" role="group" aria-label="Tipo de documento">
                     {(['ficha', 'folder', 'catalogo'] as DocType[]).map(t => (
                       <TemplateCard key={t} type={t} selected={docType === t} onClick={() => setDocType(t)} />
                     ))}
                   </div>
                 </div>
 
-                {/* Color theme */}
+                {/* Color theme — as amostras são as cores do DOCUMENTO gerado
+                    (papel), por isso continuam vindo do tema, não de token. */}
                 <div>
-                  <label className="text-xs font-semibold text-muted-foreground mb-3 flex items-center gap-1.5">
-                    <Palette className="w-3.5 h-3.5" /> PALETA DE CORES
-                  </label>
-                  <div className="grid grid-cols-4 gap-2">
+                  <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <Palette className="h-3.5 w-3.5" aria-hidden="true" /> PALETA DE CORES
+                  </p>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="group" aria-label="Paleta de cores do documento">
                     {(Object.entries(COLOR_THEMES) as [ColorTheme, typeof COLOR_THEMES[ColorTheme]][]).map(([key, th]) => (
                       <button
                         key={key}
+                        type="button"
                         onClick={() => setColorTheme(key)}
-                        className={`flex items-center gap-2 p-3 rounded-lg border-2 transition-all ${
-                          colorTheme === key ? 'border-accent bg-accent/5' : 'border-border/40 hover:border-accent/30'
+                        aria-pressed={colorTheme === key}
+                        className={`flex items-center gap-2 rounded-md border p-3 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                          colorTheme === key ? 'border-primary bg-primary-tint' : 'border-border bg-card hover:border-primary/40'
                         }`}
                       >
-                        <div className="flex gap-0.5">
-                          <div className="w-4 h-4 rounded-full" style={{ background: th.primary }} />
-                          <div className="w-4 h-4 rounded-full" style={{ background: th.accent }} />
+                        <div className="flex gap-0.5" aria-hidden="true">
+                          <div className="h-4 w-4 rounded-full" style={{ background: th.primary }} />
+                          <div className="h-4 w-4 rounded-full" style={{ background: th.accent }} />
                         </div>
-                        <span className="text-xs font-medium">{th.label}</span>
+                        <span className="text-sm font-medium text-foreground">{th.label}</span>
                       </button>
                     ))}
                   </div>
                 </div>
 
                 {/* Items preview */}
-                <div className="bg-muted/30 rounded-lg p-4 space-y-2">
+                <div className="space-y-2 rounded-md border border-border bg-secondary p-4">
                   <div className="flex items-center gap-2">
-                    <Package className="w-4 h-4 text-primary" />
-                    <span className="text-xs font-semibold">{items.length} produto(s) selecionado(s)</span>
+                    <Package className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                    <span className="text-sm font-semibold text-foreground tabular-nums">{items.length} produto(s) selecionado(s)</span>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {items.slice(0, 8).map((item, i) => (
-                      <Badge key={item.id} variant="outline" className="text-xs max-w-[200px] truncate">
+                      <Badge key={item.id} variant="outline" className="max-w-[200px]" truncate>
                         {i + 1}. {item.descricao.substring(0, 35)}
                       </Badge>
                     ))}
-                    {items.length > 8 && <Badge variant="secondary" className="text-xs">+{items.length - 8} mais</Badge>}
+                    {items.length > 8 && <Badge variant="secondary" className="tabular-nums">+{items.length - 8} mais</Badge>}
                   </div>
                 </div>
 
                 {/* Admin sources indicator */}
                 {fontesFabricantes.length > 0 && (
-                  <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 text-xs space-y-1">
-                    <p className="font-semibold text-foreground flex items-center gap-1.5">
-                      <Factory className="w-3.5 h-3.5 text-primary" />
+                  <div className="space-y-1 rounded-md border border-primary-line bg-primary-tint p-3 text-sm">
+                    <p className="flex items-center gap-1.5 font-semibold text-foreground">
+                      <Factory className="h-4 w-4 text-primary" aria-hidden="true" />
                       {fontesFabricantes.length} fonte(s) de fabricantes configuradas
                     </p>
                     <div className="flex flex-wrap gap-1">
                       {fontesFabricantes.slice(0, 10).map(f => (
-                        <Badge key={f.id} variant="outline" className="text-xs">{f.nome}</Badge>
+                        <Badge key={f.id} variant="outline">{f.nome}</Badge>
                       ))}
                       {fontesFabricantes.length > 10 && (
-                        <Badge variant="secondary" className="text-xs">+{fontesFabricantes.length - 10}</Badge>
+                        <Badge variant="secondary" className="tabular-nums">+{fontesFabricantes.length - 10}</Badge>
                       )}
                     </div>
                     <p className="text-muted-foreground">A IA priorizará buscas nos sites oficiais destes fabricantes.</p>
@@ -865,47 +876,51 @@ Responda APENAS em JSON válido, sem markdown:
 
                 <div className="flex justify-end">
                   <Button onClick={() => setStep('customize')} disabled={items.length === 0}>
-                    Próximo <ChevronRight className="w-4 h-4 ml-1" />
+                    Próximo <ChevronRight aria-hidden="true" />
                   </Button>
                 </div>
               </div>
             )}
 
-            {/* ═══ STEP 2: Customize ═══ */}
+            {/* ═══ STEP 2: Customize — rótulo acima, campos de 40px, grade que colapsa. ═══ */}
             {step === 'customize' && (
               <div className="space-y-5">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold">Nome da Empresa (capa)</label>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="catdoc-empresa">Nome da Empresa (capa)</Label>
                     <Input
+                      id="catdoc-empresa"
                       placeholder="Sua Empresa LTDA"
                       value={companyName}
                       onChange={e => setCompanyName(e.target.value)}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold">Título do Documento</label>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="catdoc-titulo">Título do Documento</Label>
                     <Input
+                      id="catdoc-titulo"
                       placeholder={DOC_TYPES[docType].label}
                       value={docTitle}
                       onChange={e => setDocTitle(e.target.value)}
                     />
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold">Subtítulo (opcional)</label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="catdoc-subtitulo">Subtítulo (opcional)</Label>
                   <Input
+                    id="catdoc-subtitulo"
                     placeholder="Ex: Materiais de Informática — Pregão nº 001/2026"
                     value={docSubtitle}
                     onChange={e => setDocSubtitle(e.target.value)}
                   />
                 </div>
 
-                {/* Preview mockup */}
-                <div className="border border-border/50 rounded-xl p-4">
-                  <label className="text-xs font-semibold text-muted-foreground mb-3 flex items-center gap-1.5">
-                    <Eye className="w-3.5 h-3.5" /> PRÉ-VISUALIZAÇÃO DA CAPA
-                  </label>
+                {/* Preview mockup — a capa é o DOCUMENTO (papel): as cores dela
+                    ficam como estão; só a moldura da tela entra no padrão. */}
+                <div className="rounded-lg border border-border p-4">
+                  <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <Eye className="h-3.5 w-3.5" aria-hidden="true" /> PRÉ-VISUALIZAÇÃO DA CAPA
+                  </p>
                   <div className="w-full max-w-[280px] mx-auto aspect-[210/297] rounded-lg overflow-hidden shadow-lg border border-border/30">
                     <div className="h-[35%] flex flex-col items-center justify-center px-4" style={{ background: COLOR_THEMES[colorTheme].primary }}>
                       <p className="text-white text-sm font-bold text-center leading-tight">
@@ -931,7 +946,8 @@ Responda APENAS em JSON válido, sem markdown:
                   </div>
                 </div>
 
-                <div className="bg-accent/5 border border-accent/20 rounded-lg p-3 text-xs text-muted-foreground space-y-1">
+                {/* Bloco de IA: superfície tingida da ação. */}
+                <div className="space-y-1 rounded-md border border-primary-line bg-primary-tint p-3 text-sm text-muted-foreground">
                   <p className="font-semibold text-foreground">🔍 O que acontece ao gerar:</p>
                   <p>1. A IA pesquisa especificações técnicas reais na internet para cada produto</p>
                   <p>2. Extrai dados fiéis: dimensões, materiais, garantia, certificações</p>
@@ -939,19 +955,18 @@ Responda APENAS em JSON válido, sem markdown:
                   <p>4. Gera PDF conforme ABNT NBR 14724 (margens, paginação, sumário)</p>
                 </div>
 
-                <div className="flex justify-between">
+                <div className="flex flex-wrap justify-between gap-2">
                   <Button variant="outline" onClick={() => setStep('template')}>
-                    <ChevronLeft className="w-4 h-4 mr-1" /> Voltar
+                    <ChevronLeft aria-hidden="true" /> Voltar
                   </Button>
                   <Button
                     onClick={handleGenerate}
                     disabled={isGenerating}
-                    className="bg-accent hover:bg-accent/90 text-accent-foreground"
                   >
                     {isGenerating ? (
-                      <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Gerando...</>
+                      <><Loader2 className="animate-spin" aria-hidden="true" /> Gerando...</>
                     ) : (
-                      <><Sparkles className="w-4 h-4 mr-1" /> Gerar Documento</>
+                      <><Sparkles aria-hidden="true" /> Gerar Documento</>
                     )}
                   </Button>
                 </div>
@@ -963,14 +978,14 @@ Responda APENAS em JSON válido, sem markdown:
               <div className="space-y-4">
                 {/* Progress */}
                 {isGenerating && (
-                  <div className="space-y-2">
+                  <div className="space-y-2" role="status" aria-live="polite">
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-muted-foreground">{progressText}</span>
-                      <span className="font-semibold text-accent">{progressPercent}%</span>
+                      <span className="font-semibold tabular-nums text-primary">{progressPercent}%</span>
                     </div>
-                    <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                    <div className="h-2 w-full overflow-hidden rounded-sm bg-muted">
                       <div
-                        className="h-full bg-accent rounded-full transition-all duration-500"
+                        className="h-full rounded-sm bg-primary transition-[width] duration-500"
                         style={{ width: `${progressPercent}%` }}
                       />
                     </div>
@@ -980,41 +995,40 @@ Responda APENAS em JSON válido, sem markdown:
                 {/* Results */}
                 {specs.length > 0 && (
                   <>
-                    <div className="flex items-center justify-between">
-                      <Badge className="bg-accent/15 text-accent border-accent/30">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <Badge variant="success" className="tabular-nums">
                         {specs.length} produto(s) processado(s)
                       </Badge>
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2">
                         <Button variant="outline" size="sm" onClick={resetState}>
-                          <RefreshCw className="w-3.5 h-3.5 mr-1" /> Novo
+                          <RefreshCw aria-hidden="true" /> Novo
                         </Button>
                         <Button
                           size="sm"
                           onClick={generateABNTPDF}
                           disabled={isGenerating}
-                          className="bg-accent hover:bg-accent/90 text-accent-foreground"
                         >
-                          <Download className="w-3.5 h-3.5 mr-1" /> Baixar PDF (ABNT)
+                          <Download aria-hidden="true" /> Baixar PDF (ABNT)
                         </Button>
                       </div>
                     </div>
 
-                    {/* Product cards preview */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {/* Product cards preview — cartões compactos do DS. */}
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                       {specs.map((spec, i) => (
                         <div
                           key={i}
-                          className="border border-border/40 rounded-xl p-4 bg-card hover:shadow-md transition-shadow"
+                          className="rounded-lg border border-border bg-card p-4 shadow-sm"
                         >
                           {/* Image gallery */}
                           {spec.imagens.length > 0 && (
-                            <div className="flex gap-1.5 mb-3 overflow-x-auto pb-1">
+                            <div className="mb-3 flex gap-1.5 overflow-x-auto pb-1">
                               {spec.imagens.slice(0, 4).map((img, imgIdx) => (
-                                <div key={imgIdx} className="w-14 h-14 rounded-lg border border-border/30 overflow-hidden shrink-0 bg-muted/10">
+                                <div key={imgIdx} className="h-14 w-14 shrink-0 overflow-hidden rounded-md border border-border bg-secondary">
                                   <img
                                     src={img}
                                     alt={`${spec.nome} ${imgIdx + 1}`}
-                                    className="w-full h-full object-contain p-0.5"
+                                    className="h-full w-full object-contain p-0.5"
                                     onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                                   />
                                 </div>
@@ -1022,27 +1036,27 @@ Responda APENAS em JSON válido, sem markdown:
                             </div>
                           )}
                           {spec.imagens.length === 0 && (
-                            <div className="w-full h-14 rounded-lg border border-border/30 flex items-center justify-center bg-muted/20 mb-3">
-                              <Package className="w-5 h-5 text-muted-foreground/30" />
-                              <span className="text-xs text-muted-foreground ml-1.5">Sem imagens</span>
+                            <div className="mb-3 flex h-14 w-full items-center justify-center rounded-md border border-dashed border-border bg-secondary">
+                              <Package className="h-5 w-5 text-foreground-tertiary" aria-hidden="true" />
+                              <span className="ml-1.5 text-xs text-muted-foreground">Sem imagens</span>
                             </div>
                           )}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-semibold truncate">{spec.nome}</p>
-                            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                              {spec.marca && <Badge variant="outline" className="text-xs">{spec.marca}</Badge>}
-                              {spec.modelo && <Badge variant="outline" className="text-xs">{spec.modelo}</Badge>}
-                              <Badge variant="secondary" className="text-xs">{spec.categoria}</Badge>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-semibold text-foreground">{spec.nome}</p>
+                            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                              {spec.marca && <Badge variant="outline">{spec.marca}</Badge>}
+                              {spec.modelo && <Badge variant="outline">{spec.modelo}</Badge>}
+                              <Badge variant="secondary">{spec.categoria}</Badge>
                             </div>
-                            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{spec.descricao_detalhada}</p>
-                            <div className="flex items-center gap-3 mt-1.5">
+                            <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{spec.descricao_detalhada}</p>
+                            <div className="mt-1.5 flex flex-wrap items-center gap-3">
                               {spec.especificacoes.length > 0 && (
-                                <span className="text-xs text-accent font-medium">
+                                <span className="text-xs font-medium text-muted-foreground tabular-nums">
                                   {spec.especificacoes.length} especificações
                                 </span>
                               )}
                               {spec.imagens.length > 0 && (
-                                <span className="text-xs text-primary font-medium">
+                                <span className="text-xs font-medium text-muted-foreground tabular-nums">
                                   📷 {spec.imagens.length} imagens
                                 </span>
                               )}
@@ -1051,7 +1065,7 @@ Responda APENAS em JSON válido, sem markdown:
                                   href={spec.site_fabricante}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="text-xs text-accent underline hover:no-underline"
+                                  className="rounded-sm text-xs text-primary underline hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                 >
                                   🌐 Fabricante
                                 </a>
@@ -1065,10 +1079,7 @@ Responda APENAS em JSON válido, sem markdown:
                 )}
 
                 {!isGenerating && specs.length === 0 && (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <Package className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                    <p className="text-sm">Nenhuma especificação gerada.</p>
-                  </div>
+                  <EstadoVazio tamanho="compacto" icone={<Package />} titulo="Nenhuma especificação gerada." />
                 )}
               </div>
             )}

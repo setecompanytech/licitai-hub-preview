@@ -10,8 +10,9 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 import {
-  Globe, Search, ExternalLink, Filter,
+  Globe, Search, ExternalLink, Filter, CheckCircle2, Tag, Layers,
 } from 'lucide-react';
+import LinhaKpis from '@/components/shared/LinhaKpis';
 import { toast } from 'sonner';
 
 type Source = {
@@ -96,20 +97,15 @@ export default function FontesManager() {
 
   return (
     <div className="space-y-5">
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { label: 'Total de Fontes', value: stats.total, color: 'text-foreground' },
-          { label: 'Fontes Ativas', value: stats.ativos, color: 'text-success' },
-          { label: 'Categorias', value: stats.categorias, color: 'text-foreground' },
-          { label: 'Tipos', value: stats.tipos, color: 'text-foreground' },
-        ].map(s => (
-          <div key={s.label} className="rounded-lg border border-border bg-card p-4 text-center shadow-sm">
-            <p className={`text-[2rem] leading-10 font-bold tabular-nums ${s.color}`}>{s.value}</p>
-            <p className="text-xs text-muted-foreground">{s.label}</p>
-          </div>
-        ))}
-      </div>
+      {/* Stats — cartões KPI do DS (`LinhaKpis`), os mesmos números. */}
+      <LinhaKpis
+        itens={[
+          { rotulo: 'Total de Fontes', valor: String(stats.total), icone: Globe },
+          { rotulo: 'Fontes Ativas', valor: String(stats.ativos), icone: CheckCircle2, tom: 'ok' },
+          { rotulo: 'Categorias', valor: String(stats.categorias), icone: Tag },
+          { rotulo: 'Tipos', valor: String(stats.tipos), icone: Layers },
+        ]}
+      />
 
       {/* Filters */}
       <div className="flex flex-wrap items-end gap-3">
@@ -149,7 +145,7 @@ export default function FontesManager() {
             ))}
           </SelectContent>
         </Select>
-        <Badge variant="outline" className="h-11">
+        <Badge variant="outline" className="h-10 tabular-nums">
           {filtered.length} resultado{filtered.length !== 1 ? 's' : ''}
         </Badge>
       </div>
@@ -157,33 +153,33 @@ export default function FontesManager() {
       {/* Table */}
       {loading ? (
         <div className="space-y-2" role="status" aria-label="Carregando fontes">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-11 w-full" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border">
+        <div className="overflow-hidden rounded-md border border-border bg-card">
           <Table>
             <TableHeader>
-              <TableRow className="bg-muted">
-                <TableHead className="text-sm font-semibold">Fonte</TableHead>
-                <TableHead className="text-sm font-semibold">Tipo</TableHead>
-                <TableHead className="text-sm font-semibold">Categoria</TableHead>
-                <TableHead className="text-sm font-semibold">Método</TableHead>
-                <TableHead className="text-sm font-semibold text-center">Status</TableHead>
-                <TableHead className="text-sm font-semibold text-center">Ações</TableHead>
+              <TableRow>
+                <TableHead>Fonte</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead>Categoria</TableHead>
+                <TableHead>Método</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.map(s => (
-                <TableRow key={s.id} className="hover:bg-muted">
+                <TableRow key={s.id}>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <Globe className="w-4 h-4 text-muted-foreground flex-shrink-0" aria-hidden="true" />
-                      <div>
-                        <p className="text-sm font-medium">{s.nome}</p>
-                        <p className="text-xs text-muted-foreground truncate max-w-[200px]">{s.url_base}</p>
+                      <Globe className="h-4 w-4 flex-shrink-0 text-muted-foreground" aria-hidden="true" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground">{s.nome}</p>
+                        <p className="max-w-[200px] truncate text-xs text-muted-foreground">{s.url_base}</p>
                       </div>
                     </div>
                   </TableCell>
@@ -202,17 +198,17 @@ export default function FontesManager() {
                       {METODO_LABELS[s.metodo_ingestao] || s.metodo_ingestao}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-center">
+                  <TableCell>
                     <Badge variant={s.ativo ? 'success' : 'danger'}>{s.ativo ? 'Ativa' : 'Inativa'}</Badge>
                   </TableCell>
-                  <TableCell className="text-center">
+                  <TableCell className="text-right">
                     <Button
-                      size="sm"
+                      size="icon-sm"
                       variant="ghost"
                       aria-label={`Abrir ${s.nome} em nova aba`}
                       onClick={() => window.open(s.url_base, '_blank')}
                     >
-                      <ExternalLink className="w-4 h-4" aria-hidden="true" />
+                      <ExternalLink aria-hidden="true" />
                     </Button>
                   </TableCell>
                 </TableRow>

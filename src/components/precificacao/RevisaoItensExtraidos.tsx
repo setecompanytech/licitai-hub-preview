@@ -4,6 +4,11 @@ import { useState, useCallback, useRef } from 'react';
 import { normalizarUnidade } from '@/lib/unidades';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table';
+import SeloPraefectusIA from '@/components/shared/SeloPraefectusIA';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -224,20 +229,21 @@ export default function RevisaoItensExtraidos({
     v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   return (
-    <div className="bg-card border border-border rounded-xl overflow-hidden">
-      {/* Header */}
-      <div className="px-6 py-4 border-b border-border">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div>
-            <h2 className="text-foreground font-semibold flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-muted-foreground" />
+    <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+      {/* Header — recurso de IA: o selo "Praefectus IA" identifica a extração. */}
+      <div className="border-b border-border px-5 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="min-w-0">
+            <h2 className="flex flex-wrap items-center gap-2 text-base font-semibold leading-6 text-foreground">
+              <Sparkles className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
               Extração de Itens do Edital/TR
+              <SeloPraefectusIA />
             </h2>
-            <p className="text-muted-foreground text-xs mt-0.5">
+            <p className="mt-0.5 text-sm text-muted-foreground">
               PDF · DOCX · XLSX — extração via Vision AI com validação matemática
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {itens.length > 0 && (
               <>
                 <Button
@@ -245,29 +251,28 @@ export default function RevisaoItensExtraidos({
                   size="sm"
                   onClick={() => { setItens([]); setMeta(null); }}
                 >
-                  <RotateCcw className="w-4 h-4 mr-1" /> Limpar
+                  <RotateCcw aria-hidden="true" /> Limpar
                 </Button>
                 <Button
                   size="sm"
                   onClick={aprovarTodos}
                   disabled={salvando}
-                  className="bg-accent hover:bg-accent/90 text-accent-foreground"
                 >
                   {salvando ? (
-                    <><Loader2 className="w-4 h-4 animate-spin mr-1" /> Salvando...</>
+                    <><Loader2 className="animate-spin" aria-hidden="true" /> Salvando...</>
                   ) : (
-                    <><CheckCircle className="w-4 h-4 mr-1" /> Aprovar {itens.length} itens</>
+                    <><CheckCircle aria-hidden="true" /> Aprovar {itens.length} itens</>
                   )}
                 </Button>
               </>
             )}
             {onClose && (
-              <Button variant="ghost" size="sm" onClick={onClose}>✕</Button>
+              <Button variant="ghost" size="sm" onClick={onClose} aria-label="Fechar">✕</Button>
             )}
           </div>
         </div>
 
-        {/* Upload area */}
+        {/* Upload area — zona tracejada; arrastar acende a tinta da ação. */}
         {itens.length === 0 && (
           <div
             role="button"
@@ -303,26 +308,28 @@ export default function RevisaoItensExtraidos({
               if (f) processarArquivo(f);
             }}
             aria-disabled={fazendoUpload}
-            className={`mt-4 w-full border-2 border-dashed rounded-xl p-8 flex flex-col items-center gap-3 transition-colors cursor-pointer ${
+            className={`mt-4 flex w-full cursor-pointer flex-col items-center gap-3 rounded-lg border border-dashed p-8 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
               isDragging
-                ? 'border-accent bg-accent/10'
-                : 'border-border hover:border-accent/50 hover:bg-muted/30'
-            } ${fazendoUpload ? 'opacity-50 cursor-not-allowed' : ''}`}
+                ? 'border-primary bg-primary-tint'
+                : 'border-input bg-card hover:border-primary/40 hover:bg-primary-tint'
+            } ${fazendoUpload ? 'cursor-not-allowed opacity-50' : ''}`}
           >
             {fazendoUpload ? (
               <>
-                <Loader2 className="w-8 h-8 text-muted-foreground animate-spin" />
-                <span className="text-muted-foreground text-sm">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" aria-hidden="true" />
+                <span className="text-sm text-muted-foreground">
                   Processando documento com IA...
                 </span>
               </>
             ) : (
               <>
-                <Upload className="w-8 h-8 text-muted-foreground" />
-                <span className="text-foreground text-sm font-medium">
+                <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary" aria-hidden="true">
+                  <Upload className="h-6 w-6" />
+                </span>
+                <span className="text-base font-semibold text-foreground">
                   {isDragging ? 'Solte o arquivo aqui' : 'Clique ou arraste o Termo de Referência'}
                 </span>
-                <span className="text-muted-foreground text-xs">
+                <span className="text-xs text-muted-foreground">
                   PDF, DOCX ou XLSX — máx. 50MB
                 </span>
               </>
@@ -343,156 +350,161 @@ export default function RevisaoItensExtraidos({
 
       {/* Meta stats */}
       {meta && itens.length > 0 && (
-        <div className="px-6 py-3 bg-muted/30 border-b border-border flex flex-wrap items-center gap-4 text-xs">
+        <div className="flex flex-wrap items-center gap-4 border-b border-border bg-secondary px-5 py-3 text-sm">
           <span className="text-muted-foreground">
-            Fonte: <span className="text-foreground font-mono">{fonte}</span>
+            Fonte: <span className="font-medium text-foreground">{fonte}</span>
           </span>
           <span className="text-muted-foreground">
             Confiança:{' '}
-            <span className={
-              confiancaMedia >= 0.85 ? 'text-success' :
-              confiancaMedia >= 0.65 ? 'text-warning' :
-              'text-destructive'
-            }>
+            <span className={`font-semibold tabular-nums ${
+              confiancaMedia >= 0.85 ? 'text-success-ink' :
+              confiancaMedia >= 0.65 ? 'text-warning-ink' :
+              'text-destructive-ink'
+            }`}>
               {(confiancaMedia * 100).toFixed(0)}%
             </span>
           </span>
           {itensPendentes > 0 && (
-            <Badge variant="outline" className="text-warning border-warning/30">
-              <AlertTriangle className="w-3 h-3 mr-1" />
+            <Badge variant="warning">
+              <AlertTriangle className="h-3 w-3" aria-hidden="true" />
               {itensPendentes} {itensPendentes === 1 ? 'item requer' : 'itens requerem'} revisão
             </Badge>
           )}
           <span className="ml-auto text-muted-foreground">
-            Total: <span className="text-foreground font-mono font-semibold">{formatCurrency(valorTotal)}</span>
+            Total: <span className="font-semibold tabular-nums text-foreground">{formatCurrency(valorTotal)}</span>
           </span>
         </div>
       )}
 
-      {/* Items table */}
+      {/* Items table — tabela editável na anatomia v3: cabeçalho rebaixado,
+          campos de 40px em célula `px-2 py-1.5`, números à direita. */}
       {itens.length > 0 && (
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="text-muted-foreground border-b border-border bg-muted/20">
-                <th className="px-3 py-2 text-left w-10">Nº</th>
-                <th className="px-3 py-2 text-left">Descrição</th>
-                <th className="px-3 py-2 text-center w-14">Un</th>
-                <th className="px-3 py-2 text-right w-16">Qtd</th>
-                <th className="px-3 py-2 text-right w-24">Vlr Unit.</th>
-                <th className="px-3 py-2 text-right w-24">Vlr Total</th>
-                <th className="px-3 py-2 text-center w-14">Conf.</th>
-                <th className="px-3 py-2 text-center w-16">Status</th>
-                <th className="px-3 py-2 w-8"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {itens.map((item, idx) => (
-                <tr
-                  key={idx}
-                  className={`border-b border-border/50 hover:bg-muted/20 transition-colors ${
-                    item.erros.length > 0 ? 'bg-destructive/5' :
-                    item.warnings.length > 0 ? 'bg-warning/5' : ''
-                  }`}
-                >
-                  <td className="px-3 py-2 text-muted-foreground font-mono">
-                    {item.numero_lote ? `L${item.numero_lote}` : item.numero_item ?? '?'}
-                  </td>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-10">Nº</TableHead>
+              <TableHead className="min-w-[220px]">Descrição</TableHead>
+              <TableHead className="w-20">Un</TableHead>
+              <TableHead className="w-24 text-right">Qtd</TableHead>
+              <TableHead className="w-32 text-right">Vlr Unit.</TableHead>
+              <TableHead className="w-28 text-right">Vlr Total</TableHead>
+              <TableHead className="w-16 text-right">Conf.</TableHead>
+              <TableHead className="w-20">Status</TableHead>
+              <TableHead className="w-10"><span className="sr-only">Ações</span></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {itens.map((item, idx) => (
+              <TableRow
+                key={idx}
+                className={
+                  item.erros.length > 0 ? 'bg-destructive-tint/60' :
+                  item.warnings.length > 0 ? 'bg-warning-tint/60' : ''
+                }
+              >
+                <TableCell className="px-2 py-1.5 tabular-nums text-muted-foreground">
+                  {item.numero_lote ? `L${item.numero_lote}` : item.numero_item ?? '?'}
+                </TableCell>
 
-                  <td className="px-3 py-2">
-                    <input
-                      defaultValue={item.descricao}
-                      onBlur={e => editarItem(idx, 'descricao', e.target.value)}
-                      className="w-full bg-transparent text-foreground border-b border-transparent hover:border-border focus:border-accent outline-none px-0 py-0.5 text-xs"
-                    />
-                    {item.codigo_catmat && (
-                      <span className="text-muted-foreground font-mono text-xs">
-                        CATMAT: {item.codigo_catmat}
-                      </span>
-                    )}
-                    {item.erros.map((e, i) => (
-                      <div key={i} className="text-destructive mt-0.5 flex items-center gap-1">
-                        <XCircle className="w-3 h-3 shrink-0" /> {e}
-                      </div>
-                    ))}
-                    {item.warnings.map((w, i) => (
-                      <div key={i} className="text-warning mt-0.5 flex items-center gap-1">
-                        <AlertTriangle className="w-3 h-3 shrink-0" /> {w}
-                      </div>
-                    ))}
-                  </td>
-
-                  <td className="px-3 py-2 text-center">
-                    <input
-                      defaultValue={item.unidade ?? ''}
-                      onBlur={e => editarItem(idx, 'unidade', e.target.value)}
-                      className="w-full text-center bg-transparent text-foreground border-b border-transparent hover:border-border focus:border-accent outline-none text-xs"
-                    />
-                  </td>
-
-                  <td className="px-3 py-2 text-right">
-                    <input
-                      type="number"
-                      defaultValue={item.quantidade ?? ''}
-                      onBlur={e => editarItem(idx, 'quantidade', parseFloat(e.target.value))}
-                      className="w-full text-right bg-transparent text-foreground font-mono border-b border-transparent hover:border-border focus:border-accent outline-none text-xs"
-                    />
-                  </td>
-
-                  <td className="px-3 py-2 text-right">
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      defaultValue={item.valor_unitario != null ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor_unitario) : ''}
-                      onBlur={e => {
-                        const digits = e.target.value.replace(/\D/g, '');
-                        const v = digits ? parseInt(digits, 10) / 100 : 0;
-                        editarItem(idx, 'valor_unitario', v);
-                        e.target.value = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
-                      }}
-                      className="w-full text-right bg-transparent text-foreground font-mono border-b border-transparent hover:border-border focus:border-accent outline-none text-xs"
-                    />
-                  </td>
-
-                  <td className="px-3 py-2 text-right font-mono text-foreground font-semibold">
-                    {item.valor_total ? formatCurrency(item.valor_total) : '—'}
-                  </td>
-
-                  <td className="px-3 py-2 text-center">
-                    <span className={`font-mono text-xs font-semibold ${
-                      item.confidence_score >= 0.85 ? 'text-success' :
-                      item.confidence_score >= 0.65 ? 'text-warning' :
-                      'text-destructive'
-                    }`}>
-                      {(item.confidence_score * 100).toFixed(0)}%
+                <TableCell className="px-2 py-1.5">
+                  <Input
+                    aria-label="Descrição do item"
+                    defaultValue={item.descricao}
+                    onBlur={e => editarItem(idx, 'descricao', e.target.value)}
+                    className="min-w-[220px]"
+                  />
+                  {item.codigo_catmat && (
+                    <span className="mt-1 block text-xs text-muted-foreground tabular-nums">
+                      CATMAT: {item.codigo_catmat}
                     </span>
-                  </td>
+                  )}
+                  {item.erros.map((e, i) => (
+                    <div key={i} className="mt-0.5 flex items-center gap-1 text-xs text-destructive-ink">
+                      <XCircle className="h-3 w-3 shrink-0" aria-hidden="true" /> {e}
+                    </div>
+                  ))}
+                  {item.warnings.map((w, i) => (
+                    <div key={i} className="mt-0.5 flex items-center gap-1 text-xs text-warning-ink">
+                      <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden="true" /> {w}
+                    </div>
+                  ))}
+                </TableCell>
 
-                  <td className="px-3 py-2 text-center">
-                    {item._editado ? (
-                      <Badge variant="outline" className="text-info text-xs">editado</Badge>
-                    ) : item.erros.length > 0 ? (
-                      <Badge variant="outline" className="text-destructive text-xs">erro</Badge>
-                    ) : item.requer_revisao ? (
-                      <Badge variant="outline" className="text-warning text-xs">revisar</Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-success text-xs">ok</Badge>
-                    )}
-                  </td>
+                <TableCell className="px-2 py-1.5">
+                  <Input
+                    aria-label="Unidade"
+                    defaultValue={item.unidade ?? ''}
+                    onBlur={e => editarItem(idx, 'unidade', e.target.value)}
+                    className="w-20"
+                  />
+                </TableCell>
 
-                  <td className="px-1 py-2">
-                    <button
-                      onClick={() => removerItem(idx)}
-                      className="text-muted-foreground hover:text-destructive transition-colors p-1"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                <TableCell className="px-2 py-1.5">
+                  <Input
+                    aria-label="Quantidade"
+                    type="number"
+                    defaultValue={item.quantidade ?? ''}
+                    onBlur={e => editarItem(idx, 'quantidade', parseFloat(e.target.value))}
+                    className="ml-auto w-24 text-right tabular-nums"
+                  />
+                </TableCell>
+
+                <TableCell className="px-2 py-1.5">
+                  <Input
+                    aria-label="Valor unitário"
+                    type="text"
+                    inputMode="decimal"
+                    defaultValue={item.valor_unitario != null ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor_unitario) : ''}
+                    onBlur={e => {
+                      const digits = e.target.value.replace(/\D/g, '');
+                      const v = digits ? parseInt(digits, 10) / 100 : 0;
+                      editarItem(idx, 'valor_unitario', v);
+                      e.target.value = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+                    }}
+                    className="ml-auto w-32 text-right tabular-nums"
+                  />
+                </TableCell>
+
+                <TableCell className="px-2 py-1.5 text-right font-semibold tabular-nums text-foreground" nowrap>
+                  {item.valor_total ? formatCurrency(item.valor_total) : '—'}
+                </TableCell>
+
+                <TableCell className="px-2 py-1.5 text-right">
+                  <span className={`text-sm font-semibold tabular-nums ${
+                    item.confidence_score >= 0.85 ? 'text-success-ink' :
+                    item.confidence_score >= 0.65 ? 'text-warning-ink' :
+                    'text-destructive-ink'
+                  }`}>
+                    {(item.confidence_score * 100).toFixed(0)}%
+                  </span>
+                </TableCell>
+
+                <TableCell className="px-2 py-1.5">
+                  {item._editado ? (
+                    <Badge variant="info">editado</Badge>
+                  ) : item.erros.length > 0 ? (
+                    <Badge variant="danger">erro</Badge>
+                  ) : item.requer_revisao ? (
+                    <Badge variant="warning">revisar</Badge>
+                  ) : (
+                    <Badge variant="success">ok</Badge>
+                  )}
+                </TableCell>
+
+                <TableCell className="px-2 py-1.5 text-right">
+                  <Button
+                    variant="ghost-destructive"
+                    size="icon-sm"
+                    onClick={() => removerItem(idx)}
+                    aria-label={`Remover item ${item.numero_item ?? idx + 1}`}
+                  >
+                    <Trash2 aria-hidden="true" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       )}
     </div>
   );

@@ -3,6 +3,7 @@ import { FileSearch, RefreshCw, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import EditalItensTable from '@/components/shared/EditalItensTable';
 import ReextrairEditalButton from '@/components/shared/ReextrairEditalButton';
 import RevisaoItensExtraidos from '@/components/precificacao/RevisaoItensExtraidos';
@@ -40,23 +41,22 @@ export default function EditalItensViewer({ licitacaoId }: Props) {
 
   if (!licitacaoId) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center">
-        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
-          <Package className="w-6 h-6" aria-hidden="true" />
-        </span>
-        <p className="mt-4 text-lg font-semibold">Nenhum processo selecionado</p>
-        <p className="mt-1 text-sm text-muted-foreground">Abra esta página a partir de um processo ativo.</p>
-      </div>
+      <EstadoVazio
+        icone={<Package />}
+        titulo="Nenhum processo selecionado"
+        descricao="Abra esta página a partir de um processo ativo."
+      />
     );
   }
 
   if (loading) {
     return (
+      /* Esqueleto na forma da tabela: cabeçalho de 44px e linhas de 48px. */
       <div className="space-y-2 py-4" role="status" aria-label="Carregando itens do edital">
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-11 w-full" />
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-12 w-full" />
       </div>
     );
   }
@@ -64,20 +64,20 @@ export default function EditalItensViewer({ licitacaoId }: Props) {
   if (carregou && itens.length === 0) {
     return (
       <div className="space-y-6">
-        <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-border bg-muted py-10 text-center">
-          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
-            <FileSearch className="w-6 h-6" aria-hidden="true" />
-          </span>
-          <h3 className="mt-4 text-lg font-semibold text-foreground">Nenhum item extraído ainda</h3>
-          <p className="mt-1 mb-4 max-w-sm text-sm text-muted-foreground">
-            Use a leitura automática para extrair os itens diretamente do edital, ou faça upload manual do arquivo.
-          </p>
-          <ReextrairEditalButton
-            licitacaoId={licitacaoId}
-            label="Extrair itens automaticamente"
-            size="default"
-            variant="default"
-            onCompleted={carregar}
+        <div className="rounded-lg border border-dashed border-border bg-secondary">
+          <EstadoVazio
+            icone={<FileSearch />}
+            titulo="Nenhum item extraído ainda"
+            descricao="Use a leitura automática para extrair os itens diretamente do edital, ou faça upload manual do arquivo."
+            acao={
+              <ReextrairEditalButton
+                licitacaoId={licitacaoId}
+                label="Extrair itens automaticamente"
+                size="default"
+                variant="default"
+                onCompleted={carregar}
+              />
+            }
           />
         </div>
 
@@ -98,13 +98,13 @@ export default function EditalItensViewer({ licitacaoId }: Props) {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <h3 className="text-lg font-semibold">Itens do Edital</h3>
-          <Badge variant="info">{itens.length} {itens.length === 1 ? 'item' : 'itens'}</Badge>
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className="text-base font-semibold leading-6 text-foreground">Itens do Edital</h3>
+          <Badge variant="info" className="tabular-nums">{itens.length} {itens.length === 1 ? 'item' : 'itens'}</Badge>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button size="sm" variant="ghost" onClick={carregar} disabled={loading}>
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
+            <RefreshCw className={loading ? 'animate-spin' : ''} aria-hidden="true" />
             Atualizar
           </Button>
           <ReextrairEditalButton

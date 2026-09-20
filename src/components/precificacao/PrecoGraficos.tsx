@@ -3,6 +3,8 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { TrendingDown, ShieldCheck, ShieldAlert, ShieldQuestion, Info } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import type { EstatisticasPlanilha } from './PlanilhaCustosEdital';
 
 /* REBRAND — os dois gráficos que o protótipo pede na Precificação
@@ -62,10 +64,10 @@ export default function PrecoGraficos({ stats }: Props) {
     return {
       total,
       linhas: [
-        { chave: 'alta', rotulo: 'Três ou mais fontes', n: c.tresOuMais, icone: ShieldCheck, barra: 'bg-success', texto: 'text-success' },
-        { chave: 'media', rotulo: 'Duas fontes', n: c.duas, icone: ShieldCheck, barra: 'bg-success/55', texto: 'text-muted-foreground' },
-        { chave: 'baixa', rotulo: 'Uma fonte só', n: c.uma, icone: ShieldAlert, barra: 'bg-warning', texto: 'text-warning' },
-        { chave: 'sem', rotulo: 'Sem cotação', n: c.semCotacao, icone: ShieldQuestion, barra: 'bg-muted-foreground/35', texto: 'text-muted-foreground' },
+        { chave: 'alta', rotulo: 'Três ou mais fontes', n: c.tresOuMais, icone: ShieldCheck, barra: 'bg-success', texto: 'text-success-ink' },
+        { chave: 'media', rotulo: 'Duas fontes', n: c.duas, icone: ShieldCheck, barra: 'bg-success-line', texto: 'text-muted-foreground' },
+        { chave: 'baixa', rotulo: 'Uma fonte só', n: c.uma, icone: ShieldAlert, barra: 'bg-warning', texto: 'text-warning-ink' },
+        { chave: 'sem', rotulo: 'Sem cotação', n: c.semCotacao, icone: ShieldQuestion, barra: 'bg-foreground-tertiary', texto: 'text-muted-foreground' },
       ],
     };
   }, [stats.confianca]);
@@ -78,27 +80,24 @@ export default function PrecoGraficos({ stats }: Props) {
           Uma série só, então sem legenda: o título já a nomeia. Barra
           horizontal porque descrição de item de edital é texto longo — em
           barra vertical o rótulo vira diagonal ilegível. */}
-      <div className="lg:col-span-3 rounded-lg border border-border bg-card p-6 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-          <h3 className="text-lg font-semibold flex items-center gap-2">
-            <TrendingDown className="w-5 h-5 text-success" aria-hidden="true" />
+      <div className="rounded-lg border border-border bg-card p-5 shadow-sm lg:col-span-3">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h3 className="flex items-center gap-2 text-base font-semibold leading-6 text-foreground">
+            <TrendingDown className="h-5 w-5 text-success-ink" aria-hidden="true" />
             Economia por item
           </h3>
-          <span className="rounded-md border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+          <Badge variant="muted">
             Referência do edital × cotado
-          </span>
+          </Badge>
         </div>
 
         {semEconomia ? (
-          <div className="flex flex-col items-center justify-center gap-2 py-14 text-center">
-            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
-              <Info className="w-6 h-6" aria-hidden="true" />
-            </span>
-            <p className="mt-2 text-base font-semibold">Nenhum item cotado abaixo da referência ainda</p>
-            <p className="text-sm text-muted-foreground max-w-xs">
-              O gráfico aparece quando um item tiver valor de referência e valor cotado, e o cotado for menor.
-            </p>
-          </div>
+          <EstadoVazio
+            tamanho="compacto"
+            icone={<Info />}
+            titulo="Nenhum item cotado abaixo da referência ainda"
+            descricao="O gráfico aparece quando um item tiver valor de referência e valor cotado, e o cotado for menor."
+          />
         ) : (
           <>
             <ResponsiveContainer width="100%" height={Math.max(180, dadosEconomia.length * 34)}>
@@ -106,7 +105,7 @@ export default function PrecoGraficos({ stats }: Props) {
                 <CartesianGrid horizontal={false} stroke="hsl(var(--border))" strokeOpacity={0.6} />
                 <XAxis
                   type="number"
-                  tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                  tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
                   tickFormatter={(v: number) => formatBRL(v)}
                   axisLine={false}
                   tickLine={false}
@@ -115,7 +114,7 @@ export default function PrecoGraficos({ stats }: Props) {
                   type="category"
                   dataKey="nome"
                   width={170}
-                  tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                  tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
                   axisLine={false}
                   tickLine={false}
                 />
@@ -125,11 +124,11 @@ export default function PrecoGraficos({ stats }: Props) {
                   formatter={(v: number) => [formatBRL(v), 'Economia']}
                   labelFormatter={(_, p) => p?.[0]?.payload?.completo ?? ''}
                 />
-                <Bar dataKey="economia" radius={[0, 4, 4, 0]} fill="hsl(var(--success))" />
+                <Bar dataKey="economia" radius={[0, 4, 4, 0]} fill="hsl(var(--chart-1))" />
               </BarChart>
             </ResponsiveContainer>
             {stats.economiaPorItem.length === 10 && (
-              <p className="text-xs text-muted-foreground mt-2">
+              <p className="mt-2 text-xs text-muted-foreground">
                 Dez maiores economias da planilha.
               </p>
             )}
@@ -140,17 +139,17 @@ export default function PrecoGraficos({ stats }: Props) {
       {/* ── Confiança das cotações ────────────────────────────────────────
           Quatro linhas nomeadas. A contagem e a proporção estão escritas,
           então quem não distingue as cores lê o mesmo que todo mundo. */}
-      <div className="lg:col-span-2 rounded-lg border border-border bg-card p-6 shadow-sm">
-        <h3 className="text-lg font-semibold flex items-center gap-2 mb-1">
-          <ShieldCheck className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+      <div className="rounded-lg border border-border bg-card p-5 shadow-sm lg:col-span-2">
+        <h3 className="mb-1 flex items-center gap-2 text-base font-semibold leading-6 text-foreground">
+          <ShieldCheck className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
           Confiança das cotações
         </h3>
-        <p className="text-sm text-muted-foreground mb-4">
+        <p className="mb-4 text-sm text-muted-foreground">
           Quantas fontes independentes sustentam o preço de cada item.
         </p>
 
         {niveis.total === 0 ? (
-          <p className="text-sm text-muted-foreground py-8 text-center">Planilha vazia.</p>
+          <EstadoVazio tamanho="compacto" titulo="Planilha vazia." />
         ) : (
           <ul className="space-y-3.5 list-none m-0 p-0">
             {niveis.linhas.map((l) => {
@@ -158,16 +157,16 @@ export default function PrecoGraficos({ stats }: Props) {
               const Icone = l.icone;
               return (
                 <li key={l.chave}>
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <Icone className={`w-4 h-4 shrink-0 ${l.texto}`} aria-hidden="true" />
+                  <div className="mb-1.5 flex items-center gap-2">
+                    <Icone className={`h-4 w-4 shrink-0 ${l.texto}`} aria-hidden="true" />
                     <span className="text-sm text-foreground">{l.rotulo}</span>
                     <span className="ml-auto text-sm tabular-nums text-muted-foreground">
                       <span className="font-semibold text-foreground">{l.n}</span> · {pct}%
                     </span>
                   </div>
-                  <div className="h-2 rounded-full bg-muted overflow-hidden">
+                  <div className="h-2 overflow-hidden rounded-sm bg-muted">
                     <div
-                      className={`h-full rounded-full ${l.barra} transition-[width] duration-500 motion-reduce:transition-none`}
+                      className={`h-full rounded-sm ${l.barra} transition-[width] duration-500 motion-reduce:transition-none`}
                       style={{ width: `${pct}%` }}
                     />
                   </div>
@@ -177,7 +176,7 @@ export default function PrecoGraficos({ stats }: Props) {
           </ul>
         )}
 
-        <p className="text-xs text-muted-foreground mt-4 pt-3 border-t border-border">
+        <p className="mt-4 border-t border-border pt-3 text-xs text-muted-foreground">
           A Lei 14.133/2021 (art. 23) trata a pesquisa de preços como conjunto de
           fontes. Item com uma fonte só sustenta menos a estimativa.
         </p>

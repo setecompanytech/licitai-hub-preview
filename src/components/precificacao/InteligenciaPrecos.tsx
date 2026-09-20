@@ -19,6 +19,9 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, LineChart, Line, Cell, PieChart, Pie
 } from 'recharts';
+import EstadoVazio from '@/components/shared/EstadoVazio';
+import LinhaKpis from '@/components/shared/LinhaKpis';
+import SeloPraefectusIA from '@/components/shared/SeloPraefectusIA';
 
 const formatCurrency = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -337,7 +340,9 @@ Responda APENAS em JSON válido:
     if (!kpis) return [];
     return [
       { name: 'Aumentar Margem', value: kpis.aumentar, fill: 'hsl(var(--success))' },
-      { name: 'Manter', value: kpis.manter, fill: 'hsl(var(--accent))' },
+      /* `--accent` é o mesmo verde do sucesso: "Manter" e "Aumentar" saíam da
+         mesma cor na pizza. Azul informativo para a fatia neutra. */
+      { name: 'Manter', value: kpis.manter, fill: 'hsl(var(--info))' },
       { name: 'Reduzir Preço', value: kpis.reduzir, fill: 'hsl(var(--destructive))' },
     ].filter(d => d.value > 0);
   }, [kpis]);
@@ -351,72 +356,74 @@ Responda APENAS em JSON válido:
 
   return (
     <div className="space-y-5">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-primary/5 via-accent/5 to-success/5 border border-primary/15 rounded-xl p-4 sm:p-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      {/* Header — cartão neutro (sem gradiente); recurso de IA leva o selo. */}
+      <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
+        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
           <div className="min-w-0">
-            <h3 className="text-xs sm:text-sm font-semibold flex items-center gap-2 text-foreground flex-wrap">
-              <Brain className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+            <h3 className="flex flex-wrap items-center gap-2 text-base font-semibold leading-6 text-foreground">
+              <Brain className="h-5 w-5 flex-shrink-0 text-muted-foreground" aria-hidden="true" />
               Inteligência de Preços com IA
+              <SeloPraefectusIA />
             </h3>
-            <p className="text-xs sm:text-xs text-muted-foreground mt-1">
+            <p className="mt-1 text-sm text-muted-foreground">
               Monitora preços da concorrência e identifica oportunidades para aumentar margens sem perder competitividade
             </p>
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
+          <div className="flex flex-shrink-0 flex-wrap items-center gap-2">
             {lastUpdate && (
-              <span className="text-xs text-muted-foreground whitespace-nowrap">Atualizado: {lastUpdate}</span>
+              <span className="whitespace-nowrap text-xs text-muted-foreground">Atualizado: {lastUpdate}</span>
             )}
             <Button
               onClick={handleAnalyze}
               disabled={loading || (mode === 'manual' && !manualTerms.trim())}
-              className="bg-primary hover:bg-primary/90"
-              size="sm"
             >
               {loading ? (
-                <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Analisando...</>
+                <><Loader2 className="animate-spin" aria-hidden="true" /> Analisando...</>
               ) : (
-                <><Zap className="w-4 h-4 mr-1" /> Analisar Mercado</>
+                <><Zap aria-hidden="true" /> Analisar Mercado</>
               )}
             </Button>
           </div>
         </div>
 
-        {/* Mode selector + manual input */}
+        {/* Mode selector + manual input — controle segmentado sóbrio. */}
         <div className="mt-3 flex flex-col gap-3">
           <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-1 bg-muted/50 rounded-lg p-0.5">
-              <button
+            <div className="inline-flex flex-wrap gap-1 rounded-md bg-muted p-1" role="group" aria-label="Origem dos itens">
+              <Button
+                type="button"
+                size="sm"
+                variant={mode === 'catalog' ? 'outline' : 'ghost'}
+                aria-pressed={mode === 'catalog'}
                 onClick={() => setMode('catalog')}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                  mode === 'catalog' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
-                }`}
               >
                 Catálogo ({catalogItems.length})
-              </button>
-              <button
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={mode === 'manual' ? 'outline' : 'ghost'}
+                aria-pressed={mode === 'manual'}
                 onClick={() => setMode('manual')}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                  mode === 'manual' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
-                }`}
               >
                 Busca Manual
-              </button>
+              </Button>
             </div>
-            <div className="flex items-center gap-3 sm:gap-4 text-xs sm:text-xs text-muted-foreground flex-wrap">
-              <span className="flex items-center gap-1 whitespace-nowrap"><ShoppingCart className="w-3 h-3" /> Mercado Livre (API)</span>
-              <span className="flex items-center gap-1 whitespace-nowrap"><ShoppingCart className="w-3 h-3" /> Marketplaces</span>
-              <span className="flex items-center gap-1 whitespace-nowrap"><Building2 className="w-3 h-3" /> Gov.br (PNCP)</span>
+            <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground sm:gap-4">
+              <span className="flex items-center gap-1 whitespace-nowrap"><ShoppingCart className="h-3 w-3" aria-hidden="true" /> Mercado Livre (API)</span>
+              <span className="flex items-center gap-1 whitespace-nowrap"><ShoppingCart className="h-3 w-3" aria-hidden="true" /> Marketplaces</span>
+              <span className="flex items-center gap-1 whitespace-nowrap"><Building2 className="h-3 w-3" aria-hidden="true" /> Gov.br (PNCP)</span>
             </div>
           </div>
 
           {mode === 'manual' && (
             <div className="flex gap-2">
               <Input
+                aria-label="Produtos a pesquisar"
                 placeholder="Digite os produtos separados por vírgula. Ex: papel A4 500 folhas, toner HP 83A, notebook Dell"
                 value={manualTerms}
                 onChange={(e) => setManualTerms(e.target.value)}
-                className="flex-1 h-9 text-xs"
+                className="flex-1"
                 onKeyDown={(e) => e.key === 'Enter' && !loading && handleAnalyze()}
               />
             </div>
@@ -424,56 +431,44 @@ Responda APENAS em JSON válido:
         </div>
       </div>
 
-      {/* KPIs */}
+      {/* KPIs — cartões do DS (`LinhaKpis`), os mesmos seis números. */}
       {kpis && (
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-          {[
-            { label: 'Itens Analisados', value: kpis.total, icon: BarChart3, color: 'hsl(var(--accent))' },
-            { label: 'Aumentar Margem', value: kpis.aumentar, icon: TrendingUp, color: 'hsl(var(--success))' },
-            { label: 'Manter Preço', value: kpis.manter, icon: Shield, color: 'hsl(var(--info))' },
-            { label: 'Reduzir Preço', value: kpis.reduzir, icon: TrendingDown, color: 'hsl(var(--destructive))' },
-            { label: 'Ganhos Potenciais', value: formatCurrency(kpis.ganhosPotenciais), icon: DollarSign, color: 'hsl(var(--success))' },
-            { label: 'Margem Média', value: `${kpis.margemMedia}%`, icon: Target, color: 'hsl(var(--accent))' },
-          ].map((card) => {
-            const Icon = card.icon;
-            return (
-              <div key={card.label} className="stat-card">
-                <div className="flex items-start justify-between gap-1">
-                  <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground font-medium truncate">{card.label}</p>
-                    <p className="text-lg font-bold mt-0.5">{card.value}</p>
-                  </div>
-                  <div className="p-1.5 rounded-lg flex-shrink-0" style={{ background: `${card.color}15` }}>
-                    <Icon className="w-4 h-4" style={{ color: card.color }} />
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <LinhaKpis
+          itens={[
+            { rotulo: 'Itens Analisados', valor: String(kpis.total), icone: BarChart3 },
+            { rotulo: 'Aumentar Margem', valor: String(kpis.aumentar), icone: TrendingUp, tom: 'ok' },
+            { rotulo: 'Manter Preço', valor: String(kpis.manter), icone: Shield, tom: 'info' },
+            { rotulo: 'Reduzir Preço', valor: String(kpis.reduzir), icone: TrendingDown, tom: 'critico' },
+            { rotulo: 'Ganhos Potenciais', valor: formatCurrency(kpis.ganhosPotenciais), icone: DollarSign, tom: 'ok' },
+            { rotulo: 'Margem Média', valor: `${kpis.margemMedia}%`, icone: Target },
+          ]}
+        />
       )}
 
-      {/* Charts */}
+      {/* Charts — séries nas cores de gráfico do DS; legendas 12px. */}
       {comparisons.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <Card className="p-4 col-span-2">
-            <h4 className="text-sm font-semibold mb-3">Comparativo: Meu Preço vs. Mercado</h4>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <Card className="p-5 lg:col-span-2">
+            <h4 className="mb-3 text-base font-semibold leading-6 text-foreground">Comparativo: Meu Preço vs. Mercado</h4>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                <XAxis dataKey="name" tick={{ fontSize: 9 }} />
-                <YAxis tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 10 }} />
-                <Tooltip formatter={(v: number) => formatCurrency(v)} />
-                <Legend />
-                <Bar dataKey="Meu Preço" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Média Mercado" fill="hsl(var(--info))" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Gov.br" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
+                <YAxis tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
+                <Tooltip
+                  formatter={(v: number) => formatCurrency(v)}
+                  contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: 12 }}
+                />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
+                <Bar dataKey="Meu Preço" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Média Mercado" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Gov.br" fill="hsl(var(--chart-3))" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </Card>
 
-          <Card className="p-4">
-            <h4 className="text-sm font-semibold mb-3">Distribuição de Oportunidades</h4>
+          <Card className="p-5">
+            <h4 className="mb-3 text-base font-semibold leading-6 text-foreground">Distribuição de Oportunidades</h4>
             <ResponsiveContainer width="100%" height={250}>
               <PieChart>
                 <Pie
@@ -488,50 +483,51 @@ Responda APENAS em JSON válido:
                     <Cell key={i} fill={entry.fill} />
                   ))}
                 </Pie>
-                <Tooltip />
+                <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: 12 }} />
               </PieChart>
             </ResponsiveContainer>
           </Card>
         </div>
       )}
 
-      {/* AI Recommendations */}
+      {/* AI Recommendations — bloco de IA: selo e superfícies do trio tinta/linha. */}
       {(loadingAI || recommendations.length > 0) && (
-        <Card className="p-4">
-          <h4 className="text-sm font-semibold flex items-center gap-2 mb-3">
-            <Sparkles className="w-4 h-4 text-muted-foreground" />
+        <Card className="p-5">
+          <h4 className="mb-3 flex flex-wrap items-center gap-2 text-base font-semibold leading-6 text-foreground">
+            <Sparkles className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
             Recomendações da IA
-            {loadingAI && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+            <SeloPraefectusIA />
+            {loadingAI && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" aria-hidden="true" />}
           </h4>
           <div className="space-y-2">
             {recommendations.map((rec, i) => (
-              <div key={i} className={`p-3 rounded-lg border ${
-                rec.prioridade === 'alta' ? 'border-destructive/30 bg-destructive/5' :
-                rec.prioridade === 'media' ? 'border-warning/30 bg-warning/5' :
-                'border-border/30 bg-muted/20'
+              <div key={i} className={`rounded-lg border p-3 ${
+                rec.prioridade === 'alta' ? 'border-destructive-line bg-destructive-tint' :
+                rec.prioridade === 'media' ? 'border-warning-line bg-warning-tint' :
+                'border-border bg-secondary'
               }`}>
-                <div className="flex items-start justify-between gap-2">
+                <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-sm font-medium">{rec.item}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{rec.justificativa}</p>
+                    <p className="text-sm font-medium text-foreground">{rec.item}</p>
+                    <p className="mt-0.5 text-sm text-muted-foreground">{rec.justificativa}</p>
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="flex flex-shrink-0 items-center gap-2">
                     <Badge variant={
-                      rec.prioridade === 'alta' ? 'destructive' :
-                      rec.prioridade === 'media' ? 'default' : 'secondary'
-                    } className="text-xs">
+                      rec.prioridade === 'alta' ? 'danger' :
+                      rec.prioridade === 'media' ? 'warning' : 'muted'
+                    }>
                       {rec.prioridade}
                     </Badge>
-                    <span className="text-xs font-semibold text-foreground whitespace-nowrap">{rec.impacto}</span>
+                    <span className="whitespace-nowrap text-xs font-semibold text-foreground tabular-nums">{rec.impacto}</span>
                   </div>
                 </div>
-                <p className="text-xs font-medium text-foreground mt-1.5 flex items-center gap-1">
+                <p className="mt-1.5 flex items-center gap-1 text-sm font-medium text-foreground">
                   {rec.acao.toLowerCase().includes('aumentar') ? (
-                    <ArrowUpRight className="w-3.5 h-3.5 text-success" />
+                    <ArrowUpRight className="h-4 w-4 text-success-ink" aria-hidden="true" />
                   ) : rec.acao.toLowerCase().includes('reduzir') ? (
-                    <ArrowDownRight className="w-3.5 h-3.5 text-destructive" />
+                    <ArrowDownRight className="h-4 w-4 text-destructive-ink" aria-hidden="true" />
                   ) : (
-                    <Minus className="w-3.5 h-3.5 text-muted-foreground" />
+                    <Minus className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                   )}
                   {rec.acao}
                 </p>
@@ -543,18 +539,19 @@ Responda APENAS em JSON válido:
 
       {/* Filters */}
       {comparisons.length > 0 && (
-        <div className="flex items-center gap-3">
-          <div className="relative flex-1 max-w-xs">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative min-w-[200px] flex-1 sm:max-w-xs">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
             <Input
+              aria-label="Filtrar itens"
               placeholder="Filtrar itens..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 h-9"
+              className="pl-9"
             />
           </div>
           <Select value={filterOportunidade} onValueChange={setFilterOportunidade}>
-            <SelectTrigger className="w-[200px] h-9">
+            <SelectTrigger aria-label="Oportunidade" className="w-full sm:w-[200px]">
               <SelectValue placeholder="Oportunidade" />
             </SelectTrigger>
             <SelectContent>
@@ -567,37 +564,37 @@ Responda APENAS em JSON válido:
         </div>
       )}
 
-      {/* Items table */}
+      {/* Items table — cartões compactos do DS, selos semânticos. */}
       {filtered.length > 0 && (
         <div className="space-y-2">
           {filtered.map((item, i) => (
-            <div key={i} className="flex items-center justify-between p-3 bg-card border border-border/40 rounded-lg hover:shadow-sm transition-shadow">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium line-clamp-1">{item.descricao}</p>
-                <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+            <div key={i} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card p-3 shadow-sm transition-[border-color,box-shadow] duration-150 hover:border-primary/40 hover:shadow-md">
+              <div className="min-w-0 flex-1">
+                <p className="line-clamp-1 text-sm font-medium text-foreground">{item.descricao}</p>
+                <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground tabular-nums">
                   <span>Meu: <b className="text-foreground">{formatCurrency(item.meuPreco)}</b></span>
                   <span>Média: <b className="text-foreground">{formatCurrency(item.mediaMercado)}</b></span>
                   {item.precoGov && <span>Gov: <b className="text-foreground">{formatCurrency(item.precoGov)}</b></span>}
                   <span>Margem: <b className="text-foreground">{item.margemAtual}%</b></span>
                 </div>
               </div>
-              <div className="flex items-center gap-3 ml-3 flex-shrink-0">
+              <div className="flex flex-shrink-0 items-center gap-3">
                 <div className="text-right">
-                  <div className={`flex items-center gap-1 text-sm font-semibold ${
-                    item.diferenca < -5 ? 'text-success' : item.diferenca > 10 ? 'text-destructive' : 'text-foreground'
+                  <div className={`flex items-center justify-end gap-1 text-sm font-semibold tabular-nums ${
+                    item.diferenca < -5 ? 'text-success-ink' : item.diferenca > 10 ? 'text-destructive-ink' : 'text-foreground'
                   }`}>
-                    {item.diferenca < -5 ? <ArrowDownRight className="w-4 h-4" /> :
-                     item.diferenca > 10 ? <ArrowUpRight className="w-4 h-4" /> :
-                     <Minus className="w-4 h-4" />}
+                    {item.diferenca < -5 ? <ArrowDownRight className="h-4 w-4" aria-hidden="true" /> :
+                     item.diferenca > 10 ? <ArrowUpRight className="h-4 w-4" aria-hidden="true" /> :
+                     <Minus className="h-4 w-4" aria-hidden="true" />}
                     {item.diferenca > 0 ? '+' : ''}{item.diferenca}%
                   </div>
                   <p className="text-xs text-muted-foreground">vs. mercado</p>
                 </div>
-                <Badge className={`text-xs ${
-                  item.oportunidade === 'aumentar' ? 'bg-success/10 text-success border-success/20' :
-                  item.oportunidade === 'reduzir' ? 'bg-destructive/10 text-destructive border-destructive/20' :
-                  'bg-muted text-foreground border-border'
-                }`}>
+                <Badge variant={
+                  item.oportunidade === 'aumentar' ? 'success' :
+                  item.oportunidade === 'reduzir' ? 'danger' :
+                  'muted'
+                }>
                   {item.oportunidade === 'aumentar' ? '↑ Aumentar' :
                    item.oportunidade === 'reduzir' ? '↓ Reduzir' : '= Manter'}
                 </Badge>
@@ -609,20 +606,24 @@ Responda APENAS em JSON válido:
 
       {/* Empty state */}
       {comparisons.length === 0 && !loading && (
-        <div className="text-center py-12 text-muted-foreground">
-          <Brain className="w-16 h-16 mx-auto mb-4 opacity-20" />
-          <h3 className="text-sm font-semibold mb-1">Inteligência de Preços</h3>
-          <p className="text-xs max-w-md mx-auto">
-            {mode === 'manual'
-              ? 'Digite os produtos acima e clique em Analisar Mercado para comparar preços em marketplaces e Gov.br.'
-              : 'Clique em Analisar Mercado para comparar automaticamente seus preços do catálogo com marketplaces e o Painel de Preços Gov.br.'
+        <div className="rounded-lg border border-dashed border-border">
+          <EstadoVazio
+            icone={<Brain />}
+            titulo="Inteligência de Preços"
+            descricao={
+              <>
+                {mode === 'manual'
+                  ? 'Digite os produtos acima e clique em Analisar Mercado para comparar preços em marketplaces e Gov.br.'
+                  : 'Clique em Analisar Mercado para comparar automaticamente seus preços do catálogo com marketplaces e o Painel de Preços Gov.br.'
+                }
+                {mode === 'catalog' && catalogItems.length === 0 && (
+                  <span className="mt-3 block">
+                    Catálogo vazio — use a aba <b>Busca Manual</b> para pesquisar produtos diretamente.
+                  </span>
+                )}
+              </>
             }
-          </p>
-          {mode === 'catalog' && catalogItems.length === 0 && (
-            <p className="text-xs text-muted-foreground mt-3">
-              Catálogo vazio — use a aba <b>Busca Manual</b> para pesquisar produtos diretamente.
-            </p>
-          )}
+          />
         </div>
       )}
     </div>

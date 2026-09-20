@@ -10,6 +10,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { FileText, Search, Loader2, Download, Trash2, CheckCircle, Brain } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -374,15 +376,15 @@ export default function LicitacaoSelector({
   };
 
   return (
-    <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <h4 className="text-sm font-semibold flex items-center gap-2">
-          <FileText className="w-4 h-4 text-muted-foreground" />
+    <div className="space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm">
+      <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+        <h4 className="flex items-center gap-2 text-base font-semibold leading-6 text-foreground">
+          <FileText className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
           Vincular à Licitação (preenchimento automático)
         </h4>
         {selectedId && (
-          <Button variant="ghost" size="sm" onClick={handleClear} className="text-muted-foreground h-7 text-xs">
-            <Trash2 className="w-3 h-3 mr-1" /> Limpar
+          <Button variant="ghost" size="sm" onClick={handleClear} className="text-muted-foreground">
+            <Trash2 aria-hidden="true" /> Limpar
           </Button>
         )}
       </div>
@@ -391,24 +393,24 @@ export default function LicitacaoSelector({
           processos: cada pasta é própria e não compartilha dados. O escolhedor
           (órgão → processo) só existe no uso avulso, sem vínculo. */}
       {licitacaoId ? (
-        <div className="flex items-center gap-2 rounded-lg border border-accent/30 bg-accent/5 px-3 py-2 flex-wrap">
-          <FileText className="w-3.5 h-3.5 text-accent shrink-0" />
-          <span className="text-xs text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-2 rounded-md border border-primary-line bg-primary-tint px-3 py-2">
+          <FileText className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+          <span className="text-sm text-muted-foreground">
             Itens vindos <span className="font-medium text-foreground">deste processo</span> — a calculadora
             opera apenas sobre a pasta aberta.
           </span>
-          <Badge className="text-xs bg-success/15 text-success border-0 ml-auto">
+          <Badge variant="success" className="ml-auto">
             Processo vinculado sincronizado
           </Badge>
         </div>
       ) : (
       <>
-      <p className="text-xs text-muted-foreground">
+      <p className="text-sm text-muted-foreground">
         Selecione uma licitação marcada no sistema para preencher automaticamente os itens (descrição, quantidade, unidade e valores de referência).
       </p>
 
-      <div className="flex items-center gap-2">
-        <Badge variant="outline" className="text-xs">
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge variant="outline" className="tabular-nums">
           {licitacoesMarcadas.length} processo(s) disponível(is)
         </Badge>
         {favoritosKeys.size > 0 && (
@@ -416,13 +418,13 @@ export default function LicitacaoSelector({
         )}
       </div>
 
-      {/* Filters */}
+      {/* Filters — rótulo acima do campo, controles de 40px. */}
       <div className="space-y-3">
-        <div>
-          <Label className="text-xs">1. Selecione o Órgão</Label>
+        <div className="space-y-1.5">
+          <Label htmlFor="lic-orgao">1. Selecione o Órgão</Label>
           {orgaosUnicos.length > 0 ? (
             <Select value={filterOrgao} onValueChange={(v) => { setFilterOrgao(v); setFilterNumero(''); }}>
-              <SelectTrigger className="mt-1">
+              <SelectTrigger id="lic-orgao">
                 <SelectValue placeholder="Selecione o órgão para ver os processos vinculados" />
               </SelectTrigger>
               <SelectContent>
@@ -433,23 +435,24 @@ export default function LicitacaoSelector({
             </Select>
           ) : (
             <Input
+              id="lic-orgao"
               value={filterOrgao}
               onChange={e => setFilterOrgao(e.target.value)}
               placeholder="Ex: Prefeitura de Belém"
-              className="mt-1"
             />
           )}
         </div>
         {hasActiveFilter && filtered.length > 1 && (
-          <div>
-            <Label className="text-xs">2. Refinar por Nº (opcional)</Label>
-            <div className="relative mt-1">
-              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+          <div className="space-y-1.5">
+            <Label htmlFor="lic-numero">2. Refinar por Nº (opcional)</Label>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
               <Input
+                id="lic-numero"
                 value={filterNumero}
                 onChange={e => setFilterNumero(e.target.value)}
                 placeholder="Ex: PE 001/2026"
-                className="pl-8"
+                className="pl-9"
               />
             </div>
           </div>
@@ -458,68 +461,68 @@ export default function LicitacaoSelector({
 
       {/* Results */}
       {loading ? (
-        <div className="flex items-center justify-center py-6">
-          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+        <div className="space-y-2" role="status" aria-label="Carregando processos">
+          <Skeleton className="h-14 w-full" />
+          <Skeleton className="h-14 w-full" />
+          <Skeleton className="h-14 w-full" />
         </div>
       ) : licitacoesMarcadas.length === 0 ? (
-        <div className="text-center py-4 border border-dashed border-border/50 rounded-lg">
-          <p className="text-xs text-muted-foreground">Nenhum processo marcado foi encontrado para este usuário.</p>
+        <div className="rounded-lg border border-dashed border-border">
+          <EstadoVazio tamanho="compacto" titulo="Nenhum processo marcado foi encontrado para este usuário." />
         </div>
       ) : !hasActiveFilter ? (
-        <div className="text-center py-4 border border-dashed border-border/50 rounded-lg">
-          <Search className="w-5 h-5 text-muted-foreground mx-auto mb-1" />
-          <p className="text-xs text-muted-foreground">Selecione um órgão acima para visualizar os processos vinculados.</p>
+        <div className="rounded-lg border border-dashed border-border">
+          <EstadoVazio tamanho="compacto" icone={<Search />} titulo="Selecione um órgão acima para visualizar os processos vinculados." />
         </div>
       ) : filtered.length > 0 ? (
-        <div className="max-h-48 overflow-y-auto space-y-1.5 border border-border/30 rounded-lg p-2">
+        <div className="max-h-48 space-y-1.5 overflow-y-auto rounded-md border border-border p-2">
           {filtered.map(l => (
             <button
               key={l.id}
+              type="button"
               onClick={() => handleSelect(l.id)}
               disabled={loadingItens || extracting}
-              className="w-full text-left p-2.5 rounded-lg hover:bg-accent/10 transition-colors border border-transparent hover:border-accent/20 group disabled:opacity-70"
+              className="group w-full rounded-md border border-transparent p-2.5 text-left transition-colors duration-150 hover:border-primary/40 hover:bg-primary-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-70"
             >
-              <div className="flex items-center justify-between">
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-foreground group-hover:text-accent transition-colors">
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-foreground transition-colors group-hover:text-primary">
                     {l.numero || 'Sem número'}
                   </p>
-                  <p className="text-xs text-muted-foreground truncate">{l.orgao}</p>
+                  <p className="truncate text-xs text-muted-foreground">{l.orgao}</p>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex shrink-0 items-center gap-2">
                   {l.modalidade && (
-                    <Badge variant="outline" className="text-xs h-5">{l.modalidade}</Badge>
+                    <Badge variant="outline">{l.modalidade}</Badge>
                   )}
                   {l.valor_estimado && l.valor_estimado > 0 && (
-                    <span className="text-xs font-medium text-foreground">
+                    <span className="text-xs font-medium tabular-nums text-foreground">
                       R$ {l.valor_estimado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </span>
                   )}
-                  <Download className="w-3.5 h-3.5 text-muted-foreground group-hover:text-accent transition-colors" />
+                  <Download className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-primary" aria-hidden="true" />
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{l.objeto}</p>
+              <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{l.objeto}</p>
             </button>
           ))}
         </div>
       ) : (
-        <div className="text-center py-4">
-          <p className="text-xs text-muted-foreground">Nenhuma licitação encontrada com os filtros aplicados.</p>
-        </div>
+        <EstadoVazio tamanho="compacto" titulo="Nenhuma licitação encontrada com os filtros aplicados." />
       )}
       </>
       )}
 
       {selectedId && (
-        <div className="bg-muted/40 border border-border rounded-lg p-3 space-y-2">
-          <div className="flex items-center gap-2">
+        <div className="space-y-2 rounded-md border border-border bg-secondary p-3">
+          <div className="flex flex-wrap items-center gap-2">
             {extracting ? (
-              <Loader2 className="w-4 h-4 text-muted-foreground shrink-0 animate-spin" />
+              <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" aria-hidden="true" />
             ) : (
-              <CheckCircle className="w-4 h-4 text-success shrink-0" />
+              <CheckCircle className="h-4 w-4 shrink-0 text-success-ink" aria-hidden="true" />
             )}
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-foreground truncate">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-foreground">
                 {licitacaoNumero} — {licitacaoOrgao}
               </p>
               <p className="text-xs text-muted-foreground">
@@ -527,11 +530,11 @@ export default function LicitacaoSelector({
               </p>
             </div>
             {extracting ? (
-              <Badge className="bg-muted text-muted-foreground border-border shrink-0">
-                <Brain className="w-3 h-3 mr-1" /> Extraindo...
+              <Badge variant="ia" className="shrink-0">
+                <Brain className="h-3 w-3" aria-hidden="true" /> Extraindo...
               </Badge>
             ) : (
-              <Badge className="bg-muted text-foreground border-border shrink-0">
+              <Badge variant="secondary" className="shrink-0 tabular-nums">
                 {itensCount} {itensCount === 1 ? 'item' : 'itens'}
               </Badge>
             )}
@@ -542,7 +545,7 @@ export default function LicitacaoSelector({
             </p>
           )}
           {!extracting && itensCount > 0 && (
-            <p className="text-xs text-success">
+            <p className="text-xs text-success-ink">
               ✓ Itens preenchidos automaticamente. Você pode editar, adicionar ou excluir itens livremente.
             </p>
           )}
@@ -555,16 +558,16 @@ export default function LicitacaoSelector({
       )}
 
       {/* Manual fallback */}
-      <div className="border-t border-border/30 pt-3">
-        <p className="text-xs text-muted-foreground mb-2">Ou preencha manualmente:</p>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label className="text-xs">Nº da Licitação</Label>
-            <Input value={licitacaoNumero} onChange={e => setLicitacaoNumero(e.target.value)} placeholder="Ex: PE 001/2026" className="mt-1" />
+      <div className="border-t border-border pt-3">
+        <p className="mb-2 text-sm text-muted-foreground">Ou preencha manualmente:</p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="lic-manual-numero">Nº da Licitação</Label>
+            <Input id="lic-manual-numero" value={licitacaoNumero} onChange={e => setLicitacaoNumero(e.target.value)} placeholder="Ex: PE 001/2026" />
           </div>
-          <div>
-            <Label className="text-xs">Órgão</Label>
-            <Input value={licitacaoOrgao} onChange={e => setLicitacaoOrgao(e.target.value)} placeholder="Ex: Prefeitura de Belém" className="mt-1" />
+          <div className="space-y-1.5">
+            <Label htmlFor="lic-manual-orgao">Órgão</Label>
+            <Input id="lic-manual-orgao" value={licitacaoOrgao} onChange={e => setLicitacaoOrgao(e.target.value)} placeholder="Ex: Prefeitura de Belém" />
           </div>
         </div>
       </div>

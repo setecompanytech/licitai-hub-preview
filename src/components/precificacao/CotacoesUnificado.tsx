@@ -12,25 +12,26 @@ export default function CotacoesUnificado() {
   return (
     <div className="space-y-4">
       <div className="min-w-0">
-        <h2 className="text-lg font-semibold text-foreground">Cotações & Listas</h2>
+        <h2 className="text-lg font-semibold leading-6 text-foreground">Cotações & Listas</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Gerencie cotações formais, listas de compras, uploads de fornecedores e importações de planilhas em um só lugar.
         </p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="h-auto flex-wrap gap-1">
-          <TabsTrigger value="cotacoes" className="gap-2">
-            <FileText className="w-4 h-4" aria-hidden="true" /> Cotações Formais
+        {/* Fila sublinhada da ui, rolável no celular. */}
+        <TabsList className="flex-nowrap overflow-x-auto [scrollbar-width:thin]">
+          <TabsTrigger value="cotacoes" className="shrink-0">
+            <FileText className="h-4 w-4" aria-hidden="true" /> Cotações Formais
           </TabsTrigger>
-          <TabsTrigger value="fornecedores" className="gap-2">
-            <Upload className="w-4 h-4" aria-hidden="true" /> Upload Fornecedores
+          <TabsTrigger value="fornecedores" className="shrink-0">
+            <Upload className="h-4 w-4" aria-hidden="true" /> Upload Fornecedores
           </TabsTrigger>
-          <TabsTrigger value="listas" className="gap-2">
-            <ShoppingCart className="w-4 h-4" aria-hidden="true" /> Listas de Compras
+          <TabsTrigger value="listas" className="shrink-0">
+            <ShoppingCart className="h-4 w-4" aria-hidden="true" /> Listas de Compras
           </TabsTrigger>
-          <TabsTrigger value="importacoes" className="gap-2">
-            <FileSpreadsheet className="w-4 h-4" aria-hidden="true" /> Importar Planilha
+          <TabsTrigger value="importacoes" className="shrink-0">
+            <FileSpreadsheet className="h-4 w-4" aria-hidden="true" /> Importar Planilha
           </TabsTrigger>
         </TabsList>
 

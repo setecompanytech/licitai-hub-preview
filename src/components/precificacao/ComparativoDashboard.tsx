@@ -2,6 +2,12 @@ import { useState, useEffect, useMemo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table';
+import EstadoVazio from '@/components/shared/EstadoVazio';
+import LinhaKpis from '@/components/shared/LinhaKpis';
 import {
   BarChart3, Search, TrendingDown, TrendingUp, ShoppingCart,
   Building2, FileText, AlertTriangle, CheckCircle, ArrowDown, ArrowUp, Minus,
@@ -199,9 +205,18 @@ export default function ComparativoDashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-16 text-muted-foreground">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mr-3" />
-        Carregando dados comparativos...
+      /* Esqueleto na forma do conteúdo: régua de KPIs, dois gráficos, tabela. */
+      <div className="space-y-6" role="status" aria-live="polite">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
+          {[1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-[112px] w-full" />)}
+        </div>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <Skeleton className="h-[320px] w-full lg:col-span-2" />
+          <Skeleton className="h-[320px] w-full" />
+        </div>
+        <Skeleton className="h-11 w-full" />
+        <Skeleton className="h-12 w-full" />
+        <p className="text-sm text-muted-foreground">Carregando dados comparativos...</p>
       </div>
     );
   }
@@ -210,81 +225,43 @@ export default function ComparativoDashboard() {
 
   if (totalResults === 0) {
     return (
-      <div className="text-center py-12 text-muted-foreground">
-        <BarChart3 className="w-14 h-14 mx-auto mb-4 opacity-20" />
-        <p className="text-base font-medium mb-1">Nenhum dado para comparar ainda</p>
-        <p className="text-sm">Faça pesquisas nos Marketplaces, consulte o Painel Gov.br ou envie cotações de fornecedores para gerar o comparativo.</p>
+      <div className="rounded-lg border border-dashed border-border">
+        <EstadoVazio
+          icone={<BarChart3 />}
+          titulo="Nenhum dado para comparar ainda"
+          descricao="Faça pesquisas nos Marketplaces, consulte o Painel Gov.br ou envie cotações de fornecedores para gerar o comparativo."
+        />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        {[
-          {
-            label: 'Total de Preços',
-            value: totalResults.toString(),
-            icon: Package,
-            color: 'text-muted-foreground',
-            bg: 'bg-muted',
-          },
-          {
-            label: 'Marketplaces',
-            value: marketplaceData.length.toString(),
-            icon: ShoppingCart,
-            color: 'text-warning',
-            bg: 'bg-warning/10',
-          },
-          {
-            label: 'Gov.br',
-            value: govbrData.length.toString(),
-            icon: Building2,
-            color: 'text-info',
-            bg: 'bg-info/10',
-          },
-          {
-            label: 'Fornecedores',
-            value: fornecedorData.length.toString(),
-            icon: FileText,
-            color: 'text-muted-foreground',
-            bg: 'bg-muted',
-          },
-          {
-            label: 'Economia Média',
-            value: stats.avgEconomia > 0 ? `-${stats.avgEconomia.toFixed(1)}%` : '—',
-            icon: TrendingDown,
-            color: 'text-success',
-            bg: 'bg-success/10',
-          },
-        ].map(s => (
-          <div key={s.label} className="bg-card border border-border/40 rounded-lg p-3">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-xs uppercase tracking-wider text-muted-foreground">{s.label}</span>
-              <div className={`p-1.5 rounded-md ${s.bg}`}>
-                <s.icon className={`w-3.5 h-3.5 ${s.color}`} />
-              </div>
-            </div>
-            <p className="text-xl font-bold text-foreground">{s.value}</p>
-          </div>
-        ))}
-      </div>
+      {/* Summary Cards — cartões KPI do DS (`LinhaKpis`), os mesmos números. */}
+      <LinhaKpis
+        itens={[
+          { rotulo: 'Total de Preços', valor: totalResults.toString(), icone: Package },
+          { rotulo: 'Marketplaces', valor: marketplaceData.length.toString(), icone: ShoppingCart, tom: 'aviso' },
+          { rotulo: 'Gov.br', valor: govbrData.length.toString(), icone: Building2, tom: 'info' },
+          { rotulo: 'Fornecedores', valor: fornecedorData.length.toString(), icone: FileText },
+          { rotulo: 'Economia Média', valor: stats.avgEconomia > 0 ? `-${stats.avgEconomia.toFixed(1)}%` : '—', icone: TrendingDown, tom: 'ok' },
+        ]}
+      />
 
-      {/* Charts Row */}
+      {/* Charts Row — cores de gráfico do DS, legendas 12px, cartões p-5. */}
       {chartData.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           {/* Bar chart */}
-          <div className="lg:col-span-2 bg-card border border-border/40 rounded-lg p-4">
-            <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-              <BarChart3 className="w-4 h-4 text-muted-foreground" />
+          <div className="rounded-lg border border-border bg-card p-5 shadow-sm lg:col-span-2">
+            <h4 className="mb-3 flex items-center gap-2 text-base font-semibold leading-6 text-foreground">
+              <BarChart3 className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
               Comparativo de Preços por Item
             </h4>
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={chartData} layout="vertical" margin={{ left: 10, right: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis type="number" tickFormatter={(v) => `R$${v}`} tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
-                <YAxis type="category" dataKey="name" width={130} tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
+                <XAxis type="number" tickFormatter={(v) => `R$${v}`} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
+                <YAxis type="category" dataKey="name" width={130} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
                 <Tooltip
                   formatter={(value: number) => formatCurrency(value)}
                   contentStyle={{
@@ -294,7 +271,7 @@ export default function ComparativoDashboard() {
                     fontSize: '12px',
                   }}
                 />
-                <Legend wrapperStyle={{ fontSize: '11px' }} />
+                <Legend wrapperStyle={{ fontSize: '12px' }} />
                 <Bar dataKey="Marketplace" fill="hsl(var(--chart-1))" radius={[0, 4, 4, 0]} barSize={10} />
                 <Bar dataKey="Gov.br" fill="hsl(var(--chart-2))" radius={[0, 4, 4, 0]} barSize={10} />
                 <Bar dataKey="Fornecedor" fill="hsl(var(--chart-3))" radius={[0, 4, 4, 0]} barSize={10} />
@@ -303,17 +280,17 @@ export default function ComparativoDashboard() {
           </div>
 
           {/* Radar chart */}
-          <div className="bg-card border border-border/40 rounded-lg p-4">
-            <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-              <Percent className="w-4 h-4 text-muted-foreground" />
+          <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
+            <h4 className="mb-3 flex items-center gap-2 text-base font-semibold leading-6 text-foreground">
+              <Percent className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
               Cobertura por Fonte
             </h4>
             <ResponsiveContainer width="100%" height={280}>
               <RadarChart data={sourceDistribution}>
                 <PolarGrid stroke="hsl(var(--border))" />
-                <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
-                <PolarRadiusAxis tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} />
-                <Radar name="Qtd. Preços" dataKey="value" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.3} />
+                <PolarAngleAxis dataKey="subject" tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
+                <PolarRadiusAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
+                <Radar name="Qtd. Preços" dataKey="value" stroke="hsl(var(--chart-1))" fill="hsl(var(--chart-1))" fillOpacity={0.3} />
               </RadarChart>
             </ResponsiveContainer>
           </div>
@@ -321,126 +298,123 @@ export default function ComparativoDashboard() {
       )}
 
       {/* Filter */}
-      <div className="flex gap-2 items-center">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative min-w-[200px] flex-1 sm:max-w-sm">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
           <Input
+            aria-label="Filtrar itens"
             placeholder="Filtrar itens..."
             value={filterTerm}
             onChange={e => setFilterTerm(e.target.value)}
-            className="pl-9 h-9"
+            className="pl-9"
           />
         </div>
-        <Badge variant="outline" className="text-xs">
+        <Badge variant="outline" className="tabular-nums">
           {filtered.length} itens
         </Badge>
       </div>
 
-      {/* Comparison Table */}
-      <div className="bg-card border border-border/40 rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border/40 bg-muted/30">
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Item</th>
-                <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  <span className="flex items-center justify-end gap-1"><ShoppingCart className="w-3 h-3" /> Marketplace</span>
-                </th>
-                <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  <span className="flex items-center justify-end gap-1"><Building2 className="w-3 h-3" /> Gov.br</span>
-                </th>
-                <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  <span className="flex items-center justify-end gap-1"><FileText className="w-3 h-3" /> Fornecedor</span>
-                </th>
-                <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Melhor</th>
-                <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Economia</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/20">
-              {filtered.slice(0, 30).map((item, idx) => {
-                const sources = [item.marketplace, item.govbr, item.fornecedor].filter(Boolean) as number[];
-                const minPrice = sources.length > 0 ? Math.min(...sources) : 0;
+      {/* Comparison Table — `ui/table`: cabeçalho rebaixado sem caixa alta,
+          linhas de 48px, números à direita, menor preço na tinta verde. */}
+      <div className="overflow-hidden rounded-md border border-border bg-card">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Item</TableHead>
+              <TableHead className="text-right">
+                <span className="flex items-center justify-end gap-1"><ShoppingCart className="h-3 w-3" aria-hidden="true" /> Marketplace</span>
+              </TableHead>
+              <TableHead className="text-right">
+                <span className="flex items-center justify-end gap-1"><Building2 className="h-3 w-3" aria-hidden="true" /> Gov.br</span>
+              </TableHead>
+              <TableHead className="text-right">
+                <span className="flex items-center justify-end gap-1"><FileText className="h-3 w-3" aria-hidden="true" /> Fornecedor</span>
+              </TableHead>
+              <TableHead>Melhor</TableHead>
+              <TableHead className="text-right">Economia</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filtered.slice(0, 30).map((item, idx) => {
+              const sources = [item.marketplace, item.govbr, item.fornecedor].filter(Boolean) as number[];
+              const minPrice = sources.length > 0 ? Math.min(...sources) : 0;
 
-                return (
-                  <tr key={idx} className="hover:bg-muted/20 transition-colors">
-                    <td className="px-4 py-2.5 font-medium text-foreground max-w-[250px] truncate">
-                      {item.descricao}
-                    </td>
-                    <td className="px-4 py-2.5 text-right tabular-nums">
-                      {item.marketplace ? (
-                        <span className={item.marketplace === minPrice ? 'text-success font-semibold' : 'text-foreground'}>
-                          {formatCurrency(item.marketplace)}
-                        </span>
-                      ) : <span className="text-muted-foreground/40">—</span>}
-                    </td>
-                    <td className="px-4 py-2.5 text-right tabular-nums">
-                      {item.govbr ? (
-                        <span className={item.govbr === minPrice ? 'text-success font-semibold' : 'text-foreground'}>
-                          {formatCurrency(item.govbr)}
-                        </span>
-                      ) : <span className="text-muted-foreground/40">—</span>}
-                    </td>
-                    <td className="px-4 py-2.5 text-right tabular-nums">
-                      {item.fornecedor ? (
-                        <span className={item.fornecedor === minPrice ? 'text-success font-semibold' : 'text-foreground'}>
-                          {formatCurrency(item.fornecedor)}
-                        </span>
-                      ) : <span className="text-muted-foreground/40">—</span>}
-                    </td>
-                    <td className="px-4 py-2.5 text-center">
-                      {item.melhorFonte ? (
-                        <Badge
-                          variant="outline"
-                          className={`text-xs ${
-                            item.melhorFonte === 'Marketplace' ? 'bg-warning/10 text-warning border-warning/20' :
-                            item.melhorFonte === 'Gov.br' ? 'bg-info/10 text-info border-info/20' :
-                            'bg-muted text-foreground border-border'
-                          }`}
-                        >
-                          {item.melhorFonte === 'Marketplace' && <ShoppingCart className="w-2.5 h-2.5 mr-0.5" />}
-                          {item.melhorFonte === 'Gov.br' && <Building2 className="w-2.5 h-2.5 mr-0.5" />}
-                          {item.melhorFonte === 'Fornecedor' && <FileText className="w-2.5 h-2.5 mr-0.5" />}
-                          {item.melhorFonte}
-                        </Badge>
-                      ) : <span className="text-muted-foreground/40">—</span>}
-                    </td>
-                    <td className="px-4 py-2.5 text-right">
-                      {(item.economia || 0) > 0 ? (
-                        <span className="text-success font-semibold flex items-center justify-end gap-0.5 text-xs">
-                          <ArrowDown className="w-3 h-3" />
-                          {item.economia!.toFixed(1)}%
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground/40">—</span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+              return (
+                <TableRow key={idx}>
+                  <TableCell className="max-w-[250px] font-medium text-foreground" truncate>
+                    {item.descricao}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums" nowrap>
+                    {item.marketplace ? (
+                      <span className={item.marketplace === minPrice ? 'font-semibold text-success-ink' : 'text-foreground'}>
+                        {formatCurrency(item.marketplace)}
+                      </span>
+                    ) : <span className="text-foreground-tertiary">—</span>}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums" nowrap>
+                    {item.govbr ? (
+                      <span className={item.govbr === minPrice ? 'font-semibold text-success-ink' : 'text-foreground'}>
+                        {formatCurrency(item.govbr)}
+                      </span>
+                    ) : <span className="text-foreground-tertiary">—</span>}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums" nowrap>
+                    {item.fornecedor ? (
+                      <span className={item.fornecedor === minPrice ? 'font-semibold text-success-ink' : 'text-foreground'}>
+                        {formatCurrency(item.fornecedor)}
+                      </span>
+                    ) : <span className="text-foreground-tertiary">—</span>}
+                  </TableCell>
+                  <TableCell>
+                    {item.melhorFonte ? (
+                      <Badge
+                        variant={
+                          item.melhorFonte === 'Marketplace' ? 'warning' :
+                          item.melhorFonte === 'Gov.br' ? 'info' :
+                          'muted'
+                        }
+                      >
+                        {item.melhorFonte === 'Marketplace' && <ShoppingCart className="h-3 w-3" aria-hidden="true" />}
+                        {item.melhorFonte === 'Gov.br' && <Building2 className="h-3 w-3" aria-hidden="true" />}
+                        {item.melhorFonte === 'Fornecedor' && <FileText className="h-3 w-3" aria-hidden="true" />}
+                        {item.melhorFonte}
+                      </Badge>
+                    ) : <span className="text-foreground-tertiary">—</span>}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {(item.economia || 0) > 0 ? (
+                      <span className="flex items-center justify-end gap-0.5 text-sm font-semibold tabular-nums text-success-ink">
+                        <ArrowDown className="h-3 w-3" aria-hidden="true" />
+                        {item.economia!.toFixed(1)}%
+                      </span>
+                    ) : (
+                      <span className="text-foreground-tertiary">—</span>
+                    )}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
         {filtered.length === 0 && (
-          <div className="text-center py-8 text-muted-foreground text-sm">
-            Nenhum item encontrado com esse filtro.
-          </div>
+          <EstadoVazio tamanho="compacto" titulo="Nenhum item encontrado com esse filtro." />
         )}
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5">
-          <div className="w-2.5 h-2.5 rounded-sm bg-chart-1" /> Marketplace
+          <span className="h-2.5 w-2.5 rounded-sm bg-chart-1" aria-hidden="true" /> Marketplace
         </span>
         <span className="flex items-center gap-1.5">
-          <div className="w-2.5 h-2.5 rounded-sm bg-chart-2" /> Painel Gov.br
+          <span className="h-2.5 w-2.5 rounded-sm bg-chart-2" aria-hidden="true" /> Painel Gov.br
         </span>
         <span className="flex items-center gap-1.5">
-          <div className="w-2.5 h-2.5 rounded-sm bg-chart-3" /> Fornecedor
+          <span className="h-2.5 w-2.5 rounded-sm bg-chart-3" aria-hidden="true" /> Fornecedor
         </span>
         <span className="ml-auto flex items-center gap-1">
-          <CheckCircle className="w-3 h-3 text-success" />
-          Valores em <span className="font-semibold text-success">verde</span> = melhor preço
+          <CheckCircle className="h-3 w-3 text-success-ink" aria-hidden="true" />
+          Valores em <span className="font-semibold text-success-ink">verde</span> = melhor preço
         </span>
       </div>
     </div>

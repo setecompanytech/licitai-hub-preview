@@ -407,18 +407,18 @@ export default function ServicoEngenhariaCalculadora({ regimeLabel, regime, ufCa
   return (
     <div className="space-y-5">
       {/* Tipo de Serviço */}
-      <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
-        <div className="flex items-center gap-2 mb-1">
-          <HardHat className="w-5 h-5 text-muted-foreground" />
-          <h3 className="font-semibold text-sm">Serviços de Engenharia — Composição BDI</h3>
-          <Badge variant="outline" className="text-xs ml-auto">{bdiConfig.ref}</Badge>
+      <div className="space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm">
+        <div className="mb-1 flex flex-wrap items-center gap-2">
+          <HardHat className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+          <h3 className="text-base font-semibold leading-6 text-foreground">Serviços de Engenharia — Composição BDI</h3>
+          <Badge variant="outline" className="ml-auto">{bdiConfig.ref}</Badge>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label className="text-xs">Tipo de Serviço</Label>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="eng-tipo-servico">Tipo de Serviço</Label>
             <Select value={tipoServico} onValueChange={(v) => handleTipoChange(v as any)}>
-              <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+              <SelectTrigger id="eng-tipo-servico"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="obras">Obras e Serviços de Engenharia</SelectItem>
                 <SelectItem value="servicos_comuns">Serviços Comuns de Engenharia</SelectItem>
@@ -426,47 +426,48 @@ export default function ServicoEngenhariaCalculadora({ regimeLabel, regime, ufCa
             </Select>
           </div>
           <div className="flex items-end">
-            <Badge className="bg-muted text-foreground border-border mb-1">
+            <Badge variant="secondary" className="mb-2 tabular-nums">
               BDI Calculado: {fmtPerc(bdiCalc.bdiPercentual)}
             </Badge>
           </div>
         </div>
       </div>
 
-      {/* Componentes do BDI */}
-      <div className="bg-card rounded-xl border border-border/50 p-5 space-y-3">
-        <h4 className="text-sm font-semibold">Componentes do BDI</h4>
-        <div className="overflow-x-auto rounded-lg border border-border/50">
+      {/* Componentes do BDI — tabela editável (campos de 40px em célula px-2 py-1.5) */}
+      <div className="space-y-3 rounded-lg border border-border bg-card p-5 shadow-sm">
+        <h4 className="text-base font-semibold leading-6 text-foreground">Componentes do BDI</h4>
+        <div className="overflow-hidden rounded-md border border-border bg-card">
           <Table>
             <TableHeader>
-              <TableRow className="bg-muted/50">
-                <TableHead className="text-xs font-semibold h-8">Componente</TableHead>
-                <TableHead className="text-xs font-semibold h-8 w-24 text-right">% Adotado</TableHead>
-                <TableHead className="text-xs font-semibold h-8 w-20 text-right">Mín. TCU</TableHead>
-                <TableHead className="text-xs font-semibold h-8 w-20 text-right">Máx. TCU</TableHead>
-                <TableHead className="text-xs font-semibold h-8">Descrição</TableHead>
+              <TableRow>
+                <TableHead>Componente</TableHead>
+                <TableHead className="w-28 text-right">% Adotado</TableHead>
+                <TableHead className="w-24 text-right">Mín. TCU</TableHead>
+                <TableHead className="w-24 text-right">Máx. TCU</TableHead>
+                <TableHead>Descrição</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {bdiConfig.componentes.map(c => (
                 <TableRow key={c.id}>
-                  <TableCell className="text-xs font-medium py-1.5">{c.nome}</TableCell>
-                  <TableCell className="py-1.5">
+                  <TableCell className="px-2 py-1.5 font-medium" nowrap>{c.nome}</TableCell>
+                  <TableCell className="px-2 py-1.5">
                     <Input
+                      aria-label={`Percentual adotado de ${c.nome}`}
                       type="number"
                       value={bdiValues[c.id] || ''}
                       onChange={e => {
                         setBdiValues(prev => ({ ...prev, [c.id]: parseFloat(e.target.value) || 0 }));
                         setCalculado(false);
                       }}
-                      className="h-7 text-xs text-right w-20 ml-auto"
+                      className="ml-auto w-24 text-right tabular-nums"
                       step="0.01"
                       min={0}
                     />
                   </TableCell>
-                  <TableCell className="text-xs text-muted-foreground text-right py-1.5">{fmtPerc(c.min)}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground text-right py-1.5">{fmtPerc(c.max)}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground py-1.5">{c.info}</TableCell>
+                  <TableCell className="px-2 py-1.5 text-right tabular-nums text-muted-foreground">{fmtPerc(c.min)}</TableCell>
+                  <TableCell className="px-2 py-1.5 text-right tabular-nums text-muted-foreground">{fmtPerc(c.max)}</TableCell>
+                  <TableCell className="px-2 py-1.5 text-muted-foreground">{c.info}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -475,26 +476,27 @@ export default function ServicoEngenhariaCalculadora({ regimeLabel, regime, ufCa
       </div>
 
       {/* Tributos */}
-      <div className="bg-card rounded-xl border border-border/50 p-5 space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <h4 className="text-sm font-semibold">Tributos "Por Dentro" — {regimeLabel}</h4>
-          <Badge variant="outline" className="text-xs">Total: {fmtPerc(bdiCalc.totalTributosPerc)}</Badge>
+      <div className="space-y-3 rounded-lg border border-border bg-card p-5 shadow-sm">
+        <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+          <h4 className="text-base font-semibold leading-6 text-foreground">Tributos "Por Dentro" — {regimeLabel}</h4>
+          <Badge variant="outline" className="tabular-nums">Total: {fmtPerc(bdiCalc.totalTributosPerc)}</Badge>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
           {tributosPadrao.map(t => (
-            <div key={t.id} className="space-y-1">
+            <div key={t.id} className="space-y-1.5">
               <div className="flex items-center gap-1">
-                <Label className="text-xs">{t.nome}</Label>
-                <TooltipProvider><Tooltip><TooltipTrigger><Info className="w-3 h-3 text-muted-foreground" /></TooltipTrigger><TooltipContent className="max-w-xs"><p className="text-xs">{t.info}</p></TooltipContent></Tooltip></TooltipProvider>
+                <Label htmlFor={`eng-tributo-${t.id}`}>{t.nome}</Label>
+                <TooltipProvider><Tooltip><TooltipTrigger aria-label={`Sobre ${t.nome}`} className="inline-flex rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Info className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" /></TooltipTrigger><TooltipContent className="max-w-xs"><p className="text-xs">{t.info}</p></TooltipContent></Tooltip></TooltipProvider>
               </div>
               <Input
+                id={`eng-tributo-${t.id}`}
                 type="number"
                 value={tributoValues[t.id] || ''}
                 onChange={e => {
                   setTributoValues(prev => ({ ...prev, [t.id]: parseFloat(e.target.value) || 0 }));
                   setCalculado(false);
                 }}
-                className="h-8 text-xs"
+                className="tabular-nums"
                 step="0.01"
                 min={0}
                 disabled={!t.editavel}
@@ -505,37 +507,38 @@ export default function ServicoEngenhariaCalculadora({ regimeLabel, regime, ufCa
       </div>
 
       {/* Encargos Sociais */}
-      <div className="bg-card rounded-xl border border-border/50 p-5 space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <h4 className="text-sm font-semibold">Encargos Sociais e Trabalhistas</h4>
-          <Badge variant="outline" className="text-xs">Total: {fmtPerc(bdiCalc.totalEncargosPerc)}</Badge>
+      <div className="space-y-3 rounded-lg border border-border bg-card p-5 shadow-sm">
+        <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+          <h4 className="text-base font-semibold leading-6 text-foreground">Encargos Sociais e Trabalhistas</h4>
+          <Badge variant="outline" className="tabular-nums">Total: {fmtPerc(bdiCalc.totalEncargosPerc)}</Badge>
         </div>
-        <div className="overflow-x-auto rounded-lg border border-border/50">
+        <div className="overflow-hidden rounded-md border border-border bg-card">
           <Table>
             <TableHeader>
-              <TableRow className="bg-muted/50">
-                <TableHead className="text-xs font-semibold h-8">Componente</TableHead>
-                <TableHead className="text-xs font-semibold h-8 w-24 text-right">% Adotado</TableHead>
-                <TableHead className="text-xs font-semibold h-8">Fundamentação</TableHead>
+              <TableRow>
+                <TableHead>Componente</TableHead>
+                <TableHead className="w-28 text-right">% Adotado</TableHead>
+                <TableHead>Fundamentação</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {ENCARGOS_SOCIAIS.map(e => (
                 <TableRow key={e.id}>
-                  <TableCell className="text-xs font-medium py-1.5">{e.nome}</TableCell>
-                  <TableCell className="py-1.5">
+                  <TableCell className="px-2 py-1.5 font-medium" nowrap>{e.nome}</TableCell>
+                  <TableCell className="px-2 py-1.5">
                     <Input
+                      aria-label={`Percentual adotado de ${e.nome}`}
                       type="number"
                       value={encargosValues[e.id] || ''}
                       onChange={ev => {
                         setEncargosValues(prev => ({ ...prev, [e.id]: parseFloat(ev.target.value) || 0 }));
                         setCalculado(false);
                       }}
-                      className="h-7 text-xs text-right w-20 ml-auto"
+                      className="ml-auto w-24 text-right tabular-nums"
                       step="0.01"
                     />
                   </TableCell>
-                  <TableCell className="text-xs text-muted-foreground py-1.5">{e.info}</TableCell>
+                  <TableCell className="px-2 py-1.5 text-muted-foreground">{e.info}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -544,29 +547,30 @@ export default function ServicoEngenhariaCalculadora({ regimeLabel, regime, ufCa
       </div>
 
       {/* Itens de Custo */}
-      <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <h4 className="text-sm font-semibold flex items-center gap-2">
-            <FileText className="w-4 h-4 text-muted-foreground" /> Itens de Custo Direto
+      <div className="space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm">
+        <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+          <h4 className="flex items-center gap-2 text-base font-semibold leading-6 text-foreground">
+            <FileText className="h-4 w-4 text-muted-foreground" aria-hidden="true" /> Itens de Custo Direto
           </h4>
           <Button variant="outline" size="sm" onClick={addItem}>
-            <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar Item
+            <Plus aria-hidden="true" /> Adicionar Item
           </Button>
         </div>
+        {/* Doze colunas só a partir de `sm`; no celular a linha vira duas colunas. */}
         {itens.map((item, idx) => (
-          <div key={idx} className="grid grid-cols-12 gap-2 items-end">
-            <div className="col-span-5">
-              <Label className="text-xs">Descrição *</Label>
-              <Input value={item.descricao} onChange={e => updateItem(idx, 'descricao', e.target.value)} placeholder="Ex: Concreto fck 30 MPa" className="mt-0.5" />
+          <div key={idx} className="grid grid-cols-2 gap-3 sm:grid-cols-12 sm:items-end">
+            <div className="col-span-2 space-y-1.5 sm:col-span-5">
+              <Label htmlFor={`eng-item-${idx}-descricao`}>Descrição *</Label>
+              <Input id={`eng-item-${idx}-descricao`} value={item.descricao} onChange={e => updateItem(idx, 'descricao', e.target.value)} placeholder="Ex: Concreto fck 30 MPa" />
             </div>
-            <div className="col-span-2">
-              <Label className="text-xs">Qtd</Label>
-              <Input value={item.quantidade} onChange={e => updateItem(idx, 'quantidade', e.target.value)} placeholder="1" className="mt-0.5" />
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label htmlFor={`eng-item-${idx}-qtd`}>Qtd</Label>
+              <Input id={`eng-item-${idx}-qtd`} value={item.quantidade} onChange={e => updateItem(idx, 'quantidade', e.target.value)} placeholder="1" className="tabular-nums" />
             </div>
-            <div className="col-span-2">
-              <Label className="text-xs">Unidade</Label>
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label htmlFor={`eng-item-${idx}-unidade`}>Unidade</Label>
               <Select value={item.unidade} onValueChange={v => updateItem(idx, 'unidade', v)}>
-                <SelectTrigger className="mt-0.5"><SelectValue /></SelectTrigger>
+                <SelectTrigger id={`eng-item-${idx}-unidade`}><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {['UN', 'M', 'M²', 'M³', 'KG', 'T', 'L', 'H', 'MÊS', 'VB', 'CJ', 'GL'].map(u => (
                     <SelectItem key={u} value={u}>{u}</SelectItem>
@@ -574,14 +578,14 @@ export default function ServicoEngenhariaCalculadora({ regimeLabel, regime, ufCa
                 </SelectContent>
               </Select>
             </div>
-            <div className="col-span-2">
-              <Label className="text-xs">Custo Unit. (R$) *</Label>
-              <Input value={item.custoUnitario} onChange={e => updateItem(idx, 'custoUnitario', formatCurrencyInput(e.target.value))} placeholder="R$ 0,00" className="mt-0.5" />
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label htmlFor={`eng-item-${idx}-custo`}>Custo Unit. (R$) *</Label>
+              <Input id={`eng-item-${idx}-custo`} value={item.custoUnitario} onChange={e => updateItem(idx, 'custoUnitario', formatCurrencyInput(e.target.value))} placeholder="R$ 0,00" className="tabular-nums" />
             </div>
-            <div className="col-span-1">
+            <div className="col-span-2 flex justify-end sm:col-span-1 sm:justify-start">
               {itens.length > 1 && (
-                <Button variant="ghost" size="sm" onClick={() => removeItem(idx)} className="text-destructive h-8 w-8 p-0">
-                  <Trash2 className="w-3.5 h-3.5" />
+                <Button variant="ghost-destructive" size="icon-sm" onClick={() => removeItem(idx)} aria-label={`Remover item ${idx + 1}`}>
+                  <Trash2 aria-hidden="true" />
                 </Button>
               )}
             </div>
@@ -590,99 +594,100 @@ export default function ServicoEngenhariaCalculadora({ regimeLabel, regime, ufCa
       </div>
 
       {/* Calcular */}
-      <Button onClick={calcular} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground h-12" size="lg">
-        <Calculator className="w-5 h-5 mr-2" /> Calcular Composição de Custos
+      <Button onClick={calcular} className="w-full" size="lg">
+        <Calculator aria-hidden="true" /> Calcular Composição de Custos
       </Button>
 
       {/* Resultado */}
       {resultado && (
-        <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <h4 className="font-semibold text-sm">Resultado da Composição</h4>
-            <div className="flex gap-2">
+        <div className="space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm">
+          <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+            <h4 className="text-base font-semibold leading-6 text-foreground">Resultado da Composição</h4>
+            <div className="flex flex-wrap gap-2">
               <Button variant="outline" size="sm" onClick={exportXLSX}>
-                <Download className="w-3.5 h-3.5 mr-1" /> Excel
+                <Download aria-hidden="true" /> Excel
               </Button>
               <Button variant="outline" size="sm" onClick={exportPDF}>
-                <Download className="w-3.5 h-3.5 mr-1" /> PDF
+                <Download aria-hidden="true" /> PDF
               </Button>
             </div>
           </div>
 
-          {/* Summary cards */}
-          <div className="grid grid-cols-4 gap-3">
-            <div className="bg-muted/30 rounded-lg p-3 text-center">
-              <p className="text-xs text-muted-foreground">Custo Direto</p>
-              <p className="text-sm font-bold">{fmtCur(resultado.totalCusto)}</p>
+          {/* Summary cards — KPIs à esquerda, valor 24/600 tabular, tinta ink;
+              o total na tinta da ação. */}
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <div className="rounded-md border border-border bg-secondary p-3">
+              <p className="text-sm font-medium text-muted-foreground">Custo Direto</p>
+              <p className="mt-1 text-2xl font-semibold leading-8 tabular-nums text-foreground">{fmtCur(resultado.totalCusto)}</p>
             </div>
-            <div className="bg-muted/30 rounded-lg p-3 text-center">
-              <p className="text-xs text-muted-foreground">Encargos ({fmtPerc(resultado.encargosPerc)})</p>
-              <p className="text-sm font-bold text-info">{fmtCur(resultado.totalEncargos)}</p>
+            <div className="rounded-md border border-border bg-secondary p-3">
+              <p className="text-sm font-medium text-muted-foreground">Encargos ({fmtPerc(resultado.encargosPerc)})</p>
+              <p className="mt-1 text-2xl font-semibold leading-8 tabular-nums text-info-ink">{fmtCur(resultado.totalEncargos)}</p>
             </div>
-            <div className="bg-muted/30 rounded-lg p-3 text-center">
-              <p className="text-xs text-muted-foreground">BDI ({fmtPerc(resultado.bdiPerc)})</p>
-              <p className="text-sm font-bold text-warning">{fmtCur(resultado.totalBDI)}</p>
+            <div className="rounded-md border border-border bg-secondary p-3">
+              <p className="text-sm font-medium text-muted-foreground">BDI ({fmtPerc(resultado.bdiPerc)})</p>
+              <p className="mt-1 text-2xl font-semibold leading-8 tabular-nums text-warning-ink">{fmtCur(resultado.totalBDI)}</p>
             </div>
-            <div className="bg-muted rounded-lg p-3 text-center border-2 border-border">
-              <p className="text-xs text-muted-foreground font-medium">PREÇO TOTAL</p>
-              <p className="text-base font-bold text-foreground">{fmtCur(resultado.totalPreco)}</p>
+            <div className="rounded-md border border-primary-line bg-primary-tint p-3">
+              <p className="text-sm font-medium text-muted-foreground">PREÇO TOTAL</p>
+              <p className="mt-1 text-2xl font-semibold leading-8 tabular-nums text-foreground">{fmtCur(resultado.totalPreco)}</p>
             </div>
           </div>
 
           {/* Items table */}
-          <div className="overflow-x-auto rounded-lg border border-border/50">
+          <div className="overflow-hidden rounded-md border border-border bg-card">
             <Table>
               <TableHeader>
-                <TableRow className="bg-muted/50">
-                  <TableHead className="text-xs font-semibold h-8">Item</TableHead>
-                  <TableHead className="text-xs font-semibold h-8">Descrição</TableHead>
-                  <TableHead className="text-xs font-semibold h-8 text-right">Qtd</TableHead>
-                  <TableHead className="text-xs font-semibold h-8">Und</TableHead>
-                  <TableHead className="text-xs font-semibold h-8 text-right">Custo Unit.</TableHead>
-                  <TableHead className="text-xs font-semibold h-8 text-right">Encargos</TableHead>
-                  <TableHead className="text-xs font-semibold h-8 text-right">BDI</TableHead>
-                  <TableHead className="text-xs font-semibold h-8 text-right">Preço Unit.</TableHead>
-                  <TableHead className="text-xs font-semibold h-8 text-right">Preço Total</TableHead>
+                <TableRow>
+                  <TableHead>Item</TableHead>
+                  <TableHead>Descrição</TableHead>
+                  <TableHead className="text-right">Qtd</TableHead>
+                  <TableHead>Und</TableHead>
+                  <TableHead className="text-right">Custo Unit.</TableHead>
+                  <TableHead className="text-right">Encargos</TableHead>
+                  <TableHead className="text-right">BDI</TableHead>
+                  <TableHead className="text-right">Preço Unit.</TableHead>
+                  <TableHead className="text-right">Preço Total</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {resultado.itens.map((item, idx) => (
                   <TableRow key={idx}>
-                    <TableCell className="text-xs py-1.5">{idx + 1}</TableCell>
-                    <TableCell className="text-xs py-1.5">{item.descricao}</TableCell>
-                    <TableCell className="text-xs py-1.5 text-right">{item.quantidade}</TableCell>
-                    <TableCell className="text-xs py-1.5">{item.unidade}</TableCell>
-                    <TableCell className="text-xs py-1.5 text-right">{fmtCur(item.custoUnitario)}</TableCell>
-                    <TableCell className="text-xs py-1.5 text-right text-info">{fmtCur(item.encargosValor)}</TableCell>
-                    <TableCell className="text-xs py-1.5 text-right text-warning">{fmtCur(item.bdiValor)}</TableCell>
-                    <TableCell className="text-xs py-1.5 text-right font-medium">{fmtCur(item.precoUnitario)}</TableCell>
-                    <TableCell className="text-xs py-1.5 text-right font-bold">{fmtCur(item.precoTotal)}</TableCell>
+                    <TableCell className="tabular-nums">{idx + 1}</TableCell>
+                    <TableCell>{item.descricao}</TableCell>
+                    <TableCell className="text-right tabular-nums">{item.quantidade}</TableCell>
+                    <TableCell>{item.unidade}</TableCell>
+                    <TableCell className="text-right tabular-nums" nowrap>{fmtCur(item.custoUnitario)}</TableCell>
+                    <TableCell className="text-right tabular-nums text-info-ink" nowrap>{fmtCur(item.encargosValor)}</TableCell>
+                    <TableCell className="text-right tabular-nums text-warning-ink" nowrap>{fmtCur(item.bdiValor)}</TableCell>
+                    <TableCell className="text-right font-medium tabular-nums" nowrap>{fmtCur(item.precoUnitario)}</TableCell>
+                    <TableCell className="text-right font-semibold tabular-nums" nowrap>{fmtCur(item.precoTotal)}</TableCell>
                   </TableRow>
                 ))}
-                <TableRow className="bg-muted/40 font-bold">
-                  <TableCell colSpan={4} className="text-xs py-2">TOTAL</TableCell>
-                  <TableCell className="text-xs py-2 text-right">{fmtCur(resultado.totalCusto)}</TableCell>
-                  <TableCell className="text-xs py-2 text-right text-info">{fmtCur(resultado.totalEncargos)}</TableCell>
-                  <TableCell className="text-xs py-2 text-right text-warning">{fmtCur(resultado.totalBDI)}</TableCell>
-                  <TableCell className="text-xs py-2 text-right"></TableCell>
-                  <TableCell className="text-xs py-2 text-right text-foreground">{fmtCur(resultado.totalPreco)}</TableCell>
+                <TableRow className="bg-secondary font-semibold hover:bg-secondary">
+                  <TableCell colSpan={4}>TOTAL</TableCell>
+                  <TableCell className="text-right tabular-nums" nowrap>{fmtCur(resultado.totalCusto)}</TableCell>
+                  <TableCell className="text-right tabular-nums text-info-ink" nowrap>{fmtCur(resultado.totalEncargos)}</TableCell>
+                  <TableCell className="text-right tabular-nums text-warning-ink" nowrap>{fmtCur(resultado.totalBDI)}</TableCell>
+                  <TableCell className="text-right"></TableCell>
+                  <TableCell className="text-right tabular-nums text-foreground" nowrap>{fmtCur(resultado.totalPreco)}</TableCell>
                 </TableRow>
               </TableBody>
             </Table>
           </div>
 
           {/* Valor por extenso */}
-          <p className="text-xs text-muted-foreground italic text-center">
+          <p className="text-sm text-muted-foreground">
             Valor Global: {fmtCur(resultado.totalPreco)} ({valorPorExtenso(resultado.totalPreco)})
           </p>
 
           {/* BDI formula explanation */}
-          <div className="bg-muted/20 rounded-lg p-3 space-y-1">
-            <p className="text-xs font-semibold text-muted-foreground">MEMÓRIA DE CÁLCULO DO BDI</p>
-            <p className="text-xs text-muted-foreground font-mono">
+          <div className="space-y-1 rounded-md border border-border bg-secondary p-3">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">MEMÓRIA DE CÁLCULO DO BDI</p>
+            <p className="font-mono text-xs text-muted-foreground">
               BDI = [(1 + {fmtPerc(bdiCalc.ac)} + {fmtPerc(bdiCalc.sg)} + {fmtPerc(bdiCalc.risco)}) × (1 + {fmtPerc(bdiCalc.df)}) × (1 + {fmtPerc(bdiCalc.lucro)})] / (1 - {fmtPerc(bdiCalc.totalTributosPerc)}) - 1
             </p>
-            <p className="text-xs text-foreground font-bold">BDI = {fmtPerc(bdiCalc.bdiPercentual)}</p>
+            <p className="text-sm font-semibold tabular-nums text-foreground">BDI = {fmtPerc(bdiCalc.bdiPercentual)}</p>
           </div>
         </div>
       )}

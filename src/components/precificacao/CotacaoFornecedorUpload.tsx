@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Upload, FileText, Loader2, X, CheckCircle, Trash2, Eye, Calendar, Building2 } from 'lucide-react';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -232,21 +233,21 @@ ${truncated}`
       {/* Upload area */}
       <div className="flex flex-wrap items-end gap-2">
         {file ? (
-          <div className="flex flex-1 flex-wrap items-center gap-3 rounded-lg border border-border bg-muted p-4">
-            <FileText className="w-6 h-6 text-muted-foreground flex-shrink-0" aria-hidden="true" />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{file.name}</p>
+          <div className="flex flex-1 flex-wrap items-center gap-3 rounded-lg border border-border bg-secondary p-4">
+            <FileText className="h-6 w-6 flex-shrink-0 text-muted-foreground" aria-hidden="true" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-foreground">{file.name}</p>
               <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(0)} KB</p>
             </div>
             <Button onClick={handleExtract} disabled={isExtracting}>
               {isExtracting ? (
-                <><Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Extraindo...</>
+                <><Loader2 className="animate-spin" aria-hidden="true" /> Extraindo...</>
               ) : (
-                <><CheckCircle className="w-4 h-4" aria-hidden="true" /> Extrair Preços</>
+                <><CheckCircle aria-hidden="true" /> Extrair Preços</>
               )}
             </Button>
-            <Button variant="outline" aria-label="Remover arquivo" onClick={() => { setFile(null); if (fileRef.current) fileRef.current.value = ''; }}>
-              <X className="w-4 h-4" aria-hidden="true" />
+            <Button variant="ghost" size="icon-sm" aria-label="Remover arquivo" onClick={() => { setFile(null); if (fileRef.current) fileRef.current.value = ''; }}>
+              <X aria-hidden="true" />
             </Button>
           </div>
         ) : (
@@ -254,9 +255,9 @@ ${truncated}`
             type="button"
             variant="outline"
             onClick={() => fileRef.current?.click()}
-            className="h-auto flex-1 justify-start gap-3 whitespace-normal border-2 border-dashed p-4 text-left font-normal"
+            className="h-auto flex-1 justify-start gap-3 whitespace-normal border-dashed p-4 text-left font-normal"
           >
-            <Upload className="w-6 h-6 text-muted-foreground" aria-hidden="true" />
+            <Upload className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
             <span className="min-w-0">
               <span className="block text-sm font-medium text-foreground">Enviar cotação de fornecedor (PDF)</span>
               <span className="block text-xs text-muted-foreground">A IA extrairá produtos, preços e dados do fornecedor automaticamente</span>
@@ -274,60 +275,60 @@ ${truncated}`
 
       {/* Stats */}
       {cotacoes.length > 0 && (
-        <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
+        <div className="flex flex-wrap gap-4 text-sm text-muted-foreground tabular-nums">
           <span>{cotacoes.length} cotações carregadas</span>
           <span>·</span>
           <span>{totalItens} itens no total</span>
         </div>
       )}
 
-      {/* Cotações list */}
+      {/* Cotações list — cartões compactos: título 13/500, meta 12, selo suave. */}
       {cotacoes.map((cotacao, idx) => (
         <div key={cotacao.id || idx} className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
           <div
-            className="flex items-center justify-between gap-2 p-4 cursor-pointer hover:bg-muted transition-colors"
+            className="flex cursor-pointer items-center justify-between gap-2 p-4 transition-colors duration-150 hover:bg-muted/60"
             onClick={() => setExpandedIdx(expandedIdx === idx ? null : idx)}
           >
-            <div className="flex items-center gap-3 flex-1 min-w-0">
-              <FileText className="w-5 h-5 text-muted-foreground flex-shrink-0" aria-hidden="true" />
+            <div className="flex min-w-0 flex-1 items-center gap-3">
+              <FileText className="h-5 w-5 flex-shrink-0 text-muted-foreground" aria-hidden="true" />
               <div className="min-w-0">
-                <p className="text-sm font-medium truncate">{cotacao.nome_fornecedor}</p>
+                <p className="truncate text-sm font-medium text-foreground">{cotacao.nome_fornecedor}</p>
                 <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                  {cotacao.cnpj_fornecedor && <span>{cotacao.cnpj_fornecedor}</span>}
+                  {cotacao.cnpj_fornecedor && <span className="tabular-nums">{cotacao.cnpj_fornecedor}</span>}
                   {cotacao.data_cotacao && (
-                    <span className="flex items-center gap-1">
-                      <Calendar className="w-3 h-3" aria-hidden="true" />
+                    <span className="flex items-center gap-1 tabular-nums">
+                      <Calendar className="h-3 w-3" aria-hidden="true" />
                       {new Date(cotacao.data_cotacao + 'T00:00:00').toLocaleDateString('pt-BR')}
                     </span>
                   )}
-                  <Badge variant="outline">{cotacao.itens.length} itens</Badge>
+                  <Badge variant="outline" className="tabular-nums">{cotacao.itens.length} itens</Badge>
                 </div>
               </div>
             </div>
-            <div className="flex gap-1 ml-2">
-              <Button size="sm" variant="ghost" aria-expanded={expandedIdx === idx} aria-label={expandedIdx === idx ? `Recolher itens de ${cotacao.nome_fornecedor}` : `Ver itens de ${cotacao.nome_fornecedor}`} onClick={(e) => { e.stopPropagation(); setExpandedIdx(expandedIdx === idx ? null : idx); }}>
-                <Eye className="w-4 h-4" aria-hidden="true" />
+            <div className="ml-2 flex gap-1">
+              <Button size="icon-sm" variant="ghost" aria-expanded={expandedIdx === idx} aria-label={expandedIdx === idx ? `Recolher itens de ${cotacao.nome_fornecedor}` : `Ver itens de ${cotacao.nome_fornecedor}`} onClick={(e) => { e.stopPropagation(); setExpandedIdx(expandedIdx === idx ? null : idx); }}>
+                <Eye aria-hidden="true" />
               </Button>
-              <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive-tint" aria-label={`Excluir cotação de ${cotacao.nome_fornecedor}`} onClick={(e) => { e.stopPropagation(); handleDelete(idx); }}>
-                <Trash2 className="w-4 h-4" aria-hidden="true" />
+              <Button size="icon-sm" variant="ghost-destructive" aria-label={`Excluir cotação de ${cotacao.nome_fornecedor}`} onClick={(e) => { e.stopPropagation(); handleDelete(idx); }}>
+                <Trash2 aria-hidden="true" />
               </Button>
             </div>
           </div>
 
           {expandedIdx === idx && cotacao.itens.length > 0 && (
-            <div className="border-t border-border divide-y divide-border">
+            <div className="divide-y divide-border border-t border-border">
               {cotacao.itens.map((item, j) => (
                 <div key={j} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-foreground truncate">{item.descricao}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium text-foreground">{item.descricao}</p>
                     <p className="text-xs text-muted-foreground">
                       {item.quantidade} {item.unidade}
                       {item.marca && ` · ${item.marca}`}
                       {item.modelo && ` · ${item.modelo}`}
                     </p>
                   </div>
-                  <div className="text-right flex-shrink-0 tabular-nums">
-                    <p className="font-semibold">{formatCurrency(item.preco_unitario)}</p>
+                  <div className="flex-shrink-0 text-right tabular-nums">
+                    <p className="font-semibold text-foreground">{formatCurrency(item.preco_unitario)}</p>
                     {item.preco_total > 0 && (
                       <p className="text-xs text-muted-foreground">Total: {formatCurrency(item.preco_total)}</p>
                     )}
@@ -341,12 +342,13 @@ ${truncated}`
 
       {/* Empty state */}
       {cotacoes.length === 0 && !file && !loadingSaved && (
-        <div className="flex flex-col items-center justify-center py-8 text-center">
-          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
-            <Building2 className="w-6 h-6" aria-hidden="true" />
-          </span>
-          <p className="mt-4 text-base font-semibold">Nenhuma cotação de fornecedor carregada</p>
-          <p className="mt-1 text-sm text-muted-foreground">Envie PDFs de cotações para extrair preços automaticamente.</p>
+        <div className="rounded-lg border border-dashed border-border">
+          <EstadoVazio
+            tamanho="compacto"
+            icone={<Building2 />}
+            titulo="Nenhuma cotação de fornecedor carregada"
+            descricao="Envie PDFs de cotações para extrair preços automaticamente."
+          />
         </div>
       )}
     </div>

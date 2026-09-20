@@ -2,6 +2,10 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import SeloPraefectusIA from "@/components/shared/SeloPraefectusIA";
 import { cn } from "@/lib/utils";
 import { streamAIChat, type ChatMessage } from "@/lib/ai-stream";
 import { supabase } from "@/integrations/supabase/client";
@@ -296,128 +300,132 @@ function TabelaCotacaoUI({
   const fonte = tabela.fornecedores[0]?.fonte ?? "Mercado";
 
   return (
-    <div className="mt-3 rounded-lg border border-border overflow-hidden bg-card shadow-sm">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted flex-wrap gap-2">
+    <div className="mt-3 overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-secondary px-4 py-3">
         <p className="text-sm font-semibold text-foreground">
           {tabela.fornecedores.length} cotações encontradas
-          <span className="font-normal text-muted-foreground ml-1">· {tabela.item}</span>
+          <span className="ml-1 font-normal text-muted-foreground">· {tabela.item}</span>
         </p>
-        <div className="flex items-center gap-2 flex-wrap">
+        {/* Ordenação como controle segmentado sóbrio (o mesmo do Financeiro):
+            a opção ativa é o segmento branco em relevo, sem pílula verde. */}
+        <div className="flex flex-wrap items-center gap-2">
           <Badge variant="muted">via {fonte}</Badge>
-          {(["preco", "margem", "avaliacao"] as Ordem[]).map((o) => (
-            <Button
-              key={o}
-              type="button"
-              size="sm"
-              variant={ordem === o ? "default" : "outline"}
-              aria-pressed={ordem === o}
-              onClick={() => setOrdem(o)}
-              className="h-8 rounded-full px-3 text-xs"
-            >
-              {o === "preco" ? "Menor preço" : o === "margem" ? "Maior margem" : "Melhor avaliação"}
-            </Button>
-          ))}
+          <div className="inline-flex flex-wrap gap-1 rounded-md bg-muted p-1" role="group" aria-label="Ordenar cotações">
+            {(["preco", "margem", "avaliacao"] as Ordem[]).map((o) => (
+              <Button
+                key={o}
+                type="button"
+                size="sm"
+                variant={ordem === o ? "outline" : "ghost"}
+                aria-pressed={ordem === o}
+                onClick={() => setOrdem(o)}
+              >
+                {o === "preco" ? "Menor preço" : o === "margem" ? "Maior margem" : "Melhor avaliação"}
+              </Button>
+            ))}
+          </div>
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm min-w-[780px]">
-          <thead>
-            <tr className="border-b border-border bg-muted">
-              <th className="w-8 px-3 py-2" />
-              <th className="text-left px-3 py-2 text-sm font-semibold text-muted-foreground">Vendedor</th>
-              <th className="text-left px-3 py-2 text-sm font-semibold text-muted-foreground">Produto</th>
-              <th className="text-right px-3 py-2 text-sm font-semibold text-muted-foreground">Valor unit.</th>
-              <th className="text-right px-3 py-2 text-sm font-semibold text-muted-foreground">Total</th>
-              <th className="text-center px-3 py-2 text-sm font-semibold text-muted-foreground">Margem</th>
-              <th className="text-left px-3 py-2 text-sm font-semibold text-muted-foreground">Condições</th>
-              <th className="px-3 py-2 w-10" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {sorted.map((f, idx) => {
-              const sel = selection.has(f.id);
-              const total = f.valorUnit * f.qtd;
-              const cheapest = idx === 0 && ordem === "preco";
-              return (
-                <tr
-                  key={f.id}
-                  onClick={() => onToggle(f)}
-                  className={cn("cursor-pointer transition-colors", sel ? "bg-primary-tint" : "hover:bg-muted")}
-                >
-                  <td className="px-3 py-3">
-                    <div
-                      role="checkbox"
-                      aria-checked={sel}
-                      aria-label={`Selecionar cotação de ${f.nome}`}
-                      className={cn("w-4 h-4 rounded-sm border flex items-center justify-center", sel ? "bg-primary border-primary" : "border-input")}
+      {/* Tabela na anatomia da `ui/table`; a linha escolhida usa o estado
+          `selected` (tinta verde). A rolagem fica presa ao contêiner. */}
+      <Table className="min-w-[780px]">
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-8"><span className="sr-only">Selecionar</span></TableHead>
+            <TableHead>Vendedor</TableHead>
+            <TableHead>Produto</TableHead>
+            <TableHead className="text-right">Valor unit.</TableHead>
+            <TableHead className="text-right">Total</TableHead>
+            <TableHead className="text-right">Margem</TableHead>
+            <TableHead>Condições</TableHead>
+            <TableHead className="w-10"><span className="sr-only">Abrir</span></TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {sorted.map((f, idx) => {
+            const sel = selection.has(f.id);
+            const total = f.valorUnit * f.qtd;
+            const cheapest = idx === 0 && ordem === "preco";
+            return (
+              <TableRow
+                key={f.id}
+                onClick={() => onToggle(f)}
+                data-state={sel ? "selected" : undefined}
+                className="cursor-pointer"
+              >
+                <TableCell>
+                  <div
+                    role="checkbox"
+                    aria-checked={sel}
+                    aria-label={`Selecionar cotação de ${f.nome}`}
+                    className={cn("flex h-4 w-4 items-center justify-center rounded-sm border", sel ? "border-primary bg-primary" : "border-input bg-card")}
+                  >
+                    {sel && <Check className="h-3 w-3 text-primary-foreground" aria-hidden="true" />}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1.5 font-semibold text-foreground">
+                    <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md bg-muted text-xs font-semibold text-muted-foreground" aria-hidden="true">
+                      {f.nome.slice(0, 2).toUpperCase()}
+                    </span>
+                    <span className="max-w-[110px] truncate">{f.nome}</span>
+                  </div>
+                  {f.avaliacao > 0 && (
+                    <div className="mt-0.5 text-xs text-warning-ink tabular-nums">{stars(f.avaliacao)} {f.avaliacao.toFixed(1)}</div>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <p className="line-clamp-2 max-w-[260px] text-foreground">{f.modelo}</p>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    <Badge variant="ia" className="tabular-nums">{f.aderencia}% aderência</Badge>
+                    {cheapest && (
+                      <Badge variant="success">Menor preço</Badge>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell className="text-right font-semibold tabular-nums text-foreground" nowrap>
+                  {fmtBRL(f.valorUnit)}
+                  <div className="text-xs font-normal text-muted-foreground">{f.qtd} un.</div>
+                </TableCell>
+                <TableCell className="text-right font-semibold tabular-nums text-foreground" nowrap>
+                  {fmtBRL(total)}
+                </TableCell>
+                <TableCell className="text-right">
+                  <Badge variant="warning" className="tabular-nums">{f.margem}%</Badge>
+                </TableCell>
+                <TableCell className="text-xs text-muted-foreground" nowrap>
+                  <div className="flex items-center gap-1.5"><Truck className="h-3 w-3" aria-hidden="true" />{f.prazoEntrega}</div>
+                  <div className="mt-0.5 flex items-center gap-1.5"><CreditCard className="h-3 w-3" aria-hidden="true" />{f.pagamento}</div>
+                  <div className="mt-0.5 flex items-center gap-1.5"><Package2 className="h-3 w-3" aria-hidden="true" />
+                    <span className={f.emEstoque ? "font-semibold text-success-ink" : "font-semibold text-warning-ink"}>
+                      {f.emEstoque ? "Em estoque" : "Sob encomenda"}
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  {f.url && (
+                    <a
+                      href={f.url} target="_blank" rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      title="Ver produto"
+                      aria-label={`Ver produto de ${f.nome}`}
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
-                      {sel && <Check className="w-3 h-3 text-primary-foreground" aria-hidden="true" />}
-                    </div>
-                  </td>
-                  <td className="px-3 py-3">
-                    <div className="flex items-center gap-1.5 font-semibold text-foreground">
-                      <span className="w-6 h-6 rounded-md bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground flex-shrink-0" aria-hidden="true">
-                        {f.nome.slice(0, 2).toUpperCase()}
-                      </span>
-                      <span className="max-w-[110px] truncate">{f.nome}</span>
-                    </div>
-                    {f.avaliacao > 0 && (
-                      <div className="text-xs text-warning mt-0.5">{stars(f.avaliacao)} {f.avaliacao.toFixed(1)}</div>
-                    )}
-                  </td>
-                  <td className="px-3 py-3">
-                    <p className="text-foreground max-w-[260px] line-clamp-2">{f.modelo}</p>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      <span className="text-xs font-semibold text-primary bg-primary-tint px-2 py-0.5 rounded-full">{f.aderencia}% aderência</span>
-                      {cheapest && (
-                        <Badge variant="success">Menor preço</Badge>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-3 py-3 text-right tabular-nums font-semibold text-foreground whitespace-nowrap">
-                    {fmtBRL(f.valorUnit)}
-                    <div className="text-xs font-normal text-muted-foreground">{f.qtd} un.</div>
-                  </td>
-                  <td className="px-3 py-3 text-right tabular-nums font-bold text-foreground whitespace-nowrap">
-                    {fmtBRL(total)}
-                  </td>
-                  <td className="px-3 py-3 text-center">
-                    <Badge variant="warning">{f.margem}%</Badge>
-                  </td>
-                  <td className="px-3 py-3 text-muted-foreground text-xs whitespace-nowrap">
-                    <div className="flex items-center gap-1.5"><Truck className="w-3 h-3" aria-hidden="true" />{f.prazoEntrega}</div>
-                    <div className="flex items-center gap-1.5 mt-0.5"><CreditCard className="w-3 h-3" aria-hidden="true" />{f.pagamento}</div>
-                    <div className="flex items-center gap-1.5 mt-0.5"><Package2 className="w-3 h-3" aria-hidden="true" />
-                      <span className={f.emEstoque ? "text-success font-semibold" : "text-warning font-semibold"}>
-                        {f.emEstoque ? "Em estoque" : "Sob encomenda"}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-3 py-3">
-                    {f.url && (
-                      <a
-                        href={f.url} target="_blank" rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        title="Ver produto"
-                        aria-label={`Ver produto de ${f.nome}`}
-                        className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-border text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      >
-                        <ExternalLink className="w-4 h-4" aria-hidden="true" />
-                      </a>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-      <div className="px-4 py-2 bg-muted border-t border-border text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap">
-        <Search className="w-3 h-3" aria-hidden="true" />
+                      <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                    </a>
+                  )}
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+      <div className="flex flex-wrap items-center gap-1.5 border-t border-border bg-secondary px-4 py-2 text-xs text-muted-foreground">
+        <Search className="h-3 w-3" aria-hidden="true" />
         Selecione os itens para incluir na proposta comercial.
         {fonte === "Estimativa de mercado (IA)" && (
-          <span className="text-warning ml-1">· Valores estimados — confirme com fornecedores antes de submeter.</span>
+          <span className="ml-1 text-warning-ink">· Valores estimados — confirme com fornecedores antes de submeter.</span>
         )}
       </div>
     </div>
@@ -530,33 +538,44 @@ export default function AureliaPrecificacaoChat() {
     ? [...selection.values()].reduce((s, f) => s + f.margem, 0) / selection.size : 0;
 
   return (
-    <div className="flex flex-col h-full min-h-0 relative">
-      {/* ── Mensagens ── */}
-      <div className="flex-1 overflow-y-auto px-4 py-5 space-y-5 bg-background">
+    <div className="relative flex h-full min-h-0 flex-col">
+      {/* ── Cabeçalho do chat — recurso de IA leva o selo "Praefectus IA". ── */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-border bg-card px-4 py-2.5">
+        <span className="flex h-8 w-8 items-center justify-center rounded-md bg-primary-tint" aria-hidden="true">
+          <Sparkles className="h-4 w-4 text-teal" />
+        </span>
+        <span className="text-sm font-semibold text-foreground">AURÉLIA</span>
+        <SeloPraefectusIA />
+      </div>
+
+      {/* ── Mensagens — fio em max-w-3xl, balões rounded-lg (IA em cartão,
+          usuário na tinta da ação). ── */}
+      <div className="flex-1 overflow-y-auto bg-background px-4 py-5">
+        <div className="mx-auto w-full max-w-3xl space-y-5">
         {messages.map((msg, idx) => (
-          <div key={idx} className={cn("flex gap-3 items-start", msg.role === "user" && "flex-row-reverse")}>
-            <div className={cn("w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5",
-              msg.role === "assistant" ? "bg-primary text-primary-foreground" : "bg-navy text-primary-foreground")} aria-hidden="true">
+          <div key={idx} className={cn("flex items-start gap-3", msg.role === "user" && "flex-row-reverse")}>
+            <div className={cn("mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md",
+              msg.role === "assistant" ? "bg-primary-tint text-teal" : "bg-muted text-muted-foreground")} aria-hidden="true">
               {msg.role === "assistant"
-                ? <Sparkles className="w-4 h-4" />
-                : <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="8" r="4" /><path d="M4 21c1.5-4 5-6 8-6s6.5 2 8 6" /></svg>
+                ? <Sparkles className="h-4 w-4" />
+                : <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="8" r="4" /><path d="M4 21c1.5-4 5-6 8-6s6.5 2 8 6" /></svg>
               }
             </div>
-            <div className={cn("flex-1 min-w-0", msg.role === "user" && "flex flex-col items-end")}>
+            <div className={cn("min-w-0 flex-1", msg.role === "user" && "flex flex-col items-end")}>
               {msg.role === "assistant" && (
-                <p className="text-xs font-bold text-primary mb-1.5 tracking-wider uppercase">AURÉLIA</p>
+                <p className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">AURÉLIA</p>
               )}
               {msg.content && (
-                <div className={cn("rounded-lg px-4 py-3 text-sm max-w-[85%]",
+                <div className={cn("max-w-[85%] rounded-lg px-4 py-3 text-sm",
                   msg.role === "assistant"
-                    ? "bg-card border border-border shadow-sm rounded-tl-sm prose prose-sm dark:prose-invert max-w-none"
-                    : "bg-navy text-primary-foreground rounded-tr-sm whitespace-pre-wrap")}>
+                    ? "prose prose-sm max-w-none border border-border bg-card shadow-sm dark:prose-invert"
+                    : "whitespace-pre-wrap bg-primary text-primary-foreground")}>
                   {msg.role === "assistant" ? <ReactMarkdown>{msg.content}</ReactMarkdown> : msg.content}
                 </div>
               )}
               {msg.buscando && (
-                <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground" role="status">
-                  <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground" role="status">
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
                   Buscando cotações de mercado…
                 </div>
               )}
@@ -570,27 +589,28 @@ export default function AureliaPrecificacaoChat() {
         ))}
 
         {loading && !messages[messages.length - 1]?.buscando && (
-          <div className="flex gap-3 items-start" role="status" aria-label="AURÉLIA está respondendo">
-            <div className="w-8 h-8 rounded-md bg-primary text-primary-foreground flex items-center justify-center flex-shrink-0" aria-hidden="true">
-              <Sparkles className="w-4 h-4" />
+          <div className="flex items-start gap-3" role="status" aria-label="AURÉLIA está respondendo">
+            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md bg-primary-tint text-teal" aria-hidden="true">
+              <Sparkles className="h-4 w-4" />
             </div>
-            <div className="bg-card border border-border rounded-lg rounded-tl-sm px-4 py-3 shadow-sm">
+            <div className="rounded-lg border border-border bg-card px-4 py-3 shadow-sm">
               <div className="flex gap-1.5" aria-hidden="true">{[0,1,2].map(i => (
-                <div key={i} className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 animate-bounce motion-reduce:animate-none" style={{ animationDelay: `${i*0.15}s` }} />
+                <div key={i} className="h-1.5 w-1.5 animate-bounce rounded-full bg-foreground-tertiary motion-reduce:animate-none" style={{ animationDelay: `${i*0.15}s` }} />
               ))}</div>
             </div>
           </div>
         )}
         <div ref={bottomRef} />
+        </div>
       </div>
 
-      {/* ── Cart bar ── */}
+      {/* ── Cart bar — superfície da ação (tinta), nunca escura. ── */}
       {selection.size > 0 && (
-        <div className="mx-4 mb-3 rounded-lg bg-navy text-primary-foreground px-4 py-3 flex items-center justify-between gap-4 shadow-md flex-wrap">
-          <div className="flex items-center gap-6 flex-wrap">
-            <div><p className="text-xs uppercase tracking-wider text-primary-foreground/70">Selecionados</p><p className="text-base font-bold tabular-nums">{selection.size} {selection.size === 1 ? "item" : "itens"}</p></div>
-            <div><p className="text-xs uppercase tracking-wider text-primary-foreground/70">Valor total</p><p className="text-base font-bold tabular-nums">{fmtBRL(totalSel)}</p></div>
-            <div><p className="text-xs uppercase tracking-wider text-primary-foreground/70">Margem média</p><p className="text-base font-bold tabular-nums">{avgMargem.toFixed(0)}%</p></div>
+        <div className="mx-4 mb-3 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-primary-line bg-primary-tint px-4 py-3 text-foreground">
+          <div className="flex flex-wrap items-center gap-6">
+            <div><p className="text-xs font-medium text-muted-foreground">Selecionados</p><p className="text-base font-semibold tabular-nums">{selection.size} {selection.size === 1 ? "item" : "itens"}</p></div>
+            <div><p className="text-xs font-medium text-muted-foreground">Valor total</p><p className="text-base font-semibold tabular-nums">{fmtBRL(totalSel)}</p></div>
+            <div><p className="text-xs font-medium text-muted-foreground">Margem média</p><p className="text-base font-semibold tabular-nums">{avgMargem.toFixed(0)}%</p></div>
           </div>
           <Button
             className="whitespace-nowrap"
@@ -600,15 +620,15 @@ export default function AureliaPrecificacaoChat() {
               setSelection(new Map());
             }}
           >
-            <ShoppingCart className="w-4 h-4" aria-hidden="true" />
+            <ShoppingCart aria-hidden="true" />
             Gerar proposta comercial →
           </Button>
         </div>
       )}
 
-      {/* ── Composer ── */}
-      <div className="px-4 pb-4 pt-3 bg-card border-t border-border">
-        <div className="flex items-end gap-2 border border-input rounded-md px-3 py-2 focus-within:border-primary focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-colors bg-background">
+      {/* ── Composer — entrada fixa embaixo, caixa de 44px que cresce até 120px. ── */}
+      <div className="border-t border-border bg-card px-4 pb-4 pt-3">
+        <div className="mx-auto flex w-full max-w-3xl items-end gap-2 rounded-md border border-input bg-card px-3 py-1.5 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20">
           <Textarea
             rows={1}
             aria-label="Descreva o item do edital para cotar"
@@ -620,17 +640,17 @@ export default function AureliaPrecificacaoChat() {
             }}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
             placeholder="Descreva o item do edital para cotar…"
-            className="min-h-0 flex-1 resize-none border-0 bg-transparent px-0 py-1.5 text-sm shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 max-h-[120px]"
+            className="max-h-[120px] min-h-0 flex-1 resize-none border-0 bg-transparent px-0 py-1.5 text-sm shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
           />
-          <Button size="icon" onClick={handleSend} disabled={!input.trim() || loading}
+          <Button size="icon-sm" onClick={handleSend} disabled={!input.trim() || loading}
             aria-label="Enviar mensagem"
-            className="h-9 w-9 flex-shrink-0">
+            className="flex-shrink-0">
             {loading
-              ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-              : <Send className="w-4 h-4" aria-hidden="true" />}
+              ? <Loader2 className="animate-spin" aria-hidden="true" />
+              : <Send aria-hidden="true" />}
           </Button>
         </div>
-        <p className="text-xs text-muted-foreground mt-2 ml-1">
+        <p className="mx-auto mt-2 w-full max-w-3xl text-xs text-muted-foreground">
           Enter para enviar · Shift+Enter para quebrar linha
         </p>
       </div>

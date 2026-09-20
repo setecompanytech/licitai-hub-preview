@@ -168,62 +168,62 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
 
   // ── Render helpers ──
   const PercInput = ({ label, value, onChange, info, step: s }: { label: string; value: number; onChange: (v: number) => void; info?: string; step?: string }) => (
-    <div>
-      <Label className="text-sm flex items-center gap-1">
+    <div className="space-y-1.5">
+      <Label className="flex items-center gap-1">
         {label}
         {info && (
-          <TooltipProvider><Tooltip><TooltipTrigger><Info className="w-3 h-3 text-muted-foreground" /></TooltipTrigger>
-          <TooltipContent><p className="text-xs max-w-xs">{info}</p></TooltipContent></Tooltip></TooltipProvider>
+          <TooltipProvider><Tooltip><TooltipTrigger aria-label={`Sobre ${label}`} className="inline-flex rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Info className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" /></TooltipTrigger>
+          <TooltipContent><p className="max-w-xs text-xs">{info}</p></TooltipContent></Tooltip></TooltipProvider>
         )}
       </Label>
-      <div className="relative mt-1">
-        <Input type="number" value={value || ''} onChange={e => onChange(parsePerc(e.target.value))} className="pr-6" min={0} max={100} step={s || '0.01'} />
-        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
+      <div className="relative">
+        <Input aria-label={label} type="number" value={value || ''} onChange={e => onChange(parsePerc(e.target.value))} className="pr-7 tabular-nums" min={0} max={100} step={s || '0.01'} />
+        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
       </div>
     </div>
   );
 
   const CurrInput = ({ label, value, onChange, info }: { label: string; value: string; onChange: (v: string) => void; info?: string }) => (
-    <div>
-      <Label className="text-sm flex items-center gap-1">
+    <div className="space-y-1.5">
+      <Label className="flex items-center gap-1">
         {label}
         {info && (
-          <TooltipProvider><Tooltip><TooltipTrigger><Info className="w-3 h-3 text-muted-foreground" /></TooltipTrigger>
-          <TooltipContent><p className="text-xs max-w-xs">{info}</p></TooltipContent></Tooltip></TooltipProvider>
+          <TooltipProvider><Tooltip><TooltipTrigger aria-label={`Sobre ${label}`} className="inline-flex rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Info className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" /></TooltipTrigger>
+          <TooltipContent><p className="max-w-xs text-xs">{info}</p></TooltipContent></Tooltip></TooltipProvider>
         )}
       </Label>
-      <Input value={value} onChange={e => onChange(fmtInput(e.target.value))} placeholder="R$ 0,00" className="mt-1" />
+      <Input aria-label={label} value={value} onChange={e => onChange(fmtInput(e.target.value))} placeholder="R$ 0,00" className="tabular-nums" />
     </div>
   );
 
   const renderLineItems = (items: LineItem[]) => (
     <div className="space-y-0.5">
       {items.map((item, i) => (
-        <div key={i} className="flex items-center justify-between text-sm py-1 hover:bg-muted px-1 rounded group">
-          <div className="flex items-center gap-1.5 flex-1 min-w-0">
-            {item.id && <Badge variant="outline" className="text-xs px-1 py-0 shrink-0 font-mono">{item.id}</Badge>}
-            <span className="text-muted-foreground truncate">{item.descricao}</span>
-            {item.percentual != null && item.percentual !== 0 && <span className="text-muted-foreground text-xs">({item.percentual}%)</span>}
+        <div key={i} className="group flex items-center justify-between rounded-sm px-1 py-1 text-sm transition-colors hover:bg-muted/60">
+          <div className="flex min-w-0 flex-1 items-center gap-1.5">
+            {item.id && <Badge variant="outline" className="shrink-0 px-1 py-0 tabular-nums">{item.id}</Badge>}
+            <span className="truncate text-muted-foreground">{item.descricao}</span>
+            {item.percentual != null && item.percentual !== 0 && <span className="text-xs text-muted-foreground tabular-nums">({item.percentual}%)</span>}
             {item.formula && (
-              <TooltipProvider><Tooltip><TooltipTrigger><Eye className="w-2.5 h-2.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" /></TooltipTrigger>
-              <TooltipContent side="right"><p className="text-xs font-mono">{item.formula}</p></TooltipContent></Tooltip></TooltipProvider>
+              <TooltipProvider><Tooltip><TooltipTrigger aria-label={`Fórmula de ${item.descricao}`} className="inline-flex shrink-0 rounded-sm opacity-0 transition-opacity focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100"><Eye className="h-3 w-3 text-muted-foreground" aria-hidden="true" /></TooltipTrigger>
+              <TooltipContent side="right"><p className="font-mono text-xs">{item.formula}</p></TooltipContent></Tooltip></TooltipProvider>
             )}
           </div>
-          <span className="font-medium ml-2 shrink-0 tabular-nums">{fmtCur(item.valor)}</span>
+          <span className="ml-2 shrink-0 font-medium tabular-nums text-foreground">{fmtCur(item.valor)}</span>
         </div>
       ))}
     </div>
   );
 
   const renderSubmodulo = (sub: SubModuloResult) => (
-    <div className="rounded-md bg-muted p-3 space-y-1 ml-2">
+    <div className="ml-2 space-y-1 rounded-md bg-secondary p-3">
       <h6 className="text-sm font-semibold text-foreground">{sub.titulo}</h6>
       {renderLineItems(sub.itens)}
-      <div className="flex items-center justify-between text-sm font-bold border-t border-border pt-0.5 px-1">
+      <div className="flex items-center justify-between border-t border-border px-1 pt-0.5 text-sm font-semibold">
         <span>Subtotal</span>
         <span className="tabular-nums">{fmtCur(sub.subtotal)}</span>
       </div>
-      {sub.nota && <p className="text-xs text-muted-foreground italic">{sub.nota}</p>}
+      {sub.nota && <p className="text-xs text-muted-foreground">{sub.nota}</p>}
     </div>
   );
 
@@ -239,15 +239,15 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
   return (
     <>
       {/* Reference banner */}
-      <div className="rounded-lg border border-border bg-muted p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+      <div className="rounded-lg border border-border bg-secondary p-4">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
-            <span className="text-sm font-semibold">Motor de Cálculo Determinístico — Portal de Compras</span>
+            <ShieldCheck className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+            <span className="text-sm font-semibold text-foreground">Motor de Cálculo Determinístico — Portal de Compras</span>
           </div>
           <Button asChild variant="outline" size="sm">
             <a href="/templates/modelo-planilha-portal-compras-v2.xlsx" download>
-              <Download className="w-4 h-4" aria-hidden="true" /> Modelo XLSX
+              <Download aria-hidden="true" /> Modelo XLSX
             </a>
           </Button>
         </div>
@@ -257,19 +257,20 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
         </p>
       </div>
 
-      {/* Step navigation */}
+      {/* Step navigation — controle segmentado sóbrio: a etapa ativa é o
+          segmento branco em relevo; o verde fica para as ações de avançar. */}
       <div className="rounded-lg border border-border bg-card p-3 shadow-sm">
-        <div className="flex flex-wrap gap-2">
+        <div className="inline-flex max-w-full flex-wrap gap-1 rounded-md bg-muted p-1" role="group" aria-label="Etapas da planilha">
           {steps.map((s, i) => (
             <Button
               key={s.id}
               type="button"
               size="sm"
-              variant={step === s.id ? 'default' : 'ghost'}
+              variant={step === s.id ? 'outline' : 'ghost'}
               aria-current={step === s.id ? 'step' : undefined}
               onClick={() => setStep(s.id)}
             >
-              <s.icon className="w-4 h-4" aria-hidden="true" />
+              <s.icon aria-hidden="true" />
               <span className="hidden sm:inline">{i + 1}.</span> {s.label}
             </Button>
           ))}
@@ -277,61 +278,63 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
         {result && (
           <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
             <span>Valor mensal/empregado:</span>
-            <Badge variant="info">{fmtCur(result.quadroResumo.valorMensalEmpregado)}</Badge>
-            <span>×{cargo.quantidadePostos} =</span>
-            <Badge variant="info">{fmtCur(result.quadroResumo.valorMensalTotal)}</Badge>
+            <Badge variant="info" className="tabular-nums">{fmtCur(result.quadroResumo.valorMensalEmpregado)}</Badge>
+            <span className="tabular-nums">×{cargo.quantidadePostos} =</span>
+            <Badge variant="info" className="tabular-nums">{fmtCur(result.quadroResumo.valorMensalTotal)}</Badge>
           </div>
         )}
       </div>
 
       {/* ═══ STEP: CONTRATO ═══ */}
       {step === 'contrato' && (
-        <div className="rounded-lg border border-border bg-card p-5 shadow-sm space-y-4">
-          <h4 className="text-lg font-semibold flex items-center gap-2"><Briefcase className="w-4 h-4 text-muted-foreground" /> Dados do Contrato</h4>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            <div><Label className="text-sm">Nº do Processo</Label><Input value={contrato.nrProcesso} onChange={e => updContrato('nrProcesso', e.target.value)} className="mt-1" /></div>
-            <div><Label className="text-sm">Nº da Contratação</Label><Input value={contrato.nrContratacao} onChange={e => updContrato('nrContratacao', e.target.value)} className="mt-1" /></div>
-            <div><Label className="text-sm">Órgão</Label><Input value={contrato.orgao} onChange={e => updContrato('orgao', e.target.value)} className="mt-1" /></div>
-            <div className="col-span-2 md:col-span-3"><Label className="text-sm">Descrição do Serviço</Label><Input value={contrato.descricaoServico} onChange={e => updContrato('descricaoServico', e.target.value)} className="mt-1" /></div>
-            <div><Label className="text-sm">Vigência (meses) *</Label><Input type="number" value={contrato.vigenciaMeses} onChange={e => updContrato('vigenciaMeses', parseInt(e.target.value) || 12)} min={1} max={120} className="mt-1" /></div>
-            <div><Label className="text-sm">Data da Proposta</Label><Input type="date" value={contrato.dataProposta} onChange={e => updContrato('dataProposta', e.target.value)} className="mt-1" /></div>
-            <div><Label className="text-sm">Município/UF</Label><Input value={contrato.municipioUf} onChange={e => updContrato('municipioUf', e.target.value)} className="mt-1" /></div>
+        <div className="space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm">
+          <h4 className="flex items-center gap-2 text-base font-semibold leading-6 text-foreground"><Briefcase className="h-4 w-4 text-muted-foreground" aria-hidden="true" /> Dados do Contrato</h4>
+          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+            <div className="space-y-1.5"><Label htmlFor="mdo-nr-processo">Nº do Processo</Label><Input id="mdo-nr-processo" value={contrato.nrProcesso} onChange={e => updContrato('nrProcesso', e.target.value)} /></div>
+            <div className="space-y-1.5"><Label htmlFor="mdo-nr-contratacao">Nº da Contratação</Label><Input id="mdo-nr-contratacao" value={contrato.nrContratacao} onChange={e => updContrato('nrContratacao', e.target.value)} /></div>
+            <div className="space-y-1.5"><Label htmlFor="mdo-orgao">Órgão</Label><Input id="mdo-orgao" value={contrato.orgao} onChange={e => updContrato('orgao', e.target.value)} /></div>
+            <div className="space-y-1.5 sm:col-span-2 md:col-span-3"><Label htmlFor="mdo-descricao">Descrição do Serviço</Label><Input id="mdo-descricao" value={contrato.descricaoServico} onChange={e => updContrato('descricaoServico', e.target.value)} /></div>
+            <div className="space-y-1.5"><Label htmlFor="mdo-vigencia">Vigência (meses) *</Label><Input id="mdo-vigencia" type="number" value={contrato.vigenciaMeses} onChange={e => updContrato('vigenciaMeses', parseInt(e.target.value) || 12)} min={1} max={120} className="tabular-nums" /></div>
+            <div className="space-y-1.5"><Label htmlFor="mdo-data-proposta">Data da Proposta</Label><Input id="mdo-data-proposta" type="date" value={contrato.dataProposta} onChange={e => updContrato('dataProposta', e.target.value)} /></div>
+            <div className="space-y-1.5"><Label htmlFor="mdo-municipio">Município/UF</Label><Input id="mdo-municipio" value={contrato.municipioUf} onChange={e => updContrato('municipioUf', e.target.value)} /></div>
           </div>
           <div className="border-t border-border pt-3">
-            <p className="text-sm text-muted-foreground mb-2 font-medium">Convenção Coletiva de Trabalho (Art. 63, §1º, Lei 14.133/21)</p>
-            <div className="grid grid-cols-3 gap-3">
-              <div><Label className="text-sm">Sindicato/Convenção</Label><Input value={contrato.convencaoColetiva} onChange={e => updContrato('convencaoColetiva', e.target.value)} className="mt-1" /></div>
-              <div><Label className="text-sm">Nº Registro MTE</Label><Input value={contrato.nrRegistroCCT} onChange={e => updContrato('nrRegistroCCT', e.target.value)} className="mt-1" /></div>
-              <div><Label className="text-sm">Vigência CCT</Label><Input value={contrato.vigenciaCCT} onChange={e => updContrato('vigenciaCCT', e.target.value)} className="mt-1" /></div>
+            <p className="mb-2 text-sm font-medium text-muted-foreground">Convenção Coletiva de Trabalho (Art. 63, §1º, Lei 14.133/21)</p>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="space-y-1.5"><Label htmlFor="mdo-cct-sindicato">Sindicato/Convenção</Label><Input id="mdo-cct-sindicato" value={contrato.convencaoColetiva} onChange={e => updContrato('convencaoColetiva', e.target.value)} /></div>
+              <div className="space-y-1.5"><Label htmlFor="mdo-cct-registro">Nº Registro MTE</Label><Input id="mdo-cct-registro" value={contrato.nrRegistroCCT} onChange={e => updContrato('nrRegistroCCT', e.target.value)} /></div>
+              <div className="space-y-1.5"><Label htmlFor="mdo-cct-vigencia">Vigência CCT</Label><Input id="mdo-cct-vigencia" value={contrato.vigenciaCCT} onChange={e => updContrato('vigenciaCCT', e.target.value)} /></div>
             </div>
           </div>
-          <Button onClick={() => setStep('cargos')} className="w-full">Próximo → Cargos/Postos</Button>
+          <div className="flex justify-end">
+            <Button onClick={() => setStep('cargos')} className="w-full sm:w-auto">Próximo → Cargos/Postos</Button>
+          </div>
         </div>
       )}
 
       {/* ═══ STEP: CARGOS ═══ */}
       {step === 'cargos' && (
-        <div className="rounded-lg border border-border bg-card p-5 shadow-sm space-y-4">
-          <h4 className="text-lg font-semibold flex items-center gap-2">
-            <span aria-hidden="true" className="bg-muted text-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">1</span>
+        <div className="space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm">
+          <h4 className="flex items-center gap-2 text-base font-semibold leading-6 text-foreground">
+            <span aria-hidden="true" className="flex h-6 w-6 items-center justify-center rounded-md bg-primary-tint text-xs font-semibold text-primary">1</span>
             Módulo 1 — Cargo/Posto e Remuneração Base
           </h4>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <div><Label className="text-sm">Cargo/Função *</Label><Input value={cargo.nome} onChange={e => setCargo(p => ({ ...p, nome: e.target.value }))} placeholder="Ex: Servente de Limpeza" className="mt-1" /></div>
+          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+            <div className="space-y-1.5"><Label htmlFor="mdo-cargo-nome">Cargo/Função *</Label><Input id="mdo-cargo-nome" value={cargo.nome} onChange={e => setCargo(p => ({ ...p, nome: e.target.value }))} placeholder="Ex: Servente de Limpeza" /></div>
             <CurrInput label="Salário-base Mensal (R$) *" value={salarioBaseStr} onChange={setSalarioBaseStr} info="Piso da CCT vigente" />
-            <div>
-              <Label className="text-sm">Qtd de Postos</Label>
-              <Input type="number" value={cargo.quantidadePostos} onChange={e => setCargo(p => ({ ...p, quantidadePostos: parseInt(e.target.value) || 1 }))} min={1} className="mt-1" />
+            <div className="space-y-1.5">
+              <Label htmlFor="mdo-qtd-postos">Qtd de Postos</Label>
+              <Input id="mdo-qtd-postos" type="number" value={cargo.quantidadePostos} onChange={e => setCargo(p => ({ ...p, quantidadePostos: parseInt(e.target.value) || 1 }))} min={1} className="tabular-nums" />
             </div>
-            <div>
-              <Label className="text-sm">Tipo de Jornada</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="mdo-jornada">Tipo de Jornada</Label>
               <Select value={cargo.jornadaTipo} onValueChange={(v: any) => {
                 setCargo(p => ({ ...p, jornadaTipo: v }));
                 if (v === '12x36_noturno') setMod1(p => ({ ...p, proporcaoNoturna: 7/12, horaNReduzidaProporcao: 1/12, adicNoturnoPerc: 20 }));
                 else if (v === '12x36_diurno') setMod1(p => ({ ...p, proporcaoNoturna: 0, horaNReduzidaProporcao: 0, adicNoturnoPerc: 0 }));
                 else setMod1(p => ({ ...p, proporcaoNoturna: 0, horaNReduzidaProporcao: 0 }));
               }}>
-                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectTrigger id="mdo-jornada"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="44h">44h semanais (Diurna)</SelectItem>
                   <SelectItem value="12x36_diurno">12×36 Diurno</SelectItem>
@@ -342,33 +345,33 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
           </div>
 
           <div className="border-t border-border pt-3">
-            <p className="text-sm text-muted-foreground mb-2 font-medium">Adicionais (CLT e NRs)</p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <p className="mb-2 text-sm font-medium text-muted-foreground">Adicionais (CLT e NRs)</p>
+            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
               <PercInput label="Gratificação (%)" value={mod1.gratificacaoPerc} onChange={v => updMod1('gratificacaoPerc', v)} info="Gratificação de função sobre salário-base" />
               <PercInput label="Periculosidade (%)" value={mod1.adicPericulosidadePerc} onChange={v => updMod1('adicPericulosidadePerc', v)} info="30% sobre salário-base (Art. 193, CLT / NR-16)" step="1" />
               <PercInput label="Insalubridade (%)" value={mod1.adicInsalubridadePerc} onChange={v => updMod1('adicInsalubridadePerc', v)} info="10% (mín), 20% (méd) ou 40% (máx) — Art. 192, CLT / NR-15" step="1" />
               <PercInput label="Ad. Noturno (%)" value={mod1.adicNoturnoPerc} onChange={v => updMod1('adicNoturnoPerc', v)} info="Mín. 20% (Art. 73, CLT). Proporção noturna configurável." />
             </div>
             {(cargo.jornadaTipo === '12x36_noturno' || mod1.adicNoturnoPerc > 0) && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">
-                <div>
-                  <Label className="text-sm">Proporção Noturna</Label>
-                  <Input type="number" value={mod1.proporcaoNoturna || ''} onChange={e => updMod1('proporcaoNoturna', parseFloat(e.target.value) || 0)} step="0.0001" className="mt-1" />
-                  <p className="text-xs text-muted-foreground mt-0.5">Ex: 7/12 = 0,5833</p>
+              <div className="mt-3 grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="mdo-prop-noturna">Proporção Noturna</Label>
+                  <Input id="mdo-prop-noturna" type="number" value={mod1.proporcaoNoturna || ''} onChange={e => updMod1('proporcaoNoturna', parseFloat(e.target.value) || 0)} step="0.0001" className="tabular-nums" />
+                  <p className="text-xs text-muted-foreground">Ex: 7/12 = 0,5833</p>
                 </div>
-                <div>
-                  <Label className="text-sm">Proporção Hora Reduzida</Label>
-                  <Input type="number" value={mod1.horaNReduzidaProporcao || ''} onChange={e => updMod1('horaNReduzidaProporcao', parseFloat(e.target.value) || 0)} step="0.0001" className="mt-1" />
-                  <p className="text-xs text-muted-foreground mt-0.5">Ex: 1/12 = 0,0833</p>
+                <div className="space-y-1.5">
+                  <Label htmlFor="mdo-prop-hora-reduzida">Proporção Hora Reduzida</Label>
+                  <Input id="mdo-prop-hora-reduzida" type="number" value={mod1.horaNReduzidaProporcao || ''} onChange={e => updMod1('horaNReduzidaProporcao', parseFloat(e.target.value) || 0)} step="0.0001" className="tabular-nums" />
+                  <p className="text-xs text-muted-foreground">Ex: 1/12 = 0,0833</p>
                 </div>
               </div>
             )}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">
+            <div className="mt-3 grid gap-4 sm:grid-cols-2 md:grid-cols-4">
               <PercInput label="Adicional Genérico (%)" value={mod1.adicGenericoPerc} onChange={v => updMod1('adicGenericoPerc', v)} info="Campo genérico para adicionais não especificados" />
-              <div>
-                <Label className="text-sm">Base Insalubridade</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="mdo-base-insalubridade">Base Insalubridade</Label>
                 <Select value={mod1.baseInsalubridade} onValueChange={(v: any) => updMod1('baseInsalubridade', v)}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="mdo-base-insalubridade"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="salario_base">Salário-base</SelectItem>
                     <SelectItem value="salario_minimo">Salário Mínimo</SelectItem>
@@ -376,16 +379,16 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
                 </Select>
               </div>
               {mod1.baseInsalubridade === 'salario_minimo' && (
-                <div>
-                  <Label className="text-sm">Salário Mínimo (R$)</Label>
-                  <MoneyInput value={Number(mod1.salarioMinimo) || 0} onValueChange={v => updMod1('salarioMinimo', v)} className="mt-1" />
+                <div className="space-y-1.5">
+                  <Label htmlFor="mdo-salario-minimo">Salário Mínimo (R$)</Label>
+                  <MoneyInput id="mdo-salario-minimo" value={Number(mod1.salarioMinimo) || 0} onValueChange={v => updMod1('salarioMinimo', v)} />
                 </div>
               )}
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setStep('contrato')} className="flex-1">← Contrato</Button>
-            <Button onClick={() => setStep('parametros')} className="flex-1">Próximo → Parâmetros</Button>
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <Button variant="outline" onClick={() => setStep('contrato')}>← Contrato</Button>
+            <Button onClick={() => setStep('parametros')}>Próximo → Parâmetros</Button>
           </div>
         </div>
       )}
@@ -394,12 +397,12 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
       {step === 'parametros' && (
         <div className="space-y-4">
           {/* Submódulo 2.1 */}
-          <div className="rounded-lg border border-border bg-card p-5 shadow-sm space-y-4">
-            <h4 className="text-lg font-semibold flex items-center gap-2">
-              <span aria-hidden="true" className="bg-muted text-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">2.1</span>
+          <div className="space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm">
+            <h4 className="flex items-center gap-2 text-base font-semibold leading-6 text-foreground">
+              <span aria-hidden="true" className="flex h-6 min-w-6 items-center justify-center rounded-md bg-primary-tint px-1 text-xs font-semibold text-primary">2.1</span>
               13º Salário, Férias e Adicional de Férias
             </h4>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid gap-4 sm:grid-cols-3">
               <PercInput label="13º Salário" value={mod2_1.decimoTerceiroPerc} onChange={v => updMod2_1('decimoTerceiroPerc', v)} info="Art. 7º, VIII, CF — padrão 8,33% (1/12)" />
               <PercInput label="Férias" value={mod2_1.feriasPerc} onChange={v => updMod2_1('feriasPerc', v)} info="Art. 7º, XVII, CF — padrão 8,33% (1/12)" />
               <PercInput label="Adicional de Férias (1/3)" value={mod2_1.adicionalFeriasPerc} onChange={v => updMod2_1('adicionalFeriasPerc', v)} info="Art. 7º, XVII, CF — padrão 2,78% (1/3 de 8,33%)" />
@@ -407,13 +410,13 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
           </div>
 
           {/* Submódulo 2.2 */}
-          <div className="rounded-lg border border-border bg-card p-5 shadow-sm space-y-4">
-            <h4 className="text-lg font-semibold flex items-center gap-2">
-              <span aria-hidden="true" className="bg-muted text-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">2.2</span>
+          <div className="space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm">
+            <h4 className="flex items-center gap-2 text-base font-semibold leading-6 text-foreground">
+              <span aria-hidden="true" className="flex h-6 min-w-6 items-center justify-center rounded-md bg-primary-tint px-1 text-xs font-semibold text-primary">2.2</span>
               Encargos Previdenciários, FGTS e Contribuições
             </h4>
             <p className="text-sm text-muted-foreground">Incidem sobre Módulo 1 + Submódulo 2.1 (Acórdão TCU 1.753/2008)</p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
               <PercInput label="INSS Patronal" value={mod2_2.inssPatronal} onChange={v => updMod2_2('inssPatronal', v)} info="Art. 22, Lei 8.212/91" step="1" />
               <PercInput label="Salário-Educação" value={mod2_2.salarioEducacao} onChange={v => updMod2_2('salarioEducacao', v)} info="Art. 3º, Lei 9.424/96" />
               <PercInput label="SAT/RAT × FAP" value={mod2_2.satRatFap} onChange={v => updMod2_2('satRatFap', v)} info="Art. 22, Lei 8.212/91 — 1% a 3% conf. CNAE" step="1" />
@@ -426,13 +429,13 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
           </div>
 
           {/* Módulo 3 */}
-          <div className="rounded-lg border border-border bg-card p-5 shadow-sm space-y-4">
-            <h4 className="text-lg font-semibold flex items-center gap-2">
-              <span aria-hidden="true" className="bg-muted text-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">3</span>
+          <div className="space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm">
+            <h4 className="flex items-center gap-2 text-base font-semibold leading-6 text-foreground">
+              <span aria-hidden="true" className="flex h-6 w-6 items-center justify-center rounded-md bg-primary-tint text-xs font-semibold text-primary">3</span>
               Provisão para Rescisão
             </h4>
             <p className="text-sm text-muted-foreground">Acórdão TCU 1.753/2008 e legislação trabalhista</p>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid gap-4 sm:grid-cols-3">
               <PercInput label="Aviso Prévio Indenizado" value={mod3.avisoPrevioIndenizadoPerc} onChange={v => updMod3('avisoPrevioIndenizadoPerc', v)} info="Art. 7º, XXI, CF" />
               <PercInput label="Aviso Prévio Trabalhado" value={mod3.avisoPrevioTrabalhadoPerc} onChange={v => updMod3('avisoPrevioTrabalhadoPerc', v)} info="Art. 487, CLT" />
               <PercInput label="Multa FGTS" value={mod3.multaFGTSPerc} onChange={v => updMod3('multaFGTSPerc', v)} info="40% (Art. 18, Lei 8.036/90)" step="1" />
@@ -440,12 +443,12 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
           </div>
 
           {/* Módulo 4 */}
-          <div className="rounded-lg border border-border bg-card p-5 shadow-sm space-y-4">
-            <h4 className="text-lg font-semibold flex items-center gap-2">
-              <span aria-hidden="true" className="bg-muted text-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">4</span>
+          <div className="space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm">
+            <h4 className="flex items-center gap-2 text-base font-semibold leading-6 text-foreground">
+              <span aria-hidden="true" className="flex h-6 w-6 items-center justify-center rounded-md bg-primary-tint text-xs font-semibold text-primary">4</span>
               Custo de Reposição do Profissional Ausente
             </h4>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
               <PercInput label="Férias" value={mod4.feriasPerc} onChange={v => updMod4('feriasPerc', v)} />
               <PercInput label="Ausências Legais (Art. 473)" value={mod4.ausenciasLegaisPerc} onChange={v => updMod4('ausenciasLegaisPerc', v)} />
               <PercInput label="Licença-Paternidade" value={mod4.licencaPaternidadePerc} onChange={v => updMod4('licencaPaternidadePerc', v)} />
@@ -453,25 +456,25 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
               <PercInput label="Afastamento Maternidade" value={mod4.afastamentoMaternidadePerc} onChange={v => updMod4('afastamentoMaternidadePerc', v)} />
               <PercInput label="Outros" value={mod4.outrosPerc} onChange={v => updMod4('outrosPerc', v)} />
             </div>
-            <div>
-              <Label className="text-sm">Valor Intrajornada (R$/mês)</Label>
-              <MoneyInput value={Number(mod4.intrajornadaValor) || 0} onValueChange={v => updMod4('intrajornadaValor', v)} className="mt-1 max-w-xs" />
-              <p className="text-xs text-muted-foreground mt-0.5">Substituto na cobertura de intervalo p/ repouso</p>
+            <div className="space-y-1.5">
+              <Label htmlFor="mdo-intrajornada">Valor Intrajornada (R$/mês)</Label>
+              <MoneyInput id="mdo-intrajornada" value={Number(mod4.intrajornadaValor) || 0} onValueChange={v => updMod4('intrajornadaValor', v)} className="max-w-xs" />
+              <p className="text-xs text-muted-foreground">Substituto na cobertura de intervalo p/ repouso</p>
             </div>
           </div>
 
           {/* Módulo 6 */}
-          <div className="rounded-lg border border-border bg-card p-5 shadow-sm space-y-4">
-            <h4 className="text-lg font-semibold flex items-center gap-2">
-              <span aria-hidden="true" className="bg-muted text-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">6</span>
+          <div className="space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm">
+            <h4 className="flex items-center gap-2 text-base font-semibold leading-6 text-foreground">
+              <span aria-hidden="true" className="flex h-6 w-6 items-center justify-center rounded-md bg-primary-tint text-xs font-semibold text-primary">6</span>
               Custos Indiretos, Tributos e Lucro
             </h4>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
               <PercInput label="Custos Indiretos" value={mod6.custosIndiretosPerc} onChange={v => updMod6('custosIndiretosPerc', v)} step="1" />
               <PercInput label="Lucro" value={mod6.lucroPerc} onChange={v => updMod6('lucroPerc', v)} step="1" />
             </div>
             <div className="border-t border-border pt-3">
-              <p className="text-sm font-medium mb-2">Tributos — {regimeLabel} (calculados "por dentro")</p>
+              <p className="mb-2 text-sm font-medium text-foreground">Tributos — {regimeLabel} (calculados "por dentro")</p>
               {regime === 'simples_nacional' && (
                 <Alert variant="warning" className="mb-2">
                   <AlertDescription>
@@ -479,7 +482,7 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
                   </AlertDescription>
                 </Alert>
               )}
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid gap-4 sm:grid-cols-3">
                 <PercInput label="PIS" value={mod6.pisPerc} onChange={v => updMod6('pisPerc', v)} />
                 <PercInput label="COFINS" value={mod6.cofinsPerc} onChange={v => updMod6('cofinsPerc', v)} />
                 <PercInput label="ISS" value={mod6.issPerc} onChange={v => updMod6('issPerc', v)} info="2% a 5% (LC 116/2003)" />
@@ -487,9 +490,9 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
             </div>
           </div>
 
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setStep('cargos')} className="flex-1">← Cargos</Button>
-            <Button onClick={() => setStep('beneficios')} className="flex-1">Próximo → Benefícios/Insumos</Button>
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <Button variant="outline" onClick={() => setStep('cargos')}>← Cargos</Button>
+            <Button onClick={() => setStep('beneficios')}>Próximo → Benefícios/Insumos</Button>
           </div>
         </div>
       )}
@@ -497,55 +500,57 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
       {/* ═══ STEP: BENEFÍCIOS / INSUMOS ═══ */}
       {step === 'beneficios' && (
         <div className="space-y-4">
-          <div className="rounded-lg border border-border bg-card p-5 shadow-sm space-y-4">
-            <h4 className="text-lg font-semibold flex items-center gap-2">
-              <span aria-hidden="true" className="bg-muted text-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">2.3</span>
+          <div className="space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm">
+            <h4 className="flex items-center gap-2 text-base font-semibold leading-6 text-foreground">
+              <span aria-hidden="true" className="flex h-6 min-w-6 items-center justify-center rounded-md bg-primary-tint px-1 text-xs font-semibold text-primary">2.3</span>
               Benefícios Mensais e Diários
             </h4>
+            {/* Doze colunas só a partir de `sm`; no celular cada benefício
+                vira duas colunas. */}
             <div className="space-y-3">
               {beneficios.map((b, i) => (
-                <div key={i} className="grid grid-cols-12 gap-2 items-end">
-                  <div className="col-span-4">
-                    <Label className="text-sm">{b.descricao}</Label>
-                    <Input value={b.valorBruto ? fmtInput(String(Math.round(b.valorBruto * 100))) : ''} onChange={e => updateBeneficio(i, 'valorBruto', parseInput(fmtInput(e.target.value)))} placeholder="R$ 0,00" className="mt-0.5" />
+                <div key={i} className="grid grid-cols-2 gap-3 sm:grid-cols-12 sm:items-end">
+                  <div className="col-span-2 space-y-1.5 sm:col-span-4">
+                    <Label htmlFor={`mdo-beneficio-${i}-bruto`}>{b.descricao}</Label>
+                    <Input id={`mdo-beneficio-${i}-bruto`} value={b.valorBruto ? fmtInput(String(Math.round(b.valorBruto * 100))) : ''} onChange={e => updateBeneficio(i, 'valorBruto', parseInput(fmtInput(e.target.value)))} placeholder="R$ 0,00" className="tabular-nums" />
                   </div>
-                  <div className="col-span-4">
-                    <Label className="text-sm">Desc. Empregado (R$)</Label>
-                    <Input value={b.descontoEmpregado ? fmtInput(String(Math.round(b.descontoEmpregado * 100))) : ''} onChange={e => updateBeneficio(i, 'descontoEmpregado', parseInput(fmtInput(e.target.value)))} placeholder="R$ 0,00" className="mt-0.5" />
+                  <div className="space-y-1.5 sm:col-span-4">
+                    <Label htmlFor={`mdo-beneficio-${i}-desconto`}>Desc. Empregado (R$)</Label>
+                    <Input id={`mdo-beneficio-${i}-desconto`} value={b.descontoEmpregado ? fmtInput(String(Math.round(b.descontoEmpregado * 100))) : ''} onChange={e => updateBeneficio(i, 'descontoEmpregado', parseInput(fmtInput(e.target.value)))} placeholder="R$ 0,00" className="tabular-nums" />
                   </div>
-                  <div className="col-span-3">
-                    <Label className="text-sm">Líquido</Label>
-                    <div className="mt-0.5 h-10 flex items-center text-sm font-medium tabular-nums">{fmtCur(Math.max(0, b.valorBruto - b.descontoEmpregado))}</div>
+                  <div className="space-y-1.5 sm:col-span-3">
+                    <Label>Líquido</Label>
+                    <div className="flex h-10 items-center text-sm font-medium tabular-nums text-foreground">{fmtCur(Math.max(0, b.valorBruto - b.descontoEmpregado))}</div>
                   </div>
-                  <div className="col-span-1 text-xs text-muted-foreground">{b.referencia}</div>
+                  <div className="col-span-2 text-xs text-muted-foreground sm:col-span-1 sm:pb-3">{b.referencia}</div>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="rounded-lg border border-border bg-card p-5 shadow-sm space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <h4 className="text-lg font-semibold flex items-center gap-2">
-                <span aria-hidden="true" className="bg-muted text-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">5</span>
+          <div className="space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm">
+            <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+              <h4 className="flex items-center gap-2 text-base font-semibold leading-6 text-foreground">
+                <span aria-hidden="true" className="flex h-6 w-6 items-center justify-center rounded-md bg-primary-tint text-xs font-semibold text-primary">5</span>
                 Insumos Diversos
               </h4>
-              <Button variant="outline" size="sm" onClick={addInsumo}><Plus className="w-3 h-3 mr-1" /> Insumo</Button>
+              <Button variant="outline" size="sm" onClick={addInsumo}><Plus aria-hidden="true" /> Insumo</Button>
             </div>
             <div className="space-y-2">
               {insumos.map((ins, i) => (
-                <div key={i} className="grid grid-cols-12 gap-2 items-end">
-                  <div className="col-span-4"><Input value={ins.descricao} onChange={e => setInsumos(p => p.map((x, idx) => idx === i ? { ...x, descricao: e.target.value } : x))} placeholder="Descrição" /></div>
-                  <div className="col-span-3"><MoneyInput value={Number(ins.valorMensal) || 0} onValueChange={v => setInsumos(p => p.map((x, idx) => idx === i ? { ...x, valorMensal: v } : x))} placeholder="R$ 0,00" /></div>
-                  <div className="col-span-4"><Input value={ins.detalhes} onChange={e => setInsumos(p => p.map((x, idx) => idx === i ? { ...x, detalhes: e.target.value } : x))} placeholder="Detalhes (ex: 2 jogos/ano)" /></div>
-                  <div className="col-span-1">{insumos.length > 1 && <Button variant="ghost" size="sm" onClick={() => removeInsumo(i)} aria-label={`Remover insumo ${ins.descricao || i + 1}`} className="text-destructive hover:text-destructive hover:bg-destructive-tint h-9 w-9 p-0"><Trash2 className="w-4 h-4" aria-hidden="true" /></Button>}</div>
+                <div key={i} className="grid grid-cols-2 gap-3 sm:grid-cols-12 sm:items-end">
+                  <div className="col-span-2 sm:col-span-4"><Input aria-label="Descrição do insumo" value={ins.descricao} onChange={e => setInsumos(p => p.map((x, idx) => idx === i ? { ...x, descricao: e.target.value } : x))} placeholder="Descrição" /></div>
+                  <div className="sm:col-span-3"><MoneyInput aria-label="Valor mensal do insumo" value={Number(ins.valorMensal) || 0} onValueChange={v => setInsumos(p => p.map((x, idx) => idx === i ? { ...x, valorMensal: v } : x))} placeholder="R$ 0,00" /></div>
+                  <div className="sm:col-span-4"><Input aria-label="Detalhes do insumo" value={ins.detalhes} onChange={e => setInsumos(p => p.map((x, idx) => idx === i ? { ...x, detalhes: e.target.value } : x))} placeholder="Detalhes (ex: 2 jogos/ano)" /></div>
+                  <div className="col-span-2 flex justify-end sm:col-span-1 sm:justify-start">{insumos.length > 1 && <Button variant="ghost-destructive" size="icon-sm" onClick={() => removeInsumo(i)} aria-label={`Remover insumo ${ins.descricao || i + 1}`}><Trash2 aria-hidden="true" /></Button>}</div>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setStep('parametros')} className="flex-1">← Parâmetros</Button>
-            <Button onClick={() => setStep('resultados')} className="flex-1">Ver Resultados →</Button>
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <Button variant="outline" onClick={() => setStep('parametros')}>← Parâmetros</Button>
+            <Button onClick={() => setStep('resultados')}>Ver Resultados →</Button>
           </div>
         </div>
       )}
@@ -565,81 +570,81 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
           ) : (
             <>
               {/* Módulo 1 */}
-              <div className="rounded-lg border border-border bg-card p-4 shadow-sm space-y-2">
-                <div className="flex items-center justify-between">
-                  <h5 className="text-lg font-semibold text-foreground">{result.modulo1.titulo}</h5>
+              <div className="space-y-2 rounded-lg border border-border bg-card p-4 shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h5 className="text-base font-semibold leading-6 text-foreground">{result.modulo1.titulo}</h5>
                   <Badge variant="muted" className="tabular-nums">{fmtCur(result.modulo1.subtotal)}</Badge>
                 </div>
                 {renderLineItems(result.modulo1.itens!)}
-                <div className="flex items-center justify-between text-sm font-bold border-t border-border pt-1 px-1">
-                  <span>Total Módulo 1</span><span className="text-foreground tabular-nums">{fmtCur(result.modulo1.subtotal)}</span>
+                <div className="flex items-center justify-between border-t border-border px-1 pt-1 text-sm font-semibold">
+                  <span>Total Módulo 1</span><span className="tabular-nums text-foreground">{fmtCur(result.modulo1.subtotal)}</span>
                 </div>
               </div>
 
               {/* Módulo 2 */}
-              <div className="rounded-lg border border-border bg-card p-4 shadow-sm space-y-2">
-                <h5 className="text-lg font-semibold text-foreground">{result.modulo2.titulo}</h5>
+              <div className="space-y-2 rounded-lg border border-border bg-card p-4 shadow-sm">
+                <h5 className="text-base font-semibold leading-6 text-foreground">{result.modulo2.titulo}</h5>
                 {result.modulo2.submodulos && Object.values(result.modulo2.submodulos).map((sub, i) => (
                   <div key={i}>{renderSubmodulo(sub)}</div>
                 ))}
-                <div className="flex items-center justify-between text-sm font-bold border-t border-border pt-1 px-1">
-                  <span>Total Módulo 2</span><span className="text-foreground tabular-nums">{fmtCur(result.modulo2.subtotal)}</span>
+                <div className="flex items-center justify-between border-t border-border px-1 pt-1 text-sm font-semibold">
+                  <span>Total Módulo 2</span><span className="tabular-nums text-foreground">{fmtCur(result.modulo2.subtotal)}</span>
                 </div>
               </div>
 
               {/* Módulo 3 */}
-              <div className="rounded-lg border border-border bg-card p-4 shadow-sm space-y-2">
-                <div className="flex items-center justify-between">
-                  <h5 className="text-lg font-semibold text-foreground">{result.modulo3.titulo}</h5>
+              <div className="space-y-2 rounded-lg border border-border bg-card p-4 shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h5 className="text-base font-semibold leading-6 text-foreground">{result.modulo3.titulo}</h5>
                   <Badge variant="muted" className="tabular-nums">{fmtCur(result.modulo3.subtotal)}</Badge>
                 </div>
                 {renderLineItems(result.modulo3.itens!)}
-                {result.modulo3.nota && <p className="text-xs text-muted-foreground italic">{result.modulo3.nota}</p>}
-                <div className="flex items-center justify-between text-sm font-bold border-t border-border pt-1 px-1">
-                  <span>Total Módulo 3</span><span className="text-foreground tabular-nums">{fmtCur(result.modulo3.subtotal)}</span>
+                {result.modulo3.nota && <p className="text-xs text-muted-foreground">{result.modulo3.nota}</p>}
+                <div className="flex items-center justify-between border-t border-border px-1 pt-1 text-sm font-semibold">
+                  <span>Total Módulo 3</span><span className="tabular-nums text-foreground">{fmtCur(result.modulo3.subtotal)}</span>
                 </div>
               </div>
 
               {/* Módulo 4 */}
-              <div className="rounded-lg border border-border bg-card p-4 shadow-sm space-y-2">
-                <h5 className="text-lg font-semibold text-foreground">{result.modulo4.titulo}</h5>
+              <div className="space-y-2 rounded-lg border border-border bg-card p-4 shadow-sm">
+                <h5 className="text-base font-semibold leading-6 text-foreground">{result.modulo4.titulo}</h5>
                 {result.modulo4.submodulos && Object.values(result.modulo4.submodulos).map((sub, i) => (
                   <div key={i}>{renderSubmodulo(sub)}</div>
                 ))}
                 {result.modulo4.itens && renderLineItems(result.modulo4.itens)}
-                {result.modulo4.nota && <p className="text-xs text-muted-foreground italic">{result.modulo4.nota}</p>}
-                <div className="flex items-center justify-between text-sm font-bold border-t border-border pt-1 px-1">
-                  <span>Total Módulo 4</span><span className="text-foreground tabular-nums">{fmtCur(result.modulo4.subtotal)}</span>
+                {result.modulo4.nota && <p className="text-xs text-muted-foreground">{result.modulo4.nota}</p>}
+                <div className="flex items-center justify-between border-t border-border px-1 pt-1 text-sm font-semibold">
+                  <span>Total Módulo 4</span><span className="tabular-nums text-foreground">{fmtCur(result.modulo4.subtotal)}</span>
                 </div>
               </div>
 
               {/* Módulo 5 */}
-              <div className="rounded-lg border border-border bg-card p-4 shadow-sm space-y-2">
-                <div className="flex items-center justify-between">
-                  <h5 className="text-lg font-semibold text-foreground">{result.modulo5.titulo}</h5>
+              <div className="space-y-2 rounded-lg border border-border bg-card p-4 shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h5 className="text-base font-semibold leading-6 text-foreground">{result.modulo5.titulo}</h5>
                   <Badge variant="muted" className="tabular-nums">{fmtCur(result.modulo5.subtotal)}</Badge>
                 </div>
                 {renderLineItems(result.modulo5.itens!)}
-                <div className="flex items-center justify-between text-sm font-bold border-t border-border pt-1 px-1">
-                  <span>Total Módulo 5</span><span className="text-foreground tabular-nums">{fmtCur(result.modulo5.subtotal)}</span>
+                <div className="flex items-center justify-between border-t border-border px-1 pt-1 text-sm font-semibold">
+                  <span>Total Módulo 5</span><span className="tabular-nums text-foreground">{fmtCur(result.modulo5.subtotal)}</span>
                 </div>
               </div>
 
               {/* Módulo 6 */}
-              <div className="rounded-lg border border-border bg-card p-4 shadow-sm space-y-2">
-                <h5 className="text-lg font-semibold text-foreground">{result.modulo6.titulo}</h5>
+              <div className="space-y-2 rounded-lg border border-border bg-card p-4 shadow-sm">
+                <h5 className="text-base font-semibold leading-6 text-foreground">{result.modulo6.titulo}</h5>
                 {result.modulo6.submodulos && Object.values(result.modulo6.submodulos).map((sub, i) => (
                   <div key={i}>{renderSubmodulo(sub)}</div>
                 ))}
-                <div className="flex items-center justify-between text-sm font-bold border-t border-border pt-1 px-1">
-                  <span>Total Módulo 6</span><span className="text-foreground tabular-nums">{fmtCur(result.modulo6.subtotal)}</span>
+                <div className="flex items-center justify-between border-t border-border px-1 pt-1 text-sm font-semibold">
+                  <span>Total Módulo 6</span><span className="tabular-nums text-foreground">{fmtCur(result.modulo6.subtotal)}</span>
                 </div>
               </div>
 
-              {/* Quadro Resumo */}
-              <div className="rounded-lg border border-border bg-muted p-5 space-y-3">
-                <h5 className="text-lg font-semibold text-foreground">QUADRO-RESUMO DO CUSTO POR EMPREGADO</h5>
-                <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
+              {/* Quadro Resumo — totais na superfície rebaixada; KPIs à esquerda. */}
+              <div className="space-y-3 rounded-lg border border-border bg-secondary p-5">
+                <h5 className="text-base font-semibold leading-6 text-foreground">QUADRO-RESUMO DO CUSTO POR EMPREGADO</h5>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-6">
                   {[
                     { label: 'Módulo 1', val: result.quadroResumo.modulo1 },
                     { label: 'Módulo 2', val: result.quadroResumo.modulo2 },
@@ -648,28 +653,28 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
                     { label: 'Módulo 5', val: result.quadroResumo.modulo5 },
                     { label: 'Subtotal 1-5', val: result.quadroResumo.subtotalMod1a5 },
                   ].map(m => (
-                    <div key={m.label} className="text-center bg-card rounded-lg p-2">
+                    <div key={m.label} className="rounded-md border border-border bg-card p-3">
                       <p className="text-xs text-muted-foreground">{m.label}</p>
-                      <p className="text-xs font-bold tabular-nums">{fmtCur(m.val)}</p>
+                      <p className="text-sm font-semibold tabular-nums text-foreground">{fmtCur(m.val)}</p>
                     </div>
                   ))}
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 border-t border-border pt-3">
-                  <div className="text-center">
-                    <p className="text-xs text-muted-foreground">Módulo 6</p>
-                    <p className="text-sm font-bold tabular-nums">{fmtCur(result.quadroResumo.modulo6)}</p>
+                <div className="grid grid-cols-2 gap-3 border-t border-border pt-3 md:grid-cols-4">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Módulo 6</p>
+                    <p className="text-lg font-semibold tabular-nums text-foreground">{fmtCur(result.quadroResumo.modulo6)}</p>
                   </div>
-                  <div className="text-center">
-                    <p className="text-xs text-muted-foreground">Mensal/Empregado</p>
-                    <p className="text-sm font-bold text-foreground tabular-nums">{fmtCur(result.quadroResumo.valorMensalEmpregado)}</p>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Mensal/Empregado</p>
+                    <p className="text-lg font-semibold tabular-nums text-foreground">{fmtCur(result.quadroResumo.valorMensalEmpregado)}</p>
                   </div>
-                  <div className="text-center">
-                    <p className="text-xs text-muted-foreground">Mensal Total ({result.quadroResumo.qtdProfissionais} postos)</p>
-                    <p className="text-lg font-bold text-foreground tabular-nums">{fmtCur(result.quadroResumo.valorMensalTotal)}</p>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Mensal Total ({result.quadroResumo.qtdProfissionais} postos)</p>
+                    <p className="text-2xl font-semibold leading-8 tabular-nums text-foreground">{fmtCur(result.quadroResumo.valorMensalTotal)}</p>
                   </div>
-                  <div className="text-center">
-                    <p className="text-xs text-muted-foreground">Contrato ({result.quadroResumo.vigenciaMeses}m)</p>
-                    <p className="text-sm font-bold tabular-nums">{fmtCur(result.quadroResumo.valorContratoTotal)}</p>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Contrato ({result.quadroResumo.vigenciaMeses}m)</p>
+                    <p className="text-lg font-semibold tabular-nums text-foreground">{fmtCur(result.quadroResumo.valorContratoTotal)}</p>
                   </div>
                 </div>
               </div>
@@ -678,8 +683,8 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
               <Alert variant={result.parecer.viabilidade === 'VIÁVEL' ? 'success' : 'warning'}>
                 <AlertDescription className="space-y-1">
                   <span className="flex flex-wrap items-center gap-2">
-                    <span className="font-bold">{result.parecer.viabilidade}</span>
-                    <span>— Margem Líquida: {Number(result.parecer.margemLiquida || 0).toFixed(2)}%</span>
+                    <span className="font-semibold">{result.parecer.viabilidade}</span>
+                    <span className="tabular-nums">— Margem Líquida: {Number(result.parecer.margemLiquida || 0).toFixed(2)}%</span>
                     {result.parecer.alertaInexequibilidade && <Badge variant="danger">Risco de inexequibilidade</Badge>}
                   </span>
                   <p>{result.parecer.observacoes}</p>
@@ -687,9 +692,9 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
                 </AlertDescription>
               </Alert>
 
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setStep('beneficios')} className="flex-1">← Benefícios</Button>
-                <Button onClick={() => setStep('exportar')} className="flex-1">Exportar →</Button>
+              <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                <Button variant="outline" onClick={() => setStep('beneficios')}>← Benefícios</Button>
+                <Button onClick={() => setStep('exportar')}>Exportar →</Button>
               </div>
             </>
           )}
@@ -698,27 +703,27 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
 
       {/* ═══ STEP: EXPORTAR ═══ */}
       {step === 'exportar' && result && (
-        <div className="rounded-lg border border-border bg-card p-5 shadow-sm space-y-4">
-          <h4 className="text-lg font-semibold flex items-center gap-2"><Download className="w-4 h-4 text-muted-foreground" /> Exportar Planilha de Custos</h4>
+        <div className="space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm">
+          <h4 className="flex items-center gap-2 text-base font-semibold leading-6 text-foreground"><Download className="h-4 w-4 text-muted-foreground" aria-hidden="true" /> Exportar Planilha de Custos</h4>
           <p className="text-sm text-muted-foreground">Exporte os resultados em formato XLSX (compatível com a planilha do Portal de Compras) ou PDF.</p>
-          <div className="grid grid-cols-2 gap-3">
-            <Button variant="outline" onClick={() => { exportMDOXLSX(result, inputs); toast.success('XLSX exportado!'); }} className="h-16 flex-col gap-1">
-              <FileText className="w-5 h-5 text-success" />
-              <span className="text-xs font-medium">Exportar XLSX</span>
-              <span className="text-xs text-muted-foreground">2 abas: Custo + Consolidação</span>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Button variant="outline" onClick={() => { exportMDOXLSX(result, inputs); toast.success('XLSX exportado!'); }} className="h-auto flex-col gap-1 py-3">
+              <FileText className="text-muted-foreground" aria-hidden="true" />
+              <span className="text-sm font-medium">Exportar XLSX</span>
+              <span className="text-xs font-normal text-muted-foreground">2 abas: Custo + Consolidação</span>
             </Button>
-            <Button variant="outline" onClick={() => { exportMDOPDF(result, inputs); toast.success('PDF exportado!'); }} className="h-16 flex-col gap-1">
-              <FileText className="w-5 h-5 text-destructive" />
-              <span className="text-xs font-medium">Exportar PDF</span>
-              <span className="text-xs text-muted-foreground">Layout oficial ABNT</span>
+            <Button variant="outline" onClick={() => { exportMDOPDF(result, inputs); toast.success('PDF exportado!'); }} className="h-auto flex-col gap-1 py-3">
+              <FileText className="text-muted-foreground" aria-hidden="true" />
+              <span className="text-sm font-medium">Exportar PDF</span>
+              <span className="text-xs font-normal text-muted-foreground">Layout oficial ABNT</span>
             </Button>
           </div>
-          <Button variant="outline" size="sm" onClick={salvarCatalogo} disabled={savingCatalogo} className="w-full">
-            {savingCatalogo ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1" />}
+          <Button variant="outline" onClick={salvarCatalogo} disabled={savingCatalogo} className="w-full">
+            {savingCatalogo ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Save aria-hidden="true" />}
             Salvar no Catálogo de Itens Precificados
           </Button>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setStep('resultados')} className="flex-1">← Resultados</Button>
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <Button variant="outline" onClick={() => setStep('resultados')}>← Resultados</Button>
           </div>
         </div>
       )}

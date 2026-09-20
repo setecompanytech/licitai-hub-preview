@@ -14,6 +14,7 @@ import {
 import {
   ShoppingCart, Plus, Trash2, Package,
 } from 'lucide-react';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -127,38 +128,39 @@ export default function ListasCompras() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <ShoppingCart className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
-          <h3 className="text-lg font-semibold">Listas de Compras</h3>
-          <Badge variant="info">{lists.length} {lists.length === 1 ? 'lista' : 'listas'}</Badge>
+        <div className="flex flex-wrap items-center gap-2">
+          <ShoppingCart className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+          <h3 className="text-lg font-semibold leading-6 text-foreground">Listas de Compras</h3>
+          <Badge variant="info" className="tabular-nums">{lists.length} {lists.length === 1 ? 'lista' : 'listas'}</Badge>
         </div>
         <Button onClick={() => setShowCreate(true)}>
-          <Plus className="w-4 h-4" aria-hidden="true" /> Nova Lista
+          <Plus aria-hidden="true" /> Nova Lista
         </Button>
       </div>
 
+      {/* Formulário: rótulo acima, campos de 40px, rodapé Cancelar → Criar. */}
       {showCreate && (
-        <div className="space-y-3 rounded-lg border border-border bg-muted p-4">
-          <div>
-            <Label htmlFor="lista-nome" className="text-sm">Nome da lista</Label>
-            <Input id="lista-nome" placeholder="Ex.: Material de expediente — PE 12/2026" value={newName} onChange={e => setNewName(e.target.value)} className="mt-1" />
+        <div className="space-y-4 rounded-lg border border-border bg-secondary p-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="lista-nome">Nome da lista</Label>
+            <Input id="lista-nome" placeholder="Ex.: Material de expediente — PE 12/2026" value={newName} onChange={e => setNewName(e.target.value)} />
           </div>
-          <div>
-            <Label htmlFor="lista-descricao" className="text-sm">Descrição (opcional)</Label>
-            <Textarea id="lista-descricao" placeholder="Descrição" value={newDesc} onChange={e => setNewDesc(e.target.value)} className="mt-1 min-h-[60px]" />
+          <div className="space-y-1.5">
+            <Label htmlFor="lista-descricao">Descrição (opcional)</Label>
+            <Textarea id="lista-descricao" placeholder="Descrição" value={newDesc} onChange={e => setNewDesc(e.target.value)} className="min-h-[60px]" />
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button variant="outline" onClick={() => setShowCreate(false)}>Cancelar</Button>
             <Button onClick={createList} disabled={creating || !newName.trim()}>
-              <Plus className="w-4 h-4" aria-hidden="true" /> {creating ? 'Criando...' : 'Criar'}
+              <Plus aria-hidden="true" /> {creating ? 'Criando...' : 'Criar'}
             </Button>
-            <Button variant="ghost" onClick={() => setShowCreate(false)}>Cancelar</Button>
           </div>
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {/* Lists panel */}
-        <div className="lg:col-span-1 space-y-2">
+        <div className="space-y-2 lg:col-span-1">
           {loading ? (
             <div className="space-y-2" role="status" aria-label="Carregando listas">
               <Skeleton className="h-16 w-full" />
@@ -166,7 +168,9 @@ export default function ListasCompras() {
               <Skeleton className="h-16 w-full" />
             </div>
           ) : lists.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">Nenhuma lista criada ainda.</p>
+            <div className="rounded-lg border border-dashed border-border">
+              <EstadoVazio tamanho="compacto" icone={<ShoppingCart />} titulo="Nenhuma lista criada ainda." />
+            </div>
           ) : (
             lists.map(list => {
               const ativa = selectedList?.id === list.id;
@@ -174,8 +178,8 @@ export default function ListasCompras() {
                 <div
                   key={list.id}
                   className={cn(
-                    'relative rounded-lg border transition-colors',
-                    ativa ? 'border-primary bg-primary-tint' : 'border-border bg-card hover:bg-muted',
+                    'relative rounded-lg border shadow-sm transition-colors duration-150',
+                    ativa ? 'border-primary bg-primary-tint' : 'border-border bg-card hover:bg-muted/60',
                   )}
                 >
                   <button
@@ -184,18 +188,18 @@ export default function ListasCompras() {
                     aria-pressed={ativa}
                     className="w-full rounded-lg p-3 pr-12 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   >
-                    <p className="text-sm font-medium truncate">{list.nome}</p>
-                    {list.descricao && <p className="text-xs text-muted-foreground mt-1 truncate">{list.descricao}</p>}
-                    <p className="text-xs text-muted-foreground mt-1">{new Date(list.created_at).toLocaleDateString('pt-BR')}</p>
+                    <p className="truncate text-sm font-medium text-foreground">{list.nome}</p>
+                    {list.descricao && <p className="mt-1 truncate text-xs text-muted-foreground">{list.descricao}</p>}
+                    <p className="mt-1 text-xs text-muted-foreground tabular-nums">{new Date(list.created_at).toLocaleDateString('pt-BR')}</p>
                   </button>
                   <Button
-                    size="sm"
-                    variant="ghost"
-                    className="absolute right-2 top-2 h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive-tint"
+                    size="icon-sm"
+                    variant="ghost-destructive"
+                    className="absolute right-2 top-2"
                     aria-label={`Excluir lista ${list.nome}`}
                     onClick={() => deleteList(list.id)}
                   >
-                    <Trash2 className="w-4 h-4" aria-hidden="true" />
+                    <Trash2 aria-hidden="true" />
                   </Button>
                 </div>
               );
@@ -208,84 +212,86 @@ export default function ListasCompras() {
           {selectedList ? (
             <div className="space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <h4 className="text-lg font-semibold">{selectedList.nome}</h4>
+                <h4 className="text-base font-semibold leading-6 text-foreground">{selectedList.nome}</h4>
                 <div className="flex flex-wrap gap-2">
                   <Button variant="outline" onClick={() => setShowAddItem(true)}>
-                    <Plus className="w-4 h-4" aria-hidden="true" /> Adicionar Item
+                    <Plus aria-hidden="true" /> Adicionar Item
                   </Button>
                 </div>
               </div>
 
               {showAddItem && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-lg border border-border bg-muted p-4">
-                  <div className="sm:col-span-2">
-                    <Label htmlFor="item-descricao" className="text-sm">Descrição do produto *</Label>
-                    <Input id="item-descricao" placeholder="Descrição" value={newItem.descricao} onChange={e => setNewItem(p => ({ ...p, descricao: e.target.value }))} className="mt-1" />
+                <div className="grid gap-4 rounded-lg border border-border bg-secondary p-4 sm:grid-cols-2">
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label htmlFor="item-descricao">Descrição do produto *</Label>
+                    <Input id="item-descricao" placeholder="Descrição" value={newItem.descricao} onChange={e => setNewItem(p => ({ ...p, descricao: e.target.value }))} />
                   </div>
-                  <div>
-                    <Label htmlFor="item-marca" className="text-sm">Marca</Label>
-                    <Input id="item-marca" placeholder="Opcional" value={newItem.marca} onChange={e => setNewItem(p => ({ ...p, marca: e.target.value }))} className="mt-1" />
+                  <div className="space-y-1.5">
+                    <Label htmlFor="item-marca">Marca</Label>
+                    <Input id="item-marca" placeholder="Opcional" value={newItem.marca} onChange={e => setNewItem(p => ({ ...p, marca: e.target.value }))} />
                   </div>
-                  <div>
-                    <Label htmlFor="item-unidade" className="text-sm">Unidade</Label>
-                    <Input id="item-unidade" placeholder="UN" value={newItem.unidade} onChange={e => setNewItem(p => ({ ...p, unidade: e.target.value }))} className="mt-1" />
+                  <div className="space-y-1.5">
+                    <Label htmlFor="item-unidade">Unidade</Label>
+                    <Input id="item-unidade" placeholder="UN" value={newItem.unidade} onChange={e => setNewItem(p => ({ ...p, unidade: e.target.value }))} />
                   </div>
-                  <div>
-                    <Label htmlFor="item-quantidade" className="text-sm">Quantidade</Label>
-                    <Input id="item-quantidade" type="number" placeholder="1" value={newItem.quantidade} onChange={e => setNewItem(p => ({ ...p, quantidade: e.target.value }))} className="mt-1" />
+                  <div className="space-y-1.5">
+                    <Label htmlFor="item-quantidade">Quantidade</Label>
+                    <Input id="item-quantidade" type="number" placeholder="1" value={newItem.quantidade} onChange={e => setNewItem(p => ({ ...p, quantidade: e.target.value }))} className="tabular-nums" />
                   </div>
-                  <div>
-                    <Label htmlFor="item-preco" className="text-sm">Preço de referência (R$)</Label>
-                    <MoneyInput id="item-preco" placeholder="0,00" value={Number(newItem.preco_referencia) || 0} onValueChange={v => setNewItem(p => ({ ...p, preco_referencia: String(v) }))} className="mt-1" />
+                  <div className="space-y-1.5">
+                    <Label htmlFor="item-preco">Preço de referência (R$)</Label>
+                    <MoneyInput id="item-preco" placeholder="0,00" value={Number(newItem.preco_referencia) || 0} onValueChange={v => setNewItem(p => ({ ...p, preco_referencia: String(v) }))} />
                   </div>
-                  <div className="sm:col-span-2">
-                    <Label htmlFor="item-fonte" className="text-sm">Fonte de referência</Label>
-                    <Input id="item-fonte" placeholder="Ex.: Painel de Preços, Mercado Livre" value={newItem.fonte_referencia} onChange={e => setNewItem(p => ({ ...p, fonte_referencia: e.target.value }))} className="mt-1" />
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label htmlFor="item-fonte">Fonte de referência</Label>
+                    <Input id="item-fonte" placeholder="Ex.: Painel de Preços, Mercado Livre" value={newItem.fonte_referencia} onChange={e => setNewItem(p => ({ ...p, fonte_referencia: e.target.value }))} />
                   </div>
-                  <div className="sm:col-span-2 flex flex-wrap gap-2">
+                  <div className="flex flex-wrap justify-end gap-2 sm:col-span-2">
+                    <Button variant="outline" onClick={() => setShowAddItem(false)}>Cancelar</Button>
                     <Button onClick={addItem} disabled={!newItem.descricao.trim()}>Adicionar</Button>
-                    <Button variant="ghost" onClick={() => setShowAddItem(false)}>Cancelar</Button>
                   </div>
                 </div>
               )}
 
               {loadingItems ? (
                 <div className="space-y-2" role="status" aria-label="Carregando itens da lista">
-                  <Skeleton className="h-10 w-full" />
-                  <Skeleton className="h-10 w-full" />
-                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-11 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
                 </div>
               ) : items.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">Lista vazia. Adicione itens para começar.</p>
+                <div className="rounded-lg border border-dashed border-border">
+                  <EstadoVazio tamanho="compacto" icone={<Package />} titulo="Lista vazia. Adicione itens para começar." />
+                </div>
               ) : (
                 <>
-                  <div className="overflow-x-auto rounded-lg border border-border">
+                  <div className="overflow-hidden rounded-md border border-border bg-card">
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="text-sm font-semibold">Produto</TableHead>
-                          <TableHead className="text-sm font-semibold">Marca</TableHead>
-                          <TableHead className="text-sm font-semibold text-center">Qtd</TableHead>
-                          <TableHead className="text-sm font-semibold text-center">Unid</TableHead>
-                          <TableHead className="text-sm font-semibold text-right">Preço Ref.</TableHead>
-                          <TableHead className="text-sm font-semibold text-right">Total</TableHead>
-                          <TableHead className="w-10 text-sm font-semibold"><span className="sr-only">Ações</span></TableHead>
+                          <TableHead>Produto</TableHead>
+                          <TableHead>Marca</TableHead>
+                          <TableHead className="text-right">Qtd</TableHead>
+                          <TableHead>Unid</TableHead>
+                          <TableHead className="text-right">Preço Ref.</TableHead>
+                          <TableHead className="text-right">Total</TableHead>
+                          <TableHead className="w-10"><span className="sr-only">Ações</span></TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {items.map(item => (
                           <TableRow key={item.id}>
-                            <TableCell className="text-sm">{item.descricao}</TableCell>
-                            <TableCell className="text-sm text-muted-foreground">{item.marca || '—'}</TableCell>
-                            <TableCell className="text-center text-sm tabular-nums">{item.quantidade}</TableCell>
-                            <TableCell className="text-center text-sm">{item.unidade}</TableCell>
-                            <TableCell className="text-right text-sm tabular-nums">{item.preco_referencia ? formatCurrency(item.preco_referencia) : '—'}</TableCell>
-                            <TableCell className="text-right text-sm font-medium tabular-nums">
+                            <TableCell>{item.descricao}</TableCell>
+                            <TableCell className="text-muted-foreground">{item.marca || '—'}</TableCell>
+                            <TableCell className="text-right tabular-nums">{item.quantidade}</TableCell>
+                            <TableCell>{item.unidade}</TableCell>
+                            <TableCell className="text-right tabular-nums" nowrap>{item.preco_referencia ? formatCurrency(item.preco_referencia) : '—'}</TableCell>
+                            <TableCell className="text-right font-medium tabular-nums" nowrap>
                               {item.preco_referencia ? formatCurrency(item.preco_referencia * item.quantidade) : '—'}
                             </TableCell>
-                            <TableCell className="text-center">
-                              <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive-tint" aria-label={`Remover ${item.descricao}`} onClick={() => deleteItem(item.id)}>
-                                <Trash2 className="w-4 h-4" aria-hidden="true" />
+                            <TableCell className="text-right">
+                              <Button size="icon-sm" variant="ghost-destructive" aria-label={`Remover ${item.descricao}`} onClick={() => deleteItem(item.id)}>
+                                <Trash2 aria-hidden="true" />
                               </Button>
                             </TableCell>
                           </TableRow>
@@ -293,19 +299,19 @@ export default function ListasCompras() {
                       </TableBody>
                     </Table>
                   </div>
-                  <div className="flex justify-end pt-2 border-t border-border">
-                    <p className="text-sm font-semibold tabular-nums">Total estimado: {formatCurrency(totalList)}</p>
+                  <div className="flex justify-end border-t border-border pt-2">
+                    <p className="text-sm font-semibold tabular-nums text-foreground">Total estimado: {formatCurrency(totalList)}</p>
                   </div>
                 </>
               )}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
-                <Package className="w-6 h-6" aria-hidden="true" />
-              </span>
-              <p className="mt-4 text-base font-semibold">Nenhuma lista selecionada</p>
-              <p className="mt-1 text-sm text-muted-foreground">Selecione uma lista para visualizar os itens.</p>
+            <div className="rounded-lg border border-dashed border-border">
+              <EstadoVazio
+                icone={<Package />}
+                titulo="Nenhuma lista selecionada"
+                descricao="Selecione uma lista para visualizar os itens."
+              />
             </div>
           )}
         </div>

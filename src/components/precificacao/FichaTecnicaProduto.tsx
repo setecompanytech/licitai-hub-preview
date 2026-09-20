@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import {
   ExternalLink, Plus, Package, Star, Store, Truck,
@@ -121,40 +122,40 @@ export default function FichaTecnicaProduto({ open, onOpenChange, produto }: Fic
               <div className="flex flex-col md:flex-row gap-6">
                 {/* Image gallery */}
                 <div className="w-full md:w-[320px] flex-shrink-0 space-y-3">
-                  <div className="relative aspect-square bg-muted rounded-lg border border-border flex items-center justify-center overflow-hidden">
+                  <div className="relative flex aspect-square items-center justify-center overflow-hidden rounded-lg border border-border bg-secondary">
                     {images.length > 0 ? (
                       <img
                         src={images[imgIndex]}
                         alt="Produto"
-                        className="w-full h-full object-contain p-2"
+                        className="h-full w-full object-contain p-2"
                         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                       />
                     ) : (
-                      <Package className="w-16 h-16 text-muted-foreground" aria-hidden="true" />
+                      <Package className="h-16 w-16 text-muted-foreground" aria-hidden="true" />
                     )}
                     {images.length > 1 && (
                       <>
                         <Button
                           type="button"
                           variant="outline"
-                          size="icon"
+                          size="icon-sm"
                           aria-label="Imagem anterior"
                           onClick={() => setImgIndex(i => (i - 1 + images.length) % images.length)}
-                          className="absolute left-1 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full bg-background/80"
+                          className="absolute left-1 top-1/2 -translate-y-1/2 bg-card/90"
                         >
-                          <ChevronLeft className="w-4 h-4" aria-hidden="true" />
+                          <ChevronLeft aria-hidden="true" />
                         </Button>
                         <Button
                           type="button"
                           variant="outline"
-                          size="icon"
+                          size="icon-sm"
                           aria-label="Próxima imagem"
                           onClick={() => setImgIndex(i => (i + 1) % images.length)}
-                          className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full bg-background/80"
+                          className="absolute right-1 top-1/2 -translate-y-1/2 bg-card/90"
                         >
-                          <ChevronRight className="w-4 h-4" aria-hidden="true" />
+                          <ChevronRight aria-hidden="true" />
                         </Button>
-                        <span className="absolute bottom-2 right-2 rounded-sm border border-border bg-background/80 px-1.5 py-0.5 text-xs tabular-nums">
+                        <span className="absolute bottom-2 right-2 rounded-sm border border-border bg-card/90 px-1.5 py-0.5 text-xs tabular-nums">
                           {imgIndex + 1}/{images.length}
                         </span>
                       </>
@@ -202,16 +203,16 @@ export default function FichaTecnicaProduto({ open, onOpenChange, produto }: Fic
                         {formatCurrency(ficha?.preco_original || produto.preco_original!)}
                       </p>
                     )}
-                    <p className="text-[2rem] leading-10 font-bold text-foreground tabular-nums">
+                    <p className="text-[1.75rem] font-semibold leading-9 tabular-nums text-foreground">
                       {formatCurrency(ficha?.preco || produto.preco)}
                     </p>
                     {produto.parcelas && (
-                      <p className="text-xs text-success font-medium mt-1">em {produto.parcelas}</p>
+                      <p className="mt-1 text-xs font-medium text-success-ink">em {produto.parcelas}</p>
                     )}
                     {produto.frete && (
-                      <div className="flex items-center gap-1 mt-1">
-                        <Truck className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
-                        <span className={`text-xs ${produto.frete.toLowerCase().includes('grátis') ? 'text-success font-semibold' : 'text-muted-foreground'}`}>
+                      <div className="mt-1 flex items-center gap-1">
+                        <Truck className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                        <span className={`text-xs ${produto.frete.toLowerCase().includes('grátis') ? 'font-semibold text-success-ink' : 'text-muted-foreground'}`}>
                           {produto.frete}
                         </span>
                       </div>
@@ -266,19 +267,19 @@ export default function FichaTecnicaProduto({ open, onOpenChange, produto }: Fic
                     <ClipboardList className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
                     Especificações Técnicas
                   </h4>
-                  <div className="overflow-x-auto rounded-lg border border-border">
-                    <table className="w-full text-sm">
-                      <tbody>
+                  <div className="overflow-hidden rounded-md border border-border bg-card">
+                    <Table>
+                      <TableBody>
                         {ficha.especificacoes.map((spec, i) => (
-                          <tr key={i} className={i % 2 === 0 ? 'bg-muted' : 'bg-card'}>
-                            <td className="px-3 py-2 font-medium text-muted-foreground w-[40%] border-r border-border">
+                          <TableRow key={i} className={i % 2 === 0 ? 'bg-secondary hover:bg-secondary' : ''}>
+                            <TableCell className="w-[40%] border-r border-border font-medium text-muted-foreground">
                               {spec.chave}
-                            </td>
-                            <td className="px-3 py-2 text-foreground">{spec.valor}</td>
-                          </tr>
+                            </TableCell>
+                            <TableCell className="text-foreground">{spec.valor}</TableCell>
+                          </TableRow>
                         ))}
-                      </tbody>
-                    </table>
+                      </TableBody>
+                    </Table>
                   </div>
                 </div>
               )}

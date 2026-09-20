@@ -21,10 +21,12 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
+import EstadoVazio from '@/components/shared/EstadoVazio';
+import SeloPraefectusIA from '@/components/shared/SeloPraefectusIA';
 import {
   Calculator, Bot, Loader2, FileText, Plus, Download, ExternalLink, MapPin, Building2,
   ShieldCheck, Sparkles, TrendingUp, Info, BookOpen, Package, Wrench, HardHat, Save, Users,
-  Lightbulb, ArrowRight,
+  Lightbulb, ArrowRight, Trash2,
 } from 'lucide-react';
 import { streamAIChat } from '@/lib/ai-stream';
 import { valorPorExtenso } from '@/lib/numero-extenso';
@@ -375,13 +377,14 @@ export default function CalculadoraUnificada({
 
   if (!regime || !config) {
     return (
-      <div className="bg-card rounded-xl border border-border/50 p-6 text-center">
-        <Calculator className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-        <h3 className="font-semibold mb-1">Regime tributário não definido</h3>
-        <p className="text-sm text-muted-foreground mb-3">
-          Defina o regime tributário no cadastro da empresa (Empresas → Editar) para usar a calculadora.
-        </p>
-        <Badge variant="outline">Simples Nacional • Lucro Presumido • Lucro Real</Badge>
+      <div className="rounded-lg border border-border bg-card shadow-sm">
+        <EstadoVazio
+          tamanho="compacto"
+          icone={<Calculator />}
+          titulo="Regime tributário não definido"
+          descricao="Defina o regime tributário no cadastro da empresa (Empresas → Editar) para usar a calculadora."
+          acao={<Badge variant="outline">Simples Nacional • Lucro Presumido • Lucro Real</Badge>}
+        />
       </div>
     );
   }
@@ -732,39 +735,38 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
   return (
     <div className="space-y-6">
       {/* ── Header ── */}
-      <div className="bg-card rounded-xl border border-border/50 p-5">
-        <div className="flex items-center justify-between mb-3">
+      <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <Calculator className="w-5 h-5 text-muted-foreground" />
-            <h3 className="font-semibold text-sm">
+            <Calculator className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+            <h3 className="text-base font-semibold leading-6 text-foreground">
               Calculadoras de Precificação — {regimeLabel}
             </h3>
           </div>
-          <div className="flex items-center gap-2">
+          {/* Recurso de IA: o selo "Praefectus IA" no lugar do chip "IA Contábil". */}
+          <div className="flex flex-wrap items-center gap-2">
             {lastSaved && (
-              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+              <span className="inline-flex items-center gap-1 rounded-sm bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                 {saving ? 'Salvando...' : `Salvo ${lastSaved.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`}
               </span>
             )}
-            <Badge variant="outline" className="text-xs">
-              <ShieldCheck className="w-3 h-3 mr-1" /> IA Contábil
-            </Badge>
+            <SeloPraefectusIA />
           </div>
         </div>
-        <p className="text-xs text-muted-foreground">{config.description}</p>
+        <p className="text-sm text-muted-foreground">{config.description}</p>
 
-        {/* 2 Calculator Tabs */}
+        {/* 2 Calculator Tabs — fila sublinhada da ui, rolável no celular. */}
         <div className="mt-4">
           <Tabs value={calcTab} onValueChange={(v) => { setCalcTab(v as any); setUsouSugestao(false); }}>
-            <TabsList className="w-full grid grid-cols-3">
-              <TabsTrigger value="produto_bdi" className="gap-1.5 text-xs">
-                <Package className="w-3.5 h-3.5" /> Produtos / BDI
+            <TabsList className="flex-nowrap overflow-x-auto [scrollbar-width:thin]">
+              <TabsTrigger value="produto_bdi" className="shrink-0">
+                <Package className="h-4 w-4" aria-hidden="true" /> Produtos / BDI
               </TabsTrigger>
-              <TabsTrigger value="servico_engenharia" className="gap-1.5 text-xs">
-                <HardHat className="w-3.5 h-3.5" /> Engenharia / BDI
+              <TabsTrigger value="servico_engenharia" className="shrink-0">
+                <HardHat className="h-4 w-4" aria-hidden="true" /> Engenharia / BDI
               </TabsTrigger>
-              <TabsTrigger value="servico_mdo" className="gap-1.5 text-xs">
-                <Users className="w-3.5 h-3.5" /> Mão de Obra (IN 5)
+              <TabsTrigger value="servico_mdo" className="shrink-0">
+                <Users className="h-4 w-4" aria-hidden="true" /> Mão de Obra (IN 5)
               </TabsTrigger>
             </TabsList>
           </Tabs>
@@ -772,68 +774,68 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
 
         {/* ── Auto-detection recommendation banner ── */}
         {deteccao && calcTab !== deteccao.tipo && (
-          <div className="mt-3 bg-muted border border-border rounded-lg p-3 flex items-start gap-2">
-            <Lightbulb className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
-            <div className="flex-1">
-              <p className="text-xs text-foreground font-medium">Sugestão automática com base no CNAE da empresa</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{deteccao.motivo}</p>
+          <div className="mt-3 flex flex-wrap items-start gap-2 rounded-md border border-border bg-secondary p-3">
+            <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-foreground">Sugestão automática com base no CNAE da empresa</p>
+              <p className="mt-0.5 text-sm text-muted-foreground">{deteccao.motivo}</p>
             </div>
             <Button
               variant="outline"
               size="sm"
-              className="shrink-0 text-xs h-7 gap-1 border-accent/30 text-accent hover:bg-accent/10"
+              className="shrink-0"
               onClick={() => { setCalcTab(deteccao.tipo); setUsouSugestao(true); }}
             >
-              Aplicar <ArrowRight className="w-3 h-3" />
+              Aplicar <ArrowRight aria-hidden="true" />
             </Button>
           </div>
         )}
         {deteccao && calcTab === deteccao.tipo && usouSugestao && (
-          <div className="mt-3 bg-muted border border-border rounded-lg p-2 flex items-center gap-2">
-            <ShieldCheck className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-            <p className="text-xs text-muted-foreground">
+          <div className="mt-3 flex items-center gap-2 rounded-md border border-border bg-secondary p-3">
+            <ShieldCheck className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <p className="text-sm text-muted-foreground">
               Tipo selecionado automaticamente: <strong className="text-foreground">{deteccao.motivo}</strong>
             </p>
           </div>
         )}
 
         {/* ── Regime filter badges ── */}
-        <div className="flex flex-wrap gap-2 mt-3">
-          <Badge variant="secondary" className="border-border">
-            <Building2 className="w-3 h-3 mr-1" /> {regimeLabel}
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Badge variant="secondary">
+            <Building2 className="h-3 w-3" aria-hidden="true" /> {regimeLabel}
           </Badge>
-          <Badge variant="secondary" className="border-border">
-            <MapPin className="w-3 h-3 mr-1" /> {ufCalculo} — ICMS {icmsUF}%
+          <Badge variant="secondary">
+            <MapPin className="h-3 w-3" aria-hidden="true" /> {ufCalculo} — ICMS {icmsUF}%
           </Badge>
           {cnae && (
-            <Badge className="bg-secondary/50 text-secondary-foreground border-border/30">
+            <Badge variant="secondary">
               CNAE: {cnae}
             </Badge>
           )}
           {regime === 'simples_nacional' && (
-            <Badge className="bg-secondary/50 text-secondary-foreground border-border/30">
-              <BookOpen className="w-3 h-3 mr-1" /> {anexoAtual.nome}
+            <Badge variant="secondary">
+              <BookOpen className="h-3 w-3" aria-hidden="true" /> {anexoAtual.nome}
             </Badge>
           )}
           {empresaAtiva && (
-            <Badge variant="outline" className="text-xs">{empresaAtiva.razao_social}</Badge>
+            <Badge variant="outline">{empresaAtiva.razao_social}</Badge>
           )}
         </div>
 
         {/* Tab descriptions */}
-        <div className="mt-3 bg-muted/30 rounded-lg p-3">
+        <div className="mt-3 rounded-md bg-secondary p-3">
           {calcTab === 'produto_bdi' && (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               <strong className="text-foreground">Fornecimento de Produtos:</strong> Calcule custo, margem, impostos, frete e BDI para produtos/mercadorias. Ative "Composição BDI" para planilha detalhada conforme Lei 14.133/2021.
             </p>
           )}
           {calcTab === 'servico_engenharia' && (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               <strong className="text-foreground">Serviços de Engenharia:</strong> Composição de BDI conforme Acórdão TCU 2622/2013 com encargos sociais, tributos "por dentro" e fórmula oficial. Para obras e serviços comuns de engenharia.
             </p>
           )}
           {calcTab === 'servico_mdo' && (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               <strong className="text-foreground">Mão de Obra Contínua:</strong> Planilha de Custos conforme Anexo VII-D da IN nº 5/2017 (SEGES/MP). Estrutura com os 6 módulos obrigatórios para serviços continuados com dedicação exclusiva de mão de obra.
             </p>
           )}
@@ -876,35 +878,37 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
 
       {/* ── Seletor de Anexo (só Simples Nacional) ── */}
       {regime === 'simples_nacional' && (
-        <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <h4 className="text-sm font-semibold flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-muted-foreground" /> Anexo do Simples Nacional
+        <div className="space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm">
+          <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+            <h4 className="flex items-center gap-2 text-base font-semibold leading-6 text-foreground">
+              <BookOpen className="h-4 w-4 text-muted-foreground" aria-hidden="true" /> Anexo do Simples Nacional
             </h4>
-            <Badge variant="outline" className="text-xs">Resolução CGSN nº 140/2018</Badge>
+            <Badge variant="outline">Resolução CGSN nº 140/2018</Badge>
           </div>
           <Select value={anexoSelecionado} onValueChange={setAnexoSelecionado}>
-            <SelectTrigger><SelectValue placeholder="Selecione o Anexo" /></SelectTrigger>
+            <SelectTrigger aria-label="Anexo do Simples Nacional"><SelectValue placeholder="Selecione o Anexo" /></SelectTrigger>
             <SelectContent>
               {ANEXOS_SIMPLES.map(a => (
                 <SelectItem key={a.id} value={a.id}>{a.nome}</SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <p className="text-xs text-muted-foreground">{anexoAtual.descricao}</p>
+          <p className="text-sm text-muted-foreground">{anexoAtual.descricao}</p>
           <div className="flex items-center gap-3">
-            <Switch checked={showTabelaPartilha} onCheckedChange={setShowTabelaPartilha} />
-            <span className="text-xs text-muted-foreground">Exibir tabela oficial de faixas e partilha</span>
+            <Switch id="calc-tabela-partilha" checked={showTabelaPartilha} onCheckedChange={setShowTabelaPartilha} />
+            <Label htmlFor="calc-tabela-partilha" className="font-normal text-muted-foreground">Exibir tabela oficial de faixas e partilha</Label>
           </div>
           {showTabelaPartilha && (
-            <div className="overflow-x-auto rounded-lg border border-border/50">
+            <div className="overflow-hidden rounded-md border border-border">
+              {/* Faixa em vigor = linha selecionada da `ui/table` (tinta verde),
+                  em vez de bordas cinzentas desenhadas à mão. */}
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead className="text-xs font-semibold h-8">Faixa</TableHead>
-                    <TableHead className="text-xs font-semibold h-8 text-right">Alíquota</TableHead>
-                    <TableHead className="text-xs font-semibold h-8 text-right">Dedução</TableHead>
-                    <TableHead className="text-xs font-semibold h-8">RBT12</TableHead>
+                  <TableRow>
+                    <TableHead>Faixa</TableHead>
+                    <TableHead className="text-right">Alíquota</TableHead>
+                    <TableHead className="text-right">Dedução</TableHead>
+                    <TableHead>RBT12</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -914,12 +918,13 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
                     return (
                       <TableRow
                         key={f.faixaNum}
-                        className={isActive ? 'bg-muted font-semibold hover:bg-muted [&>td]:border-y [&>td]:border-muted-foreground/40' : ''}
+                        data-state={isActive ? 'selected' : undefined}
+                        className={isActive ? 'font-semibold' : ''}
                       >
-                        <TableCell className="text-xs py-1.5">{f.faixaNum}ª Faixa</TableCell>
-                        <TableCell className="text-xs py-1.5 text-right">{f.aliquota.toFixed(2)}%</TableCell>
-                        <TableCell className="text-xs py-1.5 text-right">{f.deducao > 0 ? formatCurrency(f.deducao) : '—'}</TableCell>
-                        <TableCell className="text-xs py-1.5">{f.min === 0 ? 'Até' : `De ${formatCurrency(f.min)} a`} {formatCurrency(f.max)}</TableCell>
+                        <TableCell nowrap>{f.faixaNum}ª Faixa</TableCell>
+                        <TableCell className="text-right tabular-nums">{f.aliquota.toFixed(2)}%</TableCell>
+                        <TableCell className="text-right tabular-nums">{f.deducao > 0 ? formatCurrency(f.deducao) : '—'}</TableCell>
+                        <TableCell className="tabular-nums">{f.min === 0 ? 'Até' : `De ${formatCurrency(f.min)} a`} {formatCurrency(f.max)}</TableCell>
                       </TableRow>
                     );
                   })}
@@ -931,17 +936,19 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
       )}
 
       {/* ── Parâmetros do Cálculo (shared) ── */}
-      <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
-        <h4 className="text-sm font-semibold flex items-center gap-2">
-          <Calculator className="w-4 h-4 text-muted-foreground" /> Parâmetros do Cálculo
+      <div className="space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm">
+        <h4 className="flex items-center gap-2 text-base font-semibold leading-6 text-foreground">
+          <Calculator className="h-4 w-4 text-muted-foreground" aria-hidden="true" /> Parâmetros do Cálculo
         </h4>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div>
-            <Label className="text-xs">Receita Bruta Mensal (R$) *</Label>
-            <Input value={receitaBruta} onChange={e => setReceitaBruta(formatCurrencyInput(e.target.value))} placeholder="R$ 0,00" className="mt-1" />
+        {/* Rótulo acima do campo (13/500), campos de 40px, grade que colapsa
+            numa coluna no celular. */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="calc-receita-bruta">Receita Bruta Mensal (R$) *</Label>
+            <Input id="calc-receita-bruta" value={receitaBruta} onChange={e => setReceitaBruta(formatCurrencyInput(e.target.value))} placeholder="R$ 0,00" />
             {rbt12Auto && rbt12Auto > 0 && (
-              <p className="text-xs text-muted-foreground mt-1 flex items-start gap-1">
-                <Lightbulb className="w-3 h-3 shrink-0 mt-0.5" />
+              <p className="flex items-start gap-1 text-xs text-muted-foreground">
+                <Lightbulb className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
                 <span>
                   Média dos 12 meses cadastrados. É a base sobre a qual a alíquota
                   incide — quem define a alíquota é o RBT12 ao lado.
@@ -949,10 +956,10 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
               </p>
             )}
           </div>
-          <div>
-            <Label className="text-xs">UF para Cálculo *</Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="calc-uf">UF para Cálculo *</Label>
             <Select value={ufCalculo} onValueChange={setUfCalculo}>
-              <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+              <SelectTrigger id="calc-uf"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {Object.entries(UF_ICMS).sort((a, b) => a[1].nome.localeCompare(b[1].nome)).map(([uf, info]) => (
                   <SelectItem key={uf} value={uf}>{uf} — {info.nome} (ICMS {info.icms_interno}%)</SelectItem>
@@ -961,27 +968,27 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
             </Select>
           </div>
           {regime === 'simples_nacional' ? (
-            <div>
-              <Label className="text-xs">RBT12 (Faturamento 12m)</Label>
-              <Input value={rbt12} onChange={e => setRbt12(formatCurrencyInput(e.target.value))} placeholder="R$ 0,00" className="mt-1" />
+            <div className="space-y-1.5">
+              <Label htmlFor="calc-rbt12">RBT12 (Faturamento 12m)</Label>
+              <Input id="calc-rbt12" value={rbt12} onChange={e => setRbt12(formatCurrencyInput(e.target.value))} placeholder="R$ 0,00" />
               {rbt12Auto && rbt12Auto > 0 && (
-                <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                  <Lightbulb className="w-3 h-3" />
-                  Preenchido automaticamente via Configurações ({rbt12Auto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})
+                <p className="flex items-start gap-1 text-xs text-muted-foreground">
+                  <Lightbulb className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+                  <span>Preenchido automaticamente via Configurações ({rbt12Auto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})</span>
                 </p>
               )}
             </div>
           ) : (
-            <div>
-              <Label className="text-xs">Margem de Lucro (%)</Label>
-              <Input type="number" value={margemLucro} onChange={e => setMargemLucro(e.target.value)} placeholder="15" className="mt-1" min={0} max={100} />
+            <div className="space-y-1.5">
+              <Label htmlFor="calc-margem">Margem de Lucro (%)</Label>
+              <Input id="calc-margem" type="number" value={margemLucro} onChange={e => setMargemLucro(e.target.value)} placeholder="15" min={0} max={100} />
             </div>
           )}
           {regime !== 'simples_nacional' && (
-            <div>
-              <Label className="text-xs">Atividade Principal</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="calc-atividade">Atividade Principal</Label>
               <Select value={atividade} onValueChange={(v: AtividadeType) => setAtividade(v)}>
-                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectTrigger id="calc-atividade"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="comercio">Comércio</SelectItem>
                   <SelectItem value="servicos">Serviços</SelectItem>
@@ -991,25 +998,27 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
             </div>
           )}
         </div>
-        <Button onClick={calcular} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
-          <Calculator className="w-4 h-4 mr-2" /> Calcular Tributos
-        </Button>
+        <div className="flex justify-end">
+          <Button onClick={calcular} className="w-full sm:w-auto">
+            <Calculator aria-hidden="true" /> Calcular Tributos
+          </Button>
+        </div>
       </div>
 
       {/* ── Alíquotas ── */}
-      <div className="bg-card rounded-xl border border-border/50 p-5">
-        <h4 className="text-sm font-semibold flex items-center gap-2 mb-3">
-          <TrendingUp className="w-4 h-4 text-muted-foreground" /> Alíquotas Tributárias — {regimeLabel} / {ufCalculo}
+      <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
+        <h4 className="mb-3 flex items-center gap-2 text-base font-semibold leading-6 text-foreground">
+          <TrendingUp className="h-4 w-4 text-muted-foreground" aria-hidden="true" /> Alíquotas Tributárias — {regimeLabel} / {ufCalculo}
         </h4>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
           {tributosAtivos.map((t: any) => (
-            <div key={t.nome} className="bg-muted/30 rounded-lg p-3 space-y-1">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-medium">{t.nome}</span>
-                  <TooltipProvider><Tooltip><TooltipTrigger><Info className="w-3 h-3 text-muted-foreground" /></TooltipTrigger><TooltipContent side="bottom" className="max-w-xs"><p className="text-xs">{t.info}</p></TooltipContent></Tooltip></TooltipProvider>
+            <div key={t.nome} className="space-y-1 rounded-md border border-border bg-secondary p-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <span className="truncate text-sm font-medium text-foreground">{t.nome}</span>
+                  <TooltipProvider><Tooltip><TooltipTrigger aria-label={`Sobre ${t.nome}`} className="inline-flex shrink-0 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Info className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" /></TooltipTrigger><TooltipContent side="bottom" className="max-w-xs"><p className="text-xs">{t.info}</p></TooltipContent></Tooltip></TooltipProvider>
                 </div>
-                <span className="text-sm font-bold text-foreground">{t.aliquota.toFixed(2)}%</span>
+                <span className="text-sm font-semibold tabular-nums text-foreground">{t.aliquota.toFixed(2)}%</span>
               </div>
             </div>
           ))}
@@ -1018,54 +1027,55 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
 
       {/* ── Resultado Tributos + Lucro ── */}
       {resultado && (
-        <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
-          <h4 className="font-semibold text-sm flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-muted-foreground" /> Resultado da Simulação — Tributos & Lucro
+        <div className="space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm">
+          <h4 className="flex items-center gap-2 text-base font-semibold leading-6 text-foreground">
+            <TrendingUp className="h-5 w-5 text-muted-foreground" aria-hidden="true" /> Resultado da Simulação — Tributos & Lucro
           </h4>
 
-          {/* KPI Cards - Row 1: Receita, Tributos, Carga */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="bg-muted/30 rounded-lg p-3 text-center">
-              <p className="text-xs text-muted-foreground">Receita Bruta</p>
-              <p className="text-sm font-bold">{formatCurrency(resultado.receita)}</p>
+          {/* KPI Cards - Row 1: Receita, Tributos, Carga — anatomia do cartão
+              KPI (rótulo 13/500, valor 24/600 tabular, alinhado à esquerda). */}
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="rounded-lg border border-border bg-card p-4">
+              <p className="text-sm font-medium text-muted-foreground">Receita Bruta</p>
+              <p className="mt-1 text-2xl font-semibold leading-8 tabular-nums text-foreground">{formatCurrency(resultado.receita)}</p>
             </div>
-            <div className="bg-destructive/10 rounded-lg p-3 text-center border border-destructive/20">
-              <p className="text-xs text-muted-foreground">Total Tributos</p>
-              <p className="text-sm font-bold text-destructive">{formatCurrency(resultado.totalTributos)}</p>
+            <div className="rounded-lg border border-destructive-line bg-destructive-tint p-4">
+              <p className="text-sm font-medium text-muted-foreground">Total Tributos</p>
+              <p className="mt-1 text-2xl font-semibold leading-8 tabular-nums text-destructive-ink">{formatCurrency(resultado.totalTributos)}</p>
             </div>
-            <div className="bg-muted/30 rounded-lg p-3 text-center">
-              <p className="text-xs text-muted-foreground">Carga Efetiva</p>
-              <p className="text-sm font-bold text-foreground">
+            <div className="rounded-lg border border-border bg-card p-4">
+              <p className="text-sm font-medium text-muted-foreground">Carga Efetiva</p>
+              <p className="mt-1 text-2xl font-semibold leading-8 tabular-nums text-foreground">
                 {regime === 'simples_nacional' ? `${resultado.aliquotaEfetiva.toFixed(2)}%` : `${resultado.cargaEfetiva.toFixed(2)}%`}
               </p>
             </div>
           </div>
 
           {/* KPI Cards - Row 2: Lucro */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="bg-muted/30 rounded-lg p-3 text-center border border-border/50">
-              <p className="text-xs text-muted-foreground">Lucro Bruto</p>
-              <p className="text-sm font-bold text-foreground">{formatCurrency(resultado.lucroBruto)}</p>
-              <p className="text-xs text-muted-foreground">Receita − Tributos</p>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-lg border border-border bg-card p-4">
+              <p className="text-sm font-medium text-muted-foreground">Lucro Bruto</p>
+              <p className="mt-1 text-2xl font-semibold leading-8 tabular-nums text-foreground">{formatCurrency(resultado.lucroBruto)}</p>
+              <p className="mt-1 text-xs text-muted-foreground">Receita − Tributos</p>
             </div>
-            <div className="bg-muted/30 rounded-lg p-3 text-center">
-              <p className="text-xs text-muted-foreground">Custos Operacionais</p>
-              <p className="text-sm font-bold">{formatCurrency(resultado.totalCustosOp)}</p>
-              <p className="text-xs text-muted-foreground">Frete + Desp. Adm.</p>
+            <div className="rounded-lg border border-border bg-card p-4">
+              <p className="text-sm font-medium text-muted-foreground">Custos Operacionais</p>
+              <p className="mt-1 text-2xl font-semibold leading-8 tabular-nums text-foreground">{formatCurrency(resultado.totalCustosOp)}</p>
+              <p className="mt-1 text-xs text-muted-foreground">Frete + Desp. Adm.</p>
             </div>
-            <div className={`rounded-lg p-3 text-center border ${resultado.lucroLiquido >= 0 ? 'bg-success/15 border-success/30' : 'bg-destructive/15 border-destructive/30'}`}>
-              <p className="text-xs text-muted-foreground">Lucro Líquido</p>
-              <p className={`text-sm font-bold ${resultado.lucroLiquido >= 0 ? 'text-success' : 'text-destructive'}`}>
+            <div className={`rounded-lg border p-4 ${resultado.lucroLiquido >= 0 ? 'border-success-line bg-success-tint' : 'border-destructive-line bg-destructive-tint'}`}>
+              <p className="text-sm font-medium text-muted-foreground">Lucro Líquido</p>
+              <p className={`mt-1 text-2xl font-semibold leading-8 tabular-nums ${resultado.lucroLiquido >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>
                 {formatCurrency(resultado.lucroLiquido)}
               </p>
-              <p className="text-xs text-muted-foreground">L. Bruto − Custos Op.</p>
+              <p className="mt-1 text-xs text-muted-foreground">L. Bruto − Custos Op.</p>
             </div>
-            <div className={`rounded-lg p-3 text-center border ${resultado.margemLiquidaPct >= 5 ? 'bg-success/15 border-success/30' : resultado.margemLiquidaPct >= 0 ? 'bg-warning/15 border-warning/30' : 'bg-destructive/15 border-destructive/30'}`}>
-              <p className="text-xs text-muted-foreground">Margem Líquida</p>
-              <p className={`text-sm font-bold ${resultado.margemLiquidaPct >= 5 ? 'text-success' : resultado.margemLiquidaPct >= 0 ? 'text-warning' : 'text-destructive'}`}>
+            <div className={`rounded-lg border p-4 ${resultado.margemLiquidaPct >= 5 ? 'border-success-line bg-success-tint' : resultado.margemLiquidaPct >= 0 ? 'border-warning-line bg-warning-tint' : 'border-destructive-line bg-destructive-tint'}`}>
+              <p className="text-sm font-medium text-muted-foreground">Margem Líquida</p>
+              <p className={`mt-1 text-2xl font-semibold leading-8 tabular-nums ${resultado.margemLiquidaPct >= 5 ? 'text-success-ink' : resultado.margemLiquidaPct >= 0 ? 'text-warning-ink' : 'text-destructive-ink'}`}>
                 {resultado.margemLiquidaPct.toFixed(2)}%
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="mt-1 text-xs text-muted-foreground">
                 {resultado.margemLiquidaPct < 5 && resultado.margemLiquidaPct >= 0 ? '⚠ Risco inexequibilidade' : resultado.margemLiquidaPct < 0 ? '🚫 Prejuízo' : '✓ Saudável'}
               </p>
             </div>
@@ -1073,11 +1083,11 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
 
           {/* Detalhamento dos Tributos */}
           <div className="space-y-2">
-            <h5 className="text-xs font-semibold text-muted-foreground">Detalhamento dos Tributos</h5>
+            <h5 className="text-sm font-semibold text-muted-foreground">Detalhamento dos Tributos</h5>
             {resultado.tributos.map((t: any) => (
-              <div key={t.nome} className="flex items-center justify-between bg-muted/20 rounded-lg px-3 py-2">
-                <span className="text-xs font-medium">{t.nome} <span className="text-muted-foreground">({t.aliquota.toFixed(2)}%)</span></span>
-                <span className="text-xs font-bold">{formatCurrency(t.valor)}</span>
+              <div key={t.nome} className="flex items-center justify-between gap-3 rounded-md bg-secondary px-3 py-2">
+                <span className="text-sm font-medium text-foreground">{t.nome} <span className="text-muted-foreground">({t.aliquota.toFixed(2)}%)</span></span>
+                <span className="text-sm font-semibold tabular-nums text-foreground">{formatCurrency(t.valor)}</span>
               </div>
             ))}
           </div>
@@ -1085,75 +1095,76 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
           {/* Detalhamento dos Custos Operacionais */}
           {resultado.totalCustosOp > 0 && (
             <div className="space-y-2">
-              <h5 className="text-xs font-semibold text-muted-foreground">Custos Operacionais</h5>
+              <h5 className="text-sm font-semibold text-muted-foreground">Custos Operacionais</h5>
               {resultado.custoFrete > 0 && (
-                <div className="flex items-center justify-between bg-muted/20 rounded-lg px-3 py-2">
-                  <span className="text-xs font-medium">Frete <span className="text-muted-foreground">({parseFloat(frete) || 0}%)</span></span>
-                  <span className="text-xs font-bold">{formatCurrency(resultado.custoFrete)}</span>
+                <div className="flex items-center justify-between gap-3 rounded-md bg-secondary px-3 py-2">
+                  <span className="text-sm font-medium text-foreground">Frete <span className="text-muted-foreground">({parseFloat(frete) || 0}%)</span></span>
+                  <span className="text-sm font-semibold tabular-nums text-foreground">{formatCurrency(resultado.custoFrete)}</span>
                 </div>
               )}
               {resultado.custoDespAdm > 0 && (
-                <div className="flex items-center justify-between bg-muted/20 rounded-lg px-3 py-2">
-                  <span className="text-xs font-medium">Despesas Administrativas <span className="text-muted-foreground">({parseFloat(despesasAdmin) || 0}%)</span></span>
-                  <span className="text-xs font-bold">{formatCurrency(resultado.custoDespAdm)}</span>
+                <div className="flex items-center justify-between gap-3 rounded-md bg-secondary px-3 py-2">
+                  <span className="text-sm font-medium text-foreground">Despesas Administrativas <span className="text-muted-foreground">({parseFloat(despesasAdmin) || 0}%)</span></span>
+                  <span className="text-sm font-semibold tabular-nums text-foreground">{formatCurrency(resultado.custoDespAdm)}</span>
                 </div>
               )}
             </div>
           )}
 
-          {/* Demonstração de Resultado */}
-          <div className="bg-muted/20 rounded-lg p-4 space-y-2 border border-border/30">
-            <h5 className="text-xs font-bold text-foreground mb-2">DRE Simplificada (Demonstração do Resultado)</h5>
-            <div className="flex justify-between text-xs">
+          {/* Demonstração de Resultado — totais na superfície rebaixada,
+              dígitos tabulares (Inter, não mono). */}
+          <div className="space-y-2 rounded-md border border-border bg-secondary p-4">
+            <h5 className="mb-2 text-sm font-semibold text-foreground">DRE Simplificada (Demonstração do Resultado)</h5>
+            <div className="flex justify-between gap-3 text-sm">
               <span>Receita Bruta</span>
-              <span className="font-mono font-semibold">{formatCurrency(resultado.receita)}</span>
+              <span className="font-semibold tabular-nums">{formatCurrency(resultado.receita)}</span>
             </div>
-            <div className="flex justify-between text-xs text-destructive">
+            <div className="flex justify-between gap-3 text-sm text-destructive-ink">
               <span>(−) Tributos</span>
-              <span className="font-mono font-semibold">({formatCurrency(resultado.totalTributos)})</span>
+              <span className="font-semibold tabular-nums">({formatCurrency(resultado.totalTributos)})</span>
             </div>
-            <div className="border-t border-border/30 my-1" />
-            <div className="flex justify-between text-xs font-semibold">
+            <div className="my-1 border-t border-border" />
+            <div className="flex justify-between gap-3 text-sm font-semibold">
               <span>= Lucro Bruto</span>
-              <span className="font-mono text-foreground">{formatCurrency(resultado.lucroBruto)}</span>
+              <span className="tabular-nums text-foreground">{formatCurrency(resultado.lucroBruto)}</span>
             </div>
             {resultado.totalCustosOp > 0 && (
               <>
-                <div className="flex justify-between text-xs text-muted-foreground">
+                <div className="flex justify-between gap-3 text-sm text-muted-foreground">
                   <span>(−) Custos Operacionais</span>
-                  <span className="font-mono">({formatCurrency(resultado.totalCustosOp)})</span>
+                  <span className="tabular-nums">({formatCurrency(resultado.totalCustosOp)})</span>
                 </div>
-                <div className="border-t border-border/30 my-1" />
+                <div className="my-1 border-t border-border" />
               </>
             )}
-            <div className={`flex justify-between text-xs font-bold ${resultado.lucroLiquido >= 0 ? 'text-success' : 'text-destructive'}`}>
+            <div className={`flex justify-between gap-3 text-sm font-semibold ${resultado.lucroLiquido >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>
               <span>= Lucro Líquido</span>
-              <span className="font-mono">{formatCurrency(resultado.lucroLiquido)}</span>
+              <span className="tabular-nums">{formatCurrency(resultado.lucroLiquido)}</span>
             </div>
-            <div className="flex justify-between text-xs text-muted-foreground mt-1">
+            <div className="mt-1 flex justify-between gap-3 text-sm text-muted-foreground">
               <span>Margem Líquida</span>
-              <span className="font-mono">{resultado.margemLiquidaPct.toFixed(2)}%</span>
+              <span className="tabular-nums">{resultado.margemLiquidaPct.toFixed(2)}%</span>
             </div>
           </div>
 
           {/* Alerta de inexequibilidade */}
           {resultado.margemLiquidaPct < 5 && resultado.margemLiquidaPct >= 0 && (
-            <div className="bg-warning/10 border border-warning/30 rounded-lg p-3 flex items-start gap-2">
-              <Info className="w-4 h-4 text-warning mt-0.5 shrink-0" />
+            <div role="alert" className="flex items-start gap-2 rounded-lg border border-warning-line bg-warning-tint p-3">
+              <Info className="mt-0.5 h-4 w-4 shrink-0 text-warning-ink" aria-hidden="true" />
               <div>
-                <p className="text-xs font-semibold text-warning">Alerta de Inexequibilidade — Art. 59, Lei 14.133/2021</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
+                <p className="text-sm font-semibold text-warning-ink">Alerta de Inexequibilidade — Art. 59, Lei 14.133/2021</p>
+                <p className="mt-0.5 text-sm text-warning-ink/90">
                   Margem líquida abaixo de 5% pode configurar proposta inexequível. Revise os custos ou aumente a margem de lucro.
                 </p>
               </div>
             </div>
           )}
           {resultado.lucroLiquido < 0 && (
-            <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 flex items-start gap-2">
-              <Info className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
+            <div role="alert" className="flex items-start gap-2 rounded-lg border border-destructive-line bg-destructive-tint p-3">
+              <Info className="mt-0.5 h-4 w-4 shrink-0 text-destructive-ink" aria-hidden="true" />
               <div>
-                <p className="text-xs font-semibold text-destructive">⚠ Operação com Prejuízo</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
+                <p className="text-sm font-semibold text-destructive-ink">⚠ Operação com Prejuízo</p>
+                <p className="mt-0.5 text-sm text-destructive-ink/90">
                   Os tributos e custos operacionais excedem a receita. Essa operação gera prejuízo de {formatCurrency(Math.abs(resultado.lucroLiquido))}.
                 </p>
               </div>
@@ -1168,25 +1179,25 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
       {calcTab === 'produto_bdi' && (
         <>
           {/* BDI toggle */}
-          <div className="bg-card rounded-xl border border-border/50 p-5 space-y-3">
-            <div className="flex items-center gap-3">
-              <Switch checked={usarBDI} onCheckedChange={setUsarBDI} />
+          <div className="space-y-3 rounded-lg border border-border bg-card p-5 shadow-sm">
+            <div className="flex items-start gap-3">
+              <Switch id="calc-usar-bdi" checked={usarBDI} onCheckedChange={setUsarBDI} className="mt-0.5" />
               <div>
-                <p className="text-sm font-medium">Ativar Composição BDI (Lei 14.133/2021)</p>
-                <p className="text-xs text-muted-foreground">
+                <Label htmlFor="calc-usar-bdi" className="text-base font-medium leading-5">Ativar Composição BDI (Lei 14.133/2021)</Label>
+                <p className="mt-1 text-sm text-muted-foreground">
                   Gera planilha detalhada de composição de custos com BDI, encargos, frete e despesas administrativas via IA.
                 </p>
               </div>
             </div>
             {usarBDI && (
-              <div className="grid grid-cols-2 gap-4 mt-2">
-                <div>
-                  <Label className="text-xs">Frete Estimado (%)</Label>
-                  <Input type="number" value={frete} onChange={e => setFrete(e.target.value)} placeholder="0" className="mt-1" min={0} max={100} />
+              <div className="mt-2 grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="calc-frete">Frete Estimado (%)</Label>
+                  <Input id="calc-frete" type="number" value={frete} onChange={e => setFrete(e.target.value)} placeholder="0" min={0} max={100} />
                 </div>
-                <div>
-                  <Label className="text-xs">Despesas Administrativas (%)</Label>
-                  <Input type="number" value={despesasAdmin} onChange={e => setDespesasAdmin(e.target.value)} placeholder="0" className="mt-1" min={0} max={100} />
+                <div className="space-y-1.5">
+                  <Label htmlFor="calc-desp-adm">Despesas Administrativas (%)</Label>
+                  <Input id="calc-desp-adm" type="number" value={despesasAdmin} onChange={e => setDespesasAdmin(e.target.value)} placeholder="0" min={0} max={100} />
                   {/* A ponte com o Financeiro: o percentual que a estrutura da
                       empresa realmente consome, apurado dos lançamentos
                       conciliados. Continua EDITÁVEL — preço é decisão
@@ -1198,21 +1209,21 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
                       montada. O apurado só aparece como referência, e quando
                       diverge da adotada, a tela diz — é o sinal de revisar. */}
                   {adotado?.pct_despesa_administrativa != null ? (
-                    <p className="text-xs mt-1 flex items-start gap-1">
-                      <Lightbulb className="w-3 h-3 shrink-0 mt-0.5 text-muted-foreground" />
+                    <p className="flex items-start gap-1 text-xs">
+                      <Lightbulb className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" aria-hidden="true" />
                       <span className="text-muted-foreground">
                         Em vigor:{' '}
                         <button
                           type="button"
                           onClick={() => setDespesasAdmin(String(adotado.pct_despesa_administrativa))}
-                          className="font-semibold text-accent hover:underline"
+                          className="rounded-sm font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         >
                           {adotado.pct_despesa_administrativa.toLocaleString('pt-BR')}%
                         </button>{' '}
                         (adotado em {new Date(adotado.adotado_em).toLocaleDateString('pt-BR')}, base de {adotado.meses} meses).
                         {indicadores?.pct_despesa_administrativa != null
                           && Math.abs(indicadores.pct_despesa_administrativa - adotado.pct_despesa_administrativa) >= 0.5 && (
-                          <span className="text-warning">
+                          <span className="text-warning-ink">
                             {' '}O Financeiro apura hoje {indicadores.pct_despesa_administrativa.toLocaleString('pt-BR')}% —
                             revise em Configurações → Regime Tributário.
                           </span>
@@ -1220,14 +1231,14 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
                       </span>
                     </p>
                   ) : indicadores?.pct_despesa_administrativa != null && (
-                    <p className="text-xs mt-1 flex items-start gap-1">
-                      <Lightbulb className="w-3 h-3 shrink-0 mt-0.5 text-muted-foreground" />
+                    <p className="flex items-start gap-1 text-xs">
+                      <Lightbulb className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" aria-hidden="true" />
                       <span className="text-muted-foreground">
                         O Financeiro apurou{' '}
                         <button
                           type="button"
                           onClick={() => setDespesasAdmin(String(indicadores.pct_despesa_administrativa))}
-                          className="font-semibold text-accent hover:underline"
+                          className="rounded-sm font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         >
                           {indicadores.pct_despesa_administrativa.toLocaleString('pt-BR')}%
                         </button>{' '}
@@ -1235,7 +1246,7 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
                         {' '}({indicadores.media_mensal.despesa_operacional.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/mês
                         {' '}sobre {indicadores.media_mensal.receita.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} de receita).
                         {!indicadores.confiavel && (
-                          <span className="text-warning">
+                          <span className="text-warning-ink">
                             {' '}Atenção: {indicadores.cobertura.despesa?.toLocaleString('pt-BR') ?? 0}% das despesas
                             têm categoria — classifique o resto na Conciliação para o número fechar.
                           </span>
@@ -1249,33 +1260,35 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
           </div>
 
           {/* Itens */}
-          <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <h4 className="text-sm font-semibold flex items-center gap-2">
-                <FileText className="w-4 h-4 text-muted-foreground" /> Itens de Produto
+          <div className="space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm">
+            <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+              <h4 className="flex items-center gap-2 text-base font-semibold leading-6 text-foreground">
+                <FileText className="h-4 w-4 text-muted-foreground" aria-hidden="true" /> Itens de Produto
               </h4>
               <Button variant="outline" size="sm" onClick={addItemRow}>
-                <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar Item
+                <Plus aria-hidden="true" /> Adicionar Item
               </Button>
             </div>
+            {/* Doze colunas só a partir de `sm`; no celular a linha do item vira
+                duas colunas, com descrição em largura cheia. */}
             {itens.map((item, idx) => (
-              <div key={idx} className="grid grid-cols-12 gap-2 items-end">
-                <div className="col-span-4">
-                  <Label className="text-xs">Descrição *</Label>
-                  <Input value={item.descricao} onChange={e => updateItem(idx, 'descricao', e.target.value)} placeholder="Ex: Notebook Dell Inspiron 15" className="mt-0.5" />
+              <div key={idx} className="grid grid-cols-2 gap-3 sm:grid-cols-12 sm:items-end">
+                <div className="col-span-2 space-y-1.5 sm:col-span-4">
+                  <Label htmlFor={`calc-item-${idx}-descricao`}>Descrição *</Label>
+                  <Input id={`calc-item-${idx}-descricao`} value={item.descricao} onChange={e => updateItem(idx, 'descricao', e.target.value)} placeholder="Ex: Notebook Dell Inspiron 15" />
                 </div>
-                <div className="col-span-2">
-                  <Label className="text-xs">NCM</Label>
-                  <Input value={item.ncm} onChange={e => updateItem(idx, 'ncm', e.target.value)} placeholder="0000.00.00" className="mt-0.5" />
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label htmlFor={`calc-item-${idx}-ncm`}>NCM</Label>
+                  <Input id={`calc-item-${idx}-ncm`} value={item.ncm} onChange={e => updateItem(idx, 'ncm', e.target.value)} placeholder="0000.00.00" />
                 </div>
-                <div className="col-span-1">
-                  <Label className="text-xs">Qtd</Label>
-                  <Input value={item.quantidade} onChange={e => updateItem(idx, 'quantidade', e.target.value)} placeholder="1" className="mt-0.5" />
+                <div className="space-y-1.5 sm:col-span-1">
+                  <Label htmlFor={`calc-item-${idx}-qtd`}>Qtd</Label>
+                  <Input id={`calc-item-${idx}-qtd`} className="tabular-nums" value={item.quantidade} onChange={e => updateItem(idx, 'quantidade', e.target.value)} placeholder="1" />
                 </div>
-                <div className="col-span-2">
-                  <Label className="text-xs">Unidade</Label>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label htmlFor={`calc-item-${idx}-unidade`}>Unidade</Label>
                   <Select value={item.unidade} onValueChange={v => updateItem(idx, 'unidade', v)}>
-                    <SelectTrigger className="mt-0.5"><SelectValue /></SelectTrigger>
+                    <SelectTrigger id={`calc-item-${idx}-unidade`}><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {UNIDADES.map(u => u.codigo).map(u => (
                         <SelectItem key={u} value={u}>{u}</SelectItem>
@@ -1283,13 +1296,15 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="col-span-2">
-                  <Label className="text-xs">Custo Unit. (R$) *</Label>
-                  <Input value={item.custoUnitario} onChange={e => updateItem(idx, 'custoUnitario', formatCurrencyInput(e.target.value))} placeholder="R$ 0,00" className="mt-0.5" />
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label htmlFor={`calc-item-${idx}-custo`}>Custo Unit. (R$) *</Label>
+                  <Input id={`calc-item-${idx}-custo`} className="tabular-nums" value={item.custoUnitario} onChange={e => updateItem(idx, 'custoUnitario', formatCurrencyInput(e.target.value))} placeholder="R$ 0,00" />
                 </div>
-                <div className="col-span-1">
+                <div className="flex justify-end sm:col-span-1 sm:justify-start">
                   {itens.length > 1 && (
-                    <Button variant="ghost" size="sm" onClick={() => removeItem(idx)} className="text-destructive h-8 w-8 p-0">×</Button>
+                    <Button variant="ghost-destructive" size="icon-sm" onClick={() => removeItem(idx)} aria-label={`Remover item ${idx + 1}`}>
+                      <Trash2 aria-hidden="true" />
+                    </Button>
                   )}
                 </div>
               </div>
@@ -1297,24 +1312,24 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
           </div>
 
           {/* Actions */}
-          <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div className="flex items-center gap-3">
-                <Switch checked={enviarProposta} onCheckedChange={setEnviarProposta} />
+          <div className="space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm">
+            <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+              <div className="flex items-start gap-3">
+                <Switch id="calc-enviar-proposta" checked={enviarProposta} onCheckedChange={setEnviarProposta} className="mt-0.5" />
                 <div>
-                  <p className="text-sm font-medium">Integrar à Proposta Comercial</p>
-                  <p className="text-xs text-muted-foreground">Enviar preços formados à proposta</p>
+                  <Label htmlFor="calc-enviar-proposta" className="text-base font-medium leading-5">Integrar à Proposta Comercial</Label>
+                  <p className="mt-1 text-sm text-muted-foreground">Enviar preços formados à proposta</p>
                 </div>
               </div>
               {enviarProposta && (
-                <Button variant="outline" size="sm" onClick={enviarParaProposta}>
-                  <FileText className="w-3.5 h-3.5 mr-1" /> Enviar à Proposta
+                <Button variant="outline" onClick={enviarParaProposta}>
+                  <FileText aria-hidden="true" /> Enviar à Proposta
                 </Button>
               )}
             </div>
-            <div className="border-t border-border/30 pt-3">
-              <Button variant="outline" size="sm" onClick={salvarNoCatalogo} disabled={savingCatalogo} className="w-full">
-                {savingCatalogo ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1" />}
+            <div className="border-t border-border pt-3">
+              <Button variant="outline" onClick={salvarNoCatalogo} disabled={savingCatalogo} className="w-full">
+                {savingCatalogo ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Save aria-hidden="true" />}
                 Salvar no Catálogo de Itens Precificados
               </Button>
             </div>
@@ -1332,12 +1347,14 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
 
           {usarBDI ? (
             <div className="space-y-3">
-              <Button onClick={gerarComposicaoDeterministica} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground h-12" size="lg">
-                <Calculator className="w-5 h-5 mr-2" />
+              {/* Uma ação principal por contexto: o motor determinístico é a
+                  primária (44px); IA e anexo são secundárias em contorno. */}
+              <Button onClick={gerarComposicaoDeterministica} className="w-full" size="lg">
+                <Calculator aria-hidden="true" />
                 Calcular Composição de Custo (Motor Determinístico)
               </Button>
-              <Button onClick={gerarComposicaoBDI} disabled={loading} variant="outline" className="w-full h-10" size="lg">
-                {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}
+              <Button onClick={gerarComposicaoBDI} disabled={loading} variant="outline" className="w-full">
+                {loading ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Sparkles aria-hidden="true" />}
                 Gerar Composição via IA Contábil (alternativo)
               </Button>
 
@@ -1350,20 +1367,19 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
                 onClick={anexarComposicaoAoProcesso}
                 disabled={anexandoPlanilha || !licitacaoIdSel}
                 variant="outline"
-                className="w-full h-10 border-primary/40 text-primary hover:bg-primary/5"
-                size="lg"
+                className="w-full"
               >
                 {anexandoPlanilha
-                  ? <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  : <FileText className="w-4 h-4 mr-2" />}
+                  ? <Loader2 className="animate-spin" aria-hidden="true" />
+                  : <FileText aria-hidden="true" />}
                 {licitacaoIdSel
                   ? `Anexar planilha à pasta do processo${licitacaoNumero ? ` ${licitacaoNumero}` : ''}`
                   : 'Vincule a licitação para anexar a planilha ao processo'}
               </Button>
             </div>
           ) : (
-            <Button onClick={calcular} disabled={!receitaBruta} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground h-12" size="lg">
-              <Calculator className="w-5 h-5 mr-2" /> Calcular Preço do Produto
+            <Button onClick={calcular} disabled={!receitaBruta} className="w-full" size="lg">
+              <Calculator aria-hidden="true" /> Calcular Preço do Produto
             </Button>
           )}
 
