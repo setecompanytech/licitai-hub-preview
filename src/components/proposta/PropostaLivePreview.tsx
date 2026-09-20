@@ -90,10 +90,12 @@ export default function PropostaLivePreview(props: LivePreviewProps) {
   const hasAnyData = orgao || objeto || empresa?.razao_social || repNome || itensValidos.length > 0;
 
   if (!hasAnyData) {
-    // Painel ainda sem nada: o "nada aqui ainda" padrão da identidade, num
-    // fundo de interface — o papel só aparece quando há o que imprimir nele.
+    // Painel ainda sem nada: o "nada aqui ainda" padrão da identidade, sobre
+    // a área rebaixada que a página desenha em volta — o papel só aparece
+    // quando há o que imprimir nele. A altura mínima dá presença ao vazio num
+    // quadro que, sem folha, não teria altura própria.
     return (
-      <div className="flex h-full items-center justify-center bg-card">
+      <div className="flex min-h-[320px] items-center justify-center">
         <EstadoVazio
           icone={<Eye />}
           titulo="Prévia em tempo real"
@@ -119,13 +121,15 @@ export default function PropostaLivePreview(props: LivePreviewProps) {
     // ground` faria a prévia escurecer no modo noturno e deixar de casar com o
     // PDF/Word gerados em `PropostaDownload` — que usam os mesmos cinzas
     // (`#333` no cabeçalho da tabela, `#555` nos extensos). A moldura em volta
-    // é interface e segue os tokens; o miolo é papel.
+    // é interface e segue os tokens; o miolo é papel. A folha fica centrada
+    // sobre a área rebaixada (`bg-secondary`) que a página desenha, com a
+    // borda e a sombra `md` da prévia ABNT do Jurídico.
     // └───────────────────────────────────────────────────────────────────────┘
     <div
       // A proposta é do assinante, não nossa: sem esta marca, o carimbo
       // anticópia do `security-guard` ia junto para o campo do portal.
       data-conteudo-do-cliente
-      className="relative overflow-hidden rounded-lg border border-border shadow-sm transition-all duration-300"
+      className="relative mx-auto overflow-hidden rounded-md border border-border shadow-md transition-all duration-300"
       style={{
         fontFamily: `'${fontFamily}', Arial, Helvetica, sans-serif`,
         fontSize: `${Math.max(fontSize - 2, 9)}pt`,

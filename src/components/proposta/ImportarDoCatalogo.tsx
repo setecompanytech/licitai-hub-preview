@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Package, ShoppingCart, Loader2, FileText, ChevronDown, ChevronUp, CheckSquare, Trash2 } from 'lucide-react';
 import { useProcessoAtivo, type ProcessoResumo } from '@/hooks/useProcessoAtivo';
@@ -250,23 +251,23 @@ export default function ImportarDoCatalogo({ onImport, licitacaoNumero, licitaca
         type="button"
         onClick={() => setExpanded(!expanded)}
         aria-expanded={expanded}
-        className="flex w-full items-center justify-between gap-3 bg-muted px-4 py-3 transition-colors hover:bg-primary-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+        className="flex w-full items-center justify-between gap-3 bg-secondary px-4 py-3 transition-colors hover:bg-primary-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
       >
         <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
-          <Package className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+          <Package className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
           Importar do catálogo de precificação
         </span>
         {expanded
-          ? <ChevronUp className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
-          : <ChevronDown className="w-4 h-4 text-muted-foreground" aria-hidden="true" />}
+          ? <ChevronUp className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+          : <ChevronDown className="h-4 w-4 text-muted-foreground" aria-hidden="true" />}
       </button>
 
       {expanded && (
         <div className="space-y-3 p-4">
           <div className="flex flex-wrap items-center gap-2">
             {licitacaoId ? (
-              <Badge variant="info" className="gap-1.5 px-3 py-1.5">
-                <FileText className="w-3 h-3" aria-hidden="true" />
+              <Badge variant="info" className="gap-1.5">
+                <FileText className="h-3 w-3" aria-hidden="true" />
                 Itens deste processo{licitacaoNumero ? `: ${licitacaoNumero}` : ''}
               </Badge>
             ) : (
@@ -290,21 +291,17 @@ export default function ImportarDoCatalogo({ onImport, licitacaoNumero, licitaca
               </Select>
             )}
             <Button variant="outline" size="sm" onClick={toggleSelectAll}>
-              <CheckSquare className="w-4 h-4" /> {allSelected ? 'Desmarcar todos' : 'Marcar todos'}
+              <CheckSquare aria-hidden="true" /> {allSelected ? 'Desmarcar todos' : 'Marcar todos'}
             </Button>
             {selected.size > 0 && (
               <>
                 <Button size="sm" onClick={handleImport}>
-                  <ShoppingCart className="w-4 h-4" /> Importar {selected.size} item(ns)
+                  <ShoppingCart aria-hidden="true" /> Importar {selected.size} item(ns)
                 </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleExcluir}
-                  disabled={excluindo}
-                  className="border-destructive-line text-destructive hover:bg-destructive-tint hover:text-destructive"
-                >
-                  {excluindo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                {/* Ação destrutiva discreta: tinta vermelha sem fundo, para não
+                    disputar com o verde do "Importar". */}
+                <Button size="sm" variant="ghost-destructive" onClick={handleExcluir} disabled={excluindo}>
+                  {excluindo ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Trash2 aria-hidden="true" />}
                   Excluir selecionados
                 </Button>
               </>
@@ -312,8 +309,17 @@ export default function ImportarDoCatalogo({ onImport, licitacaoNumero, licitaca
           </div>
 
           {loading ? (
-            <div className="flex items-center justify-center py-6">
-              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            /* Espera na forma das linhas que vão chegar — caixa, descrição,
+               quantidade, preço —, não um spinner no centro. */
+            <div role="status" aria-label="Carregando itens" className="space-y-1">
+              {Array.from({ length: 3 }, (_, i) => (
+                <div key={i} className="flex items-center gap-3 px-3 py-2">
+                  <Skeleton className="h-4 w-4 rounded-sm" />
+                  <Skeleton className="h-4 flex-1" />
+                  <Skeleton className="h-4 w-14" />
+                  <Skeleton className="h-4 w-20" />
+                </div>
+              ))}
             </div>
           ) : filteredItems.length === 0 ? (
             <EstadoVazio
@@ -340,7 +346,7 @@ export default function ImportarDoCatalogo({ onImport, licitacaoNumero, licitaca
                     type="checkbox"
                     checked={selected.has(item.id)}
                     onChange={() => toggleSelect(item.id)}
-                    className="rounded border-border"
+                    className="h-4 w-4 shrink-0 rounded-sm border-border accent-primary"
                   />
                   <span className="flex-1 truncate">{item.descricao}</span>
                   <span className="shrink-0 text-muted-foreground tabular-nums">{item.quantidade} {item.unidade}</span>

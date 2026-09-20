@@ -4,6 +4,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import SeloPraefectusIA from '@/components/shared/SeloPraefectusIA';
 import { Calculator, Brain, Loader2, Info } from 'lucide-react';
 import { streamAIChat } from '@/lib/ai-stream';
 import ReactMarkdown from 'react-markdown';
@@ -118,10 +121,10 @@ ${itensResumo}
   return (
     <div className="space-y-4">
       {/* Entrada RBT12 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="rbt12" className="flex items-center gap-1">
-            <Calculator className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+            <Calculator className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
             Receita bruta em 12 meses (RBT12)
           </Label>
           <Input
@@ -136,7 +139,7 @@ ${itensResumo}
           </p>
         </div>
         {resultado && (
-          <Card className="border-border bg-muted p-4">
+          <Card className="bg-secondary p-4">
             <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="info">{resultado.faixa}</Badge>
@@ -170,73 +173,77 @@ ${itensResumo}
         <summary className="flex cursor-pointer items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
           <Info className="w-4 h-4" aria-hidden="true" /> Ver tabela completa do Anexo I – Simples Nacional (Comércio) 2026
         </summary>
-        <div className="mt-3 overflow-x-auto rounded-lg border border-border">
-          <table className="w-full min-w-[560px] text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted">
-                <th scope="col" className="px-3 py-2 text-left text-sm font-semibold text-foreground">Faixa</th>
-                <th scope="col" className="px-3 py-2 text-right text-sm font-semibold text-foreground">Alíquota</th>
-                <th scope="col" className="px-3 py-2 text-right text-sm font-semibold text-foreground">Valor a deduzir</th>
-                <th scope="col" className="px-3 py-2 text-left text-sm font-semibold text-foreground">Receita bruta 12 meses</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
+        {/* Tabelas nos primitivos de `ui/table` (Design System v3): cabeçalho
+            em superfície rebaixada, rótulos 12/600, linhas de 48px, números à
+            direita em dígitos tabulares; a faixa da empresa fica realçada na
+            tinta da seleção. */}
+        <div className="mt-3 overflow-hidden rounded-lg border border-border">
+          <Table className="min-w-[560px]">
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead scope="col">Faixa</TableHead>
+                <TableHead scope="col" className="text-right">Alíquota</TableHead>
+                <TableHead scope="col" className="text-right">Valor a deduzir</TableHead>
+                <TableHead scope="col">Receita bruta 12 meses</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {FAIXAS_ANEXO_I.map((f, i) => (
-                <tr key={i} className={resultado?.faixa === f.faixa ? 'bg-primary-tint font-semibold' : undefined}>
-                  <td className="px-3 py-2">{f.faixa}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{formatPercentual(f.aliquota)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{f.deducao > 0 ? formatCurrency(f.deducao) : '–'}</td>
-                  <td className="px-3 py-2 tabular-nums">
+                <TableRow key={i} className={resultado?.faixa === f.faixa ? 'bg-primary-tint font-semibold hover:bg-primary-tint' : undefined}>
+                  <TableCell>{f.faixa}</TableCell>
+                  <TableCell className="text-right tabular-nums">{formatPercentual(f.aliquota)}</TableCell>
+                  <TableCell className="text-right tabular-nums">{f.deducao > 0 ? formatCurrency(f.deducao) : '–'}</TableCell>
+                  <TableCell className="tabular-nums">
                     {f.limiteInf === 0 ? 'Até' : 'De ' + formatCurrency(f.limiteInf) + ' a'} {formatCurrency(f.limiteSup)}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
 
         {/* Tabela repartição */}
         <div className="mt-4">
           <p className="mb-2 text-sm font-semibold text-foreground">Percentual de repartição dos tributos</p>
-          <div className="overflow-x-auto rounded-lg border border-border">
-            <table className="w-full min-w-[640px] text-sm">
-              <thead>
-                <tr className="border-b border-border bg-muted">
-                  <th scope="col" className="px-3 py-2 text-left text-sm font-semibold text-foreground">Faixa</th>
-                  <th scope="col" className="px-3 py-2 text-right text-sm font-semibold text-foreground">CPP</th>
-                  <th scope="col" className="px-3 py-2 text-right text-sm font-semibold text-foreground">CSLL</th>
-                  <th scope="col" className="px-3 py-2 text-right text-sm font-semibold text-foreground">ICMS</th>
-                  <th scope="col" className="px-3 py-2 text-right text-sm font-semibold text-foreground">IRPJ</th>
-                  <th scope="col" className="px-3 py-2 text-right text-sm font-semibold text-foreground">COFINS</th>
-                  <th scope="col" className="px-3 py-2 text-right text-sm font-semibold text-foreground">PIS/PASEP</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
+          <div className="overflow-hidden rounded-lg border border-border">
+            <Table className="min-w-[640px]">
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead scope="col">Faixa</TableHead>
+                  <TableHead scope="col" className="text-right">CPP</TableHead>
+                  <TableHead scope="col" className="text-right">CSLL</TableHead>
+                  <TableHead scope="col" className="text-right">ICMS</TableHead>
+                  <TableHead scope="col" className="text-right">IRPJ</TableHead>
+                  <TableHead scope="col" className="text-right">COFINS</TableHead>
+                  <TableHead scope="col" className="text-right">PIS/PASEP</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {REPARTICAO.map((r, i) => (
-                  <tr key={i} className={resultado?.faixa.startsWith(r.faixa) ? 'bg-primary-tint font-semibold' : undefined}>
-                    <td className="px-3 py-2">{r.faixa}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{formatPercentual(r.cpp)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{formatPercentual(r.csll)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{r.icms > 0 ? formatPercentual(r.icms) : '–'}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{formatPercentual(r.irpj)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{formatPercentual(r.cofins)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{formatPercentual(r.pis)}</td>
-                  </tr>
+                  <TableRow key={i} className={resultado?.faixa.startsWith(r.faixa) ? 'bg-primary-tint font-semibold hover:bg-primary-tint' : undefined}>
+                    <TableCell>{r.faixa}</TableCell>
+                    <TableCell className="text-right tabular-nums">{formatPercentual(r.cpp)}</TableCell>
+                    <TableCell className="text-right tabular-nums">{formatPercentual(r.csll)}</TableCell>
+                    <TableCell className="text-right tabular-nums">{r.icms > 0 ? formatPercentual(r.icms) : '–'}</TableCell>
+                    <TableCell className="text-right tabular-nums">{formatPercentual(r.irpj)}</TableCell>
+                    <TableCell className="text-right tabular-nums">{formatPercentual(r.cofins)}</TableCell>
+                    <TableCell className="text-right tabular-nums">{formatPercentual(r.pis)}</TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </div>
       </details>
 
       {/* Resumo impacto na proposta */}
       {resultado && valorGlobal > 0 && (
-        <Card className="border-border p-6">
-          <p className="mb-4 flex items-center gap-2 text-lg font-semibold text-foreground">
-            <Calculator className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+        <Card className="p-5">
+          <p className="mb-4 flex items-center gap-2 text-lg font-semibold leading-6 text-foreground">
+            <Calculator className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
             Impacto tributário na proposta
           </p>
-          <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2 md:grid-cols-4">
+          <div className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
             <div>
               <p className="text-xs text-muted-foreground">Valor bruto</p>
               <p className="font-bold text-foreground tabular-nums">{formatCurrency(valorGlobal)}</p>
@@ -247,7 +254,7 @@ ${itensResumo}
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Imposto estimado</p>
-              <p className="font-bold text-destructive tabular-nums">{formatCurrency(impostoTotal)}</p>
+              <p className="font-bold text-destructive-ink tabular-nums">{formatCurrency(impostoTotal)}</p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Valor líquido</p>
@@ -269,7 +276,7 @@ ${itensResumo}
               ].map(t => {
                 const valorTrib = t.pct > 0 ? (impostoTotal * t.pct / 100) : 0;
                 return (
-                  <div key={t.label} className="text-center">
+                  <div key={t.label}>
                     <p className="text-muted-foreground">{t.label}</p>
                     <p className="font-semibold text-foreground tabular-nums">{t.pct > 0 ? formatCurrency(valorTrib) : '–'}</p>
                     <p className="text-muted-foreground tabular-nums">{t.pct > 0 ? formatPercentual(t.pct) : 'Fora SN'}</p>
@@ -289,19 +296,38 @@ ${itensResumo}
         disabled={isAnalysing}
       >
         {isAnalysing ? (
-          <><Loader2 className="w-4 h-4 animate-spin" /> Analisando tributos...</>
+          <><Loader2 className="animate-spin" aria-hidden="true" /> Analisando tributos...</>
         ) : (
-          <><Brain className="w-4 h-4 text-primary" /> Análise tributária com IA (PhD em Contabilidade Fiscal)</>
+          <><Brain aria-hidden="true" /> Análise tributária com IA (PhD em Contabilidade Fiscal)</>
         )}
       </Button>
 
-      {/* Resultado IA */}
+      {/* Espera da IA na forma do parecer que vai chegar (linhas), enquanto o
+          primeiro trecho não vem. */}
+      {isAnalysing && !analiseIA && (
+        <div
+          role="status"
+          aria-label="Analisando tributos"
+          className="space-y-2 rounded-lg border border-primary-line bg-primary-tint p-4"
+        >
+          <Skeleton className="h-4 w-1/3" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-11/12" />
+          <Skeleton className="h-4 w-2/3" />
+        </div>
+      )}
+
+      {/* Resultado IA — bloco no trio `primary-tint/line`, com o selo
+          "Praefectus IA" identificando o recurso. */}
       {analiseIA && (
-        <Card className="border-border bg-muted p-6">
-          <p className="mb-3 flex items-center gap-2 text-lg font-semibold text-foreground">
-            <Brain className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
-            Parecer da IA contábil tributária
-          </p>
+        <Card className="border-primary-line bg-primary-tint p-5">
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <p className="flex items-center gap-2 text-lg font-semibold leading-6 text-foreground">
+              <Brain className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+              Parecer da IA contábil tributária
+            </p>
+            <SeloPraefectusIA />
+          </div>
           <div className="prose prose-sm max-w-none dark:prose-invert text-sm">
             <ReactMarkdown>{analiseIA}</ReactMarkdown>
           </div>

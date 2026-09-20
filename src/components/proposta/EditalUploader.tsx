@@ -366,8 +366,9 @@ ${truncated}`
   return (
     <div className="space-y-3">
       {licitacaoId && !extracted && (
-        <div className="flex flex-wrap items-start gap-3 rounded-lg border border-border bg-primary-tint p-4">
-          <FolderOpen className="w-5 h-5 shrink-0 text-primary" aria-hidden="true" />
+        // Realce da ação: o trio `primary-tint/primary-line` do manual.
+        <div className="flex flex-wrap items-start gap-3 rounded-lg border border-primary-line bg-primary-tint p-4">
+          <FolderOpen className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-foreground">O edital deste processo já está no sistema</p>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -377,17 +378,17 @@ ${truncated}`
           </div>
           <Button size="sm" onClick={lerDoProcesso} disabled={isExtracting} className="shrink-0">
             {isExtracting
-              ? <><Loader2 className="w-4 h-4 animate-spin" /> Lendo…</>
+              ? <><Loader2 className="animate-spin" aria-hidden="true" /> Lendo…</>
               : <>Ler edital do processo</>}
           </Button>
         </div>
       )}
 
       {editalFile ? (
-        <div className="space-y-3 rounded-lg border border-border bg-muted p-4">
+        <div className="space-y-3 rounded-lg border border-border bg-secondary p-4">
           <div className="flex flex-wrap items-center gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-card">
-              <FileText className="w-6 h-6 text-muted-foreground" aria-hidden="true" />
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md border border-border bg-card">
+              <FileText className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold text-foreground">{editalFile.name}</p>
@@ -404,21 +405,21 @@ ${truncated}`
               {!extracted && (
                 <Button size="sm" onClick={() => handleExtract()} disabled={isExtracting}>
                   {isExtracting ? (
-                    <><Loader2 className="w-4 h-4 animate-spin" /> Extraindo...</>
+                    <><Loader2 className="animate-spin" aria-hidden="true" /> Extraindo...</>
                   ) : (
-                    <><Sparkles className="w-4 h-4" /> Extrair com IA</>
+                    <><Sparkles aria-hidden="true" /> Extrair com IA</>
                   )}
                 </Button>
               )}
-              <Button variant="ghost" size="icon" className="h-9 w-9" onClick={handleRemove} aria-label="Remover edital anexado">
-                <X className="w-4 h-4" />
+              <Button variant="ghost" size="icon-sm" onClick={handleRemove} aria-label="Remover edital anexado">
+                <X aria-hidden="true" />
               </Button>
             </div>
           </div>
 
           {isExtracting && progress && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
               {progress}
             </div>
           )}
@@ -426,7 +427,7 @@ ${truncated}`
           {extracted && (
             <>
               <Alert variant="success">
-                <CheckCircle className="h-4 w-4" />
+                <CheckCircle className="h-4 w-4" aria-hidden="true" />
                 <AlertDescription>
                   Extração concluída. Avance para revisar e editar os dados extraídos nas próximas etapas.
                 </AlertDescription>
@@ -479,10 +480,10 @@ ${truncated}`
                 setProgress('');
                 toast.success(`${itens.length} itens importados da extração anterior!`);
               }}
-              className="flex w-full items-center gap-3 rounded-lg border border-border bg-primary-tint p-4 transition-colors hover:bg-primary-tint/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="flex w-full items-center gap-3 rounded-lg border border-primary-line bg-primary-tint p-4 transition-colors hover:bg-primary-tint/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-card">
-                <Download className="w-5 h-5 text-primary" aria-hidden="true" />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-card">
+                <Download className="h-5 w-5 text-primary" aria-hidden="true" />
               </div>
               <div className="flex-1 text-left">
                 <span className="block text-sm font-semibold text-foreground">Importar itens já extraídos</span>

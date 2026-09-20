@@ -110,7 +110,7 @@ function RenderSection({ title, content }: { title: string; content: string }) {
 
           if (isKeyValue) {
             return (
-              <div key={idx} className="rounded border border-border overflow-hidden my-4">
+              <div key={idx} className="my-4 overflow-hidden rounded-md border border-border">
                 <Table>
                   <TableBody>
                     {table.rows.map((row, ri) => (
@@ -131,7 +131,7 @@ function RenderSection({ title, content }: { title: string; content: string }) {
 
           // Price table
           return (
-            <div key={idx} className="rounded border border-border overflow-x-auto my-4">
+            <div key={idx} className="my-4 overflow-x-auto rounded-md border border-border">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-foreground">
@@ -238,14 +238,15 @@ function AssinaturaCertificado({ empresaData, repData }: AssinaturaCertificadoPr
 
   return (
     <div className="mt-4 space-y-3 border-t border-border pt-4">
-      <div className="flex items-center gap-2 mb-2">
-        <FileSignature className="w-4 h-4 text-muted-foreground" />
-        <p className="font-bold text-sm text-foreground uppercase tracking-wide">Assinatura Digital</p>
+      <div className="mb-2 flex items-center gap-2">
+        <FileSignature className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+        <p className="text-sm font-bold uppercase tracking-wide text-foreground">Assinatura Digital</p>
       </div>
 
-      <div className="space-y-2 rounded-md border border-border bg-muted p-3">
+      {/* Bloco de controle (não é papel): superfície rebaixada da interface. */}
+      <div className="space-y-2 rounded-md border border-border bg-secondary p-3">
         <div className="flex items-center gap-2">
-          <ShieldCheck className="w-4 h-4 text-muted-foreground" />
+          <ShieldCheck className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
           <div>
             <p className="text-xs font-semibold text-foreground">Assinatura Digital (Certificado e-CNPJ/A1)</p>
             <p className="text-xs text-muted-foreground">
@@ -268,9 +269,9 @@ function AssinaturaCertificado({ empresaData, repData }: AssinaturaCertificadoPr
             ) : (
               <Button size="sm" onClick={handleAssinar} disabled={assinando}>
                 {assinando ? (
-                  <><Loader2 className="w-4 h-4 animate-spin" /> Assinando...</>
+                  <><Loader2 className="animate-spin" aria-hidden="true" /> Assinando...</>
                 ) : (
-                  <><FileSignature className="w-4 h-4" /> Assinar com certificado digital</>
+                  <><FileSignature aria-hidden="true" /> Assinar com certificado digital</>
                 )}
               </Button>
             )}

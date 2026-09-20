@@ -79,12 +79,14 @@ export default function BancoSelector({
           role="combobox"
           aria-expanded={open}
           aria-labelledby={ariaLabelledBy && id ? `${ariaLabelledBy} ${id}` : ariaLabelledBy}
-          className="w-full justify-between font-normal"
+          // Gatilho com a anatomia do campo (Select): borda `input`, fundo de
+          // cartão, hover discreto — não a tinta verde do botão secundário.
+          className="w-full justify-between font-normal hover:border-foreground-tertiary hover:bg-card hover:text-foreground"
         >
-          <span className="truncate">
+          <span className={cn('truncate', !value && 'text-foreground-tertiary')}>
             {value || 'Selecione o banco...'}
           </span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
@@ -105,8 +107,9 @@ export default function BancoSelector({
                     }}
                   >
                     <Check
+                      aria-hidden="true"
                       className={cn(
-                        'mr-2 h-4 w-4',
+                        'mr-2 h-4 w-4 text-primary',
                         value === label ? 'opacity-100' : 'opacity-0'
                       )}
                     />

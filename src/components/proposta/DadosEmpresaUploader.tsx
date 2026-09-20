@@ -123,33 +123,33 @@ ${truncated}`
 
   return (
     <div className="space-y-3">
-      <p className="text-sm text-muted-foreground flex items-center gap-2">
-        <UserCheck className="w-4 h-4 text-muted-foreground" />
+      <p className="flex items-center gap-2 text-sm text-muted-foreground">
+        <UserCheck className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
         Envie um documento (contrato social, procuração, etc.) para extrair dados automaticamente
       </p>
 
       {file ? (
-        <div className="flex flex-wrap items-center gap-4 rounded-lg border border-border bg-muted p-4">
-          <FileText className="w-8 h-8 text-muted-foreground shrink-0" />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-foreground truncate">{file.name}</p>
+        <div className="flex flex-wrap items-center gap-4 rounded-lg border border-border bg-secondary p-4">
+          <FileText className="h-8 w-8 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-foreground">{file.name}</p>
             <p className="text-xs text-muted-foreground">
               {(file.size / 1024).toFixed(0)} KB
-              {extracted && <span className="text-success ml-2">✓ Dados extraídos</span>}
+              {extracted && <span className="ml-2 text-success-ink">✓ Dados extraídos</span>}
             </p>
           </div>
           <div className="flex gap-2">
             {!extracted && (
               <Button size="sm" onClick={handleExtract} disabled={isExtracting}>
                 {isExtracting ? (
-                  <><Loader2 className="w-4 h-4 animate-spin mr-1" /> Extraindo...</>
+                  <><Loader2 className="animate-spin" aria-hidden="true" /> Extraindo...</>
                 ) : (
-                  <><CheckCircle className="w-4 h-4 mr-1" /> Extrair Dados</>
+                  <><CheckCircle aria-hidden="true" /> Extrair Dados</>
                 )}
               </Button>
             )}
-            <Button variant="outline" size="sm" onClick={handleRemove} aria-label="Remover arquivo">
-              <X className="w-4 h-4" />
+            <Button variant="ghost" size="icon-sm" onClick={handleRemove} aria-label="Remover arquivo">
+              <X aria-hidden="true" />
             </Button>
           </div>
         </div>
@@ -159,7 +159,7 @@ ${truncated}`
           onClick={() => fileRef.current?.click()}
           className="flex w-full flex-col items-center gap-2 rounded-lg border-2 border-dashed border-border p-6 transition-colors hover:border-primary hover:bg-primary-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
-          <Upload className="w-7 h-7 text-muted-foreground" />
+          <Upload className="h-7 w-7 text-muted-foreground" aria-hidden="true" />
           <span className="text-sm font-medium text-foreground">Envie documento da empresa para extração por IA</span>
           <span className="text-xs text-muted-foreground">PDF, Word (DOC/DOCX) ou Excel (XLS/XLSX) — Máx. 10MB</span>
         </button>

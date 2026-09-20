@@ -603,7 +603,7 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
   // ligado ao campo pelo `id` (o `field` já é único em cada chamada).
   const renderMarginInput = (label: string, field: keyof PageSetup, unit = 'cm') => (
     <div className="space-y-2">
-      <Label htmlFor={`timbrado-${field}`} className="text-sm text-muted-foreground">{label}</Label>
+      <Label htmlFor={`timbrado-${field}`}>{label}</Label>
       <div className="relative">
         <Input
           id={`timbrado-${field}`}
@@ -624,10 +624,10 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
     if (!sourceImageUrl) return null;
 
     return (
-      <div className="space-y-4 rounded-lg border border-border bg-muted p-6">
+      <div className="space-y-4 rounded-lg border border-border bg-secondary p-5">
         <div className="flex items-center gap-2">
-          <Scissors className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
-          <h3 className="text-lg font-semibold text-foreground">Recorte automático de cabeçalho e rodapé</h3>
+          <Scissors className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+          <h3 className="text-lg font-semibold leading-6 text-foreground">Recorte automático de cabeçalho e rodapé</h3>
         </div>
 
         <p className="text-sm text-muted-foreground">
@@ -642,7 +642,7 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
             className="pointer-events-none absolute left-0 right-0 top-0 border-b-2 border-dashed border-primary bg-primary/15 transition-all"
             style={{ height: `${headerSplit}%` }}
           >
-            <div className="absolute bottom-1 left-2 rounded-md bg-primary px-1.5 py-0.5 text-xs font-semibold text-primary-foreground">
+            <div className="absolute bottom-1 left-2 rounded-sm bg-primary px-1.5 py-0.5 text-xs font-semibold text-primary-foreground">
               Cabeçalho ({headerSplit}%)
             </div>
           </div>
@@ -650,12 +650,12 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
             className="pointer-events-none absolute bottom-0 left-0 right-0 border-t-2 border-dashed border-primary bg-primary/15 transition-all"
             style={{ height: `${footerSplit}%` }}
           >
-            <div className="absolute left-2 top-1 rounded-md bg-primary px-1.5 py-0.5 text-xs font-semibold text-primary-foreground">
+            <div className="absolute left-2 top-1 rounded-sm bg-primary px-1.5 py-0.5 text-xs font-semibold text-primary-foreground">
               Rodapé ({footerSplit}%)
             </div>
           </div>
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <span className="rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground">
+            <span className="rounded-sm border border-border bg-card px-2 py-0.5 text-xs font-semibold text-muted-foreground">
               Área de conteúdo
             </span>
           </div>
@@ -710,9 +710,9 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
       Icone: typeof ArrowUp,
       parte: { url: string | null },
     ) => (
-      <div className="overflow-hidden rounded-lg border border-border bg-muted">
+      <div className="overflow-hidden rounded-lg border border-border bg-secondary">
         <div className="flex items-center gap-2 border-b border-border px-4 py-2">
-          <Icone className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+          <Icone className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
           <span className="text-sm font-semibold text-foreground">{titulo}</span>
         </div>
         {parte.url ? (
@@ -733,7 +733,7 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
     );
 
     return (
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2">
         {recorte('Cabeçalho', ArrowUp, header)}
         {recorte('Rodapé', ArrowDown, footer)}
       </div>
@@ -747,7 +747,7 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
     aoMudar: (v: AlinhamentoImg) => void,
   ) => (
     <div className="space-y-2">
-      <Label htmlFor={id} className="text-sm text-muted-foreground">Alinhamento</Label>
+      <Label htmlFor={id}>Alinhamento</Label>
       <Select value={valor} onValueChange={(v) => aoMudar(v as AlinhamentoImg)}>
         <SelectTrigger id={id}><SelectValue /></SelectTrigger>
         <SelectContent>
@@ -826,7 +826,7 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
           <Ruler className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
           Margens
         </h4>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2">
           {renderMarginInput('Superior', 'marginTop')}
           {renderMarginInput('Inferior', 'marginBottom')}
           {renderMarginInput('Esquerda', 'marginLeft')}
@@ -839,7 +839,7 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
           <Settings2 className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
           Área do cabeçalho / rodapé
         </h4>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2">
           {renderMarginInput('Altura do cabeçalho', 'headerHeight')}
           {renderMarginInput('Altura do rodapé', 'footerHeight')}
         </div>
@@ -848,7 +848,7 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
       {/* ── Mover/editar a arte dentro da área (03/09) ─────────────────── */}
       <div className="space-y-2">
         <h4 className="text-sm font-semibold text-foreground">Posição da logomarca — cabeçalho</h4>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-3">
           {renderAlinhamento('timbrado-align-cabecalho', pageSetup.headerAlign,
             (v) => setPageSetup((prev) => ({ ...prev, headerAlign: v })))}
           {renderMarginInput('Largura', 'headerWidth', '%')}
@@ -858,7 +858,7 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
 
       <div className="space-y-2">
         <h4 className="text-sm font-semibold text-foreground">Posição da logomarca — rodapé</h4>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-3">
           {renderAlinhamento('timbrado-align-rodape', pageSetup.footerAlign,
             (v) => setPageSetup((prev) => ({ ...prev, footerAlign: v })))}
           {renderMarginInput('Largura', 'footerWidth', '%')}
@@ -885,7 +885,7 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
         </div>
       </div>
 
-      <div className="rounded-lg border border-border bg-muted p-4">
+      <div className="rounded-lg border border-border bg-secondary p-4">
         <p className="text-sm text-muted-foreground">
           <strong className="text-foreground">Dimensões finais:</strong>{' '}
           <span className="tabular-nums">{pageW} × {pageH} mm</span> ({pageSetup.orientation === 'portrait' ? 'Retrato' : 'Paisagem'})
@@ -1023,7 +1023,7 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
           <span aria-hidden="true" className="absolute select-none text-black/30" style={{ fontSize: Math.max(7, scaleFactor * 3), top: mTop * 0.3, right: mRight + 4 }}>1</span>
         </div>
 
-        <div className="flex flex-wrap items-center justify-center gap-3 rounded-md bg-muted px-3 py-1.5 text-xs text-muted-foreground">
+        <div className="flex flex-wrap items-center justify-center gap-3 rounded-md bg-secondary px-3 py-1.5 text-xs text-muted-foreground">
           <span className="font-medium text-foreground">{PAPER_SIZES[pageSetup.paperSize].label}</span>
           <span aria-hidden="true">·</span>
           <span>{pageSetup.orientation === 'portrait' ? 'Retrato' : 'Paisagem'}</span>
@@ -1051,11 +1051,11 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <h3 className="flex items-center gap-2 text-lg font-semibold text-foreground">
-            <ImageIcon className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+          <h3 className="flex items-center gap-2 text-lg font-semibold leading-6 text-foreground">
+            <ImageIcon className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
             Papel timbrado / marca d'água
           </h3>
-          <p className="mt-1 text-base text-muted-foreground">
+          <p className="mt-1 text-sm text-muted-foreground">
             Envie uma imagem ou documento Word do seu papel timbrado. O sistema extrai automaticamente o cabeçalho e o rodapé.
           </p>
         </div>
@@ -1100,8 +1100,8 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
               <Upload className="w-4 h-4" aria-hidden="true" />
               Trocar arquivo
             </Button>
-            <Button variant="outline" size="sm" className="text-destructive hover:bg-destructive-tint hover:text-destructive" onClick={handleRemoveAll}>
-              <X className="w-4 h-4" aria-hidden="true" />
+            <Button variant="ghost-destructive" size="sm" onClick={handleRemoveAll}>
+              <X aria-hidden="true" />
               Remover tudo
             </Button>
           </div>
@@ -1122,9 +1122,9 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
 
       {showPreview && (
         <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-secondary px-4 py-3">
             <div className="flex items-center gap-2">
-              <Monitor className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+              <Monitor className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
               <span className="text-sm font-semibold text-foreground">Configurar página</span>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -1144,21 +1144,24 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
           </div>
 
           <Tabs value={previewTab} onValueChange={setPreviewTab} className="w-full">
-            <div className="border-b border-border px-4 pt-3">
-              <TabsList>
-                <TabsTrigger value="preview" className="gap-1.5">
-                  <Eye className="w-4 h-4" aria-hidden="true" />Visualizar impressão
+            {/* A fila sublinhada da ui já traz o fio de baixo — sem segunda
+                borda no invólucro. */}
+            <div className="px-4 pt-3">
+              <TabsList className="flex-nowrap overflow-x-auto [scrollbar-width:thin]">
+                <TabsTrigger value="preview" className="shrink-0">
+                  <Eye className="h-4 w-4" aria-hidden="true" />Visualizar impressão
                 </TabsTrigger>
-                <TabsTrigger value="page" className="gap-1.5">
-                  <Settings2 className="w-4 h-4" aria-hidden="true" />Página
+                <TabsTrigger value="page" className="shrink-0">
+                  <Settings2 className="h-4 w-4" aria-hidden="true" />Página
                 </TabsTrigger>
               </TabsList>
             </div>
 
-            <TabsContent value="preview" className="m-0 overflow-x-auto bg-muted p-6">
+            {/* Área rebaixada onde a folha (branca, papel) é desenhada. */}
+            <TabsContent value="preview" className="m-0 overflow-x-auto bg-secondary p-5">
               {renderPagePreview()}
             </TabsContent>
-            <TabsContent value="page" className="m-0 p-6">
+            <TabsContent value="page" className="m-0 p-5">
               {renderPageSetupPanel()}
             </TabsContent>
           </Tabs>

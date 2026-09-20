@@ -2,10 +2,12 @@ import { useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Check, X, Sparkles, TrendingUp, Building2, Package, Loader2, RefreshCw, Info } from 'lucide-react';
 import { useSugestaoMarcas, type SugestaoMarca } from '@/hooks/useSugestaoMarcas';
 import EstadoVazio from '@/components/shared/EstadoVazio';
+import SeloPraefectusIA from '@/components/shared/SeloPraefectusIA';
 
 interface SugestaoMarcasReviewProps {
   licitacaoId: string;
@@ -57,23 +59,24 @@ function SugestaoCard({ sugestao, onAceitar, onRejeitar, onAplicar }: {
     <div className={`flex items-start gap-3 rounded-lg border p-3 transition-colors ${
       isAceito ? 'border-success-line bg-success-tint' :
       isRejeitado ? 'border-border bg-muted opacity-60' :
-      'border-border bg-card hover:border-primary'
+      'border-border bg-card hover:border-primary/40'
     }`}>
-      <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-sm font-bold tabular-nums ${scoreTint[variante]}`}>
+      {/* Posição no ranking num ladrilho `rounded-md` tingido pela confiança. */}
+      <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md border text-sm font-semibold tabular-nums ${scoreTint[variante]}`}>
         {sugestao.ranking}º
       </div>
 
-      <div className="flex-1 min-w-0 space-y-1">
-        <div className="flex items-center gap-2 flex-wrap">
+      <div className="min-w-0 flex-1 space-y-1">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="font-semibold text-foreground">{sugestao.marca_sugerida}</span>
           {sugestao.fabricante_sugerido && (
-            <span className="text-xs text-muted-foreground flex items-center gap-1">
-              <Building2 className="h-3 w-3" /> {sugestao.fabricante_sugerido}
+            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Building2 className="h-3 w-3" aria-hidden="true" /> {sugestao.fabricante_sugerido}
             </span>
           )}
           {sugestao.modelo_sugerido && (
-            <span className="text-xs text-muted-foreground flex items-center gap-1">
-              <Package className="h-3 w-3" /> {sugestao.modelo_sugerido}
+            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Package className="h-3 w-3" aria-hidden="true" /> {sugestao.modelo_sugerido}
             </span>
           )}
         </div>
@@ -98,8 +101,8 @@ function SugestaoCard({ sugestao, onAceitar, onRejeitar, onAplicar }: {
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <p className="text-xs text-muted-foreground line-clamp-2 cursor-help flex items-start gap-1">
-                  <Info className="h-3 w-3 mt-0.5 shrink-0" />
+                <p className="flex cursor-help items-start gap-1 text-xs text-muted-foreground line-clamp-2">
+                  <Info className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
                   {sugestao.justificativa_ia}
                 </p>
               </TooltipTrigger>
@@ -119,26 +122,25 @@ function SugestaoCard({ sugestao, onAceitar, onRejeitar, onAplicar }: {
       </div>
 
       {!isAceito && !isRejeitado && (
-        <div className="flex gap-1 shrink-0">
+        <div className="flex shrink-0 gap-1">
           <Button
-            size="sm"
+            size="icon-sm"
             variant="ghost"
-            className="h-9 w-9 p-0 text-success-ink hover:bg-success-tint hover:text-success-ink"
+            className="text-success-ink hover:bg-success-tint hover:text-success-ink"
             onClick={onAplicar}
             title="Aplicar na proposta"
             aria-label="Aplicar na proposta"
           >
-            <Check className="h-4 w-4" />
+            <Check aria-hidden="true" />
           </Button>
           <Button
-            size="sm"
-            variant="ghost"
-            className="h-9 w-9 p-0 text-destructive hover:bg-destructive-tint hover:text-destructive"
+            size="icon-sm"
+            variant="ghost-destructive"
             onClick={onRejeitar}
             title="Rejeitar"
             aria-label="Rejeitar sugestão"
           >
-            <X className="h-4 w-4" />
+            <X aria-hidden="true" />
           </Button>
         </div>
       )}
@@ -185,10 +187,14 @@ export default function SugestaoMarcasReview({ licitacaoId, itens, onMarcaAplica
     <Card>
       <CardHeader className="pb-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <CardTitle className="flex items-center gap-2 text-lg font-semibold">
-            <Sparkles className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-            Sugestão de marcas e modelos
-          </CardTitle>
+          {/* Recurso de IA: o selo "Praefectus IA" identifica a sugestão. */}
+          <div className="flex flex-wrap items-center gap-2">
+            <CardTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+              Sugestão de marcas e modelos
+            </CardTitle>
+            <SeloPraefectusIA />
+          </div>
           <div className="flex flex-wrap items-center gap-2">
             {sugestoes.length > 0 && (
               <div className="flex flex-wrap gap-2">
@@ -200,14 +206,13 @@ export default function SugestaoMarcasReview({ licitacaoId, itens, onMarcaAplica
               size="sm"
               onClick={handleGerar}
               disabled={isGenerating || !itens?.length}
-              className="gap-1.5"
             >
               {isGenerating ? (
-                <><Loader2 className="h-4 w-4 animate-spin" /> Analisando...</>
+                <><Loader2 className="animate-spin" aria-hidden="true" /> Analisando...</>
               ) : sugestoes.length > 0 ? (
-                <><RefreshCw className="h-4 w-4" /> Reanalisar</>
+                <><RefreshCw aria-hidden="true" /> Reanalisar</>
               ) : (
-                <><Sparkles className="h-4 w-4" /> Gerar Sugestões</>
+                <><Sparkles aria-hidden="true" /> Gerar Sugestões</>
               )}
             </Button>
           </div>
@@ -216,9 +221,13 @@ export default function SugestaoMarcasReview({ licitacaoId, itens, onMarcaAplica
 
       <CardContent className="space-y-4">
         {isGenerating && (
-          <div className="flex items-center justify-center py-8 text-muted-foreground gap-2">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            <span>Analisando histórico de processos e cruzando com o TR...</span>
+          /* Espera da IA na forma das sugestões que vão chegar (linhas), no
+             bloco tingido da ação — em vez do spinner no centro. */
+          <div role="status" className="space-y-2 rounded-lg border border-primary-line bg-primary-tint p-4">
+            <Skeleton className="h-4 w-1/3" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-3/4" />
+            <p className="pt-1 text-sm text-muted-foreground">Analisando histórico de processos e cruzando com o TR...</p>
           </div>
         )}
 

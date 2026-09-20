@@ -299,18 +299,19 @@ export default function EnvioProposta() {
       )}
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList>
-          <TabsTrigger value="itens" className="flex items-center gap-1">
-            <Package className="w-4 h-4" /> Itens ({itensFormatados.length})
+        {/* Fila sublinhada da ui; rola no celular em vez de alargar a página. */}
+        <TabsList className="flex-nowrap overflow-x-auto [scrollbar-width:thin]">
+          <TabsTrigger value="itens" className="shrink-0">
+            <Package className="h-4 w-4" aria-hidden="true" /> Itens ({itensFormatados.length})
           </TabsTrigger>
-          <TabsTrigger value="declaracoes" className="flex items-center gap-1">
-            <Shield className="w-4 h-4" /> Declarações ({declaracoesCompletas}/5)
+          <TabsTrigger value="declaracoes" className="shrink-0">
+            <Shield className="h-4 w-4" aria-hidden="true" /> Declarações ({declaracoesCompletas}/5)
           </TabsTrigger>
-          <TabsTrigger value="anexos" className="flex items-center gap-1">
-            <FileText className="w-4 h-4" /> Anexos
+          <TabsTrigger value="anexos" className="shrink-0">
+            <FileText className="h-4 w-4" aria-hidden="true" /> Anexos
           </TabsTrigger>
-          <TabsTrigger value="revisao" className="flex items-center gap-1">
-            <Eye className="w-4 h-4" /> Revisão & Envio
+          <TabsTrigger value="revisao" className="shrink-0">
+            <Eye className="h-4 w-4" aria-hidden="true" /> Revisão & Envio
           </TabsTrigger>
         </TabsList>
 
@@ -319,10 +320,10 @@ export default function EnvioProposta() {
           <Card className="p-5">
             {itensFormatados.length > 0 ? (
               <div className="space-y-3">
-                <h3 className="text-lg font-semibold text-foreground">Itens da proposta (vindos da Precificação)</h3>
+                <h3 className="text-lg font-semibold leading-6 text-foreground">Itens da proposta (vindos da Precificação)</h3>
                 <div className="max-h-[400px] space-y-2 overflow-y-auto">
                   {itensFormatados.map((item, idx) => (
-                    <div key={idx} className="flex items-start gap-3 rounded-lg border border-border bg-muted p-3">
+                    <div key={idx} className="flex items-start gap-3 rounded-md border border-border bg-secondary p-3">
                       <span className="mt-1 w-6 text-right text-sm text-muted-foreground tabular-nums">#{item.numero}</span>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium text-foreground">{item.descricao}</p>
@@ -355,7 +356,7 @@ export default function EnvioProposta() {
         {/* Declarações */}
         <TabsContent value="declaracoes" className="space-y-3">
           <Card className="space-y-4 p-5">
-            <h3 className="text-lg font-semibold text-foreground">Declarações obrigatórias</h3>
+            <h3 className="text-lg font-semibold leading-6 text-foreground">Declarações obrigatórias</h3>
             {[
               { key: 'meEpp', label: 'Declaração de enquadramento como ME/EPP', desc: 'Conforme LC 123/2006' },
               { key: 'inexistenciaFato', label: 'Inexistência de fato impeditivo', desc: 'Art. 63, §1º da Lei 14.133/2021' },
@@ -363,7 +364,7 @@ export default function EnvioProposta() {
               { key: 'elaboracaoIndep', label: 'Elaboração independente de proposta', desc: 'Instrução Normativa nº 01/2009' },
               { key: 'reservadoMeEpp', label: 'Ciência de item reservado para ME/EPP', desc: 'Quando aplicável' },
             ].map(decl => (
-              <label key={decl.key} className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3 transition-colors hover:bg-muted">
+              <label key={decl.key} className="flex cursor-pointer items-start gap-3 rounded-md border border-border p-3 transition-colors hover:bg-muted">
                 <input
                   type="checkbox"
                   checked={(declaracoes as any)[decl.key]}
@@ -382,7 +383,7 @@ export default function EnvioProposta() {
         {/* Anexos */}
         <TabsContent value="anexos" className="space-y-3">
           <Card className="p-5">
-            <h3 className="mb-4 text-lg font-semibold text-foreground">Anexos da proposta</h3>
+            <h3 className="mb-4 text-lg font-semibold leading-6 text-foreground">Anexos da proposta</h3>
             <label className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-border py-10 transition-colors hover:border-primary hover:bg-primary-tint focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
               <Upload className="mb-2 w-8 h-8 text-muted-foreground" aria-hidden="true" />
               <span className="text-sm text-foreground">Arraste documentos ou clique para selecionar</span>
@@ -399,18 +400,21 @@ export default function EnvioProposta() {
             {anexos.length > 0 && (
               <div className="mt-3 space-y-1">
                 {anexos.map((f, i) => (
-                  <div key={i} className="flex items-center gap-2 rounded-md bg-muted p-2 text-sm">
-                    <FileText className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+                  <div key={i} className="flex items-center gap-2 rounded-md border border-border bg-secondary py-1.5 pl-3 pr-1.5 text-sm">
+                    <FileText className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                     <span className="flex-1 truncate">{f.name}</span>
                     <span className="text-xs text-muted-foreground tabular-nums">{(f.size / 1024).toFixed(0)} KB</span>
-                    <button
+                    {/* A lixeira da linha: `ghost-destructive` só-ícone, com o
+                        mesmo handler e o mesmo aria-label de antes. */}
+                    <Button
                       type="button"
+                      variant="ghost-destructive"
+                      size="icon-sm"
                       onClick={() => setAnexos(prev => prev.filter((_, j) => j !== i))}
-                      className="rounded-md p-1 text-destructive transition-colors hover:bg-destructive-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       aria-label={`Remover anexo ${f.name}`}
                     >
-                      <XCircle className="w-4 h-4" />
-                    </button>
+                      <XCircle aria-hidden="true" />
+                    </Button>
                   </div>
                 ))}
               </div>
@@ -421,32 +425,42 @@ export default function EnvioProposta() {
         {/* Revisão & Envio */}
         <TabsContent value="revisao" className="space-y-4">
           <Card className="space-y-4 p-5">
-            <h3 className="text-lg font-semibold text-foreground">Resumo da proposta</h3>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4">
-              <div className="rounded-lg bg-muted p-4 text-center">
-                <Globe className="mx-auto mb-1 w-5 h-5 text-muted-foreground" aria-hidden="true" />
-                <p className="text-xs text-muted-foreground">Portal</p>
-                <p className="text-sm font-semibold text-foreground">{portalSelecionado?.icon} {portalSelecionado?.nome}</p>
+            <h3 className="text-lg font-semibold leading-6 text-foreground">Resumo da proposta</h3>
+            {/* Ladrilhos de resumo alinhados à esquerda, como o cartão KPI do
+                manual — nunca centralizados. */}
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-lg border border-border bg-secondary p-4">
+                <div className="mb-1 flex items-center gap-1.5">
+                  <Globe className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                  <span className="text-xs font-medium text-muted-foreground">Portal</span>
+                </div>
+                <p className="truncate text-sm font-semibold text-foreground">{portalSelecionado?.icon} {portalSelecionado?.nome}</p>
               </div>
-              <div className="rounded-lg bg-muted p-4 text-center">
-                <Package className="mx-auto mb-1 w-5 h-5 text-muted-foreground" aria-hidden="true" />
-                <p className="text-xs text-muted-foreground">Itens</p>
+              <div className="rounded-lg border border-border bg-secondary p-4">
+                <div className="mb-1 flex items-center gap-1.5">
+                  <Package className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                  <span className="text-xs font-medium text-muted-foreground">Itens</span>
+                </div>
                 <p className="text-sm font-semibold text-foreground tabular-nums">{itensFormatados.length}</p>
               </div>
-              <div className="rounded-lg bg-muted p-4 text-center">
-                <Shield className="mx-auto mb-1 w-5 h-5 text-muted-foreground" aria-hidden="true" />
-                <p className="text-xs text-muted-foreground">Declarações</p>
+              <div className="rounded-lg border border-border bg-secondary p-4">
+                <div className="mb-1 flex items-center gap-1.5">
+                  <Shield className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                  <span className="text-xs font-medium text-muted-foreground">Declarações</span>
+                </div>
                 <p className="text-sm font-semibold text-foreground tabular-nums">{declaracoesCompletas}/5</p>
               </div>
-              <div className="rounded-lg bg-muted p-4 text-center">
-                <FileText className="mx-auto mb-1 w-5 h-5 text-muted-foreground" aria-hidden="true" />
-                <p className="text-xs text-muted-foreground">Pregão</p>
-                <p className="text-sm font-semibold text-foreground">{numeroPregao || '—'}</p>
+              <div className="rounded-lg border border-border bg-secondary p-4">
+                <div className="mb-1 flex items-center gap-1.5">
+                  <FileText className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                  <span className="text-xs font-medium text-muted-foreground">Pregão</span>
+                </div>
+                <p className="truncate text-sm font-semibold text-foreground">{numeroPregao || '—'}</p>
               </div>
             </div>
 
             {/* Checklist de prontidão */}
-            <div className="space-y-2 rounded-lg border border-border bg-muted p-4">
+            <div className="space-y-2 rounded-lg border border-border bg-secondary p-4">
               <p className="text-sm font-semibold text-foreground">Checklist de envio</p>
               {[
                 { ok: !!numeroPregao.trim(), label: 'Número do pregão informado' },
@@ -460,7 +474,7 @@ export default function EnvioProposta() {
                   {check.ok ? (
                     <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-success-ink" aria-hidden="true" />
                   ) : (
-                    <XCircle className="w-4 h-4 flex-shrink-0 text-destructive" aria-hidden="true" />
+                    <XCircle className="h-4 w-4 flex-shrink-0 text-destructive-ink" aria-hidden="true" />
                   )}
                   <span className={check.ok ? 'text-foreground' : 'text-muted-foreground'}>
                     {check.label} — {check.ok ? 'pronto' : 'pendente'}
@@ -471,7 +485,7 @@ export default function EnvioProposta() {
 
             {/* Aviso */}
             <Alert variant="warning">
-              <AlertTriangle className="h-4 w-4" />
+              <AlertTriangle className="h-4 w-4" aria-hidden="true" />
               <AlertTitle>Atenção</AlertTitle>
               <AlertDescription>
                 O Agente Cloud acessará o portal <strong>{portalSelecionado?.nome}</strong> com suas credenciais e
@@ -489,29 +503,32 @@ export default function EnvioProposta() {
               </Alert>
             )}
 
-            <Button
-              onClick={handleEnviar}
-              disabled={envioStatus === 'enviando' || envioStatus === 'validando' || !prontaParaEnvio}
-              className="w-full"
-            >
-              {envioStatus === 'enviando' || envioStatus === 'validando' ? (
-                <><Loader2 className="w-4 h-4 animate-spin" /> {envioStatus === 'validando' ? 'Validando...' : 'Enviando ao Agente Cloud...'}</>
-              ) : envioStatus === 'sucesso' ? (
-                <><CheckCircle2 className="w-4 h-4" /> Enviado com sucesso</>
-              ) : (
-                <><Bot className="w-4 h-4" /> Enviar proposta via Agente Cloud</>
+            {/* Rodapé de ações alinhado à direita (secundária → principal); no
+                celular empilham, com a ação principal por cima. */}
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              {envioStatus === 'sucesso' && (
+                <Button
+                  variant="outline"
+                  onClick={() => { setEnvioStatus('idle'); setEnvioResult(null); }}
+                  className="w-full sm:w-auto"
+                >
+                  <RefreshCw aria-hidden="true" /> Enviar nova proposta
+                </Button>
               )}
-            </Button>
-
-            {envioStatus === 'sucesso' && (
               <Button
-                variant="outline"
-                onClick={() => { setEnvioStatus('idle'); setEnvioResult(null); }}
-                className="w-full"
+                onClick={handleEnviar}
+                disabled={envioStatus === 'enviando' || envioStatus === 'validando' || !prontaParaEnvio}
+                className="w-full sm:w-auto"
               >
-                <RefreshCw className="w-4 h-4" /> Enviar nova proposta
+                {envioStatus === 'enviando' || envioStatus === 'validando' ? (
+                  <><Loader2 className="animate-spin" aria-hidden="true" /> {envioStatus === 'validando' ? 'Validando...' : 'Enviando ao Agente Cloud...'}</>
+                ) : envioStatus === 'sucesso' ? (
+                  <><CheckCircle2 aria-hidden="true" /> Enviado com sucesso</>
+                ) : (
+                  <><Bot aria-hidden="true" /> Enviar proposta via Agente Cloud</>
+                )}
               </Button>
-            )}
+            </div>
           </Card>
         </TabsContent>
       </Tabs>

@@ -1,6 +1,7 @@
 import { useRef, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   AlertDialog,
@@ -177,10 +178,11 @@ export default function PlanilhaPrecos({ itens, setItens }: PlanilhaPrecosProps)
 
   return (
     <div className="space-y-4">
-      {/* Sugestão automática banner */}
+      {/* Sugestão automática banner — realce no trio `primary-tint/line` do
+          manual (é cálculo por fórmula, não IA: sem selo Praefectus IA). */}
       {itensComSugestao > 0 && regime && (
-        <div className="flex flex-wrap items-start gap-3 rounded-lg border border-border bg-muted p-4">
-          <Sparkles className="w-5 h-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+        <div className="flex flex-wrap items-start gap-3 rounded-lg border border-primary-line bg-primary-tint p-4">
+          <Sparkles className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-foreground">
               Sugestão de preço disponível — {itensComSugestao} {itensComSugestao === 1 ? 'item' : 'itens'}
@@ -191,7 +193,7 @@ export default function PlanilhaPrecos({ itens, setItens }: PlanilhaPrecosProps)
             </p>
           </div>
           <Button size="sm" className="shrink-0" onClick={aplicarTodasSugestoes}>
-            <Check className="w-4 h-4" /> Aplicar todos
+            <Check aria-hidden="true" /> Aplicar todos
           </Button>
         </div>
       )}
@@ -199,10 +201,10 @@ export default function PlanilhaPrecos({ itens, setItens }: PlanilhaPrecosProps)
       {/* Excel actions */}
       <div className="flex flex-wrap gap-2">
         <Button variant="outline" size="sm" onClick={handleDownloadTemplate}>
-          <Download className="w-4 h-4" /> Baixar modelo Excel
+          <Download aria-hidden="true" /> Baixar modelo Excel
         </Button>
         <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
-          <Upload className="w-4 h-4" /> Importar planilha Excel
+          <Upload aria-hidden="true" /> Importar planilha Excel
         </Button>
         <input
           ref={fileRef}
@@ -214,12 +216,8 @@ export default function PlanilhaPrecos({ itens, setItens }: PlanilhaPrecosProps)
         {itens.length > 0 && (
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="ml-auto border-destructive-line text-destructive hover:bg-destructive-tint hover:text-destructive"
-              >
-                <Trash2 className="w-4 h-4" /> Limpar itens
+              <Button variant="ghost-destructive" size="sm" className="ml-auto">
+                <Trash2 aria-hidden="true" /> Limpar itens
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
@@ -234,7 +232,7 @@ export default function PlanilhaPrecos({ itens, setItens }: PlanilhaPrecosProps)
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
                 <AlertDialogAction
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  className={buttonVariants({ variant: 'destructive' })}
                   onClick={() => { setItens([]); toast.success('Planilha limpa.'); }}
                 >
                   Limpar tudo
@@ -245,21 +243,25 @@ export default function PlanilhaPrecos({ itens, setItens }: PlanilhaPrecosProps)
         )}
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-border">
-        <table className="w-full min-w-[760px] text-sm">
-          <thead>
-            <tr className="border-b border-border bg-muted">
-              <th scope="col" className="w-12 px-2 py-3 text-center text-sm font-semibold text-foreground">#</th>
-              <th scope="col" className="px-3 py-3 text-left text-sm font-semibold text-foreground">Descrição</th>
-              <th scope="col" className="w-16 px-2 py-3 text-center text-sm font-semibold text-foreground">Qtd</th>
-              <th scope="col" className="w-16 px-2 py-3 text-center text-sm font-semibold text-foreground">Und</th>
-              <th scope="col" className="w-36 px-2 py-3 text-left text-sm font-semibold text-foreground">Marca / fab. / mod.</th>
-              <th scope="col" className="w-36 px-2 py-3 text-right text-sm font-semibold text-foreground">Vlr unitário</th>
-              <th scope="col" className="w-36 px-2 py-3 text-right text-sm font-semibold text-foreground">Vlr total</th>
-              <th scope="col" className="w-10 px-2 py-3"><span className="sr-only">Remover</span></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
+      {/* Tabela nos primitivos de `ui/table` (Design System v3): cabeçalho em
+          superfície rebaixada, rótulos 12/600 sem caixa alta, rolagem presa ao
+          quadro. As células levam `px-2` e `align-top` porque cada linha
+          empilha até três campos (marca, fabricante, modelo). */}
+      <div className="overflow-hidden rounded-lg border border-border">
+        <Table className="min-w-[760px]">
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead scope="col" className="w-12 px-2 text-center">#</TableHead>
+              <TableHead scope="col" className="px-3">Descrição</TableHead>
+              <TableHead scope="col" className="w-16 px-2 text-center">Qtd</TableHead>
+              <TableHead scope="col" className="w-16 px-2 text-center">Und</TableHead>
+              <TableHead scope="col" className="w-36 px-2">Marca / fab. / mod.</TableHead>
+              <TableHead scope="col" className="w-36 px-2 text-right">Vlr unitário</TableHead>
+              <TableHead scope="col" className="w-36 px-2 text-right">Vlr total</TableHead>
+              <TableHead scope="col" className="w-10 px-2"><span className="sr-only">Remover</span></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {itens.map((item, i) => {
               const temSugestao = sugestoes[i] !== undefined;
               const precoSug = sugestoes[i];
@@ -267,24 +269,22 @@ export default function PlanilhaPrecos({ itens, setItens }: PlanilhaPrecosProps)
               const usandoCusto = temSugestao && item.custoAquisicao && Math.abs(valorAtual - item.custoAquisicao) < 0.01;
 
               return (
-                <tr
+                <TableRow
                   key={i}
-                  className={`group transition-colors ${
-                    usandoCusto ? 'bg-warning-tint' : 'hover:bg-muted'
-                  }`}
+                  className={usandoCusto ? 'bg-warning-tint hover:bg-warning-tint' : undefined}
                 >
                   {/* # */}
-                  <td className="px-2 py-2 text-center">
+                  <TableCell className="px-2 py-2 text-center align-top">
                     <Input
                       className="mx-auto h-9 w-12 px-1 text-center text-sm tabular-nums"
                       value={item.item}
                       onChange={e => updateItem(i, 'item', e.target.value)}
                       aria-label={`Número do item ${i + 1}`}
                     />
-                  </td>
+                  </TableCell>
 
                   {/* Descrição */}
-                  <td className="px-3 py-2">
+                  <TableCell className="px-3 py-2 align-top">
                     <Input
                       className="h-9 w-full min-w-[180px] text-sm"
                       value={item.descricao}
@@ -292,30 +292,30 @@ export default function PlanilhaPrecos({ itens, setItens }: PlanilhaPrecosProps)
                       placeholder="Descrição do item"
                       aria-label={`Descrição do item ${i + 1}`}
                     />
-                  </td>
+                  </TableCell>
 
                   {/* Qtd */}
-                  <td className="px-2 py-2">
+                  <TableCell className="px-2 py-2 align-top">
                     <Input
                       className="mx-auto h-9 w-16 px-1 text-center text-sm tabular-nums"
                       value={item.quantidade}
                       onChange={e => updateItem(i, 'quantidade', e.target.value)}
                       aria-label={`Quantidade do item ${i + 1}`}
                     />
-                  </td>
+                  </TableCell>
 
                   {/* Und */}
-                  <td className="px-2 py-2">
+                  <TableCell className="px-2 py-2 align-top">
                     <Input
                       className="mx-auto h-9 w-16 px-1 text-center text-sm"
                       value={item.unidade}
                       onChange={e => updateItem(i, 'unidade', e.target.value)}
                       aria-label={`Unidade do item ${i + 1}`}
                     />
-                  </td>
+                  </TableCell>
 
                   {/* Marca / Fab / Modelo — stacked */}
-                  <td className="px-2 py-2">
+                  <TableCell className="px-2 py-2 align-top">
                     <div className="space-y-1">
                       <Input
                         className="h-9 px-2 text-sm"
@@ -339,10 +339,10 @@ export default function PlanilhaPrecos({ itens, setItens }: PlanilhaPrecosProps)
                         aria-label={`Modelo do item ${i + 1}`}
                       />
                     </div>
-                  </td>
+                  </TableCell>
 
                   {/* Vlr Unitário + extenso + sugestão */}
-                  <td className="px-2 py-2 text-right">
+                  <TableCell className="px-2 py-2 text-right align-top">
                     <div className="space-y-1">
                       <Input
                         className="ml-auto h-9 text-right text-sm tabular-nums"
@@ -386,12 +386,12 @@ export default function PlanilhaPrecos({ itens, setItens }: PlanilhaPrecosProps)
                         </TooltipProvider>
                       )}
                     </div>
-                  </td>
+                  </TableCell>
 
                   {/* Vlr Total (calc) + extenso */}
-                  <td className="px-2 py-2 text-right">
+                  <TableCell className="px-2 py-2 text-right align-top">
                     <div className="space-y-1">
-                      <div className="flex h-9 items-center justify-end rounded-md border border-border bg-muted px-2 text-sm font-semibold text-foreground tabular-nums">
+                      <div className="flex h-9 items-center justify-end rounded-md border border-border bg-secondary px-2 text-sm font-semibold text-foreground tabular-nums">
                         {item.valorTotal
                           ? `R$ ${parseFloat(item.valorTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
                           : <span className="text-muted-foreground">—</span>
@@ -403,30 +403,29 @@ export default function PlanilhaPrecos({ itens, setItens }: PlanilhaPrecosProps)
                         </p>
                       )}
                     </div>
-                  </td>
+                  </TableCell>
 
                   {/* Delete */}
-                  <td className="px-1 py-2 text-center">
+                  <TableCell className="px-1 py-2 text-center align-top">
                     <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-9 w-9 text-muted-foreground hover:bg-destructive-tint hover:text-destructive"
+                      variant="ghost-destructive"
+                      size="icon-sm"
                       onClick={() => removeItem(i)}
                       aria-label={`Remover item ${i + 1}`}
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 aria-hidden="true" />
                     </Button>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               );
             })}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
 
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <Button variant="outline" size="sm" onClick={addItem}>
-          <Plus className="w-4 h-4" /> Adicionar item
+          <Plus aria-hidden="true" /> Adicionar item
         </Button>
         <div className="text-sm font-semibold text-foreground sm:text-right">
           Valor global: <span className="tabular-nums">R$ {valorGlobal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
