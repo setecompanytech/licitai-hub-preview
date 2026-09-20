@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Loader2, Save, Search } from 'lucide-react';
@@ -179,6 +179,8 @@ export default function EditEmpresaDialog({ empresa, open, onOpenChange, onSucce
         <DialogHeader>
           <DialogTitle>Editar Empresa — {empresa?.cnpj}</DialogTitle>
         </DialogHeader>
+        {/* Formulário do DS v3: rótulo em cima, campos de 40px, grades que
+            colapsam no celular, rodapé com a ação principal à direita. */}
         <form onSubmit={handleSubmit} className="mt-2 space-y-4">
           <div className="flex flex-wrap justify-end">
             <Button type="button" variant="outline" onClick={handleBuscarCNPJ} disabled={buscando}>
@@ -186,77 +188,81 @@ export default function EditEmpresaDialog({ empresa, open, onOpenChange, onSucce
               Atualizar via Receita Federal
             </Button>
           </div>
-          <div>
-            <Label htmlFor="edit-razao">Razão Social *</Label>
-            <Input id="edit-razao" value={razaoSocial} onChange={e => setRazaoSocial(e.target.value)} className="mt-1" required />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-razao">Razão Social *</Label>
+              <Input id="edit-razao" value={razaoSocial} onChange={e => setRazaoSocial(e.target.value)} required />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-fantasia">Nome Fantasia</Label>
+              <Input id="edit-fantasia" value={nomeFantasia} onChange={e => setNomeFantasia(e.target.value)} />
+            </div>
           </div>
-          <div>
-            <Label htmlFor="edit-fantasia">Nome Fantasia</Label>
-            <Input id="edit-fantasia" value={nomeFantasia} onChange={e => setNomeFantasia(e.target.value)} className="mt-1" />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-regime">Regime Tributário *</Label>
+              <Select value={regimeTributario} onValueChange={setRegimeTributario}>
+                <SelectTrigger id="edit-regime">
+                  <SelectValue placeholder="Selecione o regime tributário" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="simples_nacional">Simples Nacional</SelectItem>
+                  <SelectItem value="lucro_presumido">Lucro Presumido</SelectItem>
+                  <SelectItem value="lucro_real">Lucro Real</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-cnae">CNAE Principal</Label>
+              <Input id="edit-cnae" value={cnaePrincipal} onChange={e => setCnaePrincipal(e.target.value)} />
+            </div>
           </div>
-          <div>
-            <Label htmlFor="edit-regime">Regime Tributário *</Label>
-            <Select value={regimeTributario} onValueChange={setRegimeTributario}>
-              <SelectTrigger id="edit-regime" className="mt-1">
-                <SelectValue placeholder="Selecione o regime tributário" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="simples_nacional">Simples Nacional</SelectItem>
-                <SelectItem value="lucro_presumido">Lucro Presumido</SelectItem>
-                <SelectItem value="lucro_real">Lucro Real</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label htmlFor="edit-cnae">CNAE Principal</Label>
-            <Input id="edit-cnae" value={cnaePrincipal} onChange={e => setCnaePrincipal(e.target.value)} className="mt-1" />
-          </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
               <Label htmlFor="edit-telefone">Telefone</Label>
-              <Input id="edit-telefone" value={telefone} onChange={e => setTelefone(e.target.value)} className="mt-1" />
+              <Input id="edit-telefone" value={telefone} onChange={e => setTelefone(e.target.value)} />
             </div>
-            <div>
+            <div className="space-y-1.5">
               <Label htmlFor="edit-email">E-mail</Label>
-              <Input id="edit-email" value={email} onChange={e => setEmail(e.target.value)} className="mt-1" />
+              <Input id="edit-email" value={email} onChange={e => setEmail(e.target.value)} />
             </div>
           </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="space-y-1.5">
               <Label htmlFor="edit-cep">CEP</Label>
-              <Input id="edit-cep" value={cep} onChange={e => setCep(e.target.value)} className="mt-1" />
+              <Input id="edit-cep" value={cep} onChange={e => setCep(e.target.value)} />
             </div>
-            <div className="sm:col-span-2">
+            <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor="edit-endereco">Endereço</Label>
-              <Input id="edit-endereco" value={endereco} onChange={e => setEndereco(e.target.value)} className="mt-1" />
+              <Input id="edit-endereco" value={endereco} onChange={e => setEndereco(e.target.value)} />
             </div>
           </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="space-y-1.5">
               <Label htmlFor="edit-complemento">Complemento</Label>
-              <Input id="edit-complemento" value={complemento} onChange={e => setComplemento(e.target.value)} className="mt-1" />
+              <Input id="edit-complemento" value={complemento} onChange={e => setComplemento(e.target.value)} />
             </div>
-            <div>
+            <div className="space-y-1.5">
               <Label htmlFor="edit-bairro">Bairro</Label>
-              <Input id="edit-bairro" value={bairro} onChange={e => setBairro(e.target.value)} className="mt-1" />
+              <Input id="edit-bairro" value={bairro} onChange={e => setBairro(e.target.value)} />
             </div>
-            <div>
+            <div className="space-y-1.5">
               <Label htmlFor="edit-uf">UF</Label>
-              <Input id="edit-uf" value={uf} onChange={e => setUf(e.target.value)} className="mt-1" maxLength={2} />
+              <Input id="edit-uf" value={uf} onChange={e => setUf(e.target.value)} maxLength={2} />
             </div>
           </div>
-          <div>
+          <div className="space-y-1.5">
             <Label htmlFor="edit-municipio">Município</Label>
-            <Input id="edit-municipio" value={municipio} onChange={e => setMunicipio(e.target.value)} className="mt-1" />
+            <Input id="edit-municipio" value={municipio} onChange={e => setMunicipio(e.target.value)} />
           </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
               <Label htmlFor="edit-ie">Inscrição Estadual</Label>
-              <Input id="edit-ie" value={inscricaoEstadual} onChange={e => setInscricaoEstadual(e.target.value)} className="mt-1" />
+              <Input id="edit-ie" value={inscricaoEstadual} onChange={e => setInscricaoEstadual(e.target.value)} />
             </div>
-            <div>
+            <div className="space-y-1.5">
               <Label htmlFor="edit-im">Inscrição Municipal</Label>
-              <Input id="edit-im" value={inscricaoMunicipal} onChange={e => setInscricaoMunicipal(e.target.value)} className="mt-1" />
+              <Input id="edit-im" value={inscricaoMunicipal} onChange={e => setInscricaoMunicipal(e.target.value)} />
             </div>
           </div>
 
@@ -268,12 +274,12 @@ export default function EditEmpresaDialog({ empresa, open, onOpenChange, onSucce
             setTimbradoUrl={setTimbradoUrl}
           />
 
-          <Separator className="my-2" />
-
-          <Button type="submit" disabled={loading || !regimeTributario} className="w-full">
-            {loading ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Save aria-hidden="true" />}
-            Salvar Alterações
-          </Button>
+          <DialogFooter className="border-t border-border pt-4">
+            <Button type="submit" disabled={loading || !regimeTributario}>
+              {loading ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Save aria-hidden="true" />}
+              Salvar Alterações
+            </Button>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

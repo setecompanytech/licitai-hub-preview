@@ -163,18 +163,20 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
   };
 
   return (
+    /* Formulário do DS v3: rótulo em cima, campos de 40px, grades que colapsam
+       no celular e rodapé com a ação principal à direita. */
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="mb-2 flex items-center gap-2">
-        <ShieldCheck className="h-5 w-5 text-primary" aria-hidden="true" />
-        <h3 className="text-lg font-semibold text-foreground">
+        <ShieldCheck className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+        <h3 className="text-lg font-semibold leading-6 text-foreground">
           {mode === 'login' ? 'Acessar com Certificado Digital' : 'Cadastrar Empresa'}
         </h3>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-1.5">
           <Label htmlFor="cert-cnpj">CNPJ / CPF *</Label>
-          <div className="mt-1 flex gap-2">
+          <div className="flex gap-2">
             <Input
               id="cert-cnpj"
               value={cnpj}
@@ -190,19 +192,19 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
               disabled={buscando || cnpj.replace(/\D/g, '').length < 14}
               title="Buscar dados na Receita Federal e SINTEGRA"
               aria-label="Buscar dados na Receita Federal e SINTEGRA"
-              className="h-11 w-11 shrink-0"
+              className="shrink-0"
             >
               {buscando ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Search aria-hidden="true" />}
             </Button>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             {buscandoSintegra ? 'Consultando SINTEGRA...' : 'Clique na lupa para preencher automaticamente'}
           </p>
         </div>
-        <div>
+        <div className="space-y-1.5">
           <Label htmlFor="cert-tipo">Tipo de Certificado</Label>
           <Select value={certTipo} onValueChange={(v: 'e-cnpj' | 'e-cpf') => setCertTipo(v)}>
-            <SelectTrigger id="cert-tipo" className="mt-1">
+            <SelectTrigger id="cert-tipo">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -213,27 +215,26 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-1.5">
           <Label htmlFor="cert-nome">Nome do Certificado (referência)</Label>
           <Input
             id="cert-nome"
             value={certNome}
             onChange={e => setCertNome(e.target.value)}
             placeholder="Ex: e-CNPJ A1 - Certisign 2025"
-            className="mt-1"
           />
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             Apenas identificação — o certificado permanece no seu computador/VPS
           </p>
         </div>
-        <div>
+        <div className="space-y-1.5">
           <Label htmlFor="cert-validade">Validade do Certificado</Label>
-          <Input id="cert-validade" type="date" value={validade} onChange={e => setValidade(e.target.value)} className="mt-1" />
+          <Input id="cert-validade" type="date" value={validade} onChange={e => setValidade(e.target.value)} />
         </div>
       </div>
 
-      <div className="rounded-lg border border-border bg-primary-tint p-4">
+      <div className="rounded-md border border-primary-line bg-primary-tint p-4">
         <Button
           type="button"
           variant="link"
@@ -251,73 +252,74 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
         )}
       </div>
 
-      <div>
-        <Label htmlFor="cert-razao">Razão Social *</Label>
-        <Input id="cert-razao" value={razaoSocial} onChange={e => setRazaoSocial(e.target.value)} placeholder="Nome da empresa" className="mt-1" required />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <Label htmlFor="cert-razao">Razão Social *</Label>
+          <Input id="cert-razao" value={razaoSocial} onChange={e => setRazaoSocial(e.target.value)} placeholder="Nome da empresa" required />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="cert-fantasia">Nome Fantasia</Label>
+          <Input id="cert-fantasia" value={nomeFantasia} onChange={e => setNomeFantasia(e.target.value)} placeholder="Nome fantasia (opcional)" />
+        </div>
       </div>
 
-      <div>
-        <Label htmlFor="cert-fantasia">Nome Fantasia</Label>
-        <Input id="cert-fantasia" value={nomeFantasia} onChange={e => setNomeFantasia(e.target.value)} placeholder="Nome fantasia (opcional)" className="mt-1" />
-      </div>
-
-      <div>
+      <div className="space-y-1.5">
         <Label htmlFor="cert-cnae">CNAE Principal</Label>
-        <Input id="cert-cnae" value={cnaePrincipal} onChange={e => setCnaePrincipal(e.target.value)} placeholder="Ex: 6201500 - Desenvolvimento de software" className="mt-1" />
+        <Input id="cert-cnae" value={cnaePrincipal} onChange={e => setCnaePrincipal(e.target.value)} placeholder="Ex: 6201500 - Desenvolvimento de software" />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-1.5">
           <Label htmlFor="cert-telefone">Telefone</Label>
-          <Input id="cert-telefone" value={telefone} onChange={e => setTelefone(e.target.value)} placeholder="(XX) XXXXX-XXXX" className="mt-1" />
+          <Input id="cert-telefone" value={telefone} onChange={e => setTelefone(e.target.value)} placeholder="(XX) XXXXX-XXXX" />
         </div>
-        <div>
+        <div className="space-y-1.5">
           <Label htmlFor="cert-email">E-mail</Label>
-          <Input id="cert-email" value={email} onChange={e => setEmail(e.target.value)} placeholder="contato@empresa.com" className="mt-1" />
+          <Input id="cert-email" value={email} onChange={e => setEmail(e.target.value)} placeholder="contato@empresa.com" />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <div>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <div className="space-y-1.5">
           <Label htmlFor="cert-cep">CEP</Label>
-          <Input id="cert-cep" value={cep} onChange={e => setCep(e.target.value)} placeholder="00000-000" className="mt-1" />
+          <Input id="cert-cep" value={cep} onChange={e => setCep(e.target.value)} placeholder="00000-000" />
         </div>
-        <div className="md:col-span-2">
+        <div className="space-y-1.5 sm:col-span-2">
           <Label htmlFor="cert-endereco">Endereço (Logradouro, Nº)</Label>
-          <Input id="cert-endereco" value={endereco} onChange={e => setEndereco(e.target.value)} placeholder="Rua, nº - Bairro" className="mt-1" />
+          <Input id="cert-endereco" value={endereco} onChange={e => setEndereco(e.target.value)} placeholder="Rua, nº - Bairro" />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <div>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <div className="space-y-1.5">
           <Label htmlFor="cert-complemento">Complemento</Label>
-          <Input id="cert-complemento" value={complemento} onChange={e => setComplemento(e.target.value)} placeholder="Sala, Andar, etc." className="mt-1" />
+          <Input id="cert-complemento" value={complemento} onChange={e => setComplemento(e.target.value)} placeholder="Sala, Andar, etc." />
         </div>
-        <div>
+        <div className="space-y-1.5">
           <Label htmlFor="cert-bairro">Bairro</Label>
-          <Input id="cert-bairro" value={bairro} onChange={e => setBairro(e.target.value)} placeholder="Bairro" className="mt-1" />
+          <Input id="cert-bairro" value={bairro} onChange={e => setBairro(e.target.value)} placeholder="Bairro" />
         </div>
-        <div>
+        <div className="space-y-1.5">
           <Label htmlFor="cert-ie">Inscrição Estadual</Label>
-          <Input id="cert-ie" value={inscricaoEstadual} onChange={e => setInscricaoEstadual(e.target.value)} placeholder="ISENTO ou nº" className="mt-1" />
+          <Input id="cert-ie" value={inscricaoEstadual} onChange={e => setInscricaoEstadual(e.target.value)} placeholder="ISENTO ou nº" />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-1.5">
           <Label htmlFor="cert-municipio">Município</Label>
-          <Input id="cert-municipio" value={municipio} onChange={e => setMunicipio(e.target.value)} placeholder="São Paulo" className="mt-1" />
+          <Input id="cert-municipio" value={municipio} onChange={e => setMunicipio(e.target.value)} placeholder="São Paulo" />
         </div>
-        <div>
+        <div className="space-y-1.5">
           <Label htmlFor="cert-uf">UF</Label>
-          <Input id="cert-uf" value={uf} onChange={e => setUf(e.target.value)} placeholder="SP" className="mt-1" maxLength={2} />
+          <Input id="cert-uf" value={uf} onChange={e => setUf(e.target.value)} placeholder="SP" maxLength={2} />
         </div>
       </div>
 
-      <div>
+      <div className="space-y-1.5">
         <Label htmlFor="cert-regime">Regime Tributário *</Label>
         <Select value={regimeTributario} onValueChange={setRegimeTributario}>
-          <SelectTrigger id="cert-regime" className="mt-1">
+          <SelectTrigger id="cert-regime">
             <SelectValue placeholder="Selecione o regime tributário" />
           </SelectTrigger>
           <SelectContent>
@@ -328,10 +330,12 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
         </Select>
       </div>
 
-      <Button type="submit" disabled={loading || !regimeTributario} className="w-full">
-        {loading ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Building2 aria-hidden="true" />}
-        {mode === 'login' ? 'Acessar' : 'Cadastrar Empresa'}
-      </Button>
+      <div className="flex justify-end border-t border-border pt-4">
+        <Button type="submit" disabled={loading || !regimeTributario}>
+          {loading ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Building2 aria-hidden="true" />}
+          {mode === 'login' ? 'Acessar' : 'Cadastrar Empresa'}
+        </Button>
+      </div>
     </form>
   );
 }

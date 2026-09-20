@@ -10,7 +10,6 @@ const MODOS = [
     seguranca: 'Máxima',
     badge: 'Recomendado',
     icon: Server,
-    cor: 'bg-success-tint text-success-ink',
     detalhes: [
       'Instale o Agente de Lances no seu VPS (Ubuntu 22.04+)',
       'Copie o certificado .pfx para a pasta certs/ do agente',
@@ -25,7 +24,6 @@ const MODOS = [
     seguranca: 'Alta',
     badge: 'Prático',
     icon: Monitor,
-    cor: 'bg-primary-tint text-primary',
     detalhes: [
       'Instale a extensão PRAEFECTUS no Chrome/Edge',
       'O certificado A1 deve estar instalado no navegador',
@@ -40,7 +38,6 @@ const MODOS = [
     seguranca: 'Alta',
     badge: 'Certificado A3',
     icon: Globe,
-    cor: 'bg-warning-tint text-warning-ink',
     detalhes: [
       'Instale o Java Runtime 8+ e o driver do token/smartcard',
       'O navegador apresenta o certificado via mTLS nativo',
@@ -54,12 +51,12 @@ export default function CertificadoModoSeguranca() {
   return (
     <div className="space-y-4">
       <div className="mb-1 flex items-center gap-2">
-        <Shield className="h-5 w-5 text-primary" aria-hidden="true" />
-        <h3 className="text-lg font-semibold text-foreground">Segurança do Certificado Digital</h3>
+        <Shield className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+        <h3 className="text-lg font-semibold leading-6 text-foreground">Segurança do Certificado Digital</h3>
       </div>
 
       <Alert variant="success">
-        <CheckCircle2 className="h-4 w-4" />
+        <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
         <AlertDescription>
           <strong>Política de segurança:</strong> o PRAEFECTUS <strong>não armazena</strong> certificados
           digitais na nuvem. O certificado permanece exclusivamente na sua infraestrutura local.
@@ -73,12 +70,13 @@ export default function CertificadoModoSeguranca() {
             className="rounded-lg border border-border bg-card p-4 shadow-sm"
           >
             <div className="flex items-start gap-3">
-              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md ${modo.cor}`}>
+              {/* Ladrilho neutro: o ícone não leva matiz própria — o selo diz o que importa. */}
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
                 <modo.icon className="h-5 w-5" aria-hidden="true" />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h4 className="text-base font-semibold text-foreground">{modo.nome}</h4>
+                  <h4 className="text-base font-semibold leading-5 text-foreground">{modo.nome}</h4>
                   <Badge variant="info">{modo.badge}</Badge>
                   <Badge variant="muted">
                     Segurança: {modo.seguranca}
@@ -88,7 +86,7 @@ export default function CertificadoModoSeguranca() {
                 <ol className="mt-3 space-y-2">
                   {modo.detalhes.map((d, i) => (
                     <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
-                      <span className="shrink-0 font-bold text-primary">{i + 1}.</span>
+                      <span className="shrink-0 font-semibold tabular-nums text-foreground">{i + 1}.</span>
                       <span>{d}</span>
                     </li>
                   ))}
@@ -100,7 +98,7 @@ export default function CertificadoModoSeguranca() {
       </div>
 
       <Alert variant="warning">
-        <AlertTriangle className="h-4 w-4" />
+        <AlertTriangle className="h-4 w-4" aria-hidden="true" />
         <AlertDescription>
           <strong>Por que não fazemos upload?</strong> Plataformas líderes como Compras.gov.br, Effecti e
           BLL nunca armazenam certificados em servidores centrais. O padrão do mercado é execução local

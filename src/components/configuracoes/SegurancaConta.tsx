@@ -10,6 +10,7 @@ import { Shield, Key, Eye, AlertTriangle, CheckCircle2, Loader2 } from 'lucide-r
 import MfaEnrollment from './MfaEnrollment';
 import SolicitacaoLgpd from './SolicitacaoLgpd';
 import EstadoVazio from '@/components/shared/EstadoVazio';
+import ListaDeCampos from '@/components/gestao/ListaDeCampos';
 import { toast } from 'sonner';
 
 export default function SegurancaConta() {
@@ -69,9 +70,10 @@ export default function SegurancaConta() {
     if (/[A-Z]/.test(pwd)) score++;
     if (/[0-9]/.test(pwd)) score++;
     if (/[^A-Za-z0-9]/.test(pwd)) score++;
-    if (score <= 2) return { label: 'Fraca', color: 'text-destructive' };
-    if (score <= 3) return { label: 'Média', color: 'text-warning' };
-    return { label: 'Forte', color: 'text-success' };
+    // Tintas `-ink`: legíveis como texto sobre o branco do cartão.
+    if (score <= 2) return { label: 'Fraca', color: 'text-destructive-ink' };
+    if (score <= 3) return { label: 'Média', color: 'text-warning-ink' };
+    return { label: 'Forte', color: 'text-success-ink' };
   };
 
   const strength = passwordStrength(newPassword);
@@ -79,14 +81,14 @@ export default function SegurancaConta() {
   return (
     <div className="space-y-6">
       {/* Alterar Senha */}
-      <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
+      <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
         <div className="mb-4 flex items-center gap-2">
           <Key className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-          <h2 className="text-lg font-semibold text-foreground">Alterar Senha</h2>
+          <h2 className="text-lg font-semibold leading-6 text-foreground">Alterar Senha</h2>
         </div>
 
         <div className="max-w-md space-y-4">
-          <div>
+          <div className="space-y-1.5">
             <Label htmlFor="nova-senha">Nova Senha</Label>
             <Input
               id="nova-senha"
@@ -95,15 +97,14 @@ export default function SegurancaConta() {
               onChange={(e) => setNewPassword(e.target.value)}
               placeholder="Mínimo 8 caracteres"
               maxLength={128}
-              className="mt-1"
             />
             {newPassword && (
-              <p className={`mt-1 text-xs ${strength.color}`}>
+              <p className={`text-xs ${strength.color}`}>
                 Força: {strength.label}
               </p>
             )}
           </div>
-          <div>
+          <div className="space-y-1.5">
             <Label htmlFor="confirmar-senha">Confirmar Nova Senha</Label>
             <Input
               id="confirmar-senha"
@@ -112,16 +113,17 @@ export default function SegurancaConta() {
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Repita a nova senha"
               maxLength={128}
-              className="mt-1"
             />
           </div>
-          <Button
-            onClick={handleChangePassword}
-            disabled={changingPassword || !newPassword}
-          >
-            {changingPassword ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Key aria-hidden="true" />}
-            Alterar Senha
-          </Button>
+          <div className="flex justify-end">
+            <Button
+              onClick={handleChangePassword}
+              disabled={changingPassword || !newPassword}
+            >
+              {changingPassword ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Key aria-hidden="true" />}
+              Alterar Senha
+            </Button>
+          </div>
         </div>
 
         <div className="mt-4 border-t border-border pt-4">
@@ -131,37 +133,30 @@ export default function SegurancaConta() {
         </div>
       </section>
 
-      {/* Informações de Segurança */}
-      <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
-        <div className="mb-4 flex items-center gap-2">
+      {/* Informações de Segurança — ficha rótulo/valor do módulo Gestão. */}
+      <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
+        <div className="mb-2 flex items-center gap-2">
           <Shield className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-          <h2 className="text-lg font-semibold text-foreground">Informações de Segurança</h2>
+          <h2 className="text-lg font-semibold leading-6 text-foreground">Informações de Segurança</h2>
         </div>
 
-        <dl className="text-sm">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border py-3">
-            <dt className="text-muted-foreground">E-mail da conta</dt>
-            <dd className="font-medium text-foreground">{user?.email}</dd>
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border py-3">
-            <dt className="text-muted-foreground">E-mail confirmado</dt>
-            <dd>
-              <Badge variant={user?.email_confirmed_at ? 'success' : 'warning'} className="gap-1">
-                {user?.email_confirmed_at
-                  ? <><CheckCircle2 className="h-4 w-4" aria-hidden="true" /> Verificado</>
-                  : <><AlertTriangle className="h-4 w-4" aria-hidden="true" /> Pendente</>}
-              </Badge>
-            </dd>
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border py-3">
-            <dt className="text-muted-foreground">Último login</dt>
-            <dd className="text-xs font-medium text-foreground">{user?.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString('pt-BR') : '—'}</dd>
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-2 py-3">
-            <dt className="text-muted-foreground">Conta criada em</dt>
-            <dd className="text-xs font-medium text-foreground">{user?.created_at ? new Date(user.created_at).toLocaleString('pt-BR') : '—'}</dd>
-          </div>
-        </dl>
+        <ListaDeCampos
+          campos={[
+            { rotulo: 'E-mail da conta', valor: user?.email },
+            {
+              rotulo: 'E-mail confirmado',
+              valor: (
+                <Badge variant={user?.email_confirmed_at ? 'success' : 'warning'} className="gap-1">
+                  {user?.email_confirmed_at
+                    ? <><CheckCircle2 className="h-4 w-4" aria-hidden="true" /> Verificado</>
+                    : <><AlertTriangle className="h-4 w-4" aria-hidden="true" /> Pendente</>}
+                </Badge>
+              ),
+            },
+            { rotulo: 'Último login', valor: user?.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString('pt-BR') : '—', numerico: true },
+            { rotulo: 'Conta criada em', valor: user?.created_at ? new Date(user.created_at).toLocaleString('pt-BR') : '—', numerico: true },
+          ]}
+        />
       </section>
 
       {/* MFA */}
@@ -171,10 +166,10 @@ export default function SegurancaConta() {
       <SolicitacaoLgpd />
 
       {/* Log de Atividades de Autenticação */}
-      <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
+      <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
         <div className="mb-4 flex items-center gap-2">
           <Eye className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-          <h2 className="text-lg font-semibold text-foreground">Atividades Recentes de Autenticação</h2>
+          <h2 className="text-lg font-semibold leading-6 text-foreground">Atividades Recentes de Autenticação</h2>
         </div>
 
         {loadingLogs ? (
@@ -192,9 +187,9 @@ export default function SegurancaConta() {
             descricao="Os acessos e eventos de autenticação da sua conta aparecem aqui assim que acontecerem."
           />
         ) : (
-          <div className="max-h-64 space-y-2 overflow-y-auto">
+          <div className="max-h-64 divide-y divide-border overflow-y-auto">
             {recentLogins.map((log) => (
-              <div key={log.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-border py-2 text-sm">
+              <div key={log.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-sm">
                 <div className="flex items-center gap-2">
                   <Badge variant="muted">{log.evento}</Badge>
                   {log.ip_address && <span className="text-muted-foreground">IP: {log.ip_address}</span>}

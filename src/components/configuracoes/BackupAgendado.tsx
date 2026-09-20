@@ -306,11 +306,11 @@ export default function BackupAgendado() {
   };
 
   return (
-    <section className="space-y-6 rounded-lg border border-border bg-card p-6 shadow-sm">
+    <section className="space-y-6 rounded-lg border border-border bg-card p-5 shadow-sm">
       <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
         <div className="flex items-center gap-2">
           <Database className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-          <h2 className="text-lg font-semibold text-foreground">Backup Programado</h2>
+          <h2 className="text-lg font-semibold leading-6 text-foreground">Backup Programado</h2>
         </div>
         <div className="flex items-center gap-2">
           <Label htmlFor="backup-ativo" className="text-sm text-muted-foreground">Ativar agendamento</Label>
@@ -331,11 +331,11 @@ export default function BackupAgendado() {
           <Separator />
 
           {/* Frequência */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="space-y-1.5">
               <Label htmlFor="backup-frequencia">Frequência</Label>
               <Select value={config.frequencia} onValueChange={(v) => setConfig({ ...config, frequencia: v })}>
-                <SelectTrigger id="backup-frequencia" className="mt-1">
+                <SelectTrigger id="backup-frequencia">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -347,10 +347,10 @@ export default function BackupAgendado() {
             </div>
 
             {config.frequencia === 'semanal' && (
-              <div>
+              <div className="space-y-1.5">
                 <Label htmlFor="backup-dia-semana">Dia da semana</Label>
                 <Select value={String(config.dia_semana)} onValueChange={(v) => setConfig({ ...config, dia_semana: parseInt(v) })}>
-                  <SelectTrigger id="backup-dia-semana" className="mt-1">
+                  <SelectTrigger id="backup-dia-semana">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -363,10 +363,10 @@ export default function BackupAgendado() {
             )}
 
             {config.frequencia === 'mensal' && (
-              <div>
+              <div className="space-y-1.5">
                 <Label htmlFor="backup-dia-mes">Dia do mês</Label>
                 <Select value={String(config.dia_mes)} onValueChange={(v) => setConfig({ ...config, dia_mes: parseInt(v) })}>
-                  <SelectTrigger id="backup-dia-mes" className="mt-1">
+                  <SelectTrigger id="backup-dia-mes">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -378,10 +378,10 @@ export default function BackupAgendado() {
               </div>
             )}
 
-            <div>
+            <div className="space-y-1.5">
               <Label htmlFor="backup-horario">Horário</Label>
               <Select value={config.hora_execucao} onValueChange={(v) => setConfig({ ...config, hora_execucao: v })}>
-                <SelectTrigger id="backup-horario" className="mt-1">
+                <SelectTrigger id="backup-horario">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -395,69 +395,71 @@ export default function BackupAgendado() {
 
           <Separator />
 
-          {/* Canais de backup */}
-          <div className="space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Canais de Backup</p>
+          {/* Canais de backup — linhas de opção: ícone, rótulo e descrição à
+              esquerda, interruptor à direita, divisória entre cada par. */}
+          <div>
+            <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Canais de Backup</p>
 
-            {/* E-mail */}
-            <div className="flex items-start gap-3 rounded-lg bg-muted p-4">
-              <Mail className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-              <div className="flex-1 space-y-2">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <Label htmlFor="backup-email-switch" className="text-base font-medium">Envio por e-mail</Label>
-                    <p className="text-sm text-muted-foreground">Receba o arquivo de backup no seu e-mail</p>
-                  </div>
-                  <Switch
-                    id="backup-email-switch"
-                    checked={config.enviar_email}
-                    onCheckedChange={(v) => setConfig({ ...config, enviar_email: v })}
-                  />
-                </div>
-                {config.enviar_email && (
-                  <div>
-                    <Label htmlFor="backup-email">E-mail de destino</Label>
-                    <Input
-                      id="backup-email"
-                      value={config.email_destino}
-                      onChange={(e) => setConfig({ ...config, email_destino: e.target.value })}
-                      placeholder="seu@email.com"
-                      className="mt-1"
+            <div className="divide-y divide-border">
+              {/* E-mail */}
+              <div className="flex items-start gap-3 py-3">
+                <Mail className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <div className="min-w-0 flex-1 space-y-3">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <Label htmlFor="backup-email-switch" className="block text-base font-medium leading-5">Envio por e-mail</Label>
+                      <p className="mt-1 text-sm text-muted-foreground">Receba o arquivo de backup no seu e-mail</p>
+                    </div>
+                    <Switch
+                      id="backup-email-switch"
+                      checked={config.enviar_email}
+                      onCheckedChange={(v) => setConfig({ ...config, enviar_email: v })}
                     />
                   </div>
-                )}
-              </div>
-            </div>
-
-            {/* Calendário */}
-            <div className="flex items-center gap-3 rounded-lg bg-muted p-4">
-              <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-              <div className="flex flex-1 items-center justify-between gap-3">
-                <div>
-                  <Label htmlFor="backup-calendario" className="text-base font-medium">Lembrete no calendário</Label>
-                  <p className="text-sm text-muted-foreground">Alerta recorrente para verificar e baixar backups</p>
+                  {config.enviar_email && (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="backup-email">E-mail de destino</Label>
+                      <Input
+                        id="backup-email"
+                        value={config.email_destino}
+                        onChange={(e) => setConfig({ ...config, email_destino: e.target.value })}
+                        placeholder="seu@email.com"
+                      />
+                    </div>
+                  )}
                 </div>
-                <Switch
-                  id="backup-calendario"
-                  checked={config.alerta_calendario}
-                  onCheckedChange={(v) => setConfig({ ...config, alerta_calendario: v })}
-                />
               </div>
-            </div>
 
-            {/* Storage */}
-            <div className="flex items-center gap-3 rounded-lg bg-muted p-4">
-              <HardDrive className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-              <div className="flex flex-1 items-center justify-between gap-3">
-                <div>
-                  <Label htmlFor="backup-storage" className="text-base font-medium">Armazenamento no sistema</Label>
-                  <p className="text-sm text-muted-foreground">Snapshots salvos automaticamente para download posterior</p>
+              {/* Calendário */}
+              <div className="flex items-start gap-3 py-3">
+                <CalendarDays className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <div className="flex min-w-0 flex-1 items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <Label htmlFor="backup-calendario" className="block text-base font-medium leading-5">Lembrete no calendário</Label>
+                    <p className="mt-1 text-sm text-muted-foreground">Alerta recorrente para verificar e baixar backups</p>
+                  </div>
+                  <Switch
+                    id="backup-calendario"
+                    checked={config.alerta_calendario}
+                    onCheckedChange={(v) => setConfig({ ...config, alerta_calendario: v })}
+                  />
                 </div>
-                <Switch
-                  id="backup-storage"
-                  checked={config.backup_storage}
-                  onCheckedChange={(v) => setConfig({ ...config, backup_storage: v })}
-                />
+              </div>
+
+              {/* Storage */}
+              <div className="flex items-start gap-3 py-3">
+                <HardDrive className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <div className="flex min-w-0 flex-1 items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <Label htmlFor="backup-storage" className="block text-base font-medium leading-5">Armazenamento no sistema</Label>
+                    <p className="mt-1 text-sm text-muted-foreground">Snapshots salvos automaticamente para download posterior</p>
+                  </div>
+                  <Switch
+                    id="backup-storage"
+                    checked={config.backup_storage}
+                    onCheckedChange={(v) => setConfig({ ...config, backup_storage: v })}
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -465,24 +467,24 @@ export default function BackupAgendado() {
           <Separator />
 
           {/* Status */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2">
             {config.ultimo_backup && (
-              <div className="flex items-center gap-2 rounded-lg border border-success-line bg-success-tint p-4 text-success-ink">
+              <div className="flex items-center gap-3 rounded-lg border border-success-line bg-success-tint p-4 text-success-ink">
                 <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />
                 <div>
                   <p className="text-sm font-medium">Último backup</p>
-                  <p className="text-xs">
+                  <p className="text-xs tabular-nums">
                     {format(new Date(config.ultimo_backup), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                   </p>
                 </div>
               </div>
             )}
             {config.proximo_backup && (
-              <div className="flex items-center gap-2 rounded-lg border border-border bg-muted p-4">
-                <Clock className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+              <div className="flex items-center gap-3 rounded-lg border border-border bg-secondary p-4">
+                <Clock className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                 <div>
                   <p className="text-sm font-medium text-foreground">Próximo backup</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs tabular-nums text-muted-foreground">
                     {format(new Date(config.proximo_backup), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                   </p>
                 </div>
@@ -492,15 +494,15 @@ export default function BackupAgendado() {
         </>
       )}
 
-      {/* Ações */}
-      <div className="flex flex-wrap gap-2">
-        <Button onClick={handleSave} disabled={saving}>
-          {saving ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Save aria-hidden="true" />}
-          Salvar Agendamento
-        </Button>
+      {/* Ações — secundária antes da principal, à direita. */}
+      <div className="flex flex-wrap justify-end gap-2">
         <Button variant="outline" onClick={handleRunBackupNow} disabled={runningBackup}>
           {runningBackup ? <Loader2 className="animate-spin" aria-hidden="true" /> : <RefreshCw aria-hidden="true" />}
           Executar Backup Agora
+        </Button>
+        <Button onClick={handleSave} disabled={saving}>
+          {saving ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Save aria-hidden="true" />}
+          Salvar Agendamento
         </Button>
       </div>
 
@@ -509,15 +511,15 @@ export default function BackupAgendado() {
         <>
           <Separator />
           <div>
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Histórico de Backups</p>
-            <div className="max-h-64 space-y-2 overflow-y-auto">
+            <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Histórico de Backups</p>
+            <div className="max-h-64 divide-y divide-border overflow-y-auto">
               {historico.map((h) => (
-                <div key={h.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted p-4">
+                <div key={h.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                   <div className="flex min-w-0 items-center gap-3">
                     <Database className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <p className="truncate text-sm font-medium text-foreground">
+                        <p className="truncate text-sm font-medium tabular-nums text-foreground">
                           {format(new Date(h.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                         </p>
                         <Badge variant={h.status === 'concluido' ? 'success' : 'danger'}>
@@ -532,7 +534,7 @@ export default function BackupAgendado() {
                         {h.tabelas_exportadas ? ` | ${h.tabelas_exportadas.length} tabelas` : ''}
                       </p>
                       {h.erro && (
-                        <p className="mt-1 flex items-center gap-1 text-xs text-destructive">
+                        <p className="mt-1 flex items-center gap-1 text-xs text-destructive-ink">
                           <AlertTriangle className="h-4 w-4" aria-hidden="true" /> {h.erro}
                         </p>
                       )}
@@ -541,9 +543,8 @@ export default function BackupAgendado() {
                   <div className="flex shrink-0 items-center gap-1">
                     {h.storage_path && (
                       <Button
-                        size="sm"
+                        size="icon-sm"
                         variant="ghost"
-                        className="h-9 w-9 p-0"
                         aria-label="Baixar backup"
                         title="Baixar backup"
                         onClick={async () => {
@@ -557,9 +558,8 @@ export default function BackupAgendado() {
                       </Button>
                     )}
                     <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-9 w-9 p-0 text-destructive hover:text-destructive"
+                      size="icon-sm"
+                      variant="ghost-destructive"
                       aria-label="Remover registro de backup"
                       title="Remover registro"
                       onClick={() => handleDeleteHistorico(h.id)}

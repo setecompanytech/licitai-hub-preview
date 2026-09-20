@@ -265,10 +265,10 @@ export default function ApuracaoRegimeTributario() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
-        <div className="mb-3 flex items-center gap-2">
+      <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
+        <div className="mb-1 flex items-center gap-2">
           <BarChart3 className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-          <h2 className="text-lg font-semibold text-foreground">Apuração de Faturamento — Últimos 12 Meses</h2>
+          <h2 className="text-lg font-semibold leading-6 text-foreground">Apuração de Faturamento — Últimos 12 Meses</h2>
         </div>
         <p className="mb-4 text-sm text-muted-foreground">
           Preencha o faturamento bruto mensal da empresa. O sistema calculará automaticamente o RBT12,
@@ -351,10 +351,10 @@ export default function ApuracaoRegimeTributario() {
           <LinhaKpis itens={kpis} />
 
           {/* Comparison table */}
-          <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
-            <div className="mb-3 flex items-center gap-2">
+          <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
+            <div className="mb-1 flex items-center gap-2">
               <Calculator className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-              <h3 className="text-lg font-semibold text-foreground">Comparativo de Regimes Tributários</h3>
+              <h3 className="text-lg font-semibold leading-6 text-foreground">Comparativo de Regimes Tributários</h3>
             </div>
             <p className="mb-4 text-sm text-muted-foreground">
               Estimativa baseada no faturamento informado. Valores aproximados para fins de planejamento.
@@ -425,7 +425,7 @@ export default function ApuracaoRegimeTributario() {
             </div>
 
             {simplesInfo?.faixa && simplesInfo.elegivel && (
-              <div className="mt-3 rounded-lg bg-muted p-4 text-sm">
+              <div className="mt-3 rounded-md bg-secondary p-4 text-sm">
                 <p className="mb-1 font-semibold text-foreground">Simples Nacional — Detalhamento</p>
                 <p><strong>Faixa:</strong> {simplesInfo.faixa.faixa} ({formatBRL(simplesInfo.faixa.min)} a {formatBRL(simplesInfo.faixa.max)})</p>
                 <p><strong>Alíquota Nominal:</strong> {simplesInfo.faixa.aliquota}% | <strong>Dedução:</strong> {formatBRL(simplesInfo.faixa.deducao)}</p>
@@ -435,8 +435,8 @@ export default function ApuracaoRegimeTributario() {
           </section>
 
           {/* Info box */}
-          <section className="flex gap-3 rounded-lg border border-border bg-muted p-4">
-            <Info className="mt-1 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+          <section className="flex gap-3 rounded-lg border border-border bg-secondary p-4">
+            <Info className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
             <div className="space-y-1 text-sm text-muted-foreground">
               <p className="font-semibold text-foreground">Como funciona a integração com a Calculadora?</p>
               <p>• O valor do <strong>RBT12 ({formatBRL(rbt12)})</strong> será preenchido automaticamente no campo "Faturamento 12 meses" da Calculadora de Precificação.</p>

@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   CheckCircle2, XCircle, Loader2, Play, Shield, Database,
   Bot, Search, FileText, Bell, Kanban, Users, Zap, Scale,
@@ -249,10 +250,10 @@ export default function PlanoVerificacao() {
   };
 
   return (
-    <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
-      <div className="mb-4 flex items-center gap-2">
+    <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
+      <div className="mb-1 flex items-center gap-2">
         <Shield className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-        <h2 className="text-lg font-semibold text-foreground">Verificação de Funcionalidades por Plano</h2>
+        <h2 className="text-lg font-semibold leading-6 text-foreground">Verificação de Funcionalidades por Plano</h2>
       </div>
 
       <p className="mb-4 text-sm text-muted-foreground">
@@ -280,8 +281,8 @@ export default function PlanoVerificacao() {
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Progresso dos testes</span>
             <span className="font-semibold tabular-nums">
-              <span className="text-success">{passCount} ok</span>
-              {failCount > 0 && <span className="ml-2 text-destructive">{failCount} falhas</span>}
+              <span className="text-success-ink">{passCount} ok</span>
+              {failCount > 0 && <span className="ml-2 text-destructive-ink">{failCount} falhas</span>}
               <span className="ml-2 text-muted-foreground">/ {planTests.length}</span>
             </span>
           </div>
@@ -340,39 +341,35 @@ export default function PlanoVerificacao() {
         })}
       </ul>
 
-      {/* Run button */}
-      <Button
-        onClick={runTests}
-        disabled={running || !user}
-        className="w-full"
-      >
-        {running ? (
-          <><Loader2 className="animate-spin" aria-hidden="true" /> Executando testes...</>
-        ) : (
-          <><Play aria-hidden="true" /> Testar Plano {planLabels[selectedPlan]?.name}</>
-        )}
-      </Button>
-
-      {/* Summary */}
-      {!running && passCount + failCount === planTests.length && planTests.length > 0 && (
-        <div className={cn(
-          'mt-4 rounded-lg border p-4 text-center',
-          failCount === 0 ? 'border-success-line bg-success-tint text-success-ink' : 'border-warning-line bg-warning-tint text-warning-ink'
-        )}>
-          {failCount === 0 ? (
-            <>
-              <CheckCircle2 className="mx-auto mb-2 h-6 w-6" aria-hidden="true" />
-              <p className="text-base font-semibold">Plano {planLabels[selectedPlan]?.name} — 100% Operacional</p>
-              <p className="mt-1 text-sm">Todas as {planTests.length} funcionalidades estão ativas e funcionando corretamente.</p>
-            </>
+      {/* Run button — rodapé de ação, à direita. */}
+      <div className="flex justify-end">
+        <Button
+          onClick={runTests}
+          disabled={running || !user}
+        >
+          {running ? (
+            <><Loader2 className="animate-spin" aria-hidden="true" /> Executando testes...</>
           ) : (
-            <>
-              <XCircle className="mx-auto mb-2 h-6 w-6" aria-hidden="true" />
-              <p className="text-base font-semibold">Plano {planLabels[selectedPlan]?.name} — {passCount}/{planTests.length} testes passaram</p>
-              <p className="mt-1 text-sm">{failCount} funcionalidade(s) com falha. Verifique as permissões do banco de dados.</p>
-            </>
+            <><Play aria-hidden="true" /> Testar Plano {planLabels[selectedPlan]?.name}</>
           )}
-        </div>
+        </Button>
+      </div>
+
+      {/* Summary — o resultado num Alert semântico, não numa caixa centralizada. */}
+      {!running && passCount + failCount === planTests.length && planTests.length > 0 && (
+        failCount === 0 ? (
+          <Alert variant="success" className="mt-4">
+            <CheckCircle2 aria-hidden="true" />
+            <AlertTitle>Plano {planLabels[selectedPlan]?.name} — 100% Operacional</AlertTitle>
+            <AlertDescription>Todas as {planTests.length} funcionalidades estão ativas e funcionando corretamente.</AlertDescription>
+          </Alert>
+        ) : (
+          <Alert variant="warning" className="mt-4">
+            <XCircle aria-hidden="true" />
+            <AlertTitle>Plano {planLabels[selectedPlan]?.name} — {passCount}/{planTests.length} testes passaram</AlertTitle>
+            <AlertDescription>{failCount} funcionalidade(s) com falha. Verifique as permissões do banco de dados.</AlertDescription>
+          </Alert>
+        )
       )}
     </section>
   );

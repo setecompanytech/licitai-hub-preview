@@ -159,12 +159,12 @@ export default function IndicadoresGerenciais() {
     : null;
 
   return (
-    <section className="space-y-6 rounded-lg border border-border bg-card p-6 shadow-sm">
+    <section className="space-y-6 rounded-lg border border-border bg-card p-5 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <div className="mb-1 flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-            <h2 className="text-lg font-semibold text-foreground">Indicadores Gerenciais</h2>
+            <h2 className="text-lg font-semibold leading-6 text-foreground">Indicadores Gerenciais</h2>
           </div>
           <p className="text-sm text-muted-foreground">
             O custo da estrutura, apurado dos lançamentos conciliados — é ele que o
@@ -181,7 +181,7 @@ export default function IndicadoresGerenciais() {
               <SelectItem value="24">Últimos 24 meses</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => void recarregar()} disabled={carregando} aria-label="Recalcular indicadores" title="Recalcular">
+          <Button variant="outline" size="icon" onClick={() => void recarregar()} disabled={carregando} aria-label="Recalcular indicadores" title="Recalcular">
             {carregando ? <Loader2 className="animate-spin" aria-hidden="true" /> : <RefreshCw aria-hidden="true" />}
           </Button>
         </div>
@@ -203,28 +203,29 @@ export default function IndicadoresGerenciais() {
               do lucro, não do preço; e o CMV já é o custo unitário do item na
               cotação, somá-lo aqui cobraria a mercadoria duas vezes. Dizer isso
               no cartão evita que alguém some 6% de boa-fé. */}
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          {/* Cartões KPI (DS v3): rótulo 13, valor 28/36 em 600 tabular, linha de contexto 12. */}
+          <div className="grid gap-4 sm:grid-cols-3">
             <div className="rounded-lg border border-primary bg-primary-tint p-4">
-              <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+              <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-muted-foreground">
                 Despesas administrativas
                 <Badge variant="success">vai ao preço</Badge>
               </p>
-              <p className="text-[2rem] font-bold leading-10 tabular-nums text-foreground">{pct(indicadores.pct_despesa_administrativa)}</p>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <p className="mt-2 text-[1.75rem] font-semibold leading-9 tabular-nums text-foreground">{pct(indicadores.pct_despesa_administrativa)}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
                 {brl(indicadores.media_mensal.despesa_operacional)}/mês
               </p>
             </div>
-            <div className="rounded-lg border border-border bg-muted p-4">
-              <p className="text-sm text-muted-foreground">Despesas financeiras</p>
-              <p className="text-[2rem] font-bold leading-10 tabular-nums text-muted-foreground">{pct(indicadores.pct_despesa_financeira)}</p>
-              <p className="mt-1 text-sm text-muted-foreground">
+            <div className="rounded-lg border border-border bg-secondary p-4">
+              <p className="text-sm font-medium text-muted-foreground">Despesas financeiras</p>
+              <p className="mt-2 text-[1.75rem] font-semibold leading-9 tabular-nums text-muted-foreground">{pct(indicadores.pct_despesa_financeira)}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
                 {brl(indicadores.media_mensal.despesa_financeira)}/mês — fora do cálculo
               </p>
             </div>
-            <div className="rounded-lg border border-border bg-muted p-4">
-              <p className="text-sm text-muted-foreground">Receita bruta média</p>
-              <p className="text-[2rem] font-bold leading-10 tabular-nums text-foreground">{brl(indicadores.media_mensal.receita)}</p>
-              <p className="mt-1 text-sm text-muted-foreground">
+            <div className="rounded-lg border border-border bg-secondary p-4">
+              <p className="text-sm font-medium text-muted-foreground">Receita bruta média</p>
+              <p className="mt-2 text-[1.75rem] font-semibold leading-9 tabular-nums text-foreground">{brl(indicadores.media_mensal.receita)}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
                 CMV {pct(indicadores.pct_cmv)} — fora do cálculo
               </p>
             </div>
@@ -302,8 +303,8 @@ export default function IndicadoresGerenciais() {
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="flex items-center gap-2 text-sm font-medium text-foreground">
                 {indicadores.confiavel
-                  ? <><CheckCircle2 className="h-4 w-4 text-success" aria-hidden="true" /> Classificação suficiente</>
-                  : <><AlertTriangle className="h-4 w-4 text-warning" aria-hidden="true" /> Classificação incompleta</>}
+                  ? <><CheckCircle2 className="h-4 w-4 text-success-ink" aria-hidden="true" /> Classificação suficiente</>
+                  : <><AlertTriangle className="h-4 w-4 text-warning-ink" aria-hidden="true" /> Classificação incompleta</>}
               </span>
               <span className="text-sm text-muted-foreground">
                 despesas {pct(indicadores.cobertura.despesa)} · receitas {pct(indicadores.cobertura.receita)}
@@ -311,7 +312,7 @@ export default function IndicadoresGerenciais() {
             </div>
             <Progress value={indicadores.cobertura.despesa ?? 0} className="h-2" aria-label="Cobertura de classificação das despesas" />
             {!indicadores.confiavel && (
-              <p className="text-sm text-warning">
+              <p className="text-sm text-warning-ink">
                 {brl(indicadores.cobertura.despesa_sem_categoria)} em despesas e{' '}
                 {brl(indicadores.cobertura.receita_sem_categoria)} em receitas ainda sem categoria.
                 Percentual apurado sobre lançamento não classificado é palpite — classifique na
@@ -328,7 +329,7 @@ export default function IndicadoresGerenciais() {
                 <strong className="text-foreground">{pct(vigente.pct_despesa_administrativa)}</strong> administrativas
                 {vigente.adotado_por && nomes[vigente.adotado_por] ? ` · adotado por ${nomes[vigente.adotado_por]}` : ''}
                 {defasagem != null && defasagem >= 0.5 && (
-                  <span className="text-warning">
+                  <span className="text-warning-ink">
                     {' '}— o apurado hoje está {defasagem.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} ponto(s) diferente.
                   </span>
                 )}
@@ -339,14 +340,13 @@ export default function IndicadoresGerenciais() {
               </p>
             )}
             <div className="flex flex-wrap items-end gap-2">
-              <div className="min-w-[220px] flex-1">
+              <div className="min-w-[220px] flex-1 space-y-1.5">
                 <Label htmlFor="indicadores-observacao">Observação (opcional)</Label>
                 <Input
                   id="indicadores-observacao"
                   value={observacao}
                   onChange={(e) => setObservacao(e.target.value)}
                   placeholder="Ex.: revisão trimestral após ajuste do aluguel"
-                  className="mt-1"
                 />
               </div>
               <Button onClick={confirmarAdocao} disabled={adotando || !indicadores.confiavel}>

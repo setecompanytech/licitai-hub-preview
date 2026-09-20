@@ -48,7 +48,7 @@ export default function Empresas() {
         />
 
         {showForm && !ehContaDeEngenharia && (
-          <section className="mb-6 rounded-lg border border-border bg-card p-6 shadow-sm">
+          <section className="mb-6 rounded-lg border border-border bg-card p-5 shadow-sm">
             <CadastroCertificado onSuccess={() => setShowForm(false)} />
           </section>
         )}
@@ -80,21 +80,29 @@ export default function Empresas() {
             {empresas.map((m) => {
               const ativa = !todasSelecionadas && empresaAtiva?.id === m.empresa_id;
               return (
+                /* Cartão compacto da empresa: ladrilho do logotipo (tinta da
+                   ação só na empresa ativa), título 16/24, selos e ações
+                   só-ícone à direita. */
                 <section
                   key={m.empresa_id}
                   className={cn(
-                    'rounded-lg border bg-card p-6 shadow-sm transition-colors',
+                    'rounded-lg border bg-card p-5 shadow-sm transition-colors',
                     ativa ? 'border-primary' : 'border-border',
                   )}
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="flex min-w-0 items-center gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary-tint text-primary">
+                      <div
+                        className={cn(
+                          'flex h-10 w-10 shrink-0 items-center justify-center rounded-md',
+                          ativa ? 'bg-primary-tint text-primary' : 'bg-muted text-muted-foreground',
+                        )}
+                      >
                         <Building2 className="h-5 w-5" aria-hidden="true" />
                       </div>
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="text-base font-semibold text-foreground">
+                          <h3 className="text-lg font-semibold leading-6 text-foreground">
                             {m.empresa.nome_fantasia || m.empresa.razao_social}
                           </h3>
                           <Badge variant="info">{m.papel}</Badge>
@@ -125,8 +133,7 @@ export default function Empresas() {
                         <>
                           <Button
                             variant="ghost"
-                            size="icon"
-                            className="text-muted-foreground hover:text-primary"
+                            size="icon-sm"
                             onClick={() => setEditEmpresa(m.empresa)}
                             title="Editar empresa"
                             aria-label="Editar empresa"
@@ -134,9 +141,8 @@ export default function Empresas() {
                             <Pencil aria-hidden="true" />
                           </Button>
                           <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-muted-foreground hover:text-destructive"
+                            variant="ghost-destructive"
+                            size="icon-sm"
                             onClick={() => handleDelete(m.empresa_id, m.empresa.razao_social)}
                             title="Remover empresa"
                             aria-label="Remover empresa"

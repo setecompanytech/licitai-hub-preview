@@ -125,14 +125,16 @@ export default function RepresentanteUploader({ onExtracted }: RepresentanteUplo
   return (
     <div className="space-y-3">
       {file ? (
-        <div className="flex flex-wrap items-center gap-4 rounded-lg border border-border bg-muted p-4">
-          <FileText className="h-6 w-6 shrink-0 text-muted-foreground" aria-hidden="true" />
+        <div className="flex flex-wrap items-center gap-4 rounded-md border border-border bg-secondary p-4">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+            <FileText className="h-5 w-5" aria-hidden="true" />
+          </span>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium text-foreground">{file.name}</p>
             <p className="text-xs text-muted-foreground">
               {(file.size / 1024).toFixed(0)} KB
               {extracted && (
-                <span className="ml-2 inline-flex items-center gap-1 text-success">
+                <span className="ml-2 inline-flex items-center gap-1 text-success-ink">
                   <CheckCircle className="h-4 w-4" aria-hidden="true" /> Dados extraídos
                 </span>
               )}
@@ -148,19 +150,23 @@ export default function RepresentanteUploader({ onExtracted }: RepresentanteUplo
                 )}
               </Button>
             )}
-            <Button variant="outline" size="icon" className="h-11 w-11" onClick={handleRemove} aria-label="Remover arquivo">
+            <Button variant="outline" size="icon" onClick={handleRemove} aria-label="Remover arquivo">
               <X aria-hidden="true" />
             </Button>
           </div>
         </div>
       ) : (
+        /* Zona de upload: tracejado na borda de campo, ladrilho neutro com o
+           ícone, texto à esquerda do que se espera receber. */
         <Button
           type="button"
           variant="outline"
           onClick={() => fileRef.current?.click()}
-          className="h-auto w-full flex-col gap-2 whitespace-normal border-2 border-dashed border-border py-6 font-normal hover:border-primary"
+          className="h-auto w-full flex-col gap-2 whitespace-normal rounded-md border-dashed border-input p-6 font-normal shadow-none"
         >
-          <Upload className="!size-6 text-muted-foreground" aria-hidden="true" />
+          <span className="flex h-10 w-10 items-center justify-center rounded-md bg-muted text-muted-foreground">
+            <Upload className="!size-5" aria-hidden="true" />
+          </span>
           <span className="text-sm font-medium text-foreground">Upload de documento para extração por IA</span>
           <span className="text-xs text-muted-foreground">Contrato social, procuração, RG/CPF, CNH — PDF, Word, TXT ou imagem (máx. 10MB)</span>
         </Button>

@@ -13,6 +13,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -93,11 +94,11 @@ export default function SolicitacaoLgpd() {
   };
 
   return (
-    <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+    <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <FileWarning className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-          <h2 className="text-lg font-semibold text-foreground">Meus Dados (LGPD — Art. 18)</h2>
+          <h2 className="text-lg font-semibold leading-6 text-foreground">Meus Dados (LGPD — Art. 18)</h2>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
@@ -114,8 +115,8 @@ export default function SolicitacaoLgpd() {
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
-              <div>
-                <Label htmlFor="lgpd-tipo" className="mb-2 block">Tipo de solicitação *</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="lgpd-tipo">Tipo de solicitação *</Label>
                 <Select value={tipo} onValueChange={setTipo}>
                   <SelectTrigger id="lgpd-tipo">
                     <SelectValue placeholder="Selecione..." />
@@ -127,8 +128,8 @@ export default function SolicitacaoLgpd() {
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label htmlFor="lgpd-descricao" className="mb-2 block">Descrição (opcional)</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="lgpd-descricao">Descrição (opcional)</Label>
                 <Textarea
                   id="lgpd-descricao"
                   value={descricao}
@@ -137,15 +138,16 @@ export default function SolicitacaoLgpd() {
                   rows={3}
                 />
               </div>
+            </div>
+            <DialogFooter>
               <Button
                 onClick={handleSubmit}
                 disabled={submitting || !tipo}
-                className="w-full"
               >
                 {submitting ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Send aria-hidden="true" />}
                 Enviar Solicitação
               </Button>
-            </div>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
@@ -169,12 +171,12 @@ export default function SolicitacaoLgpd() {
           acao={<Button variant="outline" onClick={() => setDialogOpen(true)}><Send aria-hidden="true" /> Nova Solicitação</Button>}
         />
       ) : (
-        <div className="max-h-64 space-y-2 overflow-y-auto">
+        <div className="max-h-64 divide-y divide-border overflow-y-auto">
           {requests.map(req => {
             const statusInfo = STATUS_MAP[req.status] || STATUS_MAP.pendente;
             const StatusIcon = statusInfo.icon;
             return (
-              <div key={req.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-3 py-3 text-sm">
+              <div key={req.id} className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant={statusInfo.variant} className="gap-1">
                     <StatusIcon className={`h-4 w-4 ${req.status === 'em_analise' ? 'animate-spin' : ''}`} aria-hidden="true" />

@@ -205,15 +205,15 @@ export default function PlanoAssinatura() {
 
   if (loading) {
     return (
-      <section className="rounded-lg border border-border bg-card p-6 shadow-sm" role="status" aria-busy="true">
+      <section className="rounded-lg border border-border bg-card p-5 shadow-sm" role="status" aria-busy="true">
         <span className="sr-only">Carregando planos</span>
         <div className="mb-4 flex items-center gap-2">
           <CreditCard className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-          <h2 className="text-lg font-semibold text-foreground">Plano & Assinatura</h2>
+          <h2 className="text-lg font-semibold leading-6 text-foreground">Plano & Assinatura</h2>
         </div>
         <div className="space-y-4">
-          <Skeleton className="mx-auto h-11 w-full max-w-md" />
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <Skeleton className="h-10 w-full max-w-md" />
+          <div className="grid gap-4 md:grid-cols-3">
             {[1, 2, 3].map((i) => <Skeleton key={i} className="h-64 w-full rounded-lg" />)}
           </div>
         </div>
@@ -228,14 +228,14 @@ export default function PlanoAssinatura() {
       ref={sectionRef}
       id="planos"
       className={cn(
-        'rounded-lg border bg-card p-6 shadow-sm transition-all duration-700',
+        'rounded-lg border bg-card p-5 shadow-sm transition-all duration-700',
         highlight ? 'border-primary ring-2 ring-ring' : 'border-border'
       )}
     >
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <CreditCard className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-          <h2 className="text-lg font-semibold text-foreground">Plano & Assinatura</h2>
+          <h2 className="text-lg font-semibold leading-6 text-foreground">Plano & Assinatura</h2>
         </div>
         {subscription?.subscribed && (
           <Button variant="outline" onClick={handleManageSubscription} disabled={managingPortal}>
@@ -259,8 +259,8 @@ export default function PlanoAssinatura() {
         </div>
       )}
 
-      {/* Cycle selector */}
-      <div className="mb-6 flex items-center justify-center">
+      {/* Cycle selector — alternância tonal, alinhada à esquerda como o resto da tela. */}
+      <div className="mb-6 flex items-center">
         <div className="inline-flex flex-wrap gap-1 rounded-md bg-muted p-1" role="group" aria-label="Ciclo de cobrança">
           {(Object.keys(cycleConfig) as BillingCycle[]).map((key) => {
             const active = cycle === key;
@@ -296,7 +296,7 @@ export default function PlanoAssinatura() {
           descricao="Não há planos ativos para contratar no momento. Fale com o suporte para assinar."
         />
       )}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-3">
         {planos.map((plano) => {
           const price = getPrice(plano.preco_mensal);
           const isHighlight = plano.destaque;
@@ -304,15 +304,13 @@ export default function PlanoAssinatura() {
           const isLoading = checkingOut === plano.id;
 
           return (
+            /* Uma só cor de destaque: o plano atual e o recomendado levam a
+               borda verde; o selo em cima diz qual é qual. */
             <div
               key={plano.id}
               className={cn(
-                'relative flex flex-col rounded-lg border bg-card p-6 transition-colors',
-                isActive
-                  ? 'border-success'
-                  : isHighlight
-                    ? 'border-primary'
-                    : 'border-border hover:border-primary/40'
+                'relative flex flex-col rounded-lg border bg-card p-5 shadow-sm transition-colors',
+                isActive || isHighlight ? 'border-primary' : 'border-border'
               )}
             >
               {isActive && (
@@ -326,12 +324,12 @@ export default function PlanoAssinatura() {
                 </Badge>
               )}
 
-              <h3 className="mb-1 text-lg font-semibold text-foreground">{plano.nome}</h3>
+              <h3 className="mb-1 text-lg font-semibold leading-6 text-foreground">{plano.nome}</h3>
               <p className="mb-4 min-h-10 text-sm text-muted-foreground">{plano.descricao}</p>
 
               <div className="mb-4">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-[2rem] font-bold leading-10 tabular-nums text-foreground">{formatCurrency(price.monthly)}</span>
+                  <span className="text-[1.75rem] font-semibold leading-9 tabular-nums text-foreground">{formatCurrency(price.monthly)}</span>
                   <span className="text-sm text-muted-foreground">/mês</span>
                 </div>
                 {cycle !== 'mensal' && (
@@ -339,7 +337,7 @@ export default function PlanoAssinatura() {
                     <p className="text-sm text-muted-foreground">
                       Total: <span className="font-semibold tabular-nums text-foreground">{formatCurrency(price.total)}</span> / {cycleConfig[cycle].label.toLowerCase()}
                     </p>
-                    <p className="flex items-center gap-1 text-sm font-medium text-success">
+                    <p className="flex items-center gap-1 text-sm font-medium text-success-ink">
                       <Zap className="h-4 w-4" aria-hidden="true" />
                       Economia de {formatCurrency(price.saved)}
                     </p>
@@ -368,10 +366,7 @@ export default function PlanoAssinatura() {
               <Button
                 onClick={() => isActive ? handleManageSubscription() : handleCheckout(plano)}
                 variant={isActive ? 'outline' : isHighlight ? 'default' : 'outline'}
-                className={cn(
-                  'w-full truncate',
-                  isActive && 'border-success text-success-ink hover:bg-success-tint',
-                )}
+                className="w-full truncate"
                 disabled={isLoading || managingPortal}
               >
                 {isLoading ? (
@@ -388,10 +383,10 @@ export default function PlanoAssinatura() {
       </div>
 
       <div className="mt-4 space-y-1">
-        <p className="text-center text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           Pagamento seguro via <strong>Cartão de Crédito</strong> ou <strong>Boleto Bancário</strong> processado pelo Stripe.
         </p>
-        <p className="text-center text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           Cancele a qualquer momento pelo portal de gerenciamento.
         </p>
       </div>

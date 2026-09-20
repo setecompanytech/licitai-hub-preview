@@ -403,24 +403,26 @@ export default function Configuracoes() {
           {/* Item de menu: título, descrição, ícone e trilha vêm do registro
               `lib/navegacao/paginas.ts` — a tela não os repete. */}
           <CabecalhoPagina>
-            <TabsList>
-              <TabsTrigger value="geral" className="gap-2">
+            {/* Fila sublinhada da ui. No celular ela rola de lado em vez de
+                quebrar em duas linhas — a segunda fila ficava sem o filete. */}
+            <TabsList className="flex-nowrap overflow-x-auto [scrollbar-width:thin]">
+              <TabsTrigger value="geral" className="shrink-0 gap-2">
                 <Settings className="h-4 w-4" aria-hidden="true" />
                 Geral
               </TabsTrigger>
-              <TabsTrigger value="plano" className="gap-2">
+              <TabsTrigger value="plano" className="shrink-0 gap-2">
                 <CreditCard className="h-4 w-4" aria-hidden="true" />
                 Plano
               </TabsTrigger>
-              <TabsTrigger value="regime" className="gap-2">
+              <TabsTrigger value="regime" className="shrink-0 gap-2">
                 <BarChart3 className="h-4 w-4" aria-hidden="true" />
                 Regime
               </TabsTrigger>
-              <TabsTrigger value="timbrado" className="gap-2">
+              <TabsTrigger value="timbrado" className="shrink-0 gap-2">
                 <ImageIcon className="h-4 w-4" aria-hidden="true" />
                 Timbrado
               </TabsTrigger>
-              <TabsTrigger value="seguranca" className="gap-2">
+              <TabsTrigger value="seguranca" className="shrink-0 gap-2">
                 <Shield className="h-4 w-4" aria-hidden="true" />
                 Segurança
               </TabsTrigger>
@@ -437,10 +439,10 @@ export default function Configuracoes() {
               Antes o 2 morava na aba Geral e parecia duplicidade. */}
           <TabsContent value="timbrado" className="space-y-6">
             <TimbradoConfig />
-            <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
-              <div className="mb-2 flex items-center gap-2">
+            <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
+              <div className="mb-1 flex items-center gap-2">
                 <ImageIcon className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-                <h2 className="text-lg font-semibold text-foreground">Papel timbrado completo (fundo / marca d'água)</h2>
+                <h2 className="text-lg font-semibold leading-6 text-foreground">Papel timbrado completo (fundo / marca d'água)</h2>
               </div>
               <p className="mb-4 text-sm text-muted-foreground">
                 Imagem ou documento Word do papel timbrado pronto — usado como fundo nas peças
@@ -454,14 +456,14 @@ export default function Configuracoes() {
           {/* ── Tab: Configurações Gerais ── */}
           <TabsContent value="geral" className="space-y-6">
             {/* Dados da Empresa */}
-            <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
+            <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
               <div className="mb-4 flex items-center gap-2">
                 <Building2 className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-                <h2 id="empresa" className="scroll-mt-24 text-lg font-semibold text-foreground">Dados da Empresa</h2>
+                <h2 id="empresa" className="scroll-mt-24 text-lg font-semibold leading-6 text-foreground">Dados da Empresa</h2>
               </div>
               <div className="grid gap-4">
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
                     <Label htmlFor="empresa-cnpj">CNPJ</Label>
                     <Input
                       id="empresa-cnpj"
@@ -470,13 +472,12 @@ export default function Configuracoes() {
                       onBlur={() => {
                         if (cnpjInput.replace(/\D/g, '').length === 14) handleConsultaCNPJ();
                       }}
-                      className="mt-1"
                       placeholder="00.000.000/0001-00"
                     />
                   </div>
-                  <div>
+                  <div className="space-y-1.5">
                     <Label htmlFor="empresa-cnae">CNAE Principal</Label>
-                    <Input id="empresa-cnae" value={cnaePrincipal} onChange={e => setCnaePrincipal(e.target.value)} className="mt-1" />
+                    <Input id="empresa-cnae" value={cnaePrincipal} onChange={e => setCnaePrincipal(e.target.value)} />
                   </div>
                 </div>
 
@@ -504,80 +505,82 @@ export default function Configuracoes() {
                   </Alert>
                 )}
 
-                <div>
-                  <Label htmlFor="empresa-razao-social">Razão Social</Label>
-                  <Input id="empresa-razao-social" value={razaoSocial} onChange={e => setRazaoSocial(e.target.value)} className="mt-1" />
-                </div>
-                <div>
-                  <Label htmlFor="empresa-nome-fantasia">Nome Fantasia</Label>
-                  <Input id="empresa-nome-fantasia" value={nomeFantasia} onChange={e => setNomeFantasia(e.target.value)} className="mt-1" />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="empresa-razao-social">Razão Social</Label>
+                    <Input id="empresa-razao-social" value={razaoSocial} onChange={e => setRazaoSocial(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="empresa-nome-fantasia">Nome Fantasia</Label>
+                    <Input id="empresa-nome-fantasia" value={nomeFantasia} onChange={e => setNomeFantasia(e.target.value)} />
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                  <div>
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="space-y-1.5">
                     <Label htmlFor="empresa-cep">CEP</Label>
-                    <Input id="empresa-cep" value={cep} onChange={e => setCep(e.target.value)} className="mt-1" placeholder="00000-000" />
+                    <Input id="empresa-cep" value={cep} onChange={e => setCep(e.target.value)} placeholder="00000-000" />
                   </div>
-                  <div className="md:col-span-2">
+                  <div className="space-y-1.5 sm:col-span-2">
                     <Label htmlFor="empresa-endereco">Endereço (Logradouro, Nº)</Label>
-                    <Input id="empresa-endereco" value={endereco} onChange={e => setEndereco(e.target.value)} className="mt-1" />
+                    <Input id="empresa-endereco" value={endereco} onChange={e => setEndereco(e.target.value)} />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                  <div>
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="space-y-1.5">
                     <Label htmlFor="empresa-complemento">Complemento</Label>
-                    <Input id="empresa-complemento" value={complemento} onChange={e => setComplemento(e.target.value)} className="mt-1" />
+                    <Input id="empresa-complemento" value={complemento} onChange={e => setComplemento(e.target.value)} />
                   </div>
-                  <div>
+                  <div className="space-y-1.5">
                     <Label htmlFor="empresa-bairro">Bairro</Label>
-                    <Input id="empresa-bairro" value={bairro} onChange={e => setBairro(e.target.value)} className="mt-1" />
+                    <Input id="empresa-bairro" value={bairro} onChange={e => setBairro(e.target.value)} />
                   </div>
-                  <div>
+                  <div className="space-y-1.5">
                     <Label htmlFor="empresa-uf">UF</Label>
-                    <Input id="empresa-uf" value={uf} onChange={e => setUf(e.target.value)} className="mt-1" maxLength={2} />
+                    <Input id="empresa-uf" value={uf} onChange={e => setUf(e.target.value)} maxLength={2} />
                   </div>
                 </div>
 
-                <div>
+                <div className="space-y-1.5">
                   <Label htmlFor="empresa-municipio">Município</Label>
-                  <Input id="empresa-municipio" value={cidade} onChange={e => setCidade(e.target.value)} className="mt-1" />
+                  <Input id="empresa-municipio" value={cidade} onChange={e => setCidade(e.target.value)} />
                 </div>
 
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
                     <Label htmlFor="empresa-telefone">Telefone</Label>
-                    <Input id="empresa-telefone" value={telefone} onChange={e => setTelefone(e.target.value)} className="mt-1" placeholder="(XX) XXXXX-XXXX" />
+                    <Input id="empresa-telefone" value={telefone} onChange={e => setTelefone(e.target.value)} placeholder="(XX) XXXXX-XXXX" />
                   </div>
-                  <div>
+                  <div className="space-y-1.5">
                     <Label htmlFor="empresa-email">E-mail</Label>
-                    <Input id="empresa-email" value={email} onChange={e => setEmail(e.target.value)} className="mt-1" placeholder="contato@empresa.com" />
+                    <Input id="empresa-email" value={email} onChange={e => setEmail(e.target.value)} placeholder="contato@empresa.com" />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
                     <Label htmlFor="empresa-ie">Inscrição Estadual</Label>
-                    <Input id="empresa-ie" value={inscricaoEstadual} onChange={e => setInscricaoEstadual(e.target.value)} placeholder="Número da inscrição estadual" className="mt-1" />
+                    <Input id="empresa-ie" value={inscricaoEstadual} onChange={e => setInscricaoEstadual(e.target.value)} placeholder="Número da inscrição estadual" />
                     {inscricaoEstadual && (
-                      <Badge variant="success" className="mt-2 gap-1">
+                      <Badge variant="success" className="gap-1">
                         <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" /> Preenchido
                       </Badge>
                     )}
                   </div>
-                  <div>
+                  <div className="space-y-1.5">
                     <Label htmlFor="empresa-im">Inscrição Municipal</Label>
-                    <Input id="empresa-im" value={inscricaoMunicipal} onChange={e => setInscricaoMunicipal(e.target.value)} placeholder="Número da inscrição municipal" className="mt-1" />
+                    <Input id="empresa-im" value={inscricaoMunicipal} onChange={e => setInscricaoMunicipal(e.target.value)} placeholder="Número da inscrição municipal" />
                   </div>
                 </div>
               </div>
             </section>
 
             {/* Dados do Representante */}
-            <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
-              <div className="mb-4 flex items-center gap-2">
+            <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
+              <div className="mb-1 flex items-center gap-2">
                 <User className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-                <h2 id="representante" className="scroll-mt-24 text-lg font-semibold text-foreground">Dados do Representante Legal</h2>
+                <h2 id="representante" className="scroll-mt-24 text-lg font-semibold leading-6 text-foreground">Dados do Representante Legal</h2>
               </div>
               <p className="mb-4 text-sm text-muted-foreground">
                 Preencha os dados do representante legal ou extraia automaticamente via upload de documento (contrato social, procuração, RG/CPF). Essas informações serão propagadas para propostas, declarações, petições, recursos e demais documentos.
@@ -596,38 +599,38 @@ export default function Configuracoes() {
               />
 
               <div className="mt-4 grid gap-4">
-                <div>
+                <div className="space-y-1.5">
                   <Label htmlFor="rep-nome">Nome Completo</Label>
-                  <Input id="rep-nome" value={repNome} onChange={e => setRepNome(e.target.value)} className="mt-1" placeholder="Nome completo do representante" />
+                  <Input id="rep-nome" value={repNome} onChange={e => setRepNome(e.target.value)} placeholder="Nome completo do representante" />
                 </div>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
                     <Label htmlFor="rep-cpf">CPF</Label>
-                    <Input id="rep-cpf" value={repCpf} onChange={e => setRepCpf(e.target.value)} className="mt-1" placeholder="000.000.000-00" />
+                    <Input id="rep-cpf" value={repCpf} onChange={e => setRepCpf(e.target.value)} placeholder="000.000.000-00" />
                   </div>
-                  <div>
+                  <div className="space-y-1.5">
                     <Label htmlFor="rep-rg">RG</Label>
-                    <Input id="rep-rg" value={repRg} onChange={e => setRepRg(e.target.value)} className="mt-1" placeholder="Número do RG" />
+                    <Input id="rep-rg" value={repRg} onChange={e => setRepRg(e.target.value)} placeholder="Número do RG" />
                   </div>
                 </div>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
                     <Label htmlFor="rep-orgao-expedidor">Órgão Expedidor</Label>
-                    <Input id="rep-orgao-expedidor" value={repOrgaoExp} onChange={e => setRepOrgaoExp(e.target.value)} className="mt-1" placeholder="SSP/XX" />
+                    <Input id="rep-orgao-expedidor" value={repOrgaoExp} onChange={e => setRepOrgaoExp(e.target.value)} placeholder="SSP/XX" />
                   </div>
-                  <div>
+                  <div className="space-y-1.5">
                     <Label htmlFor="rep-cargo">Cargo / Função</Label>
-                    <Input id="rep-cargo" value={repCargo} onChange={e => setRepCargo(e.target.value)} className="mt-1" placeholder="Sócio-Administrador" />
+                    <Input id="rep-cargo" value={repCargo} onChange={e => setRepCargo(e.target.value)} placeholder="Sócio-Administrador" />
                   </div>
                 </div>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
                     <Label htmlFor="rep-naturalidade">Naturalidade</Label>
-                    <Input id="rep-naturalidade" value={repNaturalidade} onChange={e => setRepNaturalidade(e.target.value)} className="mt-1" placeholder="Cidade/UF" />
+                    <Input id="rep-naturalidade" value={repNaturalidade} onChange={e => setRepNaturalidade(e.target.value)} placeholder="Cidade/UF" />
                   </div>
-                  <div>
+                  <div className="space-y-1.5">
                     <Label htmlFor="rep-nacionalidade">Nacionalidade</Label>
-                    <Input id="rep-nacionalidade" value={repNacionalidade} onChange={e => setRepNacionalidade(e.target.value)} className="mt-1" />
+                    <Input id="rep-nacionalidade" value={repNacionalidade} onChange={e => setRepNacionalidade(e.target.value)} />
                   </div>
                 </div>
               </div>
@@ -639,21 +642,23 @@ export default function Configuracoes() {
                 (papel timbrado completo e cabeçalho/rodapé) num lugar só. */}
 
             {/* Notificações */}
-            <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
+            <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
               <div className="mb-4 flex items-center gap-2">
                 <Bell className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-                <h2 id="notificacoes" className="scroll-mt-24 text-lg font-semibold text-foreground">Notificações</h2>
+                <h2 id="notificacoes" className="scroll-mt-24 text-lg font-semibold leading-6 text-foreground">Notificações</h2>
               </div>
-              <div className="space-y-4">
+              {/* Linha de opção: rótulo e descrição à esquerda, interruptor à
+                  direita, uma divisória entre cada par. */}
+              <div className="divide-y divide-border">
                 {([
                   { key: 'editais_compativeis' as const, label: 'Novos editais compatíveis', desc: 'Alerta ao detectar licitação com CNAE compatível' },
                   { key: 'prazos_proximos' as const, label: 'Prazos próximos', desc: 'Aviso 48h antes do encerramento' },
                   { key: 'atividade_concorrentes' as const, label: 'Atividade de concorrentes', desc: 'Notificação sobre novos lances de concorrentes monitorados' },
                   { key: 'relatorios_semanais' as const, label: 'Relatórios semanais', desc: 'Resumo por e-mail toda segunda-feira' },
                 ]).map((n) => (
-                  <div key={n.key} className="flex flex-wrap items-center justify-between gap-3">
+                  <div key={n.key} className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
                     <div className="min-w-0">
-                      <Label htmlFor={`notif-${n.key}`} className="block text-base font-medium text-foreground">{n.label}</Label>
+                      <Label htmlFor={`notif-${n.key}`} className="block text-base font-medium leading-5 text-foreground">{n.label}</Label>
                       <p className="mt-1 text-sm text-muted-foreground">{n.desc}</p>
                     </div>
                     <Switch
@@ -667,12 +672,12 @@ export default function Configuracoes() {
             </section>
 
             {/* Portais Monitorados */}
-            <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
+            <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
               <div className="mb-4 flex items-center gap-2">
                 <Globe className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-                <h2 id="monitoramento" className="scroll-mt-24 text-lg font-semibold text-foreground">Portais Monitorados</h2>
+                <h2 id="monitoramento" className="scroll-mt-24 text-lg font-semibold leading-6 text-foreground">Portais Monitorados</h2>
               </div>
-              <div className="space-y-3">
+              <div className="divide-y divide-border">
                 {([
                   { key: 'compras_governamentais', label: 'Compras Governamentais' },
                   { key: 'pncp', label: 'PNCP' },
@@ -685,8 +690,8 @@ export default function Configuracoes() {
                   { key: 'licitanet', label: 'Licitanet' },
                   { key: 'portal_compras_publicas', label: 'Portal de Compras Públicas' },
                 ]).map((p) => (
-                  <div key={p.key} className="flex flex-wrap items-center justify-between gap-3 rounded-md bg-muted p-3">
-                    <Label htmlFor={`portal-${p.key}`} className="min-w-0 text-sm font-medium text-foreground">{p.label}</Label>
+                  <div key={p.key} className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
+                    <Label htmlFor={`portal-${p.key}`} className="min-w-0 text-base font-medium leading-5 text-foreground">{p.label}</Label>
                     <Switch
                       id={`portal-${p.key}`}
                       checked={portaisConfig[p.key] ?? false}
@@ -698,12 +703,12 @@ export default function Configuracoes() {
             </section>
 
             {/* Diários Oficiais */}
-            <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
+            <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
               <div className="mb-4 flex items-center gap-2">
                 <Newspaper className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-                <h2 className="text-lg font-semibold text-foreground">Diários Oficiais Monitorados</h2>
+                <h2 className="text-lg font-semibold leading-6 text-foreground">Diários Oficiais Monitorados</h2>
               </div>
-              <div className="space-y-3">
+              <div className="divide-y divide-border">
                 {([
                   { key: 'dou_federal', label: 'DOU (Federal)' },
                   { key: 'ioepa_estadual', label: 'IOEPA (Estadual)' },
@@ -712,8 +717,8 @@ export default function Configuracoes() {
                   { key: 'ioerj', label: 'IOERJ' },
                   { key: 'dodf_e', label: 'DODF.e (Distrito Federal)' },
                 ]).map((d) => (
-                  <div key={d.key} className="flex flex-wrap items-center justify-between gap-3 rounded-md bg-muted p-3">
-                    <Label htmlFor={`diario-${d.key}`} className="min-w-0 text-sm font-medium text-foreground">{d.label}</Label>
+                  <div key={d.key} className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
+                    <Label htmlFor={`diario-${d.key}`} className="min-w-0 text-base font-medium leading-5 text-foreground">{d.label}</Label>
                     <Switch
                       id={`diario-${d.key}`}
                       checked={diariosConfig[d.key] ?? true}
@@ -724,10 +729,10 @@ export default function Configuracoes() {
               </div>
             </section>
 
-            <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
-              <div className="mb-2 flex items-center gap-2">
+            <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
+              <div className="mb-1 flex items-center gap-2">
                 <MapPin className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-                <h2 className="text-lg font-semibold text-foreground">UFs prioritárias do Monitoramento</h2>
+                <h2 className="text-lg font-semibold leading-6 text-foreground">UFs prioritárias do Monitoramento</h2>
               </div>
               <p className="mb-4 text-sm text-muted-foreground">
                 Escolha as UFs que devem ser priorizadas no Monitoramento de Editais e na Central de Avisos.
@@ -775,10 +780,10 @@ export default function Configuracoes() {
             <BackupAgendado />
 
             {/* Exportar Dados */}
-            <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
-              <div className="mb-2 flex items-center gap-2">
+            <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
+              <div className="mb-1 flex items-center gap-2">
                 <Shield className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-                <h2 id="lgpd" className="scroll-mt-24 text-lg font-semibold text-foreground">Privacidade &amp; Dados (LGPD)</h2>
+                <h2 id="lgpd" className="scroll-mt-24 text-lg font-semibold leading-6 text-foreground">Privacidade &amp; Dados (LGPD)</h2>
               </div>
               <p className="mb-4 text-sm text-muted-foreground">
                 Exporte todos os seus dados em formato JSON. Conforme a LGPD, você tem direito à portabilidade dos seus dados a qualquer momento.
@@ -786,13 +791,16 @@ export default function Configuracoes() {
               <ExportarDados />
             </section>
 
-            <Button
-              onClick={handleSalvar}
-              disabled={loadingSalvar || !empresaAtiva}
-            >
-              {loadingSalvar ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Save aria-hidden="true" />}
-              Salvar Configurações
-            </Button>
+            {/* Rodapé de ações, à direita. */}
+            <div className="flex justify-end">
+              <Button
+                onClick={handleSalvar}
+                disabled={loadingSalvar || !empresaAtiva}
+              >
+                {loadingSalvar ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Save aria-hidden="true" />}
+                Salvar Configurações
+              </Button>
+            </div>
           </TabsContent>
 
           {/* ── Tab: Plano & Assinatura ── */}
@@ -814,23 +822,23 @@ export default function Configuracoes() {
 
           {/* ── Tab: Segurança ── */}
           <TabsContent value="seguranca" className="space-y-6">
-            <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
-              <div className="mb-2 flex items-center gap-2">
+            <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
+              <div className="mb-1 flex items-center gap-2">
                 <User className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-                <h2 className="text-lg font-semibold text-foreground">Usuário de Acesso</h2>
+                <h2 className="text-lg font-semibold leading-6 text-foreground">Usuário de Acesso</h2>
               </div>
               <p className="mb-4 text-sm text-muted-foreground">
                 Defina um nome de usuário para fazer login sem precisar digitar o e-mail. Use apenas letras minúsculas, números, ponto, hífen ou underscore.
               </p>
               <div className="flex max-w-sm flex-wrap items-end gap-3">
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 space-y-1.5">
                   <Label htmlFor="usuario-acesso">Nome de usuário</Label>
                   <Input
                     id="usuario-acesso"
                     value={username}
                     onChange={e => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_.-]/g, ''))}
                     placeholder="ex: joao.silva"
-                    className="mt-1 font-mono"
+                    className="font-mono"
                   />
                 </div>
                 <Button onClick={handleSalvarUsername} disabled={savingUsername || !username.trim()}>

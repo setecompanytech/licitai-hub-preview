@@ -12,6 +12,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -129,7 +130,7 @@ export default function MfaEnrollment() {
 
   if (loading) {
     return (
-      <section className="rounded-lg border border-border bg-card p-6 shadow-sm" role="status" aria-busy="true">
+      <section className="rounded-lg border border-border bg-card p-5 shadow-sm" role="status" aria-busy="true">
         <span className="sr-only">Carregando verificação em duas etapas</span>
         <Skeleton className="mb-4 h-6 w-64" />
         <Skeleton className="h-12 w-full" />
@@ -139,15 +140,16 @@ export default function MfaEnrollment() {
 
   return (
     <>
-      <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
+      <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
         <div className="mb-4 flex items-center gap-2">
           <Shield className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-          <h2 className="text-lg font-semibold text-foreground">Autenticação em Dois Fatores (2FA/MFA)</h2>
+          <h2 className="text-lg font-semibold leading-6 text-foreground">Autenticação em Dois Fatores (2FA/MFA)</h2>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 py-3">
-          <div>
-            <p className="text-base font-medium text-foreground">Verificação por aplicativo (TOTP)</p>
+        {/* Linha de opção: rótulo e descrição à esquerda, estado e ação à direita. */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-base font-medium leading-5 text-foreground">Verificação por aplicativo (TOTP)</p>
             <p className="mt-1 text-sm text-muted-foreground">
               Use Google Authenticator, Authy ou outro app compatível
             </p>
@@ -159,10 +161,9 @@ export default function MfaEnrollment() {
                   <ShieldCheck className="h-4 w-4" aria-hidden="true" /> Ativo
                 </Badge>
                 <Button
-                  variant="outline"
+                  variant="ghost-destructive"
                   onClick={handleUnenroll}
                   disabled={unenrolling}
-                  className="text-destructive hover:text-destructive"
                 >
                   {unenrolling ? <Loader2 className="animate-spin" aria-hidden="true" /> : <ShieldOff aria-hidden="true" />}
                   Desativar
@@ -223,8 +224,8 @@ export default function MfaEnrollment() {
                 <code className="flex-1 break-all rounded-md bg-muted px-3 py-2 font-mono text-sm">
                   {secret}
                 </code>
-                <Button variant="ghost" size="icon" onClick={copySecret} className="shrink-0" aria-label="Copiar código">
-                  {copied ? <CheckCircle2 className="text-success" aria-hidden="true" /> : <Copy aria-hidden="true" />}
+                <Button variant="ghost" size="icon-sm" onClick={copySecret} className="shrink-0" aria-label="Copiar código">
+                  {copied ? <CheckCircle2 className="text-success-ink" aria-hidden="true" /> : <Copy aria-hidden="true" />}
                 </Button>
               </div>
             </div>
@@ -244,15 +245,17 @@ export default function MfaEnrollment() {
               />
             </div>
 
+          </div>
+
+          <DialogFooter>
             <Button
               onClick={handleVerify}
               disabled={verifying || verifyCode.length !== 6}
-              className="w-full"
             >
               {verifying ? <Loader2 className="animate-spin" aria-hidden="true" /> : <ShieldCheck aria-hidden="true" />}
               Verificar e Ativar
             </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

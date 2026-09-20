@@ -67,41 +67,46 @@ export default function ApiIntegracao() {
             dele. */}
         <CabecalhoPagina />
 
-        <Card className="p-6">
-          <h2 className="text-lg font-semibold mb-2">Autenticação</h2>
-          <p className="text-sm text-muted-foreground mb-3">
-            Envie o token JWT do usuário no header <code className="rounded-sm bg-muted px-1 font-mono">Authorization: Bearer {'<token>'}</code>.
+        {/* Cartões do DS v3: p-5, título 16/24, descrição 13. Chaves, exemplos
+            e endpoints em blocos `bg-secondary rounded-md font-mono text-sm`;
+            o botão de copiar é só-ícone (`icon-sm`) com aria-label. */}
+        <Card className="p-5">
+          <h2 className="text-lg font-semibold leading-6 text-foreground">Autenticação</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Envie o token JWT do usuário no header <code className="rounded-sm bg-secondary px-1 font-mono text-foreground">Authorization: Bearer {'<token>'}</code>.
             O token é obtido ao fazer login na plataforma.
           </p>
-          <div className="relative overflow-x-auto rounded-md bg-muted p-4 font-mono text-sm">
+          <div className="relative mt-4 overflow-x-auto rounded-md bg-secondary p-4 font-mono text-sm text-foreground">
             <pre className="whitespace-pre-wrap pr-12">{curlExample}</pre>
             <Button
               variant="ghost"
-              size="icon"
+              size="icon-sm"
               className="absolute right-2 top-2"
               onClick={() => copyExample(-1, curlExample)}
               aria-label="Copiar exemplo de autenticação"
             >
-              {copiedIdx === -1 ? <CheckCircle2 className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
+              {copiedIdx === -1 ? <CheckCircle2 className="text-success-ink" aria-hidden="true" /> : <Copy aria-hidden="true" />}
             </Button>
           </div>
         </Card>
 
-        <Card className="p-6">
-          <h2 className="text-lg font-semibold mb-2">Endpoints disponíveis</h2>
-          <p className="text-sm text-muted-foreground mb-4">
+        <Card className="p-5">
+          <h2 className="text-lg font-semibold leading-6 text-foreground">Endpoints disponíveis</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
             REST em JSON, para integrar com sistemas externos — ERPs, CRMs e afins.
           </p>
-          <div className="space-y-2">
+          {/* Uma linha por endpoint, separadas por um fio; o caminho vai num
+              bloco mono rebaixado e embrulha no celular sem vazar. */}
+          <div className="mt-4 divide-y divide-border rounded-lg border border-border">
             {endpoints.map((ep, idx) => (
               <div
                 key={idx}
-                className="flex flex-wrap items-center gap-3 rounded-md border border-border p-3 transition-colors hover:bg-muted"
+                className="flex flex-wrap items-center gap-3 px-4 py-3 transition-colors duration-150 hover:bg-muted/60"
               >
                 <Badge variant={methodVariant[ep.method]} className="min-w-16 justify-center font-mono">
                   {ep.method}
                 </Badge>
-                <code className="break-all font-mono text-sm text-foreground sm:min-w-48">{ep.path}</code>
+                <code className="rounded-md bg-secondary px-2 py-1 font-mono text-sm text-foreground [overflow-wrap:anywhere] sm:min-w-48">{ep.path}</code>
                 <span className="min-w-48 flex-1 text-sm text-muted-foreground">{ep.desc}</span>
                 {ep.auth && (
                   <Badge variant="muted" className="gap-1">
@@ -113,34 +118,34 @@ export default function ApiIntegracao() {
           </div>
         </Card>
 
-        <Card className="p-6">
-          <h2 className="text-lg font-semibold mb-2">Exemplo: criar licitação</h2>
-          <div className="relative overflow-x-auto rounded-md bg-muted p-4 font-mono text-sm">
+        <Card className="p-5">
+          <h2 className="text-lg font-semibold leading-6 text-foreground">Exemplo: criar licitação</h2>
+          <div className="relative mt-4 overflow-x-auto rounded-md bg-secondary p-4 font-mono text-sm text-foreground">
             <pre className="whitespace-pre-wrap pr-12">{postExample}</pre>
             <Button
               variant="ghost"
-              size="icon"
+              size="icon-sm"
               className="absolute right-2 top-2"
               onClick={() => copyExample(-2, postExample)}
               aria-label="Copiar exemplo de criação"
             >
-              {copiedIdx === -2 ? <CheckCircle2 className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
+              {copiedIdx === -2 ? <CheckCircle2 className="text-success-ink" aria-hidden="true" /> : <Copy aria-hidden="true" />}
             </Button>
           </div>
         </Card>
 
-        <Card className="p-6">
-          <h2 className="text-lg font-semibold mb-2">Base URL</h2>
-          <div className="flex items-center justify-between gap-2 rounded-md bg-muted p-4 font-mono text-sm">
-            <span className="min-w-0 break-all">{BASE_URL}</span>
+        <Card className="p-5">
+          <h2 className="text-lg font-semibold leading-6 text-foreground">Base URL</h2>
+          <div className="mt-4 flex items-center justify-between gap-2 rounded-md bg-secondary p-4 font-mono text-sm text-foreground">
+            <span className="min-w-0 [overflow-wrap:anywhere]">{BASE_URL}</span>
             <Button
               variant="ghost"
-              size="icon"
-              className="flex-shrink-0"
+              size="icon-sm"
+              className="shrink-0"
               onClick={() => copyExample(-3, BASE_URL)}
               aria-label="Copiar Base URL"
             >
-              {copiedIdx === -3 ? <CheckCircle2 className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
+              {copiedIdx === -3 ? <CheckCircle2 className="text-success-ink" aria-hidden="true" /> : <Copy aria-hidden="true" />}
             </Button>
           </div>
         </Card>

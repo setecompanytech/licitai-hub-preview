@@ -5,11 +5,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import PraefectusLogo from '@/components/shared/PraefectusLogo';
 import {
   ShieldCheck, Upload, Loader2, CheckCircle2, XCircle,
-  Clock, Lock, AlertTriangle, Eye, EyeOff,
+  Clock, Lock, Eye, EyeOff, Building2,
 } from 'lucide-react';
 
 type TokenInfo = {
@@ -125,121 +127,152 @@ export default function CertificadoUpload() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-lg">
+    /* Página isolada (fora do AppLayout): fundo da página, cabeçalho com a
+       marca e um cartão padrão. Só apresentação — o envio e o tratamento da
+       senha do certificado não mudaram. */
+    <div className="min-h-screen bg-background px-4 py-8">
+      <div className="mx-auto w-full max-w-lg">
         <BotaoVoltar />
         {/* Header */}
-        <div className="text-center mb-8">
-          <PraefectusLogo className="h-10 mx-auto mb-4" />
-          <h1 className="text-xl font-bold text-foreground">Upload Seguro de Certificado Digital</h1>
-          <p className="text-sm text-muted-foreground mt-1">
+        <header className="mb-6">
+          <PraefectusLogo className="mb-4 h-10" />
+          <h1 className="text-2xl font-semibold leading-8 tracking-tight text-foreground">Upload Seguro de Certificado Digital</h1>
+          <p className="mt-1 text-sm leading-5 text-muted-foreground">
             Painel isolado — seu certificado será armazenado em container criptografado
           </p>
-        </div>
+        </header>
 
-        <div className="bg-card rounded-xl border border-border shadow-lg p-6 space-y-6">
+        <div className="space-y-6 rounded-lg border border-border bg-card p-5 shadow-sm">
           {status === 'loading' && (
-            <div className="flex flex-col items-center py-12 gap-3">
-              <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">Validando link...</p>
+            /* Espera na forma do formulário que vai aparecer; o texto fica para o leitor de tela. */
+            <div role="status" aria-busy="true" className="space-y-6">
+              <span className="sr-only">Validando link...</span>
+              <Skeleton className="h-[72px] w-full" />
+              <div className="space-y-4">
+                <Skeleton className="h-4 w-56 max-w-full" />
+                <Skeleton className="h-[88px] w-full" />
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+              <div className="flex justify-end">
+                <Skeleton className="h-10 w-64 max-w-full" />
+              </div>
             </div>
           )}
 
+          {/* Estados terminais do link em Alert semântico: erro em vermelho,
+              expirado em âmbar, já utilizado em verde — sempre com o texto. */}
           {status === 'invalid' && (
-            <div className="flex flex-col items-center py-12 gap-3 text-center">
-              <XCircle className="w-12 h-12 text-destructive" />
-              <h2 className="text-lg font-semibold text-foreground">Link Inválido</h2>
-              <p className="text-sm text-muted-foreground max-w-sm">
+            <Alert variant="destructive">
+              <XCircle aria-hidden="true" />
+              <AlertTitle>Link Inválido</AlertTitle>
+              <AlertDescription>
                 Este link de upload não é válido. Solicite um novo link através do painel do Agente Cloud.
-              </p>
-            </div>
+              </AlertDescription>
+            </Alert>
           )}
 
           {status === 'expired' && (
-            <div className="flex flex-col items-center py-12 gap-3 text-center">
-              <Clock className="w-12 h-12 text-warning" />
-              <h2 className="text-lg font-semibold text-foreground">Link Expirado</h2>
-              <p className="text-sm text-muted-foreground max-w-sm">
+            <Alert variant="warning">
+              <Clock aria-hidden="true" />
+              <AlertTitle>Link Expirado</AlertTitle>
+              <AlertDescription>
                 Este link expirou em{' '}
                 {tokenInfo?.expires_at && new Date(tokenInfo.expires_at).toLocaleString('pt-BR')}.
                 Solicite um novo link no painel do Agente Cloud.
-              </p>
-            </div>
+              </AlertDescription>
+            </Alert>
           )}
 
           {status === 'used' && (
-            <div className="flex flex-col items-center py-12 gap-3 text-center">
-              <CheckCircle2 className="w-12 h-12 text-success" />
-              <h2 className="text-lg font-semibold text-foreground">Certificado Já Enviado</h2>
-              <p className="text-sm text-muted-foreground max-w-sm">
+            <Alert variant="success">
+              <CheckCircle2 aria-hidden="true" />
+              <AlertTitle>Certificado Já Enviado</AlertTitle>
+              <AlertDescription>
                 Este link já foi utilizado para enviar um certificado. Caso precise reenviar, solicite um novo link.
-              </p>
-            </div>
+              </AlertDescription>
+            </Alert>
           )}
 
           {status === 'valid' && !uploaded && (
             <>
-              {/* Empresa info */}
+              {/* Empresa info — ladrilho neutro, eyebrow e razão social 14/600. */}
               {tokenInfo?.empresa && (
-                <div className="bg-muted border border-border rounded-lg p-4">
-                  <p className="text-xs font-semibold text-foreground uppercase tracking-wider mb-1">
-                    Empresa vinculada
-                  </p>
-                  <p className="text-sm font-bold text-foreground">{tokenInfo.empresa.razao_social}</p>
-                  <p className="text-xs text-muted-foreground">CNPJ: {tokenInfo.empresa.cnpj}</p>
+                <div className="flex items-start gap-3 rounded-md border border-border bg-secondary p-4">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                    <Building2 className="h-5 w-5" aria-hidden="true" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Empresa vinculada
+                    </p>
+                    <p className="mt-0.5 text-base font-semibold text-foreground">{tokenInfo.empresa.razao_social}</p>
+                    <p className="text-sm text-muted-foreground">CNPJ: {tokenInfo.empresa.cnpj}</p>
+                  </div>
                 </div>
               )}
 
               {/* Expiry warning */}
-              <div className="flex items-center gap-2 text-xs text-warning bg-warning/10 border border-warning/20 rounded-lg p-3">
-                <Clock className="w-4 h-4 shrink-0" />
-                <span>
+              <Alert variant="warning">
+                <Clock aria-hidden="true" />
+                <AlertDescription>
                   Link expira em:{' '}
                   <strong>
                     {tokenInfo?.expires_at && new Date(tokenInfo.expires_at).toLocaleString('pt-BR')}
                   </strong>
-                </span>
-              </div>
+                </AlertDescription>
+              </Alert>
 
               {/* Upload form */}
               <div className="space-y-4">
-                <div>
-                  <Label className="text-xs font-semibold">Certificado Digital (.pfx ou .p12) *</Label>
-                  <div className="mt-2">
-                    <label className="flex items-center justify-center gap-2 border-2 border-dashed border-border rounded-lg p-6 cursor-pointer hover:border-accent/50 hover:bg-accent/5 transition-colors">
-                      <input
-                        type="file"
-                        accept=".pfx,.p12"
-                        className="hidden"
-                        onChange={(e) => setFile(e.target.files?.[0] || null)}
-                      />
-                      {file ? (
-                        <div className="flex items-center gap-2">
-                          <ShieldCheck className="w-5 h-5 text-success" />
-                          <span className="text-sm font-medium text-foreground">{file.name}</span>
-                          <span className="text-xs text-muted-foreground">
+                <div className="space-y-1.5">
+                  <Label htmlFor="cert-arquivo">Certificado Digital (.pfx ou .p12) *</Label>
+                  {/* Zona de upload: tracejado na borda de campo, ladrilho com o
+                      ícone; o campo fica só para o leitor de tela (`sr-only`,
+                      não `hidden`) para continuar focável pelo teclado. */}
+                  <label className="flex cursor-pointer items-center gap-3 rounded-md border border-dashed border-input bg-card p-6 transition-colors duration-150 hover:border-primary/40 hover:bg-primary-tint focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+                    <input
+                      id="cert-arquivo"
+                      type="file"
+                      accept=".pfx,.p12"
+                      className="sr-only"
+                      onChange={(e) => setFile(e.target.files?.[0] || null)}
+                    />
+                    {file ? (
+                      <>
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-success-tint text-success-ink">
+                          <ShieldCheck className="h-5 w-5" aria-hidden="true" />
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-medium text-foreground">{file.name}</span>
+                          <span className="block text-xs text-muted-foreground">
                             ({(file.size / 1024).toFixed(0)} KB)
                           </span>
-                        </div>
-                      ) : (
-                        <div className="text-center">
-                          <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                          <p className="text-sm text-muted-foreground">
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                          <Upload className="h-5 w-5" aria-hidden="true" />
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block text-sm font-medium text-foreground">
                             Clique para selecionar o arquivo
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1">
+                          </span>
+                          <span className="mt-0.5 block text-xs text-muted-foreground">
                             Apenas .pfx ou .p12 — máximo 10MB
-                          </p>
-                        </div>
-                      )}
-                    </label>
-                  </div>
+                          </span>
+                        </span>
+                      </>
+                    )}
+                  </label>
                 </div>
 
-                <div>
-                  <Label className="text-xs font-semibold">Senha do Certificado *</Label>
-                  <div className="relative mt-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="cert-senha">Senha do Certificado *</Label>
+                  <div className="relative">
                     <Input
+                      id="cert-senha"
                       type={showSenha ? 'text' : 'password'}
                       value={senha}
                       onChange={(e) => setSenha(e.target.value)}
@@ -249,58 +282,61 @@ export default function CertificadoUpload() {
                     <button
                       type="button"
                       onClick={() => setShowSenha(!showSenha)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      aria-label={showSenha ? 'Ocultar senha' : 'Mostrar senha'}
+                      className="absolute right-1.5 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-sm text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
-                      {showSenha ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      {showSenha ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
                     </button>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground">
                     A senha é necessária para que o agente autentique nos portais
                   </p>
                 </div>
               </div>
 
               {/* Security notice */}
-              <div className="bg-success/10 border border-success/20 rounded-lg p-3 space-y-1.5">
-                <p className="text-xs font-semibold text-success flex items-center gap-1.5">
-                  <Lock className="w-3.5 h-3.5" />
-                  Garantias de segurança
-                </p>
-                <ul className="text-xs text-success/80 space-y-1 ml-5">
-                  <li>• Armazenamento em container Docker isolado e criptografado</li>
-                  <li>• Acesso exclusivo ao agente da sua empresa</li>
-                  <li>• Certificado deletado permanentemente ao cancelar o plano</li>
-                  <li>• Toda utilização registrada com IP e timestamp</li>
-                </ul>
-              </div>
+              <Alert variant="success">
+                <Lock aria-hidden="true" />
+                <AlertTitle>Garantias de segurança</AlertTitle>
+                <AlertDescription>
+                  <ul className="space-y-1">
+                    <li>• Armazenamento em container Docker isolado e criptografado</li>
+                    <li>• Acesso exclusivo ao agente da sua empresa</li>
+                    <li>• Certificado deletado permanentemente ao cancelar o plano</li>
+                    <li>• Toda utilização registrada com IP e timestamp</li>
+                  </ul>
+                </AlertDescription>
+              </Alert>
 
-              <Button
-                onClick={handleUpload}
-                disabled={!file || !senha || uploading}
-                className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-bold"
-              >
-                {uploading ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <ShieldCheck className="w-4 h-4 mr-2" />
-                )}
-                Enviar Certificado com Segurança
-              </Button>
+              {/* Rodapé de ação, à direita. */}
+              <div className="flex justify-end border-t border-border pt-4">
+                <Button
+                  onClick={handleUpload}
+                  disabled={!file || !senha || uploading}
+                >
+                  {uploading ? (
+                    <Loader2 className="animate-spin" aria-hidden="true" />
+                  ) : (
+                    <ShieldCheck aria-hidden="true" />
+                  )}
+                  Enviar Certificado com Segurança
+                </Button>
+              </div>
             </>
           )}
 
           {uploaded && (
-            <div className="flex flex-col items-center py-12 gap-4 text-center">
-              <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center">
-                <CheckCircle2 className="w-10 h-10 text-success" />
-              </div>
-              <h2 className="text-lg font-semibold text-foreground">Certificado Recebido com Segurança</h2>
-              <p className="text-sm text-muted-foreground max-w-sm">
-                Seu certificado digital foi recebido e vinculado à sua empresa.
-                Ele será utilizado para autenticação nos portais de licitação.
-              </p>
-              <div className="bg-muted/50 rounded-lg p-3 text-xs text-muted-foreground max-w-sm">
-                <p><strong>Próximos passos:</strong></p>
+            <div className="space-y-4">
+              <Alert variant="success">
+                <CheckCircle2 aria-hidden="true" />
+                <AlertTitle>Certificado Recebido com Segurança</AlertTitle>
+                <AlertDescription>
+                  Seu certificado digital foi recebido e vinculado à sua empresa.
+                  Ele será utilizado para autenticação nos portais de licitação.
+                </AlertDescription>
+              </Alert>
+              <div className="rounded-md bg-secondary p-4 text-sm text-muted-foreground">
+                <p><strong className="text-foreground">Próximos passos:</strong></p>
                 <p className="mt-1">Acesse o painel <strong>Robô de Lances → Checklist de Ativação</strong> para verificar o status do certificado. Ele será automaticamente reconhecido pelo sistema.</p>
               </div>
             </div>
@@ -308,7 +344,7 @@ export default function CertificadoUpload() {
         </div>
 
         {/* Footer */}
-        <p className="text-center text-xs text-muted-foreground mt-6">
+        <p className="mt-6 text-xs text-muted-foreground">
           Conexão segura via HTTPS • Armazenamento protegido • Em conformidade com a LGPD
         </p>
       </div>

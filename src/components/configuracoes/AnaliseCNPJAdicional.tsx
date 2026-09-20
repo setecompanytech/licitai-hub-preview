@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Building2, TrendingUp, ChevronDown, ChevronUp, BarChart3, Target, Scale, Users, Plus, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 
 const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -149,7 +150,7 @@ export default function AnaliseCNPJAdicional() {
   const sc = calcScenario(selectedScenario);
 
   return (
-    <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
+    <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
@@ -158,7 +159,7 @@ export default function AnaliseCNPJAdicional() {
       >
         <div className="flex items-center gap-2">
           <Building2 className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-          <h2 className="text-lg font-semibold text-foreground">Análise: Modelo CNPJ Adicional (Benchmark de Mercado)</h2>
+          <h2 className="text-lg font-semibold leading-6 text-foreground">Análise: Modelo CNPJ Adicional (Benchmark de Mercado)</h2>
         </div>
         {expanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" aria-hidden="true" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" aria-hidden="true" />}
       </button>
@@ -174,7 +175,7 @@ export default function AnaliseCNPJAdicional() {
               {BENCHMARKS.map((b) => (
                 <div key={b.nome} className="rounded-lg border border-border bg-muted p-4">
                   <div className="mb-2 flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-bold text-foreground">{b.nome}</span>
+                    <span className="text-sm font-semibold text-foreground">{b.nome}</span>
                     <Badge variant="muted">{b.modelo}</Badge>
                   </div>
                   <div className="mb-2 flex flex-wrap gap-2">
@@ -195,24 +196,24 @@ export default function AnaliseCNPJAdicional() {
 
           {/* 2. Conclusões do Benchmark */}
           <div className="rounded-lg border border-border bg-muted p-4">
-            <h3 className="mb-2 flex items-center gap-2 text-sm font-bold text-foreground">
+            <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-foreground">
               <Target className="h-4 w-4" aria-hidden="true" /> Conclusões do Benchmark
             </h3>
             <div className="space-y-2 text-sm text-muted-foreground">
               <div className="flex items-start gap-2">
-                <span className="shrink-0 font-bold text-foreground">1.</span>
+                <span className="shrink-0 font-semibold text-foreground">1.</span>
                 <span><strong className="text-foreground">Padrão do mercado: 1 CNPJ = 1 assinatura.</strong> ConLicitação, Effecti e a maioria cobram um plano completo por empresa. A Licitei cobra 3x pelo multi-empresa (sem desconto).</span>
               </div>
               <div className="flex items-start gap-2">
-                <span className="shrink-0 font-bold text-foreground">2.</span>
+                <span className="shrink-0 font-semibold text-foreground">2.</span>
                 <span><strong className="text-foreground">Exceção: Licitante Prime inclui 5 CNPJs</strong>, mas com funcionalidades muito limitadas (sem robô de lances, sem IA avançada). Preço agressivo de R$103-180/mês.</span>
               </div>
               <div className="flex items-start gap-2">
-                <span className="shrink-0 font-bold text-foreground">3.</span>
+                <span className="shrink-0 font-semibold text-foreground">3.</span>
                 <span><strong className="text-foreground">Faixa de preço por CNPJ no mercado: R$264 a R$515/mês</strong> para planos completos com robô de lances (referência ConLicitação).</span>
               </div>
               <div className="flex items-start gap-2">
-                <span className="shrink-0 font-bold text-foreground">4.</span>
+                <span className="shrink-0 font-semibold text-foreground">4.</span>
                 <span><strong className="text-foreground">Ninguém oferece "CNPJ adicional" com desconto.</strong> A PRAEFECTUS pode se diferenciar com um modelo mais acessível.</span>
               </div>
             </div>
@@ -231,25 +232,25 @@ export default function AnaliseCNPJAdicional() {
                 )}>
                   <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                     <div>
-                      <span className="text-base font-bold text-foreground">{p.nome}</span>
+                      <span className="text-base font-semibold text-foreground">{p.nome}</span>
                       <span className="ml-2 text-sm text-muted-foreground">{fmt(p.mensal)}/mês</span>
                     </div>
                     <Badge variant={i === 1 ? 'success' : 'muted'}>
                       {p.cnpjsInclusos} CNPJ{p.cnpjsInclusos > 1 ? 's' : ''} incluso{p.cnpjsInclusos > 1 ? 's' : ''}
                     </Badge>
                   </div>
-                  <div className="grid grid-cols-1 gap-2 text-center sm:grid-cols-3">
+                  <div className="grid gap-2 sm:grid-cols-3">
                     <div className="rounded-md bg-card p-2">
                       <p className="text-xs text-muted-foreground">Inclusos</p>
-                      <p className="text-sm font-bold tabular-nums">{p.cnpjsInclusos} CNPJ{p.cnpjsInclusos > 1 ? 's' : ''}</p>
+                      <p className="text-sm font-semibold tabular-nums">{p.cnpjsInclusos} CNPJ{p.cnpjsInclusos > 1 ? 's' : ''}</p>
                     </div>
                     <div className="rounded-md bg-card p-2">
                       <p className="text-xs text-muted-foreground">Máximo</p>
-                      <p className="text-sm font-bold tabular-nums">{p.maxCnpjs} CNPJs</p>
+                      <p className="text-sm font-semibold tabular-nums">{p.maxCnpjs} CNPJs</p>
                     </div>
                     <div className="rounded-md bg-card p-2">
                       <p className="text-xs text-muted-foreground">Custo c/ máximo</p>
-                      <p className="text-sm font-bold tabular-nums text-foreground">
+                      <p className="text-sm font-semibold tabular-nums text-foreground">
                         {fmt(p.mensal + (p.maxCnpjs - p.cnpjsInclusos) * CNPJ_ADDON_PRICE)}/mês
                       </p>
                     </div>
@@ -269,23 +270,23 @@ export default function AnaliseCNPJAdicional() {
 
           {/* 4. Custo incremental real por CNPJ */}
           <div className="rounded-lg border border-border bg-muted p-4">
-            <h3 className="mb-2 flex items-center gap-2 text-sm font-bold text-foreground">
-              <DollarSign className="h-4 w-4 text-warning" aria-hidden="true" /> Custo Real por CNPJ Adicional (para a PRAEFECTUS)
+            <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-foreground">
+              <DollarSign className="h-4 w-4 text-warning-ink" aria-hidden="true" /> Custo Real por CNPJ Adicional (para a PRAEFECTUS)
             </h3>
             <div className="mb-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
               {Object.entries(COST_PER_CNPJ).filter(([k]) => k !== 'total').map(([key, val]) => (
-                <div key={key} className="rounded-md bg-card p-2 text-center">
+                <div key={key} className="rounded-md bg-card p-2">
                   <p className="text-xs capitalize text-muted-foreground">{key.replace(/([A-Z])/g, ' $1')}</p>
-                  <p className="text-sm font-bold tabular-nums">{fmt(val)}</p>
+                  <p className="text-sm font-semibold tabular-nums">{fmt(val)}</p>
                 </div>
               ))}
             </div>
             <div className="flex items-center justify-between rounded-lg border border-warning-line bg-warning-tint p-3 text-warning-ink">
-              <span className="text-sm font-bold">Custo real por CNPJ adicional</span>
-              <span className="text-base font-bold tabular-nums">{fmt(COST_PER_CNPJ.total)}/mês</span>
+              <span className="text-sm font-semibold">Custo real por CNPJ adicional</span>
+              <span className="text-base font-semibold tabular-nums">{fmt(COST_PER_CNPJ.total)}/mês</span>
             </div>
             <p className="mt-2 text-sm text-muted-foreground">
-              <strong>Margem líquida por CNPJ adicional:</strong> {fmt(CNPJ_ADDON_PRICE)} - {fmt(COST_PER_CNPJ.total)} = <strong className="text-success">{fmt(CNPJ_ADDON_PRICE - COST_PER_CNPJ.total)} de lucro por CNPJ/mês</strong> ({((1 - COST_PER_CNPJ.total / CNPJ_ADDON_PRICE) * 100).toFixed(0)}% de margem).
+              <strong>Margem líquida por CNPJ adicional:</strong> {fmt(CNPJ_ADDON_PRICE)} - {fmt(COST_PER_CNPJ.total)} = <strong className="text-success-ink">{fmt(CNPJ_ADDON_PRICE - COST_PER_CNPJ.total)} de lucro por CNPJ/mês</strong> ({((1 - COST_PER_CNPJ.total / CNPJ_ADDON_PRICE) * 100).toFixed(0)}% de margem).
             </p>
           </div>
 
@@ -312,17 +313,17 @@ export default function AnaliseCNPJAdicional() {
 
             <div className="rounded-lg border border-border bg-muted p-4">
               {/* Breakdown por plano */}
-              <div className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <div className="mb-3 grid gap-2 sm:grid-cols-3">
                 {sc.clients.map(({ plan, count, extraCnpjs }) => (
-                  <div key={plan} className="rounded-md bg-card p-3 text-center">
+                  <div key={plan} className="rounded-md bg-card p-3">
                     <p className="text-xs text-muted-foreground">{PLANS[plan].nome}</p>
-                    <p className="text-sm font-bold tabular-nums">{count} clientes</p>
+                    <p className="text-sm font-semibold tabular-nums">{count} clientes</p>
                     <p className="text-xs text-muted-foreground">+{extraCnpjs} CNPJs extras/cada</p>
                     <div className="mt-1 border-t border-border pt-1">
                       <p className="text-sm font-medium tabular-nums text-foreground">
                         {fmt(PLANS[plan].mensal * count)} base
                       </p>
-                      <p className="text-sm font-medium tabular-nums text-success">
+                      <p className="text-sm font-medium tabular-nums text-success-ink">
                         +{fmt(CNPJ_ADDON_PRICE * extraCnpjs * count)} add-ons
                       </p>
                     </div>
@@ -332,21 +333,21 @@ export default function AnaliseCNPJAdicional() {
 
               {/* Summary */}
               <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <div className="rounded-md bg-card p-2 text-center">
+                <div className="rounded-md bg-card p-2">
                   <p className="text-xs text-muted-foreground">Receita Base</p>
-                  <p className="text-sm font-bold tabular-nums">{fmt(sc.revBase)}</p>
+                  <p className="text-sm font-semibold tabular-nums">{fmt(sc.revBase)}</p>
                 </div>
-                <div className="rounded-md border border-success-line bg-success-tint p-2 text-center text-success-ink">
+                <div className="rounded-md border border-success-line bg-success-tint p-2 text-success-ink">
                   <p className="text-xs">Receita CNPJs</p>
-                  <p className="text-sm font-bold tabular-nums">{fmt(sc.revAddon)}</p>
+                  <p className="text-sm font-semibold tabular-nums">{fmt(sc.revAddon)}</p>
                 </div>
-                <div className="rounded-md bg-card p-2 text-center">
+                <div className="rounded-md bg-card p-2">
                   <p className="text-xs text-muted-foreground">Total Receita</p>
-                  <p className="text-sm font-bold tabular-nums text-foreground">{fmt(sc.totalRev)}</p>
+                  <p className="text-sm font-semibold tabular-nums text-foreground">{fmt(sc.totalRev)}</p>
                 </div>
-                <div className="rounded-md bg-card p-2 text-center">
+                <div className="rounded-md bg-card p-2">
                   <p className="text-xs text-muted-foreground">CNPJs Ativos</p>
-                  <p className="text-sm font-bold tabular-nums">{sc.totalCnpjs}</p>
+                  <p className="text-sm font-semibold tabular-nums">{sc.totalCnpjs}</p>
                 </div>
               </div>
 
@@ -354,17 +355,17 @@ export default function AnaliseCNPJAdicional() {
                 <div className="flex flex-wrap items-center gap-3">
                   <div>
                     <p className="text-xs text-muted-foreground">Receita Total</p>
-                    <p className="text-sm font-bold tabular-nums text-foreground">{fmt(sc.totalRev)}</p>
+                    <p className="text-sm font-semibold tabular-nums text-foreground">{fmt(sc.totalRev)}</p>
                   </div>
                   <span className="text-muted-foreground">−</span>
                   <div>
                     <p className="text-xs text-muted-foreground">Custos Totais</p>
-                    <p className="text-sm font-bold tabular-nums text-destructive">{fmt(sc.totalCostAll)}</p>
+                    <p className="text-sm font-semibold tabular-nums text-destructive-ink">{fmt(sc.totalCostAll)}</p>
                   </div>
                   <span className="text-muted-foreground">=</span>
                   <div>
                     <p className="text-xs text-muted-foreground">Lucro</p>
-                    <p className="text-sm font-bold tabular-nums text-success-ink">{fmt(sc.profit)}</p>
+                    <p className="text-sm font-semibold tabular-nums text-success-ink">{fmt(sc.profit)}</p>
                   </div>
                 </div>
                 <div className="text-right">
@@ -379,7 +380,7 @@ export default function AnaliseCNPJAdicional() {
 
           {/* 6. Vantagem competitiva */}
           <div className="rounded-lg border border-border bg-muted p-4">
-            <h3 className="mb-2 flex items-center gap-2 text-sm font-bold text-foreground">
+            <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-foreground">
               <Users className="h-4 w-4" aria-hidden="true" /> Vantagem Competitiva: "Produto Completo, Sem Instalação"
             </h3>
             <div className="space-y-2 text-sm text-muted-foreground">
@@ -407,55 +408,56 @@ export default function AnaliseCNPJAdicional() {
             <h3 className={H3}>
               Comparativo: Custo para 5 CNPJs (Empresas)
             </h3>
-            <div className="overflow-x-auto rounded-lg border border-border">
-              <table className="w-full min-w-[520px] text-sm">
-                <thead>
-                  <tr className="border-b border-border bg-muted">
-                    <th className="px-3 py-3 text-left text-sm font-semibold text-foreground">Plataforma</th>
-                    <th className="px-3 py-3 text-right text-sm font-semibold text-foreground">Custo 5 CNPJs/mês</th>
-                    <th className="px-3 py-3 text-right text-sm font-semibold text-foreground">Por CNPJ</th>
-                    <th className="px-3 py-3 text-center text-sm font-semibold text-foreground">Robô</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-b border-success-line bg-success-tint text-success-ink">
-                    <td className="px-3 py-3 font-bold">PRAEFECTUS (Enterprise)</td>
-                    <td className="px-3 py-3 text-right font-bold tabular-nums">{fmt(997)}</td>
-                    <td className="px-3 py-3 text-right tabular-nums">{fmt(997 / 5)}</td>
-                    <td className="px-3 py-3 text-center"><Robo tem /></td>
-                  </tr>
-                  <tr className="border-b border-border">
-                    <td className="px-3 py-3 font-medium">ConLicitação (5× Premium)</td>
-                    <td className="px-3 py-3 text-right font-medium tabular-nums">{fmt(5 * 335)}</td>
-                    <td className="px-3 py-3 text-right tabular-nums text-muted-foreground">{fmt(335)}</td>
-                    <td className="px-3 py-3 text-center"><Robo tem={false} /></td>
-                  </tr>
-                  <tr className="border-b border-border">
-                    <td className="px-3 py-3 font-medium">ConLicitação (5× Super)</td>
-                    <td className="px-3 py-3 text-right font-medium tabular-nums">{fmt(5 * 264)}</td>
-                    <td className="px-3 py-3 text-right tabular-nums text-muted-foreground">{fmt(264)}</td>
-                    <td className="px-3 py-3 text-center"><Robo tem /></td>
-                  </tr>
-                  <tr className="border-b border-border">
-                    <td className="px-3 py-3 font-medium">Licitei (Multiempresas)</td>
-                    <td className="px-3 py-3 text-right font-medium tabular-nums">{fmt(1179 + 2 * 393)}</td>
-                    <td className="px-3 py-3 text-right tabular-nums text-muted-foreground">{fmt((1179 + 2 * 393) / 5)}</td>
-                    <td className="px-3 py-3 text-center"><Robo tem /></td>
-                  </tr>
-                  <tr>
-                    <td className="px-3 py-3 font-medium">Licitante Prime (incluso)</td>
-                    <td className="px-3 py-3 text-right font-medium tabular-nums">{fmt(180)}</td>
-                    <td className="px-3 py-3 text-right tabular-nums text-muted-foreground">{fmt(36)}</td>
-                    <td className="px-3 py-3 text-center"><Robo tem={false} /></td>
-                  </tr>
-                </tbody>
-              </table>
+            {/* Tabela do ui/table: cabeçalho `secondary`, linhas de 48px, números à direita. */}
+            <div className="overflow-hidden rounded-lg border border-border">
+              <Table className="min-w-[520px]">
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead>Plataforma</TableHead>
+                    <TableHead className="text-right">Custo 5 CNPJs/mês</TableHead>
+                    <TableHead className="text-right">Por CNPJ</TableHead>
+                    <TableHead className="text-center">Robô</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow className="bg-success-tint hover:bg-success-tint">
+                    <TableCell className="font-semibold text-success-ink">PRAEFECTUS (Enterprise)</TableCell>
+                    <TableCell className="text-right font-semibold tabular-nums text-success-ink">{fmt(997)}</TableCell>
+                    <TableCell className="text-right tabular-nums text-success-ink">{fmt(997 / 5)}</TableCell>
+                    <TableCell className="text-center"><Robo tem /></TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">ConLicitação (5× Premium)</TableCell>
+                    <TableCell className="text-right font-medium tabular-nums">{fmt(5 * 335)}</TableCell>
+                    <TableCell className="text-right tabular-nums text-muted-foreground">{fmt(335)}</TableCell>
+                    <TableCell className="text-center"><Robo tem={false} /></TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">ConLicitação (5× Super)</TableCell>
+                    <TableCell className="text-right font-medium tabular-nums">{fmt(5 * 264)}</TableCell>
+                    <TableCell className="text-right tabular-nums text-muted-foreground">{fmt(264)}</TableCell>
+                    <TableCell className="text-center"><Robo tem /></TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Licitei (Multiempresas)</TableCell>
+                    <TableCell className="text-right font-medium tabular-nums">{fmt(1179 + 2 * 393)}</TableCell>
+                    <TableCell className="text-right tabular-nums text-muted-foreground">{fmt((1179 + 2 * 393) / 5)}</TableCell>
+                    <TableCell className="text-center"><Robo tem /></TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Licitante Prime (incluso)</TableCell>
+                    <TableCell className="text-right font-medium tabular-nums">{fmt(180)}</TableCell>
+                    <TableCell className="text-right tabular-nums text-muted-foreground">{fmt(36)}</TableCell>
+                    <TableCell className="text-center"><Robo tem={false} /></TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
             </div>
           </div>
 
           {/* 8. Veredicto */}
-          <div className="rounded-lg border border-success-line bg-success-tint p-4 text-center">
-            <p className="mb-1 text-base font-bold text-success-ink">Modelo Validado pelo Mercado</p>
+          <div className="rounded-lg border border-success-line bg-success-tint p-4">
+            <p className="mb-1 text-base font-semibold text-success-ink">Modelo Validado pelo Mercado</p>
             <p className="text-sm text-muted-foreground">
               O modelo de <strong className="text-foreground">{fmt(CNPJ_ADDON_PRICE)}/CNPJ adicional</strong> é
               <strong className="text-success-ink"> 71% mais barato</strong> que a média do mercado (R$335/CNPJ na ConLicitação),

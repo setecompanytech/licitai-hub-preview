@@ -5,6 +5,7 @@ import {
   MessageSquare, Briefcase, Layers, Zap
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 
 const R$ = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -158,7 +159,7 @@ export default function AnalyseCustosPlanos() {
   };
 
   return (
-    <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
+    <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
@@ -167,7 +168,7 @@ export default function AnalyseCustosPlanos() {
       >
         <div className="flex items-center gap-2">
           <TrendingUp className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-          <h2 className="text-lg font-semibold text-foreground">Planilha Completa — Custos, Receita e Lucratividade</h2>
+          <h2 className="text-lg font-semibold leading-6 text-foreground">Planilha Completa — Custos, Receita e Lucratividade</h2>
         </div>
         {expanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" aria-hidden="true" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" aria-hidden="true" />}
       </button>
@@ -180,11 +181,11 @@ export default function AnalyseCustosPlanos() {
             <h3 className={H3}>
               <Server className="h-4 w-4" aria-hidden="true" /> 1. Custos Fixos Mensais da Plataforma
             </h3>
-            <div className="space-y-2">
+            <div className="divide-y divide-border">
               {fixedCosts.map((c) => {
                 const Icon = c.icon;
                 return (
-                  <div key={c.name} className="flex items-center justify-between gap-3 rounded-lg bg-muted p-3">
+                  <div key={c.name} className="flex items-center justify-between gap-3 py-2.5">
                     <div className="flex min-w-0 flex-1 items-center gap-3">
                       <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                       <div className="min-w-0">
@@ -192,16 +193,17 @@ export default function AnalyseCustosPlanos() {
                         <p className="truncate text-xs text-muted-foreground">{c.detail}</p>
                       </div>
                     </div>
-                    <span className={cn('shrink-0 text-right text-sm font-bold tabular-nums', c.monthly === 0 ? 'text-success' : 'text-foreground')}>
+                    <span className={cn('shrink-0 text-right text-sm font-semibold tabular-nums', c.monthly === 0 ? 'text-success-ink' : 'text-foreground')}>
                       {c.monthly === 0 ? 'Incluso' : R$(c.monthly)}
                     </span>
                   </div>
                 );
               })}
             </div>
-            <div className="mt-2 flex items-center justify-between rounded-lg border border-destructive-line bg-destructive-tint p-4 text-destructive-ink">
-              <span className="text-sm font-bold">Total Fixo Mensal</span>
-              <span className="text-right text-base font-bold tabular-nums">{R$(totalFixed)}</span>
+            {/* Total em superfície rebaixada — é uma soma, não um alerta. */}
+            <div className="mt-2 flex items-center justify-between rounded-md bg-secondary px-4 py-3 text-foreground">
+              <span className="text-sm font-semibold">Total Fixo Mensal</span>
+              <span className="text-right text-base font-semibold tabular-nums">{R$(totalFixed)}</span>
             </div>
           </div>
 
@@ -210,55 +212,56 @@ export default function AnalyseCustosPlanos() {
             <h3 className={H3}>
               <Layers className="h-4 w-4" aria-hidden="true" /> 2. Planos — Preço, Custo Variável, Lucro Bruto por Cliente
             </h3>
-            <div className="overflow-x-auto rounded-lg border border-border">
-              <table className="w-full min-w-[640px] text-sm">
-                <thead>
-                  <tr className="border-b border-border bg-muted">
-                    <th className="px-3 py-3 text-left text-sm font-semibold text-foreground">Plano</th>
-                    <th className="px-3 py-3 text-right text-sm font-semibold text-foreground">Mensal</th>
-                    <th className="px-3 py-3 text-center text-sm font-semibold text-foreground">CNPJs</th>
-                    <th className="px-3 py-3 text-center text-sm font-semibold text-foreground">Sessões</th>
-                    <th className="px-3 py-3 text-center text-sm font-semibold text-foreground">Usuários</th>
-                    <th className="px-3 py-3 text-right text-sm font-semibold text-foreground">Custo Var.</th>
-                    <th className="px-3 py-3 text-right text-sm font-semibold text-foreground">Lucro/cliente</th>
-                    <th className="px-3 py-3 text-right text-sm font-semibold text-foreground">Margem</th>
-                  </tr>
-                </thead>
-                <tbody>
+            {/* Tabela do ui/table: cabeçalho `secondary`, linhas de 48px, números à direita. */}
+            <div className="overflow-hidden rounded-lg border border-border">
+              <Table className="min-w-[640px]">
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead>Plano</TableHead>
+                    <TableHead className="text-right">Mensal</TableHead>
+                    <TableHead className="text-right">CNPJs</TableHead>
+                    <TableHead className="text-right">Sessões</TableHead>
+                    <TableHead className="text-right">Usuários</TableHead>
+                    <TableHead className="text-right">Custo Var.</TableHead>
+                    <TableHead className="text-right">Lucro/cliente</TableHead>
+                    <TableHead className="text-right">Margem</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {plans.map((p) => {
                     const v = varCost(p);
                     const profit = p.monthly - v.total;
                     const margin = (profit / p.monthly) * 100;
                     return (
-                      <tr key={p.slug} className="border-b border-border transition-colors hover:bg-muted">
-                        <td className={cn('px-3 py-3 font-bold', p.color)}>{p.name}</td>
-                        <td className="px-3 py-3 text-right font-bold tabular-nums text-success">{R$(p.monthly)}</td>
-                        <td className="px-3 py-3 text-center tabular-nums">{p.cnpjs}</td>
-                        <td className="px-3 py-3 text-center tabular-nums">{p.sessions || '—'}</td>
-                        <td className="px-3 py-3 text-center tabular-nums">{p.users}</td>
-                        <td className="px-3 py-3 text-right font-semibold tabular-nums text-destructive">{R$(v.total)}</td>
-                        <td className={cn('px-3 py-3 text-right font-bold tabular-nums', profit > 0 ? 'text-success' : 'text-destructive')}>{R$(profit)}</td>
-                        <td className="px-3 py-3 text-right font-bold tabular-nums text-foreground">{margin.toFixed(0)}%</td>
-                      </tr>
+                      <TableRow key={p.slug}>
+                        <TableCell className={cn('font-semibold', p.color)}>{p.name}</TableCell>
+                        <TableCell className="text-right font-semibold tabular-nums text-success-ink">{R$(p.monthly)}</TableCell>
+                        <TableCell className="text-right tabular-nums">{p.cnpjs}</TableCell>
+                        <TableCell className="text-right tabular-nums">{p.sessions || '—'}</TableCell>
+                        <TableCell className="text-right tabular-nums">{p.users}</TableCell>
+                        <TableCell className="text-right font-semibold tabular-nums text-destructive-ink">{R$(v.total)}</TableCell>
+                        <TableCell className={cn('text-right font-semibold tabular-nums', profit > 0 ? 'text-success-ink' : 'text-destructive-ink')}>{R$(profit)}</TableCell>
+                        <TableCell className="text-right font-semibold tabular-nums text-foreground">{margin.toFixed(0)}%</TableCell>
+                      </TableRow>
                     );
                   })}
-                </tbody>
-                <tfoot>
-                  <tr className="border-t border-border bg-muted">
-                    <td className="px-3 py-3 font-bold text-foreground" colSpan={3}>Sessão Adicional (Enterprise)</td>
-                    <td className="px-3 py-3 text-center font-bold">+1</td>
-                    <td className="px-3 py-3 text-center">—</td>
-                    <td className="px-3 py-3 text-right font-semibold tabular-nums text-destructive">{R$(COST_PER_SESSION)}</td>
-                    <td className="px-3 py-3 text-right font-bold tabular-nums text-success">{R$(ADDITIONAL_SESSION_PRICE - COST_PER_SESSION)}</td>
-                    <td className="px-3 py-3 text-right font-bold tabular-nums text-foreground">{R$(ADDITIONAL_SESSION_PRICE)}/mês</td>
-                  </tr>
-                </tfoot>
-              </table>
+                </TableBody>
+                <TableFooter>
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell className="font-semibold text-foreground" colSpan={3}>Sessão Adicional (Enterprise)</TableCell>
+                    <TableCell className="text-right font-semibold tabular-nums">+1</TableCell>
+                    <TableCell className="text-right">—</TableCell>
+                    <TableCell className="text-right font-semibold tabular-nums text-destructive-ink">{R$(COST_PER_SESSION)}</TableCell>
+                    <TableCell className="text-right font-semibold tabular-nums text-success-ink">{R$(ADDITIONAL_SESSION_PRICE - COST_PER_SESSION)}</TableCell>
+                    <TableCell className="text-right font-semibold tabular-nums text-foreground">{R$(ADDITIONAL_SESSION_PRICE)}/mês</TableCell>
+                  </TableRow>
+                </TableFooter>
+              </Table>
             </div>
 
             {/* Detalhamento do custo variável */}
-            <div className="mt-3 rounded-lg border border-border bg-muted p-4">
-              <p className="mb-2 text-sm font-bold text-muted-foreground">Composição do custo variável:</p>
+            <div className="mt-3 rounded-md border border-border bg-secondary p-4">
+              <p className="mb-2 text-sm font-semibold text-foreground">Composição do custo variável:</p>
               <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
                 <span>• Sessão Chromium: <strong className="text-foreground">{R$(COST_PER_SESSION)}/mês</strong> (~1 GB RAM)</span>
                 <span>• CNPJ (scraping + monit.): <strong className="text-foreground">{R$(COST_PER_CNPJ)}/mês</strong></span>
@@ -274,10 +277,10 @@ export default function AnalyseCustosPlanos() {
             </h3>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
               {plans.map((p) => (
-                <div key={p.slug} className="rounded-lg border border-border bg-card p-4">
+                <div key={p.slug} className="rounded-lg border border-border bg-card p-4 shadow-sm">
                   <div className="mb-3 flex items-center justify-between gap-2">
-                    <p className={cn('text-sm font-bold', p.color)}>{p.name}</p>
-                    <span className="text-sm font-bold tabular-nums text-success">{R$(p.monthly)}/mês</span>
+                    <p className={cn('text-base font-semibold', p.color)}>{p.name}</p>
+                    <span className="text-sm font-semibold tabular-nums text-success-ink">{R$(p.monthly)}/mês</span>
                   </div>
                   <div className="mb-3 flex gap-3 text-xs text-muted-foreground">
                     <span>{p.cnpjs} CNPJ{p.cnpjs > 1 ? 's' : ''}</span>
@@ -324,36 +327,34 @@ export default function AnalyseCustosPlanos() {
                 return (
                   <div key={p.slug} className="flex flex-wrap items-center gap-3 rounded-lg bg-card p-3">
                     <div className="min-w-0 flex-1">
-                      <p className={cn('text-sm font-bold', p.color)}>{p.name}</p>
+                      <p className={cn('text-sm font-semibold', p.color)}>{p.name}</p>
                       <p className="text-xs text-muted-foreground">{p.sessions} base + {extra} extras = {totalSessions} sessões</p>
                     </div>
                     <div className="flex items-center gap-1" role="group" aria-label={`Sessões extras do plano ${p.name}`}>
                       <Button
                         type="button"
                         variant="outline"
-                        size="sm"
-                        className="h-9 w-9 p-0"
+                        size="icon-sm"
                         aria-label="Remover uma sessão extra"
                         onClick={() => setExtraSessions(prev => ({ ...prev, [p.slug]: Math.max(0, (prev[p.slug] ?? 0) - 1) }))}
                       >−</Button>
-                      <span className="w-8 text-center text-sm font-bold tabular-nums" aria-live="polite">{extra}</span>
+                      <span className="w-8 text-center text-sm font-semibold tabular-nums" aria-live="polite">{extra}</span>
                       <Button
                         type="button"
                         variant="outline"
-                        size="sm"
-                        className="h-9 w-9 p-0"
+                        size="icon-sm"
                         aria-label="Adicionar uma sessão extra"
                         onClick={() => setExtraSessions(prev => ({ ...prev, [p.slug]: Math.min(10, (prev[p.slug] ?? 0) + 1) }))}
                       >+</Button>
                     </div>
                     <div className="shrink-0 text-right">
-                      <p className="text-sm font-bold tabular-nums text-success">{R$(totalRevenue)}</p>
-                      <p className="text-xs text-muted-foreground">custo {R$(totalCostVal)} · lucro <span className={cn('font-semibold', profit > 0 ? 'text-success' : 'text-destructive')}>{R$(profit)}</span> · margem {margin.toFixed(0)}%</p>
+                      <p className="text-sm font-semibold tabular-nums text-success-ink">{R$(totalRevenue)}</p>
+                      <p className="text-xs text-muted-foreground">custo {R$(totalCostVal)} · lucro <span className={cn('font-semibold', profit > 0 ? 'text-success-ink' : 'text-destructive-ink')}>{R$(profit)}</span> · margem {margin.toFixed(0)}%</p>
                     </div>
                   </div>
                 );
               })}
-              <p className="pt-1 text-center text-xs text-muted-foreground">
+              <p className="pt-1 text-xs text-muted-foreground">
                 Sessão adicional: <strong className="text-foreground">{R$(ADDITIONAL_SESSION_PRICE)}/mês</strong> (custo {R$(COST_PER_SESSION)} · lucro {R$(ADDITIONAL_SESSION_PRICE - COST_PER_SESSION)} · margem {(((ADDITIONAL_SESSION_PRICE - COST_PER_SESSION) / ADDITIONAL_SESSION_PRICE) * 100).toFixed(0)}%)
               </p>
             </div>
@@ -375,7 +376,7 @@ export default function AnalyseCustosPlanos() {
 
                 return (
                   <div key={sc.label} className={cn('rounded-lg border p-4', ok ? 'border-success-line bg-success-tint' : 'border-destructive-line bg-destructive-tint')}>
-                    <p className="mb-3 text-sm font-bold text-foreground">{sc.label}</p>
+                    <p className="mb-3 text-sm font-semibold text-foreground">{sc.label}</p>
 
                     {/* Mix de clientes */}
                     <div className="mb-3 flex flex-wrap gap-2">
@@ -383,9 +384,9 @@ export default function AnalyseCustosPlanos() {
                         const count = sc.mix[p.slug as keyof typeof sc.mix] || 0;
                         if (count === 0) return null;
                         return (
-                          <div key={p.slug} className="rounded-md border border-border bg-card px-3 py-2 text-center">
+                          <div key={p.slug} className="rounded-md border border-border bg-card px-3 py-2">
                             <p className="text-xs text-muted-foreground">{p.name}</p>
-                            <p className="text-sm font-bold tabular-nums text-foreground">{count}× {R$(p.monthly)}</p>
+                            <p className="text-sm font-semibold tabular-nums text-foreground">{count}× {R$(p.monthly)}</p>
                           </div>
                         );
                       })}
@@ -393,22 +394,22 @@ export default function AnalyseCustosPlanos() {
 
                     {/* Resultado */}
                     <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-                      <div className="rounded-md bg-card p-2 text-center">
-                        <p className="text-xs uppercase text-muted-foreground">Receita</p>
-                        <p className="text-sm font-bold tabular-nums text-foreground">{R$(revenue)}</p>
+                      <div className="rounded-md bg-card p-2">
+                        <p className="text-xs text-muted-foreground">Receita</p>
+                        <p className="text-sm font-semibold tabular-nums text-foreground">{R$(revenue)}</p>
                       </div>
-                      <div className="rounded-md bg-card p-2 text-center">
-                        <p className="text-xs uppercase text-muted-foreground">Fixo + Var.</p>
-                        <p className="text-sm font-bold tabular-nums text-destructive">{R$(totalCostScenario)}</p>
+                      <div className="rounded-md bg-card p-2">
+                        <p className="text-xs text-muted-foreground">Fixo + Var.</p>
+                        <p className="text-sm font-semibold tabular-nums text-destructive-ink">{R$(totalCostScenario)}</p>
                         <p className="text-xs text-muted-foreground">{R$(totalFixed)} + {R$(totalVar)}</p>
                       </div>
-                      <div className="rounded-md bg-card p-2 text-center">
-                        <p className="text-xs uppercase text-muted-foreground">Lucro</p>
-                        <p className={cn('text-sm font-bold tabular-nums', ok ? 'text-success' : 'text-destructive')}>{R$(profit)}</p>
+                      <div className="rounded-md bg-card p-2">
+                        <p className="text-xs text-muted-foreground">Lucro</p>
+                        <p className={cn('text-sm font-semibold tabular-nums', ok ? 'text-success-ink' : 'text-destructive-ink')}>{R$(profit)}</p>
                       </div>
-                      <div className="rounded-md bg-card p-2 text-center">
-                        <p className="text-xs uppercase text-muted-foreground">Margem</p>
-                        <p className={cn('text-base font-bold tabular-nums', ok ? 'text-success' : 'text-destructive')}>{margin.toFixed(0)}%</p>
+                      <div className="rounded-md bg-card p-2">
+                        <p className="text-xs text-muted-foreground">Margem</p>
+                        <p className={cn('text-base font-semibold tabular-nums', ok ? 'text-success-ink' : 'text-destructive-ink')}>{margin.toFixed(0)}%</p>
                       </div>
                     </div>
                   </div>
@@ -421,7 +422,7 @@ export default function AnalyseCustosPlanos() {
           <div className="rounded-lg border border-border bg-muted p-4">
             <div className="mb-2 flex items-center gap-2">
               <DollarSign className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-              <p className="text-sm font-bold text-foreground">6. Ponto de Equilíbrio (Break-even)</p>
+              <p className="text-sm font-semibold text-foreground">6. Ponto de Equilíbrio (Break-even)</p>
             </div>
             <div className="space-y-2 text-sm text-muted-foreground">
               <p>
@@ -443,7 +444,7 @@ export default function AnalyseCustosPlanos() {
 
           {/* ─── SEÇÃO 7: RESUMO EXECUTIVO ─── */}
           <div className="rounded-lg border border-success-line bg-success-tint p-4">
-            <p className="mb-2 text-center text-base font-bold text-success-ink">Resumo Executivo — Viabilidade Financeira</p>
+            <p className="mb-2 text-base font-semibold text-success-ink">Resumo Executivo — Viabilidade Financeira</p>
             <div className="space-y-2 text-sm text-muted-foreground">
               <p>
                 <strong className="text-foreground">Custos fixos de {R$(totalFixed)}/mês</strong> cobrem infraestrutura completa
