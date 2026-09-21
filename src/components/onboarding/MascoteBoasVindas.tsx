@@ -93,36 +93,39 @@ export default function MascoteBoasVindas({ open, onClose }: Props) {
        dispensá-la para sempre. */
     <Dialog open={open} onOpenChange={(aberto) => { if (!aberto) onClose(); }}>
       <DialogContent
-        className="max-w-3xl gap-0 p-0 overflow-hidden"
+        /* Diálogo do Design System v3: 12px de raio (do próprio `DialogContent`),
+           largura contida e a mascote numa coluna estreita, na superfície
+           rebaixada — presente, mas sem ilustração gigante. */
+        className="max-w-2xl gap-0 overflow-hidden p-0"
         onPointerDownOutside={(e) => e.preventDefault()}
         /* O foco nasce no "Entendi" — o caminho mais curto para quem só quer
            seguir — e não no primeiro botão da ordem do DOM. */
         onOpenAutoFocus={(e) => { e.preventDefault(); okRef.current?.focus(); }}
       >
-        <div className="grid grid-cols-1 sm:grid-cols-[240px_1fr]">
-          {/* Coluna do robô: sem fundo próprio, centralizado na vertical — assim
-              não sobra vazio em cima dele quando o texto ao lado é mais alto. */}
-          <div className="flex items-center justify-center px-6 pt-6 sm:py-6 sm:pl-6 sm:pr-3">
-            <div className="relative w-full max-w-[150px] sm:max-w-[220px]">
+        <div className="grid grid-cols-1 sm:grid-cols-[176px_1fr]">
+          {/* Coluna do robô: centralizado na vertical — assim não sobra vazio
+              em cima dele quando o texto ao lado é mais alto. */}
+          <div className="flex items-center justify-center bg-secondary px-6 pt-6 pb-2 sm:border-r sm:border-border sm:py-6 sm:pb-6">
+            <div className="relative w-full max-w-[104px] sm:max-w-[128px]">
               {/* A sombra elíptica no chão é o que impede o robô de flutuar sem
                   peso. Fica presa à figura para acompanhá-lo onde ele estiver. */}
               <span
                 aria-hidden="true"
-                className="absolute bottom-0 left-1/2 hidden h-4 w-3/5 -translate-x-1/2 rounded-full bg-foreground/15 blur-md sm:block"
+                className="absolute bottom-0 left-1/2 hidden h-3 w-3/5 -translate-x-1/2 rounded-full bg-foreground/15 blur-md sm:block"
               />
               <motion.img
                 src={mascote}
                 alt="Praefectus, o assistente de licitações, de terno e com o dedo indicador levantado"
                 className="relative z-10 block h-auto w-full"
-                animate={reduzirMovimento ? undefined : { y: [0, -8, 0] }}
+                animate={reduzirMovimento ? undefined : { y: [0, -6, 0] }}
                 transition={{ duration: 3.6, repeat: Infinity, ease: 'easeInOut' }}
               />
             </div>
           </div>
 
-          <div className="flex flex-col p-6 sm:py-8 sm:pr-8 sm:pl-4">
-            <Badge variant="info" className="w-fit gap-1">
-              <BadgeCheck className="w-4 h-4" aria-hidden="true" />
+          <div className="flex flex-col p-6 sm:p-8">
+            <Badge variant="ia" className="w-fit">
+              <BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />
               Seu assistente
             </Badge>
 
@@ -159,11 +162,11 @@ export default function MascoteBoasVindas({ open, onClose }: Props) {
               </Button>
             </div>
 
-            <div className="mt-6 flex flex-wrap items-center gap-4">
+            <div className="mt-6 flex flex-wrap items-center gap-4 border-t border-border pt-5">
               <Button type="button" onClick={onClose} ref={okRef}>
                 Entendi, obrigado!
               </Button>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs leading-4 text-muted-foreground">
                 Quando precisar de mim outra vez,<br />
                 o guia continua em <b className="font-semibold text-foreground">Ferramentas › Tutorial</b>.
               </span>

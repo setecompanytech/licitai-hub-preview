@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Lock, Loader2, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import MolduraAcesso from '@/components/auth/MolduraAcesso';
 
@@ -133,70 +134,87 @@ export default function ResetPassword() {
     }
   };
 
+  // Régua v3 das telas de acesso: título 24/600 e os avisos de estado com o
+  // ícone num ladrilho tingido (trio tint/ink), no lugar do ícone solto.
+  const classeTitulo = 'text-3xl font-semibold leading-8 tracking-tight text-foreground';
+  const classeAviso = 'flex flex-col items-center gap-3 py-4 text-center';
+  const classeLadrilho = 'inline-flex h-14 w-14 items-center justify-center rounded-full [&>svg]:h-7 [&>svg]:w-7';
+
   return (
     <MolduraAcesso>
         <div>
           {verifying ? (
-            <div className="text-center space-y-3 py-6">
-              <Loader2 className="w-8 h-8 animate-spin mx-auto text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">Validando link...</p>
+            /* A espera na forma do formulário que vai chegar (manual §5); o
+               texto segue existindo, para o leitor de tela. */
+            <div role="status" aria-live="polite" className="space-y-4">
+              <span className="sr-only">Validando link...</span>
+              <Skeleton className="h-8 w-3/5" />
+              <Skeleton className="h-4 w-4/5" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-11 w-full" />
             </div>
           ) : success ? (
-            <div className="text-center space-y-3">
-              <CheckCircle2 className="w-12 h-12 text-success mx-auto" />
-              <h2 className="font-heading text-[1.75rem] font-bold leading-9 text-foreground">Senha alterada!</h2>
-              <p className="text-sm text-muted-foreground">Redirecionando...</p>
+            <div className={classeAviso}>
+              <span aria-hidden="true" className={`${classeLadrilho} bg-success-tint text-success-ink`}>
+                <CheckCircle2 />
+              </span>
+              <h2 className={classeTitulo}>Senha alterada!</h2>
+              <p className="text-sm leading-5 text-muted-foreground">Redirecionando...</p>
             </div>
           ) : pendingTokenHash ? (
-            <div className="text-center space-y-5 py-2">
-              <ShieldCheck className="w-12 h-12 text-muted-foreground mx-auto" />
+            <div className={classeAviso}>
+              <span aria-hidden="true" className={`${classeLadrilho} bg-primary-tint text-primary`}>
+                <ShieldCheck />
+              </span>
               <div>
-                <h2 className="font-heading text-[1.75rem] font-bold leading-9 text-foreground mb-1">
+                <h2 className={classeTitulo}>
                   {isInvite ? 'Confirmar convite' : 'Confirmar acesso'}
                 </h2>
-                <p className="text-sm text-muted-foreground">
+                <p className="mt-1.5 text-sm leading-5 text-muted-foreground">
                   {isInvite
                     ? 'Clique no botão abaixo para confirmar seu convite e criar sua senha de acesso.'
                     : 'Clique no botão abaixo para validar seu link e redefinir sua senha.'}
                 </p>
               </div>
               <Button
-                className="w-full"
+                size="lg"
+                className="mt-2 w-full"
                 onClick={handleConfirm}
                 disabled={confirming}
               >
-                {confirming ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                {confirming ? <Loader2 className="animate-spin" aria-hidden="true" /> : null}
                 {isInvite ? 'Confirmar convite e criar senha' : 'Confirmar e redefinir senha'}
               </Button>
             </div>
           ) : canReset ? (
             <>
-              <h2 className="font-heading text-[1.75rem] font-bold leading-9 text-foreground text-center mb-2">
+              <h2 className={classeTitulo}>
                 {isInvite ? 'Bem-vindo! Crie sua senha' : 'Definir nova senha'}
               </h2>
-              <p className="text-xs text-muted-foreground text-center mb-6">
+              <p className="mt-1.5 text-sm leading-5 text-muted-foreground">
                 {isInvite
                   ? 'Defina uma senha para acessar sua conta no Praefectus.'
                   : 'Escolha uma nova senha para sua conta.'}
               </p>
-              <form onSubmit={handleReset} className="space-y-4">
+              <form onSubmit={handleReset} className="mt-6 space-y-4">
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Lock aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input type="password" placeholder={isInvite ? 'Crie uma senha' : 'Nova senha'} value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10" required minLength={6} autoFocus />
                 </div>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Lock aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input type="password" placeholder="Confirmar senha" value={confirm} onChange={(e) => setConfirm(e.target.value)} className="pl-10" required minLength={6} />
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                <Button type="submit" size="lg" className="w-full" disabled={loading}>
+                  {loading ? <Loader2 className="animate-spin" aria-hidden="true" /> : null}
                   {isInvite ? 'Criar senha e acessar' : 'Salvar nova senha'}
                 </Button>
               </form>
             </>
           ) : (
-            <div className="text-center space-y-3 py-6">
-              <p className="text-sm text-muted-foreground">Redirecionando para o login...</p>
+            <div className="py-6 text-center">
+              <p className="text-sm leading-5 text-muted-foreground">Redirecionando para o login...</p>
             </div>
           )}
         </div>

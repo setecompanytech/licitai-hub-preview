@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Check, User, Building2, Settings, BarChart3, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 import PraefectusLogo from '@/components/shared/PraefectusLogo';
 
 const UFS = ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'];
@@ -108,51 +109,68 @@ export default function Cadastro() {
     }
   };
 
+  // Régua v3 das telas de acesso: título 24/600, campo e <select> nativo com a
+  // mesma pele do `Input` (40px, raio 8, borda `input`, foco na cor de ação).
+  const classeTitulo = 'text-3xl font-semibold leading-8 tracking-tight text-foreground';
+  const classeSelect =
+    'flex h-10 w-full rounded-md border border-input bg-card px-3 py-2 text-base text-foreground shadow-sm transition-colors duration-150 hover:border-foreground-tertiary focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 md:text-sm';
+  const classeLinkTermos = 'font-medium text-primary underline underline-offset-2 transition-colors hover:text-primary-hover';
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 flex flex-col items-center justify-center p-4">
+    <div className="flex min-h-screen min-h-[100dvh] flex-col items-center justify-center bg-background px-4 py-8">
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-8 text-center">
-        <Link to="/">
+        <Link
+          to="/"
+          aria-label="Praefectus — página inicial"
+          className="inline-flex rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
           <PraefectusLogo size="lg" />
         </Link>
-        <p className="text-sm text-muted-foreground mt-2">
+        <p className="mt-2 text-sm text-muted-foreground">
           Plataforma completa para licitações públicas
         </p>
       </motion.div>
 
-      {/* Stepper */}
-      <div className="flex items-center gap-2 mb-8">
+      {/* Stepper em chips (manual §4): o feito na tinta da ação, o atual em
+          verde sólido, o próximo na superfície rebaixada. No celular só o
+          ícone aparece; o nome do passo continua para o leitor de tela. */}
+      <ol aria-label={`Etapa ${step + 1} de ${STEPS.length}`} className="mb-6 flex flex-wrap items-center justify-center gap-2">
         {STEPS.map((s, i) => {
           const Icon = s.icon;
           const isActive = i === step;
           const isDone = i < step;
           return (
-            <div key={i} className="flex items-center gap-2">
-              {i > 0 && <div className={`w-8 h-0.5 rounded-full transition-colors ${isDone ? 'bg-accent' : 'bg-border'}`} />}
+            <li key={i} className="flex items-center gap-2">
+              {i > 0 && (
+                <span
+                  aria-hidden="true"
+                  className={cn('h-0.5 w-6 rounded-full transition-colors', isDone ? 'bg-primary' : 'bg-border')}
+                />
+              )}
               <button
+                type="button"
                 onClick={() => i < step && setStep(i)}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
-                  isActive
-                    ? 'bg-accent text-accent-foreground shadow-md'
-                    : isDone
-                    ? 'bg-accent/10 text-accent cursor-pointer'
-                    : 'bg-muted text-muted-foreground'
-                }`}
+                aria-current={isActive ? 'step' : undefined}
+                className={cn(
+                  'inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                  isActive && 'border-primary bg-primary text-primary-foreground',
+                  isDone && 'cursor-pointer border-primary-line bg-primary-tint text-primary',
+                  !isActive && !isDone && 'border-transparent bg-muted text-muted-foreground',
+                )}
               >
-                {isDone ? <Check className="w-3.5 h-3.5" /> : <Icon className="w-3.5 h-3.5" />}
+                {isDone ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : <Icon className="h-3.5 w-3.5" aria-hidden="true" />}
                 <span className="hidden sm:inline">{s.label}</span>
+                <span className="sr-only sm:hidden">{s.label}</span>
               </button>
-            </div>
+            </li>
           );
         })}
-      </div>
+      </ol>
 
       {/* Form card */}
-      <motion.div
-        layout
-        className="w-full max-w-xl bg-card rounded-2xl border border-border/50 shadow-xl overflow-hidden"
-      >
-        <div className="p-8">
+      <div className="w-full max-w-xl overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+        <div className="p-6 sm:p-8">
           <AnimatePresence mode="wait">
             <motion.div
               key={step}
@@ -164,24 +182,24 @@ export default function Cadastro() {
               {/* Step 0 — Contact */}
               {step === 0 && (
                 <div className="space-y-5">
-                  <h3 className="text-lg font-bold text-foreground">Dados do contato</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="col-span-full">
+                  <h2 className={classeTitulo}>Dados do contato</h2>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="col-span-full space-y-2">
                       <Label>Nome completo *</Label>
                       <Input value={nome} onChange={e => setNome(e.target.value)} placeholder="Seu nome completo" />
                     </div>
-                    <div>
+                    <div className="space-y-2">
                       <Label>Cargo *</Label>
-                      <select value={cargo} onChange={e => setCargo(e.target.value)} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                      <select value={cargo} onChange={e => setCargo(e.target.value)} className={classeSelect}>
                         <option value="">Selecionar</option>
                         {CARGOS.map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
                     </div>
-                    <div>
+                    <div className="space-y-2">
                       <Label>Celular</Label>
                       <Input value={celular} onChange={e => setCelular(e.target.value)} placeholder="(00) 00000-0000" />
                     </div>
-                    <div>
+                    <div className="space-y-2">
                       <Label>Telefone empresarial</Label>
                       <Input value={telefone} onChange={e => setTelefone(e.target.value)} placeholder="(00) 0000-0000" />
                     </div>
@@ -192,33 +210,42 @@ export default function Cadastro() {
               {/* Step 1 — Account */}
               {step === 1 && (
                 <div className="space-y-5">
-                  <h3 className="text-lg font-bold text-foreground">Dados da conta</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
+                  <h2 className={classeTitulo}>Dados da conta</h2>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
                       <Label>E-mail *</Label>
                       <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="seu@email.com" />
                     </div>
-                    <div>
+                    <div className="space-y-2">
                       <Label>Confirmar e-mail *</Label>
                       <Input type="email" value={emailConfirm} onChange={e => setEmailConfirm(e.target.value)} placeholder="Confirme o e-mail" />
                     </div>
-                    <div className="col-span-full">
+                    <div className="col-span-full space-y-2">
                       <Label>CNPJ *</Label>
                       <Input value={cnpj} onChange={e => setCnpj(e.target.value)} placeholder="00.000.000/0000-00" />
                     </div>
-                    <div className="relative">
+                    <div className="space-y-2">
                       <Label>Senha *</Label>
-                      <Input
-                        type={showPassword ? 'text' : 'password'}
-                        value={senha}
-                        onChange={e => setSenha(e.target.value)}
-                        placeholder="Mínimo 6 caracteres"
-                      />
-                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-8 text-muted-foreground">
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
+                      <div className="relative">
+                        <Input
+                          type={showPassword ? 'text' : 'password'}
+                          value={senha}
+                          onChange={e => setSenha(e.target.value)}
+                          placeholder="Mínimo 6 caracteres"
+                          className="pr-11"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                          aria-pressed={showPassword}
+                          className="absolute right-1 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          {showPassword ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
+                        </button>
+                      </div>
                     </div>
-                    <div>
+                    <div className="space-y-2">
                       <Label>Confirmar senha *</Label>
                       <Input
                         type={showPassword ? 'text' : 'password'}
@@ -234,26 +261,32 @@ export default function Cadastro() {
               {/* Step 2 — Service config */}
               {step === 2 && (
                 <div className="space-y-5">
-                  <h3 className="text-lg font-bold text-foreground">Configuração do serviço</h3>
+                  <h2 className={classeTitulo}>Configuração do serviço</h2>
                   <div>
                     <Label className="mb-3 block">Estados de interesse *</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {UFS.map(uf => (
-                        <button
-                          key={uf}
-                          onClick={() => toggleUf(uf)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
-                            ufsInteresse.includes(uf)
-                              ? 'bg-accent text-accent-foreground border-accent shadow-sm'
-                              : 'bg-muted/50 text-muted-foreground border-border/50 hover:bg-muted'
-                          }`}
-                        >
-                          {uf}
-                        </button>
-                      ))}
+                    <div className="flex flex-wrap gap-2" role="group" aria-label="Estados de interesse">
+                      {UFS.map(uf => {
+                        const selecionado = ufsInteresse.includes(uf);
+                        return (
+                          <button
+                            key={uf}
+                            type="button"
+                            onClick={() => toggleUf(uf)}
+                            aria-pressed={selecionado}
+                            className={cn(
+                              'inline-flex h-8 items-center rounded-md border px-2.5 text-xs font-semibold tabular-nums transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                              selecionado
+                                ? 'border-primary bg-primary-tint text-primary'
+                                : 'border-input bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground',
+                            )}
+                          >
+                            {uf}
+                          </button>
+                        );
+                      })}
                     </div>
                     {ufsInteresse.length > 0 && (
-                      <p className="text-xs text-muted-foreground mt-2 font-medium">{ufsInteresse.length} estado(s) selecionado(s)</p>
+                      <p className="mt-2 text-xs font-medium tabular-nums text-muted-foreground">{ufsInteresse.length} estado(s) selecionado(s)</p>
                     )}
                   </div>
                 </div>
@@ -262,32 +295,32 @@ export default function Cadastro() {
               {/* Step 3 — Profile */}
               {step === 3 && (
                 <div className="space-y-5">
-                  <h3 className="text-lg font-bold text-foreground">Informações do perfil</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
+                  <h2 className={classeTitulo}>Informações do perfil</h2>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
                       <Label>Como conheceu a plataforma?</Label>
-                      <select value={comoConheceu} onChange={e => setComoConheceu(e.target.value)} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                      <select value={comoConheceu} onChange={e => setComoConheceu(e.target.value)} className={classeSelect}>
                         <option value="">Selecionar</option>
                         {COMO_CONHECEU.map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
                     </div>
-                    <div>
+                    <div className="space-y-2">
                       <Label>Quantidade de funcionários</Label>
-                      <select value={qtdFuncionarios} onChange={e => setQtdFuncionarios(e.target.value)} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                      <select value={qtdFuncionarios} onChange={e => setQtdFuncionarios(e.target.value)} className={classeSelect}>
                         <option value="">Selecionar</option>
                         {QTD_FUNCIONARIOS.map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
                     </div>
-                    <div>
+                    <div className="space-y-2">
                       <Label>Licitações que participa por mês</Label>
-                      <select value={licitacoesMes} onChange={e => setLicitacoesMes(e.target.value)} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                      <select value={licitacoesMes} onChange={e => setLicitacoesMes(e.target.value)} className={classeSelect}>
                         <option value="">Selecionar</option>
                         {LICITACOES_MES.map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
                     </div>
-                    <div>
+                    <div className="space-y-2">
                       <Label>Faturamento anual com licitações</Label>
-                      <select value={faturamentoAnual} onChange={e => setFaturamentoAnual(e.target.value)} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                      <select value={faturamentoAnual} onChange={e => setFaturamentoAnual(e.target.value)} className={classeSelect}>
                         <option value="">Selecionar</option>
                         {FATURAMENTO_ANUAL.map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
@@ -300,50 +333,50 @@ export default function Cadastro() {
         </div>
 
         {/* Footer nav */}
-        <div className="border-t border-border/50 px-8 py-5 flex items-center justify-between bg-muted/20">
-          <div>
-            {step > 0 ? (
-              <Button variant="ghost" size="sm" onClick={() => setStep(step - 1)}>
-                <ArrowLeft className="w-4 h-4 mr-1" /> Voltar
-              </Button>
-            ) : (
-              <Button variant="ghost" size="sm" onClick={() => navigate('/landing#planos')}>
-                <ArrowLeft className="w-4 h-4 mr-1" /> Planos
-              </Button>
-            )}
+        <div className="border-t border-border bg-secondary px-6 py-4 sm:px-8">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              {step > 0 ? (
+                <Button type="button" variant="ghost" size="sm" onClick={() => setStep(step - 1)}>
+                  <ArrowLeft aria-hidden="true" /> Voltar
+                </Button>
+              ) : (
+                <Button type="button" variant="ghost" size="sm" onClick={() => navigate('/landing#planos')}>
+                  <ArrowLeft aria-hidden="true" /> Planos
+                </Button>
+              )}
+            </div>
+
+            <div>
+              {step < 3 ? (
+                <Button
+                  type="button"
+                  onClick={() => setStep(step + 1)}
+                  disabled={!canNext()}
+                >
+                  Próximo <ArrowRight aria-hidden="true" />
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={loading}
+                >
+                  {loading ? <Loader2 className="animate-spin" aria-hidden="true" /> : null}
+                  Enviar cadastro
+                </Button>
+              )}
+            </div>
           </div>
 
-          <div>
-            {step < 3 ? (
-              <Button
-                onClick={() => setStep(step + 1)}
-                disabled={!canNext()}
-                className="rounded-xl font-bold bg-accent hover:bg-accent/90 text-accent-foreground"
-              >
-                Próximo <ArrowRight className="w-4 h-4 ml-1" />
-              </Button>
-            ) : (
-              <Button
-                onClick={handleSubmit}
-                disabled={loading}
-                className="rounded-xl font-bold bg-accent hover:bg-accent/90 text-accent-foreground"
-              >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
-                Enviar cadastro
-              </Button>
-            )}
-          </div>
-        </div>
-
-        {/* Terms */}
-        <div className="px-8 pb-5">
-          <p className="text-xs text-muted-foreground text-center leading-relaxed">
+          {/* Terms */}
+          <p className="mt-4 text-center text-xs leading-4 text-muted-foreground">
             Ao confirmar o cadastro, declara estar ciente e de acordo com nossos{' '}
-            <Link to="/termos-de-uso" className="underline text-accent">Termos de uso</Link> e{' '}
-            <Link to="/politica-de-privacidade" className="underline text-accent">Política de privacidade</Link>
+            <Link to="/termos-de-uso" className={classeLinkTermos}>Termos de uso</Link> e{' '}
+            <Link to="/politica-de-privacidade" className={classeLinkTermos}>Política de privacidade</Link>
           </p>
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Lock, User, Loader2, CheckCircle2, AlertCircle, KeyRound } from 'lucide-react';
 import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import MolduraAcesso from '@/components/auth/MolduraAcesso';
 
@@ -201,21 +202,36 @@ export default function AceitarConvite() {
     }
   };
 
+  // Régua v3 das telas de acesso: título 24/600 e os avisos de estado com o
+  // ícone num ladrilho tingido (trio tint/ink), no lugar do ícone solto.
+  const classeTitulo = 'text-3xl font-semibold leading-8 tracking-tight text-foreground';
+  const classeAviso = 'flex flex-col items-center gap-3 py-4 text-center';
+  const classeLadrilho = 'inline-flex h-14 w-14 items-center justify-center rounded-full [&>svg]:h-7 [&>svg]:w-7';
+
   return (
     <MolduraAcesso>
         <div>
           {status === 'loading' && (
-            <div className="text-center space-y-3 py-6">
-              <Loader2 className="w-8 h-8 animate-spin mx-auto text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">Validando convite...</p>
+            /* A espera na forma do formulário que vai chegar (manual §5); o
+               texto segue existindo, para o leitor de tela. */
+            <div role="status" aria-live="polite" className="space-y-4">
+              <span className="sr-only">Validando convite...</span>
+              <Skeleton className="h-8 w-3/5" />
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-11 w-full" />
             </div>
           )}
 
           {status === 'invalid' && (
-            <div className="text-center space-y-4 py-6">
-              <AlertCircle className="w-12 h-12 text-destructive mx-auto" />
-              <h2 className="font-heading text-[1.75rem] font-bold leading-9 text-foreground">Convite inválido ou expirado</h2>
-              <p className="text-sm text-muted-foreground">
+            <div className={classeAviso}>
+              <span aria-hidden="true" className={`${classeLadrilho} bg-destructive-tint text-destructive-ink`}>
+                <AlertCircle />
+              </span>
+              <h2 className={classeTitulo}>Convite inválido ou expirado</h2>
+              <p className="text-sm leading-5 text-muted-foreground">
                 Este link de convite não existe ou não é mais válido.
               </p>
               <Button variant="outline" className="w-full" onClick={() => navigate('/auth')}>
@@ -225,10 +241,12 @@ export default function AceitarConvite() {
           )}
 
           {status === 'expired' && (
-            <div className="text-center space-y-4 py-6">
-              <AlertCircle className="w-12 h-12 text-destructive mx-auto" />
-              <h2 className="font-heading text-[1.75rem] font-bold leading-9 text-foreground">Convite expirado</h2>
-              <p className="text-sm text-muted-foreground">
+            <div className={classeAviso}>
+              <span aria-hidden="true" className={`${classeLadrilho} bg-destructive-tint text-destructive-ink`}>
+                <AlertCircle />
+              </span>
+              <h2 className={classeTitulo}>Convite expirado</h2>
+              <p className="text-sm leading-5 text-muted-foreground">
                 Este convite expirou. Solicite ao administrador que envie um novo convite.
               </p>
               <Button variant="outline" className="w-full" onClick={() => navigate('/auth')}>
@@ -238,10 +256,12 @@ export default function AceitarConvite() {
           )}
 
           {status === 'used' && (
-            <div className="text-center space-y-4 py-6">
-              <CheckCircle2 className="w-12 h-12 text-success mx-auto" />
-              <h2 className="font-heading text-[1.75rem] font-bold leading-9 text-foreground">Convite já utilizado</h2>
-              <p className="text-sm text-muted-foreground">
+            <div className={classeAviso}>
+              <span aria-hidden="true" className={`${classeLadrilho} bg-success-tint text-success-ink`}>
+                <CheckCircle2 />
+              </span>
+              <h2 className={classeTitulo}>Convite já utilizado</h2>
+              <p className="text-sm leading-5 text-muted-foreground">
                 Este convite já foi aceito. Acesse sua conta normalmente.
               </p>
               <Button
@@ -254,37 +274,43 @@ export default function AceitarConvite() {
           )}
 
           {status === 'success' && (
-            <div className="text-center space-y-3 py-6">
-              <CheckCircle2 className="w-12 h-12 text-success mx-auto" />
-              <h2 className="font-heading text-[1.75rem] font-bold leading-9 text-foreground">Conta criada!</h2>
-              <p className="text-sm text-muted-foreground">Redirecionando...</p>
+            <div className={classeAviso}>
+              <span aria-hidden="true" className={`${classeLadrilho} bg-success-tint text-success-ink`}>
+                <CheckCircle2 />
+              </span>
+              <h2 className={classeTitulo}>Conta criada!</h2>
+              <p className="text-sm leading-5 text-muted-foreground">Redirecionando...</p>
             </div>
           )}
 
           {status === 'valid' && convite && (
             <>
-              <h2 className="font-heading text-[1.75rem] font-bold leading-9 text-foreground text-center mb-2">Criar sua conta</h2>
-              <p className="text-xs text-muted-foreground text-center mb-1">
-                Você foi convidado para
-              </p>
-              <p className="text-sm font-semibold text-center mb-1">
-                {convite.empresa_nome}
-              </p>
-              <p className="text-xs text-muted-foreground text-center mb-6">
-                Setor:{' '}
-                <span className="font-medium">
-                  {equipeLabels[convite.equipe] ?? convite.equipe}
-                </span>
-              </p>
+              <h2 className={classeTitulo}>Criar sua conta</h2>
+              {/* Para onde o convite leva, num bloco rebaixado: empresa em
+                  destaque, setor como linha secundária. */}
+              <div className="mt-4 rounded-lg border border-border bg-secondary px-4 py-3">
+                <p className="text-xs leading-4 text-muted-foreground">
+                  Você foi convidado para
+                </p>
+                <p className="mt-0.5 text-base font-semibold leading-5 text-foreground">
+                  {convite.empresa_nome}
+                </p>
+                <p className="mt-0.5 text-sm leading-5 text-muted-foreground">
+                  Setor:{' '}
+                  <span className="font-medium text-foreground">
+                    {equipeLabels[convite.equipe] ?? convite.equipe}
+                  </span>
+                </p>
+              </div>
 
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="mt-6 space-y-4">
                 {/* Rótulos VISÍVEIS: com só texto de exemplo, o preenchimento
                     automático do navegador apaga a única pista de qual campo é
                     qual — foi assim que um e-mail acabou no campo de login. */}
-                <div className="space-y-1">
-                  <Label htmlFor="convite-nome" className="text-xs">Nome completo</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="convite-nome">Nome completo</Label>
                   <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <User aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
                       id="convite-nome"
                       name="nome-completo"
@@ -299,13 +325,13 @@ export default function AceitarConvite() {
                     />
                   </div>
                 </div>
-                <div className="space-y-1">
-                  <Label htmlFor="convite-login" className="text-xs">Login de acesso</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="convite-login">Login de acesso</Label>
                   {/* name fora do vocabulário de credencial: com "login" ou
                       "username" o Chrome injeta o e-mail salvo, ignorando o
                       autoComplete="off". */}
                   <div className="relative">
-                    <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <KeyRound aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
                       id="convite-login"
                       name="apelido-de-acesso"
@@ -318,23 +344,23 @@ export default function AceitarConvite() {
                       spellCheck={false}
                     />
                     {checandoLogin && (
-                      <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
+                      <Loader2 aria-hidden="true" className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
                     )}
                     {!checandoLogin && loginLivre === true && (
-                      <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-success" />
+                      <CheckCircle2 aria-hidden="true" className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-success" />
                     )}
                     {!checandoLogin && loginLivre === false && (
-                      <AlertCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-destructive" />
+                      <AlertCircle aria-hidden="true" className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-destructive" />
                     )}
                   </div>
-                  <p className={`text-xs ${loginLivre === false ? 'text-destructive' : 'text-muted-foreground'}`}>
+                  <p className={`text-xs leading-4 ${loginLivre === false ? 'text-destructive-ink' : 'text-muted-foreground'}`}>
                     {loginLivre === false
                       ? 'Esse login já está em uso. Escolha outro.'
                       : 'É com ele que você vai entrar no sistema. Use o que preferir — nome, apelido ou código — sem "@".'}
                   </p>
                 </div>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Lock aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     type="password"
                     placeholder="Criar senha (mín. 8 caracteres)"
@@ -346,7 +372,7 @@ export default function AceitarConvite() {
                   />
                 </div>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Lock aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     type="password"
                     placeholder="Confirmar senha"
@@ -359,10 +385,11 @@ export default function AceitarConvite() {
                 </div>
                 <Button
                   type="submit"
+                  size="lg"
                   className="w-full"
                   disabled={submitting}
                 >
-                  {submitting && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                  {submitting && <Loader2 className="animate-spin" aria-hidden="true" />}
                   Criar minha conta
                 </Button>
               </form>

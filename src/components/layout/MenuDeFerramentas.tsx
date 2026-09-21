@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ChevronDown, LayoutGrid, Search, Star, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
 import { usePreferenciasDeNavegacao } from '@/hooks/usePreferenciasDeNavegacao';
 import {
@@ -110,24 +113,27 @@ function ItemDeFerramenta({
         onClick={() => aoEscolher(f)}
         aria-current={ativo ? 'page' : undefined}
         className={cn(
-          'flex min-h-[30px] items-center gap-2.5 rounded-md py-1 pl-3 pr-10 transition-colors',
+          'flex min-h-9 items-center gap-2.5 rounded-md py-1.5 pl-3 pr-10 text-sm transition-colors duration-150',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
-          ativo ? 'bg-muted font-semibold text-foreground' : 'text-foreground/90 hover:bg-muted/60',
+          ativo ? 'bg-primary-tint font-semibold text-primary' : 'text-foreground hover:bg-muted',
         )}
       >
-        {/* O marcador verde da função atual. Fundo cinza sozinho é fraco demais
+        {/* O marcador verde da função atual. Fundo tingido sozinho é fraco demais
             para distinguir uma linha num diretório de quarenta e poucas. */}
         {ativo && (
           <span
             aria-hidden="true"
-            className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r bg-primary"
+            className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-primary"
           />
         )}
-        <f.icone aria-hidden="true" className="h-[18px] w-[18px] shrink-0 text-muted-foreground" />
+        <f.icone
+          aria-hidden="true"
+          className={cn('h-[18px] w-[18px] shrink-0', ativo ? 'text-primary' : 'text-muted-foreground')}
+        />
         <span className="min-w-0 flex-1">
-          <span className="g-corpo block truncate">{f.nome}</span>
+          <span className="block truncate">{f.nome}</span>
           {mostrarCategoria && (
-            <span className="g-meta block truncate text-muted-foreground">{f.categoria}</span>
+            <span className="block truncate text-xs font-normal text-muted-foreground">{f.categoria}</span>
           )}
         </span>
       </Link>
@@ -142,7 +148,7 @@ function ItemDeFerramenta({
         aria-label={
           favorito ? `Remover ${f.nome} dos favoritos` : `Adicionar ${f.nome} aos favoritos`
         }
-        className="absolute right-1 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="absolute right-1 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <Star aria-hidden="true" className={cn('h-4 w-4', favorito && 'fill-primary text-primary')} />
       </button>
@@ -161,25 +167,25 @@ interface FaixaProps {
 function Faixa({ titulo, funcoes, vazio, aoEscolher }: FaixaProps) {
   return (
     <section aria-label={titulo} className="min-w-0">
-      <h3 className="g-meta mb-2 font-bold uppercase tracking-wider text-muted-foreground">
+      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         {titulo}
       </h3>
       {funcoes.length === 0 ? (
-        <p className="g-corpo text-muted-foreground">{vazio}</p>
+        <p className="text-sm text-muted-foreground">{vazio}</p>
       ) : (
         // `flex-wrap` e não uma linha rolável: no celular a lista quebra em duas
         // ou três linhas e continua inteira na tela, sem gesto escondido.
         <ul className="flex flex-wrap gap-2">
           {funcoes.map((f) => (
             <li key={f.id}>
-              <Link
-                to={f.rota}
-                onClick={() => aoEscolher(f)}
-                className="flex min-h-[32px] items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 transition-colors hover:border-primary/40 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <f.icone aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <span className="g-corpo truncate">{f.nome}</span>
-              </Link>
+              {/* Link com cara de botão secundário (manual §4): herda a pele do
+                  `outline` e o hover verde-claro, e continua sendo um <a>. */}
+              <Button asChild variant="outline" size="sm" className="max-w-full font-medium">
+                <Link to={f.rota} onClick={() => aoEscolher(f)}>
+                  <f.icone aria-hidden="true" className="text-muted-foreground" />
+                  <span className="truncate">{f.nome}</span>
+                </Link>
+              </Button>
             </li>
           ))}
         </ul>
@@ -392,25 +398,26 @@ export default function MenuDeFerramentas({
           aria-label="Todas as ferramentas"
           title="Todas as ferramentas (Ctrl+Shift+K)"
           className={cn(
-            'flex min-h-[var(--g-linha)] items-center gap-2 rounded-lg px-2.5 text-muted-foreground transition-colors',
+            'flex h-9 items-center gap-2 rounded-md px-2.5 text-sm font-medium text-muted-foreground transition-colors duration-150',
             'hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
             className,
           )}
         >
           <LayoutGrid aria-hidden="true" className="h-[18px] w-[18px] shrink-0" />
-          <span className="g-corpo hidden xl:inline">Todas as ferramentas</span>
+          <span className="hidden xl:inline">Todas as ferramentas</span>
         </button>
       )}
 
       {aberto && (
         <>
-          {/* Escurecimento discreto. Fica abaixo do painel no empilhamento e
-              acima de todo o resto — inclusive do cabeçalho, que é z-40. */}
+          {/* O véu navy do manual (§4), o mesmo dos modais. Fica abaixo do
+              painel no empilhamento e acima de todo o resto — inclusive do
+              cabeçalho, que é z-40. */}
           <div
             data-testid="menu-ferramentas-fundo"
             aria-hidden="true"
             onClick={() => fechar()}
-            className="nao-imprime fixed inset-0 z-50 bg-foreground/20"
+            className="nao-imprime fixed inset-0 z-50 bg-navy/45 backdrop-blur-[2px]"
           />
 
           <div
@@ -430,16 +437,16 @@ export default function MenuDeFerramentas({
                 alcançável no celular enquanto o diretório rola por baixo. */}
             <div className="sticky top-0 z-10 shrink-0 border-b border-border bg-card px-4 py-3 md:px-6 md:py-4">
               <div className="flex items-center gap-3">
-                <h2 className="g-titulo-secao min-w-0 flex-1 truncate text-foreground">
+                <h2 className="min-w-0 flex-1 truncate text-lg font-semibold leading-6 text-foreground md:text-xl">
                   Todas as ferramentas
                 </h2>
                 <button
                   type="button"
                   onClick={() => fechar()}
                   aria-label="Fechar todas as ferramentas"
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  <X aria-hidden="true" className="h-5 w-5" />
+                  <X aria-hidden="true" className="h-4 w-4" />
                 </button>
               </div>
 
@@ -449,31 +456,32 @@ export default function MenuDeFerramentas({
                     aria-hidden="true"
                     className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
                   />
-                  <input
+                  <Input
                     ref={buscaRef}
                     type="search"
                     value={termo}
                     onChange={(e) => setTermo(e.target.value)}
                     aria-label="Buscar ferramenta"
                     placeholder="Buscar ferramenta por nome ou categoria..."
-                    className="g-controle w-full rounded-lg border border-input bg-background pl-9 pr-3 text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="pl-9"
                   />
                 </div>
 
-                <button
+                <Button
                   type="button"
+                  variant="outline"
                   onClick={() => setSoFavoritos((v) => !v)}
                   aria-pressed={soFavoritos}
                   className={cn(
-                    'flex min-h-[var(--g-linha)] shrink-0 items-center justify-center gap-2 rounded-lg border px-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                    'shrink-0 font-medium',
                     soFavoritos
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border bg-card text-muted-foreground hover:bg-muted',
+                      ? 'border-primary bg-primary-tint text-primary hover:bg-primary-tint'
+                      : 'text-muted-foreground',
                   )}
                 >
-                  <Star aria-hidden="true" className={cn('h-4 w-4', soFavoritos && 'fill-primary')} />
-                  <span className="g-corpo">Só favoritos</span>
-                </button>
+                  <Star aria-hidden="true" className={cn(soFavoritos && 'fill-primary')} />
+                  Só favoritos
+                </Button>
               </div>
             </div>
 
@@ -483,22 +491,26 @@ export default function MenuDeFerramentas({
                    recolhida não esconde resultado: o recolhimento organiza o
                    diretório, não o que a busca achou. */
                 resultados.length === 0 ? (
-                  <div className="py-10 text-center">
-                    <p className="g-corpo text-muted-foreground">Nenhuma ferramenta encontrada.</p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setTermo('');
-                        buscaRef.current?.focus();
-                      }}
-                      className="g-corpo mt-3 inline-flex min-h-[var(--g-linha)] items-center rounded-lg border border-border px-4 text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                      Limpar busca
-                    </button>
-                  </div>
+                  <EstadoVazio
+                    tamanho="compacto"
+                    icone={<Search />}
+                    titulo="Nenhuma ferramenta encontrada."
+                    acao={
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          setTermo('');
+                          buscaRef.current?.focus();
+                        }}
+                      >
+                        Limpar busca
+                      </Button>
+                    }
+                  />
                 ) : (
                   <section aria-label="Resultados da busca">
-                    <h3 className="g-meta mb-2 font-bold uppercase tracking-wider text-muted-foreground">
+                    <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       {resultados.length} resultado{resultados.length > 1 ? 's' : ''}
                     </h3>
                     <ul className="grid gap-1 md:grid-cols-2 min-[1200px]:grid-cols-4">
@@ -546,7 +558,7 @@ export default function MenuDeFerramentas({
                           if (itens.length === 0) return null;
                           const recolhida = recolhidas[categoria] ?? false;
                           return (
-                            <section key={categoria} className="mb-2.5 last:mb-0">
+                            <section key={categoria} className="mb-3 last:mb-0">
                               <h3>
                                 <button
                                   type="button"
@@ -554,21 +566,21 @@ export default function MenuDeFerramentas({
                                     setRecolhidas((r) => ({ ...r, [categoria]: !recolhida }))
                                   }
                                   aria-expanded={!recolhida}
-                                  className="flex min-h-[28px] w-full items-center gap-2 rounded-md px-1 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                  className="flex h-8 w-full items-center gap-2 rounded-md px-1 text-left transition-colors duration-150 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                 >
-                                  <span className="g-meta min-w-0 flex-1 truncate font-bold uppercase tracking-wider text-muted-foreground">
+                                  <span className="min-w-0 flex-1 truncate text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                                     {categoria}
                                   </span>
                                   <ChevronDown
                                     aria-hidden="true"
                                     className={cn(
-                                      'h-4 w-4 shrink-0 text-muted-foreground transition-transform',
+                                      'h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-150',
                                       recolhida && '-rotate-90',
                                     )}
                                   />
                                 </button>
                               </h3>
-                              <ul className={cn('mt-1 flex flex-col', recolhida && 'hidden')}>
+                              <ul className={cn('mt-0.5 flex flex-col gap-0.5', recolhida && 'hidden')}>
                                 {itens.map((f) => (
                                   <ItemDeFerramenta
                                     key={f.id}
@@ -588,7 +600,7 @@ export default function MenuDeFerramentas({
                   </div>
 
                   {soFavoritos && funcoesFavoritas.length === 0 && (
-                    <p className="g-corpo py-8 text-center text-muted-foreground">
+                    <p className="py-8 text-center text-sm text-muted-foreground">
                       Nenhum favorito ainda. Desligue &ldquo;Só favoritos&rdquo; para ver o
                       diretório completo.
                     </p>

@@ -49,9 +49,9 @@ export default function TrilhaDoTopo({
   const ultimo = degraus[degraus.length - 1];
 
   return (
-    <nav aria-label="Trilha de navegação" className={cn('min-w-0', className)}>
+    <nav aria-label="Trilha de navegação" className={cn('min-w-0 text-sm', className)}>
       {/* Celular: só onde estou. */}
-      <span className="g-corpo block truncate font-semibold text-foreground md:hidden">
+      <span className="block truncate font-semibold text-foreground md:hidden">
         {ultimo.rotulo}
       </span>
 
@@ -63,14 +63,14 @@ export default function TrilhaDoTopo({
               {i > 0 && (
                 <ChevronRight
                   aria-hidden="true"
-                  className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+                  className="h-3.5 w-3.5 shrink-0 text-foreground-tertiary"
                 />
               )}
               <li className="min-w-0">
                 {degrau.para && !derradeiro ? (
                   <Link
                     to={degrau.para}
-                    className="g-corpo block truncate rounded text-muted-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="block truncate rounded-sm text-muted-foreground transition-colors duration-150 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     {degrau.rotulo}
                   </Link>
@@ -78,7 +78,7 @@ export default function TrilhaDoTopo({
                   <span
                     aria-current={derradeiro ? 'page' : undefined}
                     className={cn(
-                      'g-corpo block truncate',
+                      'block truncate',
                       derradeiro ? 'font-semibold text-foreground' : 'text-muted-foreground',
                     )}
                   >

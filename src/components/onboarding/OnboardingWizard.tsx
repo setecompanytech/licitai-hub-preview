@@ -3,7 +3,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -97,8 +96,6 @@ export default function OnboardingWizard({ open, onClose }: Props) {
   const [palavras, setPalavras] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const progress = ((step + 1) / steps.length) * 100;
-
   const togglePortal = (p: string) => {
     setPortaisSelecionados(prev =>
       prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p]
@@ -144,18 +141,34 @@ export default function OnboardingWizard({ open, onClose }: Props) {
     <Dialog open={open} onOpenChange={() => {}}>
       <DialogContent className="max-w-lg" onPointerDownOutside={e => e.preventDefault()}>
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-lg">
-            <StepIcon className="w-5 h-5 text-primary" aria-hidden="true" />
+          <DialogTitle className="flex items-center gap-2">
+            <StepIcon className="h-5 w-5 text-primary" aria-hidden="true" />
             {steps[step].title}
           </DialogTitle>
           <DialogDescription>{steps[step].desc}</DialogDescription>
         </DialogHeader>
 
-        <Progress
-          value={progress}
-          className="h-2"
-          aria-label={`Etapa ${step + 1} de ${steps.length}`}
-        />
+        {/* Os passos em chips (manual §4): os feitos na tinta da ação, o atual
+            em verde sólido, os próximos na superfície rebaixada. O número é o
+            que se vê; o nome do passo vai para o leitor de tela. */}
+        <ol aria-label={`Etapa ${step + 1} de ${steps.length}`} className="flex flex-wrap gap-1.5">
+          {steps.map((s, i) => (
+            <li
+              key={s.title}
+              title={s.title}
+              aria-current={i === step ? 'step' : undefined}
+              className={cn(
+                'inline-flex h-6 min-w-[1.5rem] items-center justify-center rounded-sm border px-1.5 text-xs font-semibold tabular-nums transition-colors duration-150',
+                i < step && 'border-primary-line bg-primary-tint text-primary',
+                i === step && 'border-primary bg-primary text-primary-foreground',
+                i > step && 'border-transparent bg-muted text-muted-foreground',
+              )}
+            >
+              {i < step ? <CheckCircle2 aria-hidden="true" className="h-3.5 w-3.5" /> : i + 1}
+              <span className="sr-only">{s.title}</span>
+            </li>
+          ))}
+        </ol>
 
         {/* Step 0: Welcome */}
         {step === 0 && (
@@ -171,12 +184,12 @@ export default function OnboardingWizard({ open, onClose }: Props) {
                 { icon: Shield, label: 'Segurança', desc: 'Dados protegidos com criptografia' },
                 { icon: Globe, label: 'Portais', desc: 'Você escolhe quais monitorar no próximo passo' },
               ].map(f => (
-                <div key={f.label} className="rounded-lg border border-border bg-muted/50 p-4 text-center">
-                  <span aria-hidden="true" className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-primary-tint text-primary">
-                    <f.icon className="w-5 h-5" />
+                <div key={f.label} className="rounded-lg border border-border bg-secondary p-4">
+                  <span aria-hidden="true" className="mb-3 flex h-8 w-8 items-center justify-center rounded-md bg-primary-tint text-primary">
+                    <f.icon className="h-4 w-4" />
                   </span>
-                  <p className="text-sm font-semibold">{f.label}</p>
-                  <p className="text-xs text-muted-foreground">{f.desc}</p>
+                  <p className="text-base font-semibold text-foreground">{f.label}</p>
+                  <p className="mt-0.5 text-xs leading-4 text-muted-foreground">{f.desc}</p>
                 </div>
               ))}
             </div>
@@ -237,9 +250,9 @@ export default function OnboardingWizard({ open, onClose }: Props) {
                     aria-pressed={selecionado}
                     onClick={() => togglePortal(p)}
                     className={cn(
-                      'rounded-full',
+                      'font-medium',
                       selecionado
-                        ? 'border-primary/40 bg-primary-tint text-primary hover:bg-primary-tint'
+                        ? 'border-primary bg-primary-tint text-primary hover:bg-primary-tint'
                         : 'text-muted-foreground'
                     )}
                   >
@@ -270,7 +283,7 @@ export default function OnboardingWizard({ open, onClose }: Props) {
             {palavras && (
               <div className="flex flex-wrap gap-2">
                 {palavras.split(',').map(p => p.trim()).filter(Boolean).map(p => (
-                  <Badge key={p} variant="info">{p}</Badge>
+                  <Badge key={p} variant="secondary">{p}</Badge>
                 ))}
               </div>
             )}
@@ -282,16 +295,16 @@ export default function OnboardingWizard({ open, onClose }: Props) {
 
         {/* Step 4: Done */}
         {step === 4 && (
-          <div className="text-center space-y-4 py-4">
-            <span aria-hidden="true" className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-success-tint text-success-ink">
-              <CheckCircle2 className="w-6 h-6" />
+          <div className="space-y-4 py-4 text-center">
+            <span aria-hidden="true" className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-success-tint text-success-ink">
+              <CheckCircle2 className="h-7 w-7" />
             </span>
             <div>
-              <p className="text-lg font-semibold">Tudo pronto!</p>
+              <p className="text-lg font-semibold text-foreground">Tudo pronto!</p>
               {/* "Dashboard" virou "Painel": é o nome que o registro
                   (lib/navegacao/paginas.ts) dá à rota /dashboard, e o mesmo
                   que a pessoa lê no menu e no h1 da tela. */}
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="mx-auto mt-1 max-w-md text-sm leading-5 text-muted-foreground">
                 Explore o Painel, monitore editais e comece a disputar licitações com inteligência.
               </p>
             </div>
@@ -299,8 +312,8 @@ export default function OnboardingWizard({ open, onClose }: Props) {
         )}
 
         {/* Navigation */}
-        <div className="flex flex-wrap items-center justify-between gap-2 mt-4 pt-4 border-t border-border">
-          <div className="text-sm text-muted-foreground tabular-nums">
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4">
+          <div className="text-sm tabular-nums text-muted-foreground">
             Etapa {step + 1} de {steps.length}
           </div>
           <div className="flex flex-wrap gap-2">

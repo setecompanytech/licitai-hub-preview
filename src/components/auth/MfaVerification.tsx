@@ -75,29 +75,32 @@ export default function MfaVerification({ onSuccess, onCancel }: MfaVerification
         Voltar ao login
       </button>
 
-      <div className="mt-8">
-        <h1 ref={tituloRef} tabIndex={-1} className="font-heading text-[1.75rem] font-bold leading-9 text-foreground outline-none">
+      <div className="mt-6">
+        {/* Título 24/600 e descrição 13 — a régua v3 das telas de acesso. */}
+        <h1 ref={tituloRef} tabIndex={-1} className="text-3xl font-semibold leading-8 tracking-tight text-foreground outline-none">
           Verificação em dois fatores
         </h1>
-        <p className="mt-2 text-base leading-6 text-muted-foreground">
+        <p className="mt-1.5 text-sm leading-5 text-muted-foreground">
           Insira o código de 6 dígitos do seu aplicativo autenticador para continuar.
         </p>
 
-        <form onSubmit={handleVerify} className="mt-8 space-y-5">
+        <form onSubmit={handleVerify} className="mt-6 space-y-4">
           <div className="space-y-2">
             <Label htmlFor="mfaCodigo">Código de verificação</Label>
+            {/* O campo do código é a exceção deliberada de altura e tamanho:
+                seis dígitos monoespaçados, espaçados, lidos de relance. */}
             <Input
               id="mfaCodigo"
               value={code}
               onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
               placeholder="000000"
-              className="h-14 text-center font-mono text-3xl tracking-[0.5em]"
+              className="h-14 text-center font-mono text-3xl tabular-nums tracking-[0.5em]"
               maxLength={6}
               autoComplete="one-time-code"
               inputMode="numeric"
             />
           </div>
-          <Button type="submit" className="w-full" disabled={verifying || code.length !== 6} aria-busy={verifying || undefined}>
+          <Button type="submit" size="lg" className="w-full" disabled={verifying || code.length !== 6} aria-busy={verifying || undefined}>
             {verifying ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Shield aria-hidden="true" />}
             Verificar
           </Button>

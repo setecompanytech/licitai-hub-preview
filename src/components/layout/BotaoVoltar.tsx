@@ -2,6 +2,7 @@ import { useCallback, useSyncExternalStore } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import {
   avancar, destinoDoAvancar, destinoDoVoltar, subscribeHistorico, voltar,
 } from '@/lib/navegacao/historico';
@@ -52,28 +53,31 @@ export default function BotaoVoltar({
   };
 
   return (
-    <div className={`flex items-center gap-0.5 ${somenteIcone ? '' : 'mb-3 -ml-2'}`}>
+    /* Setas em botão `ghost` de 36px (`icon-sm` quando só ícone), tinta
+       secundária que escurece no hover; desabilitadas ficam na opacidade
+       padrão do botão. O nome acessível vai no `sr-only`, como no "Avançar". */
+    <div className={cn('flex items-center gap-0.5', !somenteIcone && '-ml-2 mb-3')}>
       <Button
         variant="ghost"
-        size="sm"
+        size={somenteIcone ? 'icon-sm' : 'sm'}
         disabled={!alvoAtras}
         title={alvoAtras ? 'Voltar' : 'Não há para onde voltar'}
-        className="text-muted-foreground hover:text-foreground disabled:opacity-30"
+        className="text-muted-foreground hover:text-foreground"
         onClick={irAtras}
       >
-        <ArrowLeft className={somenteIcone ? 'w-4 h-4' : 'w-4 h-4 mr-1.5'} />
-        {!somenteIcone && 'Voltar'}
+        <ArrowLeft aria-hidden="true" />
+        {somenteIcone ? <span className="sr-only">Voltar</span> : 'Voltar'}
       </Button>
 
       <Button
         variant="ghost"
-        size="sm"
+        size="icon-sm"
         disabled={!frente}
         title={frente ? 'Avançar' : 'Não há para onde avançar'}
-        className="text-muted-foreground hover:text-foreground disabled:opacity-30 px-2"
+        className="text-muted-foreground hover:text-foreground"
         onClick={irFrente}
       >
-        <ArrowRight className="w-4 h-4" />
+        <ArrowRight aria-hidden="true" />
         <span className="sr-only">Avançar</span>
       </Button>
     </div>

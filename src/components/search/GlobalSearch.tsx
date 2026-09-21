@@ -2,9 +2,10 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
-  CommandDialog, CommandInput, CommandList, CommandEmpty,
-  CommandGroup, CommandItem, CommandSeparator, CommandShortcut
+  Command, CommandInput, CommandList, CommandEmpty,
+  CommandGroup, CommandItem, CommandSeparator
 } from '@/components/ui/command';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import {
   LayoutDashboard, Search, Kanban, Users, Bot, BarChart3, Settings,
   Crosshair, Shield, Scale, DollarSign, Calculator, Download, Building2,
@@ -174,93 +175,113 @@ export default function GlobalSearch() {
     setTimeout(() => navigate(path), 0);
   }, [navigate]);
 
+  /** Linha da paleta: 40px, ícone de 16px, rótulo em 13px e a dica à direita em 12px. */
+  const classeDoItem = 'min-h-10 cursor-pointer gap-3 px-2.5';
+
   return (
-    <CommandDialog open={open} onOpenChange={setOpen}>
-      <CommandInput placeholder="Buscar módulo, página ou ação rápida... (Ctrl+K)" />
-      <CommandList>
-        <CommandEmpty>Nenhum resultado encontrado.</CommandEmpty>
+    /* A paleta é montada com os primitivos (`Dialog` + `Command`) em vez do
+       `CommandDialog`, que fixa `max-w-xl`: o Design System v3 quer a busca
+       colada ao topo, na largura toda do celular e em 672px no desktop. O
+       título existe só para o leitor de tela — visualmente a paleta é o campo. */
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent
+        aria-describedby={undefined}
+        className="top-[8%] translate-y-0 gap-0 overflow-hidden p-0 sm:top-[12%] sm:max-w-2xl data-[state=open]:slide-in-from-top-2"
+      >
+        <DialogTitle className="sr-only">Buscar no sistema</DialogTitle>
+        <Command className="[&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0">
+          <CommandInput
+            placeholder="Buscar módulo, página ou ação rápida... (Ctrl+K)"
+            className="h-12 pr-10"
+          />
+          <CommandList className="max-h-[min(60vh,440px)]">
+            <CommandEmpty>Nenhum resultado encontrado.</CommandEmpty>
 
-        <CommandGroup heading="Ações rápidas">
-          {QUICK_ACTIONS.map((a) => (
-            <CommandItem
-              key={a.id}
-              value={`${a.label} ${a.hint} ${a.keywords}`}
-              onSelect={() => handleSelect(a.path)}
-              className="flex items-center gap-3 cursor-pointer"
-            >
-              <a.icon className="w-4 h-4 text-primary" />
-              <span className="flex-1">{a.label}</span>
-              <span className="text-xs text-muted-foreground uppercase tracking-wide">{a.hint}</span>
-            </CommandItem>
-          ))}
-        </CommandGroup>
-
-        <CommandSeparator />
-
-        <CommandGroup heading="Páginas e Módulos">
-          {pages.map((page) => (
-            <CommandItem
-              key={page.path}
-              value={`${page.name} ${page.keywords ?? ''}`}
-              onSelect={() => handleSelect(page.path)}
-              className="flex items-center gap-3 cursor-pointer"
-            >
-              <page.icon className="w-4 h-4 text-muted-foreground" />
-              <span>{page.name}</span>
-            </CommandItem>
-          ))}
-        </CommandGroup>
-
-        {marca && marca.length > 0 && (
-          <>
-            <CommandSeparator />
-            <CommandGroup heading="Identidade visual">
-              {marca.map((item) => {
-                const Icone = ICONE_MARCA[item.categoria] ?? ImageIcon;
-                return (
-                  <CommandItem
-                    key={item.slug}
-                    value={`${item.nome} ${item.categoria} ${item.palavras_chave.join(' ')} ${item.valor ?? ''}`}
-                    onSelect={() => usarItemMarca(item)}
-                    className="flex items-center gap-3 cursor-pointer"
-                  >
-                    {item.categoria === 'cor' && item.valor ? (
-                      <span
-                        className="w-4 h-4 rounded-full border border-border flex-shrink-0"
-                        style={{ backgroundColor: item.valor }}
-                        aria-hidden="true"
-                      />
-                    ) : (
-                      <Icone className="w-4 h-4 text-muted-foreground" />
-                    )}
-                    <span className="flex-1">{item.nome}</span>
-                    <span className="text-xs text-muted-foreground truncate max-w-[200px]">
-                      {item.categoria === 'logo' ? 'abrir arquivo' : `copiar ${item.valor ?? ''}`}
-                    </span>
-                  </CommandItem>
-                );
-              })}
+            <CommandGroup heading="Ações rápidas">
+              {QUICK_ACTIONS.map((a) => (
+                <CommandItem
+                  key={a.id}
+                  value={`${a.label} ${a.hint} ${a.keywords}`}
+                  onSelect={() => handleSelect(a.path)}
+                  className={classeDoItem}
+                >
+                  <a.icon className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+                  <span className="min-w-0 flex-1 truncate">{a.label}</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">{a.hint}</span>
+                </CommandItem>
+              ))}
             </CommandGroup>
-          </>
-        )}
 
-        <CommandSeparator />
+            <CommandSeparator />
 
-        <CommandGroup heading="Financeiro — Módulos">
-          {FIN_ENTRIES.map((f) => (
-            <CommandItem
-              key={f.id}
-              value={`${f.label} ${f.keywords}`}
-              onSelect={() => handleSelect(f.path)}
-              className="flex items-center gap-3 cursor-pointer"
-            >
-              <f.icon className="w-4 h-4 text-muted-foreground" />
-              <span className="flex-1">{f.label}</span>
-              <span className="text-xs text-muted-foreground truncate max-w-[180px]">{f.description}</span>
-            </CommandItem>
-          ))}
-        </CommandGroup>
-      </CommandList>
-    </CommandDialog>
+            <CommandGroup heading="Páginas e Módulos">
+              {pages.map((page) => (
+                <CommandItem
+                  key={page.path}
+                  value={`${page.name} ${page.keywords ?? ''}`}
+                  onSelect={() => handleSelect(page.path)}
+                  className={classeDoItem}
+                >
+                  <page.icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  <span className="min-w-0 flex-1 truncate">{page.name}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+
+            {marca && marca.length > 0 && (
+              <>
+                <CommandSeparator />
+                <CommandGroup heading="Identidade visual">
+                  {marca.map((item) => {
+                    const Icone = ICONE_MARCA[item.categoria] ?? ImageIcon;
+                    return (
+                      <CommandItem
+                        key={item.slug}
+                        value={`${item.nome} ${item.categoria} ${item.palavras_chave.join(' ')} ${item.valor ?? ''}`}
+                        onSelect={() => usarItemMarca(item)}
+                        className={classeDoItem}
+                      >
+                        {item.categoria === 'cor' && item.valor ? (
+                          /* A amostra é a cor cadastrada no catálogo da marca —
+                             dado do banco, não cor escrita à mão. */
+                          <span
+                            className="h-4 w-4 shrink-0 rounded-sm border border-border"
+                            style={{ backgroundColor: item.valor }}
+                            aria-hidden="true"
+                          />
+                        ) : (
+                          <Icone className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                        )}
+                        <span className="min-w-0 flex-1 truncate">{item.nome}</span>
+                        <span className="max-w-[200px] shrink-0 truncate text-xs text-muted-foreground">
+                          {item.categoria === 'logo' ? 'abrir arquivo' : `copiar ${item.valor ?? ''}`}
+                        </span>
+                      </CommandItem>
+                    );
+                  })}
+                </CommandGroup>
+              </>
+            )}
+
+            <CommandSeparator />
+
+            <CommandGroup heading="Financeiro — Módulos">
+              {FIN_ENTRIES.map((f) => (
+                <CommandItem
+                  key={f.id}
+                  value={`${f.label} ${f.keywords}`}
+                  onSelect={() => handleSelect(f.path)}
+                  className={classeDoItem}
+                >
+                  <f.icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  <span className="min-w-0 flex-1 truncate">{f.label}</span>
+                  <span className="max-w-[180px] shrink-0 truncate text-xs text-muted-foreground">{f.description}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </DialogContent>
+    </Dialog>
   );
 }

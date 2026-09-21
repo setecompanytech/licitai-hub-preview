@@ -348,29 +348,38 @@ export default function Auth() {
     </button>
   );
 
-  const classeTitulo = 'font-heading text-[1.75rem] font-bold leading-9 text-foreground outline-none';
+  // Título das telas de acesso: 24/32 em peso 600 (a régua v3 para o cartão
+  // de acesso); descrição em 13px secundário logo abaixo.
+  const classeTitulo = 'text-3xl font-semibold leading-8 tracking-tight text-foreground outline-none';
+  const classeDescricao = 'mt-1.5 text-sm leading-5 text-muted-foreground';
   const classeLink = 'inline-flex min-h-11 items-center gap-2 rounded-md text-sm font-semibold text-primary transition-colors hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
+  // Título de seção do cadastro: 16/600 com o ícone discreto (manual §5, formulário).
+  const classeSecao = 'flex items-center gap-2 text-lg font-semibold leading-6 text-foreground';
 
   // Signup form - professional multi-section layout
   if (step === 'signup') {
     return (
       <div className="min-h-screen bg-background">
         {/* Header */}
-        <div className="bg-card border-b border-border">
-          <div className="max-w-3xl mx-auto px-4 py-6 flex items-center justify-center gap-3">
-            <PraefectusLogo size="xl" />
+        <div className="border-b border-border bg-card">
+          <div className="mx-auto flex max-w-3xl items-center justify-center px-4 py-5">
+            <PraefectusLogo size="lg" />
           </div>
         </div>
 
-        <div className="max-w-3xl mx-auto px-4 py-8">
-          <div className="bg-card rounded-2xl border border-border shadow-lg p-6 md:p-10">
+        <div className="mx-auto max-w-3xl px-4 py-8">
+          <div className="rounded-xl border border-border bg-card p-6 shadow-sm sm:p-8">
             <div className="mb-6">
-              <button onClick={() => navigate('/')} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4">
-                <ArrowLeft className="w-4 h-4" />
+              <button
+                type="button"
+                onClick={() => navigate('/')}
+                className="mb-4 inline-flex min-h-9 items-center gap-1.5 rounded-md text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <ArrowLeft className="h-4 w-4" aria-hidden="true" />
                 Voltar
               </button>
-              <h1 className="text-2xl font-bold">Cadastre-se</h1>
-              <p className="text-sm text-muted-foreground mt-1">
+              <h1 className={classeTitulo}>Cadastre-se</h1>
+              <p className={classeDescricao}>
                 Crie sua conta e acesse a plataforma completa de licitações
               </p>
             </div>
@@ -378,26 +387,25 @@ export default function Auth() {
             <form onSubmit={handleSignup} className="space-y-8">
               {/* Seção 1: Dados do contato */}
               <section>
-                <div className="flex items-center gap-2 mb-4">
-                  <User className="w-4 h-4 text-muted-foreground" />
-                  <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Dados do contato</h2>
-                </div>
-                <Separator className="mb-4" />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-xs font-medium">Nome completo *</Label>
+                <h2 className={classeSecao}>
+                  <User className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                  Dados do contato
+                </h2>
+                <Separator className="my-4" />
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Nome completo *</Label>
                     <Input
                       value={nome}
                       onChange={e => setNome(e.target.value)}
                       placeholder="Seu nome completo"
-                      className="mt-1.5"
                       required
                     />
                   </div>
-                  <div>
-                    <Label className="text-xs font-medium">Cargo</Label>
+                  <div className="space-y-2">
+                    <Label>Cargo</Label>
                     <Select value={cargo} onValueChange={setCargo}>
-                      <SelectTrigger className="mt-1.5">
+                      <SelectTrigger>
                         <SelectValue placeholder="Selecionar" />
                       </SelectTrigger>
                       <SelectContent>
@@ -405,23 +413,21 @@ export default function Auth() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div>
-                    <Label className="text-xs font-medium">Celular *</Label>
+                  <div className="space-y-2">
+                    <Label>Celular *</Label>
                     <Input
                       value={celular}
                       onChange={e => setCelular(formatPhone(e.target.value))}
                       placeholder="(00) 00000-0000"
-                      className="mt-1.5"
                       required
                     />
                   </div>
-                  <div>
-                    <Label className="text-xs font-medium">Telefone empresarial</Label>
+                  <div className="space-y-2">
+                    <Label>Telefone empresarial</Label>
                     <Input
                       value={telefoneEmpresarial}
                       onChange={e => setTelefoneEmpresarial(formatPhone(e.target.value))}
                       placeholder="(00) 0000-0000"
-                      className="mt-1.5"
                     />
                   </div>
                 </div>
@@ -429,64 +435,59 @@ export default function Auth() {
 
               {/* Seção 2: Dados da conta */}
               <section>
-                <div className="flex items-center gap-2 mb-4">
-                  <Mail className="w-4 h-4 text-muted-foreground" />
-                  <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Dados da conta</h2>
-                </div>
-                <Separator className="mb-4" />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-xs font-medium">E-mail *</Label>
+                <h2 className={classeSecao}>
+                  <Mail className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                  Dados da conta
+                </h2>
+                <Separator className="my-4" />
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>E-mail *</Label>
                     <Input
                       type="email"
                       value={email}
                       onChange={e => setEmail(e.target.value)}
                       placeholder="seu@email.com"
-                      className="mt-1.5"
                       required
                     />
                   </div>
-                  <div>
-                    <Label className="text-xs font-medium">Confirmar e-mail *</Label>
+                  <div className="space-y-2">
+                    <Label>Confirmar e-mail *</Label>
                     <Input
                       type="email"
                       value={emailConfirm}
                       onChange={e => setEmailConfirm(e.target.value)}
                       placeholder="Confirme seu e-mail"
-                      className="mt-1.5"
                       required
                     />
                   </div>
-                  <div className="md:col-span-2">
-                    <Label className="text-xs font-medium">CNPJ</Label>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label>CNPJ</Label>
                     <Input
                       value={cnpj}
                       onChange={e => setCnpj(formatCnpj(e.target.value))}
                       placeholder="00.000.000/0001-00"
-                      className="mt-1.5"
                     />
-                    <p className="text-xs text-muted-foreground mt-1">Opcional no cadastro. Você poderá cadastrar empresas depois.</p>
+                    <p className="text-xs leading-4 text-muted-foreground">Opcional no cadastro. Você poderá cadastrar empresas depois.</p>
                   </div>
-                  <div>
-                    <Label className="text-xs font-medium">Escolha uma senha *</Label>
+                  <div className="space-y-2">
+                    <Label>Escolha uma senha *</Label>
                     <Input
                       type="password"
                       value={password}
                       onChange={e => setPassword(e.target.value)}
                       placeholder="Mínimo 6 caracteres"
-                      className="mt-1.5"
                       required
                       minLength={6}
                     />
                   </div>
-                  <div>
-                    <Label className="text-xs font-medium">Confirmar senha *</Label>
+                  <div className="space-y-2">
+                    <Label>Confirmar senha *</Label>
                     <Input
                       type="password"
                       value={passwordConfirm}
                       onChange={e => setPasswordConfirm(e.target.value)}
                       placeholder="Confirme sua senha"
-                      className="mt-1.5"
                       required
                       minLength={6}
                     />
@@ -496,16 +497,16 @@ export default function Auth() {
 
               {/* Seção 3: Configuração do serviço */}
               <section>
-                <div className="flex items-center gap-2 mb-4">
-                  <MapPin className="w-4 h-4 text-muted-foreground" />
-                  <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Configuração do serviço</h2>
-                </div>
-                <Separator className="mb-4" />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-xs font-medium">Estado de atuação</Label>
+                <h2 className={classeSecao}>
+                  <MapPin className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                  Configuração do serviço
+                </h2>
+                <Separator className="my-4" />
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Estado de atuação</Label>
                     <Select value={uf} onValueChange={setUf}>
-                      <SelectTrigger className="mt-1.5">
+                      <SelectTrigger>
                         <SelectValue placeholder="Selecionar estado" />
                       </SelectTrigger>
                       <SelectContent>
@@ -518,16 +519,16 @@ export default function Auth() {
 
               {/* Seção 4: Informações do perfil */}
               <section>
-                <div className="flex items-center gap-2 mb-4">
-                  <Briefcase className="w-4 h-4 text-muted-foreground" />
-                  <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Informações do perfil</h2>
-                </div>
-                <Separator className="mb-4" />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-xs font-medium">Como conheceu o Praefectus?</Label>
+                <h2 className={classeSecao}>
+                  <Briefcase className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                  Informações do perfil
+                </h2>
+                <Separator className="my-4" />
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Como conheceu o Praefectus?</Label>
                     <Select value={comoConheceu} onValueChange={setComoConheceu}>
-                      <SelectTrigger className="mt-1.5">
+                      <SelectTrigger>
                         <SelectValue placeholder="Selecionar" />
                       </SelectTrigger>
                       <SelectContent>
@@ -535,10 +536,10 @@ export default function Auth() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div>
-                    <Label className="text-xs font-medium">Quantidade de funcionários?</Label>
+                  <div className="space-y-2">
+                    <Label>Quantidade de funcionários?</Label>
                     <Select value={qtdFuncionarios} onValueChange={setQtdFuncionarios}>
-                      <SelectTrigger className="mt-1.5">
+                      <SelectTrigger>
                         <SelectValue placeholder="Selecionar" />
                       </SelectTrigger>
                       <SelectContent>
@@ -546,10 +547,10 @@ export default function Auth() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div>
-                    <Label className="text-xs font-medium">Quantas licitações participa por mês?</Label>
+                  <div className="space-y-2">
+                    <Label>Quantas licitações participa por mês?</Label>
                     <Select value={licitacoesMes} onValueChange={setLicitacoesMes}>
-                      <SelectTrigger className="mt-1.5">
+                      <SelectTrigger>
                         <SelectValue placeholder="Selecionar" />
                       </SelectTrigger>
                       <SelectContent>
@@ -557,10 +558,10 @@ export default function Auth() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div>
-                    <Label className="text-xs font-medium">Faturamento anual com licitações?</Label>
+                  <div className="space-y-2">
+                    <Label>Faturamento anual com licitações?</Label>
                     <Select value={faturamentoAnual} onValueChange={setFaturamentoAnual}>
-                      <SelectTrigger className="mt-1.5">
+                      <SelectTrigger>
                         <SelectValue placeholder="Selecionar" />
                       </SelectTrigger>
                       <SelectContent>
@@ -572,19 +573,19 @@ export default function Auth() {
               </section>
 
               {/* Declaração de Consentimento — LGPD */}
-              <div className="flex items-start gap-3 p-5 rounded-xl bg-muted/50 border border-border">
+              <div className="flex items-start gap-3 rounded-lg border border-border bg-secondary p-4">
                 <Checkbox
                   id="termos"
                   checked={aceitaTermos}
                   onCheckedChange={(v) => setAceitaTermos(v === true)}
                   className="mt-0.5"
                 />
-                <label htmlFor="termos" className="text-xs text-muted-foreground leading-relaxed cursor-pointer">
-                  <strong className="text-foreground text-sm block mb-1">Declaração de Consentimento</strong>
+                <label htmlFor="termos" className="cursor-pointer text-sm leading-5 text-muted-foreground">
+                  <strong className="mb-1 block text-base font-semibold text-foreground">Declaração de Consentimento</strong>
                   Ao confirmar o cadastro, <strong>DECLARO</strong>, para os devidos fins de direito, que li, compreendi e aceito integralmente os{' '}
-                  <a href="/termos-de-uso" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline font-semibold">Termos de Uso</a>{' '}
+                  <a href="/termos-de-uso" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary hover:underline">Termos de Uso</a>{' '}
                   e a{' '}
-                  <a href="/politica-de-privacidade" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline font-semibold">Política de Privacidade</a>{' '}
+                  <a href="/politica-de-privacidade" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary hover:underline">Política de Privacidade</a>{' '}
                   da plataforma Praefectus, manifestando consentimento livre, informado e inequívoco, nos termos do{' '}
                   <strong>Art. 7º, inciso I, da Lei nº 13.709/2018 (LGPD)</strong>, para o tratamento de meus dados pessoais nas finalidades descritas nos referidos documentos.
                 </label>
@@ -593,23 +594,24 @@ export default function Auth() {
               {/* Submit */}
               <Button
                 type="submit"
-                className="w-full h-12 text-base bg-accent hover:bg-accent/90 text-accent-foreground"
+                size="lg"
+                className="w-full"
                 disabled={loading || !aceitaTermos}
               >
-                {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <ChevronRight className="w-5 h-5 mr-2" />}
+                {loading ? <Loader2 className="animate-spin" aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}
                 Enviar cadastro
               </Button>
 
               <p className="text-center text-sm text-muted-foreground">
                 Já tem conta?{' '}
-                <button type="button" onClick={() => setStep('manual')} className="text-accent hover:underline font-medium">
+                <button type="button" onClick={() => setStep('manual')} className="rounded-sm font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                   Fazer login
                 </button>
               </p>
             </form>
           </div>
 
-          <p className="text-center text-xs text-muted-foreground mt-6 pb-8">
+          <p className="mt-6 pb-8 text-center text-xs text-muted-foreground">
             Sistema de Gestão de Licitações Públicas com IA
           </p>
         </div>
@@ -636,11 +638,11 @@ export default function Auth() {
 
       {/* ===== ESCOLHA ===== */}
       {step === 'escolha' && (
-        <div className="mt-8">
+        <div className="mt-6">
           <h1 ref={tituloRef} tabIndex={-1} className={classeTitulo}>Acesse sua conta</h1>
-          <p className="mt-2 text-base leading-6 text-muted-foreground">Escolha como deseja entrar na plataforma</p>
+          <p className={classeDescricao}>Escolha como deseja entrar na plataforma</p>
 
-          <div className="mt-8 flex flex-col gap-4">
+          <div className="mt-6 flex flex-col gap-3">
             <OpcaoAcesso
               icone={<KeyRound />}
               titulo="Login e senha"
@@ -658,7 +660,7 @@ export default function Auth() {
             />
           </div>
 
-          <Separator className="my-8" />
+          <Separator className="my-6" />
           <p className="text-center text-sm leading-5 text-muted-foreground">
             Para criar uma conta, entre em contato com o administrador.
           </p>
@@ -667,19 +669,19 @@ export default function Auth() {
 
       {/* ===== LOGIN COM E-MAIL ===== */}
       {step === 'manual' && (
-        <div className="mt-8">
+        <div className="mt-6">
           <h1 ref={tituloRef} tabIndex={-1} className={classeTitulo}>Entrar com e-mail</h1>
-          <p className="mt-2 text-base leading-6 text-muted-foreground">Use as credenciais cadastradas pelo administrador</p>
+          <p className={classeDescricao}>Use as credenciais cadastradas pelo administrador</p>
 
           {networkError && (
-            <Alert variant="destructive" className="mt-6">
-              <AlertTriangle className="h-4 w-4" />
+            <Alert variant="destructive" className="mt-5">
+              <AlertTriangle className="h-4 w-4" aria-hidden="true" />
               <AlertTitle>Conexão instável</AlertTitle>
               <AlertDescription>Não conseguimos falar com o servidor. Aguarde alguns segundos e tente de novo.</AlertDescription>
             </Alert>
           )}
 
-          <form onSubmit={handleLogin} noValidate className="mt-8 space-y-5">
+          <form onSubmit={handleLogin} noValidate className="mt-6 space-y-4">
             <div className="space-y-2">
               <Label htmlFor="lgEmail">E-mail ou login</Label>
               <Input
@@ -723,7 +725,7 @@ export default function Auth() {
                   aria-pressed={mostrarSenha}
                   className="absolute right-1 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  {mostrarSenha ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {mostrarSenha ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
                 </button>
               </div>
               {capsLock && (
@@ -733,7 +735,7 @@ export default function Auth() {
               )}
             </div>
 
-            <Button type="submit" className="w-full" disabled={loading} aria-busy={loading || undefined}>
+            <Button type="submit" size="lg" className="w-full" disabled={loading} aria-busy={loading || undefined}>
               {loading ? <Loader2 className="animate-spin" aria-hidden="true" /> : <KeyRound aria-hidden="true" />}
               Entrar
             </Button>
@@ -768,12 +770,12 @@ export default function Auth() {
 
       {/* ===== CERTIFICADO DIGITAL ===== */}
       {step === 'certificado' && (
-        <div className="mt-8">
+        <div className="mt-6">
           <h1 ref={tituloRef} tabIndex={-1} className={classeTitulo}>Certificado digital</h1>
-          <p className="mt-2 text-base leading-6 text-muted-foreground">e-CNPJ ou e-CPF, nos padrões A1 e A3</p>
+          <p className={classeDescricao}>e-CNPJ ou e-CPF, nos padrões A1 e A3</p>
 
-          <Alert variant="info" className="mt-6">
-            <Info className="h-4 w-4" />
+          <Alert variant="info" className="mt-5">
+            <Info className="h-4 w-4" aria-hidden="true" />
             <AlertTitle>O certificado identifica, mas não cria conta</AlertTitle>
             <AlertDescription>
               Ele precisa estar vinculado a um usuário — o vínculo é feito em <b>Configuração › Empresas</b>{' '}
@@ -781,7 +783,7 @@ export default function Auth() {
             </AlertDescription>
           </Alert>
 
-          <Button type="button" variant="outline" className="mt-6 w-full" onClick={() => setStep('manual')}>
+          <Button type="button" variant="outline" size="lg" className="mt-5 w-full" onClick={() => setStep('manual')}>
             <KeyRound aria-hidden="true" />
             Entrar com e-mail e senha
           </Button>
@@ -796,13 +798,13 @@ export default function Auth() {
 
       {/* ===== RECUPERAR SENHA ===== */}
       {step === 'forgot' && (
-        <div className="mt-8">
+        <div className="mt-6">
           <h1 ref={tituloRef} tabIndex={-1} className={classeTitulo}>Recuperar senha</h1>
-          <p className="mt-2 text-base leading-6 text-muted-foreground">
+          <p className={classeDescricao}>
             Informe seu login ou e-mail para receber o link de recuperação
           </p>
 
-          <form onSubmit={handleForgot} noValidate className="mt-8 space-y-5">
+          <form onSubmit={handleForgot} noValidate className="mt-6 space-y-4">
             <div className="space-y-2">
               <Label htmlFor="lgRecuperar">E-mail ou login</Label>
               <Input
@@ -817,7 +819,7 @@ export default function Auth() {
                 spellCheck={false}
               />
             </div>
-            <Button type="submit" className="w-full" disabled={loading} aria-busy={loading || undefined}>
+            <Button type="submit" size="lg" className="w-full" disabled={loading} aria-busy={loading || undefined}>
               {loading ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Mail aria-hidden="true" />}
               Enviar link de recuperação
             </Button>
