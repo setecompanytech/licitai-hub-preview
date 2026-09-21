@@ -2,10 +2,15 @@ import { useState, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
+import SeloPraefectusIA from '@/components/shared/SeloPraefectusIA';
+import FaixaIndicadores from '@/components/gestao/FaixaIndicadores';
 import {
   Search, Shield, ExternalLink, Loader2, AlertTriangle,
   CheckCircle2, AlertCircle, HelpCircle, Download, FileSpreadsheet, FileDown, FileText,
-  Wifi, WifiOff, Bot, Globe, Clock, Zap, ShieldAlert, MapPin, Building2
+  Wifi, WifiOff, Bot, Globe, Clock, Zap, ShieldAlert, MapPin, Building2, Landmark, Lock
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -162,8 +167,8 @@ export default function CertidoesNegativas() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-        <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+      <Card className="p-5">
+        <h2 className="flex items-center gap-2 text-lg font-semibold leading-6 text-foreground">
           <Shield className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
           Certidões negativas — verificação e emissão automática
         </h2>
@@ -172,19 +177,19 @@ export default function CertidoesNegativas() {
         </p>
 
         <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div className="flex flex-col gap-1">
-            <label htmlFor="certidoes-cnpj" className="text-sm font-medium text-foreground">CNPJ</label>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="certidoes-cnpj">CNPJ</Label>
             <Input id="certidoes-cnpj" placeholder="Ex.: 12.345.678/0001-01" value={cnpjInput}
               inputMode="numeric" aria-invalid={erro ? true : undefined}
               onChange={(e) => setCnpjInput(e.target.value)} />
           </div>
-          <div className="flex flex-col gap-1">
-            <label htmlFor="certidoes-razao" className="text-sm font-medium text-foreground">Razão social (opcional)</label>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="certidoes-razao">Razão social (opcional)</Label>
             <Input id="certidoes-razao" placeholder="Razão social da empresa" value={razaoSocial}
               onChange={(e) => setRazaoSocial(e.target.value)} />
           </div>
-          <div className="flex flex-col gap-1">
-            <label htmlFor="certidoes-uf" className="text-sm font-medium text-foreground">UF (estado)</label>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="certidoes-uf">UF (estado)</Label>
             <Select value={ufSelecionada} onValueChange={(v) => { setUfSelecionada(v); setMunicipioSelecionado(''); }}>
               <SelectTrigger id="certidoes-uf" className="w-full">
                 <MapPin className="mr-1 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
@@ -197,8 +202,8 @@ export default function CertidoesNegativas() {
               </SelectContent>
             </Select>
           </div>
-          <div className="flex flex-col gap-1">
-            <label htmlFor="certidoes-municipio" className="text-sm font-medium text-foreground">Município</label>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="certidoes-municipio">Município</Label>
             <Select value={municipioSelecionado} onValueChange={setMunicipioSelecionado} disabled={!ufSelecionada}>
               <SelectTrigger id="certidoes-municipio" className="w-full">
                 <Building2 className="mr-1 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
@@ -219,10 +224,15 @@ export default function CertidoesNegativas() {
               <MapPin className="h-4 w-4" aria-hidden="true" /> Portais regionais identificados ({portaisRegionais.length}):
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
+              {/* Ícones Lucide no lugar dos emojis (ícone multicolorido não
+                  entra no design system); o cadeado ganha nome acessível. */}
               {portaisRegionais.map((p, i) => (
-                <Badge key={i} variant="muted">
-                  {p.tipo === 'estadual' ? '🏛️' : '🏙️'} {p.nome.split(' - ')[0]}
-                  {p.requerLogin && ' 🔒'}
+                <Badge key={i} variant="muted" className="gap-1">
+                  {p.tipo === 'estadual'
+                    ? <Landmark className="h-3 w-3 shrink-0" aria-hidden="true" />
+                    : <Building2 className="h-3 w-3 shrink-0" aria-hidden="true" />}
+                  {p.nome.split(' - ')[0]}
+                  {p.requerLogin && <Lock className="h-3 w-3 shrink-0" aria-label="Requer login" />}
                 </Badge>
               ))}
             </div>
@@ -252,32 +262,48 @@ export default function CertidoesNegativas() {
             <AlertDescription>{erro}</AlertDescription>
           </Alert>
         )}
-      </div>
+      </Card>
 
-      {/* Loading states */}
+      {/* Espera — a mensagem à esquerda, com o giro pequeno em linha, e um
+          esqueleto na forma das caixas de verificação que vão chegar: nada de
+          spinner grande centralizado. */}
       {loading && (
-        <div role="status" className="rounded-lg border border-border bg-card p-6 text-center shadow-sm">
-          <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-muted-foreground" aria-hidden="true" />
-          <p className="text-base text-muted-foreground">Consultando APIs públicas em tempo real…</p>
-          <div className="mt-3 flex flex-wrap justify-center gap-2">
+        <Card role="status" aria-busy="true" className="p-5">
+          <p className="flex items-center gap-2 text-base text-muted-foreground">
+            <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden="true" />
+            Consultando APIs públicas em tempo real…
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
             {['CEIS', 'CNEP', 'CEPIM', 'Receita', 'TST', 'FGTS'].map(f => (
-              <Badge key={f} variant="muted" className="animate-pulse">{f}</Badge>
+              <Badge key={f} variant="muted">{f}</Badge>
             ))}
           </div>
-        </div>
+          <div aria-hidden="true" className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            {Array.from({ length: 6 }, (_, i) => (
+              <Skeleton key={i} className="h-14 w-full" />
+            ))}
+          </div>
+        </Card>
       )}
 
       {loadingEmissao && (
-        <div role="status" className="rounded-lg border border-border bg-card p-6 text-center shadow-sm">
-          <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-muted-foreground" aria-hidden="true" />
-          <p className="text-base font-medium text-foreground">Emitindo certidões nos portais oficiais…</p>
+        <Card role="status" aria-busy="true" className="p-5">
+          <p className="flex items-center gap-2 text-base font-medium text-foreground">
+            <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" aria-hidden="true" />
+            Emitindo certidões nos portais oficiais…
+          </p>
           <p className="mt-1 text-sm text-muted-foreground">Preenchendo formulários e extraindo resultados via scraping</p>
-          <div className="mt-3 flex flex-wrap justify-center gap-2">
+          <div className="mt-3 flex flex-wrap gap-2">
             {['Receita Federal', 'TST', 'Caixa/FGTS', 'Transparência'].map(f => (
-              <Badge key={f} variant="muted" className="animate-pulse">{f}</Badge>
+              <Badge key={f} variant="muted">{f}</Badge>
             ))}
           </div>
-        </div>
+          <div aria-hidden="true" className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 3 }, (_, i) => (
+              <Skeleton key={i} className="h-28 w-full" />
+            ))}
+          </div>
+        </Card>
       )}
 
       {/* Tabs for results */}
@@ -291,25 +317,16 @@ export default function CertidoesNegativas() {
           {/* ══ Emission Results ══ */}
           {emissaoResult && (
             <TabsContent value="emissao" className="space-y-4 animate-fade-in">
-              {/* Summary cards */}
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-                  <p className="text-sm text-muted-foreground">Total</p>
-                  <p className="mt-2 text-[2rem] font-bold leading-10 tabular-nums text-foreground">{emissaoResult.resumo.total}</p>
-                </div>
-                <div className="rounded-lg border border-success-line bg-success-tint p-6 shadow-sm">
-                  <p className="text-sm text-success-ink">Emitidas</p>
-                  <p className="mt-2 text-[2rem] font-bold leading-10 tabular-nums text-success-ink">{emissaoResult.resumo.emitidas}</p>
-                </div>
-                <div className="rounded-lg border border-border bg-muted p-6 shadow-sm">
-                  <p className="text-sm text-muted-foreground">CAPTCHA</p>
-                  <p className="mt-2 text-[2rem] font-bold leading-10 tabular-nums text-foreground">{emissaoResult.resumo.captcha}</p>
-                </div>
-                <div className="rounded-lg border border-destructive-line bg-destructive-tint p-6 shadow-sm">
-                  <p className="text-sm text-destructive-ink">Irregulares</p>
-                  <p className="mt-2 text-[2rem] font-bold leading-10 tabular-nums text-destructive-ink">{emissaoResult.resumo.erros}</p>
-                </div>
-              </div>
+              {/* Resumo da emissão nos cartões KPI do Design System v3 — o
+                  estado vai no ladrilho do ícone, não no fundo do cartão. */}
+              <FaixaIndicadores
+                itens={[
+                  { rotulo: 'Total', icone: FileText, valor: emissaoResult.resumo.total },
+                  { rotulo: 'Emitidas', icone: CheckCircle2, tom: 'ok', valor: emissaoResult.resumo.emitidas },
+                  { rotulo: 'CAPTCHA', icone: ShieldAlert, valor: emissaoResult.resumo.captcha },
+                  { rotulo: 'Irregulares', icone: AlertCircle, tom: 'critico', valor: emissaoResult.resumo.erros },
+                ]}
+              />
 
               {/* Export button for emissions */}
               <div className="flex justify-end">
@@ -333,7 +350,7 @@ export default function CertidoesNegativas() {
                         ])
                       );
                       toast.success('PDF exportado!');
-                    }}><FileText className="w-4 h-4 mr-2" /> PDF</DropdownMenuItem>
+                    }}><FileText aria-hidden="true" /> PDF</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => {
                       downloadCSV(
                         `emissao-certidoes-${cnpjInput.replace(/\D/g, '')}`,
@@ -344,7 +361,7 @@ export default function CertidoesNegativas() {
                         ])
                       );
                       toast.success('CSV exportado!');
-                    }}><FileSpreadsheet className="w-4 h-4 mr-2" /> CSV</DropdownMenuItem>
+                    }}><FileSpreadsheet aria-hidden="true" /> CSV</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => {
                       const txt = [
                         `EMISSÃO DE CERTIDÕES – ${cnpjInput}`,
@@ -357,7 +374,7 @@ export default function CertidoesNegativas() {
                       ].join('\n');
                       downloadTextReport(`emissao-certidoes-${cnpjInput.replace(/\D/g, '')}`, txt);
                       toast.success('TXT exportado!');
-                    }}><FileDown className="w-4 h-4 mr-2" /> TXT</DropdownMenuItem>
+                    }}><FileDown aria-hidden="true" /> TXT</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -368,9 +385,9 @@ export default function CertidoesNegativas() {
                   const cfg = emissaoStatusConfig[r.status];
                   const Icon = cfg.icon;
                   return (
-                    <div key={i} className={`rounded-lg border p-6 shadow-sm transition-shadow hover:shadow-md ${cfg.caixa}`}>
+                    <div key={i} className={`rounded-lg border p-5 shadow-sm ${cfg.caixa}`}>
                       <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
-                        <h3 className="min-w-0 text-base font-semibold text-foreground">{r.certidao}</h3>
+                        <h3 className="min-w-0 text-lg font-semibold leading-6 text-foreground">{r.certidao}</h3>
                         <Badge variant={cfg.variante} className="gap-1">
                           <Icon className="h-3 w-3" aria-hidden="true" /> {cfg.label}
                         </Badge>
@@ -409,23 +426,27 @@ export default function CertidoesNegativas() {
           {resultado && (
             <TabsContent value="verificar" className="space-y-4 animate-fade-in">
               {resultado.verificacoesReais && resultado.verificacoesReais.length > 0 && (
-                <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-                  <h3 className="mb-3 flex flex-wrap items-center gap-2 text-lg font-semibold text-foreground">
+                <Card className="p-5">
+                  <h3 className="mb-3 flex flex-wrap items-center gap-2 text-lg font-semibold leading-6 text-foreground">
                     <Wifi className="h-5 w-5 text-muted-foreground" aria-hidden="true" /> Verificações em tempo real
                     <Badge variant="muted" className="ml-auto gap-1">
                       <Clock className="h-3 w-3" aria-hidden="true" />{new Date().toLocaleTimeString('pt-BR')}
                     </Badge>
                   </h3>
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+                  {/* Caixas de estado alinhadas à esquerda: ícone, fonte e o
+                      TEXTO do estado na tinta da família — a cor só reforça. */}
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
                     {resultado.verificacoesReais.map((v, i) => {
                       const cfg = verificacaoStatusConfig[v.status] || verificacaoStatusConfig.erro;
                       const Icon = cfg.icon;
                       return (
                         <TooltipProvider key={i}><Tooltip><TooltipTrigger asChild>
-                          <div className={`cursor-help rounded-md border p-3 text-center transition-shadow hover:shadow-md ${cfg.caixa}`}>
-                            <Icon className={`mx-auto mb-1 h-5 w-5 ${cfg.tinta} ${v.status === 'verificando' ? 'animate-spin' : ''}`} aria-hidden="true" />
-                            <p className="truncate text-sm font-semibold text-foreground">{v.fonte}</p>
-                            <p className={`text-sm font-medium ${cfg.tinta}`}>{cfg.label}</p>
+                          <div className={`flex cursor-help items-center gap-2.5 rounded-md border p-3 ${cfg.caixa}`}>
+                            <Icon className={`h-4 w-4 shrink-0 ${cfg.tinta} ${v.status === 'verificando' ? 'animate-spin' : ''}`} aria-hidden="true" />
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-semibold text-foreground">{v.fonte}</p>
+                              <p className={`text-xs font-medium ${cfg.tinta}`}>{cfg.label}</p>
+                            </div>
                           </div>
                         </TooltipTrigger><TooltipContent side="bottom" className="max-w-xs">
                           <p className="text-sm font-semibold">{v.fonte}</p>
@@ -435,7 +456,7 @@ export default function CertidoesNegativas() {
                       );
                     })}
                   </div>
-                </div>
+                </Card>
               )}
 
               {resultado.alertas && resultado.alertas.length > 0 && (
@@ -450,9 +471,9 @@ export default function CertidoesNegativas() {
                 </Alert>
               )}
 
-              <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+              <Card className="p-5">
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <h3 className="text-lg font-semibold text-foreground">Resumo da análise</h3>
+                  <h3 className="text-lg font-semibold leading-6 text-foreground">Resumo da análise</h3>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button size="sm" variant="outline"><Download className="h-4 w-4" /> Exportar</Button>
@@ -462,7 +483,7 @@ export default function CertidoesNegativas() {
                         downloadCSV('certidoes-negativas', ['Certidão', 'Órgão', 'Validade', 'Status', 'Fonte', 'URL', 'Observações'],
                           resultado.certidoes.map(c => [c.nome, c.orgao, String(c.validadeDias), statusConfig[c.statusProvavel]?.label || 'Verificar', c.verificacaoReal ? 'API' : 'IA', c.url, c.observacoes]));
                         toast.success('CSV exportado!');
-                      }}><FileSpreadsheet className="w-4 h-4 mr-2" /> CSV</DropdownMenuItem>
+                      }}><FileSpreadsheet aria-hidden="true" /> CSV</DropdownMenuItem>
                       <DropdownMenuItem onClick={() => {
                         const txt = [`CERTIDÕES – ${cnpjInput}`, `Gerado: ${new Date().toLocaleString('pt-BR')}`, '='.repeat(60), '',
                           ...(resultado.verificacoesReais || []).map(v => `[${v.status.toUpperCase()}] ${v.fonte}: ${v.detalhes}`),
@@ -471,13 +492,13 @@ export default function CertidoesNegativas() {
                           '', ...resultado.recomendacoes.map(r => `→ ${r}`),
                         ].join('\n');
                         downloadTextReport('certidoes-negativas', txt); toast.success('TXT exportado!');
-                      }}><FileDown className="w-4 h-4 mr-2" /> TXT</DropdownMenuItem>
+                      }}><FileDown aria-hidden="true" /> TXT</DropdownMenuItem>
                       <DropdownMenuItem onClick={() => {
                         downloadPDF('certidoes-negativas', `Certidões – ${cnpjInput}`,
                           ['Certidão', 'Órgão', 'Validade', 'Status', 'Fonte'],
                           resultado.certidoes.map(c => [c.nome, c.orgao, `${c.validadeDias}d`, statusConfig[c.statusProvavel]?.label || 'Verificar', c.verificacaoReal ? 'API' : 'IA']));
                         toast.success('PDF exportado!');
-                      }}><FileText className="w-4 h-4 mr-2" /> PDF</DropdownMenuItem>
+                      }}><FileText aria-hidden="true" /> PDF</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
@@ -490,11 +511,11 @@ export default function CertidoesNegativas() {
                     ))}</ul>
                   </div>
                 )}
-              </div>
+              </Card>
 
               {certidoesReais.length > 0 && (
                 <div>
-                  <h3 className="mb-3 flex items-center gap-2 text-lg font-semibold text-foreground">
+                  <h3 className="mb-3 flex items-center gap-2 text-lg font-semibold leading-6 text-foreground">
                     <Wifi className="h-5 w-5 text-muted-foreground" aria-hidden="true" /> Verificadas via API ({certidoesReais.length})
                   </h3>
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -502,9 +523,9 @@ export default function CertidoesNegativas() {
                       const st = statusConfig[cert.statusProvavel] || statusConfig.verificar;
                       const Icon = st.icon;
                       return (
-                        <div key={i} className="rounded-lg border border-border bg-card p-6 shadow-sm transition-shadow hover:shadow-md">
+                        <Card key={i} className="p-5">
                           <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
-                            <h4 className="min-w-0 text-base font-semibold text-foreground">{cert.nome}</h4>
+                            <h4 className="min-w-0 text-lg font-semibold leading-6 text-foreground">{cert.nome}</h4>
                             <Badge variant="muted" className="gap-1"><Wifi className="h-3 w-3" aria-hidden="true" /> Verificação real</Badge>
                           </div>
                           <Badge variant={st.variante} className="mb-2 gap-1"><Icon className="h-3 w-3" aria-hidden="true" /> {st.label}</Badge>
@@ -523,27 +544,30 @@ export default function CertidoesNegativas() {
                               <ExternalLink className="h-3 w-3" aria-hidden="true" /> Acessar portal
                             </a>
                           )}
-                        </div>
+                        </Card>
                       );
                     })}
                   </div>
                 </div>
               )}
 
+              {/* As certidões complementares são geradas por IA: selo
+                  Praefectus IA e cartões na tinta da ação (§5 "IA"). */}
               {certidoesIA.length > 0 && (
                 <div>
-                  <h3 className="mb-3 flex items-center gap-2 text-lg font-semibold text-foreground">
-                    <Bot className="h-5 w-5 text-muted-foreground" aria-hidden="true" /> Complementar — IA ({certidoesIA.length})
+                  <h3 className="mb-3 flex flex-wrap items-center gap-2 text-lg font-semibold leading-6 text-foreground">
+                    Complementar — IA ({certidoesIA.length})
+                    <SeloPraefectusIA />
                   </h3>
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {certidoesIA.map((cert, i) => {
                       const st = statusConfig[cert.statusProvavel] || statusConfig.verificar;
                       const Icon = st.icon;
                       return (
-                        <div key={i} className="rounded-lg border border-border bg-card p-6 shadow-sm transition-shadow hover:shadow-md">
+                        <Card key={i} className="border-primary-line bg-primary-tint p-5">
                           <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
-                            <h4 className="min-w-0 text-base font-semibold text-foreground">{cert.nome}</h4>
-                            <Badge variant="muted" className="gap-1"><Bot className="h-3 w-3" aria-hidden="true" /> IA</Badge>
+                            <h4 className="min-w-0 text-lg font-semibold leading-6 text-foreground">{cert.nome}</h4>
+                            <SeloPraefectusIA />
                           </div>
                           <Badge variant={st.variante} className="mb-2 gap-1"><Icon className="h-3 w-3" aria-hidden="true" /> {st.label}</Badge>
                           <p className="text-sm text-muted-foreground">{cert.orgao}</p>
@@ -556,7 +580,7 @@ export default function CertidoesNegativas() {
                               <ExternalLink className="h-3 w-3" aria-hidden="true" /> Emitir certidão
                             </a>
                           )}
-                        </div>
+                        </Card>
                       );
                     })}
                   </div>

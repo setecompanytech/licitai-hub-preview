@@ -8,8 +8,11 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
+import FaixaIndicadores from '@/components/gestao/FaixaIndicadores';
 import {
   TrendingUp, DollarSign, Package,
   Building2, PieChart, Activity, Landmark, FileText, Shield, ExternalLink, Loader2,
@@ -56,6 +59,19 @@ const CORES_SERIE = [
   'hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))',
   'hsl(var(--chart-5))', 'hsl(var(--chart-6))', 'hsl(var(--chart-7))', 'hsl(var(--chart-8))',
 ];
+
+/* Recharts não aceita classe: grade, eixos e tooltip recebem estilo inline,
+   mas só com tokens do tema — grade e eixos recessivos, legenda em 12px. */
+const ESTILO_TOOLTIP = {
+  background: 'hsl(var(--card))',
+  border: '1px solid hsl(var(--border))',
+  borderRadius: 8,
+  boxShadow: 'var(--shadow-lg)',
+  fontSize: 12,
+  color: 'hsl(var(--foreground))',
+};
+const TICK = { fill: 'hsl(var(--muted-foreground))', fontSize: 12 };
+const EIXO = { stroke: 'hsl(var(--border))' };
 
 const brlCompacto = (v: number | null | undefined) => {
   if (v == null || !Number.isFinite(v)) return '—';
@@ -187,8 +203,8 @@ export default function AnaliseMercado() {
         <CabecalhoPagina
           filtros={
             <>
-              <div className="flex flex-col gap-1">
-                <label htmlFor="filtro-uf" className="text-xs text-muted-foreground">UF</label>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="filtro-uf">UF</Label>
                 <Select value={uf} onValueChange={setUf}>
                   <SelectTrigger id="filtro-uf" className="w-40"><SelectValue /></SelectTrigger>
                   <SelectContent className="max-h-80">
@@ -197,8 +213,8 @@ export default function AnaliseMercado() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex flex-col gap-1">
-                <label htmlFor="filtro-periodo" className="text-xs text-muted-foreground">Período</label>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="filtro-periodo">Período</Label>
                 <Select value={periodo} onValueChange={setPeriodo}>
                   <SelectTrigger id="filtro-periodo" className="w-48"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -227,55 +243,40 @@ export default function AnaliseMercado() {
           </Alert>
         ) : (
           <div className="space-y-3">
-            {/* KPIs REAIS do acervo — a competência e a régua ditas no rótulo. */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-                <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Activity className="h-4 w-4" aria-hidden="true" />
-                  Editais no período
-                </p>
-                <p className="mt-2 text-[2rem] font-bold leading-10 tabular-nums text-foreground">
-                  {carregando ? '…' : t?.editais.toLocaleString('pt-BR') ?? '—'}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {emDias ? 'na janela escolhida' : mediaMes != null ? `${mediaMes.toLocaleString('pt-BR')}/mês em média` : ''}
-                </p>
-              </div>
-              <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-                <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <DollarSign className="h-4 w-4" aria-hidden="true" />
-                  Volume estimado
-                </p>
-                <p className="mt-2 text-[2rem] font-bold leading-10 tabular-nums text-foreground">
-                  {carregando ? '…' : brlCompacto(t?.volume)}
-                </p>
-                <p className="text-xs text-muted-foreground">declarado pelos órgãos</p>
-              </div>
-              <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-                <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Building2 className="h-4 w-4" aria-hidden="true" />
-                  Órgãos contratando
-                </p>
-                <p className="mt-2 text-[2rem] font-bold leading-10 tabular-nums text-foreground">
-                  {carregando ? '…' : t?.orgaos.toLocaleString('pt-BR') ?? '—'}
-                </p>
-                <p className="text-xs text-muted-foreground">{uf === 'todos' ? 'no acervo' : `em ${uf}`}</p>
-              </div>
-              <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-                <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Package className="h-4 w-4" aria-hidden="true" />
-                  Valor médio por edital
-                </p>
-                <p className="mt-2 text-[2rem] font-bold leading-10 tabular-nums text-foreground">
-                  {carregando ? '…' : brlCompacto(t?.valor_medio)}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {t?.valor_mediano != null
+            {/* KPIs REAIS do acervo — a competência e a régua ditas no rótulo.
+                Cartão KPI do Design System v3 (FaixaIndicadores): rótulo em
+                cima, valor 24/600 tabular, ícone num ladrilho neutro e a linha
+                de contexto embaixo. */}
+            <FaixaIndicadores
+              itens={[
+                {
+                  rotulo: 'Editais no período',
+                  icone: Activity,
+                  valor: carregando ? '…' : t?.editais.toLocaleString('pt-BR') ?? '—',
+                  detalhe: emDias ? 'na janela escolhida' : mediaMes != null ? `${mediaMes.toLocaleString('pt-BR')}/mês em média` : '',
+                },
+                {
+                  rotulo: 'Volume estimado',
+                  icone: DollarSign,
+                  valor: carregando ? '…' : brlCompacto(t?.volume),
+                  detalhe: 'declarado pelos órgãos',
+                },
+                {
+                  rotulo: 'Órgãos contratando',
+                  icone: Building2,
+                  valor: carregando ? '…' : t?.orgaos.toLocaleString('pt-BR') ?? '—',
+                  detalhe: uf === 'todos' ? 'no acervo' : `em ${uf}`,
+                },
+                {
+                  rotulo: 'Valor médio por edital',
+                  icone: Package,
+                  valor: carregando ? '…' : brlCompacto(t?.valor_medio),
+                  detalhe: t?.valor_mediano != null
                     ? `mediana ${brlCompacto(t.valor_mediano)} · ${t.com_valor.toLocaleString('pt-BR')} com valor`
-                    : t ? `${t.com_valor.toLocaleString('pt-BR')} com valor informado` : ''}
-                </p>
-              </div>
-            </div>
+                    : t ? `${t.com_valor.toLocaleString('pt-BR')} com valor informado` : '',
+                },
+              ]}
+            />
             <p className="text-xs text-muted-foreground">
               Fonte: acervo PNCP local — acumula o que passou pelas buscas e pela semeadura (PA completo desde 2023;
               demais UFs conforme o uso). Ausência aqui não prova inexistência no PNCP.
@@ -285,17 +286,27 @@ export default function AnaliseMercado() {
 
         <Tabs value={abaAtiva} onValueChange={setAbaAtiva} className="space-y-4">
           <TabsList>
-            <TabsTrigger value="panorama"><PieChart className="w-4 h-4 mr-1" /> Panorama</TabsTrigger>
-            <TabsTrigger value="precos"><TrendingUp className="w-4 h-4 mr-1" /> Preços</TabsTrigger>
-            <TabsTrigger value="maiores"><Package className="w-4 h-4 mr-1" /> Maiores contratos</TabsTrigger>
-            <TabsTrigger value="consultas"><Landmark className="w-4 h-4 mr-1" /> Consultas</TabsTrigger>
+            <TabsTrigger value="panorama"><PieChart className="h-4 w-4" aria-hidden="true" /> Panorama</TabsTrigger>
+            <TabsTrigger value="precos"><TrendingUp className="h-4 w-4" aria-hidden="true" /> Preços</TabsTrigger>
+            <TabsTrigger value="maiores"><Package className="h-4 w-4" aria-hidden="true" /> Maiores contratos</TabsTrigger>
+            <TabsTrigger value="consultas"><Landmark className="h-4 w-4" aria-hidden="true" /> Consultas</TabsTrigger>
           </TabsList>
 
           <TabsContent value="panorama" className="space-y-4">
             {carregando ? (
-              <Card className="flex justify-center p-12">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" aria-label="Carregando" />
-              </Card>
+              /* Espera na forma do conteúdo — dois cartões de gráfico, sem
+                 spinner grande no centro. */
+              <div role="status" aria-busy="true" className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                <span className="sr-only">Carregando</span>
+                <Card className="p-5">
+                  <Skeleton className="h-5 w-40" />
+                  <Skeleton className="mt-4 h-[300px] w-full" />
+                </Card>
+                <Card className="p-5">
+                  <Skeleton className="h-5 w-56" />
+                  <Skeleton className="mt-4 h-[300px] w-full" />
+                </Card>
+              </div>
             ) : !resumo || resumo.por_modalidade.length === 0 ? (
               <Card>
                 <EstadoVazio
@@ -306,20 +317,20 @@ export default function AnaliseMercado() {
               </Card>
             ) : (
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                <Card className="p-6">
-                  <h2 className="mb-4 text-lg font-semibold text-foreground">Editais por mês</h2>
+                <Card className="p-5">
+                  <h2 className="mb-4 text-lg font-semibold leading-6 text-foreground">Editais por mês</h2>
                   <ResponsiveContainer width="100%" height={300}>
                     <BarChart data={resumo.por_mes.map(m => ({ ...m, rotulo: mesCurto(m.mes) }))}>
-                      <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                      <XAxis dataKey="rotulo" tick={{ fontSize: 10 }} />
-                      <YAxis tick={{ fontSize: 10 }} />
-                      <Tooltip formatter={(v: number, nome: string) => nome === 'editais' ? [v.toLocaleString('pt-BR'), 'Editais'] : [brlCompacto(v), 'Volume']} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                      <XAxis dataKey="rotulo" tick={TICK} axisLine={EIXO} tickLine={false} />
+                      <YAxis tick={TICK} axisLine={false} tickLine={false} />
+                      <Tooltip contentStyle={ESTILO_TOOLTIP} formatter={(v: number, nome: string) => nome === 'editais' ? [v.toLocaleString('pt-BR'), 'Editais'] : [brlCompacto(v), 'Volume']} />
                       <Bar dataKey="editais" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </Card>
-                <Card className="p-6">
-                  <h2 className="mb-4 text-lg font-semibold text-foreground">Distribuição por modalidade</h2>
+                <Card className="p-5">
+                  <h2 className="mb-4 text-lg font-semibold leading-6 text-foreground">Distribuição por modalidade</h2>
                   {/* Sem rótulo DENTRO do gráfico: fatia de 0–1% não comporta
                       texto apontado e as linhas se empilhavam ilegíveis
                       (print de 08/09). O percentual vive na legenda. */}
@@ -337,7 +348,7 @@ export default function AnaliseMercado() {
                               <Cell key={i} fill={CORES_SERIE[i % CORES_SERIE.length]} />
                             ))}
                           </Pie>
-                          <Tooltip formatter={(v: number) => [`${v.toLocaleString('pt-BR')} editais`, '']} />
+                          <Tooltip contentStyle={ESTILO_TOOLTIP} formatter={(v: number) => [`${v.toLocaleString('pt-BR')} editais`, '']} />
                           <Legend layout="vertical" align="right" verticalAlign="middle"
                             wrapperStyle={{ fontSize: 12, maxWidth: 220 }} />
                         </RPieChart>
@@ -345,13 +356,15 @@ export default function AnaliseMercado() {
                     );
                   })()}
                 </Card>
-                <Card className="p-6 lg:col-span-2">
-                  <h2 className="mb-3 text-lg font-semibold text-foreground">Órgãos que mais publicaram</h2>
-                  <ul className="space-y-2">
+                <Card className="p-5 lg:col-span-2">
+                  <h2 className="mb-3 text-lg font-semibold leading-6 text-foreground">Órgãos que mais publicaram</h2>
+                  {/* Lista dividida por fios, linhas de 48px — não uma pilha
+                      de caixas cinzas dentro do cartão. */}
+                  <ul className="divide-y divide-border rounded-md border border-border">
                     {resumo.top_orgaos.map((o, i) => (
-                      <li key={o.orgao} className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted p-3 text-sm">
-                        <span className="min-w-0 truncate">
-                          <b className="mr-2 text-muted-foreground">{i + 1}º</b>{o.orgao}
+                      <li key={o.orgao} className="flex min-h-12 items-center justify-between gap-3 px-4 py-2.5 text-sm">
+                        <span className="min-w-0 truncate text-foreground">
+                          <b className="mr-2 font-semibold tabular-nums text-muted-foreground">{i + 1}º</b>{o.orgao}
                         </span>
                         <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
                           {o.editais.toLocaleString('pt-BR')} editais{o.volume ? ` · ${brlCompacto(o.volume)}` : ''}
@@ -371,16 +384,16 @@ export default function AnaliseMercado() {
                 Recorrência); valores = total ESTIMADO declarado no edital.
                 Preço homologado item a item é papel da Precificação — a
                 ponte está no botão. */}
-            <Card className="p-6">
-              <h2 className="text-lg font-semibold text-foreground">Preço praticado por objeto</h2>
+            <Card className="p-5">
+              <h2 className="text-lg font-semibold leading-6 text-foreground">Preço praticado por objeto</h2>
               <p className="mt-1 text-sm text-muted-foreground">
                 Digite o objeto que você fornece; a comparação usa a descrição dos editais do acervo
                 (últimos 3 anos, os 30 mais similares).
               </p>
 
               <div className="mt-4 flex flex-wrap items-end gap-3">
-                <div className="flex min-w-0 flex-1 flex-col gap-1 sm:max-w-md">
-                  <label htmlFor="preco-objeto" className="text-sm font-medium text-foreground">Objeto</label>
+                <div className="flex min-w-0 flex-1 flex-col gap-1.5 sm:max-w-md">
+                  <Label htmlFor="preco-objeto">Objeto</Label>
                   <Input id="preco-objeto" placeholder='Ex.: carne bovina congelada, notebook, material de expediente'
                     value={termoPreco} onChange={(e) => setTermoPreco(e.target.value)}
                     aria-invalid={erroPreco ? true : undefined}
@@ -398,8 +411,8 @@ export default function AnaliseMercado() {
               </div>
 
               <div className="mt-3 flex flex-wrap items-end gap-3">
-                <div className="flex flex-col gap-1">
-                  <label htmlFor="preco-uf" className="text-sm font-medium text-foreground">UF</label>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="preco-uf">UF</Label>
                   <Select value={ufPreco} onValueChange={setUfPreco}>
                     <SelectTrigger id="preco-uf" className="w-56"><SelectValue /></SelectTrigger>
                     <SelectContent className="max-h-80">
@@ -409,16 +422,16 @@ export default function AnaliseMercado() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="flex flex-col gap-1">
-                  <label htmlFor="preco-municipio" className="text-sm font-medium text-foreground">Município</label>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="preco-municipio">Município</Label>
                   <Input id="preco-municipio" placeholder="Opcional" value={municipioPreco}
                     onChange={(e) => setMunicipioPreco(e.target.value)} className="w-48" />
                 </div>
                 {/* Sem sobreposição (08/09): "últimos 12 meses" e "ano de
                     2026" diziam quase o mesmo por dois nomes. Fica UM padrão
                     (a janela cheia de 3 anos) e os anos exatos. */}
-                <div className="flex flex-col gap-1">
-                  <label htmlFor="preco-periodo" className="text-sm font-medium text-foreground">Período</label>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="preco-periodo">Período</Label>
                   <Select value={periodoPreco} onValueChange={setPeriodoPreco}>
                     <SelectTrigger id="preco-periodo" className="w-52"><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -432,8 +445,8 @@ export default function AnaliseMercado() {
                 </div>
                 {/* Rigor: quanto o edital precisa PARECER com o objeto para
                     entrar na conta. Alto = amostra menor e mais fiel. */}
-                <div className="flex flex-col gap-1">
-                  <label htmlFor="preco-rigor" className="text-sm font-medium text-foreground">Rigor da similaridade</label>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="preco-rigor">Rigor da similaridade</Label>
                   <Select value={rigorPreco} onValueChange={setRigorPreco}>
                     <SelectTrigger id="preco-rigor" className="w-64"><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -465,34 +478,39 @@ export default function AnaliseMercado() {
 
             {valoresPreco.length > 0 && (
               <>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-                    <p className="text-sm text-muted-foreground">Mediana do edital</p>
-                    <p className="mt-2 text-[2rem] font-bold leading-10 tabular-nums text-foreground">{brlExato(quantil(0.5))}</p>
-                    <p className="text-xs text-muted-foreground">o valor típico da amostra</p>
-                  </div>
-                  <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-                    <p className="text-sm text-muted-foreground">Miolo (Q1–Q3)</p>
-                    <p className="mt-2 text-lg font-semibold tabular-nums text-foreground">{brlExato(quantil(0.25))}</p>
-                    <p className="text-lg font-semibold tabular-nums text-foreground">a {brlExato(quantil(0.75))}</p>
-                  </div>
-                  <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-                    <p className="text-sm text-muted-foreground">Faixa completa</p>
-                    <p className="mt-2 text-lg font-semibold tabular-nums text-foreground">{brlExato(valoresPreco[0])}</p>
-                    <p className="text-lg font-semibold tabular-nums text-foreground">a {brlExato(valoresPreco[valoresPreco.length - 1])}</p>
-                  </div>
-                  <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-                    <p className="text-sm text-muted-foreground">Amostra</p>
-                    <p className="mt-2 text-[2rem] font-bold leading-10 tabular-nums text-foreground">{valoresPreco.length}</p>
-                    <p className="text-xs text-muted-foreground">editais com valor, de {editaisPreco.length} similares</p>
-                  </div>
-                </div>
+                {/* A estatística da amostra nos cartões KPI do Design System
+                    v3. Faixas (Q1–Q3 e mínimo–máximo) ocupam duas linhas do
+                    valor, cada extremo na sua. */}
+                <FaixaIndicadores
+                  itens={[
+                    { rotulo: 'Mediana do edital', valor: brlExato(quantil(0.5)), detalhe: 'o valor típico da amostra' },
+                    {
+                      rotulo: 'Miolo (Q1–Q3)',
+                      valor: (
+                        <>
+                          <span className="block">{brlExato(quantil(0.25))}</span>
+                          <span className="block">a {brlExato(quantil(0.75))}</span>
+                        </>
+                      ),
+                    },
+                    {
+                      rotulo: 'Faixa completa',
+                      valor: (
+                        <>
+                          <span className="block">{brlExato(valoresPreco[0])}</span>
+                          <span className="block">a {brlExato(valoresPreco[valoresPreco.length - 1])}</span>
+                        </>
+                      ),
+                    },
+                    { rotulo: 'Amostra', valor: valoresPreco.length, detalhe: `editais com valor, de ${editaisPreco.length} similares` },
+                  ]}
+                />
 
-                <Card className="p-6">
-                  <h2 className="mb-3 text-lg font-semibold text-foreground">Editais que sustentam o número</h2>
-                  <ul className="max-h-[380px] space-y-2 overflow-y-auto">
+                <Card className="p-5">
+                  <h2 className="mb-3 text-lg font-semibold leading-6 text-foreground">Editais que sustentam o número</h2>
+                  <ul className="max-h-[380px] divide-y divide-border overflow-y-auto rounded-md border border-border">
                     {editaisPreco.map((e) => (
-                      <li key={e.id} className="flex items-start justify-between gap-3 rounded-md border border-border bg-muted p-3 text-sm">
+                      <li key={e.id} className="flex items-start justify-between gap-3 px-4 py-3 text-sm">
                         <div className="min-w-0">
                           <p className="line-clamp-2 font-medium text-foreground">{e.objeto ?? '—'}</p>
                           <p className="mt-1 text-xs text-muted-foreground">
@@ -526,25 +544,26 @@ export default function AnaliseMercado() {
 
             {/* Sem objeto pesquisado: o panorama geral de antes, rotulado como tal. */}
             {!buscouPreco && (
-              <Card className="p-6">
-                <h2 className="mb-4 text-lg font-semibold text-foreground">
+              <Card className="p-5">
+                <h2 className="mb-4 text-lg font-semibold leading-6 text-foreground">
                   Panorama geral — valor médio por edital, mês a mês (sem objeto pesquisado)
                 </h2>
                 {carregando ? (
-                  <div className="flex justify-center p-12">
-                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" aria-label="Carregando" />
+                  <div role="status" aria-busy="true">
+                    <span className="sr-only">Carregando</span>
+                    <Skeleton className="h-[300px] w-full" />
                   </div>
                 ) : !resumo || resumo.por_mes.length === 0 ? (
                   <EstadoVazio tamanho="compacto" titulo="Sem dados para este recorte" />
                 ) : (
                   <ResponsiveContainer width="100%" height={300}>
                     <LineChart data={resumo.por_mes.map(m => ({ ...m, rotulo: mesCurto(m.mes) }))}>
-                      <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                      <XAxis dataKey="rotulo" tick={{ fontSize: 11 }} />
-                      <YAxis tickFormatter={(v: number) => brlCompacto(v)} tick={{ fontSize: 11 }} width={80} />
-                      <Tooltip formatter={(v: number, nome: string) => [brlCompacto(v), nome === 'valor_medio' ? 'Valor médio' : 'Volume']} />
-                      <Legend formatter={(v) => v === 'valor_medio' ? 'Valor médio do edital' : v} />
-                      <Line type="monotone" dataKey="valor_medio" stroke="hsl(var(--chart-1))" strokeWidth={2} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                      <XAxis dataKey="rotulo" tick={TICK} axisLine={EIXO} tickLine={false} />
+                      <YAxis tickFormatter={(v: number) => brlCompacto(v)} tick={TICK} axisLine={false} tickLine={false} width={80} />
+                      <Tooltip contentStyle={ESTILO_TOOLTIP} formatter={(v: number, nome: string) => [brlCompacto(v), nome === 'valor_medio' ? 'Valor médio' : 'Volume']} />
+                      <Legend wrapperStyle={{ fontSize: 12 }} formatter={(v) => v === 'valor_medio' ? 'Valor médio do edital' : v} />
+                      <Line type="monotone" dataKey="valor_medio" stroke="hsl(var(--chart-1))" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
                     </LineChart>
                   </ResponsiveContainer>
                 )}
@@ -557,11 +576,18 @@ export default function AnaliseMercado() {
           </TabsContent>
 
           <TabsContent value="maiores">
-            <Card className="p-6">
-              <h2 className="mb-3 text-lg font-semibold text-foreground">Maiores contratações do período</h2>
+            <Card className="p-5">
+              <h2 className="mb-3 text-lg font-semibold leading-6 text-foreground">Maiores contratações do período</h2>
               {carregando ? (
-                <div className="flex justify-center p-12">
-                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" aria-label="Carregando" />
+                <div role="status" aria-busy="true" className="divide-y divide-border rounded-md border border-border">
+                  <span className="sr-only">Carregando</span>
+                  {Array.from({ length: 5 }, (_, i) => (
+                    <div key={i} className="flex items-center gap-3 px-4 py-3">
+                      <Skeleton className="h-4 w-8" />
+                      <Skeleton className="h-4 w-1/2" />
+                      <Skeleton className="ml-auto h-4 w-20" />
+                    </div>
+                  ))}
                 </div>
               ) : !resumo || resumo.maiores.length === 0 ? (
                 <EstadoVazio
@@ -570,11 +596,11 @@ export default function AnaliseMercado() {
                   descricao="Amplie o período ou troque a UF nos filtros acima."
                 />
               ) : (
-                <ul className="space-y-2">
+                <ul className="divide-y divide-border rounded-md border border-border">
                   {resumo.maiores.map((m, i) => (
-                    <li key={`${m.url}-${i}`} className="flex items-start justify-between gap-3 rounded-md border border-border bg-muted p-3 transition-colors hover:border-primary/40">
+                    <li key={`${m.url}-${i}`} className="flex items-start justify-between gap-3 px-4 py-3 transition-colors hover:bg-muted/60">
                       <div className="flex min-w-0 items-start gap-3">
-                        <span className="w-8 shrink-0 text-center text-lg font-bold text-foreground">{i + 1}º</span>
+                        <span className="w-8 shrink-0 text-sm font-semibold tabular-nums text-muted-foreground">{i + 1}º</span>
                         <div className="min-w-0">
                           <p className="line-clamp-2 text-sm font-medium text-foreground">{m.objeto}</p>
                           <p className="mt-1 text-xs text-muted-foreground">
@@ -627,8 +653,8 @@ export default function AnaliseMercado() {
             </div>
 
             {fonteConsulta === 'estadual' && (
-              <div className="flex flex-col gap-1">
-                <label htmlFor="portal-transparencia" className="text-sm font-medium text-foreground">Portal de transparência</label>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="portal-transparencia">Portal de transparência</Label>
                 <Select value={portalSelecionado} onValueChange={setPortalSelecionado}>
                   <SelectTrigger id="portal-transparencia" className="w-full sm:w-80">
                     <Landmark className="mr-1 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />

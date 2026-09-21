@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Search, FileText, CheckCircle2, AlertTriangle, Loader2, ExternalLink, Download, FileSpreadsheet, FileDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -85,15 +87,15 @@ export default function ConsultaCNPJ() {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-        <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+      <Card className="p-5">
+        <h2 className="flex items-center gap-2 text-lg font-semibold leading-6 text-foreground">
           <Search className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
           Consulta de CNPJ — Receita Federal (BrasilAPI)
         </h2>
 
         <div className="mt-4 flex flex-wrap items-end gap-3">
-          <div className="flex min-w-0 flex-1 flex-col gap-1 sm:max-w-md">
-            <label htmlFor="cnpj-consulta" className="text-sm font-medium text-foreground">CNPJ</label>
+          <div className="flex min-w-0 flex-1 flex-col gap-1.5 sm:max-w-md">
+            <Label htmlFor="cnpj-consulta">CNPJ</Label>
             <Input
               id="cnpj-consulta"
               placeholder="Ex.: 12.345.678/0001-01"
@@ -125,12 +127,12 @@ export default function ConsultaCNPJ() {
             <ExternalLink className="h-3 w-3" aria-hidden="true" /> Receita Federal
           </a>
         </div>
-      </div>
+      </Card>
 
       {resultado && (
-        <div className="animate-fade-in space-y-4 rounded-lg border border-border bg-card p-6 shadow-sm">
+        <Card className="animate-fade-in space-y-4 p-5">
           <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-            <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+            <h2 className="flex items-center gap-2 text-lg font-semibold leading-6 text-foreground">
               <FileText className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
               Resultado da consulta
             </h2>
@@ -165,7 +167,7 @@ export default function ConsultaCNPJ() {
                     );
                     toast.success('CSV exportado!');
                   }}>
-                    <FileSpreadsheet className="w-4 h-4 mr-2" /> Exportar CSV
+                    <FileSpreadsheet aria-hidden="true" /> Exportar CSV
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => {
                     const report = [
@@ -192,7 +194,7 @@ export default function ConsultaCNPJ() {
                     downloadTextReport(`cnpj-${resultado.cnpj.replace(/\D/g, '')}`, report);
                     toast.success('Relatório exportado!');
                   }}>
-                    <FileDown className="w-4 h-4 mr-2" /> Exportar Relatório TXT
+                    <FileDown aria-hidden="true" /> Exportar Relatório TXT
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => {
                     downloadPDF(
@@ -217,7 +219,7 @@ export default function ConsultaCNPJ() {
                     );
                     toast.success('PDF exportado!');
                   }}>
-                    <FileText className="w-4 h-4 mr-2" /> Exportar PDF
+                    <FileText aria-hidden="true" /> Exportar PDF
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -245,7 +247,7 @@ export default function ConsultaCNPJ() {
 
           {resultado.cnaesSecundarios.length > 0 && (
             <div className="border-t border-border pt-4">
-              <h3 className="mb-3 text-base font-semibold text-foreground">
+              <h3 className="mb-3 text-lg font-semibold leading-6 text-foreground">
                 CNAEs secundários ({resultado.cnaesSecundarios.length})
               </h3>
               <div className="flex flex-wrap gap-2">
@@ -255,7 +257,7 @@ export default function ConsultaCNPJ() {
               </div>
             </div>
           )}
-        </div>
+        </Card>
       )}
     </div>
   );

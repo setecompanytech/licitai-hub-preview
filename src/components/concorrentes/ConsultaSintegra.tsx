@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Search, Building2, FileText, Loader2, AlertTriangle, ExternalLink, Download, FileSpreadsheet, FileDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -114,14 +116,14 @@ export default function ConsultaSintegra() {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-        <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+      <Card className="p-5">
+        <h2 className="flex items-center gap-2 text-lg font-semibold leading-6 text-foreground">
           <Building2 className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
           Consulta SINTEGRA — inscrição estadual
         </h2>
         <div className="mt-4 flex flex-wrap items-end gap-3">
-          <div className="flex min-w-0 flex-1 flex-col gap-1 sm:max-w-sm">
-            <label htmlFor="sintegra-cnpj" className="text-sm font-medium text-foreground">CNPJ</label>
+          <div className="flex min-w-0 flex-1 flex-col gap-1.5 sm:max-w-sm">
+            <Label htmlFor="sintegra-cnpj">CNPJ</Label>
             <Input
               id="sintegra-cnpj"
               placeholder="Ex.: 12.345.678/0001-01"
@@ -132,8 +134,8 @@ export default function ConsultaSintegra() {
               onKeyDown={(e) => e.key === 'Enter' && handleConsultar()}
             />
           </div>
-          <div className="flex flex-col gap-1">
-            <label htmlFor="sintegra-uf" className="text-sm font-medium text-foreground">UF</label>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="sintegra-uf">UF</Label>
             <Select value={uf} onValueChange={setUf}>
               <SelectTrigger id="sintegra-uf" className="w-28"><SelectValue /></SelectTrigger>
               <SelectContent className="max-h-80">
@@ -157,12 +159,12 @@ export default function ConsultaSintegra() {
             <ExternalLink className="h-3 w-3" aria-hidden="true" /> SINTEGRA oficial
           </a>
         </div>
-      </div>
+      </Card>
 
       {resultado && (
-        <div className="animate-fade-in space-y-4 rounded-lg border border-border bg-card p-6 shadow-sm">
+        <Card className="animate-fade-in space-y-4 p-5">
           <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-            <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+            <h2 className="flex items-center gap-2 text-lg font-semibold leading-6 text-foreground">
               <FileText className="h-5 w-5 text-muted-foreground" aria-hidden="true" /> Resultado SINTEGRA
             </h2>
             <div className="flex flex-wrap items-center gap-2">
@@ -172,13 +174,13 @@ export default function ConsultaSintegra() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => { downloadCSV(`sintegra-${resultado.cnpj.replace(/\D/g, '')}`, ['Campo', 'Valor'], rows); toast.success('CSV exportado!'); }}>
-                    <FileSpreadsheet className="w-4 h-4 mr-2" /> CSV
+                    <FileSpreadsheet aria-hidden="true" /> CSV
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => { downloadTextReport(`sintegra-${resultado.cnpj.replace(/\D/g, '')}`, `CONSULTA SINTEGRA – ${resultado.cnpj}\n${new Date().toLocaleString('pt-BR')}\n${'='.repeat(50)}\n\n${rows.map(r => `${r[0]}: ${r[1]}`).join('\n')}`); toast.success('TXT exportado!'); }}>
-                    <FileDown className="w-4 h-4 mr-2" /> TXT
+                    <FileDown aria-hidden="true" /> TXT
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => { downloadPDF(`sintegra-${resultado.cnpj.replace(/\D/g, '')}`, `Consulta SINTEGRA – ${resultado.razaoSocial}`, ['Campo', 'Valor'], rows); toast.success('PDF exportado!'); }}>
-                    <FileText className="w-4 h-4 mr-2" /> PDF
+                    <FileText aria-hidden="true" /> PDF
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -199,7 +201,7 @@ export default function ConsultaSintegra() {
             <InfoField label="Endereço" value={resultado.endereco} />
             <InfoField label="CEP" value={resultado.cep} />
           </dl>
-        </div>
+        </Card>
       )}
     </div>
   );

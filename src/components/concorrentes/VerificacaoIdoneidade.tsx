@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Search, Shield, ShieldAlert, ShieldCheck, Loader2,
@@ -74,8 +76,8 @@ export default function VerificacaoIdoneidade() {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-        <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+      <Card className="p-5">
+        <h2 className="flex items-center gap-2 text-lg font-semibold leading-6 text-foreground">
           <Shield className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
           Verificação de idoneidade — Portal da Transparência
         </h2>
@@ -84,8 +86,8 @@ export default function VerificacaoIdoneidade() {
         </p>
 
         <div className="mt-4 flex flex-wrap items-end gap-3">
-          <div className="flex min-w-0 flex-1 flex-col gap-1 sm:max-w-md">
-            <label htmlFor="idoneidade-cnpj" className="text-sm font-medium text-foreground">CNPJ</label>
+          <div className="flex min-w-0 flex-1 flex-col gap-1.5 sm:max-w-md">
+            <Label htmlFor="idoneidade-cnpj">CNPJ</Label>
             <Input
               id="idoneidade-cnpj"
               placeholder="Ex.: 12.345.678/0001-01"
@@ -118,12 +120,13 @@ export default function VerificacaoIdoneidade() {
             <Info className="h-3 w-3" aria-hidden="true" /> Dados oficiais do Governo Federal
           </span>
         </div>
-      </div>
+      </Card>
 
       {resultado && (
         <div className="space-y-4 animate-fade-in">
-          {/* Status geral */}
-          <div className={`rounded-lg border p-6 shadow-sm ${
+          {/* Status geral — o veredito na tinta da família (sucesso ou
+              crítico), ícone num ladrilho de 40px, TEXTO sempre junto. */}
+          <div className={`rounded-lg border p-5 shadow-sm ${
             resultado.idonea
               ? 'border-success-line bg-success-tint'
               : 'border-destructive-line bg-destructive-tint'
@@ -131,12 +134,16 @@ export default function VerificacaoIdoneidade() {
             <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
               <div className="flex items-center gap-3">
                 {resultado.idonea ? (
-                  <ShieldCheck className="h-8 w-8 shrink-0 text-success-ink" aria-hidden="true" />
+                  <span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-card text-success-ink">
+                    <ShieldCheck className="h-5 w-5" />
+                  </span>
                 ) : (
-                  <ShieldAlert className="h-8 w-8 shrink-0 text-destructive-ink" aria-hidden="true" />
+                  <span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-card text-destructive-ink">
+                    <ShieldAlert className="h-5 w-5" />
+                  </span>
                 )}
                 <div className="min-w-0">
-                  <h2 className="text-lg font-semibold text-foreground">
+                  <h2 className="text-lg font-semibold leading-6 text-foreground">
                     {resultado.idonea ? 'Empresa idônea' : 'Restrições encontradas'}
                   </h2>
                   <p className="text-sm text-muted-foreground">
@@ -164,7 +171,7 @@ export default function VerificacaoIdoneidade() {
                       );
                       toast.success('PDF exportado!');
                     }}>
-                      <FileText className="w-4 h-4 mr-2" /> Exportar PDF
+                      <FileText aria-hidden="true" /> Exportar PDF
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => {
                       downloadCSV(
@@ -174,7 +181,7 @@ export default function VerificacaoIdoneidade() {
                       );
                       toast.success('CSV exportado!');
                     }}>
-                      <FileText className="w-4 h-4 mr-2" /> Exportar CSV
+                      <FileText aria-hidden="true" /> Exportar CSV
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -185,9 +192,9 @@ export default function VerificacaoIdoneidade() {
           {/* Detalhes por cadastro */}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             {cadastros.map((cadastro) => (
-              <div key={cadastro.nome} className="rounded-lg border border-border bg-card p-6 shadow-sm">
+              <Card key={cadastro.nome} className="p-5">
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <h3 className="text-base font-semibold text-foreground">{cadastro.nome}</h3>
+                  <h3 className="text-lg font-semibold leading-6 text-foreground">{cadastro.nome}</h3>
                   {cadastro.erro ? (
                     <Badge variant="warning">Erro na consulta</Badge>
                   ) : cadastro.status === 'limpo' ? (
@@ -228,7 +235,7 @@ export default function VerificacaoIdoneidade() {
                     ))}
                   </div>
                 )}
-              </div>
+              </Card>
             ))}
           </div>
 

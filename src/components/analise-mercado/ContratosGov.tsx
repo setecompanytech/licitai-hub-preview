@@ -5,7 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import EstadoVazio from '@/components/shared/EstadoVazio';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import FaixaIndicadores from '@/components/gestao/FaixaIndicadores';
 import {
   Search, Loader2, Building2, FileText, ExternalLink, Download, AlertTriangle,
 } from 'lucide-react';
@@ -124,8 +126,8 @@ export default function ContratosGov() {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-        <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+      <Card className="p-5">
+        <h2 className="flex items-center gap-2 text-lg font-semibold leading-6 text-foreground">
           <FileText className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
           Atas de registro de preços — Compras.gov.br
         </h2>
@@ -135,15 +137,15 @@ export default function ContratosGov() {
         </p>
 
         <div className="mt-4 flex flex-wrap items-end gap-3">
-          <div className="flex flex-col gap-1">
-            <label htmlFor="arp-cnpj" className="text-sm font-medium text-foreground">CNPJ do fornecedor</label>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="arp-cnpj">CNPJ do fornecedor</Label>
             <Input id="arp-cnpj" placeholder="00.000.000/0000-00" value={cnpj} inputMode="numeric"
               aria-invalid={erro ? true : undefined}
               onChange={(e) => setCnpj(mascaraCNPJ(e.target.value))} className="w-56"
               onKeyDown={(e) => { if (e.key === 'Enter') buscar(); }} />
           </div>
-          <div className="flex flex-col gap-1">
-            <label htmlFor="arp-periodo" className="text-sm font-medium text-foreground">Início da ata</label>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="arp-periodo">Início da ata</Label>
             <Select value={meses} onValueChange={setMeses}>
               <SelectTrigger id="arp-periodo" className="w-72"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -175,7 +177,7 @@ export default function ContratosGov() {
             <AlertDescription>{erro}</AlertDescription>
           </Alert>
         )}
-      </div>
+      </Card>
 
       {buscou && !buscando && !erro && itens.length === 0 && (
         <Card>
@@ -189,27 +191,14 @@ export default function ContratosGov() {
 
       {itens.length > 0 && (
         <>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-              <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                <FileText className="h-4 w-4" aria-hidden="true" />
-                Atas
-              </p>
-              <p className="mt-2 text-[2rem] font-bold leading-10 tabular-nums text-foreground">{atas.size}</p>
-              <p className="text-xs text-muted-foreground">{atasVigentes} vigente(s) hoje</p>
-            </div>
-            <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-              <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Building2 className="h-4 w-4" aria-hidden="true" />
-                Itens registrados
-              </p>
-              <p className="mt-2 text-[2rem] font-bold leading-10 tabular-nums text-foreground">{itens.length}</p>
-            </div>
-            <div className="rounded-lg border border-border bg-card p-6 shadow-sm lg:col-span-2">
-              <p className="text-sm text-muted-foreground">Valor total registrado</p>
-              <p className="mt-2 text-[2rem] font-bold leading-10 tabular-nums text-foreground">{brlExato(totalRegistrado)}</p>
-            </div>
-          </div>
+          {/* Os três números da consulta no cartão KPI do Design System v3. */}
+          <FaixaIndicadores
+            itens={[
+              { rotulo: 'Atas', icone: FileText, valor: atas.size, detalhe: `${atasVigentes} vigente(s) hoje` },
+              { rotulo: 'Itens registrados', icone: Building2, valor: itens.length },
+              { rotulo: 'Valor total registrado', valor: brlExato(totalRegistrado) },
+            ]}
+          />
 
           <div className="space-y-4">
             {[...atas.entries()].map(([chave, grupo]) => {
@@ -217,10 +206,10 @@ export default function ContratosGov() {
               const vigente = (a.dataVigenciaFinal ?? '') >= hoje;
               const link = linkPncpDaCompra(a.numeroControlePncpCompra);
               return (
-                <Card key={chave} className="p-6">
+                <Card key={chave} className="p-5">
                   <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <h3 className="flex flex-wrap items-center gap-2 text-lg font-semibold text-foreground">
+                      <h3 className="flex flex-wrap items-center gap-2 text-lg font-semibold leading-6 text-foreground">
                         Ata {a.numeroAtaRegistroPreco}
                         <Badge variant={vigente ? 'success' : 'muted'}>{vigente ? 'Vigente' : 'Encerrada'}</Badge>
                         {a.nomeModalidadeCompra && <Badge variant="info">{a.nomeModalidadeCompra}</Badge>}

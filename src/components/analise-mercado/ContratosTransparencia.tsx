@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import EstadoVazio from '@/components/shared/EstadoVazio';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Search, Loader2, Building2, ExternalLink, Download, Calendar, AlertTriangle, Inbox,
@@ -90,15 +91,15 @@ export default function ContratosTransparencia() {
   return (
     <div className="space-y-4">
       {/* Filtros */}
-      <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-        <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+      <Card className="p-5">
+        <h2 className="flex items-center gap-2 text-lg font-semibold leading-6 text-foreground">
           <Building2 className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
           Consulta federal — Portal da Transparência
         </h2>
 
         <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-          <div className="flex flex-col gap-1">
-            <label htmlFor="federal-tipo" className="text-sm font-medium text-foreground">O que consultar</label>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="federal-tipo">O que consultar</Label>
             <Select value={tipo} onValueChange={(v) => setTipo(v as 'contratos' | 'licitacoes')}>
               <SelectTrigger id="federal-tipo">
                 <SelectValue />
@@ -110,8 +111,8 @@ export default function ContratosTransparencia() {
             </Select>
           </div>
 
-          <div className="flex flex-col gap-1">
-            <label htmlFor="federal-cnpj" className="text-sm font-medium text-foreground">CNPJ do contratado</label>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="federal-cnpj">CNPJ do contratado</Label>
             <Input
               id="federal-cnpj"
               placeholder="Opcional"
@@ -122,8 +123,8 @@ export default function ContratosTransparencia() {
             />
           </div>
 
-          <div className="flex flex-col gap-1">
-            <label htmlFor="federal-orgao" className="text-sm font-medium text-foreground">Código do órgão SIAFI</label>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="federal-orgao">Código do órgão SIAFI</Label>
             <Input
               id="federal-orgao"
               placeholder="Ex.: 26403"
@@ -155,7 +156,7 @@ export default function ContratosTransparencia() {
             <ExternalLink className="h-3 w-3" aria-hidden="true" /> Portal da Transparência
           </a>
         </div>
-      </div>
+      </Card>
 
       {buscou && !loading && !erro && dados.length === 0 && (
         <Card>
@@ -169,9 +170,9 @@ export default function ContratosTransparencia() {
 
       {/* Resultados */}
       {dados.length > 0 && (
-        <div className="rounded-lg border border-border bg-card shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border p-4">
-            <h3 className="text-lg font-semibold text-foreground">
+        <Card>
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-5 py-4">
+            <h3 className="text-lg font-semibold leading-6 text-foreground">
               {dados.length} resultado(s) — {tipo === 'contratos' ? 'contratos' : 'licitações'} federais
             </h3>
             <Button size="sm" variant="outline" onClick={() => {
@@ -206,7 +207,7 @@ export default function ContratosTransparencia() {
 
           <ul className="max-h-[500px] divide-y divide-border overflow-y-auto">
             {dados.slice(0, 50).map((item: any, i: number) => (
-              <li key={i} className="p-4 transition-colors hover:bg-muted">
+              <li key={i} className="px-5 py-3 transition-colors hover:bg-muted/60">
                 {tipo === 'contratos' ? (
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
@@ -260,7 +261,7 @@ export default function ContratosTransparencia() {
               </li>
             ))}
           </ul>
-        </div>
+        </Card>
       )}
     </div>
   );

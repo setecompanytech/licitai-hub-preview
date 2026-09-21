@@ -4,9 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import EstadoVazio from '@/components/shared/EstadoVazio';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import FaixaIndicadores from '@/components/gestao/FaixaIndicadores';
 import {
-  Building2, Download, Upload, Search, Loader2,
+  Building2, CheckCircle2, Clock, Download, Upload, Search, Loader2,
   TrendingUp, TrendingDown, ExternalLink, FileSpreadsheet, Trash2
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
@@ -36,6 +38,17 @@ const COLORS = [
   'hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))',
   'hsl(var(--chart-5))', 'hsl(var(--chart-6))', 'hsl(var(--chart-7))', 'hsl(var(--chart-8))',
 ];
+/* Grade, eixos e tooltip do Recharts recebem estilo inline — só com tokens. */
+const ESTILO_TOOLTIP = {
+  background: 'hsl(var(--card))',
+  border: '1px solid hsl(var(--border))',
+  borderRadius: 8,
+  boxShadow: 'var(--shadow-lg)',
+  fontSize: 12,
+  color: 'hsl(var(--foreground))',
+};
+const TICK = { fill: 'hsl(var(--muted-foreground))', fontSize: 12 };
+const EIXO = { stroke: 'hsl(var(--border))' };
 const formatCurrency = (v: number) => {
   if (v >= 1_000_000_000) return `R$ ${(v / 1_000_000_000).toFixed(1)}B`;
   if (v >= 1_000_000) return `R$ ${(v / 1_000_000).toFixed(1)}M`;
@@ -433,8 +446,8 @@ export default function TransparenciaPA({ portal }: Props) {
 
       {/* Header actions */}
       <div className="flex flex-wrap items-end gap-3">
-        <div className="flex flex-col gap-1">
-          <label htmlFor="transparencia-ano" className="text-sm font-medium text-foreground">Ano</label>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="transparencia-ano">Ano</Label>
           <Select value={anoFiltro} onValueChange={setAnoFiltro}>
             <SelectTrigger id="transparencia-ano" className="w-44">
               <SelectValue placeholder="Ano" />
@@ -509,8 +522,8 @@ export default function TransparenciaPA({ portal }: Props) {
           </Button>
 
           {(dados.length > 0 || achados.length > 0) && (
-            <Button variant="ghost" size="sm" onClick={handleLimparDados} className="text-destructive hover:text-destructive">
-              <Trash2 className="h-4 w-4" /> Limpar
+            <Button variant="ghost-destructive" size="sm" onClick={handleLimparDados}>
+              <Trash2 className="h-4 w-4" aria-hidden="true" /> Limpar
             </Button>
           )}
         </div>
@@ -523,8 +536,8 @@ export default function TransparenciaPA({ portal }: Props) {
           nome, CNPJ ou número do empenho — instantânea, com os totais que a
           tela do portal exibe. */}
       {ehParaEstado && (
-        <Card className="space-y-4 p-6">
-          <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+        <Card className="space-y-4 p-5">
+          <h2 className="flex items-center gap-2 text-lg font-semibold leading-6 text-foreground">
             <Search className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
             Empenhos por credor — busca do portal do Pará
           </h2>
@@ -532,14 +545,14 @@ export default function TransparenciaPA({ portal }: Props) {
             {/* Placeholder NEUTRO: exemplo com razão social de um assinante
                 aparecia no login de outro (08/09) — nome de empresa não é
                 texto de exemplo. */}
-            <div className="flex flex-col gap-1">
-              <label htmlFor="credor-busca" className="text-sm font-medium text-foreground">Credor</label>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="credor-busca">Credor</Label>
               <Input id="credor-busca" placeholder="Nome do credor, CNPJ ou nº do empenho" value={credor}
                 onChange={(e) => setCredor(e.target.value)} className="w-80 max-w-full"
                 onKeyDown={(e) => { if (e.key === 'Enter' && credor.trim().length >= 4) buscarPorCredor(1); }} />
             </div>
-            <div className="flex flex-col gap-1">
-              <label htmlFor="credor-ano" className="text-sm font-medium text-foreground">Ano</label>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="credor-ano">Ano</Label>
               <Select value={anoCredor} onValueChange={setAnoCredor}>
                 <SelectTrigger id="credor-ano" className="w-32"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -555,26 +568,21 @@ export default function TransparenciaPA({ portal }: Props) {
           </div>
 
           {totaisCredor && (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-md border border-border p-4">
-                <p className="text-sm text-muted-foreground">Notas empenhadas</p>
-                <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">{totaisCredor.qtd_notas.toLocaleString('pt-BR')}</p>
-              </div>
-              <div className="rounded-md border border-border p-4">
-                <p className="text-sm text-muted-foreground">Valor empenhado</p>
-                <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">{brlExato(totaisCredor.valor_empenhado)}</p>
-              </div>
-              <div className="rounded-md border border-border p-4">
-                <p className="text-sm text-muted-foreground">Valor pago</p>
-                <p className="mt-1 text-lg font-semibold tabular-nums text-success-ink">{brlExato(totaisCredor.valor_pago)}</p>
-              </div>
-              <div className="rounded-md border border-border p-4">
-                <p className="text-sm text-muted-foreground">Saldo a pagar</p>
-                <p className={`mt-1 text-lg font-semibold tabular-nums ${totaisCredor.saldo_a_pagar > 0 ? 'text-warning-ink' : 'text-muted-foreground'}`}>
-                  {brlExato(totaisCredor.saldo_a_pagar)}
-                </p>
-              </div>
-            </div>
+            /* Os totais do portal nos cartões KPI do Design System v3: o estado
+               (pago = ok, saldo em aberto = aviso) vai no ladrilho do ícone. */
+            <FaixaIndicadores
+              itens={[
+                { rotulo: 'Notas empenhadas', icone: FileSpreadsheet, valor: totaisCredor.qtd_notas.toLocaleString('pt-BR') },
+                { rotulo: 'Valor empenhado', icone: TrendingUp, valor: brlExato(totaisCredor.valor_empenhado) },
+                { rotulo: 'Valor pago', icone: CheckCircle2, tom: 'ok', valor: brlExato(totaisCredor.valor_pago) },
+                {
+                  rotulo: 'Saldo a pagar',
+                  icone: Clock,
+                  tom: totaisCredor.saldo_a_pagar > 0 ? 'aviso' : 'neutro',
+                  valor: brlExato(totaisCredor.saldo_a_pagar),
+                },
+              ]}
+            />
           )}
 
           {buscouCredor && !buscandoCredor && achados.length === 0 && (
@@ -597,7 +605,7 @@ export default function TransparenciaPA({ portal }: Props) {
                     href={`https://sistemas.pa.gov.br/portaltransparencia/empenho/notas/detalhe/${n.id_ne}`}
                     target="_blank" rel="noopener noreferrer"
                     title="Abrir o detalhe deste empenho no portal oficial (confrontar e imprimir)"
-                    className="flex cursor-pointer items-center justify-between gap-3 p-3 text-sm transition-colors hover:bg-muted"
+                    className="flex min-h-12 items-center justify-between gap-3 px-4 py-2.5 text-sm transition-colors hover:bg-muted/60 focus-visible:bg-muted/60 focus-visible:outline-none"
                   >
                     <div className="min-w-0">
                       <p className="flex items-center gap-2 font-medium tabular-nums text-foreground">
@@ -628,50 +636,28 @@ export default function TransparenciaPA({ portal }: Props) {
         </Card>
       )}
 
-      {/* KPIs */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-          <p className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Building2 className="h-4 w-4" aria-hidden="true" />
-            Órgãos
-          </p>
-          <p className="mt-2 text-[2rem] font-bold leading-10 tabular-nums text-foreground">{orgaosUnicos}</p>
-          <p className="text-xs text-muted-foreground">identificados</p>
-        </div>
-        <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-          <p className="flex items-center gap-2 text-sm text-muted-foreground">
-            <FileSpreadsheet className="h-4 w-4" aria-hidden="true" />
-            Total de empenhos
-          </p>
-          {contagemConhecida ? (
-            <p className="mt-2 text-[2rem] font-bold leading-10 tabular-nums text-foreground">{totalEmpenhos.toLocaleString('pt-BR')}</p>
-          ) : (
-            <>
-              <p className="mt-2 text-[2rem] font-bold leading-10 tabular-nums text-muted-foreground">—</p>
-              <p className="text-xs text-muted-foreground">a fonte agrega por órgão, sem contagem de notas</p>
-            </>
-          )}
-        </div>
-        <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-          <p className="flex items-center gap-2 text-sm text-muted-foreground">
-            <TrendingUp className="h-4 w-4" aria-hidden="true" />
-            Volume total (empenhado)
-          </p>
-          {/* Valor EXATO no card: dentro de um processo, centavos importam. */}
-          <p className="mt-2 text-lg font-semibold tabular-nums text-foreground">{brlExato(totalGeral)}</p>
-        </div>
-        <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-          <p className="flex items-center gap-2 text-sm text-muted-foreground">
-            <TrendingDown className="h-4 w-4" aria-hidden="true" />
-            {contagemConhecida ? 'Ticket médio' : 'Média por órgão'}
-          </p>
-          {contagemConhecida ? (
-            <p className="mt-2 text-lg font-semibold tabular-nums text-foreground">{totalEmpenhos > 0 ? brlExato(totalGeral / totalEmpenhos) : 'R$ 0,00'}</p>
-          ) : (
-            <p className="mt-2 text-lg font-semibold tabular-nums text-foreground">{orgaosUnicos > 0 ? brlExato(totalGeral / orgaosUnicos) : 'R$ 0,00'}</p>
-          )}
-        </div>
-      </div>
+      {/* KPIs — cartão do Design System v3 (FaixaIndicadores). A contagem
+          não informada continua sendo "—" com a razão, nunca zero; e o
+          volume vai EXATO, com centavos: dentro de um processo eles importam. */}
+      <FaixaIndicadores
+        itens={[
+          { rotulo: 'Órgãos', icone: Building2, valor: orgaosUnicos, detalhe: 'identificados' },
+          {
+            rotulo: 'Total de empenhos',
+            icone: FileSpreadsheet,
+            valor: contagemConhecida ? totalEmpenhos.toLocaleString('pt-BR') : null,
+            razaoIndisponivel: 'a fonte agrega por órgão, sem contagem de notas',
+          },
+          { rotulo: 'Volume total (empenhado)', icone: TrendingUp, valor: brlExato(totalGeral) },
+          {
+            rotulo: contagemConhecida ? 'Ticket médio' : 'Média por órgão',
+            icone: TrendingDown,
+            valor: contagemConhecida
+              ? (totalEmpenhos > 0 ? brlExato(totalGeral / totalEmpenhos) : 'R$ 0,00')
+              : (orgaosUnicos > 0 ? brlExato(totalGeral / orgaosUnicos) : 'R$ 0,00'),
+          },
+        ]}
+      />
 
       {dados.length === 0 ? (
         <Card>
@@ -693,21 +679,21 @@ export default function TransparenciaPA({ portal }: Props) {
       ) : (
         <>
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <Card className="p-6">
-              <h2 className="mb-4 text-lg font-semibold text-foreground">Top 10 órgãos por volume (R$)</h2>
+            <Card className="p-5">
+              <h2 className="mb-4 text-lg font-semibold leading-6 text-foreground">Top 10 órgãos por volume (R$)</h2>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={top10} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                  <XAxis type="number" tickFormatter={(v) => formatCurrency(v)} tick={{ fontSize: 10 }} />
-                  <YAxis type="category" dataKey="orgao" tick={{ fontSize: 9 }} width={160} />
-                  <Tooltip formatter={(v: number) => brlExato(v)} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+                  <XAxis type="number" tickFormatter={(v) => formatCurrency(v)} tick={TICK} axisLine={EIXO} tickLine={false} />
+                  <YAxis type="category" dataKey="orgao" tick={{ ...TICK, fontSize: 11 }} axisLine={false} tickLine={false} width={180} />
+                  <Tooltip contentStyle={ESTILO_TOOLTIP} formatter={(v: number) => brlExato(v)} />
                   <Bar dataKey="valor_total" fill="hsl(var(--chart-1))" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </Card>
 
-            <Card className="p-6">
-              <h2 className="mb-4 text-lg font-semibold text-foreground">Distribuição por órgão (top 8)</h2>
+            <Card className="p-5">
+              <h2 className="mb-4 text-lg font-semibold leading-6 text-foreground">Distribuição por órgão (top 8)</h2>
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
                   <Pie
@@ -719,20 +705,20 @@ export default function TransparenciaPA({ portal }: Props) {
                       <Cell key={i} fill={COLORS[i % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(v: number) => brlExato(v)} />
+                  <Tooltip contentStyle={ESTILO_TOOLTIP} formatter={(v: number) => brlExato(v)} />
                 </PieChart>
               </ResponsiveContainer>
             </Card>
 
             {porAno.some(a => a.valor > 0) && (
-              <Card className="p-6 lg:col-span-2">
-                <h2 className="mb-4 text-lg font-semibold text-foreground">Evolução anual do volume de empenhos</h2>
+              <Card className="p-5 lg:col-span-2">
+                <h2 className="mb-4 text-lg font-semibold leading-6 text-foreground">Evolução anual do volume de empenhos</h2>
                 <ResponsiveContainer width="100%" height={250}>
                   <BarChart data={porAno.filter(a => a.valor > 0)}>
-                    <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                    <XAxis dataKey="ano" tick={{ fontSize: 11 }} />
-                    <YAxis tickFormatter={(v) => formatCurrency(v)} tick={{ fontSize: 10 }} />
-                    <Tooltip formatter={(v: number) => brlExato(v)} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                    <XAxis dataKey="ano" tick={TICK} axisLine={EIXO} tickLine={false} />
+                    <YAxis tickFormatter={(v) => formatCurrency(v)} tick={TICK} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={ESTILO_TOOLTIP} formatter={(v: number) => brlExato(v)} />
                     <Bar dataKey="valor" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} name="Volume (R$)" />
                   </BarChart>
                 </ResponsiveContainer>
@@ -740,20 +726,22 @@ export default function TransparenciaPA({ portal }: Props) {
             )}
           </div>
 
-          <Card className="p-6">
+          <Card className="p-5">
             <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-              <h2 className="text-lg font-semibold text-foreground">Ranking de órgãos</h2>
-              <div className="flex flex-col gap-1">
-                <label htmlFor="ranking-busca" className="text-sm font-medium text-foreground">Buscar órgão</label>
+              <h2 className="text-lg font-semibold leading-6 text-foreground">Ranking de órgãos</h2>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="ranking-busca">Buscar órgão</Label>
                 <Input id="ranking-busca" placeholder="Nome do órgão" value={busca}
                   onChange={e => setBusca(e.target.value)} className="w-64 max-w-full" />
               </div>
             </div>
-            <ul className="max-h-[400px] space-y-2 overflow-y-auto">
+            {/* Lista dividida por fios, linhas de 48px — não uma pilha de
+                caixas cinzas dentro do cartão. */}
+            <ul className="max-h-[400px] divide-y divide-border overflow-y-auto rounded-md border border-border">
               {dadosFiltrados.map((d, i) => (
-                <li key={d.id || i} className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted p-3 transition-colors hover:border-primary/40">
+                <li key={d.id || i} className="flex min-h-12 items-center justify-between gap-3 px-4 py-2.5 transition-colors hover:bg-muted/60">
                   <div className="flex min-w-0 items-center gap-3">
-                    <span className="w-8 shrink-0 text-center text-lg font-bold text-foreground">{i + 1}º</span>
+                    <span className="w-8 shrink-0 text-sm font-semibold tabular-nums text-muted-foreground">{i + 1}º</span>
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-foreground">{d.orgao}</p>
                       <div className="mt-1 flex flex-wrap items-center gap-2">
