@@ -684,6 +684,25 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     }
   };
 
+  /**
+   * O aviso leve da decisão 4 do dono (21/09): quando o pedido que acabou de
+   * entrar esgota o saldo em valor do contrato, quem lançou fica sabendo que
+   * há uma decisão a tomar — no Resumo, não aqui. Aviso, nunca janela: quem
+   * opera pedidos nem sempre tem alçada para encerrar um contrato, e uma
+   * pergunta neste momento induziria decisão apressada.
+   */
+  const avisarSaldoEsgotado = (valorDoPedido: number) => {
+    if (!(saldoDoContrato > 0) || saldoDoContrato - valorDoPedido > 0) return;
+    toast.info('Este pedido esgota o saldo do contrato.', {
+      description: 'Há aditivo a registrar, ou o contrato chegou ao fim? A decisão fica no Resumo do contrato.',
+      duration: 12000,
+      action: {
+        label: 'Abrir o Resumo',
+        onClick: () => navigate(`/gestao-contratos?contrato=${contratoId}&aba=dashboard`),
+      },
+    });
+  };
+
   const limiteDerivado = (dataDoPedido: string | null | undefined): string => {
     if (!prazos?.prazo_entrega_dias || !dataDoPedido) return '';
     return limiteDeEntrega(dataDoPedido, {
@@ -1307,6 +1326,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     await gerarLancamentosFinanceiros([novoPedido as any]);
     setSaving(false);
     avisarPrazo(novoPedido?.data_pedido);
+    avisarSaldoEsgotado(qty * unit);
     // Só faz sentido sugerir quando NÃO se acabou de criar um título: com a
     // caixa marcada, o pedido já tem o seu, e a sugestão convidaria a somar
     // dois pelo mesmo dinheiro.
@@ -1533,6 +1553,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       await gerarLancamentosFinanceiros([novoPedido as any]);
       setSaving(false);
       avisarPrazo(novoPedido?.data_pedido);
+      avisarSaldoEsgotado(valorTotal);
       if (!gerarContaReceber && novoPedido) void sugerirVinculo(novoPedido as never);
       setDialogOpen(false);
       resetForm();

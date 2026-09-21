@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   sugestaoDeEncerramento,
+  contratosAguardandoDecisao,
   aditivoPosteriorAoEncerramento,
   saldoDaCarteira,
   atendeAoFiltroDeSituacao,
@@ -67,6 +68,36 @@ describe('sugestaoDeEncerramento — o sistema sugere, nunca decide', () => {
   it('na ata as palavras mudam, a regra não', () => {
     const s = sugestaoDeEncerramento(sinais({ instrumento: 'ata', vencido: true }))!;
     expect(s.titulo).toMatch(/a ata chegou ao fim\?/);
+  });
+});
+
+describe('contratosAguardandoDecisao — o Painel geral cobra a decisão (decisão 4)', () => {
+  const base = { numero_ata: null, tipo_documento: 'contrato', status: 'vigente', excluido_em: null };
+  const contratos = [
+    { ...base, id: 'esgotado', numero_contrato: 'CT 1', valor_global: 1000, valor_consumido: 1000, data_fim: '2027-01-01' },
+    { ...base, id: 'vencido', numero_contrato: 'CT 2', valor_global: 1000, valor_consumido: 100, data_fim: '2026-08-31' },
+    { ...base, id: 'em-dia', numero_contrato: 'CT 3', valor_global: 1000, valor_consumido: 100, data_fim: '2027-01-01' },
+    { ...base, id: 'encerrado', numero_contrato: 'CT 4', status: 'encerrado', valor_global: 1000, valor_consumido: 1000, data_fim: '2026-01-01' },
+    { ...base, id: 'lixeira', numero_contrato: 'CT 5', excluido_em: '2026-09-01', valor_global: 1000, valor_consumido: 1000, data_fim: '2026-01-01' },
+    { ...base, id: 'sem-valor', numero_contrato: 'CT 6', valor_global: null, valor_consumido: null, data_fim: null },
+    { ...base, id: 'ata', numero_contrato: 'ATA-X', numero_ata: 'ATA 7/2025', tipo_documento: 'ata_srp', valor_global: 500, valor_consumido: 50, data_fim: '2026-09-01' },
+  ];
+
+  it('lista só esgotados e vencidos não declarados, esgotados primeiro, com a ata pelo número da ata', () => {
+    const r = contratosAguardandoDecisao(contratos, '2026-09-21');
+    expect(r.map((c) => c.id)).toEqual(['esgotado', 'vencido', 'ata']);
+    expect(r[0].sugestao.motivo).toBe('quantitativo_esgotado');
+    expect(r[1].sugestao.motivo).toBe('prazo_vencido');
+    expect(r[1].sugestao.detalhe).toMatch(/^Venceu em 31\/08\/2026\. /);
+    expect(r[2]).toMatchObject({ numero: 'ATA 7/2025', instrumento: 'ata' });
+  });
+
+  it('encerrado declarado, lixeira e sem valor apurado ficam de fora', () => {
+    const ids = contratosAguardandoDecisao(contratos, '2026-09-21').map((c) => c.id);
+    expect(ids).not.toContain('encerrado');
+    expect(ids).not.toContain('lixeira');
+    expect(ids).not.toContain('sem-valor');
+    expect(ids).not.toContain('em-dia');
   });
 });
 

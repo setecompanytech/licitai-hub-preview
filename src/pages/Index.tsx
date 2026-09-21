@@ -7,6 +7,7 @@ import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import PendenciasPrioritarias from '@/components/dashboard/PendenciasPrioritarias';
+import ContratosAguardandoDecisao from '@/components/dashboard/ContratosAguardandoDecisao';
 import QuickAccessGrid from '@/components/dashboard/QuickAccessGrid';
 import AtalhosPessoais from '@/components/dashboard/AtalhosPessoais';
 import ResumoOperacional from '@/components/dashboard/ResumoOperacional';
@@ -151,6 +152,9 @@ export default function Index() {
         {/* ── B. Pendências prioritárias ───────────────────────────────── */}
         <section data-secao="Pendências" aria-label="Pendências prioritárias" className="mb-6">
           <PendenciasPrioritarias />
+          {/* Contratos esperando a decisão de fim (decisão 4 do dono, 21/09):
+              a pergunta continua no Resumo de cada contrato; aqui só a cobrança. */}
+          <ContratosAguardandoDecisao />
         </section>
 
         {/* ── C. Suas ferramentas ──────────────────────────────────────── */}

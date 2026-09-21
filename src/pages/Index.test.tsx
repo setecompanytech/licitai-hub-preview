@@ -104,6 +104,10 @@ vi.mock('@/hooks/useSituacaoDoEspelhoPNCP', () => ({
   }),
 }));
 
+// O bloco de contratos esperando decisão tem teste próprio; aqui só não consulta.
+vi.mock('@/hooks/useContratosAguardandoDecisao', () => ({
+  useContratosAguardandoDecisao: () => ({ data: [], isLoading: false, error: null }),
+}));
 vi.mock('@/hooks/useMembroPermissoes', () => ({
   useMembroPermissoes: () => ({ canAccessRoute: () => true, isAdmin: true }),
 }));

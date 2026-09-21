@@ -154,6 +154,67 @@ export function sugestaoDeEncerramento(s: SinaisDoContrato): SugestaoDeEncerrame
   return null;
 }
 
+// ── A pendência no Painel geral (decisão 4, 21/09) ──────────────────────────
+
+export type ContratoParaDecisao = {
+  id: string;
+  numero_contrato: string | null;
+  numero_ata?: string | null;
+  tipo_documento: string | null;
+  status: string | null;
+  valor_global: number | null;
+  valor_consumido: number | null;
+  data_fim: string | null;
+  excluido_em?: string | null;
+};
+
+export type ContratoAguardandoDecisao = {
+  id: string;
+  numero: string;
+  instrumento: 'contrato' | 'ata';
+  sugestao: SugestaoDeEncerramento;
+};
+
+/**
+ * Os contratos em que o Painel geral cobra uma decisão: não declarados
+ * encerrados, com o valor consumido alcançando o global ou a vigência
+ * vencida. Mesma régua do Resumo, sem a leitura por item (que exige os itens
+ * de cada contrato e fica para o próprio Resumo refinar). A lixeira fica de
+ * fora. Saldo esgotado vem antes de vencido, como em `sugestaoDeEncerramento`.
+ */
+export function contratosAguardandoDecisao(
+  contratos: ContratoParaDecisao[],
+  hoje: string = hojeEmSaoPaulo(),
+): ContratoAguardandoDecisao[] {
+  const lista: ContratoAguardandoDecisao[] = [];
+  for (const c of contratos) {
+    if (c.excluido_em || c.status === 'encerrado') continue;
+    const global = Number(c.valor_global) || 0;
+    const consumido = Number(c.valor_consumido) || 0;
+    const fim = String(c.data_fim ?? '').slice(0, 10);
+    const vencido = /^\d{4}-\d{2}-\d{2}$/.test(fim) && fim < hoje;
+    const instrumento = c.tipo_documento === 'ata_srp' ? 'ata' : 'contrato';
+    const sugestao = sugestaoDeEncerramento({
+      encerrado: false,
+      saldoEsgotado: global > 0 && consumido >= global,
+      vencido,
+      vigenciaFrase: vencido ? `Venceu em ${dataBrDoIso(fim)}` : null,
+      entregaUnicaConcluida: false,
+      todosEntregues: false,
+      instrumento,
+    });
+    if (!sugestao) continue;
+    lista.push({
+      id: c.id,
+      numero: (instrumento === 'ata' ? c.numero_ata || c.numero_contrato : c.numero_contrato) || 'sem número',
+      instrumento,
+      sugestao,
+    });
+  }
+  // Esgotados primeiro (é o fato que o dono descreveu), depois vencidos.
+  return lista.sort((a, b) => (a.sugestao.motivo === b.sugestao.motivo ? 0 : a.sugestao.motivo === 'quantitativo_esgotado' ? -1 : 1));
+}
+
 // ── A reabertura sugerida ───────────────────────────────────────────────────
 
 export type AditivoRef = {

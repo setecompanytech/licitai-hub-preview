@@ -205,6 +205,12 @@ qualquer uma passa pelo Rafael:
   Reabrir devolve tudo, e a trilha guarda os dois fatos.
 - **Metas não mudam com o encerramento.** "Contratos ganhos" segue somando o
   valor global no mês da assinatura (decisão 3, 21/09).
+- **Onde perguntar (decisão 4, 21/09).** A pergunta "chegou ao fim?" vive no
+  Resumo do contrato, onde há contexto para decidir. O Painel geral só COBRA
+  (`dashboard/ContratosAguardandoDecisao`, régua `contratosAguardandoDecisao`
+  em valor e data, sem itens); a aba Pedidos só AVISA, por toast, quando o
+  pedido lançado esgota o saldo — nunca uma janela que trave o lançamento,
+  porque quem opera pedidos nem sempre tem alçada para encerrar.
 
 ## Permissões — o que é da plataforma não aparece ao cliente (pedido do Rafael em 14/09, decidido em 19/09/2026)
 
