@@ -1656,27 +1656,33 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     setEditDialogOpen(true);
   };
 
+  /**
+   * Campos que a quitação da NF e a bonificação do vendedor usaram como base.
+   * Com a NF quitada eles ficam como estão (o diálogo já os mostra travados);
+   * o resto do pedido continua corrigível — antes de 21/09 a trava era o
+   * pedido inteiro, e um número de documento ou uma data errada obrigavam a
+   * refazer tudo.
+   */
+  const CAMPOS_TRAVADOS_APOS_QUITACAO = 'quantidade, valores, item do contrato, situação e número da NF';
+
   const handleSaveEdit = async () => {
     if (!editingPedido) return;
-    if (editingPedido.nf_quitada) { toast.error('Pedido com NF quitada não pode ser editado.'); return; }
+    const quitada = Boolean(editingPedido.nf_quitada);
     const qty = parseFloat(editForm.quantidade) || 0;
     const unit = parseFloat(editForm.valor_unitario) || 0;
-    const travaPreco = precoForaDoContratado([{ descricao: editForm.descricao, valor_unitario: unit, contrato_item_id: editForm.contrato_item_id }]);
-    if (travaPreco) { toast.error('Preço fora do contratado', { description: travaPreco }); return; }
-    const alertaEstoque = avisoEstoqueInsuficiente([{ descricao: editForm.descricao, quantidade: qty, contrato_item_id: editForm.contrato_item_id }]);
-    if (alertaEstoque && !confirm(`Estoque insuficiente\n\n${alertaEstoque}\n\nSalvar mesmo assim? (a entrada da compra pode ser lançada depois)`)) return;
+    if (!quitada) {
+      const travaPreco = precoForaDoContratado([{ descricao: editForm.descricao, valor_unitario: unit, contrato_item_id: editForm.contrato_item_id }]);
+      if (travaPreco) { toast.error('Preço fora do contratado', { description: travaPreco }); return; }
+      const alertaEstoque = avisoEstoqueInsuficiente([{ descricao: editForm.descricao, quantidade: qty, contrato_item_id: editForm.contrato_item_id }]);
+      if (alertaEstoque && !confirm(`Estoque insuficiente\n\n${alertaEstoque}\n\nSalvar mesmo assim? (a entrada da compra pode ser lançada depois)`)) return;
+    }
     setSavingEdit(true);
-    const { error } = await supabase.from('contrato_pedidos').update({
+    // Sempre corrigíveis: identificação, datas, empenho e observações.
+    const alteracoes: Record<string, unknown> = {
       numero_pedido: editForm.numero_pedido,
       descricao: editForm.descricao || null,
-      contrato_item_id: editForm.contrato_item_id || null,
-      quantidade: qty,
-      valor_unitario: unit,
-      valor_total: qty * unit,
       data_pedido: editForm.data_pedido || null,
       data_entrega: editForm.data_entrega || null,
-      status: editForm.status,
-      nota_fiscal: editForm.nota_fiscal || null,
       observacoes: editForm.observacoes || null,
       numero_empenho: normalizarNumeroEmpenho(editForm.numero_empenho),
       tipo_empenho: tipoDeEmpenho(editForm.tipo_empenho),
@@ -1684,10 +1690,24 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       // O vínculo com o empenho JÁ ANEXADO — é dele que a cota consome e é
       // ele que o kit de faturamento pré-seleciona.
       empenho_id: editForm.empenho_id || null,
-    } as any).eq('id', editingPedido.id);
+    };
+    // Só sem NF quitada: a base da quitação e da bonificação não muda por aqui.
+    if (!quitada) {
+      Object.assign(alteracoes, {
+        contrato_item_id: editForm.contrato_item_id || null,
+        quantidade: qty,
+        valor_unitario: unit,
+        valor_total: qty * unit,
+        status: editForm.status,
+        nota_fiscal: editForm.nota_fiscal || null,
+      });
+    }
+    const { error } = await supabase.from('contrato_pedidos').update(alteracoes as any).eq('id', editingPedido.id);
     setSavingEdit(false);
     if (error) { toast.error('Erro ao atualizar: ' + error.message); return; }
-    toast.success('Pedido atualizado.');
+    toast.success(quitada
+      ? `Pedido atualizado. Com a NF quitada, ${CAMPOS_TRAVADOS_APOS_QUITACAO} ficaram como estavam.`
+      : 'Pedido atualizado.');
     setEditDialogOpen(false);
     setEditingPedido(null);
     load();
@@ -2149,13 +2169,13 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 <Link2 aria-hidden="true" /> Vincular lançamento
               </Button>
             )}
-            {!pedidoAberto.nf_quitada && (
-              <Button size="sm" variant="outline" className="g-controle"
-                onClick={() => openEditDialog(pedidoAberto)}
-                title={(isFinanceiro || isAdmin) ? 'Editar pedido' : 'Ver detalhes'}>
-                <Pencil aria-hidden="true" /> {(isFinanceiro || isAdmin) ? 'Editar' : 'Ver detalhes'}
-              </Button>
-            )}
+            <Button size="sm" variant="outline" className="g-controle"
+              onClick={() => openEditDialog(pedidoAberto)}
+              title={(isFinanceiro || isAdmin)
+                ? (pedidoAberto.nf_quitada ? 'Editar pedido (NF quitada: quantidade, valores e NF ficam travados)' : 'Editar pedido')
+                : 'Ver detalhes'}>
+              <Pencil aria-hidden="true" /> {(isFinanceiro || isAdmin) ? 'Editar' : 'Ver detalhes'}
+            </Button>
             {/* Todo membro exclui — o precedente das publicações (02/09): a
                 exclusão EXIGE motivo e grava snapshot em pedidos_exclusoes para
                 o Admin; o RLS é por membro desde 22/06. */}
@@ -2395,7 +2415,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                         >
                           <TableCell className="whitespace-nowrap font-medium tabular-nums">
                             {p.nf_quitada ? (
-                              <span className="text-muted-foreground" title="NF quitada — edição bloqueada">{p.numero_pedido}</span>
+                              <span className="text-muted-foreground" title="NF quitada — quantidade, valores e NF ficam travados na edição">{p.numero_pedido}</span>
                             ) : (
                               <button
                                 type="button"
@@ -2698,12 +2718,21 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                                   <Trash2 aria-hidden="true" />
                                 </Button>
                               )}
-                              {(isFinanceiro || isAdmin) && !p.nf_quitada && (
-                                <Button size="icon-sm" variant="ghost" onClick={() => openEditDialog(p)} title="Editar pedido" aria-label="Editar pedido">
+                              {/* O lápis existe em TODA linha (21/09): pedido com NF
+                                  quitada também se corrige — descrição, datas,
+                                  empenho, observações. O que a quitação e a
+                                  bonificação usaram (quantidade, valores, item,
+                                  situação, NF) fica travado dentro do diálogo. */}
+                              {(isFinanceiro || isAdmin) && (
+                                <Button
+                                  size="icon-sm" variant="ghost" onClick={() => openEditDialog(p)}
+                                  title={p.nf_quitada ? 'Editar pedido (NF quitada: quantidade, valores e NF ficam travados)' : 'Editar pedido'}
+                                  aria-label="Editar pedido"
+                                >
                                   <Pencil aria-hidden="true" className="text-muted-foreground" />
                                 </Button>
                               )}
-                              {!(isFinanceiro || isAdmin) && !p.nf_quitada && (
+                              {!(isFinanceiro || isAdmin) && (
                                 <Button size="icon-sm" variant="ghost" onClick={() => openEditDialog(p)} title="Ver detalhes" aria-label="Ver detalhes">
                                   <Pencil aria-hidden="true" className="text-muted-foreground" />
                                 </Button>
@@ -3428,6 +3457,17 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {editingPedido?.nf_quitada && (
+              <div role="status" className="rounded-lg border border-warning-line bg-warning-tint p-3 text-sm text-warning-ink">
+                <p className="font-semibold">
+                  NF quitada{editingPedido.data_quitacao ? ` em ${new Date(`${editingPedido.data_quitacao}T12:00:00`).toLocaleDateString('pt-BR')}` : ''}: {CAMPOS_TRAVADOS_APOS_QUITACAO} ficam como estão.
+                </p>
+                <p className="mt-1">
+                  A quitação e a bonificação do vendedor foram calculadas sobre esses valores. Os demais campos
+                  (documento, descrição, datas, empenho, observações) podem ser corrigidos e salvos normalmente.
+                </p>
+              </div>
+            )}
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label>N.o Documento</Label>
@@ -3435,7 +3475,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
               </div>
               <div className="space-y-1.5">
                 <Label>Status</Label>
-                <Select value={editForm.status} onValueChange={v => setEditForm(f => ({ ...f, status: v }))}>
+                <Select value={editForm.status} onValueChange={v => setEditForm(f => ({ ...f, status: v }))} disabled={!!editingPedido?.nf_quitada}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {Object.entries(statusCfg).map(([k, v]) => (
@@ -3452,7 +3492,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
             {itens.length > 0 && (
               <div className="space-y-1.5">
                 <Label>Item do Contrato</Label>
-                <Select value={editForm.contrato_item_id} onValueChange={v => {
+                <Select value={editForm.contrato_item_id} disabled={!!editingPedido?.nf_quitada} onValueChange={v => {
                   const item = itens.find(i => i.id === v);
                   setEditForm(f => ({ ...f, contrato_item_id: v, valor_unitario: item ? String(item.valor_unitario) : f.valor_unitario }));
                 }}>
@@ -3473,11 +3513,11 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label>Quantidade</Label>
-                <Input type="number" value={editForm.quantidade} onChange={e => setEditForm(f => ({ ...f, quantidade: e.target.value }))} />
+                <Input type="number" value={editForm.quantidade} disabled={!!editingPedido?.nf_quitada} onChange={e => setEditForm(f => ({ ...f, quantidade: e.target.value }))} />
               </div>
               <div className="space-y-1.5">
                 <Label>Valor Unitário</Label>
-                <MoneyInput value={Number(editForm.valor_unitario) || 0} onValueChange={v => setEditForm(f => ({ ...f, valor_unitario: String(v) }))} />
+                <MoneyInput value={Number(editForm.valor_unitario) || 0} disabled={!!editingPedido?.nf_quitada} onValueChange={v => setEditForm(f => ({ ...f, valor_unitario: String(v) }))} />
               </div>
             </div>
 
@@ -3558,7 +3598,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
             </div>
             <div className="space-y-1.5">
               <Label>Nota Fiscal</Label>
-              <Input value={editForm.nota_fiscal} onChange={e => setEditForm(f => ({ ...f, nota_fiscal: e.target.value }))} />
+              <Input value={editForm.nota_fiscal} disabled={!!editingPedido?.nf_quitada} onChange={e => setEditForm(f => ({ ...f, nota_fiscal: e.target.value }))} />
             </div>
             <div className="space-y-1.5">
               <Label>Observações</Label>
