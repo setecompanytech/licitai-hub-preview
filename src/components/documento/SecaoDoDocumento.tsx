@@ -6,6 +6,13 @@ type Props = {
   titulo: string;
   children: ReactNode;
   className?: string;
+  /**
+   * Seção alta demais para caber inteira numa folha (KPIs + gráfico): em vez
+   * de ir inteira para a folha seguinte e deixar a anterior em branco, ela
+   * pode continuar — só o título fica preso ao primeiro bloco. Os cartões e
+   * o gráfico dentro dela devem levar `bloco-inteiro`.
+   */
+  permitirQuebra?: boolean;
 };
 
 /**
@@ -21,10 +28,10 @@ type Props = {
  * seção inteira ganha `break-inside: avoid`: título numa folha e conteúdo na
  * seguinte destrói justamente a referência que o número existe para dar.
  */
-export default function SecaoDoDocumento({ numero, titulo, children, className }: Props) {
+export default function SecaoDoDocumento({ numero, titulo, children, className, permitirQuebra = false }: Props) {
   return (
-    <section className={`bloco-inteiro ${className ?? ''}`}>
-      <div className="mb-2 flex items-center gap-2">
+    <section className={`${permitirQuebra ? '' : 'bloco-inteiro'} ${className ?? ''}`}>
+      <div className={`mb-2 flex items-center gap-2 ${permitirQuebra ? 'bloco-cabecalho' : ''}`}>
         <span
           className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-sm
                      bg-muted px-1 text-xs font-semibold tabular-nums text-muted-foreground"

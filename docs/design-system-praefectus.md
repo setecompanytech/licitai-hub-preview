@@ -158,7 +158,12 @@ campos em grade `grid gap-4 sm:grid-cols-2`, seções agrupadas por assunto com
 classe `valor-kpi` — em `@media print` (index.css) a fila vira duas colunas e
 o valor não trunca nem quebra no meio (a folha A4 cai no breakpoint `sm`).
 `FaixaIndicadores` e `LinhaKpis` já vêm com as duas; cartão KPI local precisa
-delas. `.nao-imprime` some no papel, `.so-impresso` só aparece nele.
+delas. `.nao-imprime` some no papel, `.so-impresso` só aparece nele. Tela com
+painel lateral (`grid` + `aside`/`flex`) leva `impressao-em-coluna` nos
+contêineres: no papel viram blocos empilhados, porque grade e flex
+fragmentados no Chrome deixam a folha de assinaturas por cima do painel.
+`SecaoDoDocumento` é inteira por padrão; seção alta (KPIs + gráfico) recebe
+`permitirQuebra` e marca cada cartão/gráfico com `bloco-inteiro`.
 
 **Espera:** `Skeleton` na forma do conteúdo; nunca spinner grande no centro.
 Tabela ou lista que ainda vai chegar: `<SkeletonTabela linhas={5} colunas={4}

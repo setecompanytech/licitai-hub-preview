@@ -660,6 +660,23 @@
     overflow: visible !important;
     text-overflow: clip !important;
   }
+  /* Colunas do documento no papel (21/09): a grade "conteúdo + painel" e o
+     painel em flex fragmentam mal no Chrome — "Informações gerais" ia para a
+     folha seguinte, a altura do contêiner não acompanhava e a folha de
+     assinaturas era desenhada por cima. No papel viram blocos empilhados. */
+  .impressao-em-coluna {
+    display: block !important;
+  }
+  .impressao-em-coluna > * + * {
+    margin-top: 1rem;
+  }
+  /* Seção que pode continuar na folha seguinte (`permitirQuebra` em
+     SecaoDoDocumento): só o título fica preso ao primeiro bloco; cartões e
+     gráficos dentro dela levam `bloco-inteiro` e não se partem. Evita a folha
+     quase em branco quando a evolução mensal (KPIs + gráfico) não cabia. */
+  .bloco-cabecalho {
+    break-after: avoid;
+  }
   .documento [class*="rounded"],
   .documento .card {
     box-shadow: none !important;

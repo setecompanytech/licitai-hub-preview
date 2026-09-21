@@ -245,7 +245,7 @@ export default function EvolucaoMensalDashboard({ pedidos, podeVerCustos, valorG
       </div>
 
       {/* KPIs do período */}
-      <div className="grade-kpi grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="bloco-inteiro grade-kpi grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="flex flex-col gap-1 rounded-lg border border-border bg-card p-4">
           <p className="text-sm font-medium leading-5 text-muted-foreground">Faturamento</p>
           <p className="valor-kpi text-2xl font-semibold leading-8 tabular-nums text-foreground">{fmtBRL(totais.faturamento)}</p>
@@ -282,8 +282,9 @@ export default function EvolucaoMensalDashboard({ pedidos, podeVerCustos, valorG
         )}
       </div>
 
-      {/* Gráfico dinâmico */}
-      <div className="w-full h-72">
+      {/* Gráfico dinâmico — `bloco-inteiro`: a seção 4 pode continuar na folha
+          seguinte, mas o gráfico nunca se parte ao meio. */}
+      <div className="bloco-inteiro w-full h-72">
         <ResponsiveContainer width="100%" height="100%">
           {visual === 'composto' ? (
             <ComposedChart data={series} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>

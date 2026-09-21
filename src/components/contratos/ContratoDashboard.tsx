@@ -677,7 +677,10 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
           registro selecionado — é a ficha do contrato, que tem de continuar
           legível no celular. Empilhar é o que entrega isso; a gaveta esconderia
           vigência e reajuste atrás de um botão que a referência não tem. */}
-      <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_var(--g-painel)]">
+      {/* `impressao-em-coluna`: no papel a grade e o painel viram blocos
+          empilhados (regra em `@media print`) — em grade/flex o Chrome
+          desenhava a folha de assinaturas por cima do painel. */}
+      <div className="impressao-em-coluna grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_var(--g-painel)]">
         <div className="flex min-w-0 flex-col gap-4">
           <FaixaIndicadores itens={indicadores} />
 
@@ -1190,7 +1193,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
             </SecaoDoDocumento>
           )}
 
-          <SecaoDoDocumento numero="4" titulo={isAtaSrp ? 'Evolução mensal (empenhos diretos)' : 'Evolução mensal'}>
+          <SecaoDoDocumento numero="4" titulo={isAtaSrp ? 'Evolução mensal (empenhos diretos)' : 'Evolução mensal'} permitirQuebra>
             <SecaoRecolhivel
               id={`contrato-evolucao-mensal-${contratoId}`}
               recolhidaPorPadrao
@@ -1220,8 +1223,8 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
         </div>
 
         {/* ── Painel de contexto ───────────────────────────────────────────── */}
-        <aside className="flex min-w-0 flex-col gap-4 xl:sticky xl:top-[calc(var(--g-topo)+1rem)]">
-          <Card className="flex flex-col gap-5 p-5">
+        <aside className="impressao-em-coluna flex min-w-0 flex-col gap-4 xl:sticky xl:top-[calc(var(--g-topo)+1rem)]">
+          <Card className="impressao-em-coluna flex flex-col gap-5 p-5">
             <BlocoDoPainel titulo="Informações gerais">
               <ListaDeCampos
                 campos={[
