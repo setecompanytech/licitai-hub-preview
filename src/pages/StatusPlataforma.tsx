@@ -2,9 +2,12 @@ import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import LandingNavbar from '@/components/landing/LandingNavbar';
 import LandingFooter from '@/components/landing/LandingFooter';
-import { CheckCircle2, AlertTriangle, XCircle, Activity, RefreshCw, Loader2, Clock, Shield } from 'lucide-react';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
+import FaixaIndicadores from '@/components/gestao/FaixaIndicadores';
+import { CheckCircle2, AlertTriangle, XCircle, Activity, RefreshCw, Clock, Shield, Timer, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { Badge, type BadgeProps } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 
 type ServiceStatus = 'operacional' | 'degradado' | 'indisponivel';
@@ -15,10 +18,15 @@ interface ServiceCheck {
   latency: number;
 }
 
-const statusConfig: Record<ServiceStatus, { label: string; icon: typeof CheckCircle2; color: string; bg: string }> = {
-  operacional: { label: 'Operacional', icon: CheckCircle2, color: 'text-success', bg: 'bg-success/10' },
-  degradado: { label: 'Degradado', icon: AlertTriangle, color: 'text-warning', bg: 'bg-warning/10' },
-  indisponivel: { label: 'Indisponível', icon: XCircle, color: 'text-destructive', bg: 'bg-destructive/10' },
+/* Estado sempre com TEXTO; a cor vem do trio tinta/tinta-escura/linha de cada
+   estado (selo `Badge` semântico, ícone na tinta `-ink`, faixa em `-tint`). */
+const statusConfig: Record<
+  ServiceStatus,
+  { label: string; icon: typeof CheckCircle2; variante: BadgeProps['variant']; tinta: string; faixa: string }
+> = {
+  operacional: { label: 'Operacional', icon: CheckCircle2, variante: 'success', tinta: 'text-success-ink', faixa: 'border-success-line bg-success-tint' },
+  degradado: { label: 'Degradado', icon: AlertTriangle, variante: 'warning', tinta: 'text-warning-ink', faixa: 'border-warning-line bg-warning-tint' },
+  indisponivel: { label: 'Indisponível', icon: XCircle, variante: 'danger', tinta: 'text-destructive-ink', faixa: 'border-destructive-line bg-destructive-tint' },
 };
 
 // Static services that depend on external factors
@@ -84,59 +92,69 @@ export default function StatusPlataforma() {
       </Helmet>
       <LandingNavbar />
 
-      <main className="max-w-4xl mx-auto px-4 py-12">
-        {/* Overall Status Banner */}
-        <div className={`rounded-2xl p-8 mb-8 text-center ${statusConfig[overallStatus].bg} border border-border/30`}>
+      <main className="mx-auto max-w-4xl px-6 pb-20 pt-24">
+        {/* Cabeçalho padrão; a verificação manual é a ação da tela. */}
+        <CabecalhoPagina
+          titulo="Status da Plataforma"
+          descricao="Health checks em tempo real"
+          icone={<Activity />}
+          acoes={
+            <Button onClick={runHealthCheck} variant="outline" size="sm" disabled={loading}>
+              <RefreshCw className={loading ? 'animate-spin' : undefined} aria-hidden="true" />
+              Verificar agora
+            </Button>
+          }
+        />
+
+        {/* Situação geral numa faixa tingida pelo estado — ícone na tinta
+            escura, título de seção 18/600, sem capa centralizada. */}
+        <div className={`mb-8 flex items-start gap-3 rounded-lg border p-5 ${statusConfig[overallStatus].faixa}`}>
           {loading ? (
-            <Loader2 className="w-12 h-12 animate-spin mx-auto text-muted-foreground" />
+            <div role="status" aria-busy="true" className="w-full space-y-2">
+              <span className="sr-only">Verificando os serviços</span>
+              <Skeleton className="h-6 w-2/3 max-w-sm" />
+              <Skeleton className="h-4 w-40" />
+            </div>
           ) : (
             <>
-              <OverallIcon className={`w-16 h-16 mx-auto mb-4 ${statusConfig[overallStatus].color}`} />
-              <h1 className="text-3xl font-bold mb-2">
-                {overallStatus === 'operacional' ? 'Todos os sistemas operacionais' :
-                 overallStatus === 'degradado' ? 'Desempenho degradado em alguns serviços' :
-                 'Alguns serviços estão indisponíveis'}
-              </h1>
-              <p className="text-muted-foreground text-sm">
-                Última verificação: {lastCheck}
-              </p>
+              <OverallIcon className={`mt-0.5 h-5 w-5 shrink-0 ${statusConfig[overallStatus].tinta}`} aria-hidden="true" />
+              <div className="min-w-0">
+                <h2 className={`text-xl font-semibold leading-7 ${statusConfig[overallStatus].tinta}`}>
+                  {overallStatus === 'operacional' ? 'Todos os sistemas operacionais' :
+                   overallStatus === 'degradado' ? 'Desempenho degradado em alguns serviços' :
+                   'Alguns serviços estão indisponíveis'}
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Última verificação: {lastCheck}
+                </p>
+              </div>
             </>
           )}
         </div>
 
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Activity className="w-4 h-4" />
-            <span>Health checks em tempo real</span>
-          </div>
-          <Button onClick={runHealthCheck} variant="outline" size="sm" disabled={loading}>
-            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Verificar agora
-          </Button>
-        </div>
-
-        {/* Service Groups */}
+        {/* Service Groups — eyebrow de grupo e uma moldura por grupo com as
+            linhas separadas por fio; estado em selo semântico com texto. */}
         {Object.entries(groups).map(([category, services]) => (
-          <div key={category} className="mb-6">
-            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">{category}</h2>
-            <div className="space-y-1">
+          <section key={category} className="mb-6">
+            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{category}</h2>
+            <div className="divide-y divide-border rounded-lg border border-border bg-card shadow-sm">
               {services.map((svc) => {
                 const cfg = statusConfig[svc.status as ServiceStatus];
                 const Icon = cfg.icon;
                 return (
-                  <div key={svc.name} className="flex items-center justify-between p-3 rounded-lg bg-card/50 border border-border/30 hover:bg-card/80 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <Icon className={`w-4 h-4 ${cfg.color}`} />
-                      <span className="text-sm font-medium">{svc.name}</span>
+                  <div key={svc.name} className="flex items-center justify-between gap-3 px-4 py-3 transition-colors duration-150 hover:bg-muted/60">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <Icon className={`h-4 w-4 shrink-0 ${cfg.tinta}`} aria-hidden="true" />
+                      <span className="truncate text-base font-medium text-foreground">{svc.name}</span>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex shrink-0 items-center gap-3">
                       {svc.live && svc.latency > 0 && (
-                        <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
+                        <span className="flex items-center gap-1 text-xs tabular-nums text-muted-foreground">
+                          <Clock className="h-3 w-3" aria-hidden="true" />
                           {svc.latency}ms
                         </span>
                       )}
-                      <Badge variant="outline" className={`text-xs ${cfg.color}`}>
+                      <Badge variant={cfg.variante}>
                         {cfg.label}
                       </Badge>
                     </div>
@@ -144,33 +162,26 @@ export default function StatusPlataforma() {
                 );
               })}
             </div>
-          </div>
+          </section>
         ))}
 
-        {/* SLA Info */}
-        <div className="mt-12 rounded-xl bg-card/50 border border-border/30 p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Shield className="w-5 h-5 text-muted-foreground" />
-            <h2 className="font-semibold">SLA e Garantias</h2>
+        {/* SLA Info — os três números na faixa de indicadores do padrão. */}
+        <section className="mt-12">
+          <div className="mb-3 flex items-center gap-2">
+            <Shield className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+            <h2 className="text-xl font-semibold leading-7 text-foreground">SLA e Garantias</h2>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-            <div>
-              <p className="font-semibold text-2xl">99.9%</p>
-              <p className="text-muted-foreground">Uptime garantido</p>
-            </div>
-            <div>
-              <p className="font-semibold text-2xl">&lt; 200ms</p>
-              <p className="text-muted-foreground">Latência média da API</p>
-            </div>
-            <div>
-              <p className="font-semibold text-2xl">24/7</p>
-              <p className="text-muted-foreground">Monitoramento contínuo</p>
-            </div>
-          </div>
-          <p className="text-xs text-muted-foreground mt-4">
-            Consulte nossa <a href="/politica-sla" className="underline hover:text-foreground">Política de SLA</a> para detalhes completos sobre disponibilidade, tempos de resposta e compensações.
+          <FaixaIndicadores
+            itens={[
+              { rotulo: 'Uptime garantido', valor: '99.9%', icone: Shield, tom: 'ok' },
+              { rotulo: 'Latência média da API', valor: '< 200ms', icone: Timer, tom: 'info' },
+              { rotulo: 'Monitoramento contínuo', valor: '24/7', icone: Eye, tom: 'neutro' },
+            ]}
+          />
+          <p className="mt-4 text-xs text-muted-foreground">
+            Consulte nossa <a href="/politica-sla" className="underline underline-offset-4 hover:text-foreground">Política de SLA</a> para detalhes completos sobre disponibilidade, tempos de resposta e compensações.
           </p>
-        </div>
+        </section>
       </main>
 
       <LandingFooter />

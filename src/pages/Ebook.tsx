@@ -57,14 +57,14 @@ export default function Ebook() {
       <div className="max-w-3xl space-y-6">
         <CabecalhoPagina acoes={botaoBaixar} />
 
-        <Card className="p-6">
+        <Card className="p-5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
             <div className="flex h-20 w-16 flex-shrink-0 items-center justify-center rounded-md border border-border bg-muted">
               <FileText className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-lg font-semibold text-foreground">
+                <h2 className="text-lg font-semibold leading-6 text-foreground">
                   PRAEFECTUS — Guia Técnico e Operacional
                 </h2>
                 <Badge variant="muted">v4.0</Badge>
@@ -78,7 +78,7 @@ export default function Ebook() {
         </Card>
 
         <section>
-          <h2 className="mb-3 text-lg font-semibold text-foreground">Capítulos</h2>
+          <h2 className="mb-3 text-lg font-semibold leading-6 text-foreground">Capítulos</h2>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {chapters.map((ch) => (
               <div

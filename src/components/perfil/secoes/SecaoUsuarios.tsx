@@ -60,7 +60,7 @@ export default function SecaoUsuarios() {
         <span className="sr-only">Carregando usuários</span>
         {Array.from({ length: 3 }, (_, i) => (
           <div key={i} className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3">
-            <Skeleton className="h-9 w-9 rounded-full" />
+            <Skeleton className="h-8 w-8 rounded-full" />
             <div className="flex-1 space-y-2">
               <Skeleton className="h-4 w-40" />
               <Skeleton className="h-3 w-56" />
@@ -102,12 +102,15 @@ export default function SecaoUsuarios() {
         <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border">
           {membros.map((m) => (
             <li key={m.id} className="flex items-center gap-3 bg-card px-4 py-3">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold text-foreground">
+              <span
+                aria-hidden="true"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-navy-tint text-xs font-semibold text-navy"
+              >
                 {(m.nome || m.email || '?').slice(0, 2).toUpperCase()}
               </span>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-foreground">{m.nome || 'Sem nome'}</p>
-                <p className="flex items-center gap-2 truncate text-xs text-muted-foreground">
+                <p className="truncate text-base font-medium text-foreground">{m.nome || 'Sem nome'}</p>
+                <p className="flex items-center gap-2 truncate text-sm text-muted-foreground">
                   <Mail className="h-4 w-4 shrink-0" aria-hidden="true" />
                   {m.email || 'sem e-mail'}
                 </p>

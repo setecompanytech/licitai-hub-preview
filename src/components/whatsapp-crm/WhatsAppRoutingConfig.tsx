@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '@/components/ui/select';
@@ -276,20 +277,27 @@ export default function WhatsAppRoutingConfig() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" aria-hidden="true" />
+      /* Esqueleto na forma dos cartões de configuração. */
+      <div role="status" aria-busy="true" className="space-y-6">
         <span className="sr-only">Carregando a configuração de roteamento</span>
+        <Skeleton className="h-36 rounded-lg" />
+        <Skeleton className="h-72 rounded-lg" />
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          <Skeleton className="h-64 rounded-lg" />
+          <Skeleton className="h-64 rounded-lg" />
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* Webhook URL */}
-      <Card className="p-6">
+      {/* Webhook URL — título de cartão 16/600 com o ícone em cinza: verde
+          fica só para a ação. */}
+      <Card className="p-5">
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <Globe className="w-5 h-5 text-primary" aria-hidden="true" />
-          <h2 className="text-lg font-semibold text-foreground">URL do webhook</h2>
+          <Globe className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+          <h2 className="text-lg font-semibold leading-6 text-foreground">URL do webhook</h2>
           <Badge variant="muted">Configure no provedor</Badge>
         </div>
         <p className="mb-3 text-sm text-muted-foreground">
@@ -305,11 +313,11 @@ export default function WhatsAppRoutingConfig() {
       </Card>
 
       {/* Números por setor */}
-      <Card className="p-6">
+      <Card className="p-5">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <Phone className="w-5 h-5 text-primary" aria-hidden="true" />
-            <h2 className="text-lg font-semibold text-foreground">Números por setor</h2>
+            <Phone className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+            <h2 className="text-lg font-semibold leading-6 text-foreground">Números por setor</h2>
           </div>
           <div className="flex items-center gap-2">
             <Label htmlFor="prefs-notificacoes" className="text-sm text-muted-foreground">Notificações</Label>
@@ -317,7 +325,7 @@ export default function WhatsAppRoutingConfig() {
           </div>
         </div>
 
-        <div className="mb-4 space-y-1.5">
+        <div className="mb-4 space-y-2">
           <Label htmlFor="telefone-principal">Número principal (padrão)</Label>
           <Input
             id="telefone-principal"
@@ -335,15 +343,16 @@ export default function WhatsAppRoutingConfig() {
             return (
               <div
                 key={setor.key}
-                className={`rounded-lg border border-border transition-colors ${ativoSetor ? 'bg-card' : 'bg-muted opacity-70'}`}
+                className={`rounded-lg border border-border transition-colors duration-150 ${ativoSetor ? 'bg-card' : 'bg-secondary opacity-70'}`}
               >
                 <div className="flex flex-wrap items-center justify-between gap-3 p-4">
                   <div className="flex min-w-0 items-center gap-3">
-                    <span aria-hidden="true" className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-primary-tint text-primary">
-                      <setor.icon className="w-4 h-4" />
+                    {/* Ícone do setor num ladrilho neutro de 32px. */}
+                    <span aria-hidden="true" className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                      <setor.icon className="h-4 w-4" />
                     </span>
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-foreground">{setor.label}</p>
+                      <p className="text-base font-medium text-foreground">{setor.label}</p>
                       <p className="text-xs text-muted-foreground">{setor.desc}</p>
                     </div>
                   </div>
@@ -396,13 +405,13 @@ export default function WhatsAppRoutingConfig() {
         </div>
       </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         {/* Roteamento IA */}
-        <Card className="p-6">
+        <Card className="p-5">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <Route className="w-5 h-5 text-primary" aria-hidden="true" />
-              <h2 className="text-lg font-semibold text-foreground">Roteamento automático</h2>
+              <Route className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+              <h2 className="text-lg font-semibold leading-6 text-foreground">Roteamento automático</h2>
             </div>
             <Label htmlFor="roteamento-ativo" className="sr-only">Ligar o roteamento automático</Label>
             <Switch id="roteamento-ativo" checked={config.ativo} onCheckedChange={v => setConfig(p => ({ ...p, ativo: v }))} />
@@ -424,12 +433,12 @@ export default function WhatsAppRoutingConfig() {
 
             {config.resposta_automatica && (
               <>
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   <Label htmlFor="mensagem-boas-vindas">Mensagem de boas-vindas</Label>
                   <Textarea id="mensagem-boas-vindas" value={config.mensagem_boas_vindas} onChange={e => setConfig(p => ({ ...p, mensagem_boas_vindas: e.target.value }))} rows={3} />
                   <p className="text-xs text-muted-foreground">No horário, a IA gera respostas personalizadas. Esta é a mensagem de reserva.</p>
                 </div>
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   <Label htmlFor="mensagem-fora-horario">Mensagem fora do horário</Label>
                   <Textarea id="mensagem-fora-horario" value={config.mensagem_fora_horario} onChange={e => setConfig(p => ({ ...p, mensagem_fora_horario: e.target.value }))} rows={3} />
                 </div>
@@ -439,24 +448,25 @@ export default function WhatsAppRoutingConfig() {
         </Card>
 
         {/* Horário + Provedor */}
-        <Card className="p-6">
+        <Card className="p-5">
           <div className="mb-4 flex items-center gap-2">
-            <Clock className="w-5 h-5 text-primary" aria-hidden="true" />
-            <h2 className="text-lg font-semibold text-foreground">Horário e provedor</h2>
+            <Clock className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+            <h2 className="text-lg font-semibold leading-6 text-foreground">Horário e provedor</h2>
           </div>
 
           <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1.5">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
                 <Label htmlFor="horario-inicio">Início</Label>
                 <Input id="horario-inicio" type="time" value={config.horario_inicio} onChange={e => setConfig(p => ({ ...p, horario_inicio: e.target.value }))} />
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <Label htmlFor="horario-fim">Fim</Label>
                 <Input id="horario-fim" type="time" value={config.horario_fim} onChange={e => setConfig(p => ({ ...p, horario_fim: e.target.value }))} />
               </div>
             </div>
 
+            {/* Dias ligados em botão tonal (`secondary`); desligados em contorno. */}
             <fieldset className="space-y-2">
               <legend className="mb-2 text-sm font-medium text-foreground">Dias de funcionamento</legend>
               <div className="flex flex-wrap gap-2">
@@ -465,7 +475,7 @@ export default function WhatsAppRoutingConfig() {
                   return (
                     <Button
                       key={dia.value}
-                      variant={ligado ? 'default' : 'outline'}
+                      variant={ligado ? 'secondary' : 'outline'}
                       size="sm"
                       aria-pressed={ligado}
                       aria-label={`${ligado ? 'Desligar' : 'Ligar'} ${dia.nome}`}
@@ -478,13 +488,13 @@ export default function WhatsAppRoutingConfig() {
               </div>
             </fieldset>
 
-            <div className="space-y-3 border-t border-border pt-4">
+            <div className="space-y-4 border-t border-border pt-4">
               <div className="flex items-center gap-2">
-                <Zap className="w-4 h-4 text-primary" aria-hidden="true" />
-                <h3 className="text-lg font-semibold text-foreground">Provedor de API</h3>
+                <Zap className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                <h3 className="text-lg font-semibold leading-6 text-foreground">Provedor de API</h3>
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <Label htmlFor="provider">Provedor</Label>
                 <Select value={config.provider} onValueChange={v => setConfig(p => ({ ...p, provider: v }))}>
                   <SelectTrigger id="provider"><SelectValue /></SelectTrigger>
@@ -496,7 +506,7 @@ export default function WhatsAppRoutingConfig() {
                 </Select>
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <Label htmlFor="provider-url">URL base</Label>
                 <Input
                   id="provider-url"
@@ -505,7 +515,7 @@ export default function WhatsAppRoutingConfig() {
                   onChange={e => setConfig(p => ({ ...p, provider_url: e.target.value }))}
                 />
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <Label htmlFor="provider-instance">Instância / ID</Label>
                 <Input id="provider-instance" placeholder="Nome da instância" value={config.provider_instance} onChange={e => setConfig(p => ({ ...p, provider_instance: e.target.value }))} />
               </div>
@@ -535,16 +545,16 @@ export default function WhatsAppRoutingConfig() {
 
       {/* Routing Logs */}
       {logs.length > 0 && (
-        <Card className="p-6">
+        <Card className="p-5">
           <div className="mb-3 flex flex-wrap items-center gap-2">
-            <Route className="w-5 h-5 text-primary" aria-hidden="true" />
-            <h2 className="text-lg font-semibold text-foreground">Log de roteamento</h2>
+            <Route className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+            <h2 className="text-lg font-semibold leading-6 text-foreground">Log de roteamento</h2>
             <Badge variant="muted">{logs.length} eventos</Badge>
           </div>
           <ScrollArea className="max-h-64">
             <div className="space-y-2 pr-2">
               {logs.map(log => (
-                <div key={log.id} className="flex flex-wrap items-center gap-3 rounded-md bg-muted p-3 text-sm">
+                <div key={log.id} className="flex flex-wrap items-center gap-3 rounded-md bg-secondary p-3 text-sm">
                   <ArrowRight className="w-4 h-4 flex-shrink-0 text-muted-foreground" aria-hidden="true" />
                   <Badge variant="muted" truncate>{log.setor_destino}</Badge>
                   <span className="min-w-0 flex-1 truncate text-muted-foreground">{log.motivo}</span>

@@ -7,12 +7,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge, type BadgeProps } from '@/components/ui/badge';
 import EstadoVazio from '@/components/shared/EstadoVazio';
+import SkeletonTabela from '@/components/shared/SkeletonTabela';
+import FaixaIndicadores, { type Indicador } from '@/components/gestao/FaixaIndicadores';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, CheckCircle2, Clock, AlertTriangle, X, Link2, ChevronDown, ChevronRight, ListPlus } from 'lucide-react';
+import { Plus, CheckCircle2, Clock, AlertTriangle, X, Link2, ChevronDown, ChevronRight, ListPlus, CircleDot, XCircle } from 'lucide-react';
 
 type SubTarefa = {
   id: string;
@@ -67,6 +69,15 @@ const STATUS_CONFIG: Record<string, { label: string; variante: Variante }> = {
   em_andamento: { label: 'Em andamento', variante: 'info' },
   concluida: { label: 'Concluída', variante: 'success' },
   cancelada: { label: 'Cancelada', variante: 'danger' },
+};
+
+/** Ícone e tom do ladrilho de cada status na faixa de indicadores — o mesmo
+ *  vocabulário de cor do selo, para o número não dizer uma coisa e a lista outra. */
+const INDICADOR_STATUS: Record<string, { icone: Indicador['icone']; tom: Indicador['tom'] }> = {
+  pendente: { icone: Clock, tom: 'neutro' },
+  em_andamento: { icone: CircleDot, tom: 'info' },
+  concluida: { icone: CheckCircle2, tom: 'ok' },
+  cancelada: { icone: XCircle, tom: 'critico' },
 };
 
 export default function TarefasColaborador({ empresaId, isAdmin }: { empresaId: string; isAdmin: boolean }) {
@@ -213,12 +224,14 @@ export default function TarefasColaborador({ empresaId, isAdmin }: { empresaId: 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-2">
+        {/* Alternância de filtro em botão tonal: o ativo em `secondary`, os
+            demais em `ghost` — o verde sólido fica só para "Nova tarefa". */}
+        <div className="flex flex-wrap gap-1">
           {['todas', 'pendente', 'em_andamento', 'concluida'].map(s => (
-            <Button key={s} variant={filtroStatus === s ? 'default' : 'outline'} size="sm"
+            <Button key={s} variant={filtroStatus === s ? 'secondary' : 'ghost'} size="sm"
               onClick={() => setFiltroStatus(s)} aria-pressed={filtroStatus === s}>
               {s === 'todas' ? 'Todas' : STATUS_CONFIG[s]?.label}
-              {s !== 'todas' && <Badge variant="muted" className="ml-1.5">
+              {s !== 'todas' && <Badge variant="muted" className="ml-1.5 tabular-nums">
                 {tarefas.filter(t => t.status === s).length}
               </Badge>}
             </Button>
@@ -231,18 +244,19 @@ export default function TarefasColaborador({ empresaId, isAdmin }: { empresaId: 
         )}
       </div>
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
-          <div key={key} className="rounded-lg border border-border bg-card p-4 text-center shadow-sm">
-            <p className="text-sm text-muted-foreground">{cfg.label}</p>
-            <p className="text-[2rem] font-bold leading-10 tabular-nums text-foreground">{tarefas.filter(t => t.status === key).length}</p>
-          </div>
-        ))}
-      </div>
+      {/* Contagem por status na faixa de indicadores do padrão (rótulo em cima,
+          número em dígitos tabulares, ícone discreto no canto). */}
+      <FaixaIndicadores
+        itens={Object.entries(STATUS_CONFIG).map(([key, cfg]) => ({
+          rotulo: cfg.label,
+          valor: tarefas.filter(t => t.status === key).length,
+          icone: INDICADOR_STATUS[key]?.icone,
+          tom: INDICADOR_STATUS[key]?.tom,
+        }))}
+      />
 
       {loading ? (
-        <p className="py-6 text-center text-base text-muted-foreground">Carregando tarefas...</p>
+        <SkeletonTabela linhas={4} colunas={3} cabecalho={false} rotulo="Carregando tarefas..." />
       ) : filtered.length === 0 ? (
         <section className="rounded-lg border border-border bg-card shadow-sm">
           <EstadoVazio
@@ -305,7 +319,7 @@ export default function TarefasColaborador({ empresaId, isAdmin }: { empresaId: 
                     <div className="flex flex-shrink-0 flex-wrap items-center gap-2">
                       {t.status !== 'concluida' && (
                         <Select value={t.status} onValueChange={v => handleUpdateStatus(t.id, v)}>
-                          <SelectTrigger className="h-9 w-[150px] text-sm" aria-label={`Status da tarefa ${t.titulo}`}><SelectValue /></SelectTrigger>
+                          <SelectTrigger className="h-9 w-[150px]" aria-label={`Status da tarefa ${t.titulo}`}><SelectValue /></SelectTrigger>
                           <SelectContent>
                             {Object.entries(STATUS_CONFIG).map(([k, v]) => (
                               <SelectItem key={k} value={k}>{v.label}</SelectItem>
@@ -314,7 +328,7 @@ export default function TarefasColaborador({ empresaId, isAdmin }: { empresaId: 
                         </Select>
                       )}
                       {isAdmin && (
-                        <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(t.id)} title="Remover tarefa" aria-label="Remover tarefa">
+                        <Button variant="ghost-destructive" size="icon-sm" onClick={() => handleDelete(t.id)} title="Remover tarefa" aria-label="Remover tarefa">
                           <X aria-hidden="true" />
                         </Button>
                       )}
@@ -322,9 +336,9 @@ export default function TarefasColaborador({ empresaId, isAdmin }: { empresaId: 
                   </div>
                 </div>
 
-                {/* Sub-tarefas section */}
+                {/* Sub-tarefas section — superfície rebaixada sob o cartão. */}
                 {(isExpanded || subs.length === 0) && canManage && (
-                  <div className="border-t border-border bg-muted px-4 py-3">
+                  <div className="border-t border-border bg-secondary px-4 py-3">
                     {subs.map(sub => (
                       <div key={sub.id} className="group flex items-center gap-2 py-1.5">
                         <button
@@ -332,10 +346,10 @@ export default function TarefasColaborador({ empresaId, isAdmin }: { empresaId: 
                           aria-pressed={sub.status === 'concluida'}
                           aria-label={sub.status === 'concluida' ? `Reabrir ${sub.titulo}` : `Concluir ${sub.titulo}`}
                           className={cn(
-                            'flex h-5 w-5 flex-shrink-0 items-center justify-center rounded border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                            'flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-[4px] border bg-card shadow-sm transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                             sub.status === 'concluida'
                               ? 'border-primary bg-primary text-primary-foreground'
-                              : 'border-border hover:border-primary',
+                              : 'border-input hover:border-foreground-tertiary',
                           )}
                         >
                           {sub.status === 'concluida' && <CheckCircle2 className="h-3 w-3" aria-hidden="true" />}
@@ -345,8 +359,7 @@ export default function TarefasColaborador({ empresaId, isAdmin }: { empresaId: 
                         </span>
                         <span className="text-xs text-muted-foreground">{getMembroNome(sub.criado_por)}</span>
                         <Button
-                          variant="ghost" size="icon"
-                          className="h-9 w-9 text-muted-foreground hover:text-destructive"
+                          variant="ghost-destructive" size="icon-sm"
                           onClick={() => handleDeleteSubTarefa(sub.id)}
                           title="Remover sub-tarefa"
                           aria-label={`Remover sub-tarefa ${sub.titulo}`}
@@ -361,7 +374,7 @@ export default function TarefasColaborador({ empresaId, isAdmin }: { empresaId: 
                         value={newSubTarefa[t.id] || ''}
                         onChange={e => setNewSubTarefa(prev => ({ ...prev, [t.id]: e.target.value }))}
                         placeholder="Nova sub-tarefa..."
-                        className="h-9 min-w-[200px] flex-1 text-sm"
+                        className="h-9 min-w-[200px] flex-1"
                         aria-label={`Nova sub-tarefa em ${t.titulo}`}
                         onKeyDown={e => e.key === 'Enter' && handleAddSubTarefa(t.id)}
                       />
@@ -381,7 +394,7 @@ export default function TarefasColaborador({ empresaId, isAdmin }: { empresaId: 
                   <button
                     onClick={() => toggleExpand(t.id)}
                     aria-expanded={false}
-                    className="w-full border-t border-border px-4 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    className="w-full rounded-b-lg border-t border-border px-4 py-2 text-left text-sm text-muted-foreground transition-colors duration-150 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
                   >
                     {subs.length} sub-tarefa(s) • {subsCompleted} concluída(s)
                   </button>
@@ -398,20 +411,20 @@ export default function TarefasColaborador({ empresaId, isAdmin }: { empresaId: 
           <DialogHeader>
             <DialogTitle>Nova tarefa</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
-            <div>
+          <div className="space-y-4">
+            <div className="space-y-2">
               <Label htmlFor="tarefa-titulo">Título *</Label>
-              <Input id="tarefa-titulo" value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Ex: Preparar documentação do edital" className="mt-1" />
+              <Input id="tarefa-titulo" value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Ex: Preparar documentação do edital" />
             </div>
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="tarefa-descricao">Descrição</Label>
-              <Textarea id="tarefa-descricao" value={descricao} onChange={e => setDescricao(e.target.value)} placeholder="Detalhes da tarefa..." rows={3} className="mt-1" />
+              <Textarea id="tarefa-descricao" value={descricao} onChange={e => setDescricao(e.target.value)} placeholder="Detalhes da tarefa..." rows={3} />
             </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
                 <Label htmlFor="tarefa-atribuido">Atribuir a *</Label>
                 <Select value={atribuidoA} onValueChange={setAtribuidoA}>
-                  <SelectTrigger id="tarefa-atribuido" className="mt-1"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectTrigger id="tarefa-atribuido"><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent>
                     {membros.map(m => (
                       <SelectItem key={m.user_id} value={m.user_id}>{nomeExibido(m as never)}</SelectItem>
@@ -419,10 +432,10 @@ export default function TarefasColaborador({ empresaId, isAdmin }: { empresaId: 
                   </SelectContent>
                 </Select>
               </div>
-              <div>
+              <div className="space-y-2">
                 <Label htmlFor="tarefa-prioridade">Prioridade</Label>
                 <Select value={prioridade} onValueChange={setPrioridade}>
-                  <SelectTrigger id="tarefa-prioridade" className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="tarefa-prioridade"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {Object.entries(PRIORIDADE_CONFIG).map(([k, v]) => (
                       <SelectItem key={k} value={k}>{v.label}</SelectItem>
@@ -431,15 +444,15 @@ export default function TarefasColaborador({ empresaId, isAdmin }: { empresaId: 
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
                 <Label htmlFor="tarefa-prazo">Prazo</Label>
-                <Input id="tarefa-prazo" type="date" value={prazo} onChange={e => setPrazo(e.target.value)} className="mt-1" />
+                <Input id="tarefa-prazo" type="date" value={prazo} onChange={e => setPrazo(e.target.value)} />
               </div>
-              <div>
+              <div className="space-y-2">
                 <Label htmlFor="tarefa-licitacao">Vincular licitação</Label>
                 <Select value={licitacaoId} onValueChange={setLicitacaoId}>
-                  <SelectTrigger id="tarefa-licitacao" className="mt-1"><SelectValue placeholder="(Opcional)" /></SelectTrigger>
+                  <SelectTrigger id="tarefa-licitacao"><SelectValue placeholder="(Opcional)" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Nenhuma</SelectItem>
                     {licitacoes.map(l => (

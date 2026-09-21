@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import EstadoVazio from '@/components/shared/EstadoVazio';
+import FaixaIndicadores from '@/components/gestao/FaixaIndicadores';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { MessageSquare, Users, Send, TrendingUp, Loader2, BarChart3, PieChart as PieChartIcon } from 'lucide-react';
+import { MessageSquare, Users, Send, TrendingUp, BarChart3, PieChart as PieChartIcon } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 interface Stats {
@@ -86,9 +88,16 @@ export default function WhatsAppDashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" aria-hidden="true" />
+      /* Esqueleto na forma do painel: a faixa de indicadores e os dois gráficos. */
+      <div role="status" aria-busy="true" className="space-y-6">
         <span className="sr-only">Carregando o painel</span>
+        <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(160px,100%),1fr))]">
+          {[0, 1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-24 rounded-lg" />)}
+        </div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <Skeleton className="h-72 rounded-lg" />
+          <Skeleton className="h-72 rounded-lg" />
+        </div>
       </div>
     );
   }
@@ -106,24 +115,16 @@ export default function WhatsAppDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
-        {kpis.map(k => (
-          <Card key={k.label} className="p-6">
-            <div className="mb-2 flex items-center gap-2">
-              <k.icon className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
-              <span className="text-sm text-muted-foreground">{k.label}</span>
-            </div>
-            <p className="text-[2rem] leading-10 font-bold tabular-nums text-foreground break-words">{k.value}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{k.sub}</p>
-          </Card>
-        ))}
-      </div>
+      {/* KPIs na faixa de indicadores do padrão: rótulo, valor em dígitos
+          tabulares, ícone discreto no canto e a linha de detalhe embaixo. */}
+      <FaixaIndicadores
+        itens={kpis.map(k => ({ rotulo: k.label, valor: k.value, detalhe: k.sub, icone: k.icon }))}
+      />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {/* Pipeline Chart */}
-        <Card className="p-6">
-          <h3 className="mb-4 text-lg font-semibold text-foreground">Funil de leads</h3>
+        <Card className="p-5">
+          <h3 className="mb-4 text-lg font-semibold leading-6 text-foreground">Funil de leads</h3>
           <ResponsiveContainer width="100%" height={250}>
             <BarChart data={pipelineData}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -136,8 +137,8 @@ export default function WhatsAppDashboard() {
         </Card>
 
         {/* Setor Chart */}
-        <Card className="p-6">
-          <h3 className="mb-4 text-lg font-semibold text-foreground">Conversas por setor</h3>
+        <Card className="p-5">
+          <h3 className="mb-4 text-lg font-semibold leading-6 text-foreground">Conversas por setor</h3>
           {setorData.length > 0 ? (
             <ResponsiveContainer width="100%" height={250}>
               <PieChart>
@@ -160,12 +161,12 @@ export default function WhatsAppDashboard() {
 
       {/* Conversion rate */}
       {stats.totalLeads > 0 && (
-        <Card className="p-6">
-          <h3 className="mb-2 text-lg font-semibold text-foreground">Taxa de conversão</h3>
+        <Card className="p-5">
+          <h3 className="mb-2 text-lg font-semibold leading-6 text-foreground">Taxa de conversão</h3>
           <div className="flex flex-wrap items-center gap-4">
             <div className="min-w-48 flex-1">
               <div
-                className="h-3 overflow-hidden rounded-full bg-muted"
+                className="h-2 overflow-hidden rounded-full bg-muted"
                 role="progressbar"
                 aria-label="Taxa de conversão de leads"
                 aria-valuenow={Math.round(taxaConversao)}
@@ -173,16 +174,17 @@ export default function WhatsAppDashboard() {
                 aria-valuemax={100}
               >
                 <div
-                  className="h-full rounded-full bg-success transition-all"
+                  className="h-full rounded-full bg-primary transition-all"
                   style={{ width: `${taxaConversao}%` }}
                 />
               </div>
             </div>
-            <span className="text-lg font-semibold tabular-nums text-success">
+            {/* Tinta `-ink`: é a que lê sobre o branco do cartão. */}
+            <span className="text-3xl font-semibold leading-8 tabular-nums text-success-ink">
               {taxaConversao.toFixed(1)}%
             </span>
           </div>
-          <p className="mt-1 text-sm text-muted-foreground tabular-nums">
+          <p className="mt-1 text-sm tabular-nums text-muted-foreground">
             {stats.leadsGanhos} ganhos de {stats.totalLeads} leads totais
           </p>
         </Card>

@@ -64,8 +64,8 @@ export default function FotoPerfil({ nome, email }: { nome: string; email: strin
         aria-label={url ? 'Trocar foto de perfil' : 'Adicionar foto de perfil'}
         className={cn(
           'group relative h-24 w-24 shrink-0 overflow-hidden rounded-full',
-          'border-2 border-dashed transition-colors',
-          sobre ? 'border-primary bg-primary-tint' : 'border-border hover:border-muted-foreground',
+          'border-2 border-dashed transition-colors duration-150',
+          sobre ? 'border-primary bg-primary-tint' : 'border-input hover:border-foreground-tertiary',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
           'disabled:cursor-wait',
         )}
@@ -75,7 +75,8 @@ export default function FotoPerfil({ nome, email }: { nome: string; email: strin
         ) : url ? (
           <img src={url} alt="" className="h-full w-full object-cover" />
         ) : (
-          <span className="absolute inset-0 flex items-center justify-center bg-muted text-xl font-bold text-muted-foreground">
+          /* Iniciais sobre a tinta navy clara — o mesmo par do avatar do menu. */
+          <span className="absolute inset-0 flex items-center justify-center bg-navy-tint text-xl font-semibold text-navy">
             {iniciais || <UserRound className="h-6 w-6" aria-hidden="true" />}
           </span>
         )}
@@ -118,8 +119,7 @@ export default function FotoPerfil({ nome, email }: { nome: string; email: strin
           {url && (
             <Button
               type="button"
-              variant="ghost"
-              className="text-muted-foreground hover:text-destructive"
+              variant="ghost-destructive"
               onClick={apagar}
               disabled={enviando}
             >

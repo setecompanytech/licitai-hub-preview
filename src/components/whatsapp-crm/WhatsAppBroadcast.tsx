@@ -5,13 +5,14 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Skeleton } from '@/components/ui/skeleton';
 import EstadoVazio from '@/components/shared/EstadoVazio';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Plus, Send, Loader2, Users, Clock, CheckCircle2, XCircle, Megaphone, Trash2 } from 'lucide-react';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger
+  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger
 } from '@/components/ui/dialog';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
@@ -149,9 +150,11 @@ export default function WhatsAppBroadcast() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" aria-hidden="true" />
+      /* Esqueleto na forma dos cartões de campanha. */
+      <div role="status" aria-busy="true" className="space-y-4">
         <span className="sr-only">Carregando as campanhas</span>
+        <Skeleton className="h-4 w-32" />
+        {[0, 1].map((i) => <Skeleton key={i} className="h-32 rounded-lg" />)}
       </div>
     );
   }
@@ -164,11 +167,11 @@ export default function WhatsAppBroadcast() {
       <DialogContent className="max-w-lg">
         <DialogHeader><DialogTitle>Nova campanha de disparo</DialogTitle></DialogHeader>
         <div className="space-y-4">
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label htmlFor="campanha-nome">Nome da campanha</Label>
             <Input id="campanha-nome" value={newCampanha.nome} onChange={e => setNewCampanha(p => ({ ...p, nome: e.target.value }))} />
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label htmlFor="campanha-setor">Setor (opcional)</Label>
             <Select value={newCampanha.setor} onValueChange={v => setNewCampanha(p => ({ ...p, setor: v }))}>
               <SelectTrigger id="campanha-setor"><SelectValue placeholder="Todos os setores" /></SelectTrigger>
@@ -181,7 +184,7 @@ export default function WhatsAppBroadcast() {
             </Select>
           </div>
           {templates.length > 0 && (
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <Label>Usar modelo</Label>
               <div className="flex flex-wrap gap-2">
                 {templates.map(t => (
@@ -190,16 +193,18 @@ export default function WhatsAppBroadcast() {
               </div>
             </div>
           )}
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label htmlFor="campanha-mensagem">Mensagem</Label>
             <Textarea id="campanha-mensagem" value={newCampanha.mensagem} onChange={e => setNewCampanha(p => ({ ...p, mensagem: e.target.value }))} rows={4} placeholder="Use {{nome}} para personalizar" />
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label htmlFor="campanha-destinatarios">Destinatários (telefone por linha, opcionalmente: telefone, nome)</Label>
             <Textarea id="campanha-destinatarios" value={newCampanha.destinatarios} onChange={e => setNewCampanha(p => ({ ...p, destinatarios: e.target.value }))} rows={4} className="font-mono text-sm" placeholder="11999999999, João&#10;11988888888, Maria" />
           </div>
-          <Button onClick={handleCreate} className="w-full">Criar campanha</Button>
         </div>
+        <DialogFooter>
+          <Button onClick={handleCreate}>Criar campanha</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
@@ -213,32 +218,35 @@ export default function WhatsAppBroadcast() {
 
       <div className="grid gap-4">
         {campanhas.length === 0 ? (
-          <EstadoVazio
-            icone={<Megaphone aria-hidden="true" />}
-            titulo="Nenhuma campanha criada ainda"
-            descricao="Monte uma lista de destinatários, escreva a mensagem e dispare de uma vez."
-            acao={<Button onClick={() => setShowNew(true)}><Plus aria-hidden="true" />Nova campanha</Button>}
-          />
+          <div className="rounded-lg border border-border bg-card shadow-sm">
+            <EstadoVazio
+              icone={<Megaphone aria-hidden="true" />}
+              titulo="Nenhuma campanha criada ainda"
+              descricao="Monte uma lista de destinatários, escreva a mensagem e dispare de uma vez."
+              acao={<Button onClick={() => setShowNew(true)}><Plus aria-hidden="true" />Nova campanha</Button>}
+            />
+          </div>
         ) : (
           campanhas.map(c => (
-            <Card key={c.id} className="p-6">
+            <Card key={c.id} className="p-5">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0 flex-1">
                   <div className="mb-2 flex flex-wrap items-center gap-2">
-                    <h3 className="text-lg font-semibold text-foreground">{c.nome}</h3>
+                    <h3 className="text-lg font-semibold leading-6 text-foreground">{c.nome}</h3>
                     {statusBadge(c.status)}
                     {c.setor && <Badge variant="muted" truncate>{c.setor}</Badge>}
                   </div>
-                  <p className="mb-3 text-sm text-muted-foreground line-clamp-2">{c.mensagem}</p>
+                  <p className="mb-3 line-clamp-2 text-sm text-muted-foreground">{c.mensagem}</p>
+                  {/* Tintas `-ink` sobre o branco do cartão. */}
                   <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                    <span className="flex items-center gap-1 tabular-nums"><Users className="w-4 h-4" aria-hidden="true" />{c.total_destinatarios} destinatários</span>
+                    <span className="flex items-center gap-1 tabular-nums"><Users className="h-4 w-4" aria-hidden="true" />{c.total_destinatarios} destinatários</span>
                     {c.status === 'executada' && (
                       <>
-                        <span className="flex items-center gap-1 tabular-nums text-success"><CheckCircle2 className="w-4 h-4" aria-hidden="true" />{c.enviados || c.total_destinatarios} enviados</span>
-                        {c.erros > 0 && <span className="flex items-center gap-1 tabular-nums text-destructive"><XCircle className="w-4 h-4" aria-hidden="true" />{c.erros} erros</span>}
+                        <span className="flex items-center gap-1 tabular-nums text-success-ink"><CheckCircle2 className="h-4 w-4" aria-hidden="true" />{c.enviados || c.total_destinatarios} enviados</span>
+                        {c.erros > 0 && <span className="flex items-center gap-1 tabular-nums text-destructive-ink"><XCircle className="h-4 w-4" aria-hidden="true" />{c.erros} erros</span>}
                       </>
                     )}
-                    <span className="flex items-center gap-1 tabular-nums"><Clock className="w-4 h-4" aria-hidden="true" />{new Date(c.created_at).toLocaleDateString('pt-BR')}</span>
+                    <span className="flex items-center gap-1 tabular-nums"><Clock className="h-4 w-4" aria-hidden="true" />{new Date(c.created_at).toLocaleDateString('pt-BR')}</span>
                   </div>
                 </div>
                 <div className="flex flex-shrink-0 flex-wrap items-center gap-2">
@@ -250,8 +258,8 @@ export default function WhatsAppBroadcast() {
                       Enviar
                     </Button>
                   )}
-                  <Button size="sm" variant="ghost" onClick={() => handleDelete(c.id)} aria-label={`Remover a campanha ${c.nome}`}>
-                    <Trash2 className="text-destructive" aria-hidden="true" />
+                  <Button size="icon-sm" variant="ghost-destructive" onClick={() => handleDelete(c.id)} aria-label={`Remover a campanha ${c.nome}`}>
+                    <Trash2 aria-hidden="true" />
                   </Button>
                 </div>
               </div>

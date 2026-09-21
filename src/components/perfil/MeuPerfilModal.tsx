@@ -9,7 +9,7 @@ import {
   ArrowRight, Bell, Building2, CreditCard, KeyRound, ShieldCheck, User, Users,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { TituloHub } from './PerfilPrimitivos';
+import { CartaoHub, TituloHub } from './PerfilPrimitivos';
 import SecaoPerfil from './secoes/SecaoPerfil';
 import SecaoEmpresa from './secoes/SecaoEmpresa';
 import SecaoRepresentante from './secoes/SecaoRepresentante';
@@ -116,20 +116,20 @@ export default function MeuPerfilModal({ open, onOpenChange }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[88vh] w-[calc(100vw-2rem)] max-w-5xl flex-col gap-0 overflow-hidden p-0">
-        {/* Cabeçalho claro (identidade 12/09): navy só no texto, verde só no
-            ladrilho do avatar. A empresa ativa lê em verde por ser o contexto
-            que muda o que as seções abaixo editam. */}
+        {/* Cabeçalho claro: avatar redondo com as iniciais sobre a tinta navy
+            clara (o mesmo par do menu da conta); a empresa ativa vai no eyebrow
+            neutro — verde fica reservado para ação e seleção. */}
         <div className="flex flex-shrink-0 items-center gap-4 border-b border-border bg-card px-6 py-4 pr-14">
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary-tint text-base font-bold text-primary">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-navy-tint text-base font-semibold text-navy">
             {avatarUrl
               ? <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
               : iniciais}
           </span>
           <div className="min-w-0">
-            <DialogTitle className="truncate text-lg font-semibold text-foreground">{nome}</DialogTitle>
+            <DialogTitle className="truncate text-lg font-semibold leading-6 text-foreground">{nome}</DialogTitle>
             <p className="truncate text-sm text-muted-foreground">{email}</p>
             {empresaAtiva && (
-              <p className="mt-1 flex items-center gap-2 truncate text-xs font-semibold uppercase tracking-wider text-primary">
+              <p className="mt-1 flex items-center gap-2 truncate text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 <Building2 className="h-4 w-4 shrink-0" aria-hidden="true" />
                 {empresaAtiva.nome_fantasia || empresaAtiva.razao_social}
               </p>
@@ -138,7 +138,7 @@ export default function MeuPerfilModal({ open, onOpenChange }: Props) {
         </div>
 
         <div className="grid min-h-0 flex-1 md:grid-cols-[236px_1fr]">
-          <nav className="overflow-y-auto border-b border-border bg-muted p-3 md:border-b-0 md:border-r" aria-label="Seções do perfil">
+          <nav className="overflow-y-auto border-b border-border bg-secondary p-3 md:border-b-0 md:border-r" aria-label="Seções do perfil">
             {GRUPOS.map(grupo => (
               <div key={grupo.titulo} className="mb-4 last:mb-0">
                 <p className="px-3 pb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -154,11 +154,11 @@ export default function MeuPerfilModal({ open, onOpenChange }: Props) {
                       onClick={() => escolher(s)}
                       aria-current={selecionada ? 'page' : undefined}
                       className={cn(
-                        'flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors',
+                        'flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors duration-150',
                         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                         selecionada
                           ? 'bg-primary-tint font-semibold text-primary'
-                          : 'text-foreground hover:bg-background',
+                          : 'text-foreground hover:bg-muted',
                       )}
                     >
                       <Icone className="h-4 w-4 shrink-0" aria-hidden="true" />
@@ -172,13 +172,15 @@ export default function MeuPerfilModal({ open, onOpenChange }: Props) {
             ))}
           </nav>
 
-          <div className="min-w-0 overflow-y-auto bg-card p-6">
+          {/* Corpo no fundo da página; cada seção num cartão `p-5`. Segurança e
+              Assinatura já chegam em cartões próprios das Configurações. */}
+          <div className="min-w-0 overflow-y-auto bg-background p-5">
             <TituloHub titulo={secao.titulo} descricao={secao.descricao} />
 
-            {ativa === 'perfil' && <SecaoPerfil />}
-            {ativa === 'empresa' && <SecaoEmpresa />}
-            {ativa === 'representante' && <SecaoRepresentante />}
-            {ativa === 'usuarios' && <SecaoUsuarios />}
+            {ativa === 'perfil' && <CartaoHub><SecaoPerfil /></CartaoHub>}
+            {ativa === 'empresa' && <CartaoHub><SecaoEmpresa /></CartaoHub>}
+            {ativa === 'representante' && <CartaoHub><SecaoRepresentante /></CartaoHub>}
+            {ativa === 'usuarios' && <CartaoHub><SecaoUsuarios /></CartaoHub>}
             {ativa === 'seguranca' && <SegurancaConta />}
             {ativa === 'assinatura' && <PlanoAssinatura />}
           </div>

@@ -4,10 +4,13 @@ import { supabase } from '@/integrations/supabase/client';
 import AppLayout from '@/components/layout/AppLayout';
 import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import EstadoVazio from '@/components/shared/EstadoVazio';
+import BarraFiltros from '@/components/gestao/BarraFiltros';
+import FaixaIndicadores, { type Indicador } from '@/components/gestao/FaixaIndicadores';
 import { streamAIChat, ChatMessage } from '@/lib/ai-stream';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
@@ -127,10 +130,12 @@ const Suporte = forwardRef<HTMLDivElement>(function Suporte(_props, _ref) {
 
   const ticketsFiltrados = filtroStatus === 'todos' ? tickets : tickets.filter(t => t.status === filtroStatus);
 
-  const resumo = [
-    { rotulo: 'Abertos', valor: tickets.filter(t => t.status === 'aberto').length, icone: Clock, cor: 'text-warning-ink' },
-    { rotulo: 'Em andamento', valor: tickets.filter(t => t.status === 'em_andamento').length, icone: AlertCircle, cor: 'text-foreground' },
-    { rotulo: 'Resolvidos', valor: tickets.filter(t => t.status === 'resolvido').length, icone: CheckCircle, cor: 'text-success' },
+  /* O estado vive no ladrilho do ícone (mesmo vocabulário de tom do selo); o
+     número fica sempre na tinta principal. */
+  const resumo: Indicador[] = [
+    { rotulo: 'Abertos', valor: tickets.filter(t => t.status === 'aberto').length, icone: Clock, tom: 'aviso' },
+    { rotulo: 'Em andamento', valor: tickets.filter(t => t.status === 'em_andamento').length, icone: AlertCircle, tom: 'info' },
+    { rotulo: 'Resolvidos', valor: tickets.filter(t => t.status === 'resolvido').length, icone: CheckCircle, tom: 'ok' },
   ];
 
   return (
@@ -148,19 +153,16 @@ const Suporte = forwardRef<HTMLDivElement>(function Suporte(_props, _ref) {
             </Button>
           }
         >
+          {/* Fila de abas sublinhada do padrão, sem ícones. */}
           <TabsList>
-            <TabsTrigger value="chat">
-              <Bot className="w-4 h-4 mr-2" aria-hidden="true" /> Chat
-            </TabsTrigger>
-            <TabsTrigger value="tickets">
-              <MessageCircle className="w-4 h-4 mr-2" aria-hidden="true" /> Chamados
-            </TabsTrigger>
+            <TabsTrigger value="chat">Chat</TabsTrigger>
+            <TabsTrigger value="tickets">Chamados</TabsTrigger>
           </TabsList>
         </CabecalhoPagina>
 
         <TabsContent value="chat" className="mt-0">
           <Card className="flex h-[min(65vh,520px)] flex-col">
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="flex-1 space-y-4 overflow-y-auto p-4">
               {chatMsgs.map((msg, i) => (
                 <div key={i} className={cn('flex gap-3', msg.role === 'user' && 'justify-end')}>
                   {msg.role === 'assistant' && (
@@ -206,7 +208,7 @@ const Suporte = forwardRef<HTMLDivElement>(function Suporte(_props, _ref) {
                 className="flex-1"
               />
               <Button size="icon" onClick={handleChatSend} disabled={chatLoading} aria-label="Enviar mensagem">
-                <Send className="w-4 h-4" aria-hidden="true" />
+                <Send aria-hidden="true" />
               </Button>
             </div>
           </Card>
@@ -214,46 +216,39 @@ const Suporte = forwardRef<HTMLDivElement>(function Suporte(_props, _ref) {
 
         <TabsContent value="tickets" className="mt-0">
           <div className="space-y-4">
-            {/* Resumo por estado */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {resumo.map(({ rotulo, valor, icone: Icone, cor }) => (
-                <Card key={rotulo} className="p-4 min-w-0">
-                  <div className="mb-2 flex items-start justify-between gap-2">
-                    <span className="text-sm text-muted-foreground">{rotulo}</span>
-                    <Icone className="w-4 h-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                  </div>
-                  <p className={cn('text-[2rem] leading-10 font-bold tabular-nums', cor)}>{valor}</p>
-                </Card>
-              ))}
-            </div>
+            {/* Resumo por estado na faixa de indicadores do padrão. */}
+            <FaixaIndicadores itens={resumo} />
 
-            {/* Recorte da lista */}
-            <div className="flex flex-wrap items-center gap-2">
-              <label htmlFor="filtro-status" className="text-sm text-muted-foreground">Status</label>
-              <Select value={filtroStatus} onValueChange={setFiltroStatus}>
-                <SelectTrigger id="filtro-status" className="w-[180px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos</SelectItem>
-                  <SelectItem value="aberto">Abertos</SelectItem>
-                  <SelectItem value="em_andamento">Em Andamento</SelectItem>
-                  <SelectItem value="resolvido">Resolvidos</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Recorte da lista — o select com o rótulo em cima, na barra padrão. */}
+            <BarraFiltros>
+              <div className="flex min-w-0 flex-col gap-1.5">
+                <Label htmlFor="filtro-status" className="text-xs text-muted-foreground">Status</Label>
+                <Select value={filtroStatus} onValueChange={setFiltroStatus}>
+                  <SelectTrigger id="filtro-status" className="w-[180px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos</SelectItem>
+                    <SelectItem value="aberto">Abertos</SelectItem>
+                    <SelectItem value="em_andamento">Em Andamento</SelectItem>
+                    <SelectItem value="resolvido">Resolvidos</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </BarraFiltros>
 
-            {/* Formulário de novo chamado */}
+            {/* Formulário de novo chamado — rótulo acima de campos de 40px,
+                rodapé com Cancelar antes da ação principal. */}
             {showForm && (
-              <Card className="p-6 space-y-4">
-                <h2 className="text-lg font-semibold">Novo chamado</h2>
-                <div className="space-y-1.5">
-                  <label htmlFor="ticket-assunto" className="text-sm font-medium">Assunto</label>
+              <Card className="space-y-4 p-5">
+                <h2 className="text-lg font-semibold leading-6 text-foreground">Novo chamado</h2>
+                <div className="space-y-2">
+                  <Label htmlFor="ticket-assunto">Assunto</Label>
                   <Input id="ticket-assunto" placeholder="Assunto" value={assunto} onChange={e => setAssunto(e.target.value)} />
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label htmlFor="ticket-categoria" className="text-sm font-medium">Categoria</label>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="ticket-categoria">Categoria</Label>
                     <Select value={categoria} onValueChange={setCategoria}>
                       <SelectTrigger id="ticket-categoria"><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -264,8 +259,8 @@ const Suporte = forwardRef<HTMLDivElement>(function Suporte(_props, _ref) {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-1.5">
-                    <label htmlFor="ticket-prioridade" className="text-sm font-medium">Prioridade</label>
+                  <div className="space-y-2">
+                    <Label htmlFor="ticket-prioridade">Prioridade</Label>
                     <Select value={prioridade} onValueChange={setPrioridade}>
                       <SelectTrigger id="ticket-prioridade"><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -277,45 +272,47 @@ const Suporte = forwardRef<HTMLDivElement>(function Suporte(_props, _ref) {
                     </Select>
                   </div>
                 </div>
-                <div className="space-y-1.5">
-                  <label htmlFor="ticket-descricao" className="text-sm font-medium">Descrição</label>
+                <div className="space-y-2">
+                  <Label htmlFor="ticket-descricao">Descrição</Label>
                   <Textarea id="ticket-descricao" placeholder="Descreva seu problema em detalhes..." value={descricao} onChange={e => setDescricao(e.target.value)} rows={4} />
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button onClick={handleCreateTicket} disabled={loading}>Enviar chamado</Button>
+                <div className="flex flex-wrap justify-end gap-2">
                   <Button variant="outline" onClick={() => setShowForm(false)}>Cancelar</Button>
+                  <Button onClick={handleCreateTicket} disabled={loading}>Enviar chamado</Button>
                 </div>
               </Card>
             )}
 
             {/* Lista de chamados */}
             {ticketsFiltrados.length === 0 ? (
-              <EstadoVazio
-                icone={<MessageCircle />}
-                titulo={tickets.length === 0 ? 'Nenhum chamado aberto' : 'Nenhum chamado com esse filtro'}
-                descricao={
-                  tickets.length === 0
-                    ? 'Tire a dúvida no chat com o assistente ou abra um chamado para a equipe.'
-                    : 'Troque o recorte de status para ver os outros chamados.'
-                }
-                acao={
-                  tickets.length === 0 ? (
-                    <Button onClick={abrirChamado}>
-                      <Plus aria-hidden="true" /> Abrir chamado
-                    </Button>
-                  ) : undefined
-                }
-              />
+              <div className="rounded-lg border border-border bg-card shadow-sm">
+                <EstadoVazio
+                  icone={<MessageCircle />}
+                  titulo={tickets.length === 0 ? 'Nenhum chamado aberto' : 'Nenhum chamado com esse filtro'}
+                  descricao={
+                    tickets.length === 0
+                      ? 'Tire a dúvida no chat com o assistente ou abra um chamado para a equipe.'
+                      : 'Troque o recorte de status para ver os outros chamados.'
+                  }
+                  acao={
+                    tickets.length === 0 ? (
+                      <Button onClick={abrirChamado}>
+                        <Plus aria-hidden="true" /> Abrir chamado
+                      </Button>
+                    ) : undefined
+                  }
+                />
+              </div>
             ) : (
               ticketsFiltrados.map(t => {
                 const sc = statusConfig[t.status] || statusConfig.aberto;
                 const Icone = sc.icon;
                 return (
-                  <Card key={t.id} className="p-6">
+                  <Card key={t.id} className="p-5">
                     <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
-                      <h3 className="text-lg font-semibold">{t.assunto}</h3>
+                      <h3 className="text-lg font-semibold leading-6 text-foreground">{t.assunto}</h3>
                       <Badge variant={sc.variante}>
-                        <Icone className="w-3 h-3 mr-1" aria-hidden="true" />{sc.label}
+                        <Icone className="mr-1 h-3 w-3" aria-hidden="true" />{sc.label}
                       </Badge>
                     </div>
                     <p className="mb-3 text-sm text-muted-foreground">{t.descricao}</p>
@@ -327,7 +324,7 @@ const Suporte = forwardRef<HTMLDivElement>(function Suporte(_props, _ref) {
                       <span>{new Date(t.created_at).toLocaleDateString('pt-BR')}</span>
                     </div>
                     {t.resposta && (
-                      <div className="mt-4 rounded-md border border-border bg-muted p-3">
+                      <div className="mt-4 rounded-md border border-border bg-secondary p-3">
                         <p className="mb-1 text-xs font-semibold text-foreground">Resposta da Equipe</p>
                         <p className="text-sm text-foreground">{t.resposta}</p>
                       </div>

@@ -4,19 +4,23 @@ import { nomeExibido, iniciaisDe, type MembroExibivel } from '@/lib/equipe/nomeE
 import AppLayout from '@/components/layout/AppLayout';
 import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import EstadoVazio from '@/components/shared/EstadoVazio';
+import SkeletonTabela from '@/components/shared/SkeletonTabela';
+import BarraFiltros from '@/components/gestao/BarraFiltros';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Users, UserPlus, Trash2, Shield, Scale, Calculator, Settings, Search, FileText, Download, ClipboardList, DollarSign, Truck, ShoppingCart, Briefcase, Mail, Loader2, MapPin , Pencil } from 'lucide-react';
+import { Users, UserPlus, Trash2, Shield, Scale, Calculator, Settings, Search, FileText, DollarSign, Truck, Briefcase, Mail, Loader2, MapPin , Pencil } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import RelatorioAtividades from '@/components/equipe/RelatorioAtividades';
 import TarefasColaborador from '@/components/equipe/TarefasColaborador';
@@ -373,7 +377,7 @@ export default function EquipeColaboradores() {
 
   return (
     <AppLayout>
-      <div className="max-w-5xl mx-auto">
+      <div className="w-full min-w-0">
         <CabecalhoPagina
           acoes={isAdmin ? (
             <>
@@ -401,21 +405,19 @@ export default function EquipeColaboradores() {
           </section>
         ) : (
           <Tabs defaultValue="membros">
+            {/* Fila de abas sublinhada do padrão, sem ícones — nenhuma outra
+                tela de menu os tem na fila de abas. */}
             <TabsList className="mb-4">
-              <TabsTrigger value="membros" className="gap-1.5">
-                <Users className="h-4 w-4" aria-hidden="true" />
+              <TabsTrigger value="membros">
                 Membros ({membros.length})
               </TabsTrigger>
-              <TabsTrigger value="tarefas" className="gap-1.5">
-                <ClipboardList className="h-4 w-4" aria-hidden="true" />
+              <TabsTrigger value="tarefas">
                 Tarefas
               </TabsTrigger>
-              <TabsTrigger value="comissoes" className="gap-1.5">
-                <DollarSign className="h-4 w-4" aria-hidden="true" />
+              <TabsTrigger value="comissoes">
                 Bonificações
               </TabsTrigger>
-              <TabsTrigger value="relatorio" className="gap-1.5">
-                <FileText className="h-4 w-4" aria-hidden="true" />
+              <TabsTrigger value="relatorio">
                 Relatório
               </TabsTrigger>
             </TabsList>
@@ -427,7 +429,9 @@ export default function EquipeColaboradores() {
                 <ConvitesPendentes />
               </div>
 
-              {/* Equipe summary cards */}
+              {/* Contagem por setor — ladrilhos compactos que também filtram a
+                  lista: rótulo com o ícone do setor em cima, número embaixo,
+                  alinhados à esquerda como um cartão de sistema. */}
               <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
                 {EQUIPES.map(eq => {
                   const count = membros.filter(m => equipeDe(m) === eq.value).length;
@@ -442,34 +446,32 @@ export default function EquipeColaboradores() {
                       // lista vazia, e a pessoa acharia que quebrou.
                       disabled={count === 0}
                       className={cn(
-                        'eleva rounded-lg border p-3 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-default disabled:opacity-50',
+                        'flex min-w-0 flex-col gap-1 rounded-lg border bg-card px-3 py-2.5 text-left shadow-sm transition-[border-color,box-shadow] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-default disabled:opacity-50',
                         ativo
-                          ? 'border-primary bg-primary-tint'
-                          : 'border-border bg-card enabled:hover:border-primary',
+                          ? 'border-primary bg-primary-tint ring-1 ring-primary/30'
+                          : 'border-border enabled:hover:border-primary/40 enabled:hover:shadow-md',
                       )}
                     >
-                      <eq.icon className={cn('mx-auto mb-1 h-5 w-5', ativo ? 'text-primary' : 'text-muted-foreground')} aria-hidden="true" />
-                      <p className="text-sm font-semibold text-foreground">{eq.label}</p>
-                      <p className="text-lg font-bold tabular-nums text-foreground">{count}</p>
+                      <span className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                        <eq.icon className={cn('h-3.5 w-3.5 shrink-0', ativo ? 'text-primary' : 'text-muted-foreground')} aria-hidden="true" />
+                        <span className="truncate">{eq.label}</span>
+                      </span>
+                      <span className="text-lg font-semibold leading-6 tabular-nums text-foreground">{count}</span>
                     </button>
                   );
                 })}
               </div>
 
-              {/* Busca acima da lista, como no protótipo. */}
+              {/* Busca larga acima da lista, na barra padrão das telas de
+                  lista; contagem e "Limpar" ficam na ponta direita. */}
               {membros.length > 0 && (
-                <div className="mb-3 flex flex-wrap items-center gap-2">
-                  <div className="relative min-w-[220px] flex-1">
-                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-                    <Input
-                      value={busca}
-                      onChange={(e) => setBusca(e.target.value)}
-                      placeholder="Buscar por nome, e-mail ou setor..."
-                      className="pl-9"
-                      aria-label="Buscar colaborador"
-                    />
-                  </div>
-                  {(busca || equipeFiltro) && (
+                <BarraFiltros
+                  className="mb-3"
+                  busca={busca}
+                  aoBuscar={setBusca}
+                  placeholderBusca="Buscar por nome, e-mail ou setor..."
+                  rotuloBusca="Buscar colaborador"
+                  acao={(busca || equipeFiltro) ? (
                     <>
                       <span className="text-sm tabular-nums text-muted-foreground">
                         {membrosFiltrados.length} de {membros.length}
@@ -481,12 +483,12 @@ export default function EquipeColaboradores() {
                         Limpar
                       </Button>
                     </>
-                  )}
-                </div>
+                  ) : undefined}
+                />
               )}
 
               {loading ? (
-                <div className="py-8 text-center text-base text-muted-foreground">Carregando...</div>
+                <SkeletonTabela linhas={5} colunas={isAdmin ? 5 : 4} rotulo="Carregando..." />
               ) : membros.length === 0 ? (
                 <section className="rounded-lg border border-border bg-card shadow-sm">
                   <EstadoVazio
@@ -502,114 +504,154 @@ export default function EquipeColaboradores() {
                   />
                 </section>
               ) : (
-                <div className="space-y-2">
-                  {membrosFiltrados.length === 0 && (
-                    <section className="rounded-lg border border-border bg-card shadow-sm">
-                      <EstadoVazio
-                        tamanho="compacto"
-                        icone={<Search />}
-                        titulo="Nenhum colaborador encontrado"
-                        descricao="Nenhum colaborador corresponde à busca ou ao setor selecionado."
-                        acao={
-                          <Button variant="outline" onClick={() => { setBusca(''); setEquipeFiltro(null); }}>
-                            Limpar filtros
-                          </Button>
-                        }
-                      />
-                    </section>
-                  )}
-                  {membrosFiltrados.map((m) => {
-                    const eq = getEquipeInfo(equipeDe(m));
-                    const isCurrentUser = m.user_id === user?.id;
-                    return (
-                      <div key={m.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card p-4 shadow-sm">
-                        <div className="flex min-w-0 items-center gap-3">
-                          {/* Avatar é identidade, não ação: sai do laranja da marca
-                              para o neutro elevado (regra da auditoria). */}
-                          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold text-foreground">
-                            {iniciaisDe(m as MembroExibivel)}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="truncate text-base font-semibold text-foreground">{nomeExibido(m as MembroExibivel)}</span>
-                              {isCurrentUser && <Badge variant="info">Você</Badge>}
-                              <Badge variant="muted">{eq.label}</Badge>
-                              <Badge variant="muted">{PAPEL_LABELS[m.papel] || m.papel}</Badge>
-                              {m.praca_uf && (
+                /* Lista nos primitivos de `ui/table`: cabeçalho em superfície
+                   rebaixada, linhas de 48px, avatar de 32px em ladrilho, nome
+                   14/500 com o e-mail em 13 embaixo. Para o admin, setor e
+                   papel são os próprios selects na célula; para os demais, o
+                   selo. A rolagem horizontal fica presa à moldura. */
+                <div className="rounded-lg border border-border bg-card shadow-sm">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Colaborador</TableHead>
+                        <TableHead>Setor</TableHead>
+                        <TableHead>Papel</TableHead>
+                        <TableHead>Praça</TableHead>
+                        {isAdmin && <TableHead className="text-right">Ações</TableHead>}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {membrosFiltrados.length === 0 && (
+                        <TableRow className="hover:bg-transparent">
+                          <TableCell colSpan={isAdmin ? 5 : 4} className="p-0">
+                            <EstadoVazio
+                              tamanho="compacto"
+                              icone={<Search />}
+                              titulo="Nenhum colaborador encontrado"
+                              descricao="Nenhum colaborador corresponde à busca ou ao setor selecionado."
+                              acao={
+                                <Button variant="outline" onClick={() => { setBusca(''); setEquipeFiltro(null); }}>
+                                  Limpar filtros
+                                </Button>
+                              }
+                            />
+                          </TableCell>
+                        </TableRow>
+                      )}
+                      {membrosFiltrados.map((m) => {
+                        const eq = getEquipeInfo(equipeDe(m));
+                        const isCurrentUser = m.user_id === user?.id;
+                        return (
+                          <TableRow key={m.id}>
+                            <TableCell>
+                              <div className="flex min-w-0 items-center gap-3">
+                                {/* Avatar é identidade, não ação: iniciais sobre a
+                                    tinta navy clara, o mesmo par do menu da conta. */}
+                                <span
+                                  aria-hidden="true"
+                                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-navy-tint text-xs font-semibold text-navy"
+                                >
+                                  {iniciaisDe(m as MembroExibivel)}
+                                </span>
+                                <div className="min-w-0">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className="truncate text-base font-medium text-foreground">{nomeExibido(m as MembroExibivel)}</span>
+                                    {isCurrentUser && <Badge variant="info">Você</Badge>}
+                                  </div>
+                                  {(m as any).email && <p className="truncate text-sm text-muted-foreground">{(m as any).email}</p>}
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {isAdmin ? (
+                                <Select value={(m as any).equipe || 'geral'} onValueChange={(v) => handleUpdateEquipe(m.id, v)}>
+                                  <SelectTrigger className="h-9 w-[150px]" aria-label={`Setor de ${nomeExibido(m as MembroExibivel)}`}>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {EQUIPES.map(eq => (
+                                      <SelectItem key={eq.value} value={eq.value}>{eq.label}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <Badge variant="muted">{eq.label}</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {isAdmin ? (
+                                <Select
+                                  value={m.papel}
+                                  onValueChange={(v) => {
+                                    if (isCurrentUser && m.papel === 'admin' && v !== 'admin') {
+                                      toast.error('Você não pode rebaixar seu próprio papel de Administrador. Peça a outro admin.');
+                                      return;
+                                    }
+                                    handleUpdatePapel(m.id, v);
+                                  }}
+                                >
+                                  <SelectTrigger className="h-9 w-[150px]" aria-label={`Papel de ${nomeExibido(m as MembroExibivel)}`}>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {PAPEIS.map(p => (
+                                      <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <Badge variant="muted">{PAPEL_LABELS[m.papel] || m.papel}</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell nowrap>
+                              {m.praca_uf ? (
                                 <Badge variant="muted" className="gap-1">
                                   <MapPin className="h-3 w-3" aria-hidden="true" />
                                   {m.praca_municipio ? `${m.praca_municipio}/${m.praca_uf}` : m.praca_uf}
                                 </Badge>
+                              ) : (
+                                <span className="text-muted-foreground">—</span>
                               )}
-                            </div>
-                            {(m as any).email && <p className="truncate text-sm text-muted-foreground">{(m as any).email}</p>}
-                          </div>
-                        </div>
-                        {isAdmin && (
-                          <div className="flex flex-shrink-0 flex-wrap items-center gap-2">
-                            <Select value={(m as any).equipe || 'geral'} onValueChange={(v) => handleUpdateEquipe(m.id, v)}>
-                              <SelectTrigger className="h-9 w-[140px] text-sm" aria-label={`Setor de ${nomeExibido(m as MembroExibivel)}`}>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {EQUIPES.map(eq => (
-                                  <SelectItem key={eq.value} value={eq.value}>{eq.label}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <Select
-                              value={m.papel}
-                              onValueChange={(v) => {
-                                if (isCurrentUser && m.papel === 'admin' && v !== 'admin') {
-                                  toast.error('Você não pode rebaixar seu próprio papel de Administrador. Peça a outro admin.');
-                                  return;
-                                }
-                                handleUpdatePapel(m.id, v);
-                              }}
-                            >
-                              <SelectTrigger className="h-9 w-[140px] text-sm" aria-label={`Papel de ${nomeExibido(m as MembroExibivel)}`}>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {PAPEIS.map(p => (
-                                  <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => abrirRenomear(m)} title="Corrigir nome de exibição" aria-label="Corrigir nome de exibição">
-                              <Pencil aria-hidden="true" />
-                            </Button>
-                            <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => openPracaDialog(m)} title="Definir praça (dias úteis das metas)" aria-label="Definir praça (dias úteis das metas)">
-                              <MapPin aria-hidden="true" />
-                            </Button>
-                            <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => openPermDialog(m)} title="Gerenciar permissões" aria-label="Gerenciar permissões">
-                              <Shield aria-hidden="true" />
-                            </Button>
-                            {(m as any).email && !isCurrentUser && (
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-9 w-9"
-                                onClick={() => handleResendInvite((m as any).email)}
-                                disabled={resendingFor === (m as any).email}
-                                title="Reenviar convite por e-mail"
-                                aria-label="Reenviar convite por e-mail"
-                              >
-                                {resendingFor === (m as any).email
-                                  ? <Loader2 className="animate-spin" aria-hidden="true" />
-                                  : <Mail aria-hidden="true" />}
-                              </Button>
+                            </TableCell>
+                            {isAdmin && (
+                              <TableCell nowrap className="text-right">
+                                <div className="flex items-center justify-end gap-1">
+                                  <Button variant="ghost" size="icon-sm" onClick={() => abrirRenomear(m)} title="Corrigir nome de exibição" aria-label="Corrigir nome de exibição">
+                                    <Pencil aria-hidden="true" />
+                                  </Button>
+                                  <Button variant="ghost" size="icon-sm" onClick={() => openPracaDialog(m)} title="Definir praça (dias úteis das metas)" aria-label="Definir praça (dias úteis das metas)">
+                                    <MapPin aria-hidden="true" />
+                                  </Button>
+                                  <Button variant="ghost" size="icon-sm" onClick={() => openPermDialog(m)} title="Gerenciar permissões" aria-label="Gerenciar permissões">
+                                    <Shield aria-hidden="true" />
+                                  </Button>
+                                  {(m as any).email && !isCurrentUser && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon-sm"
+                                      onClick={() => handleResendInvite((m as any).email)}
+                                      disabled={resendingFor === (m as any).email}
+                                      title="Reenviar convite por e-mail"
+                                      aria-label="Reenviar convite por e-mail"
+                                    >
+                                      {resendingFor === (m as any).email
+                                        ? <Loader2 className="animate-spin" aria-hidden="true" />
+                                        : <Mail aria-hidden="true" />}
+                                    </Button>
+                                  )}
+                                  {!isCurrentUser && (
+                                    <Button variant="ghost-destructive" size="icon-sm" onClick={() => handleRemove(m.id, nomeExibido(m as MembroExibivel))} title="Remover colaborador" aria-label="Remover colaborador">
+                                      <Trash2 aria-hidden="true" />
+                                    </Button>
+                                  )}
+                                </div>
+                              </TableCell>
                             )}
-                            {!isCurrentUser && (
-                              <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-destructive" onClick={() => handleRemove(m.id, nomeExibido(m as MembroExibivel))} title="Remover colaborador" aria-label="Remover colaborador">
-                                <Trash2 aria-hidden="true" />
-                              </Button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
                 </div>
               )}
             </TabsContent>
@@ -647,8 +689,8 @@ export default function EquipeColaboradores() {
             </DialogHeader>
             <div className="space-y-4">
               {/* Escolha do modo de convite */}
-              <div>
-                <Label className="mb-2 block">Como deseja convidar?</Label>
+              <div className="space-y-2">
+                <Label className="block">Como deseja convidar?</Label>
                 <RadioGroup
                   value={inviteMode}
                   onValueChange={(v) => setInviteMode(v as 'direto' | 'setor')}
@@ -661,8 +703,8 @@ export default function EquipeColaboradores() {
                     <label
                       key={value}
                       className={cn(
-                        'flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2.5 transition-colors',
-                        inviteMode === value ? 'border-primary bg-primary-tint' : 'border-border hover:bg-muted',
+                        'flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2.5 transition-colors duration-150',
+                        inviteMode === value ? 'border-primary bg-primary-tint' : 'border-input hover:bg-muted',
                       )}
                     >
                       <RadioGroupItem value={value} className="sr-only" />
@@ -678,36 +720,34 @@ export default function EquipeColaboradores() {
 
               {inviteMode === 'direto' ? (
                 <>
-                  <div>
+                  <div className="space-y-2">
                     <Label htmlFor="convite-nome">Nome completo</Label>
-                    <Input id="convite-nome" value={inviteNome} onChange={e => setInviteNome(e.target.value)} placeholder="Nome do colaborador" className="mt-1" />
+                    <Input id="convite-nome" value={inviteNome} onChange={e => setInviteNome(e.target.value)} placeholder="Nome do colaborador" />
                   </div>
-                  <div>
+                  <div className="space-y-2">
                     <Label htmlFor="convite-email">E-mail</Label>
-                    <Input id="convite-email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="email@empresa.com" type="email" className="mt-1" />
+                    <Input id="convite-email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="email@empresa.com" type="email" />
                   </div>
-                  <div>
+                  <div className="space-y-2">
                     <Label>Equipes / Departamentos</Label>
-                    <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                       {EQUIPES.map(eq => {
                         const checked = inviteEquipes.includes(eq.value);
                         return (
                           <label
                             key={eq.value}
                             className={cn(
-                              'flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 transition-colors',
-                              checked ? 'border-primary bg-primary-tint' : 'border-border hover:bg-muted',
+                              'flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 transition-colors duration-150',
+                              checked ? 'border-primary bg-primary-tint' : 'border-input hover:bg-muted',
                             )}
                           >
-                            <input
-                              type="checkbox"
+                            <Checkbox
                               checked={checked}
-                              onChange={() => {
+                              onCheckedChange={() => {
                                 setInviteEquipes(prev =>
                                   checked ? prev.filter(v => v !== eq.value) : [...prev, eq.value]
                                 );
                               }}
-                              className="accent-primary"
                             />
                             <eq.icon className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                             <span className="text-sm text-foreground">{eq.label}</span>
@@ -715,14 +755,14 @@ export default function EquipeColaboradores() {
                         );
                       })}
                     </div>
-                    <p className="mt-1 text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       Selecione uma ou mais equipes. Define a área de responsabilidade: alimentar IA Jurídica, Contábil, etc.
                     </p>
                   </div>
-                  <div>
+                  <div className="space-y-2">
                     <Label htmlFor="convite-papel">Papel / Permissão</Label>
                     <Select value={invitePapel} onValueChange={setInvitePapel}>
-                      <SelectTrigger id="convite-papel" className="mt-1"><SelectValue /></SelectTrigger>
+                      <SelectTrigger id="convite-papel"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {PAPEIS.map(p => (
                           <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
@@ -733,7 +773,7 @@ export default function EquipeColaboradores() {
                 </>
               ) : (
                 <>
-                  <div>
+                  <div className="space-y-2">
                     <Label htmlFor="setor-email">Email do setor</Label>
                     <Input
                       id="setor-email"
@@ -741,16 +781,15 @@ export default function EquipeColaboradores() {
                       onChange={e => setSectorEmail(e.target.value)}
                       placeholder="financeiro@empresa.com.br"
                       type="email"
-                      className="mt-1"
                     />
-                    <p className="mt-1 text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       O link de cadastro será enviado para este endereço. Qualquer colaborador que recebê-lo poderá criar um acesso para este setor.
                     </p>
                   </div>
-                  <div>
+                  <div className="space-y-2">
                     <Label htmlFor="setor-equipe">Setor / Equipe</Label>
                     <Select value={sectorEquipe} onValueChange={setSectorEquipe}>
-                      <SelectTrigger id="setor-equipe" className="mt-1"><SelectValue /></SelectTrigger>
+                      <SelectTrigger id="setor-equipe"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {EQUIPES.filter(eq => eq.value !== 'geral').map(eq => (
                           <SelectItem key={eq.value} value={eq.value}>{eq.label}</SelectItem>
@@ -758,10 +797,10 @@ export default function EquipeColaboradores() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div>
+                  <div className="space-y-2">
                     <Label htmlFor="setor-papel">Papel / Permissão</Label>
                     <Select value={sectorPapel} onValueChange={setSectorPapel}>
-                      <SelectTrigger id="setor-papel" className="mt-1"><SelectValue /></SelectTrigger>
+                      <SelectTrigger id="setor-papel"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {PAPEIS.map(p => (
                           <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
@@ -803,13 +842,13 @@ export default function EquipeColaboradores() {
                 Praça de {nomeExibido(pracaDialog as MembroExibivel)}
               </DialogTitle>
             </DialogHeader>
-            <p className="text-base text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               Define quais feriados contam nos dias úteis das metas: nacionais +
               os da UF + os do município. Sem praça, só os nacionais.
             </p>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div>
-                <Label htmlFor="praca-uf" className="mb-1 block">UF</Label>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="praca-uf">UF</Label>
                 <Select value={pracaUf} onValueChange={setPracaUf}>
                   <SelectTrigger id="praca-uf"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -818,8 +857,8 @@ export default function EquipeColaboradores() {
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label htmlFor="praca-municipio" className="mb-1 block">Município (opcional)</Label>
+              <div className="space-y-2">
+                <Label htmlFor="praca-municipio">Município (opcional)</Label>
                 <Input
                   id="praca-municipio"
                   placeholder="Santa Rosa"
@@ -835,7 +874,7 @@ export default function EquipeColaboradores() {
               cálculo — confira lá depois de definir.
             </p>
             <DialogFooter>
-              <Button variant="ghost" onClick={() => setPracaDialog(null)} disabled={salvandoPraca}>Cancelar</Button>
+              <Button variant="outline" onClick={() => setPracaDialog(null)} disabled={salvandoPraca}>Cancelar</Button>
               <Button onClick={savePraca} disabled={salvandoPraca}>
                 {salvandoPraca && <Loader2 className="animate-spin" aria-hidden="true" />}
                 Salvar praça
@@ -867,16 +906,15 @@ export default function EquipeColaboradores() {
                   <label
                     key={mod.value}
                     className={cn(
-                      'flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors',
-                      checked ? 'border-primary bg-primary-tint' : 'border-border hover:bg-muted',
+                      'flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors duration-150',
+                      checked ? 'border-primary bg-primary-tint' : 'border-input hover:bg-muted',
                       isDefault && 'opacity-80',
                     )}
                   >
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={checked}
                       disabled={isDefault}
-                      onChange={() => {
+                      onCheckedChange={() => {
                         if (isDefault) return;
                         setPermissoesSel(prev =>
                           prev.includes(mod.value)
@@ -884,7 +922,6 @@ export default function EquipeColaboradores() {
                             : [...prev, mod.value]
                         );
                       }}
-                      className="accent-primary"
                     />
                     <span className="text-sm text-foreground">{mod.label}</span>
                     {isDefault && <Badge variant="muted" className="ml-auto">Padrão</Badge>}
@@ -907,12 +944,12 @@ export default function EquipeColaboradores() {
           <DialogHeader>
             <DialogTitle>Corrigir nome de exibição</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
+          <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
               Aparecendo hoje como <span className="font-semibold text-foreground">{renomeando?.atual}</span>.
               O login continua o mesmo — muda só como a pessoa é identificada nas telas.
             </p>
-            <div className="space-y-1">
+            <div className="space-y-2">
               <Label htmlFor="novo-nome">Nome</Label>
               <Input
                 id="novo-nome"

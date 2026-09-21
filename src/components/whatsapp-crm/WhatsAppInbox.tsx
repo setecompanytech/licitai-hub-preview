@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Skeleton } from '@/components/ui/skeleton';
 import EstadoVazio from '@/components/shared/EstadoVazio';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -12,7 +13,7 @@ import {
   Search, Send, Plus, Phone, Clock, MessageSquare, Loader2, Sparkles, ArrowLeft,
 } from 'lucide-react';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger
+  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import {
@@ -184,7 +185,7 @@ export default function WhatsAppInbox() {
   const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
   return (
-    <div className="flex h-[calc(100vh-280px)] min-h-96 overflow-hidden rounded-lg border border-border bg-card">
+    <div className="flex h-[calc(100vh-280px)] min-h-96 overflow-hidden rounded-lg border border-border bg-card shadow-sm">
       {/* Lista de conversas. No celular ela ocupa a largura toda e dá lugar à
           conversa aberta (o botão "voltar" do cabeçalho traz de volta); a
           partir de `sm` as duas colunas convivem, como sempre conviveram. */}
@@ -205,26 +206,26 @@ export default function WhatsAppInbox() {
             </div>
             <Dialog open={showNewDialog} onOpenChange={setShowNewDialog}>
               <DialogTrigger asChild>
-                <Button size="icon" variant="outline" className="h-11 w-11 flex-shrink-0" aria-label="Nova conversa">
+                <Button size="icon" variant="outline" className="flex-shrink-0" aria-label="Nova conversa">
                   <Plus aria-hidden="true" />
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader><DialogTitle>Nova conversa</DialogTitle></DialogHeader>
                 <div className="space-y-4">
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     <Label htmlFor="nova-conversa-nome">Nome</Label>
                     <Input id="nova-conversa-nome" value={newContact.nome} onChange={e => setNewContact(p => ({ ...p, nome: e.target.value }))} />
                   </div>
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     <Label htmlFor="nova-conversa-telefone">Telefone</Label>
                     <Input id="nova-conversa-telefone" value={newContact.telefone} onChange={e => setNewContact(p => ({ ...p, telefone: e.target.value }))} placeholder="(11) 99999-9999" />
                   </div>
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     <Label htmlFor="nova-conversa-empresa">Empresa</Label>
                     <Input id="nova-conversa-empresa" value={newContact.empresa} onChange={e => setNewContact(p => ({ ...p, empresa: e.target.value }))} />
                   </div>
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     <Label htmlFor="nova-conversa-setor">Setor</Label>
                     <Select value={newContact.setor} onValueChange={v => setNewContact(p => ({ ...p, setor: v }))}>
                       <SelectTrigger id="nova-conversa-setor"><SelectValue /></SelectTrigger>
@@ -236,16 +237,20 @@ export default function WhatsAppInbox() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <Button onClick={handleCreateConversa} className="w-full">Criar conversa</Button>
                 </div>
+                <DialogFooter>
+                  <Button onClick={handleCreateConversa}>Criar conversa</Button>
+                </DialogFooter>
               </DialogContent>
             </Dialog>
           </div>
-          <div className="flex flex-wrap gap-2">
+          {/* Filtro de setor em botão tonal: o ativo em `secondary`, os demais
+              em `ghost` — o verde sólido fica só para "Enviar". */}
+          <div className="flex flex-wrap gap-1">
             {SETORES_FILTER.map(s => (
               <Button
                 key={s}
-                variant={filtroSetor === s ? 'default' : 'ghost'}
+                variant={filtroSetor === s ? 'secondary' : 'ghost'}
                 size="sm"
                 aria-pressed={filtroSetor === s}
                 onClick={() => setFiltroSetor(s)}
@@ -258,9 +263,18 @@ export default function WhatsAppInbox() {
 
         <ScrollArea className="flex-1">
           {loading ? (
-            <div className="flex items-center justify-center py-10">
-              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" aria-hidden="true" />
+            /* Esqueleto na forma da lista: avatar, nome e prévia. */
+            <div role="status" aria-busy="true" className="divide-y divide-border">
               <span className="sr-only">Carregando conversas</span>
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center gap-3 px-4 py-3">
+                  <Skeleton className="h-9 w-9 rounded-full" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-2/3" />
+                    <Skeleton className="h-3 w-1/2" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : filteredConversas.length === 0 ? (
             <EstadoVazio
@@ -270,28 +284,32 @@ export default function WhatsAppInbox() {
               descricao="Ajuste a busca e o setor, ou crie uma conversa nova."
             />
           ) : (
-            filteredConversas.map(c => (
-              <button
-                key={c.id}
-                onClick={() => setConversaAtiva(c)}
-                aria-current={conversaAtiva?.id === c.id ? 'true' : undefined}
-                className={`w-full flex items-start gap-3 p-4 hover:bg-muted transition-colors border-b border-border text-left ${conversaAtiva?.id === c.id ? 'bg-primary-tint' : ''}`}
-              >
-                <Avatar className="w-10 h-10 flex-shrink-0">
-                  <AvatarFallback className="text-xs bg-primary-tint text-primary">{getInitials(c.contato_nome)}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-semibold text-foreground truncate">{c.contato_nome}</span>
-                    <span className="text-xs text-muted-foreground tabular-nums shrink-0">
-                      {new Date(c.ultima_mensagem_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                    </span>
+            /* Lista `divide-y`: avatar, nome 14/500, prévia 13 e horário 12 em
+               dígitos tabulares; a conversa aberta fica na tinta verde. */
+            <div className="divide-y divide-border">
+              {filteredConversas.map(c => (
+                <button
+                  key={c.id}
+                  onClick={() => setConversaAtiva(c)}
+                  aria-current={conversaAtiva?.id === c.id ? 'true' : undefined}
+                  className={`flex w-full items-start gap-3 px-4 py-3 text-left transition-colors duration-150 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset ${conversaAtiva?.id === c.id ? 'bg-primary-tint' : ''}`}
+                >
+                  <Avatar className="h-9 w-9 flex-shrink-0">
+                    <AvatarFallback className="text-xs">{getInitials(c.contato_nome)}</AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="truncate text-base font-medium text-foreground">{c.contato_nome}</span>
+                      <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                        {new Date(c.ultima_mensagem_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                    <p className="truncate text-sm text-muted-foreground">{c.ultima_mensagem || 'Nova conversa'}</p>
+                    <Badge variant="muted" className="mt-1.5" truncate>{c.setor}</Badge>
                   </div>
-                  <p className="text-sm text-muted-foreground truncate">{c.ultima_mensagem || 'Nova conversa'}</p>
-                  <Badge variant="muted" className="mt-1.5" truncate>{c.setor}</Badge>
-                </div>
-              </button>
-            ))
+                </button>
+              ))}
+            </div>
           )}
         </ScrollArea>
       </div>
@@ -300,24 +318,24 @@ export default function WhatsAppInbox() {
       <div className={`${conversaAtiva ? 'flex' : 'hidden sm:flex'} min-w-0 flex-1 flex-col`}>
         {conversaAtiva ? (
           <>
-            <div className="flex items-center justify-between gap-3 border-b border-border bg-muted px-4 py-3">
+            <div className="flex items-center justify-between gap-3 border-b border-border bg-card px-4 py-3">
               <div className="flex min-w-0 items-center gap-3">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-11 w-11 flex-shrink-0 sm:hidden"
+                  className="flex-shrink-0 sm:hidden"
                   onClick={() => setConversaAtiva(null)}
                   aria-label="Voltar para a lista de conversas"
                 >
                   <ArrowLeft aria-hidden="true" />
                 </Button>
-                <Avatar className="w-10 h-10 flex-shrink-0">
-                  <AvatarFallback className="text-xs bg-primary-tint text-primary">{getInitials(conversaAtiva.contato_nome)}</AvatarFallback>
+                <Avatar className="h-9 w-9 flex-shrink-0">
+                  <AvatarFallback className="text-xs">{getInitials(conversaAtiva.contato_nome)}</AvatarFallback>
                 </Avatar>
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-foreground truncate">{conversaAtiva.contato_nome}</p>
-                  <p className="text-xs text-muted-foreground flex flex-wrap items-center gap-1">
-                    <Phone className="w-3 h-3" aria-hidden="true" />{conversaAtiva.contato_telefone}
+                  <p className="truncate text-base font-medium text-foreground">{conversaAtiva.contato_nome}</p>
+                  <p className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
+                    <Phone className="h-3 w-3" aria-hidden="true" />{conversaAtiva.contato_telefone}
                     {conversaAtiva.contato_empresa && <span>• {conversaAtiva.contato_empresa}</span>}
                   </p>
                 </div>
@@ -325,17 +343,19 @@ export default function WhatsAppInbox() {
               <Badge variant="muted" truncate>{conversaAtiva.setor}</Badge>
             </div>
 
-            <ScrollArea className="flex-1 p-4">
-              <div className="space-y-3 max-w-2xl mx-auto">
+            {/* Balões: o contato em cartão branco com fio, a empresa na tinta
+                verde; o fundo rebaixado é o que separa os dois do painel. */}
+            <ScrollArea className="flex-1 bg-secondary p-4">
+              <div className="mx-auto max-w-2xl space-y-3">
                 {mensagens.map(m => (
                   <div key={m.id} className={`flex ${m.direcao === 'saida' ? 'justify-end' : 'justify-start'}`}>
                     <div className={`max-w-[75%] rounded-lg px-4 py-2.5 ${m.direcao === 'saida'
                       ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-foreground'
+                      : 'border border-border bg-card text-foreground shadow-sm'
                     }`}>
-                      <p className="text-sm whitespace-pre-wrap">{m.conteudo}</p>
-                      <div className={`flex items-center gap-1 mt-1 text-xs ${m.direcao === 'saida' ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
-                        <Clock className="w-3 h-3" aria-hidden="true" />
+                      <p className="whitespace-pre-wrap text-sm">{m.conteudo}</p>
+                      <div className={`mt-1 flex items-center gap-1 text-xs ${m.direcao === 'saida' ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
+                        <Clock className="h-3 w-3" aria-hidden="true" />
                         <span className="tabular-nums">
                           {new Date(m.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                         </span>
@@ -348,12 +368,13 @@ export default function WhatsAppInbox() {
               </div>
             </ScrollArea>
 
+            {/* Entrada fixa de 40px: sugestão da IA (Sparkles em teal), campo e envio. */}
             <div className="border-t border-border bg-card p-4">
-              <div className="flex items-center gap-2 max-w-2xl mx-auto">
+              <div className="mx-auto flex max-w-2xl items-center gap-2">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-11 w-11 flex-shrink-0"
+                  className="flex-shrink-0"
                   onClick={handleAISuggest}
                   disabled={generatingAI || mensagens.length === 0}
                   title="Sugestão IA"
@@ -361,7 +382,7 @@ export default function WhatsAppInbox() {
                 >
                   {generatingAI
                     ? <Loader2 className="animate-spin" aria-hidden="true" />
-                    : <Sparkles className="text-primary" aria-hidden="true" />}
+                    : <Sparkles className="text-teal" aria-hidden="true" />}
                 </Button>
                 <Input
                   placeholder="Digite uma mensagem..."
@@ -375,7 +396,7 @@ export default function WhatsAppInbox() {
                   size="icon"
                   onClick={handleSend}
                   disabled={sending || !novaMensagem.trim()}
-                  className="h-11 w-11 flex-shrink-0"
+                  className="flex-shrink-0"
                   aria-label="Enviar mensagem"
                 >
                   {sending
@@ -386,13 +407,12 @@ export default function WhatsAppInbox() {
             </div>
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center">
-            <EstadoVazio
-              icone={<MessageSquare aria-hidden="true" />}
-              titulo="Nenhuma conversa aberta"
-              descricao="Escolha uma conversa na lista ao lado ou crie uma nova."
-            />
-          </div>
+          <EstadoVazio
+            preencher
+            icone={<MessageSquare aria-hidden="true" />}
+            titulo="Nenhuma conversa aberta"
+            descricao="Escolha uma conversa na lista ao lado ou crie uma nova."
+          />
         )}
       </div>
     </div>

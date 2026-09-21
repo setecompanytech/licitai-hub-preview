@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
+  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from '@/components/ui/dialog';
 import { FileText, Download, Loader2, BarChart3 } from 'lucide-react';
 import { downloadPDF } from '@/lib/download-utils';
@@ -126,12 +126,12 @@ export default function RelatorioGerencialPDF() {
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileText className="w-5 h-5 text-primary" aria-hidden="true" />
+            <FileText className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
             Relatório Gerencial
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 pt-2">
+        <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="rg-periodo">Período</Label>
             <Select value={periodo} onValueChange={setPeriodo}>
@@ -146,24 +146,27 @@ export default function RelatorioGerencialPDF() {
             </Select>
           </div>
 
-          <div className="rounded-md bg-muted p-3 text-sm text-muted-foreground space-y-1">
+          {/* Superfície rebaixada com o que vai no documento. */}
+          <div className="space-y-1 rounded-md border border-border bg-secondary p-3 text-sm text-muted-foreground">
             <p>O relatório inclui:</p>
-            <ul className="list-disc pl-4 space-y-1">
+            <ul className="list-disc space-y-1 pl-4">
               <li>Resumo de KPIs (vitórias, derrotas, taxa, ROI)</li>
               <li>Valor total ganho no período</li>
               <li>Lista detalhada de processos</li>
               <li>Filtrado pela empresa ativa</li>
             </ul>
           </div>
+        </div>
 
-          <Button onClick={handleGenerate} disabled={generating} className="w-full">
+        <DialogFooter>
+          <Button onClick={handleGenerate} disabled={generating}>
             {generating ? (
               <><Loader2 className="animate-spin" aria-hidden="true" /> Gerando...</>
             ) : (
               <><Download aria-hidden="true" /> Gerar e Baixar PDF</>
             )}
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import { nomeExibido } from '@/lib/equipe/nomeExibido';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import EstadoVazio from '@/components/shared/EstadoVazio';
+import SkeletonTabela from '@/components/shared/SkeletonTabela';
+import BarraFiltros from '@/components/gestao/BarraFiltros';
 import { Download, Filter, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -111,15 +112,21 @@ export default function RelatorioAtividades({ empresaId }: { empresaId: string }
 
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <div className="min-w-[220px] flex-1">
-          <Input
-            placeholder="Buscar por ação, descrição ou colaborador..."
-            value={filtroBusca}
-            onChange={e => setFiltroBusca(e.target.value)}
-            aria-label="Buscar atividade"
-          />
-        </div>
+      {/* Barra padrão das listas: busca larga, o filtro de módulo em fila e a
+          exportação ancorada à direita. */}
+      <BarraFiltros
+        className="mb-4"
+        busca={filtroBusca}
+        aoBuscar={setFiltroBusca}
+        placeholderBusca="Buscar por ação, descrição ou colaborador..."
+        rotuloBusca="Buscar atividade"
+        acao={
+          <Button variant="outline" onClick={exportCSV} disabled={filtered.length === 0}>
+            <Download aria-hidden="true" />
+            Exportar CSV
+          </Button>
+        }
+      >
         <Select value={filtroModulo} onValueChange={setFiltroModulo}>
           <SelectTrigger className="w-[200px]" aria-label="Filtrar por módulo">
             <Filter className="mr-1.5 h-4 w-4 shrink-0" aria-hidden="true" />
@@ -131,14 +138,10 @@ export default function RelatorioAtividades({ empresaId }: { empresaId: string }
             ))}
           </SelectContent>
         </Select>
-        <Button variant="outline" onClick={exportCSV} disabled={filtered.length === 0}>
-          <Download aria-hidden="true" />
-          Exportar CSV
-        </Button>
-      </div>
+      </BarraFiltros>
 
       {loading ? (
-        <div className="py-8 text-center text-base text-muted-foreground">Carregando atividades...</div>
+        <SkeletonTabela linhas={5} colunas={3} cabecalho={false} rotulo="Carregando atividades..." />
       ) : filtered.length === 0 ? (
         <section className="rounded-lg border border-border bg-card shadow-sm">
           <EstadoVazio
@@ -148,12 +151,17 @@ export default function RelatorioAtividades({ empresaId }: { empresaId: string }
           />
         </section>
       ) : (
-        <div className="space-y-2">
+        /* Uma moldura só, linhas separadas por fio: avatar de 32px em ladrilho,
+           quem fez + o quê em 13px, horário em dígitos tabulares à direita. */
+        <div className="divide-y divide-border rounded-lg border border-border bg-card shadow-sm">
           {filtered.map(a => (
-            <div key={a.id} className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 shadow-sm">
-              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold text-muted-foreground">
+            <div key={a.id} className="flex items-center gap-3 px-4 py-3">
+              <span
+                aria-hidden="true"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-navy-tint text-xs font-semibold text-navy"
+              >
                 {(membros[a.user_id] || '?').slice(0, 2).toUpperCase()}
-              </div>
+              </span>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-sm font-semibold text-foreground">{membros[a.user_id] || 'Usuário'}</span>
@@ -163,7 +171,7 @@ export default function RelatorioAtividades({ empresaId }: { empresaId: string }
                 </div>
                 {a.descricao && <p className="truncate text-sm text-muted-foreground">{a.descricao}</p>}
               </div>
-              <span className="flex-shrink-0 whitespace-nowrap text-xs tabular-nums text-muted-foreground">
+              <span className="shrink-0 whitespace-nowrap text-xs tabular-nums text-muted-foreground">
                 {format(new Date(a.created_at), "dd/MM HH:mm", { locale: ptBR })}
               </span>
             </div>

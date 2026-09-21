@@ -327,8 +327,8 @@ export default function TutorialPage() {
                 {/* Cartão */}
                 <div
                   className={cn(
-                    'min-w-0 flex-1 rounded-lg border border-border p-6',
-                    feito ? 'bg-muted' : ehAtual ? 'bg-card shadow-md' : 'bg-card shadow-sm',
+                    'min-w-0 flex-1 rounded-lg border border-border p-5',
+                    feito ? 'bg-secondary' : ehAtual ? 'bg-card shadow-md' : 'bg-card shadow-sm',
                   )}
                 >
                   <div className="mb-2 flex flex-wrap items-center gap-3">
@@ -350,7 +350,7 @@ export default function TutorialPage() {
                     </Button>
                   </div>
 
-                  <h2 className={cn('mb-2 text-lg font-semibold', feito ? 'text-muted-foreground' : 'text-foreground')}>
+                  <h2 className={cn('mb-2 text-lg font-semibold leading-6', feito ? 'text-muted-foreground' : 'text-foreground')}>
                     {step.title}
                   </h2>
                   <p className="text-base text-muted-foreground">
@@ -376,7 +376,7 @@ export default function TutorialPage() {
                         Próximo: {steps[idx + 1].title}
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-2 text-xs font-medium text-success">
+                      <span className="inline-flex items-center gap-2 text-xs font-medium text-success-ink">
                         <Trophy className="h-3.5 w-3.5" aria-hidden="true" />
                         Fim da trilha
                       </span>
@@ -405,38 +405,41 @@ export default function TutorialPage() {
           })}
         </ol>
 
-        {/* Fim da trilha */}
+        {/* Fim da trilha — cartão alinhado à esquerda, como o resto da tela,
+            e não uma capa centralizada. */}
         <div
           className={cn(
-            'mt-4 rounded-lg border p-8 text-center transition-colors',
+            'mt-4 flex flex-col gap-4 rounded-lg border p-5 transition-colors sm:flex-row sm:items-start',
             completo ? 'border-success-line bg-success-tint' : 'border-border bg-card shadow-sm',
           )}
         >
           <div
             className={cn(
-              'mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-lg transition-colors',
+              'flex h-10 w-10 shrink-0 items-center justify-center rounded-md transition-colors',
               completo ? 'bg-success text-success-foreground' : 'bg-muted text-muted-foreground',
             )}
           >
-            <Trophy className="h-7 w-7" aria-hidden="true" />
+            <Trophy className="h-5 w-5" aria-hidden="true" />
           </div>
-          <h2 className={cn('mb-2 text-lg font-semibold', completo ? 'text-success-ink' : 'text-foreground')}>
-            {completo ? 'Você percorreu a trilha inteira' : 'Pronto para começar?'}
-          </h2>
-          <p className={cn('mx-auto mb-4 max-w-md text-base', completo ? 'text-success-ink' : 'text-muted-foreground')}>
-            {completo
-              ? 'Da busca do edital ao resultado, você já conhece cada etapa. Agora é operar — e o sistema guarda o histórico de tudo que passar por ele.'
-              : 'O primeiro passo é buscar editais no Monitoramento e iniciar um processo.'}
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            <Button onClick={() => navigate('/monitoramento-editais')}>
-              <Search aria-hidden="true" />
-              Ir para Monitoramento
-            </Button>
-            <Button variant="outline" onClick={() => navigate('/kanban')}>
-              <GripVertical aria-hidden="true" />
-              Abrir Kanban
-            </Button>
+          <div className="min-w-0 flex-1">
+            <h2 className={cn('mb-1 text-lg font-semibold leading-6', completo ? 'text-success-ink' : 'text-foreground')}>
+              {completo ? 'Você percorreu a trilha inteira' : 'Pronto para começar?'}
+            </h2>
+            <p className={cn('mb-4 max-w-3xl text-base', completo ? 'text-success-ink' : 'text-muted-foreground')}>
+              {completo
+                ? 'Da busca do edital ao resultado, você já conhece cada etapa. Agora é operar — e o sistema guarda o histórico de tudo que passar por ele.'
+                : 'O primeiro passo é buscar editais no Monitoramento e iniciar um processo.'}
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button onClick={() => navigate('/monitoramento-editais')}>
+                <Search aria-hidden="true" />
+                Ir para Monitoramento
+              </Button>
+              <Button variant="outline" onClick={() => navigate('/kanban')}>
+                <GripVertical aria-hidden="true" />
+                Abrir Kanban
+              </Button>
+            </div>
           </div>
         </div>
       </div>

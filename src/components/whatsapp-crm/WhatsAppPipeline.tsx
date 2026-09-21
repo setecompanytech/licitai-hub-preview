@@ -6,13 +6,14 @@ import { MoneyInput } from '@/components/ui/money-input';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Skeleton } from '@/components/ui/skeleton';
 import EstadoVazio from '@/components/shared/EstadoVazio';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { Plus, Phone, Building2, DollarSign, GripVertical, Loader2, Users } from 'lucide-react';
+import { Plus, Phone, Building2, DollarSign, GripVertical, Users } from 'lucide-react';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger
+  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger
 } from '@/components/ui/dialog';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
@@ -92,9 +93,16 @@ export default function WhatsAppPipeline() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" aria-hidden="true" />
+      /* Esqueleto na forma do funil: colunas rebaixadas com cartões dentro. */
+      <div role="status" aria-busy="true" className="flex gap-4 overflow-x-auto pb-4">
         <span className="sr-only">Carregando os leads</span>
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="w-[300px] shrink-0 space-y-2 rounded-lg border border-border/70 bg-secondary p-3">
+            <Skeleton className="h-5 w-24" />
+            <Skeleton className="h-24 w-full rounded-md" />
+            <Skeleton className="h-24 w-full rounded-md" />
+          </div>
+        ))}
       </div>
     );
   }
@@ -107,19 +115,19 @@ export default function WhatsAppPipeline() {
       <DialogContent>
         <DialogHeader><DialogTitle>Novo lead</DialogTitle></DialogHeader>
         <div className="space-y-4">
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label htmlFor="novo-lead-nome">Nome</Label>
             <Input id="novo-lead-nome" value={newLead.nome} onChange={e => setNewLead(p => ({ ...p, nome: e.target.value }))} />
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label htmlFor="novo-lead-telefone">Telefone</Label>
             <Input id="novo-lead-telefone" value={newLead.telefone} onChange={e => setNewLead(p => ({ ...p, telefone: e.target.value }))} />
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label htmlFor="novo-lead-empresa">Empresa</Label>
             <Input id="novo-lead-empresa" value={newLead.empresa} onChange={e => setNewLead(p => ({ ...p, empresa: e.target.value }))} />
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label htmlFor="novo-lead-setor">Setor</Label>
             <Select value={newLead.setor} onValueChange={v => setNewLead(p => ({ ...p, setor: v }))}>
               <SelectTrigger id="novo-lead-setor"><SelectValue /></SelectTrigger>
@@ -131,12 +139,14 @@ export default function WhatsAppPipeline() {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label htmlFor="novo-lead-valor">Valor estimado (R$)</Label>
             <MoneyInput id="novo-lead-valor" value={Number(newLead.valor_estimado) || 0} onValueChange={v => setNewLead(p => ({ ...p, valor_estimado: String(v) }))} />
           </div>
-          <Button onClick={handleCreateLead} className="w-full">Criar lead</Button>
         </div>
+        <DialogFooter>
+          <Button onClick={handleCreateLead}>Criar lead</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
@@ -151,45 +161,49 @@ export default function WhatsAppPipeline() {
       </div>
 
       {leads.length === 0 ? (
-        <EstadoVazio
-          icone={<Users aria-hidden="true" />}
-          titulo="Nenhum lead no funil"
-          descricao="Cadastre o primeiro contato para acompanhar a negociação por etapa."
-          acao={<Button onClick={() => setShowNew(true)}><Plus aria-hidden="true" />Novo lead</Button>}
-        />
+        <div className="rounded-lg border border-border bg-card shadow-sm">
+          <EstadoVazio
+            icone={<Users aria-hidden="true" />}
+            titulo="Nenhum lead no funil"
+            descricao="Cadastre o primeiro contato para acompanhar a negociação por etapa."
+            acao={<Button onClick={() => setShowNew(true)}><Plus aria-hidden="true" />Novo lead</Button>}
+          />
+        </div>
       ) : (
-        <div className="flex gap-4 overflow-x-auto pb-4">
+        /* Kanban do padrão: coluna de 300px em superfície rebaixada com fio
+           fino, cartão branco compacto dentro; a rolagem horizontal é local. */
+        <div className="flex gap-3 overflow-x-auto pb-4">
           {ETAPAS.map(etapa => {
             const etapaLeads = getEtapaLeads(etapa.key);
             const total = getEtapaTotal(etapa.key);
             return (
-              <section key={etapa.key} className="w-72 flex-shrink-0">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className={`w-2.5 h-2.5 rounded-full ${etapa.color}`} aria-hidden="true" />
-                  <h3 className="text-sm font-semibold text-foreground">{etapa.label}</h3>
-                  <Badge variant="muted" className="ml-auto">{etapaLeads.length}</Badge>
+              <section key={etapa.key} className="w-[300px] shrink-0 rounded-lg border border-border/70 bg-secondary p-3">
+                <div className="mb-1 flex items-center gap-2">
+                  <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${etapa.color}`} aria-hidden="true" />
+                  <h3 className="text-sm font-semibold leading-5 text-foreground">{etapa.label}</h3>
+                  <Badge variant="muted" className="ml-auto tabular-nums">{etapaLeads.length}</Badge>
                 </div>
                 {total > 0 && (
-                  <p className="text-xs text-muted-foreground tabular-nums mb-2">{moeda(total)}</p>
+                  <p className="mb-2 text-xs tabular-nums text-muted-foreground">{moeda(total)}</p>
                 )}
                 <ScrollArea className="h-[calc(100vh-420px)] min-h-64">
                   <div className="space-y-2 pr-2">
                     {etapaLeads.map(lead => (
-                      <Card key={lead.id} className="p-4">
-                        <div className="flex items-start justify-between gap-2 mb-1">
-                          <p className="text-sm font-semibold text-foreground truncate">{lead.nome}</p>
-                          <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" aria-hidden="true" />
+                      <Card key={lead.id} className="rounded-md p-3">
+                        <div className="mb-1 flex items-start justify-between gap-2">
+                          <p className="truncate text-sm font-semibold text-foreground">{lead.nome}</p>
+                          <GripVertical className="h-4 w-4 flex-shrink-0 text-muted-foreground" aria-hidden="true" />
                         </div>
                         <div className="space-y-1 text-xs text-muted-foreground">
-                          <p className="flex items-center gap-1"><Phone className="w-3 h-3" aria-hidden="true" />{lead.telefone}</p>
-                          {lead.empresa && <p className="flex items-center gap-1 truncate"><Building2 className="w-3 h-3 shrink-0" aria-hidden="true" />{lead.empresa}</p>}
+                          <p className="flex items-center gap-1"><Phone className="h-3 w-3" aria-hidden="true" />{lead.telefone}</p>
+                          {lead.empresa && <p className="flex items-center gap-1 truncate"><Building2 className="h-3 w-3 shrink-0" aria-hidden="true" />{lead.empresa}</p>}
                           {lead.valor_estimado > 0 && (
-                            <p className="flex items-center gap-1 text-success font-semibold tabular-nums">
-                              <DollarSign className="w-3 h-3" aria-hidden="true" />{moeda(lead.valor_estimado)}
+                            <p className="flex items-center gap-1 font-semibold tabular-nums text-success-ink">
+                              <DollarSign className="h-3 w-3" aria-hidden="true" />{moeda(lead.valor_estimado)}
                             </p>
                           )}
                         </div>
-                        <div className="mt-3 flex flex-wrap gap-2">
+                        <div className="mt-3 flex flex-wrap gap-1.5">
                           {ETAPAS.filter(e => e.key !== etapa.key).map(e => (
                             <Button
                               key={e.key}

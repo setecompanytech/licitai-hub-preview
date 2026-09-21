@@ -2,7 +2,6 @@ import { useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { MessageSquare, Users, Megaphone, FileText, BarChart3, Route } from 'lucide-react';
 import WhatsAppInbox from '@/components/whatsapp-crm/WhatsAppInbox';
 import WhatsAppPipeline from '@/components/whatsapp-crm/WhatsAppPipeline';
 import WhatsAppBroadcast from '@/components/whatsapp-crm/WhatsAppBroadcast';
@@ -20,25 +19,15 @@ export default function WhatsAppCRM() {
           trilha vêm do registro `lib/navegacao/paginas.ts`. */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <CabecalhoPagina>
+          {/* Fila de abas sublinhada do padrão, sem ícones — como nas demais
+              telas de menu com abas. */}
           <TabsList>
-            <TabsTrigger value="inbox">
-              <MessageSquare className="w-4 h-4 mr-2" aria-hidden="true" />Caixa de entrada
-            </TabsTrigger>
-            <TabsTrigger value="pipeline">
-              <Users className="w-4 h-4 mr-2" aria-hidden="true" />Funil
-            </TabsTrigger>
-            <TabsTrigger value="routing">
-              <Route className="w-4 h-4 mr-2" aria-hidden="true" />Roteamento
-            </TabsTrigger>
-            <TabsTrigger value="broadcast">
-              <Megaphone className="w-4 h-4 mr-2" aria-hidden="true" />Disparos
-            </TabsTrigger>
-            <TabsTrigger value="templates">
-              <FileText className="w-4 h-4 mr-2" aria-hidden="true" />Modelos
-            </TabsTrigger>
-            <TabsTrigger value="dashboard">
-              <BarChart3 className="w-4 h-4 mr-2" aria-hidden="true" />Painel
-            </TabsTrigger>
+            <TabsTrigger value="inbox">Caixa de entrada</TabsTrigger>
+            <TabsTrigger value="pipeline">Funil</TabsTrigger>
+            <TabsTrigger value="routing">Roteamento</TabsTrigger>
+            <TabsTrigger value="broadcast">Disparos</TabsTrigger>
+            <TabsTrigger value="templates">Modelos</TabsTrigger>
+            <TabsTrigger value="dashboard">Painel</TabsTrigger>
           </TabsList>
         </CabecalhoPagina>
 

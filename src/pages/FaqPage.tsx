@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { ChevronRight, Search, Zap, ArrowLeft } from 'lucide-react';
+import { Search, ArrowLeft, HelpCircle } from 'lucide-react';
 import PraefectusLogo from '@/components/shared/PraefectusLogo';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 type FaqItem = { id: string; pergunta: string; resposta: string; categoria: string };
 
@@ -30,49 +33,69 @@ export default function FaqPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
-        <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between">
-          <button onClick={() => navigate('/')} className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
-            <ArrowLeft className="w-4 h-4" /> <PraefectusLogo size="sm" />
+      {/* Topbar branca do padrão: sem vidro, só o fio embaixo. */}
+      <nav className="sticky top-0 z-50 border-b border-border bg-card">
+        <div className="mx-auto flex h-16 max-w-3xl items-center justify-between px-6">
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            className="flex items-center gap-2 rounded-md text-muted-foreground transition-colors duration-150 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            aria-label="Voltar ao início"
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" /> <PraefectusLogo size="sm" />
           </button>
           <Button size="sm" onClick={() => navigate('/auth')}>Acessar Sistema</Button>
         </div>
       </nav>
 
-      <div className="max-w-4xl mx-auto px-6 py-12">
-        <h1 className="text-3xl font-bold tracking-tight mb-2">Perguntas Frequentes</h1>
-        <p className="text-muted-foreground mb-8">Encontre respostas para suas dúvidas sobre o PRAEFECTUS</p>
+      {/* Largura de leitura: cabeçalho padrão, busca larga, chips de categoria
+          em botão tonal e a lista de perguntas em Accordion dentro de um cartão. */}
+      <div className="mx-auto max-w-3xl px-6 py-8">
+        <CabecalhoPagina
+          titulo="Perguntas Frequentes"
+          descricao="Encontre respostas para suas dúvidas sobre o PRAEFECTUS"
+          icone={<HelpCircle />}
+          filtros={
+            <div className="relative w-full">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+              <Input placeholder="Buscar perguntas..." aria-label="Buscar perguntas" value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+            </div>
+          }
+        />
 
-        <div className="relative mb-6">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Buscar perguntas..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
-        </div>
-
-        <div className="flex gap-2 flex-wrap mb-8">
+        <div className="mb-6 flex flex-wrap gap-1">
           {categorias.map(c => (
-            <button
+            <Button
               key={c}
+              type="button"
+              size="sm"
+              variant={catAtiva === c ? 'secondary' : 'ghost'}
+              aria-pressed={catAtiva === c}
               onClick={() => setCatAtiva(c)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all capitalize ${catAtiva === c ? 'bg-accent text-accent-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
+              className="capitalize"
             >
               {c}
-            </button>
+            </Button>
           ))}
         </div>
 
-        <div className="space-y-3">
-          {filtered.length === 0 && <p className="text-center text-muted-foreground py-12">Nenhuma pergunta encontrada.</p>}
-          {filtered.map(faq => (
-            <div key={faq.id} className="bg-card rounded-xl border border-border/50 overflow-hidden">
-              <button onClick={() => setOpenId(openId === faq.id ? null : faq.id)} className="w-full flex items-center justify-between p-5 text-left">
-                <span className="font-medium pr-4">{faq.pergunta}</span>
-                <ChevronRight className={`w-5 h-5 text-muted-foreground flex-shrink-0 transition-transform ${openId === faq.id ? 'rotate-90' : ''}`} />
-              </button>
-              {openId === faq.id && (
-                <div className="px-5 pb-5 text-sm text-muted-foreground leading-relaxed border-t border-border/50 pt-4">{faq.resposta}</div>
-              )}
-            </div>
-          ))}
+        <div className="rounded-lg border border-border bg-card px-5 shadow-sm">
+          {filtered.length === 0 && (
+            <EstadoVazio tamanho="compacto" icone={<Search />} titulo="Nenhuma pergunta encontrada." />
+          )}
+          <Accordion
+            type="single"
+            collapsible
+            value={openId ?? ''}
+            onValueChange={(v) => setOpenId(v || null)}
+          >
+            {filtered.map(faq => (
+              <AccordionItem key={faq.id} value={faq.id} className="last:border-0">
+                <AccordionTrigger className="py-4 text-base">{faq.pergunta}</AccordionTrigger>
+                <AccordionContent className="text-sm leading-5 text-muted-foreground">{faq.resposta}</AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
         </div>
       </div>
     </div>

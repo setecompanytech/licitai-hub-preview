@@ -64,9 +64,9 @@ export default function DefinirMetas() {
     return (
       <AppLayout>
         <div role="status" aria-label="Carregando" className="flex flex-col gap-4">
-          <Skeleton className="h-9 w-64" />
-          <Skeleton className="h-5 w-96 max-w-full" />
-          <Skeleton className="h-64 w-full rounded-[var(--g-raio)]" />
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-4 w-96 max-w-full" />
+          <Skeleton className="h-64 w-full rounded-lg" />
         </div>
       </AppLayout>
     );
@@ -108,7 +108,7 @@ export default function DefinirMetas() {
           ganha um seletor de colaborador; a decisão é de quem mantém o
           registro, que fica fora deste lote. */}
       <CabecalhoPagina
-          denso
+        denso
         acoes={
           <Button variant="outline" onClick={() => navigate('/metas-comercial')}>
             <Gauge aria-hidden="true" />

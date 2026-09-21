@@ -1,8 +1,14 @@
 import { Helmet } from 'react-helmet-async';
 import LandingNavbar from '@/components/landing/LandingNavbar';
 import LandingFooter from '@/components/landing/LandingFooter';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
+import { Badge } from '@/components/ui/badge';
 import { Shield, Lock, Database, Eye, Server, Key, HardDrive, AlertTriangle, Users, FileCheck, BadgeCheck, Mail, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
+
+/* Cartão de link relacionado — o cartão clicável do padrão. */
+const LINK_RELACIONADO =
+  'group rounded-lg border border-border bg-card p-4 shadow-sm transition-[border-color,box-shadow] duration-150 hover:border-primary/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
 
 const controls = [
   { icon: Lock, title: 'Autenticação Segura', desc: 'Autenticação baseada em JWT com refresh tokens, expiração controlada, confirmação de e-mail obrigatória e recuperação de senha segura. Suporte a RBAC com separação por tenant, função e módulo.' },
@@ -33,27 +39,31 @@ export default function SegurancaInformacao() {
       </Helmet>
       <div className="min-h-screen bg-background">
         <LandingNavbar />
-        <main className="pt-24 pb-20 px-6">
-          <div className="max-w-4xl mx-auto">
-            {/* Hero */}
-            <div className="mb-14">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-muted border border-border text-muted-foreground text-xs font-bold uppercase tracking-wider mb-4">
-                <Shield className="w-3.5 h-3.5" /> Trust Center
+        <main className="px-6 pb-20 pt-24">
+          <div className="mx-auto max-w-4xl">
+            {/* Cabeçalho padrão no lugar do herói: título 28/36, descrição e o
+                selo "Trust Center" com a data da revisão logo abaixo. */}
+            <CabecalhoPagina
+              className="mb-10"
+              titulo="Política de Segurança da Informação"
+              descricao="O PRAEFECTUS implementa controles técnicos e administrativos de segurança desde a base da arquitetura, em conformidade com a LGPD e o Marco Civil da Internet."
+              icone={<Shield />}
+            >
+              <div className="flex flex-wrap items-center gap-3">
+                <Badge variant="muted" className="gap-1">
+                  <Shield className="h-3.5 w-3.5" aria-hidden="true" /> Trust Center
+                </Badge>
+                <span className="text-xs text-muted-foreground">Última atualização: 02 de abril de 2026</span>
               </div>
-              <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-4">Política de Segurança da Informação</h1>
-              <p className="text-base text-muted-foreground leading-relaxed max-w-2xl">
-                O PRAEFECTUS implementa controles técnicos e administrativos de segurança desde a base da arquitetura, em conformidade com a LGPD e o Marco Civil da Internet.
-              </p>
-              <p className="text-xs text-muted-foreground mt-3">Última atualização: 02 de abril de 2026</p>
-            </div>
+            </CabecalhoPagina>
 
-            {/* POLÍTICA DE SEGURANÇA */}
-            <div className="prose prose-sm max-w-none text-foreground space-y-8 leading-relaxed mb-16">
+            {/* POLÍTICA DE SEGURANÇA — largura de leitura, seções com título 18/600. */}
+            <div className="mb-16 max-w-3xl space-y-8 text-foreground">
 
               {/* 1 */}
               <section>
-                <h2 className="text-lg font-semibold border-b border-border pb-2 mb-3">1. OBJETIVO</h2>
-                <p className="text-sm text-muted-foreground">
+                <h2 className="mb-3 border-b border-border pb-2 text-xl font-semibold leading-7 text-foreground">1. OBJETIVO</h2>
+                <p className="text-base leading-6 text-muted-foreground">
                   1.1. A presente Política de Segurança da Informação ("Política") estabelece as diretrizes, responsabilidades e controles adotados pela <strong>PRAEFECTUS DADOS E CORPORATIVO LTDA</strong> ("PRAEFECTUS") para a proteção dos dados pessoais, informações corporativas e sistemas que compõem a plataforma <strong>PRAEFECTUS</strong> ("Plataforma").<br /><br />
 
                   1.2. Esta Política tem por objetivo assegurar a proteção adequada dos ativos de informação contra ameaças internas e externas, acidentais ou deliberadas, em conformidade com a <strong>Lei nº 13.709/2018</strong> (Lei Geral de Proteção de Dados Pessoais – LGPD), a <strong>Lei nº 12.965/2014</strong> (Marco Civil da Internet) e o <strong>Decreto nº 8.771/2016</strong>.<br /><br />
@@ -64,8 +74,8 @@ export default function SegurancaInformacao() {
 
               {/* 2 */}
               <section>
-                <h2 className="text-lg font-semibold border-b border-border pb-2 mb-3">2. PRINCÍPIOS</h2>
-                <p className="text-sm text-muted-foreground">
+                <h2 className="mb-3 border-b border-border pb-2 text-xl font-semibold leading-7 text-foreground">2. PRINCÍPIOS</h2>
+                <p className="text-base leading-6 text-muted-foreground">
                   A Política fundamenta-se nos três pilares da segurança da informação, em conformidade com os princípios previstos no <strong>Art. 6º da LGPD</strong> e com as boas práticas internacionais:<br /><br />
 
                   a) <strong>Confidencialidade:</strong> garantia de que as informações sejam acessadas exclusivamente por pessoas autorizadas, conforme o princípio da necessidade de conhecer (<em>need-to-know</em>). Os controles de acesso são implementados com base no modelo de privilégio mínimo, assegurando que cada USUÁRIO acesse apenas os dados e funcionalidades pertinentes ao seu perfil e ao plano contratado;<br /><br />
@@ -78,8 +88,8 @@ export default function SegurancaInformacao() {
 
               {/* 3 */}
               <section>
-                <h2 className="text-lg font-semibold border-b border-border pb-2 mb-3">3. CONTROLES INSTITUCIONAIS</h2>
-                <p className="text-sm text-muted-foreground">
+                <h2 className="mb-3 border-b border-border pb-2 text-xl font-semibold leading-7 text-foreground">3. CONTROLES INSTITUCIONAIS</h2>
+                <p className="text-base leading-6 text-muted-foreground">
                   A PRAEFECTUS adota medidas técnicas e administrativas aptas a proteger os dados pessoais e os ativos de informação, nos termos do <strong>Art. 46 da LGPD</strong> e do <strong>Art. 13 do Decreto nº 8.771/2016</strong>. Os controles incluem, de forma não exaustiva:<br /><br />
 
                   <strong>3.1. Controle de Acesso</strong><br />
@@ -101,8 +111,8 @@ export default function SegurancaInformacao() {
 
               {/* 4 */}
               <section>
-                <h2 className="text-lg font-semibold border-b border-border pb-2 mb-3">4. RESPONSABILIDADES</h2>
-                <p className="text-sm text-muted-foreground">
+                <h2 className="mb-3 border-b border-border pb-2 text-xl font-semibold leading-7 text-foreground">4. RESPONSABILIDADES</h2>
+                <p className="text-base leading-6 text-muted-foreground">
                   <strong>4.1. Responsabilidades dos USUÁRIOS</strong><br /><br />
                   a) Manter a confidencialidade de suas credenciais de acesso e não compartilhá-las com terceiros;<br />
                   b) Comunicar imediatamente à PRAEFECTUS qualquer uso não autorizado de sua conta ou suspeita de violação de segurança;<br />
@@ -127,8 +137,8 @@ export default function SegurancaInformacao() {
 
               {/* 5 */}
               <section>
-                <h2 className="text-lg font-semibold border-b border-border pb-2 mb-3">5. GESTÃO DE INCIDENTES DE SEGURANÇA</h2>
-                <p className="text-sm text-muted-foreground">
+                <h2 className="mb-3 border-b border-border pb-2 text-xl font-semibold leading-7 text-foreground">5. GESTÃO DE INCIDENTES DE SEGURANÇA</h2>
+                <p className="text-base leading-6 text-muted-foreground">
                   A PRAEFECTUS mantém procedimentos estruturados para gestão de incidentes de segurança da informação, abrangendo as seguintes etapas:<br /><br />
 
                   <strong>5.1. Identificação</strong><br />
@@ -144,8 +154,8 @@ export default function SegurancaInformacao() {
 
               {/* 6 */}
               <section>
-                <h2 className="text-lg font-semibold border-b border-border pb-2 mb-3">6. TRATAMENTO DE DADOS PESSOAIS</h2>
-                <p className="text-sm text-muted-foreground">
+                <h2 className="mb-3 border-b border-border pb-2 text-xl font-semibold leading-7 text-foreground">6. TRATAMENTO DE DADOS PESSOAIS</h2>
+                <p className="text-base leading-6 text-muted-foreground">
                   6.1. O tratamento de dados pessoais pela PRAEFECTUS observa integralmente os princípios e as disposições da <strong>Lei nº 13.709/2018</strong> (LGPD), em especial os princípios da finalidade, adequação, necessidade, livre acesso, qualidade dos dados, transparência, segurança, prevenção, não discriminação e responsabilização, previstos no <strong>Art. 6º da LGPD</strong>.<br /><br />
 
                   6.2. A segregação lógica de dados é implementada por meio de isolamento multi-tenant com políticas de segurança em nível de linha (RLS), garantindo que cada organização cliente acesse exclusivamente seus próprios registros.<br /><br />
@@ -160,8 +170,8 @@ export default function SegurancaInformacao() {
 
               {/* 7 */}
               <section>
-                <h2 className="text-lg font-semibold border-b border-border pb-2 mb-3">7. CONTINUIDADE DO SERVIÇO</h2>
-                <p className="text-sm text-muted-foreground">
+                <h2 className="mb-3 border-b border-border pb-2 text-xl font-semibold leading-7 text-foreground">7. CONTINUIDADE DO SERVIÇO</h2>
+                <p className="text-base leading-6 text-muted-foreground">
                   7.1. A PRAEFECTUS adota medidas para assegurar a disponibilidade e a continuidade operacional da Plataforma, incluindo:<br /><br />
 
                   a) <strong>Redundância de infraestrutura:</strong> utilização de provedores de nuvem com replicação geográfica e failover automático para minimizar o impacto de falhas de hardware ou rede;<br /><br />
@@ -178,8 +188,8 @@ export default function SegurancaInformacao() {
 
               {/* 8 */}
               <section>
-                <h2 className="text-lg font-semibold border-b border-border pb-2 mb-3">8. REVISÃO PERIÓDICA</h2>
-                <p className="text-sm text-muted-foreground">
+                <h2 className="mb-3 border-b border-border pb-2 text-xl font-semibold leading-7 text-foreground">8. REVISÃO PERIÓDICA</h2>
+                <p className="text-base leading-6 text-muted-foreground">
                   8.1. Esta Política será revisada periodicamente, no mínimo <strong>a cada 12 (doze) meses</strong>, ou sempre que houver alterações significativas na legislação aplicável, nos controles de segurança implementados ou no escopo dos serviços prestados pela Plataforma.<br /><br />
 
                   8.2. As revisões serão conduzidas pela equipe de segurança da informação em conjunto com o Encarregado de Proteção de Dados (DPO), e as alterações serão comunicadas aos USUÁRIOS por meio de notificação na Plataforma ou por e-mail.<br /><br />
@@ -190,8 +200,8 @@ export default function SegurancaInformacao() {
 
               {/* 9 */}
               <section>
-                <h2 className="text-lg font-semibold border-b border-border pb-2 mb-3">9. LEGISLAÇÃO APLICÁVEL</h2>
-                <p className="text-sm text-muted-foreground">
+                <h2 className="mb-3 border-b border-border pb-2 text-xl font-semibold leading-7 text-foreground">9. LEGISLAÇÃO APLICÁVEL</h2>
+                <p className="text-base leading-6 text-muted-foreground">
                   Esta Política é regida pelas seguintes normas:<br /><br />
 
                   • <strong>Lei nº 13.709/2018</strong> – Lei Geral de Proteção de Dados Pessoais (LGPD)<br />
@@ -202,75 +212,73 @@ export default function SegurancaInformacao() {
               </section>
             </div>
 
-            {/* Certifications / Compliance Status */}
-            <div className="mb-12">
-              <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-                <BadgeCheck className="w-5 h-5 text-muted-foreground" /> Conformidade e Certificações
+            {/* Certifications / Compliance Status — estado em selo semântico com texto. */}
+            <section className="mb-12">
+              <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold leading-7 text-foreground">
+                <BadgeCheck className="h-5 w-5 text-muted-foreground" aria-hidden="true" /> Conformidade e Certificações
               </h2>
-              <div className="grid sm:grid-cols-2 gap-3">
+              <div className="grid gap-3 sm:grid-cols-2">
                 {certifications.map((c) => (
-                  <div key={c.name} className={`rounded-xl border p-4 ${c.done ? 'bg-success/5 border-success/20' : 'bg-muted/30 border-border/50'}`}>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${c.done ? 'bg-success/15 text-success' : 'bg-muted text-muted-foreground'}`}>
-                        {c.status}
-                      </span>
-                      <span className="text-sm font-bold text-foreground">{c.name}</span>
+                  <div key={c.name} className={`rounded-lg border p-4 ${c.done ? 'border-success-line bg-success-tint' : 'border-border bg-card shadow-sm'}`}>
+                    <div className="mb-1 flex flex-wrap items-center gap-2">
+                      <Badge variant={c.done ? 'success' : 'muted'}>{c.status}</Badge>
+                      <span className="text-base font-medium text-foreground">{c.name}</span>
                     </div>
-                    <p className="text-[12px] text-muted-foreground leading-relaxed mt-1">{c.desc}</p>
+                    <p className="mt-1 text-xs leading-4 text-muted-foreground">{c.desc}</p>
                   </div>
                 ))}
               </div>
-            </div>
+            </section>
 
-            {/* Controls grid */}
-            <div className="mb-12">
-              <h2 className="text-lg font-bold mb-4">Controles Técnicos Implementados</h2>
-              <div className="space-y-4">
+            {/* Controls grid — cartões compactos com o ícone num ladrilho neutro. */}
+            <section className="mb-12">
+              <h2 className="mb-4 text-xl font-semibold leading-7 text-foreground">Controles Técnicos Implementados</h2>
+              <div className="space-y-3">
                 {controls.map((c) => (
-                  <div key={c.title} className="bg-card rounded-xl border border-border/50 p-5">
+                  <div key={c.title} className="rounded-lg border border-border bg-card p-5 shadow-sm">
                     <div className="flex items-start gap-4">
-                      <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-                        <c.icon className="w-5 h-5 text-muted-foreground" />
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-bold mb-1">{c.title}</h3>
-                        <p className="text-[13px] text-muted-foreground leading-relaxed">{c.desc}</p>
+                      <span aria-hidden="true" className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                        <c.icon className="h-4 w-4" />
+                      </span>
+                      <div className="min-w-0">
+                        <h3 className="mb-1 text-base font-semibold text-foreground">{c.title}</h3>
+                        <p className="text-sm leading-5 text-muted-foreground">{c.desc}</p>
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
+            </section>
 
             {/* Related links */}
-            <div className="grid sm:grid-cols-3 gap-3 mb-12">
-              <Link to="/politica-de-privacidade" className="group rounded-xl border border-border/50 p-4 hover:border-primary/30 transition-colors">
-                <FileCheck className="w-5 h-5 text-muted-foreground mb-2" />
-                <p className="text-sm font-bold group-hover:text-primary transition-colors">Política de Privacidade</p>
-                <p className="text-xs text-muted-foreground mt-1">Tratamento de dados pessoais</p>
+            <div className="mb-12 grid gap-3 sm:grid-cols-3">
+              <Link to="/politica-de-privacidade" className={LINK_RELACIONADO}>
+                <FileCheck className="mb-2 h-5 w-5 text-muted-foreground" aria-hidden="true" />
+                <p className="text-base font-medium text-foreground transition-colors group-hover:text-primary">Política de Privacidade</p>
+                <p className="mt-1 text-xs text-muted-foreground">Tratamento de dados pessoais</p>
               </Link>
-              <Link to="/lgpd" className="group rounded-xl border border-border/50 p-4 hover:border-primary/30 transition-colors">
-                <Lock className="w-5 h-5 text-muted-foreground mb-2" />
-                <p className="text-sm font-bold group-hover:text-primary transition-colors">Conformidade LGPD</p>
-                <p className="text-xs text-muted-foreground mt-1">Bases legais e direitos do titular</p>
+              <Link to="/lgpd" className={LINK_RELACIONADO}>
+                <Lock className="mb-2 h-5 w-5 text-muted-foreground" aria-hidden="true" />
+                <p className="text-base font-medium text-foreground transition-colors group-hover:text-primary">Conformidade LGPD</p>
+                <p className="mt-1 text-xs text-muted-foreground">Bases legais e direitos do titular</p>
               </Link>
-              <Link to="/status" className="group rounded-xl border border-border/50 p-4 hover:border-primary/30 transition-colors">
-                <Server className="w-5 h-5 text-muted-foreground mb-2" />
-                <p className="text-sm font-bold group-hover:text-primary transition-colors">Status da Plataforma</p>
-                <p className="text-xs text-muted-foreground mt-1">Disponibilidade em tempo real</p>
+              <Link to="/status" className={LINK_RELACIONADO}>
+                <Server className="mb-2 h-5 w-5 text-muted-foreground" aria-hidden="true" />
+                <p className="text-base font-medium text-foreground transition-colors group-hover:text-primary">Status da Plataforma</p>
+                <p className="mt-1 text-xs text-muted-foreground">Disponibilidade em tempo real</p>
               </Link>
             </div>
 
             {/* DPO Contact */}
-            <div className="p-6 rounded-xl bg-muted/50 border border-border/50">
-              <p className="font-semibold text-foreground mb-2 flex items-center gap-2">
-                <Mail className="w-4 h-4 text-muted-foreground" /> Contato do Encarregado de Dados (DPO)
+            <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
+              <p className="mb-2 flex items-center gap-2 text-lg font-semibold leading-6 text-foreground">
+                <Mail className="h-4 w-4 text-muted-foreground" aria-hidden="true" /> Contato do Encarregado de Dados (DPO)
               </p>
-              <p className="text-[13px] text-muted-foreground leading-relaxed mb-3">
+              <p className="mb-3 max-w-3xl text-sm leading-5 text-muted-foreground">
                 Para exercer seus direitos como titular de dados, relatar incidentes de segurança ou solicitar informações sobre o tratamento de dados pessoais, entre em contato com nosso DPO:
               </p>
-              <a href="mailto:dpo@praefectus.com.br" className="inline-flex items-center gap-2 text-sm font-bold text-primary hover:underline">
-                dpo@praefectus.com.br <ExternalLink className="w-3.5 h-3.5" />
+              <a href="mailto:dpo@praefectus.com.br" className="inline-flex items-center gap-2 rounded-md text-sm font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                dpo@praefectus.com.br <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
               </a>
             </div>
           </div>

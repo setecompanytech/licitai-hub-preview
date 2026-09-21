@@ -128,8 +128,9 @@ export default function Blog() {
     }
   };
 
+  /* Cartão clicável do padrão: `p-5`, contorno verde discreto e sombra `md` no hover. */
   const CARTAO_CLICAVEL =
-    'group cursor-pointer p-6 transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
+    'group cursor-pointer p-5 transition-[border-color,box-shadow] duration-150 hover:border-primary/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
 
   const botaoGerar = (
     <Button onClick={gerarArtigos} disabled={gerando}>
@@ -152,7 +153,8 @@ export default function Blog() {
   if (artigoAberto) {
     return (
       <AppLayout>
-        <div className="mx-auto max-w-5xl space-y-6">
+        {/* Largura de leitura para o texto corrido do artigo. */}
+        <div className="mx-auto max-w-3xl space-y-6">
           <CabecalhoPagina
             titulo={artigoAberto.titulo}
             /* Sem `descricao` explícita, o cabeçalho cai no registro e o artigo
@@ -216,7 +218,7 @@ export default function Blog() {
             </div>
           </CabecalhoPagina>
 
-          <Card className="p-6">
+          <Card className="p-5 sm:p-6">
             <div className={CORPO_ARTIGO}>
               <ReactMarkdown>{artigoAberto.conteudo}</ReactMarkdown>
             </div>
@@ -272,7 +274,7 @@ export default function Blog() {
                   {artigo.caso_fortuito && <Badge variant="warning">Caso fortuito</Badge>}
                   {artigo.forca_maior && <Badge variant="danger">Força maior</Badge>}
                 </div>
-                <h2 className="mb-2 text-lg font-semibold text-foreground transition-colors group-hover:text-primary">
+                <h2 className="mb-2 text-lg font-semibold leading-6 text-foreground transition-colors group-hover:text-primary">
                   {artigo.titulo}
                 </h2>
                 <p className="mb-4 text-base text-muted-foreground">{artigo.resumo}</p>
@@ -292,15 +294,16 @@ export default function Blog() {
           </div>
         )}
 
-        {/* Categorias */}
-        <div className="flex flex-wrap gap-2">
+        {/* Categorias — alternância em botão tonal: a ativa em `secondary`, as
+            demais em `ghost`; o verde sólido fica só para "Gerar artigos". */}
+        <div className="flex flex-wrap gap-1">
           {categorias.map(cat => {
             const Icon = cat.icon;
             const ativa = categoriaAtiva === cat.id;
             return (
               <Button
                 key={cat.id}
-                variant={ativa ? 'default' : 'outline'}
+                variant={ativa ? 'secondary' : 'ghost'}
                 size="sm"
                 aria-pressed={ativa}
                 onClick={() => setCategoriaAtiva(cat.id)}
@@ -313,9 +316,10 @@ export default function Blog() {
 
         {/* Lista */}
         {loading ? (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div role="status" aria-busy="true" className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <span className="sr-only">Carregando</span>
             {[1, 2, 3].map(i => (
-              <Card key={i} className="p-6">
+              <Card key={i} className="p-5">
                 <Skeleton className="mb-2 h-5 w-3/4" />
                 <Skeleton className="mb-2 h-3 w-full" />
                 <Skeleton className="h-3 w-1/2" />
@@ -323,25 +327,27 @@ export default function Blog() {
             ))}
           </div>
         ) : artigosFiltrados.length === 0 ? (
-          <EstadoVazio
-            icone={<Search />}
-            titulo="Nenhum artigo encontrado"
-            descricao={
-              temFiltro
-                ? 'Nenhum artigo casa com a busca ou a categoria escolhida — limpe os filtros para ver tudo'
-                : 'Gere artigos com IA para alimentar o blog'
-            }
-            acao={
-              temFiltro ? (
-                <Button variant="outline" onClick={limparFiltros}>
-                  <X aria-hidden="true" />
-                  Limpar filtros
-                </Button>
-              ) : (
-                botaoGerar
-              )
-            }
-          />
+          <div className="rounded-lg border border-border bg-card shadow-sm">
+            <EstadoVazio
+              icone={<Search />}
+              titulo="Nenhum artigo encontrado"
+              descricao={
+                temFiltro
+                  ? 'Nenhum artigo casa com a busca ou a categoria escolhida — limpe os filtros para ver tudo'
+                  : 'Gere artigos com IA para alimentar o blog'
+              }
+              acao={
+                temFiltro ? (
+                  <Button variant="outline" onClick={limparFiltros}>
+                    <X aria-hidden="true" />
+                    Limpar filtros
+                  </Button>
+                ) : (
+                  botaoGerar
+                )
+              }
+            />
+          </div>
         ) : (
           /* Grade, como o registro declara para /blog (`padrao: 'cartoes'`) —
              a pilha de coluna única contrariava o contrato de layout. */

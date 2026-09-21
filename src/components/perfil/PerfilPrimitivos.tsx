@@ -14,6 +14,13 @@ export function GradeHub({ children }: { children: ReactNode }) {
   return <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">{children}</div>;
 }
 
+/** O cartão que envolve cada seção do hub — a superfície padrão (`p-5`) sobre
+ *  o fundo rebaixado do modal, a mesma moldura que Segurança e Assinatura já
+ *  trazem de dentro das Configurações. */
+export function CartaoHub({ children }: { children: ReactNode }) {
+  return <div className="rounded-lg border border-border bg-card p-5 shadow-sm">{children}</div>;
+}
+
 export function CampoHub({
   icone: Icone,
   rotulo,
@@ -47,12 +54,12 @@ export function RodapeHub({ children }: { children: ReactNode }) {
   );
 }
 
-/** Cabeçalho de seção — título e a linha que diz para que serve. */
+/** Cabeçalho de seção — título 18/600 e a linha que diz para que serve. */
 export function TituloHub({ titulo, descricao }: { titulo: string; descricao: string }) {
   return (
-    <div className="mb-6">
-      <h2 className="text-lg font-semibold text-foreground">{titulo}</h2>
-      <p className="mt-1 text-sm text-muted-foreground">{descricao}</p>
+    <div className="mb-5">
+      <h2 className="text-xl font-semibold leading-7 text-foreground">{titulo}</h2>
+      <p className="mt-1 text-sm leading-5 text-muted-foreground">{descricao}</p>
     </div>
   );
 }

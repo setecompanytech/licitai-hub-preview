@@ -1,8 +1,14 @@
 import { Helmet } from 'react-helmet-async';
 import LandingNavbar from '@/components/landing/LandingNavbar';
 import LandingFooter from '@/components/landing/LandingFooter';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
+import { Badge } from '@/components/ui/badge';
 import { Scale, Shield, FileText, Eye, Users, Database, Lock, Mail, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
+
+/* Cartão de link relacionado — o cartão clicável do padrão. */
+const LINK_RELACIONADO =
+  'group rounded-lg border border-border bg-card p-4 shadow-sm transition-[border-color,box-shadow] duration-150 hover:border-primary/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
 
 const controlCards = [
   {
@@ -56,27 +62,31 @@ export default function ComplianceGovernanca() {
       </Helmet>
       <div className="min-h-screen bg-background">
         <LandingNavbar />
-        <main className="pt-24 pb-20 px-6">
-          <div className="max-w-4xl mx-auto">
-            {/* Hero */}
-            <div className="mb-14">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-muted border border-border text-muted-foreground text-xs font-bold uppercase tracking-wider mb-4">
-                <Scale className="w-3.5 h-3.5" /> Compliance
+        <main className="px-6 pb-20 pt-24">
+          <div className="mx-auto max-w-4xl">
+            {/* Cabeçalho padrão no lugar do herói: título 28/36, descrição e o
+                selo "Compliance" com a data da revisão logo abaixo. */}
+            <CabecalhoPagina
+              className="mb-10"
+              titulo="Política de Governança e Compliance"
+              descricao="O PRAEFECTUS opera com práticas de governança corporativa, conformidade legal e controles internos projetados para garantir a segurança, a transparência e a integridade das operações."
+              icone={<Scale />}
+            >
+              <div className="flex flex-wrap items-center gap-3">
+                <Badge variant="muted" className="gap-1">
+                  <Scale className="h-3.5 w-3.5" aria-hidden="true" /> Compliance
+                </Badge>
+                <span className="text-xs text-muted-foreground">Última atualização: 02 de abril de 2026</span>
               </div>
-              <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-4">Política de Governança e Compliance</h1>
-              <p className="text-base text-muted-foreground leading-relaxed max-w-2xl">
-                O PRAEFECTUS opera com práticas de governança corporativa, conformidade legal e controles internos projetados para garantir a segurança, a transparência e a integridade das operações.
-              </p>
-              <p className="text-xs text-muted-foreground mt-3">Última atualização: 02 de abril de 2026</p>
-            </div>
+            </CabecalhoPagina>
 
-            {/* POLÍTICA */}
-            <div className="prose prose-sm max-w-none text-foreground space-y-8 leading-relaxed mb-16">
+            {/* POLÍTICA — largura de leitura, seções com título 18/600. */}
+            <div className="mb-16 max-w-3xl space-y-8 text-foreground">
 
               {/* 1 */}
               <section>
-                <h2 className="text-lg font-semibold border-b border-border pb-2 mb-3">1. COMPROMISSO INSTITUCIONAL</h2>
-                <p className="text-sm text-muted-foreground">
+                <h2 className="mb-3 border-b border-border pb-2 text-xl font-semibold leading-7 text-foreground">1. COMPROMISSO INSTITUCIONAL</h2>
+                <p className="text-base leading-6 text-muted-foreground">
                   1.1. A <strong>PRAEFECTUS DADOS E CORPORATIVO LTDA</strong> ("PRAEFECTUS") assume o compromisso institucional de conduzir suas atividades com <strong>integridade, transparência e responsabilidade</strong>, adotando práticas de governança corporativa e compliance como pilares estratégicos da organização.<br /><br />
 
                   1.2. A presente Política de Governança e Compliance ("Política") estabelece as diretrizes, os valores e os controles que orientam a atuação da PRAEFECTUS, de seus colaboradores, prestadores de serviço e parceiros comerciais, assegurando a conformidade com a legislação brasileira e com as melhores práticas do mercado.<br /><br />
@@ -87,8 +97,8 @@ export default function ComplianceGovernanca() {
 
               {/* 2 */}
               <section>
-                <h2 className="text-lg font-semibold border-b border-border pb-2 mb-3">2. CONFORMIDADE LEGAL</h2>
-                <p className="text-sm text-muted-foreground">
+                <h2 className="mb-3 border-b border-border pb-2 text-xl font-semibold leading-7 text-foreground">2. CONFORMIDADE LEGAL</h2>
+                <p className="text-base leading-6 text-muted-foreground">
                   2.1. A PRAEFECTUS opera em conformidade com a legislação brasileira aplicável, incluindo, de forma não exaustiva:<br /><br />
 
                   a) <strong>Lei nº 13.709/2018</strong> (LGPD) – proteção de dados pessoais, com designação de Encarregado de Proteção de Dados (DPO), implementação de bases legais para tratamento, garantia dos direitos do titular e adoção de medidas técnicas e administrativas de segurança;<br /><br />
@@ -107,8 +117,8 @@ export default function ComplianceGovernanca() {
 
               {/* 3 */}
               <section>
-                <h2 className="text-lg font-semibold border-b border-border pb-2 mb-3">3. ÉTICA EMPRESARIAL</h2>
-                <p className="text-sm text-muted-foreground">
+                <h2 className="mb-3 border-b border-border pb-2 text-xl font-semibold leading-7 text-foreground">3. ÉTICA EMPRESARIAL</h2>
+                <p className="text-base leading-6 text-muted-foreground">
                   3.1. A PRAEFECTUS pauta sua atuação pelos seguintes valores e princípios éticos:<br /><br />
 
                   a) <strong>Integridade:</strong> condução de todas as atividades com honestidade, retidão e respeito à lei, repudiando quaisquer práticas ilícitas, fraudulentas ou antiéticas;<br /><br />
@@ -127,8 +137,8 @@ export default function ComplianceGovernanca() {
 
               {/* 4 */}
               <section>
-                <h2 className="text-lg font-semibold border-b border-border pb-2 mb-3">4. CONTROLES INTERNOS</h2>
-                <p className="text-sm text-muted-foreground">
+                <h2 className="mb-3 border-b border-border pb-2 text-xl font-semibold leading-7 text-foreground">4. CONTROLES INTERNOS</h2>
+                <p className="text-base leading-6 text-muted-foreground">
                   4.1. A PRAEFECTUS implementa controles internos proporcionais à natureza, à complexidade e ao risco de suas atividades, abrangendo:<br /><br />
 
                   a) <strong>Controle de acesso:</strong> modelo de autorização baseado em papéis (RBAC) com separação por tenant, função e módulo, assegurando que cada usuário acesse exclusivamente os dados e funcionalidades pertinentes ao seu perfil;<br /><br />
@@ -145,8 +155,8 @@ export default function ComplianceGovernanca() {
 
               {/* 5 */}
               <section>
-                <h2 className="text-lg font-semibold border-b border-border pb-2 mb-3">5. AUDITORIA</h2>
-                <p className="text-sm text-muted-foreground">
+                <h2 className="mb-3 border-b border-border pb-2 text-xl font-semibold leading-7 text-foreground">5. AUDITORIA</h2>
+                <p className="text-base leading-6 text-muted-foreground">
                   5.1. A Plataforma mantém trilhas de auditoria abrangentes para garantir a rastreabilidade e a accountability das operações, incluindo:<br /><br />
 
                   a) <strong>Eventos críticos:</strong> registro de criação, edição, exclusão, envio e exportação de dados, com identificação do usuário, data, horário e endereço IP;<br /><br />
@@ -165,8 +175,8 @@ export default function ComplianceGovernanca() {
 
               {/* 6 */}
               <section>
-                <h2 className="text-lg font-semibold border-b border-border pb-2 mb-3">6. PREVENÇÃO DE IRREGULARIDADES</h2>
-                <p className="text-sm text-muted-foreground">
+                <h2 className="mb-3 border-b border-border pb-2 text-xl font-semibold leading-7 text-foreground">6. PREVENÇÃO DE IRREGULARIDADES</h2>
+                <p className="text-base leading-6 text-muted-foreground">
                   6.1. A PRAEFECTUS adota medidas específicas de prevenção a irregularidades no contexto de licitações públicas, em conformidade com a <strong>Lei nº 14.133/2021</strong> e a <strong>Lei nº 12.846/2013</strong>:<br /><br />
 
                   a) <strong>Salvaguardas contra conluio (<em>bid rigging</em>):</strong> a Plataforma implementa restrições que impedem a participação de múltiplas empresas do mesmo grupo econômico no mesmo item de um pregão, com alertas automáticos de conflito de interesse;<br /><br />
@@ -183,8 +193,8 @@ export default function ComplianceGovernanca() {
 
               {/* 7 */}
               <section>
-                <h2 className="text-lg font-semibold border-b border-border pb-2 mb-3">7. CANAL DE COMUNICAÇÃO</h2>
-                <p className="text-sm text-muted-foreground">
+                <h2 className="mb-3 border-b border-border pb-2 text-xl font-semibold leading-7 text-foreground">7. CANAL DE COMUNICAÇÃO</h2>
+                <p className="text-base leading-6 text-muted-foreground">
                   7.1. A PRAEFECTUS disponibiliza os seguintes canais para comunicações relacionadas a governança, compliance, proteção de dados e relato de irregularidades:<br /><br />
 
                   a) <strong>Encarregado de Proteção de Dados (DPO):</strong> para questões relacionadas ao tratamento de dados pessoais, exercício de direitos do titular e incidentes de segurança:<br />
@@ -204,8 +214,8 @@ export default function ComplianceGovernanca() {
 
               {/* 8 */}
               <section>
-                <h2 className="text-lg font-semibold border-b border-border pb-2 mb-3">8. REVISÃO PERIÓDICA</h2>
-                <p className="text-sm text-muted-foreground">
+                <h2 className="mb-3 border-b border-border pb-2 text-xl font-semibold leading-7 text-foreground">8. REVISÃO PERIÓDICA</h2>
+                <p className="text-base leading-6 text-muted-foreground">
                   8.1. Esta Política será revisada periodicamente, no mínimo <strong>a cada 12 (doze) meses</strong>, ou sempre que houver alterações significativas na legislação aplicável, no escopo dos serviços prestados ou nos riscos identificados.<br /><br />
 
                   8.2. As revisões serão conduzidas em conjunto pela área de compliance, pela equipe de segurança da informação e pelo Encarregado de Proteção de Dados (DPO).<br /><br />
@@ -216,24 +226,24 @@ export default function ComplianceGovernanca() {
 
             </div>
 
-            {/* Control Cards */}
-            <div className="mb-12">
-              <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-                <Shield className="w-5 h-5 text-muted-foreground" /> Controles Implementados
+            {/* Control Cards — cartões compactos com o ícone num ladrilho neutro. */}
+            <section className="mb-12">
+              <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold leading-7 text-foreground">
+                <Shield className="h-5 w-5 text-muted-foreground" aria-hidden="true" /> Controles Implementados
               </h2>
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {controlCards.map((s) => (
-                  <div key={s.title} className="bg-card rounded-xl border border-border/50 p-5">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center">
-                        <s.icon className="w-4.5 h-4.5 text-muted-foreground" />
-                      </div>
-                      <h3 className="text-sm font-bold">{s.title}</h3>
+                  <div key={s.title} className="rounded-lg border border-border bg-card p-5 shadow-sm">
+                    <div className="mb-3 flex items-center gap-3">
+                      <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                        <s.icon className="h-4 w-4" />
+                      </span>
+                      <h3 className="text-base font-semibold text-foreground">{s.title}</h3>
                     </div>
                     <ul className="space-y-2">
                       {s.items.map((item, i) => (
-                        <li key={i} className="flex items-start gap-2.5 text-[13px] text-muted-foreground leading-relaxed">
-                          <Shield className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0 mt-0.5" />
+                        <li key={i} className="flex items-start gap-2.5 text-sm leading-5 text-muted-foreground">
+                          <Shield className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" aria-hidden="true" />
                           <span>{item}</span>
                         </li>
                       ))}
@@ -241,41 +251,41 @@ export default function ComplianceGovernanca() {
                   </div>
                 ))}
               </div>
-            </div>
+            </section>
 
             {/* Related links */}
-            <div className="grid sm:grid-cols-3 gap-3 mb-12">
-              <Link to="/politica-de-privacidade" className="group rounded-xl border border-border/50 p-4 hover:border-primary/30 transition-colors">
-                <FileText className="w-5 h-5 text-muted-foreground mb-2" />
-                <p className="text-sm font-bold group-hover:text-primary transition-colors">Política de Privacidade</p>
-                <p className="text-xs text-muted-foreground mt-1">Tratamento de dados pessoais</p>
+            <div className="mb-12 grid gap-3 sm:grid-cols-3">
+              <Link to="/politica-de-privacidade" className={LINK_RELACIONADO}>
+                <FileText className="mb-2 h-5 w-5 text-muted-foreground" aria-hidden="true" />
+                <p className="text-base font-medium text-foreground transition-colors group-hover:text-primary">Política de Privacidade</p>
+                <p className="mt-1 text-xs text-muted-foreground">Tratamento de dados pessoais</p>
               </Link>
-              <Link to="/seguranca-informacao" className="group rounded-xl border border-border/50 p-4 hover:border-primary/30 transition-colors">
-                <Lock className="w-5 h-5 text-muted-foreground mb-2" />
-                <p className="text-sm font-bold group-hover:text-primary transition-colors">Segurança da Informação</p>
-                <p className="text-xs text-muted-foreground mt-1">Trust Center e controles técnicos</p>
+              <Link to="/seguranca-informacao" className={LINK_RELACIONADO}>
+                <Lock className="mb-2 h-5 w-5 text-muted-foreground" aria-hidden="true" />
+                <p className="text-base font-medium text-foreground transition-colors group-hover:text-primary">Segurança da Informação</p>
+                <p className="mt-1 text-xs text-muted-foreground">Trust Center e controles técnicos</p>
               </Link>
-              <Link to="/termos-de-uso" className="group rounded-xl border border-border/50 p-4 hover:border-primary/30 transition-colors">
-                <Scale className="w-5 h-5 text-muted-foreground mb-2" />
-                <p className="text-sm font-bold group-hover:text-primary transition-colors">Termos de Uso</p>
-                <p className="text-xs text-muted-foreground mt-1">Condições contratuais</p>
+              <Link to="/termos-de-uso" className={LINK_RELACIONADO}>
+                <Scale className="mb-2 h-5 w-5 text-muted-foreground" aria-hidden="true" />
+                <p className="text-base font-medium text-foreground transition-colors group-hover:text-primary">Termos de Uso</p>
+                <p className="mt-1 text-xs text-muted-foreground">Condições contratuais</p>
               </Link>
             </div>
 
             {/* DPO Contact */}
-            <div className="p-6 rounded-xl bg-muted/50 border border-border/50">
-              <p className="font-semibold text-foreground mb-2 flex items-center gap-2">
-                <Mail className="w-4 h-4 text-muted-foreground" /> Canal de Compliance e DPO
+            <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
+              <p className="mb-2 flex items-center gap-2 text-lg font-semibold leading-6 text-foreground">
+                <Mail className="h-4 w-4 text-muted-foreground" aria-hidden="true" /> Canal de Compliance e DPO
               </p>
-              <p className="text-[13px] text-muted-foreground leading-relaxed mb-3">
+              <p className="mb-3 max-w-3xl text-sm leading-5 text-muted-foreground">
                 Para relatar irregularidades, exercer direitos como titular de dados ou comunicar incidentes de segurança:
               </p>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <a href="mailto:compliance@praefectus.com.br" className="inline-flex items-center gap-2 text-sm font-bold text-primary hover:underline">
-                  compliance@praefectus.com.br <ExternalLink className="w-3.5 h-3.5" />
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <a href="mailto:compliance@praefectus.com.br" className="inline-flex items-center gap-2 rounded-md text-sm font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                  compliance@praefectus.com.br <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
                 </a>
-                <a href="mailto:dpo@praefectus.com.br" className="inline-flex items-center gap-2 text-sm font-bold text-primary hover:underline">
-                  dpo@praefectus.com.br <ExternalLink className="w-3.5 h-3.5" />
+                <a href="mailto:dpo@praefectus.com.br" className="inline-flex items-center gap-2 rounded-md text-sm font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                  dpo@praefectus.com.br <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
                 </a>
               </div>
             </div>

@@ -4,6 +4,7 @@ import { Navigate } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
 import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import EstadoVazio from '@/components/shared/EstadoVazio';
+import BarraFiltros from '@/components/gestao/BarraFiltros';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
@@ -11,10 +12,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { useMembroPermissoes, MODULOS_SISTEMA, type Setor } from '@/hooks/useMembroPermissoes';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
 import {
   Shield, ShieldAlert, Users, Save, RotateCcw,
@@ -217,7 +221,14 @@ export default function EquipePermissoes() {
   if (permLoading) {
     return (
       <AppLayout>
-        <div className="p-8 text-center text-base text-muted-foreground">Verificando permissões…</div>
+        {/* Espera na forma da tela — título, descrição e o primeiro cartão —
+            em vez de um texto centralizado no vazio. */}
+        <div role="status" aria-busy="true" className="space-y-4">
+          <span className="sr-only">Verificando permissões…</span>
+          <Skeleton className="h-8 w-64 max-w-full" />
+          <Skeleton className="h-4 w-96 max-w-full" />
+          <Skeleton className="h-44 rounded-lg" />
+        </div>
       </AppLayout>
     );
   }
@@ -228,7 +239,7 @@ export default function EquipePermissoes() {
 
   return (
     <AppLayout>
-      <div className="mx-auto max-w-7xl space-y-6">
+      <div className="w-full min-w-0 space-y-6">
         <CabecalhoPagina
           className="mb-0"
           icone={<Shield />}
@@ -279,24 +290,30 @@ export default function EquipePermissoes() {
           </Alert>
         )}
 
-        {/* Filter */}
-        <div className="flex flex-wrap items-center gap-3">
-          <label htmlFor="filtro-setor" className="text-sm text-muted-foreground">Filtrar por setor:</label>
-          <Select value={filterSetor} onValueChange={setFilterSetor}>
-            <SelectTrigger id="filtro-setor" className="w-[200px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos os setores</SelectItem>
-              {EQUIPES.map((e) => (
-                <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Badge variant="muted" className="ml-auto gap-1">
-            <Users className="h-3 w-3" aria-hidden="true" /> {filteredMembros.length} membro(s)
-          </Badge>
-        </div>
+        {/* Filtro na barra padrão das telas de lista: o select com o rótulo em
+            cima; a contagem fica ancorada à direita. */}
+        <BarraFiltros
+          acao={
+            <Badge variant="muted" className="gap-1">
+              <Users className="h-3 w-3" aria-hidden="true" /> {filteredMembros.length} membro(s)
+            </Badge>
+          }
+        >
+          <div className="flex min-w-0 flex-col gap-1.5">
+            <Label htmlFor="filtro-setor" className="text-xs text-muted-foreground">Filtrar por setor:</Label>
+            <Select value={filterSetor} onValueChange={setFilterSetor}>
+              <SelectTrigger id="filtro-setor" className="w-[200px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos os setores</SelectItem>
+                {EQUIPES.map((e) => (
+                  <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </BarraFiltros>
 
         <Tabs defaultValue="lista">
           <TabsList>
@@ -305,9 +322,27 @@ export default function EquipePermissoes() {
           </TabsList>
 
           {/* TAB: Editor detalhado por membro */}
-          <TabsContent value="lista" className="space-y-3 mt-4">
+          <TabsContent value="lista" className="space-y-3">
             {loading ? (
-              <div className="py-8 text-center text-base text-muted-foreground">Carregando…</div>
+              /* Esqueleto na forma dos cartões de membro, não texto no centro. */
+              <div role="status" aria-busy="true" className="space-y-3">
+                <span className="sr-only">Carregando…</span>
+                {[0, 1].map((i) => (
+                  <div key={i} className="rounded-lg border border-border bg-card p-5 shadow-sm">
+                    <div className="mb-4 flex items-center gap-3">
+                      <Skeleton className="h-8 w-8 rounded-md" />
+                      <div className="flex-1 space-y-2">
+                        <Skeleton className="h-4 w-40" />
+                        <Skeleton className="h-3 w-56" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <Skeleton className="h-10" />
+                      <Skeleton className="h-10" />
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : filteredMembros.length === 0 ? (
               <section className="rounded-lg border border-border bg-card shadow-sm">
                 <EstadoVazio
@@ -335,18 +370,22 @@ export default function EquipePermissoes() {
                   <div
                     key={m.id}
                     className={cn(
-                      'rounded-lg border bg-card p-4 shadow-sm transition-colors',
+                      'rounded-lg border bg-card p-5 shadow-sm transition-colors duration-150',
                       isDirty ? 'border-warning-line bg-warning-tint' : 'border-border',
                     )}
                   >
-                    <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+                    <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
                       <div className="flex min-w-0 items-center gap-3">
-                        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold text-foreground">
+                        {/* Avatar de 32px em ladrilho: iniciais sobre a tinta navy clara. */}
+                        <span
+                          aria-hidden="true"
+                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-navy-tint text-xs font-semibold text-navy"
+                        >
                           {iniciaisDe(m as MembroExibivel)}
-                        </div>
+                        </span>
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="truncate text-base font-semibold text-foreground">{nomeExibido(m as MembroExibivel)}</span>
+                            <span className="truncate text-base font-medium text-foreground">{nomeExibido(m as MembroExibivel)}</span>
                             {isMe && <Badge variant="info">Você</Badge>}
                             {isDirty && <Badge variant="warning">Alterado</Badge>}
                           </div>
@@ -364,14 +403,14 @@ export default function EquipePermissoes() {
                       </Button>
                     </div>
 
-                    {/* Papel + Setor */}
-                    <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      <div>
-                        <label htmlFor={`papel-${m.id}`} className="text-sm font-semibold text-foreground">
+                    {/* Papel + Setor — rótulo acima de campos de 40px. */}
+                    <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor={`papel-${m.id}`}>
                           Papel
-                        </label>
+                        </Label>
                         <Select value={d.papel} onValueChange={(v) => updateDraft(m.id, { papel: v })}>
-                          <SelectTrigger id={`papel-${m.id}`} className="mt-1">
+                          <SelectTrigger id={`papel-${m.id}`}>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -381,15 +420,15 @@ export default function EquipePermissoes() {
                           </SelectContent>
                         </Select>
                       </div>
-                      <div>
-                        <label htmlFor={`setor-${m.id}`} className="text-sm font-semibold text-foreground">
+                      <div className="space-y-2">
+                        <Label htmlFor={`setor-${m.id}`}>
                           Setor / Equipe
-                        </label>
+                        </Label>
                         <Select
                           value={d.equipe}
                           onValueChange={(v) => updateDraft(m.id, { equipe: v as Setor })}
                         >
-                          <SelectTrigger id={`setor-${m.id}`} className="mt-1">
+                          <SelectTrigger id={`setor-${m.id}`}>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -401,12 +440,12 @@ export default function EquipePermissoes() {
                       </div>
                     </div>
 
-                    {/* Permissões granulares */}
+                    {/* Permissões granulares — grupo com título 16/600. */}
                     <div>
-                      <p className="text-sm font-semibold text-foreground">
+                      <h3 className="text-lg font-semibold leading-6 text-foreground">
                         Permissões de módulos ({d.permissoes.length}/{MODULOS_SISTEMA.length})
-                      </p>
-                      <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                      </h3>
+                      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                         {MODULOS_SISTEMA.map((mod) => {
                           const checked = d.permissoes.includes(mod.value);
                           const recomendado = mod.setores.includes(d.equipe);
@@ -414,12 +453,12 @@ export default function EquipePermissoes() {
                             <label
                               key={mod.value}
                               className={cn(
-                                'flex cursor-pointer items-start gap-2 rounded-md border px-3 py-2 transition-colors',
+                                'flex cursor-pointer items-start gap-2 rounded-md border px-3 py-2 transition-colors duration-150',
                                 checked
                                   ? 'border-primary bg-primary-tint'
                                   : recomendado
                                   ? 'border-dashed border-primary hover:bg-muted'
-                                  : 'border-border hover:bg-muted',
+                                  : 'border-input hover:bg-muted',
                               )}
                             >
                               <Checkbox
@@ -450,54 +489,56 @@ export default function EquipePermissoes() {
             )}
           </TabsContent>
 
-          {/* TAB: Matriz consolidada */}
-          <TabsContent value="matriz" className="mt-4">
-            <div className="overflow-x-auto rounded-lg border border-border bg-card shadow-sm">
-              <table className="w-full text-sm">
-                <thead className="border-b border-border bg-muted">
-                  <tr>
-                    <th className="sticky left-0 whitespace-nowrap bg-muted p-3 text-left text-sm font-semibold text-foreground">Membro</th>
-                    <th className="whitespace-nowrap p-3 text-left text-sm font-semibold text-foreground">Setor</th>
-                    <th className="whitespace-nowrap p-3 text-left text-sm font-semibold text-foreground">Papel</th>
+          {/* TAB: Matriz consolidada — `ui/table`: cabeçalho em superfície
+              rebaixada, rótulos 12/600, caixas centradas; a coluna do membro
+              fica fixa à esquerda enquanto os módulos rolam dentro da moldura. */}
+          <TabsContent value="matriz">
+            <div className="rounded-lg border border-border bg-card shadow-sm">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="sticky left-0 z-10 bg-secondary">Membro</TableHead>
+                    <TableHead>Setor</TableHead>
+                    <TableHead>Papel</TableHead>
                     {MODULOS_SISTEMA.map((mod) => (
-                      <th key={mod.value} className="whitespace-nowrap p-3 text-center text-sm font-semibold text-foreground">
+                      <TableHead key={mod.value} className="text-center">
                         {mod.label}
-                      </th>
+                      </TableHead>
                     ))}
-                  </tr>
-                </thead>
-                <tbody>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {filteredMembros.map((m) => {
                     const d = drafts[m.id];
                     if (!d) return null;
                     return (
-                      <tr key={m.id} className="border-b border-border hover:bg-muted">
-                        <td className="sticky left-0 whitespace-nowrap bg-card p-3 font-medium text-foreground">
+                      <TableRow key={m.id}>
+                        <TableCell nowrap className="sticky left-0 z-10 bg-card font-medium">
                           {nomeExibido(m as MembroExibivel)}
-                        </td>
-                        <td className="whitespace-nowrap p-3">
+                        </TableCell>
+                        <TableCell nowrap>
                           <Badge variant="muted">{EQUIPES.find((e) => e.value === d.equipe)?.label ?? d.equipe}</Badge>
-                        </td>
-                        <td className="whitespace-nowrap p-3">
+                        </TableCell>
+                        <TableCell nowrap>
                           <Badge variant="muted">{PAPEIS.find((p) => p.value === d.papel)?.label ?? d.papel}</Badge>
-                        </td>
+                        </TableCell>
                         {MODULOS_SISTEMA.map((mod) => {
                           const checked = d.permissoes.includes(mod.value);
                           return (
-                            <td key={mod.value} className="p-3 text-center">
+                            <TableCell key={mod.value} className="text-center">
                               <Checkbox
                                 checked={checked}
                                 onCheckedChange={() => togglePermissao(m.id, mod.value)}
                                 aria-label={`${mod.label} para ${nomeExibido(m as MembroExibivel)}`}
                               />
-                            </td>
+                            </TableCell>
                           );
                         })}
-                      </tr>
+                      </TableRow>
                     );
                   })}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
               Marque/desmarque diretamente na matriz. As alterações ficam pendentes até clicar em "Salvar".

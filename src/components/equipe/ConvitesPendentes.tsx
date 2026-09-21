@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -123,9 +124,12 @@ export default function ConvitesPendentes() {
 
   if (carregando) {
     return (
+      /* Esqueleto na forma da linha de convite, não spinner com texto. */
       <Card>
-        <CardContent className="py-8 text-center text-base text-muted-foreground">
-          <Loader2 className="mr-2 inline h-4 w-4 animate-spin" aria-hidden="true" />Carregando convites…
+        <CardContent role="status" aria-busy="true" className="space-y-3 p-5">
+          <span className="sr-only">Carregando convites…</span>
+          <Skeleton className="h-4 w-1/3" />
+          <Skeleton className="h-4 w-1/2" />
         </CardContent>
       </Card>
     );
@@ -136,8 +140,8 @@ export default function ConvitesPendentes() {
   return (
     <>
       <Card>
-        <CardHeader className="border-b px-5 py-3">
-          <CardTitle className="flex flex-wrap items-center gap-2 text-lg font-semibold">
+        <CardHeader className="border-b border-border px-5 py-3">
+          <CardTitle className="flex flex-wrap items-center gap-2">
             <Mail className="h-4 w-4 text-primary" aria-hidden="true" />
             Convites de setor ativos
             <Badge variant="muted">{convites.length}</Badge>
@@ -147,7 +151,7 @@ export default function ConvitesPendentes() {
           </CardTitle>
         </CardHeader>
 
-        <CardContent className="divide-y p-0">
+        <CardContent className="divide-y divide-border p-0">
           {convites.map((c) => {
             const restante = tempoRestante(c.expires_at);
             const usos = c.usos ?? 0;
@@ -155,7 +159,7 @@ export default function ConvitesPendentes() {
               <div key={c.id} className="flex flex-wrap items-center gap-3 px-5 py-3">
                 <div className="min-w-[200px] flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-base font-semibold text-foreground">
+                    <span className="text-base font-medium text-foreground">
                       {equipeLabels[c.equipe] ?? c.equipe}
                     </span>
                     <Badge variant="muted">{c.papel}</Badge>
@@ -192,9 +196,8 @@ export default function ConvitesPendentes() {
                       : <><Copy aria-hidden="true" />Copiar link</>}
                   </Button>
                   <Button
-                    size="sm"
-                    variant="ghost"
-                    className="px-2 text-muted-foreground hover:text-destructive"
+                    size="icon-sm"
+                    variant="ghost-destructive"
                     onClick={() => setACancelar(c)}
                     title="Cancelar convite"
                     aria-label="Cancelar convite"
@@ -222,11 +225,11 @@ export default function ConvitesPendentes() {
           <AlertDialogFooter>
             <AlertDialogCancel>Manter</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className={buttonVariants({ variant: 'destructive' })}
               onClick={cancelar}
               disabled={cancelando}
             >
-              {cancelando && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" aria-hidden="true" />}
+              {cancelando && <Loader2 className="animate-spin" aria-hidden="true" />}
               Cancelar convite
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -6,13 +6,14 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { Skeleton } from '@/components/ui/skeleton';
 import EstadoVazio from '@/components/shared/EstadoVazio';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { Plus, FileText, Loader2, Trash2, Copy, Edit2, Check, X } from 'lucide-react';
+import { Plus, FileText, Trash2, Copy, Edit2, Check, X } from 'lucide-react';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger
+  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger
 } from '@/components/ui/dialog';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
@@ -104,9 +105,13 @@ export default function WhatsAppTemplates() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" aria-hidden="true" />
+      /* Esqueleto na forma da grade de modelos. */
+      <div role="status" aria-busy="true" className="space-y-4">
         <span className="sr-only">Carregando os modelos</span>
+        <Skeleton className="h-4 w-24" />
+        <div className="grid gap-4 md:grid-cols-2">
+          {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-44 rounded-lg" />)}
+        </div>
       </div>
     );
   }
@@ -119,11 +124,11 @@ export default function WhatsAppTemplates() {
       <DialogContent>
         <DialogHeader><DialogTitle>Novo modelo de mensagem</DialogTitle></DialogHeader>
         <div className="space-y-4">
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label htmlFor="modelo-nome">Nome</Label>
             <Input id="modelo-nome" value={newTemplate.nome} onChange={e => setNewTemplate(p => ({ ...p, nome: e.target.value }))} />
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label htmlFor="modelo-categoria">Categoria</Label>
             <Select value={newTemplate.categoria} onValueChange={v => setNewTemplate(p => ({ ...p, categoria: v }))}>
               <SelectTrigger id="modelo-categoria"><SelectValue /></SelectTrigger>
@@ -132,7 +137,7 @@ export default function WhatsAppTemplates() {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label htmlFor="modelo-conteudo">Conteúdo</Label>
             <Textarea id="modelo-conteudo" value={newTemplate.conteudo} onChange={e => setNewTemplate(p => ({ ...p, conteudo: e.target.value }))} rows={5} placeholder="Olá {{nome}}, sua proposta para {{orgao}} foi atualizada..." />
             <p className="text-xs text-muted-foreground">Use {'{{variavel}}'} para campos dinâmicos</p>
@@ -142,8 +147,10 @@ export default function WhatsAppTemplates() {
               {extractVars(newTemplate.conteudo).map(v => <Badge key={v} variant="muted">{`{{${v}}}`}</Badge>)}
             </div>
           )}
-          <Button onClick={handleCreate} className="w-full">Criar modelo</Button>
         </div>
+        <DialogFooter>
+          <Button onClick={handleCreate}>Criar modelo</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
@@ -156,19 +163,21 @@ export default function WhatsAppTemplates() {
       </div>
 
       {templates.length === 0 ? (
-        <EstadoVazio
-          icone={<FileText aria-hidden="true" />}
-          titulo="Nenhum modelo criado ainda"
-          descricao="Guarde as mensagens que você repete e reaproveite nos disparos."
-          acao={<Button onClick={() => setShowNew(true)}><Plus aria-hidden="true" />Novo modelo</Button>}
-        />
+        <div className="rounded-lg border border-border bg-card shadow-sm">
+          <EstadoVazio
+            icone={<FileText aria-hidden="true" />}
+            titulo="Nenhum modelo criado ainda"
+            descricao="Guarde as mensagens que você repete e reaproveite nos disparos."
+            acao={<Button onClick={() => setShowNew(true)}><Plus aria-hidden="true" />Novo modelo</Button>}
+          />
+        </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {templates.map(t => (
-            <Card key={t.id} className={`p-6 ${!t.ativo ? 'opacity-60' : ''}`}>
+            <Card key={t.id} className={`p-5 ${!t.ativo ? 'opacity-60' : ''}`}>
               <div className="mb-3 flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <h3 className="text-lg font-semibold text-foreground truncate">{t.nome}</h3>
+                  <h3 className="truncate text-lg font-semibold leading-6 text-foreground">{t.nome}</h3>
                   <Badge variant="muted" className="mt-1" truncate>{t.categoria}</Badge>
                 </div>
                 <div className="flex flex-shrink-0 items-center gap-2">
@@ -200,14 +209,14 @@ export default function WhatsAppTemplates() {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-sm text-muted-foreground tabular-nums">Usado {t.uso_count}x</span>
                 <div className="flex flex-wrap gap-1">
-                  <Button size="sm" variant="ghost" onClick={() => handleCopy(t.conteudo)} aria-label={`Copiar o modelo ${t.nome}`}>
+                  <Button size="icon-sm" variant="ghost" onClick={() => handleCopy(t.conteudo)} aria-label={`Copiar o modelo ${t.nome}`}>
                     <Copy aria-hidden="true" />
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => { setEditingId(t.id); setEditConteudo(t.conteudo); }} aria-label={`Editar o modelo ${t.nome}`}>
+                  <Button size="icon-sm" variant="ghost" onClick={() => { setEditingId(t.id); setEditConteudo(t.conteudo); }} aria-label={`Editar o modelo ${t.nome}`}>
                     <Edit2 aria-hidden="true" />
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => handleDelete(t.id)} aria-label={`Remover o modelo ${t.nome}`}>
-                    <Trash2 className="text-destructive" aria-hidden="true" />
+                  <Button size="icon-sm" variant="ghost-destructive" onClick={() => handleDelete(t.id)} aria-label={`Remover o modelo ${t.nome}`}>
+                    <Trash2 aria-hidden="true" />
                   </Button>
                 </div>
               </div>

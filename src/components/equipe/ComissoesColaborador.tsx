@@ -8,13 +8,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MoneyInput } from '@/components/ui/money-input';
 import { Badge, type BadgeProps } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import EstadoVazio from '@/components/shared/EstadoVazio';
+import AbasGestao from '@/components/gestao/AbasGestao';
+import FaixaIndicadores from '@/components/gestao/FaixaIndicadores';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { DollarSign, Plus, Settings, TrendingUp, Eye, EyeOff, Receipt } from 'lucide-react';
+import { DollarSign, Plus, Settings, Eye, EyeOff, Receipt, Clock, CheckCircle2, Users } from 'lucide-react';
 
 const TIPO_COMISSAO = TIPOS_BONIFICACAO as Record<string, { label: string; desc: string }>;
 
@@ -261,21 +264,37 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
     return { ...m, exibicao, cfg, totalPendente, totalAprovado, totalPago, total: totalPendente + totalAprovado + totalPago };
   }).filter(m => m.cfg || lancamentos.some(l => l.user_id === m.user_id));
 
-  if (loading) return <p className="py-6 text-center text-base text-muted-foreground">Carregando bonificações...</p>;
+  if (loading) {
+    return (
+      /* Esqueleto na forma do conteúdo: a faixa de indicadores e a lista. */
+      <div role="status" aria-busy="true" className="space-y-4">
+        <span className="sr-only">Carregando bonificações...</span>
+        <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(160px,100%),1fr))]">
+          {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-24 rounded-lg" />)}
+        </div>
+        <Skeleton className="h-40 rounded-lg" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
-      {/* Tabs */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-2">
-          {(['resumo', 'lancamentos', 'config'] as const).map(t => (
-            <Button key={t} variant={tab === t ? 'default' : 'outline'} size="sm" onClick={() => setTab(t)} aria-pressed={tab === t}>
-              {t === 'resumo' ? 'Resumo' : t === 'lancamentos' ? 'Lançamentos' : 'Configurar'}
-            </Button>
-          ))}
-        </div>
+      {/* Abas sublinhadas do padrão em vez de botões: Resumo, Lançamentos e
+          Configurar são vistas do mesmo assunto. As ações do admin ficam à
+          direita, com uma só em verde. */}
+      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+        <AbasGestao
+          className="min-w-0 md:flex-1"
+          abas={[
+            { valor: 'resumo', rotulo: 'Resumo' },
+            { valor: 'lancamentos', rotulo: 'Lançamentos' },
+            { valor: 'config', rotulo: 'Configurar' },
+          ]}
+          valor={tab}
+          aoMudar={(v) => setTab(v as typeof tab)}
+        />
         {isAdmin && (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex shrink-0 flex-wrap gap-2 md:pb-2">
             <Button variant="outline" onClick={() => setShowConfigDialog(true)}>
               <Settings aria-hidden="true" /> Configurar
             </Button>
@@ -286,25 +305,16 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
         )}
       </div>
 
-      {/* KPI cards */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-lg border border-border bg-card p-4 text-center shadow-sm">
-          <p className="text-sm text-muted-foreground">Pendente</p>
-          <p className="text-[2rem] font-bold leading-10 tabular-nums text-warning-ink">{fmt(lancamentos.filter(l => l.status === 'pendente').reduce((s, l) => s + l.valor_comissao, 0))}</p>
-        </div>
-        <div className="rounded-lg border border-border bg-card p-4 text-center shadow-sm">
-          <p className="text-sm text-muted-foreground">Aprovado</p>
-          <p className="text-[2rem] font-bold leading-10 tabular-nums text-foreground">{fmt(lancamentos.filter(l => l.status === 'aprovado').reduce((s, l) => s + l.valor_comissao, 0))}</p>
-        </div>
-        <div className="rounded-lg border border-border bg-card p-4 text-center shadow-sm">
-          <p className="text-sm text-muted-foreground">Pago</p>
-          <p className="text-[2rem] font-bold leading-10 tabular-nums text-success-ink">{fmt(lancamentos.filter(l => l.status === 'pago').reduce((s, l) => s + l.valor_comissao, 0))}</p>
-        </div>
-        <div className="rounded-lg border border-border bg-card p-4 text-center shadow-sm">
-          <p className="text-sm text-muted-foreground">Colaboradores</p>
-          <p className="text-[2rem] font-bold leading-10 tabular-nums text-foreground">{configs.length}</p>
-        </div>
-      </div>
+      {/* Totais na faixa de indicadores do padrão; o estado vive no ladrilho
+          do ícone, e o número fica sempre na tinta principal. */}
+      <FaixaIndicadores
+        itens={[
+          { rotulo: 'Pendente', valor: fmt(lancamentos.filter(l => l.status === 'pendente').reduce((s, l) => s + l.valor_comissao, 0)), icone: Clock, tom: 'aviso' },
+          { rotulo: 'Aprovado', valor: fmt(lancamentos.filter(l => l.status === 'aprovado').reduce((s, l) => s + l.valor_comissao, 0)), icone: CheckCircle2, tom: 'info' },
+          { rotulo: 'Pago', valor: fmt(lancamentos.filter(l => l.status === 'pago').reduce((s, l) => s + l.valor_comissao, 0)), icone: DollarSign, tom: 'ok' },
+          { rotulo: 'Colaboradores', valor: configs.length, icone: Users, tom: 'neutro' },
+        ]}
+      />
 
       {/* Resumo Tab */}
       {tab === 'resumo' && (
@@ -326,7 +336,7 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
             <div key={r.user_id} className="rounded-lg border border-border bg-card p-4 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-base font-semibold text-foreground">{r.exibicao}</p>
+                  <p className="text-base font-medium text-foreground">{r.exibicao}</p>
                   <div className="mt-1 flex flex-wrap items-center gap-2">
                     {r.cfg && <Badge variant="muted">{TIPO_COMISSAO[r.cfg.tipo_comissao]?.label}</Badge>}
                     {r.cfg && <span className="text-sm text-muted-foreground">
@@ -339,7 +349,7 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
                 </div>
                 <div className="text-right">
                   <p className="text-sm text-muted-foreground">Total bonificações</p>
-                  <p className="text-lg font-bold tabular-nums text-foreground">{fmt(r.total)}</p>
+                  <p className="text-lg font-semibold tabular-nums text-foreground">{fmt(r.total)}</p>
                   <div className="mt-0.5 flex flex-wrap justify-end gap-2 text-xs tabular-nums">
                     <span className="text-warning-ink">Pendente: {fmt(r.totalPendente)}</span>
                     <span className="text-success-ink">Pago: {fmt(r.totalPago)}</span>
@@ -373,7 +383,7 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
               <div key={l.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card p-4 shadow-sm">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-base font-semibold text-foreground">{getMembroNome(l.user_id)}</span>
+                    <span className="text-base font-medium text-foreground">{getMembroNome(l.user_id)}</span>
                     <Badge variant={st.variante}>{st.label}</Badge>
                     {l.nota_fiscal && <Badge variant="muted">NF: {l.nota_fiscal}</Badge>}
                   </div>
@@ -392,10 +402,10 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
                   )}
                 </div>
                 <div className="flex flex-shrink-0 flex-wrap items-center gap-2">
-                  <span className="text-right font-bold tabular-nums text-foreground">{fmt(l.valor_comissao)}</span>
+                  <span className="text-right font-semibold tabular-nums text-foreground">{fmt(l.valor_comissao)}</span>
                   {isAdmin && l.status !== 'pago' && (
                     <Select value={l.status} onValueChange={v => handleUpdateLancStatus(l.id, v)}>
-                      <SelectTrigger className="h-9 w-[140px] text-sm" aria-label={`Status do lançamento de ${getMembroNome(l.user_id)}`}><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="h-9 w-[140px]" aria-label={`Status do lançamento de ${getMembroNome(l.user_id)}`}><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {Object.entries(STATUS_LANCAMENTO).map(([k, v]) => (
                           <SelectItem key={k} value={k} disabled={k === 'pago' && !podePagar(l)}>
@@ -431,7 +441,7 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
           ) : configs.map(c => (
             <div key={c.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card p-4 shadow-sm">
               <div className="min-w-0">
-                <p className="text-base font-semibold text-foreground">{getMembroNome(c.user_id)}</p>
+                <p className="text-base font-medium text-foreground">{getMembroNome(c.user_id)}</p>
                 <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                   <span>{TIPO_COMISSAO[c.tipo_comissao]?.label}</span>
                   <span aria-hidden="true">•</span>
@@ -457,8 +467,8 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader><DialogTitle>Configurar bonificação</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <div>
+          <div className="space-y-4">
+            <div className="space-y-2">
               <Label htmlFor="cfg-colaborador">Colaborador *</Label>
               <Select value={cfgUserId} onValueChange={v => {
                 setCfgUserId(v);
@@ -482,7 +492,7 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
                   setCfgVisibilidade(false);
                 }
               }}>
-                <SelectTrigger id="cfg-colaborador" className="mt-1"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectTrigger id="cfg-colaborador"><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>
                   {membros.map(m => (
                     <SelectItem key={m.user_id} value={m.user_id}>{nomeExibido(m)}</SelectItem>
@@ -490,50 +500,50 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
                 </SelectContent>
               </Select>
             </div>
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="cfg-tipo">Tipo de bonificação</Label>
               <Select value={cfgTipo} onValueChange={setCfgTipo}>
-                <SelectTrigger id="cfg-tipo" className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectTrigger id="cfg-tipo"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {Object.entries(TIPO_COMISSAO).map(([k, v]) => (
                     <SelectItem key={k} value={k}>{v.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <p className="mt-1 text-xs text-muted-foreground">{TIPO_COMISSAO[cfgTipo]?.desc}</p>
+              <p className="text-xs text-muted-foreground">{TIPO_COMISSAO[cfgTipo]?.desc}</p>
             </div>
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="cfg-evento">Quando pagar</Label>
               <Select value={cfgEvento} onValueChange={(v) => setCfgEvento(v as EventoPagamento)}>
-                <SelectTrigger id="cfg-evento" className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectTrigger id="cfg-evento"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {Object.entries(EVENTOS_PAGAMENTO).map(([k, v]) => (
                     <SelectItem key={k} value={k}>{v.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <p className="mt-1 text-xs text-muted-foreground">{EVENTOS_PAGAMENTO[cfgEvento].desc}</p>
+              <p className="text-xs text-muted-foreground">{EVENTOS_PAGAMENTO[cfgEvento].desc}</p>
             </div>
             {cfgTipo === 'valor_fixo' ? (
-              <div>
+              <div className="space-y-2">
                 <Label htmlFor="cfg-valor-fixo">Valor fixo (R$)</Label>
-                <MoneyInput id="cfg-valor-fixo" value={Number(cfgValorFixo) || 0} onValueChange={v => setCfgValorFixo(String(v))} placeholder="R$ 0,00" className="mt-1" />
+                <MoneyInput id="cfg-valor-fixo" value={Number(cfgValorFixo) || 0} onValueChange={v => setCfgValorFixo(String(v))} placeholder="R$ 0,00" />
               </div>
             ) : (
-              <div>
+              <div className="space-y-2">
                 <Label htmlFor="cfg-percentual">Percentual (%)</Label>
-                <Input id="cfg-percentual" type="number" value={cfgPercentual} onChange={e => setCfgPercentual(e.target.value)} placeholder="5" step="0.1" className="mt-1" />
+                <Input id="cfg-percentual" type="number" value={cfgPercentual} onChange={e => setCfgPercentual(e.target.value)} placeholder="5" step="0.1" />
               </div>
             )}
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="cfg-regra">Regra de variação por desconto</Label>
               <Textarea id="cfg-regra" value={cfgRegraDesconto} onChange={e => setCfgRegraDesconto(e.target.value)}
                 placeholder="Ex: Desconto até 10% = bonificação cheia. Desconto 10-30% = bonificação -20%. Desconto >30% = bonificação -50%."
-                rows={3} className="mt-1" />
-              <p className="mt-1 text-xs text-muted-foreground">Descreva como a bonificação varia com os descontos nas ofertas/lances.</p>
+                rows={3} />
+              <p className="text-xs text-muted-foreground">Descreva como a bonificação varia com os descontos nas ofertas/lances.</p>
             </div>
-            <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
-              <div>
+            <div className="flex flex-col justify-between gap-2 rounded-md border border-border p-3 sm:flex-row sm:items-center">
+              <div className="space-y-1">
                 <Label htmlFor="cfg-visibilidade">Visibilidade para equipe</Label>
                 <p className="text-xs text-muted-foreground">Outros membros poderão ver as bonificações deste colaborador</p>
               </div>
@@ -553,11 +563,11 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
       <Dialog open={showLancDialog} onOpenChange={setShowLancDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader><DialogTitle>Lançar bonificação</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <div>
+          <div className="space-y-4">
+            <div className="space-y-2">
               <Label htmlFor="lanc-colaborador">Colaborador *</Label>
               <Select value={lancUserId} onValueChange={setLancUserId}>
-                <SelectTrigger id="lanc-colaborador" className="mt-1"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectTrigger id="lanc-colaborador"><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>
                   {configs.filter(c => c.ativo).map(c => (
                     <SelectItem key={c.user_id} value={c.user_id}>{getMembroNome(c.user_id)}</SelectItem>
@@ -565,7 +575,7 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
                 </SelectContent>
               </Select>
             </div>
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="lanc-pedido">{lancUserId ? EVENTOS_PAGAMENTO[eventoDe(lancUserId)].exigencia : 'Comprovação'} *</Label>
               <Select
                 value={lancPedidoId}
@@ -577,7 +587,7 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
                 }}
                 disabled={!lancUserId}
               >
-                <SelectTrigger id="lanc-pedido" className="mt-1">
+                <SelectTrigger id="lanc-pedido">
                   <SelectValue placeholder={lancUserId ? 'Selecione o pedido' : 'Escolha o colaborador primeiro'} />
                 </SelectTrigger>
                 <SelectContent>
@@ -591,27 +601,27 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
                 </SelectContent>
               </Select>
               {lancUserId && pedidosDoColaborador.length === 0 && (
-                <p className="mt-1 text-sm text-warning-ink">
+                <p className="text-sm text-warning-ink">
                   Nenhum pedido com {EVENTOS_PAGAMENTO[eventoDe(lancUserId)].exigencia} nos
                   contratos deste colaborador. A bonificação dele é liberada
                   {' '}{EVENTOS_PAGAMENTO[eventoDe(lancUserId)].label.toLowerCase()}.
                 </p>
               )}
             </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
                 <Label htmlFor="lanc-base">Valor base (R$) *</Label>
-                <MoneyInput id="lanc-base" value={Number(lancValorBase) || 0} onValueChange={v => setLancValorBase(String(v))} placeholder="R$ 0,00" className="mt-1" />
+                <MoneyInput id="lanc-base" value={Number(lancValorBase) || 0} onValueChange={v => setLancValorBase(String(v))} placeholder="R$ 0,00" />
               </div>
-              <div>
+              <div className="space-y-2">
                 <Label htmlFor="lanc-desconto">Desconto oferta (%)</Label>
-                <Input id="lanc-desconto" type="number" value={lancDesconto} onChange={e => setLancDesconto(e.target.value)} placeholder="0" className="mt-1" />
+                <Input id="lanc-desconto" type="number" value={lancDesconto} onChange={e => setLancDesconto(e.target.value)} placeholder="0" />
               </div>
             </div>
             {lancUserId && lancValorBase && (
-              <div className="rounded-lg border border-border bg-muted p-4">
-                <p className="text-sm text-muted-foreground">Bonificação calculada:</p>
-                <p className="text-[2rem] font-bold leading-10 tabular-nums text-foreground">
+              <div className="rounded-lg border border-border bg-secondary p-4">
+                <p className="text-sm font-medium text-muted-foreground">Bonificação calculada:</p>
+                <p className="text-3xl font-semibold leading-8 tabular-nums text-foreground">
                   {(() => {
                     const cfg = configs.find(c => c.user_id === lancUserId);
                     if (!cfg) return 'R$ 0,00';
@@ -623,13 +633,13 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
                 </p>
               </div>
             )}
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="lanc-nf">Nota fiscal</Label>
-              <Input id="lanc-nf" value={lancNF} onChange={e => setLancNF(e.target.value)} placeholder="Número da NF (opcional)" className="mt-1" />
+              <Input id="lanc-nf" value={lancNF} onChange={e => setLancNF(e.target.value)} placeholder="Número da NF (opcional)" />
             </div>
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="lanc-obs">Observações</Label>
-              <Textarea id="lanc-obs" value={lancObs} onChange={e => setLancObs(e.target.value)} placeholder="Detalhes do lançamento..." rows={2} className="mt-1" />
+              <Textarea id="lanc-obs" value={lancObs} onChange={e => setLancObs(e.target.value)} placeholder="Detalhes do lançamento..." rows={2} />
             </div>
           </div>
           <DialogFooter>
