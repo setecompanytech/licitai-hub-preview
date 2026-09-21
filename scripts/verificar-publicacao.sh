@@ -51,6 +51,10 @@ echo
 # Assinatura de texto só pega mudança que cria texto. O carimbo pega qualquer
 # uma: se o que o domínio serve for igual ao que está no repo, o último commit
 # chegou ao ar.
+# `falta` nasce ANTES do carimbo: até 21/09 ele era zerado depois, e o script
+# terminava em "Tudo publicado." com a versão em FALTA na linha de cima —
+# justamente a falha silenciosa que ele existe para impedir.
+falta=0
 LOCAL=$(grep -oE "VERSAO_APP = '[^']+'" "$(dirname "$0")/../src/lib/versao.ts" | grep -oE "[0-9]{4}-[0-9]{2}-[0-9]{2}\.[0-9]+")
 if grep -qF "$LOCAL" "$TMP/tudo.js"; then
   printf '  no ar     versão %s (a mesma do repositório)\n\n' "$LOCAL"
@@ -59,9 +63,8 @@ else
   printf '  FALTA     versão: repositório em %s, domínio em %s\n\n' "$LOCAL" "${NOAR:-desconhecida}"
   echo "  → publique no Lovable; os itens abaixo podem estar desatualizados."
   echo
+  falta=1
 fi
-
-falta=0
 checar() { # checar "<rótulo>" "<literal que só existe no código novo>"
   if grep -qF "$2" "$TMP/tudo.js"; then
     printf '  no ar     %s\n' "$1"
