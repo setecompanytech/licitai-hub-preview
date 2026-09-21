@@ -41,6 +41,7 @@ import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { rotuloDoMotivo } from '@/lib/contratos/encerramento';
+import { buscarRecebimentoDaNota } from '@/lib/financeiro/buscar-recebimento-da-nota';
 import { avisoDeExecucaoIncompativel } from '@/lib/contratos/instrumentos';
 import KitFaturamento from '@/components/financeiro/KitFaturamento';
 import {
@@ -1133,9 +1134,19 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     }
   };
 
-  /** Cria lançamentos "a_receber" no Financeiro vinculados ao contrato e aos pedidos recém-criados. */
+  /**
+   * Cria lançamentos "a_receber" no Financeiro vinculados ao contrato e aos
+   * pedidos recém-criados — DEPOIS de procurar o recebimento que já existe.
+   *
+   * O extrato importado antes da DANFE (21/09) fazia cada anexo virar um
+   * segundo título. Agora, nota com número: procura recebimento baixado e
+   * livre que cite a nota. Um só, com o mesmo valor → casa e não cria.
+   * Indício (número sem valor, ou só valor) → não cria e abre o diálogo de
+   * casar, porque valor igual não prova duplicidade (regra do dono). Nada
+   * parecido → cria, como antes.
+   */
   const gerarLancamentosFinanceiros = async (
-    pedidosCriados: Array<{ id: string; numero_pedido: string; descricao: string | null; valor_total: number; data_pedido: string | null; contrato_item_id?: string | null }>,
+    pedidosCriados: Array<{ id: string; numero_pedido: string; descricao: string | null; valor_total: number; data_pedido: string | null; contrato_item_id?: string | null; nota_fiscal?: string | null }>,
   ) => {
     if (!gerarContaReceber || pedidosCriados.length === 0) return;
     try {
@@ -1149,7 +1160,50 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
         toast.warning('Pedido salvo, mas empresa do contrato não definida — lançamento financeiro não criado.');
         return;
       }
-      const inserts = pedidosCriados.map((p) => ({
+
+      const paraCriar: typeof pedidosCriados = [];
+      for (const p of pedidosCriados) {
+        const nf = p.nota_fiscal ?? null;
+        const busca = nf
+          ? await buscarRecebimentoDaNota(empresaId, { numero: nf, valor: Number(p.valor_total) || 0 })
+          : ({ veredito: 'nenhum' } as const);
+        if (busca.veredito === 'certo') {
+          const { error: erroCasar } = await supabase
+            .from('financeiro_lancamentos')
+            .update({
+              contrato_pedido_id: p.id,
+              contrato_id: contratoId,
+              contrato_item_id: p.contrato_item_id ?? null,
+              numero_documento: busca.recebimento.numero_documento ?? nf,
+            } as never)
+            .eq('id', busca.recebimento.id);
+          if (erroCasar) {
+            toast.warning(`NF ${nf}: o recebimento existe, mas não foi possível casar — ${erroCasar.message}`);
+            paraCriar.push(p);
+            continue;
+          }
+          const quando = busca.recebimento.data_realizado ?? busca.recebimento.data_competencia;
+          const quandoBr = quando ? new Date(`${String(quando).slice(0, 10)}T12:00:00`).toLocaleDateString('pt-BR') : 'data não informada';
+          toast.success(`NF ${nf} já estava recebida: pedido casado com o recebimento de ${quandoBr}.`, {
+            description: `${busca.motivos.join(', ')}. Nenhum título novo foi criado.`,
+            duration: 10000,
+          });
+          continue;
+        }
+        if (busca.veredito === 'ambiguo') {
+          const s = busca.sugestoes[0];
+          toast.info(`NF ${nf}: há recebimento parecido no Financeiro — nenhum título foi criado.`, {
+            description: `${s.recebimento.descricao ?? 'sem descrição'} · ${fmt(Number(s.recebimento.valor))} — ${s.motivos.join(', ')}. Confira e case, ou crie o título pelo diálogo.`,
+            action: { label: 'Casar', onClick: () => setVinculando({ id: p.id, numero_pedido: p.numero_pedido, valor_total: Number(p.valor_total) || 0, data_pedido: p.data_pedido, nota_fiscal: nf }) },
+            duration: 20000,
+          });
+          continue;
+        }
+        paraCriar.push(p);
+      }
+      if (paraCriar.length === 0) return;
+
+      const inserts = paraCriar.map((p) => ({
         empresa_id: empresaId,
         tipo: 'a_receber' as const,
         natureza: 'receita' as const,
@@ -1323,7 +1377,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       empenho_id: form.empenho_id || null,
     } as any).select('id, numero_pedido, descricao, valor_total, data_pedido, contrato_item_id').single();
     if (error) { console.error('Erro ao salvar pedido:', error.message, error.details, error.code); toast.error('Erro ao salvar pedido: ' + error.message); setSaving(false); return; }
-    await gerarLancamentosFinanceiros([novoPedido as any]);
+    await gerarLancamentosFinanceiros([{ ...(novoPedido as any), nota_fiscal: form.nota_fiscal || null }]);
     setSaving(false);
     avisarPrazo(novoPedido?.data_pedido);
     avisarSaldoEsgotado(qty * unit);
@@ -1550,7 +1604,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
         .select('id, numero_pedido, descricao, valor_total, data_pedido, contrato_item_id')
         .single();
       if (error) { console.error('Erro ao salvar pedido:', error.message); toast.error('Erro ao salvar pedido: ' + error.message); setSaving(false); return; }
-      await gerarLancamentosFinanceiros([novoPedido as any]);
+      await gerarLancamentosFinanceiros([{ ...(novoPedido as any), nota_fiscal: form.nota_fiscal || extractedData.nota_fiscal || null }]);
       setSaving(false);
       avisarPrazo(novoPedido?.data_pedido);
       avisarSaldoEsgotado(valorTotal);

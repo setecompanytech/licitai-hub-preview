@@ -212,6 +212,25 @@ qualquer uma passa pelo Rafael:
   pedido lançado esgota o saldo — nunca uma janela que trave o lançamento,
   porque quem opera pedidos nem sempre tem alçada para encerrar.
 
+## Nota fiscal × recebimento — regra do dono (21/09/2026)
+
+**Valor igual não prova duplicidade.** O cliente fatura o mesmo valor em
+pedidos distintos, cada um com o seu empenho/ordem e a sua NF-e (NFs 692 e
+693 da ETHOS, R$ 158.000,00 cada). A identidade entre a DANFE que entra no
+Gestão de Contratos e um recebimento que já está no Financeiro é o NÚMERO
+da nota (ou a chave de acesso) e o número do pedido; o valor só confirma.
+Régua única em `lib/financeiro/recebimento-da-nota.ts`: `certo` (mesma
+chave, ou mesmo número E mesmo valor, um só) casa sem perguntar; `ambiguo`
+(número sem valor, só valor, mais de um forte) não cria título e abre o
+diálogo de casar; `nenhum` cria. Vale para a aba Pedidos
+(`gerarLancamentosFinanceiros`) e para a Extração de Documentos
+(`vincular_lancamento_a_pedido` com `p_lancamento_existente` /
+`p_criar_titulo`, migration `20260921000003`). Apagar um título ligado a
+pedido apaga o PEDIDO (gatilho `cleanup_contrato_pedido_on_lancamento_delete`):
+fusão de duplicado desliga o título antes de apagar. Um recebimento só
+aponta para um pedido; TED que paga várias notas ainda não tem rateio
+(pendência: tabela de rateio).
+
 ## Permissões — o que é da plataforma não aparece ao cliente (pedido do Rafael em 14/09, decidido em 19/09/2026)
 
 O Rafael quer que parte do sistema deixe de ficar exposta às contas das

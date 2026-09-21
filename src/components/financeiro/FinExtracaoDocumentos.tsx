@@ -3,6 +3,7 @@ import { lerLinhaDigitavel } from '@/lib/financeiro/boleto';
 import { hojeLocal } from "@/lib/financeiro/data-local";
 import { normalizarChaveNfe, chaveNfeSuspeita } from "@/lib/financeiro/chave-nfe";
 import { mensagemDeErro } from "@/lib/financeiro/erro-do-banco";
+import { buscarRecebimentoDaNota } from "@/lib/financeiro/buscar-recebimento-da-nota";
 import { useDocumentoFiscal } from "@/hooks/useDocumentoFiscal";
 import { useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -373,6 +374,51 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
         }
         const somaPesos = pesos.reduce((a, b) => a + b, 0);
 
+        // ── O recebimento que já existe (regra do dono, 21/09) ──────────
+        // O extrato entrou antes da DANFE e cada anexo virava um segundo
+        // título. Identidade pelo NÚMERO da nota ou pela chave; valor só
+        // confirma. Um recebimento certo e um item só → a função casa em vez
+        // de criar. Indício (número sem valor, só valor, nota rateada em
+        // vários itens) → o pedido nasce sem título e quem opera casa na aba
+        // Pedidos. Nada parecido → cria, como antes.
+        let lancamentoExistente: string | null = null;
+        let criarTitulo = true;
+        if (tipo === "a_receber" && (d.numero_documento || d.chave_nfe)) {
+          const { data: ctr } = await supabase
+            .from("contratos")
+            .select("empresa_id")
+            .eq("id", v!.contrato_id)
+            .single();
+          const empresaDoContrato = (ctr as { empresa_id?: string | null } | null)?.empresa_id ?? null;
+          if (empresaDoContrato) {
+            try {
+              const busca = await buscarRecebimentoDaNota(empresaDoContrato, {
+                numero: d.numero_documento ?? null,
+                chave: d.chave_nfe ?? null,
+                valor: valorTotal,
+              });
+              if (busca.veredito === "certo" && itemIds.length === 1) {
+                lancamentoExistente = busca.recebimento.id;
+                toast.success(`NF ${d.numero_documento ?? ""}: já recebida — o pedido será casado ao recebimento, sem título novo.`, {
+                  description: busca.motivos.join(", "),
+                  duration: 10000,
+                });
+              } else if (busca.veredito !== "nenhum") {
+                criarTitulo = false;
+                const s = busca.veredito === "certo" ? null : busca.sugestoes[0];
+                toast.info(`NF ${d.numero_documento ?? ""}: há recebimento parecido no Financeiro — o pedido será criado sem título.`, {
+                  description: `${s ? `${s.recebimento.descricao ?? "sem descrição"} — ${s.motivos.join(", ")}. ` : "Nota rateada em vários itens. "}Case em Gestão de Contratos → Pedidos.`,
+                  duration: 15000,
+                });
+              }
+            } catch (e) {
+              // A busca falhar não pode impedir o lançamento: segue criando,
+              // como sempre fez, e diz que não conseguiu conferir.
+              toast.warning("Não foi possível conferir se a nota já foi recebida.", { description: mensagemDeErro(e) });
+            }
+          }
+        }
+
         let lancId: string | null = null;
         let restante = valorTotal;
         const tipoLabels: Record<string, string> = { nfe: "NF-e", nfse: "NFS-e", nfce: "NF-Ce" };
@@ -430,6 +476,10 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
               // baixa pelo caminho da Extração (modelo de 30/08).
               p_empenho_id: v!.empenho_id ?? null,
               p_cota: v!.cota ?? null,
+              // Casa com o recebimento que já existe, ou cria o pedido sem
+              // título quando só há indício (migration 20260921000003).
+              p_lancamento_existente: idx === 0 ? lancamentoExistente : null,
+              p_criar_titulo: criarTitulo,
               p_pessoa_id: null,
               p_observacoes: [
                 d.emitente_nome ? `Emitente: ${d.emitente_nome}` : null,
