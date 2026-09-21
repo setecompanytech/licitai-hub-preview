@@ -162,8 +162,13 @@ delas. `.nao-imprime` some no papel, `.so-impresso` só aparece nele. Tela com
 painel lateral (`grid` + `aside`/`flex`) leva `impressao-em-coluna` nos
 contêineres: no papel viram blocos empilhados, porque grade e flex
 fragmentados no Chrome deixam a folha de assinaturas por cima do painel.
-`SecaoDoDocumento` é inteira por padrão; seção alta (KPIs + gráfico) recebe
-`permitirQuebra` e marca cada cartão/gráfico com `bloco-inteiro`.
+No papel vai inteiro só o que é KPI (`.g-cartao`), gráfico ou ficha, marcado
+com `bloco-inteiro`; cartão de lista quebra entre linhas, `SecaoDoDocumento`
+quebra entre blocos com o título preso ao primeiro (`bloco-cabecalho`), e
+tabela quebra entre linhas com o cabeçalho repetido. `animate-fade-in` é
+neutralizado no papel (elemento transformado é indivisível e o Chrome corta o
+que não cabe). Botão flutuante e gaveta da Aurélia levam `print:hidden`. Listas que vivem em outras abas mas o relatório precisa
+trazer entram como `SecaoDoDocumento` com `className="so-impresso"`.
 
 **Espera:** `Skeleton` na forma do conteúdo; nunca spinner grande no centro.
 Tabela ou lista que ainda vai chegar: `<SkeletonTabela linhas={5} colunas={4}

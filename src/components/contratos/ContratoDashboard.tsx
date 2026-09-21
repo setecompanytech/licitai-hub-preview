@@ -38,6 +38,10 @@ import TextoExpansivel from '@/components/gestao/TextoExpansivel';
 import SecaoRecolhivel from '@/components/ui/secao-recolhivel';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+/* Quantidade no papel: até três casas, sem "R$". */
+const fmtQtd = (v: unknown) => new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 3 }).format(Number(v) || 0);
+/* Rótulos da situação do pedido, os mesmos da aba Pedidos. */
+const SITUACAO_PEDIDO: Record<string, string> = { pendente: 'Pendente', entregue: 'Entregue', parcial: 'Parcial', cancelado: 'Cancelado' };
 
 const dataBr = (iso?: string | null) =>
   iso ? new Date(`${String(iso).slice(0, 10)}T12:00:00`).toLocaleDateString('pt-BR') : null;
@@ -335,7 +339,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
     const meses: Record<string, number> = {};
     pedidosAtivos.forEach((p: any) => { if (p.data_pedido) { const k = p.data_pedido.substring(0, 7); meses[k] = (meses[k] || 0) + (p.valor_total || 0); } });
     const pedidosPorMes = Object.entries(meses).sort(([a], [b]) => a.localeCompare(b)).slice(-6);
-    return { c, pedidosAtivos, faturamento, totalCustos, totalCustosTabela, custosDiretos, custoPedidos,
+    return { c, itensComAditivo, pedidosAtivos, faturamento, totalCustos, totalCustosTabela, custosDiretos, custoPedidos,
       custoPago, custoComprometido, custoDoFinanceiro, custoPrevistoDoEntregue, desvioDeCusto, excesso, decenal, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, vigencia, prazoDecorrido, fisicoParado, itensAlertaSaldo, alertasSaldoVisiveis, entregaUnicaConcluida, entregaUnicaEmAndamento, pedidosEntregues, pedidosAtivosTotal, perguntarFormaFornecimento, pedidosPorMes, valorGlobalEfetivo, totalAditivoValorAcrescimo, totalAditivoValorSupressao, totalAditivoQtdAcrescimo, totalAditivoQtdSupressao, reajuste, reajusteDevido };
   }, [data]);
 
@@ -365,7 +369,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
     );
   }
 
-  const { c, pedidosAtivos, faturamento, totalCustos, totalCustosTabela, custosDiretos, custoPedidos,
+  const { c, itensComAditivo, pedidosAtivos, faturamento, totalCustos, totalCustosTabela, custosDiretos, custoPedidos,
     custoPago, custoComprometido, custoDoFinanceiro, custoPrevistoDoEntregue, desvioDeCusto, excesso,
     decenal, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, vigencia, prazoDecorrido,
     fisicoParado, itensAlertaSaldo, alertasSaldoVisiveis, entregaUnicaConcluida, entregaUnicaEmAndamento,
@@ -605,7 +609,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
   const pendenciaEmDestaque = acoes[0] ?? null;
 
   return (
-    <div className="documento flex min-w-0 flex-col gap-4">
+    <div className="documento impressao-em-coluna flex min-w-0 flex-col gap-4">
       {/* Só aparece no papel: a folha sai da impressora sem saber de que
           empresa e de que contrato ela fala, e vai parar dentro de um
           processo administrativo. */}
@@ -855,14 +859,14 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
                     titulo={<>Consumo da ata</>}
                   >
                     <div className="grade-kpi mt-3 grid grid-cols-2 gap-4 sm:grid-cols-4">
-                      <Card className="flex flex-col gap-1 p-4">
+                      <Card className="bloco-inteiro flex flex-col gap-1 p-4">
                         <div className="text-sm font-medium leading-5 text-muted-foreground">Consumido pelos contratos derivados</div>
                         <p className="valor-kpi text-2xl font-semibold leading-8 tabular-nums text-foreground">{fmt(consumoDerivados)}</p>
                         <p className="g-meta text-muted-foreground">
                           {derivados.length} contrato{derivados.length === 1 ? '' : 's'} · {valorGlobalEfetivo > 0 ? ((consumoDerivados / valorGlobalEfetivo) * 100).toFixed(1) : '0'}% do registrado
                         </p>
                       </Card>
-                      <Card className="flex flex-col gap-1 p-4">
+                      <Card className="bloco-inteiro flex flex-col gap-1 p-4">
                         <div className="text-sm font-medium leading-5 text-muted-foreground">Empenhos diretos (entrega única)</div>
                         {pedidosAtivos.length > 0 ? (
                           <>
@@ -876,7 +880,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
                           </>
                         )}
                       </Card>
-                      <Card className="flex flex-col gap-1 p-4">
+                      <Card className="bloco-inteiro flex flex-col gap-1 p-4">
                         <div className="text-sm font-medium leading-5 text-muted-foreground">Contratos derivados</div>
                         {derivados.length === 0 ? (
                           <p className="g-corpo text-muted-foreground">nenhum ainda</p>
@@ -894,7 +898,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
                           </div>
                         )}
                       </Card>
-                      <Card className="flex flex-col gap-1 p-4">
+                      <Card className="bloco-inteiro flex flex-col gap-1 p-4">
                         <div className="text-sm font-medium leading-5 text-muted-foreground">Saldo da ata</div>
                         <p className={`valor-kpi text-2xl font-semibold leading-8 tabular-nums ${saldoAta > 0.005 ? 'text-success-ink' : saldoAta < -0.005 ? 'text-destructive-ink' : 'text-foreground'}`}>{fmt(saldoAta)}</p>
                         <p className="g-meta text-muted-foreground">registrado − derivados − empenhos diretos</p>
@@ -919,13 +923,13 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
                 >
                   <div className="mt-3 flex flex-col gap-3">
                     <div className="grade-kpi grid grid-cols-2 gap-4 sm:grid-cols-4">
-                      <Card className="flex flex-col gap-1 p-4">
+                      <Card className="bloco-inteiro flex flex-col gap-1 p-4">
                         <div className="text-sm font-medium leading-5 text-muted-foreground">Faturamento</div>
                         <p className="valor-kpi text-2xl font-semibold leading-8 tabular-nums text-foreground">{fmt(faturamento)}</p>
                         {/* Regra 2 do comando: o indicador declara a base. */}
                         <p className="g-meta text-muted-foreground">soma dos pedidos não cancelados</p>
                       </Card>
-                      <Card className="flex flex-col gap-1 p-4">
+                      <Card className="bloco-inteiro flex flex-col gap-1 p-4">
                         <div className="text-sm font-medium leading-5 text-muted-foreground">Custos Totais</div>
                         <p className="valor-kpi text-2xl font-semibold leading-8 tabular-nums text-destructive-ink">
                           {custoApurado ? fmt(totalCustos) : <ValorIndisponivel />}
@@ -953,7 +957,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
                       {/* Lucro sem custo apurado não é lucro: seria o faturamento
                           inteiro, com margem de 100%, dito com a mesma cara de
                           um número conferido. */}
-                      <Card className="flex flex-col gap-1 p-4">
+                      <Card className="bloco-inteiro flex flex-col gap-1 p-4">
                         <div className="text-sm font-medium leading-5 text-muted-foreground">Lucro Bruto</div>
                         <p className={`valor-kpi text-2xl font-semibold leading-8 tabular-nums ${lucroBruto >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>
                           {custoApurado ? fmt(lucroBruto) : <ValorIndisponivel />}
@@ -961,7 +965,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
                         {custoApurado && <p className="g-meta text-muted-foreground">Margem: {margemBruta.toFixed(1)}%</p>}
                         <p className="g-meta text-muted-foreground">faturamento − custos diretos</p>
                       </Card>
-                      <Card className="flex flex-col gap-1 p-4">
+                      <Card className="bloco-inteiro flex flex-col gap-1 p-4">
                         <div className="text-sm font-medium leading-5 text-muted-foreground">Lucro Líquido</div>
                         <p className={`valor-kpi text-2xl font-semibold leading-8 tabular-nums ${lucroLiquido >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>
                           {custoApurado ? fmt(lucroLiquido) : <ValorIndisponivel />}
@@ -1193,7 +1197,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
             </SecaoDoDocumento>
           )}
 
-          <SecaoDoDocumento numero="4" titulo={isAtaSrp ? 'Evolução mensal (empenhos diretos)' : 'Evolução mensal'} permitirQuebra>
+          <SecaoDoDocumento numero="4" titulo={isAtaSrp ? 'Evolução mensal (empenhos diretos)' : 'Evolução mensal'}>
             <SecaoRecolhivel
               id={`contrato-evolucao-mensal-${contratoId}`}
               recolhidaPorPadrao
@@ -1224,7 +1228,10 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
 
         {/* ── Painel de contexto ───────────────────────────────────────────── */}
         <aside className="impressao-em-coluna flex min-w-0 flex-col gap-4 xl:sticky xl:top-[calc(var(--g-topo)+1rem)]">
-          <Card className="impressao-em-coluna flex flex-col gap-5 p-5">
+          {/* `bloco-inteiro`: a ficha do contrato vai inteira para a folha em
+              que couber — fragmentá-la no meio foi o que sobrepôs a folha de
+              assinaturas em 21/09. */}
+          <Card className="impressao-em-coluna bloco-inteiro flex flex-col gap-5 p-5">
             <BlocoDoPainel titulo="Informações gerais">
               <ListaDeCampos
                 campos={[
@@ -1406,6 +1413,105 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
       {/* Só no papel. Assinar na tela seria promessa falsa — não há assinatura
           eletrônica aqui. O fiscal do órgão já está cadastrado no contrato,
           então o nome dele vem escrito; a caneta é que não. */}
+      {/* ── Só no papel: o controle de pedidos e de saldos (21/09) ──────────
+          Na tela essas listas vivem nas abas Pedidos e Itens/Lotes; o relatório
+          impresso precisa trazê-las, senão sai só o resumo. São os mesmos
+          registros já carregados por este painel — nada novo é lido. */}
+      <SecaoDoDocumento
+        numero="6"
+        titulo={isAtaSrp ? 'Empenhos diretos, notas e quitações' : 'Pedidos, notas e quitações'}
+        className="so-impresso"
+      >
+        {(data!.pedidos as any[]).length === 0 ? (
+          <p className="g-corpo text-muted-foreground">Nenhum pedido lançado.</p>
+        ) : (
+          <table className="w-full text-[11px] leading-tight">
+            <thead>
+              <tr className="border-b border-black text-left">
+                <th className="py-1 pr-2 font-semibold">Pedido</th>
+                <th className="py-1 pr-2 font-semibold">Item / descrição</th>
+                <th className="py-1 pr-2 text-right font-semibold">Qtd.</th>
+                <th className="py-1 pr-2 text-right font-semibold">Valor</th>
+                <th className="py-1 pr-2 font-semibold">Data</th>
+                <th className="py-1 pr-2 font-semibold">Situação</th>
+                <th className="py-1 pr-2 font-semibold">NF-e</th>
+                <th className="py-1 font-semibold">Quitação</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[...(data!.pedidos as any[])]
+                .sort((a, b) => String(a.data_pedido ?? '').localeCompare(String(b.data_pedido ?? '')))
+                .map((p: any) => (
+                  <tr key={p.id} className="border-b border-border/70 align-top">
+                    <td className="py-1 pr-2 tabular-nums">{p.numero_pedido}</td>
+                    <td className="py-1 pr-2">
+                      {p.descricao || data!.itens.find((i: any) => i.id === p.contrato_item_id)?.descricao || '—'}
+                    </td>
+                    <td className="py-1 pr-2 text-right tabular-nums">{fmtQtd(p.quantidade)}</td>
+                    <td className="py-1 pr-2 text-right tabular-nums">{fmt(Number(p.valor_total) || 0)}</td>
+                    <td className="py-1 pr-2 tabular-nums">{dataBr(p.data_pedido) ?? '—'}</td>
+                    <td className="py-1 pr-2">{SITUACAO_PEDIDO[p.status] ?? p.status ?? '—'}</td>
+                    <td className="py-1 pr-2 tabular-nums">{p.nota_fiscal || '—'}</td>
+                    <td className="py-1 tabular-nums">{p.nf_quitada ? `Quitada${p.data_quitacao ? ` em ${dataBr(p.data_quitacao)}` : ''}` : '—'}</td>
+                  </tr>
+                ))}
+            </tbody>
+            <tfoot>
+              <tr className="border-t border-black font-semibold">
+                <td className="py-1 pr-2" colSpan={3}>Total dos pedidos não cancelados ({pedidosAtivos.length})</td>
+                <td className="py-1 pr-2 text-right tabular-nums">{fmt(faturamento)}</td>
+                <td colSpan={4} />
+              </tr>
+            </tfoot>
+          </table>
+        )}
+      </SecaoDoDocumento>
+
+      <SecaoDoDocumento numero="7" titulo="Saldos por item" className="so-impresso">
+        {(itensComAditivo as any[]).length === 0 ? (
+          <p className="g-corpo text-muted-foreground">Nenhum item cadastrado.</p>
+        ) : (
+          <table className="w-full text-[11px] leading-tight">
+            <thead>
+              <tr className="border-b border-black text-left">
+                <th className="py-1 pr-2 font-semibold">Item</th>
+                <th className="py-1 pr-2 font-semibold">Un.</th>
+                <th className="py-1 pr-2 text-right font-semibold">Contratado</th>
+                <th className="py-1 pr-2 text-right font-semibold">Consumido</th>
+                <th className="py-1 pr-2 text-right font-semibold">Saldo</th>
+                <th className="py-1 pr-2 text-right font-semibold">Vlr. unit.</th>
+                <th className="py-1 text-right font-semibold">Saldo × vlr. unit.</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(itensComAditivo as any[]).map((i: any) => {
+                const saldo = Number(i.saldo_quantitativo_efetivo) || 0;
+                const vu = Number(i.valor_unitario) || 0;
+                return (
+                  <tr key={i.id} className="border-b border-border/70 align-top">
+                    <td className="py-1 pr-2">{i.codigo_item ? `${i.codigo_item} · ` : ''}{i.descricao}</td>
+                    <td className="py-1 pr-2">{i.unidade || '—'}</td>
+                    <td className="py-1 pr-2 text-right tabular-nums">{fmtQtd(i.quantidade_contratada_total)}</td>
+                    <td className="py-1 pr-2 text-right tabular-nums">{fmtQtd(i.quantidade_consumida)}</td>
+                    <td className={`py-1 pr-2 text-right tabular-nums ${saldo <= 0 ? 'font-semibold' : ''}`}>{fmtQtd(saldo)}</td>
+                    <td className="py-1 pr-2 text-right tabular-nums">{fmt(vu)}</td>
+                    <td className="py-1 text-right tabular-nums">{fmt(saldo * vu)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot>
+              <tr className="border-t border-black font-semibold">
+                <td className="py-1 pr-2" colSpan={6}>Soma dos saldos por item (saldo × valor unitário)</td>
+                <td className="py-1 text-right tabular-nums">
+                  {fmt((itensComAditivo as any[]).reduce((s: number, i: any) => s + (Number(i.saldo_quantitativo_efetivo) || 0) * (Number(i.valor_unitario) || 0), 0))}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        )}
+      </SecaoDoDocumento>
+
       <FolhaDeAssinaturas
         local={c.municipio ?? undefined}
         signatarios={[

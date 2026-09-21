@@ -167,7 +167,8 @@ const AppLayout = forwardRef<HTMLDivElement, AppLayoutProps>(function AppLayout(
       {/* Topbar + conteúdo, deslocados pela largura da coluna. */}
       <div
         className={cn(
-          'flex min-h-screen w-full min-w-0 flex-1 flex-col transition-[padding] duration-200 print:pl-0',
+          // No papel, bloco simples: flex em coluna fragmenta mal no Chrome.
+          'flex min-h-screen w-full min-w-0 flex-1 flex-col transition-[padding] duration-200 print:block print:min-h-0 print:pl-0',
           recolhida ? 'md:pl-[var(--g-barra-lateral-fechada)]' : 'md:pl-[var(--g-barra-lateral)]',
         )}
       >
@@ -181,7 +182,7 @@ const AppLayout = forwardRef<HTMLDivElement, AppLayoutProps>(function AppLayout(
           aoAbrirMenuMovel={() => setMenuMovelAberto(true)}
         />
 
-        <main className="mx-auto w-full min-w-0 max-w-[var(--g-conteudo)] flex-1 px-4 py-4 sm:px-5 md:px-6 md:py-6 lg:px-8">
+        <main className="mx-auto w-full min-w-0 max-w-[var(--g-conteudo)] flex-1 px-4 py-4 print:block print:max-w-none print:p-0 sm:px-5 md:px-6 md:py-6 lg:px-8">
           {/* Banner de manutenção e aviso de vencimento são da sessão, não do
               documento: no papel viram ruído com data de validade. */}
           <div className="nao-imprime">

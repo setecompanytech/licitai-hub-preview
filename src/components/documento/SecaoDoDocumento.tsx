@@ -6,13 +6,6 @@ type Props = {
   titulo: string;
   children: ReactNode;
   className?: string;
-  /**
-   * Seção alta demais para caber inteira numa folha (KPIs + gráfico): em vez
-   * de ir inteira para a folha seguinte e deixar a anterior em branco, ela
-   * pode continuar — só o título fica preso ao primeiro bloco. Os cartões e
-   * o gráfico dentro dela devem levar `bloco-inteiro`.
-   */
-  permitirQuebra?: boolean;
 };
 
 /**
@@ -24,14 +17,19 @@ type Props = {
  * dizer de que trecho está falando.
  *
  * Na tela o número aparece discreto, num quadradinho antes do título. No
- * papel ele vira parte do título, porque é ali que serve de endereço. E a
- * seção inteira ganha `break-inside: avoid`: título numa folha e conteúdo na
- * seguinte destrói justamente a referência que o número existe para dar.
+ * papel ele vira parte do título, porque é ali que serve de endereço.
+ *
+ * No papel a seção PODE continuar na folha seguinte (21/09): a versão
+ * inteira (`break-inside: avoid`) pulava de folha ao não caber e deixava a
+ * anterior meio em branco. O que a numeração exige é só que o título não
+ * fique sozinho no fim de uma folha — `bloco-cabecalho` prende o título ao
+ * primeiro bloco. Quem precisa que um cartão ou gráfico não se parta marca
+ * esse bloco com `bloco-inteiro` (o `Card` já vem assim no papel).
  */
-export default function SecaoDoDocumento({ numero, titulo, children, className, permitirQuebra = false }: Props) {
+export default function SecaoDoDocumento({ numero, titulo, children, className }: Props) {
   return (
-    <section className={`${permitirQuebra ? '' : 'bloco-inteiro'} ${className ?? ''}`}>
-      <div className={`mb-2 flex items-center gap-2 ${permitirQuebra ? 'bloco-cabecalho' : ''}`}>
+    <section className={className}>
+      <div className="bloco-cabecalho mb-2 flex items-center gap-2">
         <span
           className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-sm
                      bg-muted px-1 text-xs font-semibold tabular-nums text-muted-foreground"

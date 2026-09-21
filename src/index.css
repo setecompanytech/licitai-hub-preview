@@ -670,10 +670,8 @@
   .impressao-em-coluna > * + * {
     margin-top: 1rem;
   }
-  /* Seção que pode continuar na folha seguinte (`permitirQuebra` em
-     SecaoDoDocumento): só o título fica preso ao primeiro bloco; cartões e
-     gráficos dentro dela levam `bloco-inteiro` e não se partem. Evita a folha
-     quase em branco quando a evolução mensal (KPIs + gráfico) não cabia. */
+  /* Título de seção preso ao primeiro bloco (SecaoDoDocumento): a seção pode
+     continuar na folha seguinte, o título nunca fica sozinho no fim da folha. */
   .bloco-cabecalho {
     break-after: avoid;
   }
@@ -681,10 +679,25 @@
   .documento .card {
     box-shadow: none !important;
   }
-  .documento section,
-  .documento table,
-  .bloco-inteiro {
+  /* O que fica inteiro no papel (21/09): o que é marcado `bloco-inteiro` e o
+     cartão KPI (`g-cartao`) — não a seção nem a tabela. Seção inteira pulava
+     para a folha seguinte ao não caber e deixava a anterior meio em branco;
+     tabela inteira fazia o mesmo com a lista de pedidos. Agora a seção quebra
+     entre blocos (título preso ao primeiro por `bloco-cabecalho`), a tabela
+     quebra entre linhas com o cabeçalho repetido (`thead` abaixo), o cartão
+     de lista quebra entre linhas, e só KPI, gráfico e ficha vão inteiros. */
+  .bloco-inteiro,
+  .g-cartao {
     break-inside: avoid;
+  }
+  /* `animate-fade-in` termina em `transform: translateY(0)` e fica assim
+     (`forwards`): um elemento transformado é indivisível na impressão e o
+     Chrome CORTA o que não cabe na folha em vez de continuar na seguinte —
+     foi o "Vigência" cortado da folha 5. No papel, sem animação. */
+  .animate-fade-in {
+    animation: none !important;
+    transform: none !important;
+    opacity: 1 !important;
   }
   thead {
     display: table-header-group;

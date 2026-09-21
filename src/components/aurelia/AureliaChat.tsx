@@ -186,7 +186,7 @@ export default function AureliaChat() {
               setOpen(true);
             }}
             className={cn(
-              'fixed z-50 flex h-12 w-12 touch-none select-none items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-colors duration-150 hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+              'print:hidden fixed z-50 flex h-12 w-12 touch-none select-none items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-colors duration-150 hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
               fab.arrastando ? 'cursor-grabbing aurelia-fab--arrastando' : 'cursor-grab',
             )}
             title="Consultar AURÉLIA — arraste para reposicionar"
@@ -222,7 +222,7 @@ export default function AureliaChat() {
             role="region"
             aria-label="AURÉLIA"
             className={cn(
-              'fixed z-50 flex flex-col overflow-hidden border border-border bg-card shadow-xl',
+              'print:hidden fixed z-50 flex flex-col overflow-hidden border border-border bg-card shadow-xl',
               // Celular: a tela inteira. Desktop: painel ancorado embaixo, na
               // largura de drawer, do mesmo lado em que o botão está encostado.
               'inset-0 sm:inset-auto sm:bottom-4 sm:max-w-[calc(100vw-2rem)] sm:rounded-xl',

@@ -55,7 +55,7 @@ export default function TelaGestao({
   className,
 }: TelaGestaoProps) {
   return (
-    <div className={cn('flex min-w-0 flex-col gap-5', className)}>
+    <div className={cn('flex min-w-0 flex-col gap-5 print:block', className)}>
       <header className="flex flex-col gap-2">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex min-w-0 flex-col gap-1.5">
