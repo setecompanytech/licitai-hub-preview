@@ -154,6 +154,12 @@ campos em grade `grid gap-4 sm:grid-cols-2`, seções agrupadas por assunto com
 **Vazio:** `EstadoVazio` com ícone, título curto e a ação que tira do vazio;
 `tamanho="compacto"` dentro de cartão, `preencher` quando o contêiner tem altura
 (painel de prévia, coluna, aba fixa).
+**Impressão:** grade de cartões KPI leva a classe `grade-kpi` e o número a
+classe `valor-kpi` — em `@media print` (index.css) a fila vira duas colunas e
+o valor não trunca nem quebra no meio (a folha A4 cai no breakpoint `sm`).
+`FaixaIndicadores` e `LinhaKpis` já vêm com as duas; cartão KPI local precisa
+delas. `.nao-imprime` some no papel, `.so-impresso` só aparece nele.
+
 **Espera:** `Skeleton` na forma do conteúdo; nunca spinner grande no centro.
 Tabela ou lista que ainda vai chegar: `<SkeletonTabela linhas={5} colunas={4}
 rotulo="Carregando lançamentos" />` (`shared/`) — o texto de espera antigo vai

@@ -2755,7 +2755,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 titulo={<>Notas fiscais sincronizadas do Financeiro ({nfsSync.length})</>}
               >
                 <div className="mt-3">
-                  <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <div className="grade-kpi mb-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
                     <div className="rounded-md bg-secondary p-3">
                       <p className="g-meta text-muted-foreground">NFs Saída</p>
                       <p className="text-lg font-semibold tabular-nums text-foreground">{nfsSync.filter(n => n.tipo === 'saida').length}</p>

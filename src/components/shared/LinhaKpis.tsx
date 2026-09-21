@@ -35,7 +35,7 @@ const TOM = {
  */
 export default function LinhaKpis({ itens }: { itens: ItemKpi[] }) {
   return (
-    <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr))] [&>*]:min-w-0">
+    <div className="grade-kpi grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr))] [&>*]:min-w-0">
       {itens.map((k) => {
         const Icone = k.icone;
         const clicavel = Boolean(k.aoClicar);
@@ -58,7 +58,7 @@ export default function LinhaKpis({ itens }: { itens: ItemKpi[] }) {
             </span>
             {/* Valor de dinheiro só quebra no espaço depois do "R$", nunca no
                 meio do número — daí `break-normal`. */}
-            <span className="max-w-full break-normal text-[1.75rem] font-semibold leading-9 tabular-nums text-foreground">
+            <span className="valor-kpi max-w-full break-normal text-[1.75rem] font-semibold leading-9 tabular-nums text-foreground">
               {k.valor}
             </span>
           </Elemento>

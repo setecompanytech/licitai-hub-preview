@@ -56,7 +56,9 @@ export default function FaixaIndicadores({
         // auto-fit com mínimo em min(160px,100%): a grade se acomoda sem ponto
         // de quebra declarado — cinco ou seis cartões no desktop, dois no
         // celular de 390px.
-        'grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(160px,100%),1fr))] [&>*]:min-w-0',
+        // `grade-kpi`/`valor-kpi`: no papel a grade vira duas colunas e o
+        // valor não trunca (regra em `@media print`, index.css).
+        'grade-kpi grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(160px,100%),1fr))] [&>*]:min-w-0',
         className,
       )}
     >
@@ -103,7 +105,7 @@ export default function FaixaIndicadores({
                   </span>
                 </>
               ) : (
-                <span className="block truncate text-3xl font-semibold leading-8 tabular-nums text-foreground">
+                <span className="valor-kpi block truncate text-3xl font-semibold leading-8 tabular-nums text-foreground">
                   {item.valor}
                 </span>
               )}

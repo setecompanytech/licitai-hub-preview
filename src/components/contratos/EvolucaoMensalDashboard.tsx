@@ -55,7 +55,7 @@ function VariacaoMoM({ valor }: { valor: number | null }) {
     return <p className="text-2xl font-semibold leading-8 text-muted-foreground" title="Só um mês com pedidos: não há mês anterior para comparar">—</p>;
   }
   return (
-    <p className={`flex items-center gap-1 text-2xl font-semibold leading-8 tabular-nums ${valor >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>
+    <p className={`flex items-center gap-1 valor-kpi text-2xl font-semibold leading-8 tabular-nums ${valor >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>
       {valor >= 0 ? <TrendingUp aria-hidden="true" className="h-4 w-4" /> : <TrendingDown aria-hidden="true" className="h-4 w-4" />}
       {valor.toFixed(1)}%
     </p>
@@ -245,22 +245,22 @@ export default function EvolucaoMensalDashboard({ pedidos, podeVerCustos, valorG
       </div>
 
       {/* KPIs do período */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grade-kpi grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="flex flex-col gap-1 rounded-lg border border-border bg-card p-4">
           <p className="text-sm font-medium leading-5 text-muted-foreground">Faturamento</p>
-          <p className="text-2xl font-semibold leading-8 tabular-nums text-foreground">{fmtBRL(totais.faturamento)}</p>
+          <p className="valor-kpi text-2xl font-semibold leading-8 tabular-nums text-foreground">{fmtBRL(totais.faturamento)}</p>
           <p className="text-xs text-muted-foreground whitespace-nowrap">Média/mês: {fmtBRL(totais.mediaMensal)}</p>
         </div>
         <div className="flex flex-col gap-1 rounded-lg border border-border bg-card p-4">
           <p className="text-sm font-medium leading-5 text-muted-foreground">Pedidos</p>
-          <p className="text-2xl font-semibold leading-8 tabular-nums text-foreground">{fmtNum(totais.pedidos)}</p>
+          <p className="valor-kpi text-2xl font-semibold leading-8 tabular-nums text-foreground">{fmtNum(totais.pedidos)}</p>
           <p className="text-xs text-muted-foreground whitespace-nowrap">Ticket: {fmtBRL(totais.ticketMedio)}</p>
         </div>
         {podeVerCustos ? (
           <>
             <div className="flex flex-col gap-1 rounded-lg border border-border bg-card p-4">
               <p className="text-sm font-medium leading-5 text-muted-foreground">Lucro Bruto</p>
-              <p className={`text-2xl font-semibold leading-8 tabular-nums ${totais.lucro >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>{fmtBRL(totais.lucro)}</p>
+              <p className={`valor-kpi text-2xl font-semibold leading-8 tabular-nums ${totais.lucro >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>{fmtBRL(totais.lucro)}</p>
               <p className="text-xs text-muted-foreground">Margem: {totais.margem.toFixed(1)}%</p>
             </div>
             <div className="flex flex-col gap-1 rounded-lg border border-border bg-card p-4">

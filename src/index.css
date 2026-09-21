@@ -647,6 +647,19 @@
   .folha-nova {
     break-before: page;
   }
+  /* Cartões KPI no papel (21/09): a folha A4 tem ~700px úteis e cai no
+     breakpoint `sm`, então uma fila de quatro cartões dá ~130px por número —
+     "R$ 20.740,00" quebrava no meio ("R$ 20.740,0 / 0") e os indicadores do
+     topo viravam "R$ 74.520…". Duas colunas por fila e valor sem quebra nem
+     reticência; na tela nada muda. */
+  .grade-kpi {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  .valor-kpi {
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+  }
   .documento [class*="rounded"],
   .documento .card {
     box-shadow: none !important;

@@ -221,7 +221,7 @@ export default function MovimentosDoEmpenho({ empenho, onFechar, onMudou }: Prop
             )}
 
             {vigente && (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="grade-kpi grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <div className="rounded-md bg-secondary p-3">
                   <p className="text-xs text-muted-foreground">Nota original</p>
                   <p className="text-base font-semibold tabular-nums text-foreground">{brl(vigente.valor_original)}</p>

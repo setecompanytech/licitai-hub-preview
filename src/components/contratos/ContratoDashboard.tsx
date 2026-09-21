@@ -851,10 +851,10 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
                     classNameTitulo="text-base font-semibold leading-6 text-foreground"
                     titulo={<>Consumo da ata</>}
                   >
-                    <div className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-4">
+                    <div className="grade-kpi mt-3 grid grid-cols-2 gap-4 sm:grid-cols-4">
                       <Card className="flex flex-col gap-1 p-4">
                         <div className="text-sm font-medium leading-5 text-muted-foreground">Consumido pelos contratos derivados</div>
-                        <p className="text-2xl font-semibold leading-8 tabular-nums text-foreground">{fmt(consumoDerivados)}</p>
+                        <p className="valor-kpi text-2xl font-semibold leading-8 tabular-nums text-foreground">{fmt(consumoDerivados)}</p>
                         <p className="g-meta text-muted-foreground">
                           {derivados.length} contrato{derivados.length === 1 ? '' : 's'} · {valorGlobalEfetivo > 0 ? ((consumoDerivados / valorGlobalEfetivo) * 100).toFixed(1) : '0'}% do registrado
                         </p>
@@ -863,7 +863,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
                         <div className="text-sm font-medium leading-5 text-muted-foreground">Empenhos diretos (entrega única)</div>
                         {pedidosAtivos.length > 0 ? (
                           <>
-                            <p className="text-2xl font-semibold leading-8 tabular-nums text-foreground">{fmt(empenhosDiretos)}</p>
+                            <p className="valor-kpi text-2xl font-semibold leading-8 tabular-nums text-foreground">{fmt(empenhosDiretos)}</p>
                             <p className="g-meta text-muted-foreground">{pedidosAtivos.length} empenho{pedidosAtivos.length === 1 ? '' : 's'} consumindo a ata sem contrato</p>
                           </>
                         ) : (
@@ -893,7 +893,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
                       </Card>
                       <Card className="flex flex-col gap-1 p-4">
                         <div className="text-sm font-medium leading-5 text-muted-foreground">Saldo da ata</div>
-                        <p className={`text-2xl font-semibold leading-8 tabular-nums ${saldoAta > 0.005 ? 'text-success-ink' : saldoAta < -0.005 ? 'text-destructive-ink' : 'text-foreground'}`}>{fmt(saldoAta)}</p>
+                        <p className={`valor-kpi text-2xl font-semibold leading-8 tabular-nums ${saldoAta > 0.005 ? 'text-success-ink' : saldoAta < -0.005 ? 'text-destructive-ink' : 'text-foreground'}`}>{fmt(saldoAta)}</p>
                         <p className="g-meta text-muted-foreground">registrado − derivados − empenhos diretos</p>
                       </Card>
                     </div>
@@ -915,16 +915,16 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
                   titulo={<>Resultado financeiro</>}
                 >
                   <div className="mt-3 flex flex-col gap-3">
-                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                    <div className="grade-kpi grid grid-cols-2 gap-4 sm:grid-cols-4">
                       <Card className="flex flex-col gap-1 p-4">
                         <div className="text-sm font-medium leading-5 text-muted-foreground">Faturamento</div>
-                        <p className="text-2xl font-semibold leading-8 tabular-nums text-foreground">{fmt(faturamento)}</p>
+                        <p className="valor-kpi text-2xl font-semibold leading-8 tabular-nums text-foreground">{fmt(faturamento)}</p>
                         {/* Regra 2 do comando: o indicador declara a base. */}
                         <p className="g-meta text-muted-foreground">soma dos pedidos não cancelados</p>
                       </Card>
                       <Card className="flex flex-col gap-1 p-4">
                         <div className="text-sm font-medium leading-5 text-muted-foreground">Custos Totais</div>
-                        <p className="text-2xl font-semibold leading-8 tabular-nums text-destructive-ink">
+                        <p className="valor-kpi text-2xl font-semibold leading-8 tabular-nums text-destructive-ink">
                           {custoApurado ? fmt(totalCustos) : <ValorIndisponivel />}
                         </p>
                         {/* Um cartão, a quebra embaixo. Margem é o que se olha de relance;
@@ -952,7 +952,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
                           um número conferido. */}
                       <Card className="flex flex-col gap-1 p-4">
                         <div className="text-sm font-medium leading-5 text-muted-foreground">Lucro Bruto</div>
-                        <p className={`text-2xl font-semibold leading-8 tabular-nums ${lucroBruto >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>
+                        <p className={`valor-kpi text-2xl font-semibold leading-8 tabular-nums ${lucroBruto >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>
                           {custoApurado ? fmt(lucroBruto) : <ValorIndisponivel />}
                         </p>
                         {custoApurado && <p className="g-meta text-muted-foreground">Margem: {margemBruta.toFixed(1)}%</p>}
@@ -960,7 +960,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
                       </Card>
                       <Card className="flex flex-col gap-1 p-4">
                         <div className="text-sm font-medium leading-5 text-muted-foreground">Lucro Líquido</div>
-                        <p className={`text-2xl font-semibold leading-8 tabular-nums ${lucroLiquido >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>
+                        <p className={`valor-kpi text-2xl font-semibold leading-8 tabular-nums ${lucroLiquido >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>
                           {custoApurado ? fmt(lucroLiquido) : <ValorIndisponivel />}
                         </p>
                         {custoApurado && <p className="g-meta text-muted-foreground">Margem: {margemLiquida.toFixed(1)}%</p>}
