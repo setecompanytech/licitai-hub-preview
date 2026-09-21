@@ -288,6 +288,17 @@ describe('Desfazer quitação (21/09) — a linha quitada tem lápis e desfazer,
     expect(tela.queryByLabelText('Excluir pedido')).toBeNull();
   });
 
+  it('o número do pedido abre o painel também na linha quitada', async () => {
+    comUmPedidoEUmEmpenho();
+    dados.pedidos = [{
+      ...dados.pedidos[0], status: 'entregue', nf_quitada: true, data_quitacao: '2026-04-23', nota_fiscal: '000.000.123',
+    }];
+    const tela = within(montar().container);
+    fireEvent.click(await tela.findByRole('button', { name: 'OF-TESTE-1' }));
+    await waitFor(() => expect(tela.getByText('Pedido OF-TESTE-1')).toBeInTheDocument());
+    expect(tela.getByText('Empenho de origem')).toBeInTheDocument();
+  });
+
   it('pedido sem NF quitada mantém a lixeira e não oferece "Desfazer quitação"', async () => {
     comUmPedidoEUmEmpenho();
     const tela = within(montar().container);

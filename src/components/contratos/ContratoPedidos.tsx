@@ -206,9 +206,20 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       }
     }
 
-    toast.info('Nenhum documento anexado a este pedido.', {
+    // Terceiro caminho (21/09): o documento está no EMPENHO que autoriza o
+    // pedido (`contrato_empenhos.arquivo_id`), não no pedido — é o caso comum
+    // do empenho registrado pela subaba Empenhos. Dizer "nenhum documento" com
+    // o empenho anexado logo abaixo era falso.
+    const empenhoId = (p as { empenho_id?: string | null }).empenho_id;
+    const empenhoLigado = empenhoId ? empenhosDoContrato.find((e) => e.id === empenhoId) : undefined;
+    if (empenhoLigado?.arquivo_id) {
+      await abrirDocumentoDoEmpenho(empenhoLigado.arquivo_id);
+      return;
+    }
+
+    toast.info('Nenhum documento anexado a este pedido nem ao empenho que o autoriza.', {
       description: 'Use "Registrar Ordem/Empenho" para anexar a nota, ou a aba Arquivos e Aditivos.',
-      action: { label: 'Ver detalhes', onClick: () => openEditDialog(p) },
+      action: { label: 'Ver o pedido', onClick: () => setPedidoSelecionado(p.id) },
     });
   };
 
@@ -2087,9 +2098,21 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
               rotulo: 'Empenho de origem',
               valor: empenhoDoPedido
                 ? (
-                  <span className="inline-flex items-center gap-1.5">
+                  <span className="inline-flex flex-wrap items-center gap-1.5">
                     <span className="tabular-nums">{empenhoDoPedido.numero}</span>
                     {empenhoDoPedido.cancelado && <SeloSituacao tom="critico" icone={Ban}>Cancelado</SeloSituacao>}
+                    {/* O PDF do empenho mora no empenho, não no pedido: daqui
+                        ele abre direto, sem passar pela subaba Empenhos. */}
+                    {empenhoDoPedido.arquivo_id && (
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 rounded text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        onClick={() => void abrirDocumentoDoEmpenho(empenhoDoPedido.arquivo_id!)}
+                        title="Abrir o documento deste empenho"
+                      >
+                        <Eye aria-hidden="true" className="h-3.5 w-3.5" /> Ver documento
+                      </button>
+                    )}
                   </span>
                 )
                 : pedidoAberto.numero_empenho
@@ -2220,6 +2243,11 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 <Link2 aria-hidden="true" /> Vincular lançamento
               </Button>
             )}
+            <Button size="sm" variant="outline" className="g-controle"
+              onClick={() => void abrirOrdem(pedidoAberto)}
+              title="Abrir a Ordem de Fornecimento ou a Nota de Empenho que autorizou este pedido">
+              <FileText aria-hidden="true" /> Ordem / Empenho
+            </Button>
             {pedidoAberto.nf_quitada && (isFinanceiro || isAdmin) && (
               <Button size="sm" variant="outline" className="g-controle"
                 onClick={() => void openDesfazerDialog(pedidoAberto)}
@@ -2472,20 +2500,20 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                           className={selecionado ? 'border-l-2 border-l-primary' : undefined}
                         >
                           <TableCell className="whitespace-nowrap font-medium tabular-nums">
-                            {p.nf_quitada ? (
-                              <span className="text-muted-foreground" title="NF quitada — quantidade, valores e NF ficam travados na edição">{p.numero_pedido}</span>
-                            ) : (
-                              <button
-                                type="button"
-                                className="rounded text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                                onClick={() => abrirOrdem(p)}
-                                title={(p as { arquivo_ordem_id?: string | null }).arquivo_ordem_id
-                                  ? 'Abrir a Ordem/Empenho que autorizou este pedido'
-                                  : 'Abrir detalhes do pedido'}
-                              >
-                                {p.numero_pedido}
-                              </button>
-                            )}
+                            {/* O número abre o PEDIDO (21/09): o painel com empenho de
+                                origem, ordem, notas e ações — em toda linha, quitada ou
+                                não. Antes a linha quitada não tinha clique nenhum, e a
+                                outra abria só o PDF, que muitas vezes está no empenho e
+                                não no pedido; o painel mostra os dois caminhos. */}
+                            <button
+                              type="button"
+                              className="rounded text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              onClick={() => setPedidoSelecionado(p.id)}
+                              aria-expanded={selecionado}
+                              title="Abrir o pedido: empenho de origem, ordem, notas e ações"
+                            >
+                              {p.numero_pedido}
+                            </button>
                             {p.numero_empenho && (
                               <div className="g-meta text-muted-foreground" title="Empenho que autoriza este pedido">
                                 emp. {p.numero_empenho}
@@ -2713,7 +2741,15 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                                 </Select>
                               )
                             ) : (
-                              <span className="g-meta text-foreground-tertiary">—</span>
+                              /* A etapa vive no pedido do Kanban de Compras (`pedidos.status`);
+                                 pedido lançado direto no contrato não tem uma. Um traço
+                                 mudo parecia coluna "oculta" (21/09) — agora diz o porquê. */
+                              <span
+                                className="g-meta text-foreground-tertiary"
+                                title="Sem pedido no Kanban de Compras: a etapa operacional acompanha o pedido criado por lá (Criar no Kanban). Este foi lançado direto no contrato."
+                              >
+                                sem etapa
+                              </span>
                             )}
                           </TableCell>
                           <TableCell className="sticky right-0 z-10 border-l border-border bg-card">
