@@ -273,3 +273,25 @@ describe('Aba Pedidos — o painel do pedido selecionado', () => {
     expect(screen.getByText('Situação da reserva')).toBeInTheDocument();
   });
 });
+
+describe('Desfazer quitação (21/09) — a linha quitada tem lápis e desfazer, não lixeira', () => {
+  // Consultas presas ao próprio `container`: sem isso o segundo teste enxerga
+  // a tela que o primeiro deixou montada.
+  it('pedido com NF quitada mostra "Editar pedido" e "Desfazer quitação" e esconde "Excluir pedido"', async () => {
+    comUmPedidoEUmEmpenho();
+    dados.pedidos = [{
+      ...dados.pedidos[0], status: 'entregue', nf_quitada: true, data_quitacao: '2026-04-23', nota_fiscal: '000.000.123',
+    }];
+    const tela = within(montar().container);
+    expect((await tela.findAllByLabelText('Desfazer quitação')).length).toBeGreaterThan(0);
+    expect(tela.getAllByLabelText('Editar pedido').length).toBeGreaterThan(0);
+    expect(tela.queryByLabelText('Excluir pedido')).toBeNull();
+  });
+
+  it('pedido sem NF quitada mantém a lixeira e não oferece "Desfazer quitação"', async () => {
+    comUmPedidoEUmEmpenho();
+    const tela = within(montar().container);
+    expect((await tela.findAllByLabelText('Excluir pedido')).length).toBeGreaterThan(0);
+    expect(tela.queryByLabelText('Desfazer quitação')).toBeNull();
+  });
+});

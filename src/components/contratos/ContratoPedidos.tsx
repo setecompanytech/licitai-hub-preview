@@ -24,7 +24,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -45,7 +45,7 @@ import KitFaturamento from '@/components/financeiro/KitFaturamento';
 import {
   Plus, Trash2, Loader2, ShoppingCart, CheckCircle2, Clock, XCircle,
   Upload, FileText, AlertTriangle, DollarSign, Receipt, Pencil, ArrowUpDown, ArrowUp, ArrowDown,
-  ExternalLink, Link2, Eye, TrendingUp, Ban, ChevronDown, ChevronUp,
+  ExternalLink, Link2, Eye, TrendingUp, Ban, ChevronDown, ChevronUp, Undo2,
 } from 'lucide-react';
 import GerarPreNotaDialog from './GerarPreNotaDialog';
 import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
@@ -369,6 +369,14 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   // Delete audit dialog
   const [deleteDialog, setDeleteDialog] = useState<{ id: string; numero: string } | null>(null);
   const [deleteReason, setDeleteReason] = useState('');
+  // Desfazer quitação (21/09): o pedido em questão, o motivo e o que a
+  // pré-leitura achou (títulos pagos, bonificações pagas/pendentes).
+  const [desfazerDialog, setDesfazerDialog] = useState<Pedido | null>(null);
+  const [desfazerMotivo, setDesfazerMotivo] = useState('');
+  const [desfazendo, setDesfazendo] = useState(false);
+  const [desfazerInfo, setDesfazerInfo] = useState<{
+    titulosPagos: number; bonusPagas: number; bonusPendentes: number; valorBonusPendente: number;
+  } | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   const [uploading, setUploading] = useState(false);
@@ -1557,6 +1565,49 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     setDeleteReason('');
   };
 
+  // ── Desfazer quitação (21/09) ─────────────────────────────────────────────
+  // O inverso de "Quitar NF", na ordem inversa: só a quitação MANUAL se desfaz
+  // aqui. A que veio de título pago é do Financeiro ("Desfazer conciliação";
+  // o gatilho de 31/08 devolve o pedido sozinho), e bonificação já paga é fato
+  // consumado. A pré-leitura abaixo só decide o que o diálogo mostra — a
+  // guarda de verdade é a função `desfazer_quitacao_do_pedido`, no banco.
+  const openDesfazerDialog = async (p: Pedido) => {
+    setDesfazerDialog(p);
+    setDesfazerMotivo('');
+    setDesfazerInfo(null);
+    const [{ data: titulos }, { data: bonus }] = await Promise.all([
+      supabase.from('financeiro_lancamentos' as any).select('id, status').eq('contrato_pedido_id', p.id),
+      supabase.from('comissoes_lancamentos' as any).select('id, status, valor_comissao').eq('contrato_pedido_id', p.id),
+    ]);
+    const titulosPagos = ((titulos ?? []) as unknown as { status: string }[])
+      .filter(t => t.status === 'realizado' || t.status === 'conciliado').length;
+    const lista = (bonus ?? []) as unknown as { status: string; valor_comissao: number | null }[];
+    const pendentes = lista.filter(b => b.status !== 'pago');
+    setDesfazerInfo({
+      titulosPagos,
+      bonusPagas: lista.filter(b => b.status === 'pago').length,
+      bonusPendentes: pendentes.length,
+      valorBonusPendente: pendentes.reduce((s, b) => s + (Number(b.valor_comissao) || 0), 0),
+    });
+  };
+
+  const handleDesfazerQuitacao = async () => {
+    if (!desfazerDialog || desfazerMotivo.trim().length < 5) return;
+    setDesfazendo(true);
+    const { data, error } = await supabase.rpc('desfazer_quitacao_do_pedido' as any, {
+      p_pedido_id: desfazerDialog.id,
+      p_motivo: desfazerMotivo.trim(),
+    } as any);
+    setDesfazendo(false);
+    if (error) { toast.error('Não foi possível desfazer a quitação', { description: error.message }); return; }
+    const apagadas = Number((data as { bonificacoes_apagadas?: number } | null)?.bonificacoes_apagadas) || 0;
+    toast.success(apagadas > 0
+      ? `Quitação desfeita. ${apagadas} bonificação(ões) pendente(s) apagada(s); o pedido voltou a ser editável.`
+      : 'Quitação desfeita. O pedido voltou a ser editável.');
+    setDesfazerDialog(null);
+    load();
+  };
+
   const handleDeleteConfirmed = async () => {
     if (!deleteDialog || !deleteReason.trim()) return;
     const { id, numero } = deleteDialog;
@@ -2169,6 +2220,13 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 <Link2 aria-hidden="true" /> Vincular lançamento
               </Button>
             )}
+            {pedidoAberto.nf_quitada && (isFinanceiro || isAdmin) && (
+              <Button size="sm" variant="outline" className="g-controle"
+                onClick={() => void openDesfazerDialog(pedidoAberto)}
+                title="Desfazer a quitação desta NF-e (com motivo — fica no histórico do Admin)">
+                <Undo2 aria-hidden="true" /> Desfazer quitação
+              </Button>
+            )}
             <Button size="sm" variant="outline" className="g-controle"
               onClick={() => openEditDialog(pedidoAberto)}
               title={(isFinanceiro || isAdmin)
@@ -2716,6 +2774,15 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                                   onClick={() => openDeleteDialog(p.id, p.numero_pedido)}
                                 >
                                   <Trash2 aria-hidden="true" />
+                                </Button>
+                              )}
+                              {p.nf_quitada && (isFinanceiro || isAdmin) && (
+                                <Button
+                                  size="icon-sm" variant="ghost" onClick={() => void openDesfazerDialog(p)}
+                                  title="Desfazer quitação (com motivo — fica no histórico do Admin)"
+                                  aria-label="Desfazer quitação"
+                                >
+                                  <Undo2 aria-hidden="true" className="text-muted-foreground" />
                                 </Button>
                               )}
                               {/* O lápis existe em TODA linha (21/09): pedido com NF
@@ -3611,6 +3678,81 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
               </Button>
             </DialogFooter>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Desfazer quitação — o inverso do "Quitar NF", com as guardas da
+          função do banco: título pago manda ao Financeiro, bonificação paga
+          bloqueia, o resto pede motivo e fica no histórico. */}
+      <Dialog open={!!desfazerDialog} onOpenChange={(o) => !o && setDesfazerDialog(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Undo2 aria-hidden="true" className="h-5 w-5 text-muted-foreground" />
+              Desfazer quitação do pedido {desfazerDialog?.numero_pedido}
+            </DialogTitle>
+            <DialogDescription>
+              Quitada
+              {desfazerDialog?.data_quitacao ? ` em ${new Date(`${desfazerDialog.data_quitacao}T12:00:00`).toLocaleDateString('pt-BR')}` : ''}
+              {desfazerDialog?.nota_fiscal ? ` · NF ${desfazerDialog.nota_fiscal}` : ''}
+              {' · '}{fmt(Number(desfazerDialog?.valor_total) || 0)}
+            </DialogDescription>
+          </DialogHeader>
+          {desfazerInfo === null ? (
+            <div role="status" className="space-y-2">
+              <span className="sr-only">Conferindo títulos e bonificações…</span>
+              <Skeleton className="h-10" />
+              <Skeleton className="h-10" />
+            </div>
+          ) : desfazerInfo.titulosPagos > 0 ? (
+            <div className="rounded-lg border border-info-line bg-info-tint p-3 text-sm text-info-ink">
+              <p className="font-semibold">A quitação veio do Financeiro.</p>
+              <p className="mt-1">
+                Há {desfazerInfo.titulosPagos} título(s) pago(s) ligado(s) a este pedido: o dinheiro entrou. Para
+                desfazer, use "Desfazer conciliação" no recebimento, em Financeiro › Conciliação — o pedido
+                acompanha sozinho.
+              </p>
+            </div>
+          ) : desfazerInfo.bonusPagas > 0 ? (
+            <div className="rounded-lg border border-destructive-line bg-destructive-tint p-3 text-sm text-destructive-ink">
+              <p className="font-semibold">Bonificação já paga.</p>
+              <p className="mt-1">
+                {desfazerInfo.bonusPagas} bonificação(ões) sobre este pedido já foi(ram) paga(s) ao vendedor.
+                Estorne-a(s) em Equipe › Comissões antes de desfazer a quitação.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="rounded-lg border border-warning-line bg-warning-tint p-3 text-sm text-warning-ink">
+                <p className="font-semibold">O que vai acontecer</p>
+                <ul className="mt-1 list-disc space-y-1 pl-5">
+                  <li>O pedido volta a "não quitado", sem data de quitação, e passa a ser editável por inteiro e excluível com motivo.</li>
+                  <li>
+                    {desfazerInfo.bonusPendentes > 0
+                      ? `${desfazerInfo.bonusPendentes} bonificação(ões) pendente(s), no total de ${fmt(desfazerInfo.valorBonusPendente)}, será(ão) apagada(s).`
+                      : 'Não há bonificação pendente a apagar.'}
+                  </li>
+                  <li>Quem desfez, quando, o motivo e a data anterior ficam no histórico do Admin.</li>
+                </ul>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="desfazer-quitacao-motivo">Motivo (obrigatório)</Label>
+                <Textarea
+                  id="desfazer-quitacao-motivo" rows={3} value={desfazerMotivo}
+                  onChange={e => setDesfazerMotivo(e.target.value)}
+                  placeholder="Ex.: NF quitada no pedido errado; o pagamento é do pedido 004."
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter className="pt-2">
+            <Button variant="outline" onClick={() => setDesfazerDialog(null)}>Cancelar</Button>
+            {desfazerInfo !== null && desfazerInfo.titulosPagos === 0 && desfazerInfo.bonusPagas === 0 && (
+              <Button variant="destructive" onClick={handleDesfazerQuitacao} disabled={desfazendo || desfazerMotivo.trim().length < 5}>
+                {desfazendo ? <><Loader2 aria-hidden="true" className="animate-spin" /> Desfazendo…</> : 'Desfazer quitação'}
+              </Button>
+            )}
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
