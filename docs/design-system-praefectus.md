@@ -95,7 +95,7 @@ grupo (`text-xs font-semibold uppercase tracking-wider text-muted-foreground`).
 | | |
 | --- | --- |
 | Cartão | `rounded-lg` (10px) · `border border-border` · `bg-card` · `shadow-sm`; hover clicável: `hover:border-primary/40 hover:shadow-md` |
-| Botão / campo / select | 40px (`h-10`), `rounded-md` (8px); `sm` 36px; `lg` 44px; variantes `default` (uma por contexto) · `outline` · `secondary` (tonal) · `ghost` · `destructive` · `ghost-destructive` (lixeira de linha, tinta vermelha sem fundo) · `link` |
+| Botão / campo / select | 40px (`h-10`), `rounded-md` (8px); `sm` 36px; `lg` 44px; texto do campo 14px (`md:text-base`) e 16px abaixo de `md` (`text-lg` — piso anti-zoom do iOS; `text-base` é 14 nesta escala); variantes `default` (uma por contexto) · `outline` · `secondary` (tonal) · `ghost` · `destructive` · `ghost-destructive` (lixeira de linha, tinta vermelha sem fundo) · `link` |
 | Link com cara de botão | `<Button asChild><a …/></Button>` (herda variante e tamanho); `buttonVariants({ variant, size })` direto no `<a>` só quando não dá para envolver |
 | Chip / badge / selo | `rounded-sm` (6px), 22px, `text-xs font-semibold` |
 | Modal / drawer / menu | `rounded-xl` (12px) · `shadow-xl`; véu `bg-navy/45` |
