@@ -126,6 +126,12 @@ checar "registro único de navegação"          "Buscar ferramenta por nome ou 
 checar "cofre com cinco abas"                 "Validade não informada"
 checar "união de PDF que une de verdade"      "Converta para PDF antes de anexar"
 
+# Design System v3 (19–21/09) — a moldura nova e o selo de IA só existem no
+# código redesenhado; se faltarem, o domínio ainda serve a versão anterior.
+checar "sidebar v3 (rodapé Todas as ferramentas)" "Todas as ferramentas"
+checar "selo Praefectus IA"                   "Praefectus IA"
+checar "topbar v3 (busca no sistema)"         "Buscar no sistema"
+
 # Checagem invertida. Identificador que o código NÃO declara não pode ser
 # renomeado pelo minificador — sobra literal no bundle. Foi assim que a aba
 # Bonificações foi ao ar chamando podePagar() sem que a função existisse.

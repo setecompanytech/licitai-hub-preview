@@ -26,14 +26,17 @@ export default function AdminGuard({ children }: AdminGuardProps) {
 
   if (!isSystemAdmin) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh] p-6">
-        <div className="max-w-md w-full text-center space-y-6">
-          <div className="mx-auto w-16 h-16 rounded-2xl bg-destructive/10 flex items-center justify-center">
-            <ShieldAlert className="w-8 h-8 text-destructive" />
+      <div className="flex min-h-[60vh] items-center justify-center p-6">
+        {/* Estado de bloqueio no padrão do DS v3: ladrilho `rounded-lg` no trio
+            destructive (tint/ink), título 20/600, descrição 13 — era um
+            `rounded-2xl` com `bg-destructive/10`, fora do manual. */}
+        <div className="w-full max-w-md space-y-6 text-center">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-lg border border-destructive-line bg-destructive-tint text-destructive-ink">
+            <ShieldAlert className="h-7 w-7" aria-hidden="true" />
           </div>
           <div className="space-y-2">
-            <h1 className="text-2xl font-bold">Acesso Restrito</h1>
-            <p className="text-muted-foreground text-sm">
+            <h1 className="text-2xl font-semibold text-foreground">Acesso Restrito</h1>
+            <p className="text-sm text-muted-foreground">
               Este módulo é exclusivo para administradores do sistema.
             </p>
           </div>
