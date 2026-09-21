@@ -128,9 +128,9 @@ checar "união de PDF que une de verdade"      "Converta para PDF antes de anexa
 
 # Design System v3 (19–21/09) — a moldura nova e o selo de IA só existem no
 # código redesenhado; se faltarem, o domínio ainda serve a versão anterior.
-checar "sidebar v3 (rodapé Todas as ferramentas)" "Todas as ferramentas"
+checar "sidebar v3 (botão Recolher menu)"     "Recolher menu"
+checar "sidebar v3 (trilho Expandir menu)"    "Expandir menu"
 checar "selo Praefectus IA"                   "Praefectus IA"
-checar "topbar v3 (busca no sistema)"         "Buscar no sistema"
 
 # Checagem invertida. Identificador que o código NÃO declara não pode ser
 # renomeado pelo minificador — sobra literal no bundle. Foi assim que a aba
