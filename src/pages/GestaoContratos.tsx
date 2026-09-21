@@ -25,8 +25,11 @@ import ListaDeCampos, { BlocoDoPainel } from '@/components/gestao/ListaDeCampos'
 import PainelDoContrato from '@/components/contratos/PainelDoContrato';
 import { montarLinhas, type LinhaHierarquica } from '@/components/contratos/hierarquiaAtaDerivados';
 import {
-  AVISO_BASES_DISTINTAS, EXPLICA_ATA_ENCERRADA, formatarBRL, foiApurado, situacaoDoDocumento,
+  AVISO_BASES_DISTINTAS, EXPLICA_ATA_ENCERRADA, formatarBRL, foiApurado, situacaoDoDocumento, chaveDeExibicao,
 } from '@/components/contratos/formato';
+import {
+  FILTRO_DE_SITUACAO_PADRAO, OPCOES_DO_FILTRO_DE_SITUACAO, atendeAoFiltroDeSituacao, saldoDaCarteira, explicacaoDaSituacao,
+} from '@/lib/contratos/encerramento';
 import { useAbaNaUrl } from '@/lib/navegacao/aba-na-url';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
@@ -102,6 +105,8 @@ type Contrato = {
   valor_global: number; valor_consumido: number; saldo_remanescente: number;
   data_assinatura: string | null; data_inicio: string | null; data_fim: string | null;
   excluido_em?: string | null;
+  /** O fim DECLARADO (21/09) — só existe com status 'encerrado'. */
+  data_encerramento?: string | null; motivo_encerramento?: string | null;
   vigencia_meses: number | null; status: string; modalidade: string | null;
   uf: string | null; municipio: string | null; fiscal_nome: string | null;
   fiscal_email: string | null; fiscal_telefone: string | null; observacoes: string | null;
@@ -130,7 +135,9 @@ export default function GestaoContratos() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [licitacaoSearch, setLicitacaoSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  // Encerrados saem da lista por padrão (decisão do dono, 21/09); o filtro
+  // "Todos" ou "Encerrado" os traz de volta.
+  const [statusFilter, setStatusFilter] = useState<string>(FILTRO_DE_SITUACAO_PADRAO);
   const [tipoFilter, setTipoFilter] = useState<'all' | 'contrato' | 'ata_srp'>('all');
   // null = ainda não escolhido nesta sessão; o padrão sai do papel (abaixo).
   const [escopoFilter, setEscopoFilter] = useState<EscopoResponsavel | null>(null);
@@ -587,7 +594,8 @@ export default function GestaoContratos() {
     const valorApurado = foiApurado(c.valor_global);
     const pct = valorApurado && c.valor_global > 0 ? (c.valor_consumido / c.valor_global) * 100 : null;
     // O selo gravado envelhece sozinho; a data de fim manda. Ver vigencia.ts.
-    const chaveSituacao = statusEfetivo(c.status, c.data_fim);
+    // Vencido sem declaração é "Vencido", não "Encerrado" (formato.ts, 21/09).
+    const chaveSituacao = chaveDeExibicao(c.status, c.data_fim, isAta);
     const situacao = situacaoDoDocumento(chaveSituacao);
     const ataOrigem = c.ata_srp_id ? contratos.find(x => x.id === c.ata_srp_id) : null;
     const derivadosDaAta = isAta
@@ -649,7 +657,7 @@ export default function GestaoContratos() {
                     )}
                   </>
                 ) : (
-                  <SeloSituacao tom={situacao.tom} icone={situacao.icone}>{situacao.rotulo}</SeloSituacao>
+                  <SeloSituacao tom={situacao.tom} icone={situacao.icone} explicacao={explicacaoDaSituacao(c, chaveSituacao)}>{situacao.rotulo}</SeloSituacao>
                 )}
                 {isAta && <SeloSituacao tom="neutro" icone={ScrollText}>ATA SRP</SeloSituacao>}
                 {isAta && c.permite_carona && <SeloSituacao tom="neutro">Permite carona</SeloSituacao>}
@@ -778,7 +786,7 @@ export default function GestaoContratos() {
       || c.objeto.toLowerCase().includes(termoBuscado)
       || c.numero_contrato.toLowerCase().includes(termoBuscado)
       || c.orgao_contratante.toLowerCase().includes(termoBuscado);
-    const matchStatus = statusFilter === 'all' || c.status === statusFilter;
+    const matchStatus = atendeAoFiltroDeSituacao(c, statusFilter);
     const matchTipo = tipoFilter === 'all' || c.tipo_documento === tipoFilter;
     return matchSearch && matchStatus && matchTipo;
   };
@@ -809,8 +817,11 @@ export default function GestaoContratos() {
   const contratosComValor = soContratos.filter(c => foiApurado(c.valor_global));
   const totalValor = contratosComValor.reduce((s, c) => s + c.valor_global, 0);
   const semValorApurado = soContratos.length - contratosComValor.length;
-  const contratosComSaldo = soContratos.filter(c => foiApurado(c.saldo_remanescente));
-  const totalSaldo = contratosComSaldo.reduce((s, c) => s + c.saldo_remanescente, 0);
+  // A carteira (21/09): fora o encerrado (declarado) e o saldo negativo
+  // (execução acima do valor — pendência de aditivo, não saldo). O cartão
+  // diz quantos ficaram de fora; o filtro de situação mostra quais.
+  const carteira = saldoDaCarteira(soContratos);
+  const encerradosDeclarados = soContratos.filter(c => c.status === 'encerrado').length;
   const vencendo = soContratos.filter(c => { if (!c.data_fim) return false; const d = (new Date(c.data_fim).getTime() - Date.now()) / 86400000; return d > 0 && d <= 60; }).length;
   // Contrato que nasceu de uma ATA: agora aparece aninhado sob ela, não some.
   const derivadosDeAta = soContratos.filter(c => !!c.ata_srp_id).length;
@@ -836,9 +847,10 @@ export default function GestaoContratos() {
       rotulo: 'Contratos',
       valor: soContratos.length,
       icone: FileText,
-      detalhe: derivadosDeAta > 0
+      detalhe: (derivadosDeAta > 0
         ? `Base: contratos administrativos · ${derivadosDeAta} derivado(s) de ATA`
-        : 'Base: contratos administrativos, sem ATAs',
+        : 'Base: contratos administrativos, sem ATAs')
+        + (encerradosDeclarados > 0 ? ` · ${encerradosDeclarados} encerrado(s), fora da lista por padrão` : ''),
     },
     {
       rotulo: 'ATAs SRP',
@@ -860,15 +872,18 @@ export default function GestaoContratos() {
     },
     {
       rotulo: 'Saldo remanescente',
-      valor: soContratos.length > 0 && contratosComSaldo.length === 0
+      valor: soContratos.length > 0 && carteira.apurados === 0
         ? null
-        : formatCurrency(totalSaldo),
+        : formatCurrency(carteira.total),
       razaoIndisponivel: 'Saldo ainda não apurado',
       icone: TrendingUp,
       tom: 'ok',
-      detalhe: totalValor > 0
-        ? `Base: Σ saldo dos contratos, sem ATAs · ${Math.round((totalSaldo / totalValor) * 100)}% do valor total`
-        : 'Base: Σ saldo dos contratos, sem ATAs',
+      detalhe: [
+        'Base: Σ saldo dos contratos em andamento, sem ATAs',
+        carteira.valorDaBase > 0 ? `${Math.round((carteira.total / carteira.valorDaBase) * 100)}% do valor contratado` : null,
+        carteira.encerrados > 0 ? `${carteira.encerrados} encerrado(s) fora` : null,
+        carteira.negativos > 0 ? `${carteira.negativos} executado(s) acima do valor fora` : null,
+      ].filter(Boolean).join(' · '),
     },
     {
       rotulo: 'Vencendo em 60 dias',
@@ -882,12 +897,12 @@ export default function GestaoContratos() {
   const filtrosAplicados =
     (termoBuscado ? 1 : 0)
     + (tipoFilter !== 'all' ? 1 : 0)
-    + (statusFilter !== 'all' ? 1 : 0)
+    + (statusFilter !== FILTRO_DE_SITUACAO_PADRAO ? 1 : 0)
     + (escopoFilter !== null ? 1 : 0);
   const limparFiltros = () => {
     setSearch('');
     setTipoFilter('all');
-    setStatusFilter('all');
+    setStatusFilter(FILTRO_DE_SITUACAO_PADRAO);
     setEscopoFilter(null);
   };
 
@@ -1085,7 +1100,7 @@ export default function GestaoContratos() {
         const c = linha.registro;
         const ehAta = c.tipo_documento === 'ata_srp';
         // O selo gravado envelhece sozinho; a data de fim manda (vigencia.ts).
-        const chave = statusEfetivo(c.status, c.data_fim);
+        const chave = chaveDeExibicao(c.status, c.data_fim, ehAta);
         const s = situacaoDoDocumento(chave);
         const vivos = ehAta ? derivadosVigentesDa(c.id, doEscopo) : 0;
         const pct = foiApurado(c.valor_global) && c.valor_global > 0
@@ -1098,7 +1113,7 @@ export default function GestaoContratos() {
                 Vigência encerrada
               </SeloSituacao>
             ) : (
-              <SeloSituacao tom={s.tom} icone={s.icone}>{s.rotulo}</SeloSituacao>
+              <SeloSituacao tom={s.tom} icone={s.icone} explicacao={explicacaoDaSituacao(c, chave)}>{s.rotulo}</SeloSituacao>
             )}
             {/* Ata expirada com derivado vigente: a OPERAÇÃO segue — e é um
                 fato separado do fim da vigência, em selo separado. */}
@@ -1618,13 +1633,11 @@ export default function GestaoContratos() {
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="g-controle w-[160px]" aria-label="Situação"><SelectValue placeholder="Situação" /></SelectTrigger>
+            <SelectTrigger className="g-controle w-[200px]" aria-label="Situação"><SelectValue placeholder="Situação" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="vigente">Vigente</SelectItem>
-              <SelectItem value="vencendo">Vencendo</SelectItem>
-              <SelectItem value="encerrado">Encerrado</SelectItem>
-              <SelectItem value="suspenso">Suspenso</SelectItem>
+              {OPCOES_DO_FILTRO_DE_SITUACAO.map((o) => (
+                <SelectItem key={o.valor} value={o.valor}>{o.rotulo}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </BarraFiltros>
@@ -1837,7 +1850,7 @@ function ContratosDerivadosList({ ataId, contratos, onSelect }: { ataId: string;
             // O status gravado envelhece sozinho; a data de fim manda — a MESMA
             // regra da lista, senão a aba diz "vigente" para contrato vencido há
             // um ano e as telas se contradizem.
-            const s = situacaoDoDocumento(statusEfetivo(c.status, c.data_fim));
+            const s = situacaoDoDocumento(chaveDeExibicao(c.status, c.data_fim, false));
             const fatia = pctDaAta(foiApurado(c.valor_global) ? c.valor_global : 0);
             return (
               <button

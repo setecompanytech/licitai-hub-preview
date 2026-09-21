@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import type { ReactNode } from 'react';
@@ -304,5 +304,59 @@ describe('GestaoContratos — pasta do registro', () => {
     expect(await screen.findByRole('tab', { name: 'Pedidos' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Arquivos e Aditivos' })).toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: /Contratos derivados/ })).not.toBeInTheDocument();
+  });
+});
+
+describe('GestaoContratos — carteira e encerrados (decisões do dono, 21/09)', () => {
+  const originais = dados.contratos;
+  const brl = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+  const derivado = () => originais.find((c) => c.id === 'ct-derivado')!;
+
+  beforeEach(() => {
+    janelaLarga();
+    dados.contratos = [
+      ...originais,
+      // Declarado encerrado: sai da lista por padrão e da carteira.
+      { ...derivado(), id: 'ct-encerrado', numero_contrato: 'CT ENC/2024', ata_srp_id: null, status: 'encerrado',
+        data_encerramento: '2026-09-10', motivo_encerramento: 'prazo_vencido',
+        valor_global: 100_000, valor_consumido: 60_000, saldo_remanescente: 40_000 },
+      // Executado acima do valor: fica na lista, mas o saldo negativo não subtrai da carteira.
+      { ...derivado(), id: 'ct-negativo', numero_contrato: 'CT NEG/2024', ata_srp_id: null, status: 'vigente',
+        valor_global: 100_000, valor_consumido: 150_000, saldo_remanescente: -50_000 },
+      // Vencido pelo calendário sem declaração: "Vencido", em andamento, saldo na carteira.
+      { ...derivado(), id: 'ct-vencido', numero_contrato: 'CT VENC/2023', ata_srp_id: null, status: 'vigente',
+        data_fim: '2023-12-31', valor_global: 10_000, valor_consumido: 1_000, saldo_remanescente: 9_000 },
+    ];
+  });
+  afterAll(() => {
+    dados.contratos = originais;
+  });
+
+  it('a carteira soma só o que está em andamento e diz quantos ficaram de fora', async () => {
+    montar();
+    await screen.findByText('ATA 022/2024');
+    const base = screen.getByText(/Base: Σ saldo dos contratos em andamento, sem ATAs/);
+    // 200.000 (derivado) + 9.000 (vencido sem declaração); encerrado e negativo de fora.
+    // `textContent` cru: o NBSP do Intl não sobrevive à normalização do toHaveTextContent.
+    expect(base.parentElement!.textContent).toContain(brl(209_000));
+    expect(base).toHaveTextContent('1 encerrado(s) fora · 1 executado(s) acima do valor fora');
+  });
+
+  it('encerrado some da lista por padrão; o executado acima do valor e o vencido continuam', async () => {
+    montar();
+    await screen.findByText('ATA 022/2024');
+    // O número sai dentro do rótulo do instrumento ("Contrato ... n.º CT NEG/2024").
+    expect(screen.queryByText(/CT ENC\/2024/)).not.toBeInTheDocument();
+    expect(screen.getAllByText(/CT NEG\/2024/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/CT VENC\/2023/).length).toBeGreaterThan(0);
+    // O cartão "Contratos" avisa que há encerrados escondidos.
+    expect(screen.getByText(/1 encerrado\(s\), fora da lista por padrão/)).toBeInTheDocument();
+  });
+
+  it('vencido sem declaração é "Vencido", não "Encerrado"', async () => {
+    montar();
+    await screen.findByText('ATA 022/2024');
+    expect(within(linhaCom(/CT VENC\/2023/)).getByText('Vencido')).toBeInTheDocument();
+    expect(within(linhaCom(/CT VENC\/2023/)).queryByText('Encerrado')).not.toBeInTheDocument();
   });
 });

@@ -1,6 +1,7 @@
 import { CheckCircle2, Clock, AlertTriangle, Ban } from 'lucide-react';
 import type { ElementType } from 'react';
 import type { TomSituacao } from '@/components/gestao/SeloSituacao';
+import { statusEfetivo } from '@/lib/contratos/vigencia';
 
 /**
  * Como um valor e uma situação se escrevem na tela de contratos.
@@ -41,12 +42,33 @@ export const SITUACAO_DO_DOCUMENTO: Record<
 > = {
   vigente: { rotulo: 'Vigente', tom: 'sucesso', icone: CheckCircle2 },
   vencendo: { rotulo: 'Vencendo', tom: 'atencao', icone: Clock },
+  /** O calendário passou e ninguém decidiu — pendente de aditivo de prazo ou de encerramento. */
+  vencido: { rotulo: 'Vencido', tom: 'critico', icone: AlertTriangle },
   encerrado: { rotulo: 'Encerrado', tom: 'neutro', icone: Clock },
   suspenso: { rotulo: 'Suspenso', tom: 'critico', icone: Ban },
 };
 
 export function situacaoDoDocumento(chave: string) {
   return SITUACAO_DO_DOCUMENTO[chave] ?? SITUACAO_DO_DOCUMENTO.vigente;
+}
+
+/**
+ * A chave que a TELA mostra — separa o vencido pelo calendário do encerrado
+ * por decisão (21/09). `statusEfetivo` devolve 'encerrado' para os dois, e
+ * para a ATA isso está certo: a vigência acabou e ela não admite nova
+ * contratação ("Vigência encerrada", art. 84). Para o contrato, "Encerrado"
+ * no selo de um contrato que ninguém encerrou negava a decisão do dono: o
+ * sistema sugere, quem opera declara. Vencido sem declaração é "Vencido" —
+ * e continua "em andamento" na lista, porque a decisão está pendente.
+ */
+export function chaveDeExibicao(
+  statusGravado: string | null | undefined,
+  dataFim: string | null | undefined,
+  ehAta: boolean,
+): string {
+  const chave = statusEfetivo(statusGravado, dataFim);
+  if (!ehAta && chave === 'encerrado' && statusGravado !== 'encerrado') return 'vencido';
+  return chave;
 }
 
 /**

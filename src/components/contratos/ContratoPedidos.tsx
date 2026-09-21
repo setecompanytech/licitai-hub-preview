@@ -40,6 +40,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { rotuloDoMotivo } from '@/lib/contratos/encerramento';
 import { avisoDeExecucaoIncompativel } from '@/lib/contratos/instrumentos';
 import KitFaturamento from '@/components/financeiro/KitFaturamento';
 import {
@@ -342,6 +343,12 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   const [contratoInfo, setContratoInfo] = useState<{
     numero_contrato: string | null; orgao_contratante: string | null;
   } | null>(null);
+  /**
+   * O contrato foi DECLARADO encerrado (21/09): pedido novo não entra — as
+   * obrigações terminaram, e quem precisa lançar reabre no Resumo. Os pedidos
+   * já lançados seguem editáveis: entrega, nota e quitação continuam.
+   */
+  const [contratoEncerrado, setContratoEncerrado] = useState<{ data: string | null; motivo: string | null } | null>(null);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>(null);
   const [itens, setItens] = useState<ContratoItem[]>([]);
   const [aditivos, setAditivos] = useState<AditivoRef[]>([]);
@@ -726,7 +733,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       // relatório do Dashboard já as lê), então não repetem o risco da consulta
       // de prazos abaixo, que é separada justamente por depender de migration
       // colada à mão.
-      supabase.from('contratos').select('ata_srp_id, tipo_documento, forma_execucao, art95_fundamento, saldo_remanescente, valor_global, numero_contrato, orgao_contratante').eq('id', contratoId).single(),
+      supabase.from('contratos').select('ata_srp_id, tipo_documento, forma_execucao, art95_fundamento, saldo_remanescente, valor_global, numero_contrato, orgao_contratante, status, data_encerramento, motivo_encerramento').eq('id', contratoId).single(),
     ]);
     const pedidosData = (pedidosRes.data as any[]) || [];
     setPedidos(pedidosData);
@@ -750,6 +757,12 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       numero_contrato: (contratoRes.data as any)?.numero_contrato ?? null,
       orgao_contratante: (contratoRes.data as any)?.orgao_contratante ?? null,
     });
+    const fimDeclarado = contratoRes.data as unknown as {
+      status?: string | null; data_encerramento?: string | null; motivo_encerramento?: string | null;
+    } | null;
+    setContratoEncerrado(fimDeclarado?.status === 'encerrado'
+      ? { data: fimDeclarado.data_encerramento ?? null, motivo: fimDeclarado.motivo_encerramento ?? null }
+      : null);
 
     // Empenhos e o saldo de cada cota. Consulta separada e tolerante: as
     // tabelas vêm de migration colada à mão, e sem elas a checagem apenas não
@@ -962,6 +975,15 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   };
 
   const openNewDialog = async () => {
+    if (contratoEncerrado) {
+      const quando = contratoEncerrado.data
+        ? ` em ${new Date(`${String(contratoEncerrado.data).slice(0, 10)}T12:00:00`).toLocaleDateString('pt-BR')}`
+        : '';
+      toast.warning(`Contrato encerrado${quando} — pedido novo não entra`, {
+        description: `Motivo: ${rotuloDoMotivo(contratoEncerrado.motivo)}. Se o fornecimento continuou (aditivo, prorrogação), reabra o contrato no Resumo e lance o pedido em seguida.`,
+      });
+      return;
+    }
     resetForm();
     const numero = await gerarNumeroPedido();
     setForm(f => ({ ...f, numero_pedido: numero }));

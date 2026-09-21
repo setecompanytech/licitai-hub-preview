@@ -16,8 +16,13 @@ import { toast } from 'sonner';
 import {
   DollarSign, TrendingUp, Package, ShoppingCart, AlertTriangle,
   Calendar, Loader2, Receipt, Lock, Pencil, Check, X, CheckCircle2,
-  FilePlus2, Layers, ExternalLink, ListChecks,
+  FilePlus2, Layers, ExternalLink, ListChecks, RotateCcw,
 } from 'lucide-react';
+import { EncerrarContratoDialog, ReabrirContratoDialog } from './EncerramentoDoContrato';
+import {
+  MOTIVOS_ENCERRAMENTO, rotuloDoMotivo, sugestaoDeEncerramento, aditivoPosteriorAoEncerramento,
+  type MotivoEncerramento,
+} from '@/lib/contratos/encerramento';
 import CabecalhoDoDocumento from '@/components/documento/CabecalhoDoDocumento';
 import SecaoDoDocumento from '@/components/documento/SecaoDoDocumento';
 import DeOndeVem from '@/components/documento/DeOndeVem';
@@ -95,6 +100,9 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
   const [vigForm, setVigForm] = useState({ assinatura: '', inicio: '', fim: '' });
   const [salvandoVigencia, setSalvandoVigencia] = useState(false);
   const [globalInput, setGlobalInput] = useState('');
+  // Os diálogos do fim do contrato (21/09): declarar e reabrir.
+  const [encerrarAberto, setEncerrarAberto] = useState(false);
+  const [reabrirAberto, setReabrirAberto] = useState(false);
   const { temPermissao, isFinanceiro, isAdmin } = useMembroPermissoes();
 
   const podeVerCustos = isFinanceiro || isAdmin;
@@ -187,6 +195,9 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
   const calc = useMemo(() => {
     if (!data?.contrato) return null;
     const c = data.contrato;
+    // A DECLARAÇÃO de fim (21/09): só o status gravado diz que alguém
+    // encerrou. Vencido pelo calendário não é encerrado — é pendente.
+    const encerrado = c.status === 'encerrado';
     const pedidosAtivos = data.pedidos.filter((p: any) => p.status !== 'cancelado');
     const faturamento = pedidosAtivos.reduce((s: number, p: any) => s + (p.valor_total || 0), 0);
     
@@ -305,7 +316,8 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
     const formaFornecimento: 'unico' | 'continuo' | null = (c as any)?.forma_fornecimento ?? null;
     const saldoEsgotado = itensAlertaSaldo.some((i: any) =>
       Number(i.saldo_quantitativo_efetivo ?? i.saldo_quantitativo) <= 0);
-    const alertasSaldoVisiveis = formaFornecimento === 'unico' ? [] : itensAlertaSaldo;
+    // Encerrado, o alerta de saldo não protege pedido nenhum: não há próximo.
+    const alertasSaldoVisiveis = formaFornecimento === 'unico' || encerrado ? [] : itensAlertaSaldo;
     // Saldo esgotado mede pedidos LANÇADOS; concluído exige pedidos ENTREGUES.
     // Empenhado não é entregue (04/09): com os pedidos em Separar Estoque, o
     // painel dizia "fornecimento integral foi entregue" — mentira de estado.
@@ -314,7 +326,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
     const entregaUnicaEmAndamento = formaFornecimento === 'unico' && saldoEsgotado && !todosEntregues;
     const pedidosEntregues = pedidosAtivos.filter((p: any) => p.status === 'entregue').length;
     const pedidosAtivosTotal = pedidosAtivos.length;
-    const perguntarFormaFornecimento = formaFornecimento === null && saldoEsgotado;
+    const perguntarFormaFornecimento = formaFornecimento === null && saldoEsgotado && !encerrado;
     // Reajuste em sentido estrito: cumprido 1 ano da data-base (ou do último
     // reajuste registrado), o direito nasce — e o alerta junto (art. 92, §3º;
     // interregno da Lei 10.192/2001). Sem data-base registrada, silêncio: o
@@ -339,8 +351,31 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
     const meses: Record<string, number> = {};
     pedidosAtivos.forEach((p: any) => { if (p.data_pedido) { const k = p.data_pedido.substring(0, 7); meses[k] = (meses[k] || 0) + (p.valor_total || 0); } });
     const pedidosPorMes = Object.entries(meses).sort(([a], [b]) => a.localeCompare(b)).slice(-6);
+
+    // ── O fim do contrato: o sistema sugere, quem opera declara (21/09) ────
+    //
+    // "Esgotado" aqui é o CONTRATO, não um item: o valor consumido alcançou o
+    // global, ou todos os itens com quantidade zeraram o saldo. É o sinal que
+    // faz o painel perguntar se há aditivo a registrar ou se as obrigações se
+    // cumpriram — e só perguntar: encerrar é decisão de alguém.
+    const itensComQuantidade = itensComAditivo.filter((i) => Number(i.quantidade_contratada_total) > 0);
+    const contratoEsgotado = (valorGlobalEfetivo > 0 && (Number(c.valor_consumido) || 0) >= valorGlobalEfetivo)
+      || (itensComQuantidade.length > 0 && itensComQuantidade.every((i) => Number(i.saldo_quantitativo_efetivo) <= 0));
+    const sugestaoEncerramento = sugestaoDeEncerramento({
+      encerrado,
+      saldoEsgotado: contratoEsgotado,
+      vencido: vigencia.vencido,
+      vigenciaFrase: vigencia.frase,
+      entregaUnicaConcluida,
+      todosEntregues,
+      instrumento: c.tipo_documento === 'ata_srp' ? 'ata' : 'contrato',
+    });
+    // Encerrado com aditivo assinado depois: o contrato continuou — reabrir?
+    const aditivoPosterior = encerrado ? aditivoPosteriorAoEncerramento(c.data_encerramento, data.aditivos) : null;
+
     return { c, itensComAditivo, pedidosAtivos, faturamento, totalCustos, totalCustosTabela, custosDiretos, custoPedidos,
-      custoPago, custoComprometido, custoDoFinanceiro, custoPrevistoDoEntregue, desvioDeCusto, excesso, decenal, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, vigencia, prazoDecorrido, fisicoParado, itensAlertaSaldo, alertasSaldoVisiveis, entregaUnicaConcluida, entregaUnicaEmAndamento, pedidosEntregues, pedidosAtivosTotal, perguntarFormaFornecimento, pedidosPorMes, valorGlobalEfetivo, totalAditivoValorAcrescimo, totalAditivoValorSupressao, totalAditivoQtdAcrescimo, totalAditivoQtdSupressao, reajuste, reajusteDevido };
+      custoPago, custoComprometido, custoDoFinanceiro, custoPrevistoDoEntregue, desvioDeCusto, excesso, decenal, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, vigencia, prazoDecorrido, fisicoParado, itensAlertaSaldo, alertasSaldoVisiveis, entregaUnicaConcluida, entregaUnicaEmAndamento, pedidosEntregues, pedidosAtivosTotal, perguntarFormaFornecimento, pedidosPorMes, valorGlobalEfetivo, totalAditivoValorAcrescimo, totalAditivoValorSupressao, totalAditivoQtdAcrescimo, totalAditivoQtdSupressao, reajuste, reajusteDevido,
+      encerrado, contratoEsgotado, sugestaoEncerramento, aditivoPosterior };
   }, [data]);
 
   if (loading) {
@@ -374,7 +409,8 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
     decenal, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, vigencia, prazoDecorrido,
     fisicoParado, itensAlertaSaldo, alertasSaldoVisiveis, entregaUnicaConcluida, entregaUnicaEmAndamento,
     pedidosEntregues, pedidosAtivosTotal, perguntarFormaFornecimento, valorGlobalEfetivo,
-    totalAditivoValorAcrescimo, totalAditivoValorSupressao, reajuste, reajusteDevido } = calc;
+    totalAditivoValorAcrescimo, totalAditivoValorSupressao, reajuste, reajusteDevido,
+    encerrado, sugestaoEncerramento, aditivoPosterior } = calc;
   const margemBruta = faturamento > 0 ? (lucroBruto / faturamento) * 100 : 0;
   const margemLiquida = faturamento > 0 ? (lucroLiquido / faturamento) * 100 : 0;
 
@@ -447,11 +483,15 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
         ? fmt(Number(saldoRemanescente))
         : null,
       razaoIndisponivel: 'Apuração a validar',
-      detalhe: valorGlobalEfetivo > 0 && saldoRemanescente != null
-        ? 'valor global menos o que já foi consumido'
-        : 'depende do valor global, ainda não apurado',
+      // Encerrado, o saldo que sobrou não é carteira: é o que ficou sem
+      // executar — e a linha de base diz isso, em vez de pintar de vermelho.
+      detalhe: encerrado
+        ? `encerrado em ${dataBr(c.data_encerramento) ?? '—'} · ${Number(saldoRemanescente) > 0 ? 'saldo não executado' : 'executado por inteiro'}`
+        : valorGlobalEfetivo > 0 && saldoRemanescente != null
+          ? 'valor global menos o que já foi consumido'
+          : 'depende do valor global, ainda não apurado',
       icone: TrendingUp,
-      tom: (Number(saldoRemanescente) > 0 ? 'ok' : 'critico') as 'ok' | 'critico',
+      tom: (encerrado ? 'neutro' : Number(saldoRemanescente) > 0 ? 'ok' : 'critico') as 'ok' | 'critico' | 'neutro',
     },
   ];
 
@@ -606,7 +646,68 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
       ),
     });
   }
-  const pendenciaEmDestaque = acoes[0] ?? null;
+  // ── O fim do contrato: o sistema sugere, quem opera declara (21/09) ──────
+  //
+  // Encerrado, as pendências de saldo, vigência, forma de fornecimento,
+  // reajuste e teto decenal deixam de existir — não há próximo pedido a
+  // proteger nem prazo a renovar. Ficam as que ainda pedem registro: a
+  // execução acima do valor (o aditivo que faltou), o consumo sem lastro
+  // físico e a despesa não atribuída.
+  const SOBREVIVEM_AO_ENCERRAMENTO = new Set(['excesso-fora-do-125', 'excesso-regularizavel', 'fisico-parado', 'sem-custo-atribuido']);
+  const pendencias: AcaoPendente[] = encerrado ? acoes.filter((a) => SOBREVIVEM_AO_ENCERRAMENTO.has(a.chave)) : [...acoes];
+  const nomeDoInstrumento = isAtaSrp ? 'a ata' : 'o contrato';
+  if (encerrado && aditivoPosterior) {
+    pendencias.unshift({
+      chave: 'reabrir-por-aditivo',
+      titulo: `Aditivo ${aditivoPosterior.numero} assinado após o encerramento — reabrir ${nomeDoInstrumento}?`,
+      detalhe: `Assinado em ${dataBr(aditivoPosterior.data)}, depois do encerramento em ${dataBr(c.data_encerramento) ?? '—'}. `
+        + 'Aditivo depois do fim diz que o fornecimento continuou: reabra para a carteira e os pedidos voltarem a valer.',
+      tom: 'atencao',
+      acao: (
+        <Button size="sm" variant="outline" className="g-controle" onClick={() => setReabrirAberto(true)}>
+          <RotateCcw aria-hidden="true" /> Reabrir {nomeDoInstrumento}
+        </Button>
+      ),
+    });
+  }
+  if (encerrado && c.motivo_encerramento === 'nao_informado') {
+    pendencias.unshift({
+      chave: 'encerrado-sem-motivo',
+      titulo: 'Encerrado sem motivo registrado',
+      detalhe: 'A situação foi alterada para Encerrado sem dizer por quê. O relatório e a trilha precisam do motivo e da data.',
+      tom: 'atencao',
+      acao: (
+        <Button size="sm" variant="outline" className="g-controle" onClick={() => setEncerrarAberto(true)}>
+          Informar o motivo
+        </Button>
+      ),
+    });
+  }
+  if (sugestaoEncerramento) {
+    // A pergunta substitui o aviso seco de vigência vencida: é o mesmo fato,
+    // agora com as duas saídas — aditivo ou encerramento.
+    if (sugestaoEncerramento.motivo === 'prazo_vencido') {
+      const i = pendencias.findIndex((a) => a.chave === 'vigencia-vencida');
+      if (i >= 0) pendencias.splice(i, 1);
+    }
+    pendencias.unshift({
+      chave: 'encerramento',
+      titulo: sugestaoEncerramento.titulo,
+      detalhe: sugestaoEncerramento.detalhe,
+      tom: sugestaoEncerramento.motivo === 'prazo_vencido' ? 'critico' : 'atencao',
+      acao: (
+        <div className="flex flex-wrap gap-2">
+          <Button asChild size="sm" variant="outline" className="g-controle">
+            <Link to={abaDoContrato('contratos-aditivos')}>Registrar aditivo de {sugestaoEncerramento.aditivo}</Link>
+          </Button>
+          <Button size="sm" variant="outline" className="g-controle" onClick={() => setEncerrarAberto(true)}>
+            Encerrar {nomeDoInstrumento}
+          </Button>
+        </div>
+      ),
+    });
+  }
+  const pendenciaEmDestaque = pendencias[0] ?? null;
 
   return (
     <div className="documento impressao-em-coluna flex min-w-0 flex-col gap-4">
@@ -649,6 +750,35 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
         <ContratoEficacia contratoId={contratoId} />
       </section>
 
+      {/* ── O fato declarado (21/09) ─────────────────────────────────────────
+          Sai no papel também: o relatório de execução precisa dizer que o
+          contrato terminou, quando e por quê. Só os botões ficam na tela. */}
+      {encerrado && (
+        <Alert className="bloco-inteiro">
+          <CheckCircle2 aria-hidden="true" />
+          <AlertTitle>
+            {isAtaSrp ? 'Ata encerrada' : 'Contrato encerrado'}
+            {dataBr(c.data_encerramento) ? ` em ${dataBr(c.data_encerramento)}` : ''} · {rotuloDoMotivo(c.motivo_encerramento)}
+          </AlertTitle>
+          <AlertDescription className="text-muted-foreground">
+            {MOTIVOS_ENCERRAMENTO[(c.motivo_encerramento ?? 'nao_informado') as MotivoEncerramento]?.explicacao
+              ?? MOTIVOS_ENCERRAMENTO.nao_informado.explicacao}
+            {Number(saldoRemanescente) > 0 && <> Saldo não executado: {fmt(Number(saldoRemanescente))}.</>}
+            {' '}Pedido novo fica barrado; os já lançados seguem editáveis, com notas e quitações.
+            <div className="nao-imprime mt-2 flex flex-wrap gap-2">
+              {c.motivo_encerramento === 'nao_informado' && (
+                <Button size="sm" variant="outline" className="g-controle" onClick={() => setEncerrarAberto(true)}>
+                  Informar o motivo
+                </Button>
+              )}
+              <Button size="sm" variant="outline" className="g-controle" onClick={() => setReabrirAberto(true)}>
+                <RotateCcw aria-hidden="true" /> Reabrir {isAtaSrp ? 'a ata' : 'o contrato'}
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {entregaUnicaEmAndamento && (
         <Alert className="nao-imprime">
           <CheckCircle2 aria-hidden="true" />
@@ -661,14 +791,19 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
         </Alert>
       )}
 
-      {entregaUnicaConcluida && (
+      {entregaUnicaConcluida && !encerrado && (
         <Alert variant="success" className="nao-imprime">
           <CheckCircle2 aria-hidden="true" />
           <AlertTitle>Entrega única concluída</AlertTitle>
           <AlertDescription>
             O fornecimento integral foi entregue e o saldo se esgotou — aqui isso é conclusão,
-            não alerta. Se não restam outras obrigações, o contrato pode ser marcado como
-            Encerrado (lápis do Valor Global → status).
+            não alerta. Se não restam outras obrigações, encerre o contrato: a decisão fica
+            registrada com data e motivo, e o saldo sai da carteira.
+            <div className="mt-2">
+              <Button size="sm" variant="outline" className="g-controle" onClick={() => setEncerrarAberto(true)}>
+                Encerrar o contrato
+              </Button>
+            </div>
           </AlertDescription>
         </Alert>
       )}
@@ -805,18 +940,18 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
                       <ListChecks className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                       Próximas ações
                     </h3>
-                    {acoes.length > 0 && (
-                      <span className="g-meta tabular-nums text-muted-foreground">{acoes.length} pendente(s)</span>
+                    {pendencias.length > 0 && (
+                      <span className="g-meta tabular-nums text-muted-foreground">{pendencias.length} pendente(s)</span>
                     )}
                   </div>
-                  {acoes.length === 0 ? (
+                  {pendencias.length === 0 ? (
                     <p className="g-corpo text-muted-foreground">
                       Nada pendente por aqui: vigência em dia, execução dentro do contratado e nenhum
                       saldo de item em alerta.
                     </p>
                   ) : (
                     <ul className="flex flex-col gap-3">
-                      {acoes.map((a) => (
+                      {pendencias.map((a) => (
                         <li key={a.chave} className="flex flex-col gap-1.5 border-b border-border/70 pb-3 last:border-0 last:pb-0">
                           <SeloSituacao tom={a.tom} className="self-start">{a.titulo}</SeloSituacao>
                           <p className="g-meta text-muted-foreground">{a.detalhe}</p>
@@ -1245,6 +1380,14 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
                   ...(c.objeto
                     ? [{ rotulo: 'Objeto', largo: true, valor: <TextoExpansivel texto={String(c.objeto)} linhas={3} /> }]
                     : []),
+                  // O fim declarado vai na ficha — e, por ela, no relatório impresso.
+                  ...(encerrado
+                    ? [{
+                        rotulo: 'Encerramento',
+                        largo: true,
+                        valor: `${dataBr(c.data_encerramento) ?? 'data não informada'} · ${rotuloDoMotivo(c.motivo_encerramento)}`,
+                      }]
+                    : []),
                 ]}
               />
             </BlocoDoPainel>
@@ -1538,6 +1681,34 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
             ? [{ papel: 'Fiscal do contrato (órgão)', nome: c.fiscal_nome }]
             : []),
         ]}
+      />
+
+      {/* Os diálogos do fim do contrato (21/09). Só eles escrevem — via RPC —
+          e o painel atualiza o próprio estado com a resposta; a lista, ao
+          lado, recarrega pelo realtime de `contratos`. */}
+      <EncerrarContratoDialog
+        aberto={encerrarAberto}
+        aoFechar={() => setEncerrarAberto(false)}
+        contratoId={contratoId}
+        instrumento={isAtaSrp ? 'ata' : 'contrato'}
+        motivoSugerido={encerrado ? null : sugestaoEncerramento?.motivo ?? null}
+        dataSugerida={encerrado
+          ? c.data_encerramento ?? null
+          : sugestaoEncerramento?.motivo === 'prazo_vencido' ? c.data_fim ?? null : null}
+        completarMotivo={encerrado && c.motivo_encerramento === 'nao_informado'}
+        aoConcluir={(r) => setData(prev => prev
+          ? { ...prev, contrato: { ...prev.contrato, status: 'encerrado', data_encerramento: r.data_encerramento, motivo_encerramento: r.motivo } }
+          : prev)}
+      />
+      <ReabrirContratoDialog
+        aberto={reabrirAberto}
+        aoFechar={() => setReabrirAberto(false)}
+        contratoId={contratoId}
+        instrumento={isAtaSrp ? 'ata' : 'contrato'}
+        aditivo={aditivoPosterior ? { id: aditivoPosterior.id, numero: aditivoPosterior.numero } : null}
+        aoConcluir={() => setData(prev => prev
+          ? { ...prev, contrato: { ...prev.contrato, status: 'vigente', data_encerramento: null, motivo_encerramento: null } }
+          : prev)}
       />
     </div>
   );

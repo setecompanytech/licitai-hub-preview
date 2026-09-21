@@ -176,6 +176,36 @@ delas precisa passar por ele:
   `useLicitacaoIntegration.promoverFase`. O espelho PNCP (Revogada/Anulada/
   Suspensa) só PEDE desfecho na agenda; nunca decide por ninguém.
 
+## Encerramento de contrato — decisões do dono (21/09/2026)
+
+Vigência em dia não significa obrigação em aberto: o quantitativo pode ter
+sido todo fornecido antes do prazo. O fim do contrato é um FATO DECLARADO,
+com motivo e data (`contratos.status = 'encerrado'` + `data_encerramento` +
+`motivo_encerramento`, trilha em `contrato_encerramentos`, migration
+`20260921000002`). Regras que sustentam isso — mudança que contrarie
+qualquer uma passa pelo Rafael:
+
+- **O sistema sugere, quem opera declara.** Saldo esgotado ou vigência
+  vencida fazem o Resumo PERGUNTAR (aditivo ou encerramento); nunca
+  encerram sozinhos. Regras puras em `lib/contratos/encerramento.ts`.
+- **Vencido ≠ Encerrado.** Vencido pelo calendário sem declaração é
+  "Vencido" e continua "em andamento" — pendente de aditivo de prazo ou de
+  encerramento (`chaveDeExibicao` em `components/contratos/formato.ts`). A
+  ATA vencida segue "Vigência encerrada" (art. 84).
+- **Só as RPCs escrevem** (`encerrar_contrato`, `reabrir_contrato`). Status
+  mudado por fora ganha trilha com motivo `nao_informado`, e a tela pede o
+  motivo. Nunca gravar `status = 'encerrado'` direto na tela.
+- **A carteira não soma encerrado nem saldo negativo.** "Saldo remanescente"
+  em Gestão de Contratos exclui os dois e diz quantos ficaram de fora; a lista
+  esconde encerrados por padrão (filtro "Em andamento"); "Executados acima do
+  valor" cruza o saldo negativo. Saldo negativo é pendência de aditivo, não
+  saldo.
+- **Encerrar não apaga nem recalcula.** Pedido NOVO é barrado (aba Pedidos e
+  Kanban de Compras); pedidos lançados seguem editáveis, com nota e quitação.
+  Reabrir devolve tudo, e a trilha guarda os dois fatos.
+- **Metas não mudam com o encerramento.** "Contratos ganhos" segue somando o
+  valor global no mês da assinatura (decisão 3, 21/09).
+
 ## Permissões — o que é da plataforma não aparece ao cliente (pedido do Rafael em 14/09, decidido em 19/09/2026)
 
 O Rafael quer que parte do sistema deixe de ficar exposta às contas das

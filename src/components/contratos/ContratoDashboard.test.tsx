@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import ContratoDashboard from './ContratoDashboard';
 
@@ -271,5 +271,72 @@ describe('Resumo do contrato — degradação quando a migration falta', () => {
     expect(
       screen.getByText(/visíveis apenas para o setor Financeiro e Administradores/),
     ).toBeInTheDocument();
+  });
+});
+
+describe('Resumo do contrato — o fim é declarado, o sistema só sugere (21/09)', () => {
+  it('contrato encerrado: faixa com data e motivo, saldo sem alerta e botão de reabrir', async () => {
+    dados.contrato = contratoBase({
+      status: 'encerrado',
+      data_encerramento: '2026-09-10',
+      motivo_encerramento: 'quantitativo_esgotado',
+      valor_consumido: 1000,
+      saldo_remanescente: 0,
+    });
+    dados.itens = [{ id: 'i1', descricao: 'Item A', unidade: 'KG', quantidade_contratada: 100, quantidade_consumida: 100, saldo_quantitativo: 0 }];
+    dados.pedidos = [{ id: 'p1', status: 'entregue', valor_total: 1000, data_pedido: '2026-02-01' }];
+    montar();
+
+    expect(await screen.findByText(/Contrato encerrado em 10\/09\/2026 · Quantitativo esgotado/)).toBeInTheDocument();
+    // O KPI de saldo deixa de ser vermelho: diz que foi executado por inteiro.
+    // `textContent` cru: o NBSP do Intl não sobrevive à normalização do toHaveTextContent.
+    expect(indicadorPelaBase(/encerrado em 10\/09\/2026 · executado por inteiro/).textContent).toContain(brl(0));
+    // Encerrado não tem próximo pedido a proteger: o alerta de saldo some.
+    expect(screen.queryByText(/saldo baixo ou esgotado/)).not.toBeInTheDocument();
+    // E ninguém é convidado a encerrar de novo.
+    expect(screen.queryByText(/chegou ao fim\?/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Reabrir o contrato/ })).toBeInTheDocument();
+    // A ficha (e o relatório impresso, por ela) registra o fato.
+    expect(screen.getByText('Encerramento')).toBeInTheDocument();
+    expect(screen.getByText('10/09/2026 · Quantitativo esgotado')).toBeInTheDocument();
+  });
+
+  it('encerrado sem motivo (status mudado por fora): pede o motivo', async () => {
+    dados.contrato = contratoBase({ status: 'encerrado', data_encerramento: '2026-09-10', motivo_encerramento: 'nao_informado' });
+    montar();
+    expect((await screen.findAllByText('Encerrado sem motivo registrado')).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: 'Informar o motivo' }).length).toBeGreaterThan(0);
+  });
+
+  it('saldo esgotado sem declaração: a pergunta com as duas saídas, e o diálogo de encerrar', async () => {
+    dados.contrato = contratoBase({ valor_consumido: 1000, saldo_remanescente: 0 });
+    dados.pedidos = [{ id: 'p1', status: 'entregue', valor_total: 1000, data_pedido: '2026-02-01' }];
+    montar();
+
+    expect((await screen.findAllByText('Saldo esgotado — o contrato chegou ao fim?')).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('link', { name: 'Registrar aditivo de quantidade ou valor' })[0])
+      .toHaveAttribute('href', '/gestao-contratos?contrato=c-1&aba=contratos-aditivos');
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Encerrar o contrato' })[0]);
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByLabelText('Data do encerramento')).toBeInTheDocument();
+    // O motivo sugerido pelo sinal já vem escolhido.
+    expect(screen.getByText('Todo o quantitativo contratado foi fornecido: as obrigações se cumpriram antes do fim da vigência.')).toBeInTheDocument();
+  });
+
+  it('vigência vencida sem declaração: a pergunta substitui o aviso seco e oferece o aditivo de prazo', async () => {
+    dados.contrato = contratoBase({ data_fim: '2026-01-01' });
+    montar();
+
+    expect((await screen.findAllByText('Vigência vencida — o contrato chegou ao fim?')).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('link', { name: 'Registrar aditivo de prazo' }).length).toBeGreaterThan(0);
+    // O cartão antigo, que só mandava registrar o aditivo, não aparece em dobro.
+    expect(screen.queryByText('Vigência vencida')).not.toBeInTheDocument();
+  });
+
+  it('sem sinal de fim, ninguém é convidado a encerrar', async () => {
+    montar();
+    await screen.findByText('Próximas ações');
+    expect(screen.queryByText(/chegou ao fim\?/)).not.toBeInTheDocument();
   });
 });

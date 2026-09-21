@@ -6,10 +6,12 @@ import ListaDeCampos, { BlocoDoPainel, type Campo } from '@/components/gestao/Li
 import SeloSituacao, { ValorIndisponivel, AvisoDeContexto } from '@/components/gestao/SeloSituacao';
 import TextoExpansivel from '@/components/gestao/TextoExpansivel';
 import { nomeDoOrgao, rotuloDoDocumento } from '@/lib/contratos/rotulos';
-import { situacaoDaVigencia, statusEfetivo } from '@/lib/contratos/vigencia';
+import { situacaoDaVigencia } from '@/lib/contratos/vigencia';
+import { explicacaoDaSituacao } from '@/lib/contratos/encerramento';
 import {
   AVISO_BASES_DISTINTAS,
   EXPLICA_ATA_ENCERRADA,
+  chaveDeExibicao,
   formatarBRL,
   foiApurado,
   situacaoDoDocumento,
@@ -50,6 +52,9 @@ export interface RegistroDoPainel {
   data_inicio: string | null;
   data_fim: string | null;
   status: string;
+  /** O fim DECLARADO (21/09) — só existe com status 'encerrado'. */
+  data_encerramento?: string | null;
+  motivo_encerramento?: string | null;
   permite_carona?: boolean | null;
   uf?: string | null;
   municipio?: string | null;
@@ -117,7 +122,9 @@ export default function PainelDoContrato({
 }: PainelDoContratoProps) {
   const ehAta = registro.tipo_documento === 'ata_srp';
   const numero = ehAta ? registro.numero_ata || registro.numero_contrato : registro.numero_contrato;
-  const chaveSituacao = statusEfetivo(registro.status, registro.data_fim);
+  // Vencido sem declaração é "Vencido", não "Encerrado" (formato.ts, 21/09).
+  const chaveSituacao = chaveDeExibicao(registro.status, registro.data_fim, ehAta);
+  const explicacaoSituacao = explicacaoDaSituacao(registro, chaveSituacao);
   const situacao = situacaoDoDocumento(chaveSituacao);
   const prazo = situacaoDaVigencia(registro.data_fim);
   const ataEncerradaComExecucao = ehAta && chaveSituacao === 'encerrado' && derivadosVigentes > 0;
@@ -175,7 +182,7 @@ export default function PainelDoContrato({
     {
       rotulo: 'Situação',
       valor: (
-        <SeloSituacao tom={situacao.tom} icone={situacao.icone}>
+        <SeloSituacao tom={situacao.tom} icone={situacao.icone} explicacao={explicacaoSituacao}>
           {situacao.rotulo}
         </SeloSituacao>
       ),
@@ -202,7 +209,7 @@ export default function PainelDoContrato({
               </SeloSituacao>
             </>
           ) : (
-            <SeloSituacao tom={situacao.tom} icone={situacao.icone}>
+            <SeloSituacao tom={situacao.tom} icone={situacao.icone} explicacao={explicacaoSituacao}>
               {ehAta && chaveSituacao === 'encerrado' ? 'Vigência encerrada' : situacao.rotulo}
             </SeloSituacao>
           )}
