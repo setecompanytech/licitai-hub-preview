@@ -1416,7 +1416,16 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
       {/* ── Só no papel: o controle de pedidos e de saldos (21/09) ──────────
           Na tela essas listas vivem nas abas Pedidos e Itens/Lotes; o relatório
           impresso precisa trazê-las, senão sai só o resumo. São os mesmos
-          registros já carregados por este painel — nada novo é lido. */}
+          registros já carregados por este painel — nada novo é lido.
+          As duas tabelas usam `table-fixed` + largura por coluna: a regra
+          global `td, th { overflow-wrap: anywhere }` faz o layout automático
+          tratar cada célula como se coubesse em 1 caractere, e a descrição
+          longa engolia as colunas de número — "R$ 49.4 / 00,00", "Contr /
+          atado". Com largura fixa, número, data e valor levam
+          `whitespace-nowrap` (nunca quebram) e as colunas foram medidas para
+          o maior valor plausível (R$ 9.999.999,99, 9.999,999, dd/mm/aaaa);
+          texto livre (descrição, nº do pedido, NF-e) quebra no espaço e só
+          parte uma palavra que não caiba sozinha na coluna. */}
       <SecaoDoDocumento
         numero="6"
         titulo={isAtaSrp ? 'Empenhos diretos, notas e quitações' : 'Pedidos, notas e quitações'}
@@ -1425,9 +1434,13 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
         {(data!.pedidos as any[]).length === 0 ? (
           <p className="g-corpo text-muted-foreground">Nenhum pedido lançado.</p>
         ) : (
-          <table className="w-full text-[11px] leading-tight">
+          <table className="w-full table-fixed text-[11px] leading-tight">
+            <colgroup>
+              <col className="w-[8%]" /><col className="w-[25%]" /><col className="w-[8%]" /><col className="w-[14%]" />
+              <col className="w-[11%]" /><col className="w-[10%]" /><col className="w-[13%]" /><col className="w-[11%]" />
+            </colgroup>
             <thead>
-              <tr className="border-b border-black text-left">
+              <tr className="border-b border-black text-left align-bottom">
                 <th className="py-1 pr-2 font-semibold">Pedido</th>
                 <th className="py-1 pr-2 font-semibold">Item / descrição</th>
                 <th className="py-1 pr-2 text-right font-semibold">Qtd.</th>
@@ -1447,9 +1460,9 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
                     <td className="py-1 pr-2">
                       {p.descricao || data!.itens.find((i: any) => i.id === p.contrato_item_id)?.descricao || '—'}
                     </td>
-                    <td className="py-1 pr-2 text-right tabular-nums">{fmtQtd(p.quantidade)}</td>
-                    <td className="py-1 pr-2 text-right tabular-nums">{fmt(Number(p.valor_total) || 0)}</td>
-                    <td className="py-1 pr-2 tabular-nums">{dataBr(p.data_pedido) ?? '—'}</td>
+                    <td className="whitespace-nowrap py-1 pr-2 text-right tabular-nums">{fmtQtd(p.quantidade)}</td>
+                    <td className="whitespace-nowrap py-1 pr-2 text-right tabular-nums">{fmt(Number(p.valor_total) || 0)}</td>
+                    <td className="whitespace-nowrap py-1 pr-2 tabular-nums">{dataBr(p.data_pedido) ?? '—'}</td>
                     <td className="py-1 pr-2">{SITUACAO_PEDIDO[p.status] ?? p.status ?? '—'}</td>
                     <td className="py-1 pr-2 tabular-nums">{p.nota_fiscal || '—'}</td>
                     <td className="py-1 tabular-nums">{p.nf_quitada ? `Quitada${p.data_quitacao ? ` em ${dataBr(p.data_quitacao)}` : ''}` : '—'}</td>
@@ -1459,7 +1472,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
             <tfoot>
               <tr className="border-t border-black font-semibold">
                 <td className="py-1 pr-2" colSpan={3}>Total dos pedidos não cancelados ({pedidosAtivos.length})</td>
-                <td className="py-1 pr-2 text-right tabular-nums">{fmt(faturamento)}</td>
+                <td className="whitespace-nowrap py-1 pr-2 text-right tabular-nums">{fmt(faturamento)}</td>
                 <td colSpan={4} />
               </tr>
             </tfoot>
@@ -1471,9 +1484,13 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
         {(itensComAditivo as any[]).length === 0 ? (
           <p className="g-corpo text-muted-foreground">Nenhum item cadastrado.</p>
         ) : (
-          <table className="w-full text-[11px] leading-tight">
+          <table className="w-full table-fixed text-[11px] leading-tight">
+            <colgroup>
+              <col className="w-[37%]" /><col className="w-[6%]" /><col className="w-[11%]" /><col className="w-[11%]" />
+              <col className="w-[9%]" /><col className="w-[12%]" /><col className="w-[14%]" />
+            </colgroup>
             <thead>
-              <tr className="border-b border-black text-left">
+              <tr className="border-b border-black text-left align-bottom">
                 <th className="py-1 pr-2 font-semibold">Item</th>
                 <th className="py-1 pr-2 font-semibold">Un.</th>
                 <th className="py-1 pr-2 text-right font-semibold">Contratado</th>
@@ -1490,12 +1507,12 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
                 return (
                   <tr key={i.id} className="border-b border-border/70 align-top">
                     <td className="py-1 pr-2">{i.codigo_item ? `${i.codigo_item} · ` : ''}{i.descricao}</td>
-                    <td className="py-1 pr-2">{i.unidade || '—'}</td>
-                    <td className="py-1 pr-2 text-right tabular-nums">{fmtQtd(i.quantidade_contratada_total)}</td>
-                    <td className="py-1 pr-2 text-right tabular-nums">{fmtQtd(i.quantidade_consumida)}</td>
-                    <td className={`py-1 pr-2 text-right tabular-nums ${saldo <= 0 ? 'font-semibold' : ''}`}>{fmtQtd(saldo)}</td>
-                    <td className="py-1 pr-2 text-right tabular-nums">{fmt(vu)}</td>
-                    <td className="py-1 text-right tabular-nums">{fmt(saldo * vu)}</td>
+                    <td className="whitespace-nowrap py-1 pr-2">{i.unidade || '—'}</td>
+                    <td className="whitespace-nowrap py-1 pr-2 text-right tabular-nums">{fmtQtd(i.quantidade_contratada_total)}</td>
+                    <td className="whitespace-nowrap py-1 pr-2 text-right tabular-nums">{fmtQtd(i.quantidade_consumida)}</td>
+                    <td className={`whitespace-nowrap py-1 pr-2 text-right tabular-nums ${saldo <= 0 ? 'font-semibold' : ''}`}>{fmtQtd(saldo)}</td>
+                    <td className="whitespace-nowrap py-1 pr-2 text-right tabular-nums">{fmt(vu)}</td>
+                    <td className="whitespace-nowrap py-1 text-right tabular-nums">{fmt(saldo * vu)}</td>
                   </tr>
                 );
               })}
@@ -1503,7 +1520,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
             <tfoot>
               <tr className="border-t border-black font-semibold">
                 <td className="py-1 pr-2" colSpan={6}>Soma dos saldos por item (saldo × valor unitário)</td>
-                <td className="py-1 text-right tabular-nums">
+                <td className="whitespace-nowrap py-1 text-right tabular-nums">
                   {fmt((itensComAditivo as any[]).reduce((s: number, i: any) => s + (Number(i.saldo_quantitativo_efetivo) || 0) * (Number(i.valor_unitario) || 0), 0))}
                 </td>
               </tr>

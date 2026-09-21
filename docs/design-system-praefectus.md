@@ -169,6 +169,12 @@ tabela quebra entre linhas com o cabeçalho repetido. `animate-fade-in` é
 neutralizado no papel (elemento transformado é indivisível e o Chrome corta o
 que não cabe). Botão flutuante e gaveta da Aurélia levam `print:hidden`. Listas que vivem em outras abas mas o relatório precisa
 trazer entram como `SecaoDoDocumento` com `className="so-impresso"`.
+Tabela impressa é `table-fixed` com `<colgroup>` de larguras em `%`: a regra
+global `td, th { overflow-wrap: anywhere }` faz o layout automático encolher
+as colunas de número até quebrar "R$ 49.4 / 00,00" e "Contr / atado". Célula
+de número, valor e data leva `whitespace-nowrap tabular-nums` e a coluna é
+medida para o maior valor plausível (R$ 9.999.999,99 pede ~14% de A4 a 11px;
+data, 11%); texto livre quebra no espaço, no hífen e na barra.
 
 **Espera:** `Skeleton` na forma do conteúdo; nunca spinner grande no centro.
 Tabela ou lista que ainda vai chegar: `<SkeletonTabela linhas={5} colunas={4}
