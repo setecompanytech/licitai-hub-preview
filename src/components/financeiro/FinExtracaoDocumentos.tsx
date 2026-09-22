@@ -361,8 +361,42 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
    */
   const anexarDocumento = async (item: DocItem, lancamentoId: string) => {
     if (!item.documentoId) return;
-    await vincularLancamento(item.documentoId, lancamentoId);
     const numero = item.dados?.numero_documento ? String(item.dados.numero_documento) : null;
+
+    // A mesma nota já anexada a este lançamento? A TED de 27/05 acumulou
+    // dezesseis cópias das seis DANFEs (22/09): cada reenvio virava um anexo
+    // novo. A cópia é descartada — arquivo e registro — e o anexo que já
+    // existia ganha o número, se lhe faltava.
+    type Anexo = { id: string; numero: string | null; arquivo_nome: string | null; storage_path: string | null };
+    const { data: jaAnexados } = await supabase
+      .from("financeiro_documentos_fiscais" as never)
+      .select("id, numero, arquivo_nome, storage_path")
+      .eq("lancamento_id", lancamentoId)
+      .neq("id", item.documentoId);
+    const repetido = ((jaAnexados ?? []) as unknown as Anexo[]).find((d) =>
+      (!!numero && !!d.numero && numeroDaNota(d.numero) === numeroDaNota(numero))
+      || (!!d.arquivo_nome && d.arquivo_nome === item.file.name),
+    );
+    if (repetido) {
+      const { data: novo } = await supabase
+        .from("financeiro_documentos_fiscais" as never)
+        .select("storage_path")
+        .eq("id", item.documentoId)
+        .maybeSingle();
+      const caminho = (novo as { storage_path?: string | null } | null)?.storage_path ?? null;
+      const { error: erroApagar } = await supabase
+        .from("financeiro_documentos_fiscais" as never)
+        .delete()
+        .eq("id", item.documentoId);
+      if (!erroApagar && caminho) await supabase.storage.from("financeiro-documentos").remove([caminho]);
+      if (numero && !repetido.numero) {
+        await supabase.from("financeiro_documentos_fiscais" as never).update({ numero } as never).eq("id", repetido.id);
+      }
+      toast.info(`${item.file.name}: esta nota já estava anexada a este lançamento. A cópia foi descartada.`, { duration: 8000 });
+      return;
+    }
+
+    await vincularLancamento(item.documentoId, lancamentoId);
     if (numero) {
       await supabase
         .from("financeiro_documentos_fiscais" as never)
