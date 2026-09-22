@@ -3,6 +3,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import DocumentoDoLancamento, { useDocumentosPorLancamento } from "./DocumentoDoLancamento";
 import { useVinculosDeContrato } from "@/hooks/useVinculosDeContrato";
+import { useDocumentoFiscal } from "@/hooks/useDocumentoFiscal";
+import { formatarNumeroNfe } from "@/lib/financeiro/chave-nfe";
+import { fraseDaSoma, reais } from "@/lib/financeiro/partes-do-rateio";
 import VincularContratoDialog from "./VincularContratoDialog";
 import type { LancamentoParaVincular } from "@/lib/contratos/pedido-do-lancamento";
 import { exigeDocumento } from "@/lib/financeiro/anexo-do-lancamento";
@@ -117,6 +120,13 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
   const { data: docsPorLancamento } = useDocumentosPorLancamento();
   // Rateio (22/09): o recebimento que pagou várias notas não tem pedido próprio; o mapa diz em quantos ele está.
   const { data: vinculosDeContrato } = useVinculosDeContrato();
+  // As partes do rateio abertas na tela, por recebimento (22/09).
+  const [partesAbertas, setPartesAbertas] = useState<Set<string>>(new Set());
+  const { abrirArquivo } = useDocumentoFiscal();
+  const abrirDanfe = async (storagePath: string) => {
+    const url = await abrirArquivo(storagePath);
+    if (url) window.open(url, "_blank", "noopener");
+  };
   const { data: membros = [] } = useMembrosEmpresa();
   const upsert = useUpsertLancamento();
 
@@ -507,9 +517,15 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
                               Badge renderiza uma div, e button só aceita
                               conteúdo de frase. */}
                           {tipo === "a_receber" && !l.contrato_pedido_id && rateios.length > 0 && (
-                            <Badge variant="info" className="shrink-0" title={`Este recebimento paga ${rateios.length} pedidos do contrato: ${pedidosDoRateio}. Cada nota entra como parte dele pela Extração de documentos.`}>
-                              rateado · {rateios.length} pedidos
-                            </Badge>
+                            <button
+                              type="button"
+                              className={cn(badgeVariants({ variant: "info" }), "shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2")}
+                              title={`Este recebimento paga ${rateios.length} pedidos do contrato: ${pedidosDoRateio}. Clique para ver as partes.`}
+                              aria-expanded={partesAbertas.has(l.id)}
+                              onClick={() => setPartesAbertas((curr) => { const n = new Set(curr); if (n.has(l.id)) n.delete(l.id); else n.add(l.id); return n; })}
+                            >
+                              rateado · {rateios.length} pedidos {partesAbertas.has(l.id) ? <ChevronUp className="ml-0.5 inline h-3 w-3" aria-hidden="true" /> : <ChevronDown className="ml-0.5 inline h-3 w-3" aria-hidden="true" />}
+                            </button>
                           )}
                           {tipo === "a_receber" && !l.contrato_pedido_id && rateios.length === 0 && !!docsPorLancamento?.[l.id] && (
                             <button
@@ -527,6 +543,29 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
                         </div>
                         {l.categoria?.nome && (
                           <p className="text-xs text-muted-foreground">{l.categoria.nome}</p>
+                        )}
+                        {/* As partes do rateio (22/09): a leitura de "seis parcelas"
+                            sem criar título — a receita e a conciliação seguem
+                            numa linha só. Nota, valor, pedido e a DANFE. */}
+                        {rateios.length > 0 && partesAbertas.has(l.id) && (
+                          <ul className="mt-2 space-y-1 border-l-2 border-border pl-3 text-xs">
+                            {rateios.map((r) => (
+                              <li key={r.contrato_pedido_id} className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                                <span className="font-medium tabular-nums text-foreground">{reais(r.valor)}</span>
+                                <span className="text-muted-foreground">
+                                  NF {formatarNumeroNfe(r.nota_fiscal) ?? r.nota_fiscal ?? "—"} · pedido {r.numero_pedido ?? "?"}
+                                </span>
+                                {r.danfe ? (
+                                  <button type="button" className="text-primary hover:underline" onClick={() => void abrirDanfe(r.danfe!.storage_path)} title={`Abrir ${r.danfe.arquivo_nome}`}>
+                                    DANFE
+                                  </button>
+                                ) : (
+                                  <span className="text-muted-foreground" title="A nota desta parte ainda não foi anexada: Extração de documentos → Anexar como parte.">sem DANFE</span>
+                                )}
+                              </li>
+                            ))}
+                            <li className="text-muted-foreground">Soma das partes: {fraseDaSoma(rateios, Number(l.valor) || 0)}.</li>
+                          </ul>
                         )}
                       </TableCell>
                       <TableCell className="max-w-[160px] truncate" title={l.pessoa?.nome ?? undefined}>

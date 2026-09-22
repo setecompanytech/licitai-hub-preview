@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmpresa } from '@/contexts/EmpresaContext';
+import { casarDanfesComAsPartes, type DocumentoAnexado, type ParteDoRateio } from '@/lib/financeiro/partes-do-rateio';
 
 /**
  * O que cada título sustenta na Gestão de Contratos.
@@ -18,7 +19,7 @@ export type VinculoDeContrato = {
    * próprio — tem uma parte em cada pedido. Sem isto a linha dizia "sem
    * vínculo" para a TED de 27/05 que quita seis pedidos.
    */
-  rateios?: Array<{ numero_pedido: string | null; valor: number }>;
+  rateios?: ParteDoRateio[];
 };
 
 export function useVinculosDeContrato() {
@@ -54,22 +55,49 @@ export function useVinculosDeContrato() {
       // segue só com os vínculos diretos.
       const { data: rateios } = await supabase
         .from('financeiro_lancamento_rateios' as never)
-        .select('lancamento_id, valor, pedido:contrato_pedidos(numero_pedido, contrato_id, contrato:contratos(numero_contrato))')
+        .select('lancamento_id, contrato_pedido_id, valor, pedido:contrato_pedidos(numero_pedido, nota_fiscal, contrato_id, contrato:contratos(numero_contrato))')
         .eq('empresa_id', empresaAtiva!.id);
       type LinhaRateio = {
-        lancamento_id: string; valor: number;
-        pedido: { numero_pedido: string | null; contrato_id: string; contrato: { numero_contrato: string | null } | null } | null;
+        lancamento_id: string; contrato_pedido_id: string; valor: number;
+        pedido: { numero_pedido: string | null; nota_fiscal: string | null; contrato_id: string; contrato: { numero_contrato: string | null } | null } | null;
       };
-      for (const r of ((rateios ?? []) as unknown as LinhaRateio[])) {
-        if (!r.pedido) continue;
-        const atual = mapa[r.lancamento_id] ?? {
-          contrato_id: r.pedido.contrato_id,
-          numero_contrato: r.pedido.contrato?.numero_contrato ?? null,
-          numero_pedido: null,
-        };
-        atual.rateios = [...(atual.rateios ?? []), { numero_pedido: r.pedido.numero_pedido, valor: Number(r.valor) || 0 }];
-        atual.rateios.sort((a, b) => String(a.numero_pedido ?? '').localeCompare(String(b.numero_pedido ?? ''), 'pt-BR', { numeric: true }));
-        mapa[r.lancamento_id] = atual;
+      const linhas = ((rateios ?? []) as unknown as LinhaRateio[]).filter((r) => !!r.pedido);
+      if (linhas.length === 0) return mapa;
+
+      // As DANFEs anexadas aos recebimentos rateados — cada parte acha a sua
+      // pelo número da nota do pedido.
+      const idsRateados = [...new Set(linhas.map((r) => r.lancamento_id))];
+      const { data: docs } = await supabase
+        .from('financeiro_documentos_fiscais' as never)
+        .select('id, lancamento_id, numero, storage_path, arquivo_nome')
+        .in('lancamento_id', idsRateados);
+      const docsPorLancamento = new Map<string, DocumentoAnexado[]>();
+      for (const d of ((docs ?? []) as unknown as Array<DocumentoAnexado & { lancamento_id: string }>)) {
+        const lista = docsPorLancamento.get(d.lancamento_id) ?? [];
+        lista.push(d);
+        docsPorLancamento.set(d.lancamento_id, lista);
+      }
+
+      const partesPorLancamento = new Map<string, Array<Omit<ParteDoRateio, 'danfe'>>>();
+      for (const r of linhas) {
+        const lista = partesPorLancamento.get(r.lancamento_id) ?? [];
+        lista.push({
+          contrato_pedido_id: r.contrato_pedido_id,
+          numero_pedido: r.pedido!.numero_pedido,
+          nota_fiscal: r.pedido!.nota_fiscal,
+          valor: Number(r.valor) || 0,
+        });
+        partesPorLancamento.set(r.lancamento_id, lista);
+        if (!mapa[r.lancamento_id]) {
+          mapa[r.lancamento_id] = {
+            contrato_id: r.pedido!.contrato_id,
+            numero_contrato: r.pedido!.contrato?.numero_contrato ?? null,
+            numero_pedido: null,
+          };
+        }
+      }
+      for (const [lancamentoId, partes] of partesPorLancamento) {
+        mapa[lancamentoId].rateios = casarDanfesComAsPartes(partes, docsPorLancamento.get(lancamentoId) ?? []);
       }
       return mapa;
     },

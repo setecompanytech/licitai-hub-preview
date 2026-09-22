@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { hojeLocal } from "@/lib/financeiro/data-local";
 import { supabase } from "@/integrations/supabase/client";
-import { useEmpresa } from "@/contexts/EmpresaContext";
+import { casarDanfesComAsPartes, fraseDaSoma, reais, type DocumentoAnexado, type ParteDoRateio } from "@/lib/financeiro/partes-do-rateio";
+import { formatarNumeroNfe } from "@/lib/financeiro/chave-nfe";
 import { useDocumentoFiscal } from "@/hooks/useDocumentoFiscal";
+import { useEmpresa } from "@/contexts/EmpresaContext";
 import { parseNFeXML } from "@/lib/parseNFe";
 import { conferirContraOLancamento, chaveValida, type Divergencia } from "@/lib/financeiro/nfe-para-lancamento";
 import { ROTULO_DO_MODELO } from "@/lib/financeiro/danfe";
@@ -609,6 +611,38 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
     }
   };
   const podeParcelar = !editando && (tipo === "a_pagar" || tipo === "a_receber");
+
+  // ── As partes de um recebimento rateado (22/09) ───────────────────────────
+  // Um recebimento que pagou várias notas não se parcela: parcelar dobraria a
+  // receita e deixaria parcelas "recebidas" sem lastro no extrato. A aba
+  // Parcelamento mostra as partes que já existem no rateio, só leitura.
+  const [partesDoRateio, setPartesDoRateio] = useState<ParteDoRateio[]>([]);
+  const { abrirArquivo: abrirArquivoDaParte } = useDocumentoFiscal();
+  useEffect(() => {
+    if (!open || !initial?.id) { setPartesDoRateio([]); return; }
+    let vivo = true;
+    (async () => {
+      const { data: rateios, error } = await supabase
+        .from("financeiro_lancamento_rateios" as never)
+        .select("contrato_pedido_id, valor, pedido:contrato_pedidos(numero_pedido, nota_fiscal)")
+        .eq("lancamento_id", initial.id);
+      if (!vivo || error || !rateios || (rateios as unknown[]).length === 0) { if (vivo) setPartesDoRateio([]); return; }
+      const { data: docs } = await supabase
+        .from("financeiro_documentos_fiscais" as never)
+        .select("id, numero, storage_path, arquivo_nome")
+        .eq("lancamento_id", initial.id);
+      if (!vivo) return;
+      type Linha = { contrato_pedido_id: string; valor: number; pedido: { numero_pedido: string | null; nota_fiscal: string | null } | null };
+      setPartesDoRateio(casarDanfesComAsPartes(
+        ((rateios as unknown) as Linha[]).map((r) => ({
+          contrato_pedido_id: r.contrato_pedido_id, valor: Number(r.valor) || 0,
+          numero_pedido: r.pedido?.numero_pedido ?? null, nota_fiscal: r.pedido?.nota_fiscal ?? null,
+        })),
+        ((docs ?? []) as unknown) as DocumentoAnexado[],
+      ));
+    })();
+    return () => { vivo = false; };
+  }, [open, initial?.id]);
   const temAcrescimos = valorJuros > 0 || valorMulta > 0 || valorDesconto > 0 || valorTarifa > 0;
 
   const simulacao = useMemo(() => {
@@ -1033,7 +1067,7 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
               <TabsTrigger value="geral">Geral</TabsTrigger>
               <TabsTrigger value="documento">Documento</TabsTrigger>
               <TabsTrigger value="rateio" disabled={!editando}>Rateio</TabsTrigger>
-              <TabsTrigger value="parcelas" disabled={!podeParcelar}>Parcelamento</TabsTrigger>
+              <TabsTrigger value="parcelas" disabled={!podeParcelar && partesDoRateio.length === 0}>Parcelamento</TabsTrigger>
             </TabsList>
 
             {/* ===================== GERAL ===================== */}
@@ -1474,6 +1508,41 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
 
             {/* ===================== PARCELAMENTO ===================== */}
             <TabsContent value="parcelas" className="space-y-4 mt-0">
+              {partesDoRateio.length > 0 && (
+                <div className="space-y-3 rounded-md border border-border p-4">
+                  <div>
+                    <p className="text-base font-medium text-foreground">Recebimento rateado em {partesDoRateio.length} partes</p>
+                    <p className="text-xs text-muted-foreground">
+                      Este recebimento pagou várias notas de uma vez. Ele não se parcela: parcelar criaria títulos ao lado dele,
+                      dobrando a receita e deixando parcelas "recebidas" sem lastro no extrato. As partes abaixo são o rateio que já
+                      existe — cada uma quita o seu pedido. Para mudar as partes: Gestão de Contratos › Pedidos › Vincular lançamento.
+                    </p>
+                  </div>
+                  <ul className="divide-y divide-border text-sm">
+                    {partesDoRateio.map((r) => (
+                      <li key={r.contrato_pedido_id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                        <span className="text-muted-foreground">
+                          NF <b className="text-foreground">{formatarNumeroNfe(r.nota_fiscal) ?? r.nota_fiscal ?? "—"}</b> · pedido {r.numero_pedido ?? "?"}
+                        </span>
+                        <span className="flex items-center gap-3">
+                          <b className="tabular-nums">{reais(r.valor)}</b>
+                          {r.danfe ? (
+                            <button type="button" className="text-xs text-primary hover:underline"
+                              onClick={() => { void abrirArquivoDaParte(r.danfe!.storage_path).then((url) => { if (url) window.open(url, "_blank", "noopener"); }); }}
+                              title={`Abrir ${r.danfe.arquivo_nome}`}>
+                              DANFE
+                            </button>
+                          ) : (
+                            <span className="text-xs text-muted-foreground" title="A nota desta parte ainda não foi anexada: Extração de documentos → Anexar como parte.">sem DANFE</span>
+                          )}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-xs text-muted-foreground">Soma das partes: {fraseDaSoma(partesDoRateio, Number(valor) || 0)}.</p>
+                </div>
+              )}
+              {partesDoRateio.length === 0 && (
               <div className="flex items-center justify-between gap-4 rounded-md border border-border p-4">
                 <div className="min-w-0">
                   <p className="text-base font-medium text-foreground">Incluir repetições / parcelamento</p>
@@ -1485,6 +1554,7 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
                 </div>
                 <Switch checked={parcelar} onCheckedChange={setParcelar} />
               </div>
+              )}
 
               {parcelar && (
                 <>

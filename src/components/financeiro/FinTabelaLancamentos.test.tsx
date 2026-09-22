@@ -30,6 +30,8 @@ vi.mock('./VincularContratoDialog', () => ({ default: () => null }));
 vi.mock('./DataDaBaixaDialog', () => ({ DataDaBaixaDialog: () => null }));
 // O mapa de vínculos (22/09) lê a empresa ativa; a suíte não monta o provedor.
 vi.mock('@/hooks/useVinculosDeContrato', () => ({ useVinculosDeContrato: () => ({ data: {} }) }));
+// O link assinado da DANFE (22/09) lê o storage; a suíte não tem cliente.
+vi.mock('@/hooks/useDocumentoFiscal', async (orig) => ({ ...(await orig<typeof import('@/hooks/useDocumentoFiscal')>()), useDocumentoFiscal: () => ({ abrirArquivo: async () => null }) }));
 
 import FinTabelaLancamentos from './FinTabelaLancamentos';
 
