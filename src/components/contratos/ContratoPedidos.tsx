@@ -57,6 +57,8 @@ import BarraFiltros from '@/components/gestao/BarraFiltros';
 import AreaComPainel from '@/components/gestao/AreaComPainel';
 import FaixaIndicadores from '@/components/gestao/FaixaIndicadores';
 import SeloSituacao, { ValorIndisponivel, AvisoDeContexto } from '@/components/gestao/SeloSituacao';
+import ComprasDoPedidoDialog from './ComprasDoPedidoDialog';
+import { fraseDaCobertura, ROTULO_SITUACAO, situacaoDoCusto, type SituacaoDoCusto } from '@/lib/contratos/cobertura-de-custo';
 import ListaDeCampos, { BlocoDoPainel } from '@/components/gestao/ListaDeCampos';
 import SecaoRecolhivel from '@/components/ui/secao-recolhivel';
 
@@ -95,6 +97,10 @@ type Pedido = {
   valor_total: number; data_pedido: string | null; data_entrega: string | null;
   status: string; nota_fiscal: string | null; observacoes: string | null;
   nf_quitada: boolean; data_quitacao: string | null;
+  /** Custo de compra DECLARADO (22/09): unitário × quantidade pelo gatilho do banco. Gerencial. */
+  custo_unitario?: number | null;
+  custo_total?: number | null;
+  custo_declarado_em?: string | null;
   pedido_id?: string | null;
   /**
    * Colunas que vieram de migration colada à mão e que o `types.ts` gerado
@@ -109,6 +115,10 @@ type Pedido = {
   cota?: string | null;
   origem_aditivo_id?: string | null;
   arquivo_ordem_id?: string | null;
+};
+/** O cruzamento do custo (tabela `contrato_pedidos_custo`, migration 20260923000001). */
+type CustoDoPedido = {
+  situacao: SituacaoDoCusto; comprovado_pago: number; comprovado_aberto: number; documento_em: string | null;
 };
 type NotaFiscalSync = {
   id: string; numero_nf: string | null; tipo: string; status: string | null;
@@ -381,8 +391,12 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     data_entrega: '', status: 'pendente', nota_fiscal: '', observacoes: '',
     numero_empenho: '', tipo_empenho: '', valor_empenho: '', cota: '',
     empenho_id: '',
+    custo_unitario: '',
   });
   const [reenviandoOrdem, setReenviandoOrdem] = useState(false);
+  // O cruzamento do custo por pedido (22/09) e o diálogo das compras do pedido.
+  const [custosPedidos, setCustosPedidos] = useState<Record<string, CustoDoPedido>>({});
+  const [comprasDialog, setComprasDialog] = useState<Pedido | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
 
   // Delete audit dialog
@@ -757,6 +771,17 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     ]);
     const pedidosData = (pedidosRes.data as any[]) || [];
     setPedidos(pedidosData);
+    // O cruzamento do custo (22/09): tabela ao lado, de migration colada à
+    // mão — ausente, a tela mostra o declarado e calcula o selo localmente.
+    {
+      const { data: cx } = await supabase
+        .from('contrato_pedidos_custo' as never)
+        .select('contrato_pedido_id, situacao, comprovado_pago, comprovado_aberto, documento_em')
+        .eq('contrato_id', contratoId);
+      const mapa: Record<string, CustoDoPedido> = {};
+      for (const r of ((cx ?? []) as unknown as Array<CustoDoPedido & { contrato_pedido_id: string }>)) mapa[r.contrato_pedido_id] = r;
+      setCustosPedidos(mapa);
+    }
     // Fetch kanban status for linked pedidos
     const linkedIds = pedidosData.map((p: any) => p.pedido_id).filter(Boolean) as string[];
     if (linkedIds.length > 0) {
@@ -1811,6 +1836,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       valor_empenho: String((p as { valor_empenho?: number }).valor_empenho ?? ''),
       cota: (p as { cota?: string }).cota || '',
       empenho_id: (p as { empenho_id?: string | null }).empenho_id || '',
+      custo_unitario: Number(p.custo_unitario) > 0 ? String(p.custo_unitario) : '',
     });
     setEditDialogOpen(true);
   };
@@ -1822,7 +1848,10 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
    * pedido inteiro, e um número de documento ou uma data errada obrigavam a
    * refazer tudo.
    */
-  const CAMPOS_TRAVADOS_APOS_QUITACAO = 'quantidade, valores, item do contrato, situação e número da NF';
+  // A SITUAÇÃO saiu da trava em 22/09 (decisão 15 do dono): nove dos dez
+  // pedidos do 068/2025 estavam quitados e presos em "pendente". Quitação e
+  // bonificação não dependem dela; entrega é fato posterior à nota.
+  const CAMPOS_TRAVADOS_APOS_QUITACAO = 'quantidade, valores, item do contrato e número da NF';
 
   const handleSaveEdit = async () => {
     if (!editingPedido) return;
@@ -1849,6 +1878,8 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       // O vínculo com o empenho JÁ ANEXADO — é dele que a cota consome e é
       // ele que o kit de faturamento pré-seleciona.
       empenho_id: editForm.empenho_id || null,
+      // Situação (pendente, entregue…) é livre mesmo com a NF quitada.
+      status: editForm.status,
     };
     // Só sem NF quitada: a base da quitação e da bonificação não muda por aqui.
     if (!quitada) {
@@ -1857,13 +1888,24 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
         quantidade: qty,
         valor_unitario: unit,
         valor_total: qty * unit,
-        status: editForm.status,
         nota_fiscal: editForm.nota_fiscal || null,
       });
     }
     const { error } = await supabase.from('contrato_pedidos').update(alteracoes as any).eq('id', editingPedido.id);
+    if (error) { setSavingEdit(false); toast.error('Erro ao atualizar: ' + error.message); return; }
+    // O custo de compra DECLARADO (22/09) vai pela RPC — trilha e cruzamento —
+    // e não é trancado pela quitação: é custo da compra, não da venda.
+    if (podeVerCustos) {
+      const custoNovo = parseFloat(editForm.custo_unitario) || 0;
+      const custoAtual = Number(editingPedido.custo_unitario) || 0;
+      if (Math.abs(custoNovo - custoAtual) > 0.00005) {
+        const { error: errCusto } = await supabase.rpc('declarar_custo_do_pedido' as never, {
+          p_pedido_id: editingPedido.id, p_custo_unitario: custoNovo, p_motivo: null,
+        } as never);
+        if (errCusto) toast.error('O pedido foi salvo, mas o custo não foi declarado', { description: errCusto.message });
+      }
+    }
     setSavingEdit(false);
-    if (error) { toast.error('Erro ao atualizar: ' + error.message); return; }
     toast.success(quitada
       ? `Pedido atualizado. Com a NF quitada, ${CAMPOS_TRAVADOS_APOS_QUITACAO} ficaram como estavam.`
       : 'Pedido atualizado.');
@@ -2316,6 +2358,12 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 contrato_id: contratoId,
               }}
             />
+            {podeVerCustos && (
+              <Button size="sm" variant="outline" className="g-controle" onClick={() => setComprasDialog(pedidoAberto)}
+                title="Contas a pagar do contrato atribuídas a este pedido — o custo comprovado, contra o declarado">
+                <ShoppingCart aria-hidden="true" /> Compras deste pedido
+              </Button>
+            )}
             {!pedidoAberto.nf_quitada && pedidoAberto.status === 'entregue' && (isFinanceiro || isAdmin) && (
               <Button size="sm" variant="outline"
                 className="g-controle border-success-line text-success-ink hover:bg-success-tint hover:text-success-ink"
@@ -2566,6 +2614,12 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                       <TableHead className="whitespace-nowrap text-center">Prazo</TableHead>
                       <TableHead className="whitespace-nowrap text-center">Situação</TableHead>
                       <TableHead className="whitespace-nowrap">NF-e</TableHead>
+                      {podeVerCustos && (
+                        <TableHead className="whitespace-nowrap text-right"
+                          title="Custo de compra declarado no pedido e a situação do cruzamento com as contas a pagar atribuídas a ele.">
+                          Custo
+                        </TableHead>
+                      )}
                       <TableHead className="whitespace-nowrap text-center"
                         title="Em que etapa o pedido está no quadro de operação: aguardando faturamento, separar estoque, faturar, faturado, em entrega. Só os pedidos criados pelo Kanban têm esta etapa.">
                         Etapa operacional
@@ -2818,6 +2872,21 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                               )}
                             </div>
                           </TableCell>
+                          {podeVerCustos && (
+                            <TableCell className="whitespace-nowrap text-right tabular-nums">
+                              {(() => {
+                                const cx = custosPedidos[p.id];
+                                const c = { declarado: Number(p.custo_total) || 0, pago: Number(cx?.comprovado_pago) || 0, aberto: Number(cx?.comprovado_aberto) || 0 };
+                                const s = cx?.situacao ?? situacaoDoCusto(c);
+                                return (
+                                  <div className="space-y-1" title={fraseDaCobertura(c, s)}>
+                                    <div>{c.declarado > 0 ? fmt(c.declarado) : <span className="text-foreground-tertiary">—</span>}</div>
+                                    <SeloSituacao tom={ROTULO_SITUACAO[s].tom}>{ROTULO_SITUACAO[s].rotulo}</SeloSituacao>
+                                  </div>
+                                );
+                              })()}
+                            </TableCell>
+                          )}
                           <TableCell className="text-center whitespace-nowrap">
                             {p.pedido_id ? (
                               updatingKanban[p.pedido_id] ? (
@@ -3648,6 +3717,17 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
         onCreated={load}
       />
 
+      {/* Compras deste pedido (22/09): o custo comprovado, pelo rateio das contas a pagar. */}
+      {comprasDialog && (
+        <ComprasDoPedidoDialog
+          pedido={comprasDialog}
+          contratoId={contratoId}
+          custo={custosPedidos[comprasDialog.id]}
+          aoFechar={() => setComprasDialog(null)}
+          aoMudar={load}
+        />
+      )}
+
       {/* Edit Pedido Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={(v) => { setEditDialogOpen(v); if (!v) setEditingPedido(null); }}>
         <DialogContent className="max-w-lg">
@@ -3664,7 +3744,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 </p>
                 <p className="mt-1">
                   A quitação e a bonificação do vendedor foram calculadas sobre esses valores. Os demais campos
-                  (documento, descrição, datas, empenho, observações) podem ser corrigidos e salvos normalmente.
+                  (documento, descrição, situação, datas, empenho, observações e o custo de compra) podem ser corrigidos e salvos normalmente.
                 </p>
               </div>
             )}
@@ -3675,7 +3755,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
               </div>
               <div className="space-y-1.5">
                 <Label>Status</Label>
-                <Select value={editForm.status} onValueChange={v => setEditForm(f => ({ ...f, status: v }))} disabled={!!editingPedido?.nf_quitada}>
+                <Select value={editForm.status} onValueChange={v => setEditForm(f => ({ ...f, status: v }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {Object.entries(statusCfg).map(([k, v]) => (
@@ -3783,6 +3863,42 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                       ({fmt(saldo)}). Confira se o valor digitado é o UNITÁRIO e não o total.
                     </p>
                   )}
+                </div>
+              );
+            })()}
+
+            {/* ── Custo de compra DECLARADO (decisão do dono, 22/09) ──────────
+                A exceção: Admin ou Financeiro declara o custo dentro do
+                pedido; o sistema cruza com as contas a pagar rateadas a ele e
+                avisa quem lançou primeiro. Não é trancado pela quitação — é
+                custo da compra, não da venda. */}
+            {podeVerCustos && (() => {
+              const q = parseFloat(editForm.quantidade) || 0;
+              const cu = parseFloat(editForm.custo_unitario) || 0;
+              const cx = editingPedido ? custosPedidos[editingPedido.id] : undefined;
+              const c = { declarado: q * cu, pago: Number(cx?.comprovado_pago) || 0, aberto: Number(cx?.comprovado_aberto) || 0 };
+              const s = cx?.situacao ?? situacaoDoCusto(c);
+              const unidade = itens.find(i => i.id === editForm.contrato_item_id)?.unidade || 'unidade';
+              return (
+                <div className="space-y-3 rounded-lg border border-border bg-secondary p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-foreground">Custo de compra (declarado)</p>
+                    <SeloSituacao tom={ROTULO_SITUACAO[s].tom}>{ROTULO_SITUACAO[s].rotulo}</SeloSituacao>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label>Custo unitário (R$ por {unidade})</Label>
+                      <MoneyInput value={cu} onValueChange={v => setEditForm(f => ({ ...f, custo_unitario: v > 0 ? String(v) : '' }))} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Custo total declarado</Label>
+                      <p className="g-corpo font-semibold tabular-nums">{cu > 0 ? fmt(q * cu) : '—'}</p>
+                      {cu > 0 && <p className="g-meta text-muted-foreground">{q.toLocaleString('pt-BR')} × {fmt(cu)}</p>}
+                    </div>
+                  </div>
+                  <p className="g-meta text-muted-foreground">
+                    {cx || cu > 0 ? fraseDaCobertura(c, s) : 'Declarado é gerencial: não entra na DRE nem no estoque. Fica como declarado até a nota de entrada ou a conta a pagar atribuída a este pedido o cobrir — e o cruzamento avisa quem lançou primeiro.'}
+                  </p>
                 </div>
               );
             })()}

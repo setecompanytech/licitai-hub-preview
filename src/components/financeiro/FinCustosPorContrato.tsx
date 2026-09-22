@@ -32,6 +32,8 @@ type Linha = {
   custo_comprometido: number;
   custo_digitado: number;
   lancamentos: number;
+  /** Custo declarado nos pedidos que as contas a pagar ainda não cobrem (22/09). */
+  custo_declarado_sem_documento: number;
 };
 
 type ConfigCustos = { ratear_indiretas: boolean; rateio_meses: number };
@@ -88,6 +90,7 @@ export default function FinCustosPorContrato() {
       custo_pago: Number(l.custo_pago) || 0,
       custo_comprometido: Number(l.custo_comprometido) || 0,
       custo_digitado: Number(l.custo_digitado) || 0,
+      custo_declarado_sem_documento: Number(l.custo_declarado_sem_documento) || 0,
     })));
 
     // Configuração do rateio — ausência de linha = padrão desligado.
@@ -164,13 +167,14 @@ export default function FinCustosPorContrato() {
         ? indiretas * (l.faturamento / fatVigentes)
         : 0;
     const custoTotalDe = (l: Linha) =>
-      l.custo_pago + l.custo_comprometido + l.custo_digitado + rateioDe(l);
+      l.custo_pago + l.custo_comprometido + l.custo_digitado + l.custo_declarado_sem_documento + rateioDe(l);
     const margemDe = (l: Linha) => l.faturamento - custoTotalDe(l);
     const tot = {
       faturamento: linhas.reduce((s, l) => s + l.faturamento, 0),
       pago: linhas.reduce((s, l) => s + l.custo_pago, 0),
       comprometido: linhas.reduce((s, l) => s + l.custo_comprometido, 0),
       digitado: linhas.reduce((s, l) => s + l.custo_digitado, 0),
+      declarado: linhas.reduce((s, l) => s + l.custo_declarado_sem_documento, 0),
       rateio: linhas.reduce((s, l) => s + rateioDe(l), 0),
     };
     return { rateioDe, custoTotalDe, margemDe, tot, fatVigentes };
@@ -292,6 +296,7 @@ export default function FinCustosPorContrato() {
                 <TableHead className="text-right whitespace-nowrap" title="Despesas vinculadas com status realizado/conciliado">Custo pago</TableHead>
                 <TableHead className="text-right whitespace-nowrap" title="Despesas vinculadas ainda não pagas — já são custo pelo regime de competência">Comprometido</TableHead>
                 <TableHead className="text-right whitespace-nowrap" title="Aba Custos do contrato (sem parcelas cujo lançamento já está vinculado)">Digitado</TableHead>
+                <TableHead className="text-right whitespace-nowrap" title="Custo declarado nos pedidos (Gestão de Contratos › Pedidos › Editar) que as contas a pagar do contrato ainda não cobrem — gerencial">Declarado</TableHead>
                 {mostraRateio && <TableHead className="text-right whitespace-nowrap" title="Fatia das despesas indiretas, proporcional ao faturamento entre os vigentes">Rateio</TableHead>}
                 <TableHead className="text-right whitespace-nowrap">Custo total</TableHead>
                 <TableHead className="text-right whitespace-nowrap">Margem</TableHead>
@@ -348,6 +353,7 @@ export default function FinCustosPorContrato() {
                     <TableCell className="text-sm text-right whitespace-nowrap tabular-nums">{fmt(l.custo_pago)}</TableCell>
                     <TableCell className="text-sm text-right whitespace-nowrap tabular-nums">{fmt(l.custo_comprometido)}</TableCell>
                     <TableCell className="text-sm text-right whitespace-nowrap tabular-nums">{fmt(l.custo_digitado)}</TableCell>
+                    <TableCell className={`text-sm text-right whitespace-nowrap tabular-nums ${l.custo_declarado_sem_documento > 0 ? 'text-warning-ink' : ''}`}>{fmt(l.custo_declarado_sem_documento)}</TableCell>
                     {mostraRateio && (
                       <TableCell className="text-sm text-right whitespace-nowrap tabular-nums text-muted-foreground">{fmt(calc.rateioDe(l))}</TableCell>
                     )}
@@ -367,12 +373,13 @@ export default function FinCustosPorContrato() {
                 <TableCell className="text-sm text-right whitespace-nowrap tabular-nums">{fmt(calc.tot.pago)}</TableCell>
                 <TableCell className="text-sm text-right whitespace-nowrap tabular-nums">{fmt(calc.tot.comprometido)}</TableCell>
                 <TableCell className="text-sm text-right whitespace-nowrap tabular-nums">{fmt(calc.tot.digitado)}</TableCell>
+                <TableCell className="text-sm text-right whitespace-nowrap tabular-nums">{fmt(calc.tot.declarado)}</TableCell>
                 {mostraRateio && <TableCell className="text-sm text-right whitespace-nowrap tabular-nums">{fmt(calc.tot.rateio)}</TableCell>}
                 <TableCell className="text-sm text-right whitespace-nowrap tabular-nums">
-                  {fmt(calc.tot.pago + calc.tot.comprometido + calc.tot.digitado + calc.tot.rateio)}
+                  {fmt(calc.tot.pago + calc.tot.comprometido + calc.tot.digitado + calc.tot.declarado + calc.tot.rateio)}
                 </TableCell>
                 <TableCell className="text-sm text-right whitespace-nowrap tabular-nums">
-                  {fmt(calc.tot.faturamento - (calc.tot.pago + calc.tot.comprometido + calc.tot.digitado + calc.tot.rateio))}
+                  {fmt(calc.tot.faturamento - (calc.tot.pago + calc.tot.comprometido + calc.tot.digitado + calc.tot.declarado + calc.tot.rateio))}
                 </TableCell>
               </TableRow>
             </TableBody>
@@ -384,7 +391,8 @@ export default function FinCustosPorContrato() {
         O custo automático nasce do vínculo: toda despesa em Contas a Pagar que aponta o contrato
         (a NF-e de entrada gera a conta e o vínculo é sugerido na extração). O que não nasce de
         lançamento — mão de obra própria, estimativas — é digitado na aba Custos do contrato, e a
-        dupla contagem é impedida no banco.
+        dupla contagem é impedida no banco. O custo DECLARADO no pedido (Gestão de Contratos › Pedidos › Editar)
+        é gerencial: entra só até a conta a pagar chegar ao pedido, e o cruzamento avisa quem lançou primeiro.
       </p>
 
       <FinVincularDespesasLote

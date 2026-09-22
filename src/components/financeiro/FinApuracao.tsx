@@ -512,6 +512,13 @@ export default function FinApuracao() {
                         : { aliquota_cofins: Number(e.target.value) })} /></div>
                   <div className="space-y-1.5"><Label>ISS</Label><Input type="number" step="0.01" defaultValue={config.aliquota_iss} onBlur={e => salvarConfig({ aliquota_iss: Number(e.target.value) })} /></div>
                   <div className="space-y-1.5"><Label>ICMS</Label><Input type="number" step="0.01" defaultValue={config.aliquota_icms} onBlur={e => salvarConfig({ aliquota_icms: Number(e.target.value) })} /></div>
+                  {/* O ICMS EFETIVO (após crédito das entradas e benefício) é o que
+                      a estimativa por contrato usa; vazio = nominal, e o painel
+                      declara a premissa (decisão 13 do dono, 22/09). */}
+                  <div className="space-y-1.5"><Label>ICMS efetivo</Label>
+                    <Input type="number" step="0.01" placeholder="após crédito e benefício"
+                      defaultValue={(config as { aliquota_icms_efetiva?: number | null }).aliquota_icms_efetiva ?? ''}
+                      onBlur={e => salvarConfig({ aliquota_icms_efetiva: e.target.value === '' ? null : Number(e.target.value) } as never)} /></div>
                 </div>
 
                 {config.regime === "presumido" && (

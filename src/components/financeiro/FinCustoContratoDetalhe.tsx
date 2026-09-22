@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { estimarImpostoDoContrato, type EstimativaImposto } from '@/lib/financeiro/imposto-do-contrato';
+import { categoriaEntraNoRateio } from '@/lib/financeiro/rateio-de-indiretas';
 import { AlertCircle, ExternalLink, Link2 } from 'lucide-react';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
@@ -28,16 +29,30 @@ type LinhaCusto = {
   custo_pago: number;
   custo_comprometido: number;
   custo_digitado: number;
+  /** Custo declarado nos pedidos que as contas a pagar ainda não cobrem (22/09). */
+  custo_declarado_sem_documento?: number;
 };
 
 type GrupoValor = { nome: string; pago: number; aberto: number };
+
+/** O que `cobertura_de_custo_do_contrato` devolve (migration 20260923000001). */
+type Cobertura = {
+  declarado: number; comprovado_pago: number; comprovado_aberto: number;
+  do_contrato_pago: number; do_contrato_aberto: number;
+  a_distribuir: number; a_distribuir_n: number;
+  declarado_sem_documento: number; cobertura_pct: number | null;
+  pedidos_total: number; pedidos_sem_custo: number;
+};
+
+/** A janela de 12 meses, em data ISO, para a receita e para o faturado do contrato. */
+const inicioDaJanela12m = () => new Date(Date.now() - 365 * 86400000).toISOString().slice(0, 10);
 
 /**
  * A ficha do contrato em formato de DRE gerencial: de onde vem cada número do
  * painel, com a origem nomeada linha a linha. Tudo aqui é LEITURA derivada
  * das mesmas tabelas que alimentam o resto do sistema — corrigir é agir na
- * fonte (vincular a despesa, editar o lançamento, digitar o custo), e o
- * painel recalcula sozinho.
+ * fonte (vincular a despesa, editar o lançamento, declarar o custo no
+ * pedido), e o painel recalcula sozinho.
  */
 export default function FinCustoContratoDetalhe({
   linha,
@@ -56,13 +71,15 @@ export default function FinCustoContratoDetalhe({
   const [digitados, setDigitados] = useState<Array<{ nome: string; valor: number }>>([]);
   const [indiretasTop, setIndiretasTop] = useState<Array<{ nome: string; valor: number }>>([]);
   const [imposto, setImposto] = useState<EstimativaImposto | null>(null);
+  const [cobertura, setCobertura] = useState<Cobertura | null>(null);
 
   useEffect(() => {
     if (!linha || !empresaAtiva?.id) return;
     let cancelado = false;
     (async () => {
       setCarregando(true);
-      const [vincRes, digRes, indRes, empRes, cfgRes, recRes] = await Promise.all([
+      const janela = inicioDaJanela12m();
+      const [vincRes, digRes, indRes, empRes, cfgRes, recRes, pedRes, cobRes] = await Promise.all([
         supabase
           .from('financeiro_lancamentos')
           .select('valor, status, categoria:financeiro_categorias!financeiro_lancamentos_categoria_id_fkey(nome)')
@@ -72,12 +89,12 @@ export default function FinCustoContratoDetalhe({
         supabase.from('contrato_custos').select('tipo, valor').eq('contrato_id', linha.contrato_id),
         supabase
           .from('financeiro_lancamentos')
-          .select('valor, categoria:financeiro_categorias!financeiro_lancamentos_categoria_id_fkey(nome, natureza)')
+          .select('valor, categoria:financeiro_categorias!financeiro_lancamentos_categoria_id_fkey(nome, natureza, grupo_dre)')
           .eq('empresa_id', empresaAtiva.id)
           .eq('tipo', 'a_pagar')
           .is('contrato_id', null)
           .neq('status', 'cancelado')
-          .gte('data_competencia', new Date(Date.now() - 365 * 86400000).toISOString().slice(0, 10)),
+          .gte('data_competencia', janela),
         supabase.from('empresas').select('regime_tributario').eq('id', empresaAtiva.id).maybeSingle(),
         supabase.from('financeiro_config_tributaria').select('*').eq('empresa_id', empresaAtiva.id).maybeSingle(),
         supabase
@@ -86,7 +103,18 @@ export default function FinCustoContratoDetalhe({
           .eq('empresa_id', empresaAtiva.id)
           .eq('tipo', 'a_receber')
           .neq('status', 'cancelado')
-          .gte('data_competencia', new Date(Date.now() - 365 * 86400000).toISOString().slice(0, 10)),
+          .gte('data_competencia', janela),
+        // Janelas iguais (22/09): o faturado do contrato DENTRO dos mesmos 12
+        // meses da receita — é o que move faixa, porte e adicional.
+        supabase
+          .from('contrato_pedidos')
+          .select('valor_total')
+          .eq('contrato_id', linha.contrato_id)
+          .neq('status', 'cancelado')
+          .gte('data_pedido', janela),
+        // A cobertura de custo: RPC de migration colada à mão — ausente, o
+        // painel mostra o resto.
+        supabase.rpc('cobertura_de_custo_do_contrato' as never, { p_contrato_id: linha.contrato_id } as never),
       ]);
       if (cancelado) return;
 
@@ -107,9 +135,11 @@ export default function FinCustoContratoDetalhe({
       }
       setDigitados(Array.from(porTipo.entries()).map(([tipo, valor]) => ({ nome: TIPO_CUSTO_LABEL[tipo] ?? tipo, valor })).sort((a, b) => b.valor - a.valor));
 
+      // A base do rateio: só despesa OPERACIONAL (22/09) — a mesma régua da
+      // função do banco que soma o total.
       const porInd = new Map<string, number>();
-      for (const l of (indRes.data as unknown as Array<{ valor: number; categoria: { nome: string; natureza: string } | null }>) || []) {
-        if (l.categoria?.natureza === 'movimentacao') continue;
+      for (const l of (indRes.data as unknown as Array<{ valor: number; categoria: { nome: string; natureza: string | null; grupo_dre: string | null } | null }>) || []) {
+        if (!categoriaEntraNoRateio(l.categoria)) continue;
         const nome = l.categoria?.nome || 'Sem categoria';
         porInd.set(nome, (porInd.get(nome) ?? 0) + (Number(l.valor) || 0));
       }
@@ -120,13 +150,17 @@ export default function FinCustoContratoDetalhe({
       const receita12m = ((recRes.data as unknown as Array<{ valor: number; categoria: { natureza: string } | null }>) || [])
         .filter(l => !l.categoria || l.categoria.natureza === 'receita')
         .reduce((s, l) => s + (Number(l.valor) || 0), 0);
+      const faturado12m = ((pedRes.data as unknown as Array<{ valor_total: number }>) || [])
+        .reduce((s, p) => s + (Number(p.valor_total) || 0), 0);
 
       setImposto(estimarImpostoDoContrato({
         regimeCadastro: (empRes.data as { regime_tributario?: string | null } | null)?.regime_tributario,
         config: (cfgRes.data as never) ?? null,
         receita12mEmpresa: receita12m,
         faturadoContrato: linha.faturamento,
+        faturadoContrato12m: Math.min(faturado12m, linha.faturamento),
       }));
+      setCobertura((cobRes.data as unknown as Cobertura[] | null)?.[0] ?? null);
       setCarregando(false);
     })();
     return () => { cancelado = true; };
@@ -134,7 +168,8 @@ export default function FinCustoContratoDetalhe({
 
   if (!linha) return null;
 
-  const custoDireto = linha.custo_pago + linha.custo_comprometido + linha.custo_digitado;
+  const declaradoSemDocumento = Number(linha.custo_declarado_sem_documento ?? cobertura?.declarado_sem_documento ?? 0);
+  const custoDireto = linha.custo_pago + linha.custo_comprometido + linha.custo_digitado + declaradoSemDocumento;
   const lucroBruto = linha.faturamento - custoDireto;
   const impostoValor = imposto?.imposto ?? 0;
   const resultado = lucroBruto - rateio - impostoValor;
@@ -181,10 +216,13 @@ export default function FinCustoContratoDetalhe({
               {vinculadas.filter(g => g.aberto > 0).map(g => <LinhaDre key={`a-${g.nome}`} rotulo={g.nome} valor={g.aberto} sub />)}
               <LinhaDre rotulo="Custos digitados — aba Custos do contrato" valor={linha.custo_digitado} negativo />
               {digitados.map(d => <LinhaDre key={d.nome} rotulo={d.nome} valor={d.valor} sub />)}
+              {/* A exceção (22/09): o declarado nos pedidos que nenhuma conta a
+                  pagar cobre. Parcela nomeada — nunca somada em silêncio. */}
+              <LinhaDre rotulo="Custo declarado nos pedidos — sem documento (gerencial)" valor={declaradoSemDocumento} negativo />
 
               <LinhaDre rotulo={<>Lucro bruto <span className="text-muted-foreground font-normal">({pct(margemDe(lucroBruto))})</span></>} valor={lucroBruto} forte />
 
-              <LinhaDre rotulo="Rateio de despesas indiretas — sem vínculo, proporcional ao faturamento" valor={rateio} negativo />
+              <LinhaDre rotulo="Rateio de despesas operacionais — sem vínculo, proporcional ao faturamento" valor={rateio} negativo />
               {rateio > 0 && indiretasTop.map(d => <LinhaDre key={d.nome} rotulo={`${d.nome} (base do rateio)`} valor={d.valor} sub />)}
 
               <LinhaDre
@@ -196,6 +234,24 @@ export default function FinCustoContratoDetalhe({
 
               <LinhaDre rotulo={<>Resultado do contrato <span className="text-muted-foreground font-normal">({pct(margemDe(resultado))})</span></>} valor={resultado} forte />
             </div>
+
+            {cobertura && (
+              <div className="rounded-lg border border-border p-4 text-sm space-y-1">
+                <p className="font-semibold">Cobertura de custo — declarado nos pedidos × contas a pagar</p>
+                <p className="text-muted-foreground">
+                  Declarado <b className="text-foreground tabular-nums">{fmt(Number(cobertura.declarado))}</b>
+                  {' · '}contas a pagar do contrato <b className="text-foreground tabular-nums">{fmt(Number(cobertura.do_contrato_pago) + Number(cobertura.do_contrato_aberto))}</b>
+                  {' · '}cobertura <b className="text-foreground tabular-nums">{cobertura.cobertura_pct == null ? '—' : pct(Number(cobertura.cobertura_pct))}</b>
+                  {Number(cobertura.pedidos_sem_custo) > 0 && <> · <Badge variant="warning">{Number(cobertura.pedidos_sem_custo)} de {Number(cobertura.pedidos_total)} pedidos sem custo</Badge></>}
+                </p>
+                {Number(cobertura.a_distribuir) > 0.01 && (
+                  <p className="text-muted-foreground">
+                    {fmt(Number(cobertura.a_distribuir))} em {Number(cobertura.a_distribuir_n)} conta{Number(cobertura.a_distribuir_n) === 1 ? '' : 's'} a pagar ainda sem pedido —
+                    distribua em Gestão de Contratos › Pedidos › Compras deste pedido.
+                  </p>
+                )}
+              </div>
+            )}
 
             {imposto && (imposto.antes.faixa != null || imposto.antes.porte !== imposto.depois.porte) && (
               <div className="rounded-lg border border-border p-4 text-sm space-y-1">
@@ -214,7 +270,7 @@ export default function FinCustoContratoDetalhe({
                 <AlertCircle className="h-4 w-4" aria-hidden="true" />
                 <AlertDescription>
                   O contrato faturou {fmt(linha.faturamento)} sem nenhum custo apontado — a margem exibida é irreal
-                  até as compras serem vinculadas (use "Vincular despesas em lote").
+                  até as compras serem vinculadas (use "Vincular despesas em lote") ou o custo ser declarado nos pedidos.
                 </AlertDescription>
               </Alert>
             )}
@@ -236,7 +292,7 @@ export default function FinCustoContratoDetalhe({
               </Button>
               <Button size="sm" variant="outline" asChild>
                 <Link to={`/gestao-contratos?contrato=${linha.contrato_id}`}>
-                  <ExternalLink aria-hidden="true" /> Abrir contrato (aba Custos)
+                  <ExternalLink aria-hidden="true" /> Abrir contrato (cobertura de custo)
                 </Link>
               </Button>
               <Button size="sm" variant="outline" asChild>
@@ -246,7 +302,7 @@ export default function FinCustoContratoDetalhe({
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              Corrigir é agir na fonte: o vínculo de cada lançamento, o pedido, a aba Custos.
+              Corrigir é agir na fonte: o vínculo de cada lançamento, a parte de cada compra em Compras deste pedido, o custo declarado no pedido.
               Este painel é derivado — qualquer acerto lá reflete aqui automaticamente.
             </p>
           </div>

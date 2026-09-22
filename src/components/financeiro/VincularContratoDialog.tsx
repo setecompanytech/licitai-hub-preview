@@ -101,6 +101,8 @@ export default function VincularContratoDialog({
   /** 'existente' liga a um pedido que já está lá; 'novo' cria a partir da nota. */
   const [modo, setModo] = useState<'existente' | 'novo'>('novo');
   const [pedidoEscolhido, setPedidoEscolhido] = useState('');
+  /** Despesa: o pedido a que a compra também vai (opcional), pelo rateio. */
+  const [pedidoDaCompra, setPedidoDaCompra] = useState('');
 
   const [itemId, setItemId] = useState('');
   const [quantidade, setQuantidade] = useState('');
@@ -264,8 +266,20 @@ export default function VincularContratoDialog({
         .from('financeiro_lancamentos')
         .update({ contrato_id: contratoId } as never)
         .eq('id', lancamento.id);
+      if (errDespesa) { setSalvando(false); toast.error('Não foi possível atribuir', { description: errDespesa.message }); return; }
+      // Também a um PEDIDO (22/09): a compra chega ao pedido pelo rateio — a
+      // coluna do pedido é da NF de saída, e a quitação a lê como parcela do
+      // recebimento. O valor inteiro do título, por padrão; a parte ajusta-se
+      // em Gestão de Contratos › Pedidos › Compras deste pedido.
+      if (pedidoDaCompra) {
+        const { error: errRateio } = await supabase.rpc('ratear_lancamento_em_pedidos' as never, {
+          p_lancamento_id: lancamento.id,
+          p_rateios: [{ pedido_id: pedidoDaCompra, valor: Number((lancamento as { valor?: number }).valor) || 0 }],
+          p_observacao: null,
+        } as never);
+        if (errRateio) toast.error('Atribuída ao contrato, mas não ao pedido', { description: errRateio.message });
+      }
       setSalvando(false);
-      if (errDespesa) { toast.error('Não foi possível atribuir', { description: errDespesa.message }); return; }
       const escolhido = contratos.find(c => c.id === contratoId);
       toast.success(`Despesa atribuída ao contrato ${escolhido?.numero_contrato ?? ''}.`, {
         description: 'Ela passa a compor o custo — e a margem — deste contrato.',
@@ -428,10 +442,36 @@ export default function VincularContratoDialog({
         </div>
 
         {contratoId && ehDespesa && (
-          <p className="text-xs text-muted-foreground">
-            A despesa passa a compor o <b>custo</b> deste contrato — e a margem que o Dashboard
-            mostra. Ela continua sendo o mesmo lançamento: nada é copiado, e o valor não muda.
-          </p>
+          <>
+            <p className="text-xs text-muted-foreground">
+              A despesa passa a compor o <b>custo</b> deste contrato — e a margem que o Dashboard
+              mostra. Ela continua sendo o mesmo lançamento: nada é copiado, e o valor não muda.
+            </p>
+            {pedidos.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-sm font-medium text-foreground">É a compra de um pedido? <span className="font-normal text-muted-foreground">(opcional)</span></p>
+                <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Pedido da compra">
+                  <button type="button" aria-pressed={pedidoDaCompra === ''}
+                    className={cn(CHIP, pedidoDaCompra === '' ? CHIP_ATIVO : CHIP_INATIVO)}
+                    onClick={() => setPedidoDaCompra('')}>
+                    Só o contrato
+                  </button>
+                  {pedidos.map(p => (
+                    <button key={p.id} type="button" aria-pressed={pedidoDaCompra === p.id}
+                      className={cn(CHIP, pedidoDaCompra === p.id ? CHIP_ATIVO : CHIP_INATIVO)}
+                      onClick={() => setPedidoDaCompra(p.id)}
+                      title={`${p.descricao ?? ''} · ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(p.valor_total) || 0)}`}>
+                      Pedido {p.numero_pedido}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  O valor inteiro desta conta vai como custo comprovado do pedido escolhido; a parte ajusta-se depois em
+                  Gestão de Contratos › Pedidos › Compras deste pedido. O cruzamento com o custo declarado avisa quem lançou primeiro.
+                </p>
+              </div>
+            )}
+          </>
         )}
 
         {contratoId && !ehDespesa && (

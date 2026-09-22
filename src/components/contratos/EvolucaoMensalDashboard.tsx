@@ -259,9 +259,14 @@ export default function EvolucaoMensalDashboard({ pedidos, podeVerCustos, valorG
         {podeVerCustos ? (
           <>
             <div className="flex flex-col gap-1 rounded-lg border border-border bg-card p-4">
-              <p className="text-sm font-medium leading-5 text-muted-foreground">Lucro Bruto</p>
-              <p className={`valor-kpi text-2xl font-semibold leading-8 tabular-nums ${totais.lucro >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>{fmtBRL(totais.lucro)}</p>
-              <p className="text-xs text-muted-foreground">Margem: {totais.margem.toFixed(1)}%</p>
+              {/* O custo aqui é o DECLARADO em cada pedido (22/09) — gerencial.
+                  Sem declaração, margem de 100% seria afirmar que não houve
+                  custo; o cartão diz que falta declarar. */}
+              <p className="text-sm font-medium leading-5 text-muted-foreground">Lucro sobre o custo declarado</p>
+              <p className={`valor-kpi text-2xl font-semibold leading-8 tabular-nums ${totais.custos > 0 ? (totais.lucro >= 0 ? 'text-success-ink' : 'text-destructive-ink') : 'text-muted-foreground'}`}>
+                {totais.custos > 0 ? fmtBRL(totais.lucro) : '—'}
+              </p>
+              <p className="text-xs text-muted-foreground">{totais.custos > 0 ? `Margem: ${totais.margem.toFixed(1)}%` : 'sem custo declarado nos pedidos'}</p>
             </div>
             <div className="flex flex-col gap-1 rounded-lg border border-border bg-card p-4">
               <p className="text-sm font-medium leading-5 text-muted-foreground">Variação MoM</p>
@@ -299,7 +304,7 @@ export default function EvolucaoMensalDashboard({ pedidos, podeVerCustos, valorG
               />
               <Legend wrapperStyle={{ fontSize: 12 }} />
               <Bar yAxisId="left" dataKey="faturamento" name="Faturamento" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} />
-              {podeVerCustos && <Bar yAxisId="left" dataKey="custos" name="Custos" fill="hsl(var(--chart-4))" radius={[4, 4, 0, 0]} />}
+              {podeVerCustos && <Bar yAxisId="left" dataKey="custos" name="Custo declarado" fill="hsl(var(--chart-4))" radius={[4, 4, 0, 0]} />}
               {podeVerCustos && <Line yAxisId="left" type="monotone" dataKey="lucro" name="Lucro" stroke="hsl(var(--chart-2))" strokeWidth={2} dot={{ r: 3 }} />}
               <Line yAxisId="right" type="monotone" dataKey="pedidos" name="Pedidos" stroke="hsl(var(--chart-8))" strokeWidth={2} strokeDasharray="4 4" dot={{ r: 3 }} />
             </ComposedChart>
@@ -314,7 +319,7 @@ export default function EvolucaoMensalDashboard({ pedidos, podeVerCustos, valorG
               />
               <Legend wrapperStyle={{ fontSize: 12 }} />
               <Bar dataKey="faturamento" name="Faturamento" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} />
-              {podeVerCustos && <Bar dataKey="custos" name="Custos" fill="hsl(var(--chart-4))" radius={[4, 4, 0, 0]} />}
+              {podeVerCustos && <Bar dataKey="custos" name="Custo declarado" fill="hsl(var(--chart-4))" radius={[4, 4, 0, 0]} />}
               {podeVerCustos && <Bar dataKey="lucro" name="Lucro" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />}
             </BarChart>
           ) : (
@@ -337,7 +342,7 @@ export default function EvolucaoMensalDashboard({ pedidos, podeVerCustos, valorG
       </div>
 
       <p className="text-xs text-muted-foreground italic">
-        Considera apenas pedidos não cancelados. {!podeVerCustos && 'Custos e lucro disponíveis apenas para o setor Financeiro.'}
+        Considera apenas pedidos não cancelados. Custo = custo de compra declarado em cada pedido (gerencial; o comprovado está no Resumo). {!podeVerCustos && 'Custos e lucro disponíveis apenas para o setor Financeiro.'}
       </p>
     </Card>
   );

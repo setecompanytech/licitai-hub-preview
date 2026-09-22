@@ -197,8 +197,9 @@ describe('Aba Pedidos — o que consome e o que autoriza vivem em subabas', () =
 
     await waitFor(() => expect(screen.getByRole('table')).toBeInTheDocument());
     const cabecalho = within(screen.getByRole('table')).getAllByRole('columnheader').map(c => c.textContent?.trim());
+    // "Custo" (22/09) só para admin/Financeiro — o mock desta suíte é admin.
     expect(cabecalho).toEqual([
-      'Pedido', 'Item', 'Quantidade', 'Prazo', 'Situação', 'NF-e', 'Etapa operacional', 'Ações',
+      'Pedido', 'Item', 'Quantidade', 'Prazo', 'Situação', 'NF-e', 'Custo', 'Etapa operacional', 'Ações',
     ]);
   });
 

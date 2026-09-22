@@ -247,6 +247,52 @@ motivo, em Vincular lançamento (botão "Ratear" no recebimento maior que o
 pedido; contas puras em `lib/contratos/rateio.ts`). Lançamento rateado não
 ganha pedido próprio por nenhum caminho (gatilho).
 
+## Custo declarado no pedido — a exceção, e o cruzamento com o Financeiro (22/09/2026, noite)
+
+Estudo em `~/Downloads/Custo-por-Pedido-e-Conciliacao-Fracionada-2026-09-22.html`
+(dono). O custo de um contrato é COMPROVADO por contas a pagar atribuídas ao
+contrato e rateadas aos pedidos. O custo DECLARADO no pedido (Admin ou
+Financeiro, em Pedidos › Editar: custo unitário × quantidade) é EXCEÇÃO
+nomeada: gerencial, fora da DRE e do estoque, substituído pelo comprovado à
+medida que os documentos chegam. Regras que valem no código (migration
+`20260923000001`, lib `lib/contratos/cobertura-de-custo.ts`):
+
+- **A compra chega ao pedido SÓ pelo rateio** (`ratear_lancamento_em_pedidos`
+  aceita `a_pagar`). A coluna `financeiro_lancamentos.contrato_pedido_id` é
+  do título da NF de SAÍDA: a quitação a lê como parcela do recebimento, e o
+  gatilho de exclusão apaga o pedido com ela. Nunca gravar `contrato_pedido_id`
+  numa conta a pagar. Quitação e limpeza filtram `a_receber`.
+- **Declarado e comprovado nunca se somam em silêncio.** O custo total do
+  contrato = pago + comprometido (Financeiro) + digitado + "declarado sem
+  documento" (o que o declarado excede as contas a pagar do contrato), sempre
+  como parcela nomeada. Na DRE do contrato e no imposto, só documento.
+- **Uma régua, por pedido**, com tolerância por empresa (padrão 0,5% ou R$ 50,
+  o maior; `financeiro_config_custos`): sem custo · declarado · sem declaração
+  (documentado) · parcial · conferido · divergente. Mesma conta no banco
+  (`situacao_do_custo`) e na lib (`situacaoDoCusto`); mudam juntas.
+- **Aviso uma vez por mudança de situação**, pelo sininho (`notificacoes`):
+  "sem declaração" → equipe comercial + admins; "conferido" → quem lançou
+  primeiro (`custo_declarado_em` × `documento_em`); "divergente" → os dois;
+  "declarado"/"parcial" vencido o prazo (15 dias da entrega) → Financeiro,
+  pela rotina diária `cobrar_custos_declarados_sem_documento` (pg_cron
+  `custo-declarado-cobranca`, 08:10 de Brasília).
+- **A única porta de escrita da declaração é `declarar_custo_do_pedido`**
+  (trilha em `contrato_pedidos_custo_log`); o resultado do cruzamento vive em
+  `contrato_pedidos_custo`, ao lado do pedido, escrito só por
+  `cruzar_custo_do_pedido`. A quitação da NF não tranca o custo: é custo da
+  compra, não da venda. A situação do pedido também saiu da trava (decisão 15).
+- **"Economia" só quando a cobertura fecha** (`textoDoDesvio`): comparar um
+  custo pela metade com o previsto inteiro sempre parece economia; enquanto há
+  pedido sem custo ou declarado sem documento, o painel diz "custo incompleto".
+- **Rateio de indiretas só com despesa operacional** (`grupo_dre =
+  desp_operacional`, mais sem grupo/sem categoria, nomeados) — CAPEX,
+  financeiras e CMV sem vínculo ficam fora (migration `20260923000002`,
+  `lib/financeiro/rateio-de-indiretas.ts`). **Adicional de IRPJ marginal e
+  janelas iguais** em `lib/financeiro/imposto-do-contrato.ts`; ICMS pela
+  alíquota EFETIVA configurada em Apuração, senão a nominal com a premissa dita.
+- **Aditivo de preço não entra no rateio de valor do saldo do item**
+  (migration `20260923000003`, medida antes: um único item divergia).
+
 ## Portal da Transparência — a API federal por uma porta só (22/09/2026)
 
 Mapa das 106 rotas × funções do produto em `~/Downloads/Mapa-API-Portal-

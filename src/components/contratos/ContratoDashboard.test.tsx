@@ -241,7 +241,7 @@ describe('Resumo do contrato — cada indicador declara a própria base', () => 
     await waitFor(() => expect(screen.getByText('Faturamento')).toBeInTheDocument());
     expect(screen.getByText('soma dos pedidos não cancelados')).toBeInTheDocument();
     expect(
-      screen.getByText('base: despesas atribuídas (Financeiro) + custos digitados + custo dos pedidos'),
+      screen.getByText('base: despesas atribuídas (Financeiro) + custos digitados + custo declarado nos pedidos ainda sem documento'),
     ).toBeInTheDocument();
     expect(
       screen.getByText('base: soma dos pedidos não cancelados sobre o valor global vigente'),

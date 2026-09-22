@@ -12,11 +12,20 @@
  *   sublimite de R$ 3,6 mi tira ICMS/ISS do DAS (art. 13-A).
  * - Lucro Presumido: os tributos lineares (IRPJ base, CSLL, PIS, COFINS, ICMS)
  *   são atribuíveis ao contrato na proporção da receita. O ADICIONAL de IRPJ
- *   apura-se por trimestre no consolidado da empresa (Lei 9.430/96) — aqui
- *   entra só como alíquota MARGINAL declarada quando a base presumida anual da
- *   empresa já excede o limite (R$ 240 mil/ano): cada real novo de faturamento
- *   carrega 10% sobre a presunção. A auditoria de 09/2026 pegou exatamente o
- *   erro de tratá-lo como mensal — não repetir.
+ *   apura-se por trimestre no consolidado da empresa (Lei 9.430/96, art. 2º,
+ *   §1º); aqui entra como MARGINAL: só a parte da base presumida que o
+ *   contrato empurra para cima de R$ 240 mil/ano paga os 10% — nem o
+ *   consolidado inteiro, nem zero. A auditoria de 09/2026 pegou o erro de
+ *   tratá-lo como mensal; a de 22/09 pegou o "tudo ou nada" (o adicional só
+ *   entrava quando a empresa já excedia o limite SEM o contrato, e omitia
+ *   R$ 57,8 mil no 068/2025).
+ * - JANELAS IGUAIS: a receita da empresa é dos últimos 12 meses; o faturado
+ *   do contrato nessa conta tem de ser o dos mesmos 12 meses
+ *   (`faturadoContrato12m`), não o acumulado desde a assinatura. O imposto
+ *   linear continua sobre o faturado inteiro do contrato (é o que a DRE
+ *   mostra); o marginal usa a taxa anual e a aplica ao inteiro.
+ * - ICMS: a alíquota EFETIVA configurada (após crédito das entradas e
+ *   benefício) vence a nominal; sem ela, usa a nominal e declara a premissa.
  * - Tudo é ESTIMATIVA gerencial para leitura de margem; a apuração oficial é a
  *   tela de Apuração. As premissas saem no resultado para a tela declarar.
  */
@@ -41,10 +50,14 @@ export type ConfigTributariaLinha = {
   presuncao_csll_comercio?: number | null;
   aliquota_irpj?: number | null;
   adicional_irpj?: number | null;
+  /** Limite ANUAL da base presumida a partir do qual incide o adicional (R$ 240 mil por padrão). */
+  limite_adicional_irpj?: number | null;
   aliquota_csll?: number | null;
   aliquota_pis?: number | null;
   aliquota_cofins?: number | null;
   aliquota_icms?: number | null;
+  /** ICMS efetivo (0–100) já com crédito e benefício; nulo = nominal. */
+  aliquota_icms_efetiva?: number | null;
 } | null;
 
 export type EstimativaImposto = {
@@ -61,17 +74,44 @@ export type EstimativaImposto = {
   premissas: string[];
 };
 
+/**
+ * O adicional de IRPJ que o faturamento de 12 meses do contrato empurra para
+ * cima do limite anual: 10% sobre a parte da base presumida acima de R$ 240
+ * mil que só existe por causa dele. Puro, para o teste provar as bordas.
+ */
+export function adicionalMarginalAnual(params: {
+  receita12mSemContrato: number;
+  faturado12mContrato: number;
+  presuncaoPct: number;
+  adicionalPct: number;
+  limiteAnual?: number;
+}): number {
+  const limite = params.limiteAnual ?? LIMITE_ADICIONAL_IRPJ_ANUAL;
+  const pres = params.presuncaoPct / 100;
+  const baseSem = Math.max(0, params.receita12mSemContrato) * pres;
+  const baseCom = (Math.max(0, params.receita12mSemContrato) + Math.max(0, params.faturado12mContrato)) * pres;
+  const excedenteCom = Math.max(0, baseCom - limite);
+  const excedenteSem = Math.max(0, baseSem - limite);
+  return round2((excedenteCom - excedenteSem) * (params.adicionalPct / 100));
+}
+
 export function estimarImpostoDoContrato(params: {
   regimeCadastro: string | null | undefined;
   config: ConfigTributariaLinha;
   /** Receita bruta da empresa nos últimos 12 meses (contrato incluído). */
   receita12mEmpresa: number;
-  /** Faturamento do contrato dentro desses 12 meses. */
+  /** Faturamento do contrato desde o início — a base do imposto linear. */
   faturadoContrato: number;
+  /** Faturamento do contrato DENTRO dos mesmos 12 meses da receita; sem ele, assume o faturado inteiro. */
+  faturadoContrato12m?: number;
 }): EstimativaImposto {
   const { config, receita12mEmpresa, faturadoContrato } = params;
+  const faturado12m = Math.min(
+    Math.max(0, params.faturadoContrato12m ?? faturadoContrato),
+    Math.max(0, faturadoContrato),
+  );
   const regime = regimeDaEmpresa(params.regimeCadastro);
-  const receitaAntes = Math.max(0, receita12mEmpresa - faturadoContrato);
+  const receitaAntes = Math.max(0, receita12mEmpresa - faturado12m);
   const avisos: string[] = [];
   const premissas: string[] = [];
   const base: EstimativaImposto = {
@@ -95,6 +135,10 @@ export function estimarImpostoDoContrato(params: {
   if (!regime) {
     avisos.push('Regime tributário não definido no cadastro da empresa — defina em Configurações para o painel estimar o imposto.');
     return base;
+  }
+
+  if (params.faturadoContrato12m != null && faturado12m < faturadoContrato) {
+    premissas.push(`Janelas iguais: dos ${fmt(faturadoContrato)} faturados pelo contrato, ${fmt(faturado12m)} caem nos mesmos 12 meses da receita da empresa — é essa parcela que move faixa, porte e adicional.`);
   }
 
   if (regime === 'simples') {
@@ -130,10 +174,13 @@ export function estimarImpostoDoContrato(params: {
     const presCsll = num(config?.presuncao_csll_comercio, 12);
     const alIrpj = num(config?.aliquota_irpj, 15);
     const alAdic = num(config?.adicional_irpj, 10);
+    const limiteAdic = num(config?.limite_adicional_irpj, 0) > 0 ? num(config?.limite_adicional_irpj, 0) : LIMITE_ADICIONAL_IRPJ_ANUAL;
     const alCsll = num(config?.aliquota_csll, 9);
     const alPis = num(config?.aliquota_pis, 0.65);
     const alCofins = num(config?.aliquota_cofins, 3);
-    const alIcms = num(config?.aliquota_icms, 0);
+    const alIcmsNominal = num(config?.aliquota_icms, 0);
+    const temEfetiva = config?.aliquota_icms_efetiva != null && !Number.isNaN(Number(config.aliquota_icms_efetiva));
+    const alIcms = temEfetiva ? Number(config!.aliquota_icms_efetiva) : alIcmsNominal;
     premissas.push(`Contrato de fornecimento tratado como receita de comércio (presunção IRPJ ${presIrpj}% / CSLL ${presCsll}%).`);
 
     const irpj = faturadoContrato * (presIrpj / 100) * (alIrpj / 100);
@@ -147,22 +194,41 @@ export function estimarImpostoDoContrato(params: {
       { nome: `PIS (${alPis}%)`, valor: round2(pis) },
       { nome: `COFINS (${alCofins}%)`, valor: round2(cofins) },
     );
-    if (alIcms > 0) base.componentes.push({ nome: `ICMS (${alIcms}%)`, valor: round2(icms) });
-    else premissas.push('ICMS com alíquota zero na configuração — se a operação não for ST/isenta, configure em Apuração.');
+    if (alIcms > 0) {
+      base.componentes.push({ nome: temEfetiva ? `ICMS efetivo (${alIcms}%, após crédito e benefício)` : `ICMS (${alIcms}%)`, valor: round2(icms) });
+    }
+    if (temEfetiva) {
+      premissas.push(`ICMS pela alíquota efetiva configurada (${alIcms}%)${alIcmsNominal > 0 && alIcmsNominal !== alIcms ? `; a nominal é ${alIcmsNominal}%` : ''}.`);
+    } else if (alIcmsNominal > 0) {
+      premissas.push(`ICMS pela alíquota NOMINAL (${alIcmsNominal}%), sem crédito das entradas nem benefício fiscal — configure a alíquota efetiva em Apuração para a estimativa parar de superestimar.`);
+    } else {
+      premissas.push('ICMS com alíquota zero na configuração — se a operação não for ST/isenta, configure em Apuração.');
+    }
 
     let total = irpj + csll + pis + cofins + icms;
 
-    // Adicional de IRPJ: trimestral e consolidado — atribuível ao contrato só
-    // como MARGINAL, quando a base presumida anual da empresa já excede o
-    // limite mesmo sem ele (aí cada real novo paga o adicional inteiro).
-    const basePresumidaAnualSem = receitaAntes * (presIrpj / 100);
-    if (basePresumidaAnualSem >= LIMITE_ADICIONAL_IRPJ_ANUAL) {
-      const adicional = faturadoContrato * (presIrpj / 100) * (alAdic / 100);
-      base.componentes.push({ nome: `Adicional IRPJ marginal (${alAdic}% × ${presIrpj}%)`, valor: round2(adicional) });
+    // Adicional de IRPJ: marginal, sobre a parte da base presumida que o
+    // faturamento de 12 meses do contrato empurra acima do limite anual.
+    const adicionalAnual = adicionalMarginalAnual({
+      receita12mSemContrato: receitaAntes,
+      faturado12mContrato: faturado12m,
+      presuncaoPct: presIrpj,
+      adicionalPct: alAdic,
+      limiteAnual: limiteAdic,
+    });
+    if (adicionalAnual > 0 && faturado12m > 0) {
+      // A taxa anual (adicional ÷ faturado nos 12 meses) aplicada ao faturado
+      // inteiro do contrato — a mesma base do imposto linear e da DRE.
+      const taxa = adicionalAnual / faturado12m;
+      const adicional = round2(faturadoContrato * taxa);
+      base.componentes.push({
+        nome: `Adicional IRPJ marginal (${alAdic}% × ${presIrpj}% sobre a base que o contrato leva acima de ${fmt(limiteAdic)}/ano)`,
+        valor: adicional,
+      });
       total += adicional;
-      premissas.push('Base presumida da empresa já excede R$ 240 mil/ano sem este contrato — o faturamento dele paga o adicional de IRPJ integralmente (marginal).');
+      premissas.push(`Adicional de IRPJ: só a parte da base presumida que o contrato empurra acima de ${fmt(limiteAdic)}/ano paga os ${alAdic}% — ${fmt(adicionalAnual)} nos 12 meses (${(taxa * 100).toFixed(2)}% do faturado no período). A apuração oficial é trimestral e consolidada.`);
     } else {
-      premissas.push('Adicional de IRPJ apura-se por trimestre no consolidado — não atribuído ao contrato porque a base da empresa não excede o limite sem ele.');
+      premissas.push(`Adicional de IRPJ apura-se por trimestre no consolidado — não atribuído ao contrato porque a base presumida da empresa, com ele, não passa de ${fmt(limiteAdic)}/ano.`);
     }
 
     base.imposto = round2(total);
@@ -179,3 +245,6 @@ function num(v: number | null | undefined, padrao: number): number {
   return v == null || Number.isNaN(Number(v)) ? padrao : Number(v);
 }
 function round2(n: number): number { return Math.round(n * 100) / 100; }
+function fmt(v: number): string {
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(v);
+}

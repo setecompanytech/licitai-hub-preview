@@ -35,6 +35,7 @@ import ContratoEntrega from './ContratoEntrega';
 import ContratoReajuste from './ContratoReajuste';
 import { situacaoDoReajuste } from '@/lib/contratos/reajuste';
 import { TIPOS_REAJUSTE } from '@/lib/contratos/instrumentos';
+import { coberturaDoContrato, ROTULO_SITUACAO, textoDoDesvio, type SituacaoDoCusto } from '@/lib/contratos/cobertura-de-custo';
 import ContratoEficacia from './ContratoEficacia';
 import FaixaIndicadores from '@/components/gestao/FaixaIndicadores';
 import SeloSituacao, { ValorIndisponivel, AvisoDeContexto } from '@/components/gestao/SeloSituacao';
@@ -83,11 +84,27 @@ type AcaoPendente = {
   acao?: ReactNode;
 };
 
+/** O que `cobertura_de_custo_do_contrato` devolve (migration 20260923000001). */
+type CoberturaRpc = {
+  declarado: number; comprovado_pago: number; comprovado_aberto: number;
+  do_contrato_pago: number; do_contrato_aberto: number;
+  a_distribuir: number; a_distribuir_n: number;
+  declarado_sem_documento: number; cobertura_pct: number | null;
+  pedidos_total: number; pedidos_sem_custo: number; pedidos_declarado: number; pedidos_documentado: number;
+  pedidos_parcial: number; pedidos_conferido: number; pedidos_divergente: number;
+};
+const situacoesDoContrato = (c: CoberturaRpc) => ([
+  ['sem_custo', c.pedidos_sem_custo], ['declarado', c.pedidos_declarado], ['documentado', c.pedidos_documentado],
+  ['parcial', c.pedidos_parcial], ['conferido', c.pedidos_conferido], ['divergente', c.pedidos_divergente],
+] as Array<[SituacaoDoCusto, number]>).filter(([, n]) => Number(n) > 0).map(([chave, n]) => ({ chave, n: Number(n) }));
+
 export default function ContratoDashboard({ contratoId }: { contratoId: string }) {
   const [data, setData] = useState<{
     contrato: any; itens: any[]; pedidos: any[]; custos: any[]; aditivos: any[];
     /** Nulo enquanto a migration 20260831000002 não tiver sido aplicada. */
-    custoRealizado: { custo_pago: number; custo_comprometido: number; custo_digitado: number } | null;
+    custoRealizado: { custo_pago: number; custo_comprometido: number; custo_digitado: number; custo_declarado_sem_documento?: number } | null;
+    /** Cobertura de custo (22/09): nulo sem a migration 20260923000001 ou sem alçada de custos. */
+    cobertura: CoberturaRpc | null;
     /** ATA SRP: os contratos que aderiram aos quantitativos — é deles que o consumo vem. */
     derivados: Array<{ id: string; numero_contrato: string | null; valor_global: number; data_fim: string | null }>;
   } | null>(null);
@@ -125,6 +142,12 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
       const { data: realizado } = await supabase
         .rpc('contrato_custo_realizado' as never, { p_contrato_id: contratoId } as never);
       if (cancelled) return;
+      // A cobertura de custo (22/09): declarado nos pedidos × comprovado. A
+      // função é restrita a admin/Financeiro e vem de migration colada à mão:
+      // negada ou ausente, o painel mostra o resto.
+      const { data: cob } = await supabase
+        .rpc('cobertura_de_custo_do_contrato' as never, { p_contrato_id: contratoId } as never);
+      if (cancelled) return;
       // ATA SRP fala outra língua: o consumo vem dos contratos derivados.
       let derivados: Array<{ id: string; numero_contrato: string | null; valor_global: number; data_fim: string | null }> = [];
       if ((contratoRes.data as any)?.tipo_documento === 'ata_srp') {
@@ -145,8 +168,9 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
         custos: (custosRes.data as any[]) || [],
         aditivos: (aditivosRes.data as any[]) || [],
         custoRealizado: (realizado as unknown as Array<{
-          custo_pago: number; custo_comprometido: number; custo_digitado: number;
+          custo_pago: number; custo_comprometido: number; custo_digitado: number; custo_declarado_sem_documento?: number;
         }> | null)?.[0] ?? null,
+        cobertura: (cob as unknown as CoberturaRpc[] | null)?.[0] ?? null,
       });
       setLoading(false);
     };
@@ -229,14 +253,21 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
     const despAdmin = data.custos.filter((cc: any) => cc.tipo === 'despesa_administrativa').reduce((s: number, cc: any) => s + cc.valor, 0);
     
     // Custos from pedidos (custo_total field)
-    const custoPedidos = pedidosAtivos.reduce((s: number, p: any) => s + (p.custo_total || 0), 0);
+    // O custo DECLARADO nos pedidos (22/09) é exceção nomeada: só entra no
+    // total o que as contas a pagar do contrato ainda não cobrem. Somar o
+    // declarado inteiro ao do Financeiro contaria a mesma compra duas vezes
+    // assim que a nota chegasse.
+    const custoPedidos = pedidosAtivos.reduce((s: number, p: any) => s + (Number(p.custo_total) || 0), 0);
+    const custoDeclaradoSemDocumento = cr && cr.custo_declarado_sem_documento != null
+      ? Number(cr.custo_declarado_sem_documento)
+      : Math.max(0, custoPedidos - custoDoFinanceiro);
     
     // Total costs = Financeiro + table costs + pedido costs
-    const totalCustos = custoDoFinanceiro + totalCustosTabela + custoPedidos;
+    const totalCustos = custoDoFinanceiro + totalCustosTabela + custoDeclaradoSemDocumento;
 
     // O custo do Financeiro é DIRETO: é a compra feita para atender este
     // contrato. Entra no lucro bruto, ao lado dos custos diretos digitados.
-    const lucroBruto = faturamento - custosDiretos - custoPedidos - custoDoFinanceiro;
+    const lucroBruto = faturamento - custosDiretos - custoDeclaradoSemDocumento - custoDoFinanceiro;
     const lucroLiquido = faturamento - totalCustos;
 
     // ── Previsto × realizado ────────────────────────────────────────────────
@@ -252,6 +283,20 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
     const desvioDeCusto = custoPrevistoDoEntregue > 0
       ? ((custoDoFinanceiro + totalCustosTabela) - custoPrevistoDoEntregue) / custoPrevistoDoEntregue * 100
       : null;
+
+    // Cobertura de custo (22/09): enquanto o comprovado não cobre o declarado,
+    // "economia" é ilusão de custo pela metade (decisão 17 do dono).
+    const cob = data.cobertura;
+    const cobertura = coberturaDoContrato({
+      declarado: custoPedidos,
+      comprovadoPago: Number(cob?.comprovado_pago ?? 0),
+      comprovadoAberto: Number(cob?.comprovado_aberto ?? 0),
+      doContratoPago: custoPago,
+      doContratoAberto: custoComprometido,
+      pedidosTotal: pedidosAtivos.length,
+      pedidosSemCusto: cob ? Number(cob.pedidos_sem_custo) : pedidosAtivos.filter((p: any) => !(Number(p.custo_total) > 0)).length,
+    });
+    const custoIncompleto = cobertura.incompleta;
     
     // valor_global already includes aditivos via trigger, use it directly
     const valorGlobalEfetivo = c.valor_global || 0;
@@ -374,6 +419,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
     const aditivoPosterior = encerrado ? aditivoPosteriorAoEncerramento(c.data_encerramento, data.aditivos) : null;
 
     return { c, itensComAditivo, pedidosAtivos, faturamento, totalCustos, totalCustosTabela, custosDiretos, custoPedidos,
+      custoDeclaradoSemDocumento, cobertura, custoIncompleto, cob,
       custoPago, custoComprometido, custoDoFinanceiro, custoPrevistoDoEntregue, desvioDeCusto, excesso, decenal, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, vigencia, prazoDecorrido, fisicoParado, itensAlertaSaldo, alertasSaldoVisiveis, entregaUnicaConcluida, entregaUnicaEmAndamento, pedidosEntregues, pedidosAtivosTotal, perguntarFormaFornecimento, pedidosPorMes, valorGlobalEfetivo, totalAditivoValorAcrescimo, totalAditivoValorSupressao, totalAditivoQtdAcrescimo, totalAditivoQtdSupressao, reajuste, reajusteDevido,
       encerrado, contratoEsgotado, sugestaoEncerramento, aditivoPosterior };
   }, [data]);
@@ -405,6 +451,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
   }
 
   const { c, itensComAditivo, pedidosAtivos, faturamento, totalCustos, totalCustosTabela, custosDiretos, custoPedidos,
+    custoDeclaradoSemDocumento, cobertura, custoIncompleto, cob,
     custoPago, custoComprometido, custoDoFinanceiro, custoPrevistoDoEntregue, desvioDeCusto, excesso,
     decenal, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, vigencia, prazoDecorrido,
     fisicoParado, itensAlertaSaldo, alertasSaldoVisiveis, entregaUnicaConcluida, entregaUnicaEmAndamento,
@@ -1082,11 +1129,11 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
                         {custoComprometido > 0 && (
                           <p className="g-meta text-warning-ink">A pagar: {fmt(custoComprometido)}</p>
                         )}
-                        {custoPedidos > 0 && (
-                          <p className="g-meta text-muted-foreground">Custos pedidos: {fmt(custoPedidos)}</p>
+                        {custoDeclaradoSemDocumento > 0 && (
+                          <p className="g-meta text-warning-ink">Declarado sem documento: {fmt(custoDeclaradoSemDocumento)}</p>
                         )}
                         <p className="g-meta text-muted-foreground">
-                          base: despesas atribuídas (Financeiro) + custos digitados + custo dos pedidos
+                          base: despesas atribuídas (Financeiro) + custos digitados + custo declarado nos pedidos ainda sem documento
                         </p>
                       </Card>
                       {/* Lucro sem custo apurado não é lucro: seria o faturamento
@@ -1140,14 +1187,15 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
                             {/* O sinal matemático lia-se como prejuízo ("por que menos 25%?",
                                 09/09). O número diz o afastamento; a palavra diz o LADO —
                                 economia ou estouro — e ninguém precisa decifrar convenção. */}
+                            {/* "Economia" só quando a cobertura fecha (22/09): comparar
+                                um custo pela metade com o previsto inteiro sempre
+                                parece economia. */}
                             <p className={`g-corpo font-semibold tabular-nums ${
-                              desvioDeCusto === null ? '' : desvioDeCusto > 0 ? 'text-destructive-ink' : 'text-success-ink'
+                              desvioDeCusto === null ? '' : desvioDeCusto > 0 ? 'text-destructive-ink' : custoIncompleto ? 'text-warning-ink' : 'text-success-ink'
                             }`}>
                               {desvioDeCusto === null
                                 ? <ValorIndisponivel />
-                                : Math.abs(desvioDeCusto) < 0.05
-                                  ? 'no previsto'
-                                  : `${Math.abs(desvioDeCusto).toFixed(1)}% ${desvioDeCusto > 0 ? 'acima do previsto (estouro)' : 'abaixo do previsto (economia)'}`}
+                                : textoDoDesvio(desvioDeCusto, custoIncompleto, cobertura.pct)}
                             </p>
                           </div>
                         </div>
@@ -1167,6 +1215,54 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
                             Financeiro › Contas a Pagar para que o realizado deixe de ser só o custo digitado.
                           </p>
                         )}
+                      </Card>
+                    )}
+
+                    {/* ── Cobertura de custo (22/09): declarado × comprovado ──────
+                        O declarado é a exceção (gerencial); o comprovado são as
+                        contas a pagar do contrato, distribuídas aos pedidos. */}
+                    {(cob || custoPedidos > 0 || custoDoFinanceiro > 0) && (
+                      <Card className="p-4">
+                        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                          <h4 className="text-base font-semibold leading-6 text-foreground">Cobertura de custo</h4>
+                          <span className="g-meta text-muted-foreground">declarado nos pedidos × comprovado em contas a pagar</span>
+                        </div>
+                        <div className="grid gap-4 sm:grid-cols-4">
+                          <div>
+                            <p className="g-meta text-muted-foreground">Declarado nos pedidos</p>
+                            <p className="g-corpo font-semibold tabular-nums">{custoPedidos > 0 ? fmt(custoPedidos) : <ValorIndisponivel />}</p>
+                          </div>
+                          <div>
+                            <p className="g-meta text-muted-foreground">Contas a pagar do contrato</p>
+                            <p className="g-corpo font-semibold tabular-nums">{fmt(custoDoFinanceiro)}</p>
+                            {cobertura.aDistribuir > 0.01 && (
+                              <p className="g-meta text-warning-ink">{fmt(cobertura.aDistribuir)} ainda sem pedido</p>
+                            )}
+                          </div>
+                          <div>
+                            <p className="g-meta text-muted-foreground">Declarado sem documento</p>
+                            <p className="g-corpo font-semibold tabular-nums">{fmt(custoDeclaradoSemDocumento)}</p>
+                          </div>
+                          <div>
+                            <p className="g-meta text-muted-foreground">Cobertura</p>
+                            <p className="g-corpo font-semibold tabular-nums">
+                              {cobertura.pct === null ? <ValorIndisponivel /> : `${cobertura.pct.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`}
+                            </p>
+                          </div>
+                        </div>
+                        {cob && situacoesDoContrato(cob).length > 0 && (
+                          <div className="mt-3 flex flex-wrap gap-1.5">
+                            {situacoesDoContrato(cob).map(s => (
+                              <SeloSituacao key={s.chave} tom={ROTULO_SITUACAO[s.chave].tom}>
+                                {s.n} {s.n === 1 ? 'pedido' : 'pedidos'}: {ROTULO_SITUACAO[s.chave].rotulo.toLowerCase()}
+                              </SeloSituacao>
+                            ))}
+                          </div>
+                        )}
+                        <p className="g-meta text-muted-foreground mt-2">
+                          O custo declarado é gerencial e é substituído à medida que a nota de entrada ou a conta a pagar chega ao pedido
+                          (Pedidos › Compras deste pedido). Só entra no custo total o que as contas a pagar ainda não cobrem.
+                        </p>
                       </Card>
                     )}
                   </div>
@@ -1195,7 +1291,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
                   { numero: 'Valor global', origem: 'valor original do contrato mais os aditivos de acréscimo', ondeEditar: 'Arquivos e Aditivos' },
                   { numero: 'Saldo', origem: 'valor global menos o que os pedidos já consumiram' },
                   { numero: 'Faturado', origem: 'soma dos pedidos lançados', ondeEditar: 'Pedidos' },
-                  { numero: 'Custos', origem: 'despesas atribuídas no Financeiro (pagas e comprometidas), custos digitados e custo dos pedidos', ondeEditar: 'Financeiro › Contas a Pagar' },
+                  { numero: 'Custos', origem: 'despesas atribuídas no Financeiro (pagas e comprometidas), custos digitados e o custo declarado nos pedidos que as contas a pagar ainda não cobrem', ondeEditar: 'Financeiro › Contas a Pagar e Pedidos › Editar' },
                   { numero: 'Itens', origem: 'linhas cadastradas', ondeEditar: 'Itens/Lotes' },
                 ]}
               />
@@ -1307,7 +1403,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
                     {[
                       // Séries categóricas na paleta de gráfico do DS: `accent`
                       // repetia o primário e `secondary` sumia sobre o trilho `muted`.
-                      { label: 'Custos Diretos (Pedidos)', valor: custoPedidos, color: 'bg-chart-1' },
+                      { label: 'Custo declarado sem documento', valor: custoDeclaradoSemDocumento, color: 'bg-chart-1' },
                       { label: 'Custos Diretos (Outros)', valor: custosDiretos, color: 'bg-chart-3' },
                       { label: 'Desp. Administrativas', valor: despAdmin, color: 'bg-chart-2' },
                       { label: 'Frete / Logística', valor: frete, color: 'bg-chart-4' },
