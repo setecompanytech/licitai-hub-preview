@@ -157,6 +157,11 @@ processo, `aparenciaStatus()` de `lib/licitacao/status.ts` já traz as classes
 certas. `FaixaIndicadores` e `LinhaKpis` têm o mesmo vocabulário de tom no
 ladrilho do ícone (`neutro/ok/info/aviso/critico`).
 
+**Abas:** aba inativa em `text-foreground` peso 500; a ativa em `text-primary`
+peso 600 com o filete de 2px; o hover ganha filete cinza. Inativa em
+`text-muted-foreground` lia como aba desligada, quase transparente (print de
+22/09). Vale para `ui/tabs` e para `AbasGestao`.
+
 **Busca com nome acessível:** `BarraFiltros` aceita `rotuloBusca` (vira o
 `aria-label` do campo); sem ele, o nome acessível é o placeholder.
 

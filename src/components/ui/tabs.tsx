@@ -18,7 +18,7 @@ const TabsList = React.forwardRef<
   <TabsPrimitive.List
     ref={ref}
     className={cn(
-      "inline-flex h-auto w-full max-w-full flex-wrap items-end justify-start gap-1 border-b border-border bg-transparent p-0 text-muted-foreground",
+      "inline-flex h-auto w-full max-w-full flex-wrap items-end justify-start gap-1 border-b border-border bg-transparent p-0 text-foreground",
       className,
     )}
     {...props}
@@ -26,6 +26,11 @@ const TabsList = React.forwardRef<
 ));
 TabsList.displayName = TabsPrimitive.List.displayName;
 
+/**
+ * Aba inativa em `text-foreground`, não em cinza (22/09): em `muted-foreground`
+ * as abas de Análise de mercado liam como desligadas, quase transparentes. A
+ * ativa continua verde, em peso 600 e com o filete; o hover ganha filete cinza.
+ */
 const TabsTrigger = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>
@@ -33,7 +38,7 @@ const TabsTrigger = React.forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      "relative -mb-px inline-flex min-h-[40px] items-center justify-center gap-1.5 whitespace-nowrap border-b-2 border-transparent px-3 py-2 text-sm font-medium text-muted-foreground transition-colors duration-150 hover:text-foreground data-[state=active]:border-primary data-[state=active]:font-semibold data-[state=active]:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50",
+      "relative -mb-px inline-flex min-h-[40px] items-center justify-center gap-1.5 whitespace-nowrap border-b-2 border-transparent px-3 py-2 text-sm font-medium text-foreground transition-colors duration-150 hover:border-border hover:text-primary data-[state=active]:border-primary data-[state=active]:font-semibold data-[state=active]:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50",
       className,
     )}
     {...props}

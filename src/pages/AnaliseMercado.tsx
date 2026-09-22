@@ -23,7 +23,9 @@ import TransparenciaPA from '@/components/analise-mercado/TransparenciaPA';
 import ContratosGov from '@/components/analise-mercado/ContratosGov';
 import ContratosTransparencia from '@/components/analise-mercado/ContratosTransparencia';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RPieChart, Pie, Cell, LineChart, Line, Legend } from 'recharts';
-import { transparenciaPortais, estadosPortais, capitaisPortais, type TransparenciaPortal } from '@/data/transparencia-portais';
+import {
+  estadosPortais, capitaisPortais, chaveDoPortal, getPortalByKey, PORTAL_PADRAO, type TransparenciaPortal,
+} from '@/data/transparencia-portais';
 
 /**
  * Análise de Mercado — agora sobre o ACERVO REAL (08/09/2026).
@@ -87,7 +89,7 @@ const mesCurto = (yyyymm: string) => {
 };
 
 export default function AnaliseMercado() {
-  const [portalSelecionado, setPortalSelecionado] = useState<string>('estado-PA');
+  const [portalSelecionado, setPortalSelecionado] = useState<string>(PORTAL_PADRAO);
   const [abaAtiva, setAbaAtiva] = useState('panorama');
   const [fonteConsulta, setFonteConsulta] = useState<'estadual' | 'arp' | 'federal'>('estadual');
   // ── Preços Praticados por OBJETO (08/09): a média solta de editais
@@ -191,8 +193,9 @@ export default function AnaliseMercado() {
     return () => { vivo = false; };
   }, [uf, periodo, emDias]);
 
-  const portalAtual: TransparenciaPortal = transparenciaPortais.find(p => `${p.tipo}-${p.sigla}-${p.nome}` === portalSelecionado)
-    || transparenciaPortais.find(p => p.tipo === 'estado' && p.sigla === 'PA')!;
+  // A mesma chave que o seletor oferece (`chaveDoPortal`): com formatos
+  // diferentes, o campo abria vazio e o selo dizia Pará por um caminho paralelo.
+  const portalAtual: TransparenciaPortal = getPortalByKey(portalSelecionado) ?? getPortalByKey(PORTAL_PADRAO)!;
 
   const t = resumo?.totais;
   const mediaMes = t && resumo!.por_mes.length > 0 ? Math.round(t.editais / resumo!.por_mes.length) : null;
@@ -664,7 +667,7 @@ export default function AnaliseMercado() {
                     <SelectGroup>
                       <SelectLabel>Estados e Distrito Federal</SelectLabel>
                       {estadosPortais.map(p => (
-                        <SelectItem key={`estado-${p.sigla}-${p.nome}`} value={`estado-${p.sigla}-${p.nome}`}>
+                        <SelectItem key={chaveDoPortal(p)} value={chaveDoPortal(p)}>
                           {p.nome} ({p.sigla})
                         </SelectItem>
                       ))}
@@ -672,7 +675,7 @@ export default function AnaliseMercado() {
                     <SelectGroup>
                       <SelectLabel>Capitais</SelectLabel>
                       {capitaisPortais.map(p => (
-                        <SelectItem key={`capital-${p.sigla}-${p.nome}`} value={`capital-${p.sigla}-${p.nome}`}>
+                        <SelectItem key={chaveDoPortal(p)} value={chaveDoPortal(p)}>
                           {p.nome} ({p.sigla})
                         </SelectItem>
                       ))}

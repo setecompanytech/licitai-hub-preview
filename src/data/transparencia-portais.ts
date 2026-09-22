@@ -69,5 +69,18 @@ export const transparenciaPortais: TransparenciaPortal[] = [
 export const getPortalByKey = (key: string): TransparenciaPortal | undefined =>
   transparenciaPortais.find(p => `${p.tipo}-${p.uf}` === key || `${p.tipo}-${p.nome}` === key);
 
+/**
+ * A chave de um portal no seletor: `estado-PA`, `capital-SP`. Um formato só,
+ * para a tela e para `getPortalByKey` — o seletor de Análise de mercado
+ * nascia com `estado-PA` e oferecia `estado-PA-Pará`: nenhuma opção casava e
+ * o campo aparecia vazio, só com o ícone (print de 22/09).
+ */
+export const chaveDoPortal = (p: TransparenciaPortal): string => `${p.tipo}-${p.uf}`;
+
+/** O Pará: a UF da casa. */
+export const PORTAL_PADRAO = chaveDoPortal(
+  transparenciaPortais.find(p => p.tipo === 'estado' && p.uf === 'PA')!,
+);
+
 export const estadosPortais = transparenciaPortais.filter(p => p.tipo === 'estado');
 export const capitaisPortais = transparenciaPortais.filter(p => p.tipo === 'capital');

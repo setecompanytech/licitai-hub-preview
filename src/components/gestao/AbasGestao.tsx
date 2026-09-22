@@ -42,8 +42,10 @@ export default function AbasGestao({
             key={aba.valor}
             value={aba.valor}
             className={cn(
-              'shrink-0 rounded-none border-b-2 border-transparent bg-transparent px-3 py-2.5 text-sm font-medium text-muted-foreground shadow-none',
-              'hover:text-foreground',
+              // Inativa em `text-foreground`, como em `ui/tabs` (22/09): em cinza
+              // as abas liam como desligadas.
+              'shrink-0 rounded-none border-b-2 border-transparent bg-transparent px-3 py-2.5 text-sm font-medium text-foreground shadow-none',
+              'hover:border-border hover:text-primary',
               'data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:font-semibold data-[state=active]:text-primary data-[state=active]:shadow-none',
             )}
           >

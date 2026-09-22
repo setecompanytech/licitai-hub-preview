@@ -81,7 +81,10 @@ type TotaisCredorPA = {
 export default function TransparenciaPA({ portal }: Props) {
   const { empresaAtiva } = useEmpresa();
   const [dados, setDados] = useState<EmpenhoData[]>([]);
-  const [anoFiltro, setAnoFiltro] = useState<string>('todos');
+  // UM ano para a tela inteira (22/09): a busca por credor e o panorama por
+  // órgão tinham cada um o seu "Ano" e liam como dois filtros de data.
+  const [ano, setAno] = useState<string>(String(currentYear));
+  const anoNumero = Number(ano);
   const [busca, setBusca] = useState('');
   const [loading, setLoading] = useState(false);
   // ── API oficial do Pará (08/09) — só o PA tem; os demais seguem com
@@ -89,16 +92,11 @@ export default function TransparenciaPA({ portal }: Props) {
   const ehParaEstado = portal.tipo === 'estado' && portal.sigla === 'PA';
   const [extraindo, setExtraindo] = useState(false);
   const [credor, setCredor] = useState('');
-  const [anoCredor, setAnoCredor] = useState(String(currentYear));
   const [buscandoCredor, setBuscandoCredor] = useState(false);
   const [achados, setAchados] = useState<NotaEmpenhoPA[]>([]);
   const [totaisCredor, setTotaisCredor] = useState<TotaisCredorPA | null>(null);
   const [paginaCredor, setPaginaCredor] = useState(1);
   const [buscouCredor, setBuscouCredor] = useState(false);
-
-  const portalLabel = portal.tipo === 'estado'
-    ? `Estado: ${portal.nome} (${portal.sigla})`
-    : `Capital: ${portal.nome} (${portal.sigla})`;
 
   const loadDados = useCallback(async () => {
     setLoading(true);
@@ -106,17 +104,13 @@ export default function TransparenciaPA({ portal }: Props) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      let query = supabase
+      // Todos os anos de uma vez: o ano escolhido filtra na tela, e a
+      // evolução anual enxerga o conjunto.
+      const { data, error } = await supabase
         .from('transparencia_empenhos')
         .select('*')
         .eq('user_id', user.id)
         .order('valor_total', { ascending: false });
-
-      if (anoFiltro !== 'todos') {
-        query = query.eq('ano', parseInt(anoFiltro));
-      }
-
-      const { data, error } = await query;
       if (error) throw error;
       setDados(data || []);
     } catch (e: any) {
@@ -124,17 +118,16 @@ export default function TransparenciaPA({ portal }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [anoFiltro]);
+  }, []);
 
   useEffect(() => { loadDados(); }, [loadDados]);
 
   /** Fase A: execução por órgão, da API oficial — um clique popula a aba.
-   *  "Todos os anos" varre os 5 anos do seletor, um a um: antes, caía em
-   *  silêncio no ano corrente e o filtro mentia (08/09). */
-  const extrairDaApiOficial = async () => {
+   *  Recebe os anos a varrer: o escolhido, ou os cinco do seletor, um a um
+   *  (antes caía em silêncio no ano corrente e o filtro mentia, 08/09). */
+  const extrairDaApiOficial = async (anosAlvo: number[]) => {
     setExtraindo(true);
     try {
-      const anosAlvo = anoFiltro !== 'todos' ? [parseInt(anoFiltro)] : anos;
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
@@ -184,7 +177,7 @@ export default function TransparenciaPA({ portal }: Props) {
     if (pagina === 1) { setAchados([]); setTotaisCredor(null); }
     try {
       const { data, error } = await supabase.functions.invoke('transparencia-pa-oficial', {
-        body: { modo: 'empenhos', ano: parseInt(anoCredor), credor: credor.trim(), pagina, qtdRegistros: 50 },
+        body: { modo: 'empenhos', ano: anoNumero, credor: credor.trim(), pagina, qtdRegistros: 50 },
       });
       if (error) throw error;
       if (data?.error) { toast.error(data.error); return; }
@@ -203,7 +196,7 @@ export default function TransparenciaPA({ portal }: Props) {
   // Excel, Word e JPG — o JPG existe para o recorte rápido que se manda numa
   // conversa; os demais para processo, planilha e ofício.
   const tituloResultado = () =>
-    `Empenhos do credor "${credor.trim()}" — Portal da Transparência do Pará (${anoCredor})`;
+    `Empenhos do credor "${credor.trim()}" — Portal da Transparência do Pará (${ano})`;
   const cabecalhosResultado = ['Empenho', 'Órgão', 'Credor', 'CNPJ/CPF', 'Data', 'Empenhado (R$)', 'Pago (R$)'];
   const linhasResultado = () => achados.map((n) => [
     n.numero, n.orgao, n.credor, n.credor_cpf_cnpj ?? '', n.dt_despesa,
@@ -224,12 +217,12 @@ export default function TransparenciaPA({ portal }: Props) {
         description: 'Configure em Configurações → Timbrado da empresa.',
       });
     }
-    downloadPDF(`empenhos-credor-${anoCredor}`, `${tituloResultado()} — ${rodapeTotais()}`,
+    downloadPDF(`empenhos-credor-${ano}`, `${tituloResultado()} — ${rodapeTotais()}`,
       cabecalhosResultado, linhasResultado(), timbrado);
   };
 
   const exportarResultadoExcel = async () => {
-    await writeExcelFromJson(`empenhos-credor-${anoCredor}.xlsx`, 'Empenhos por credor',
+    await writeExcelFromJson(`empenhos-credor-${ano}.xlsx`, 'Empenhos por credor',
       achados.map((n) => ({
         'Empenho': n.numero, 'Órgão': n.orgao, 'Credor': n.credor,
         'CNPJ/CPF': n.credor_cpf_cnpj ?? '', 'Data': n.dt_despesa,
@@ -245,7 +238,7 @@ export default function TransparenciaPA({ portal }: Props) {
     const blob = new Blob(['﻿', html], { type: 'application/msword' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `empenhos-credor-${anoCredor}.doc`;
+    a.download = `empenhos-credor-${ano}.doc`;
     a.click();
     URL.revokeObjectURL(a.href);
   };
@@ -282,7 +275,7 @@ export default function TransparenciaPA({ portal }: Props) {
       if (!blob) return;
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = `empenhos-credor-${anoCredor}.jpg`;
+      a.download = `empenhos-credor-${ano}.jpg`;
       a.click();
       URL.revokeObjectURL(a.href);
     }, 'image/jpeg', 0.95);
@@ -356,13 +349,17 @@ export default function TransparenciaPA({ portal }: Props) {
     }
   };
 
-  const dadosFiltrados = dados.filter(d => !busca || d.orgao.toLowerCase().includes(busca.toLowerCase()));
+  // O ano do seletor recorta KPIs, ranking e exportação; a evolução anual
+  // (`porAno`) continua lendo `dados` inteiro.
+  const dadosDoAno = dados.filter(d => d.ano === anoNumero);
+  const anosComDado = [...new Set(dados.map(d => d.ano))].sort((a, b) => b - a);
+  const dadosFiltrados = dadosDoAno.filter(d => !busca || d.orgao.toLowerCase().includes(busca.toLowerCase()));
 
   // ── Exportação em formatos (08/09): PDF veste o timbrado da empresa, como
   // todo documento gerado; Excel e CSV para planilha; Word para quem monta
   // ofício em cima. JPG fica de fora de propósito: tabela em imagem não se
   // confere nem se soma — o PDF cobre a impressão.
-  const nomeBase = `transparencia-${portal.sigla.toLowerCase()}-${anoFiltro}`;
+  const nomeBase = `transparencia-${portal.sigla.toLowerCase()}-${ano}`;
   const cabecalhos = ['Órgão', 'Ano', 'Valor empenhado (R$)'];
   const linhasExport = () => dadosFiltrados.map(d => [
     d.orgao, String(d.ano),
@@ -396,7 +393,7 @@ export default function TransparenciaPA({ portal }: Props) {
         description: 'Configure em Configurações → Timbrado da empresa.',
       });
     }
-    downloadPDF(nomeBase, `Transparência ${portal.nome} — despesas por órgão (${anoFiltro})`,
+    downloadPDF(nomeBase, `Transparência ${portal.nome} — despesas por órgão (${ano})`,
       cabecalhos, linhasExport(), timbrado);
   };
 
@@ -405,7 +402,7 @@ export default function TransparenciaPA({ portal }: Props) {
     const linhas = linhasExport()
       .map((l) => `<tr>${l.map((c) => `<td>${String(c).replace(/</g, '&lt;')}</td>`).join('')}</tr>`)
       .join('');
-    const html = `<html><head><meta charset="utf-8"><style>table{border-collapse:collapse;font-family:Times New Roman}td,th{border:1px solid #999;padding:4px 8px;font-size:11pt}</style></head><body><h2>Transparência ${portal.nome} — despesas por órgão (${anoFiltro})</h2><table><tr>${cabecalhos.map((h) => `<th>${h}</th>`).join('')}</tr>${linhas}</table></body></html>`;
+    const html = `<html><head><meta charset="utf-8"><style>table{border-collapse:collapse;font-family:Times New Roman}td,th{border:1px solid #999;padding:4px 8px;font-size:11pt}</style></head><body><h2>Transparência ${portal.nome} — despesas por órgão (${ano})</h2><table><tr>${cabecalhos.map((h) => `<th>${h}</th>`).join('')}</tr>${linhas}</table></body></html>`;
     const blob = new Blob(['﻿', html], { type: 'application/msword' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -427,33 +424,30 @@ export default function TransparenciaPA({ portal }: Props) {
     };
   }).reverse();
 
-  const totalGeral = dados.reduce((s, d) => s + d.valor_total, 0);
-  const totalEmpenhos = dados.reduce((s, d) => s + d.quantidade_empenhos, 0);
-  const orgaosUnicos = new Set(dados.map(d => d.orgao)).size;
+  const totalGeral = dadosDoAno.reduce((s, d) => s + d.valor_total, 0);
+  const totalEmpenhos = dadosDoAno.reduce((s, d) => s + d.quantidade_empenhos, 0);
+  const orgaosUnicos = new Set(dadosDoAno.map(d => d.orgao)).size;
   // A API oficial agrega por ÓRGÃO e não diz quantas notas há (o portal diz:
   // 256.868 em 2026) — a importação grava quantidade=1 por linha. Somar isso
   // e chamar de "Total Empenhos: 70" era mentira de rótulo (confronto de
   // 08/09). Quando NENHUMA linha tem contagem real, os cards dizem a verdade:
   // contagem não informada, e a média é POR ÓRGÃO, rotulada como tal.
-  const contagemConhecida = dados.some(d => (d.quantidade_empenhos ?? 1) > 1);
+  const contagemConhecida = dadosDoAno.some(d => (d.quantidade_empenhos ?? 1) > 1);
 
   return (
     <div className="space-y-4">
-      {/* Portal info */}
-      <div className="flex items-center gap-2">
-        <Badge variant="info">{portalLabel}</Badge>
-      </div>
+      {/* O selo "Estado: Pará" saiu (22/09): repetia o que o seletor de
+          portal, logo acima, já diz. */}
 
       {/* Header actions */}
       <div className="flex flex-wrap items-end gap-3">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="transparencia-ano">Ano</Label>
-          <Select value={anoFiltro} onValueChange={setAnoFiltro}>
-            <SelectTrigger id="transparencia-ano" className="w-44">
+          <Select value={ano} onValueChange={setAno}>
+            <SelectTrigger id="transparencia-ano" className="w-32">
               <SelectValue placeholder="Ano" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="todos">Todos os anos</SelectItem>
               {anos.map(a => <SelectItem key={a} value={String(a)}>{a}</SelectItem>)}
             </SelectContent>
           </Select>
@@ -465,10 +459,20 @@ export default function TransparenciaPA({ portal }: Props) {
               abertos do Estado. Para os demais portais, os caminhos honestos
               continuam sendo a planilha e o link. */}
           {ehParaEstado && (
-            <Button variant="outline" size="sm" onClick={extrairDaApiOficial} disabled={extraindo}>
-              {extraindo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-              Extração oficial
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" disabled={extraindo}>
+                  {extraindo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                  Extração oficial
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem onClick={() => extrairDaApiOficial([anoNumero])}>Só {ano}</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => extrairDaApiOficial(anos)}>
+                  Últimos 5 anos ({anos[anos.length - 1]} a {anos[0]})
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
 
           <label className="cursor-pointer">
@@ -551,19 +555,12 @@ export default function TransparenciaPA({ portal }: Props) {
                 onChange={(e) => setCredor(e.target.value)} className="w-80 max-w-full"
                 onKeyDown={(e) => { if (e.key === 'Enter' && credor.trim().length >= 4) buscarPorCredor(1); }} />
             </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="credor-ano">Ano</Label>
-              <Select value={anoCredor} onValueChange={setAnoCredor}>
-                <SelectTrigger id="credor-ano" className="w-32"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {anos.map(a => <SelectItem key={a} value={String(a)}>{a}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
+            {/* O ano é o do seletor lá em cima — um só para a tela (22/09); o
+                botão diz qual, para não parecer que a busca ignora o filtro. */}
             <Button disabled={buscandoCredor || credor.trim().length < 4}
               onClick={() => buscarPorCredor(1)}>
               {buscandoCredor ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-              Buscar
+              Buscar em {ano}
             </Button>
           </div>
 
@@ -590,7 +587,7 @@ export default function TransparenciaPA({ portal }: Props) {
               tamanho="compacto"
               icone={<Search />}
               titulo="Nenhum empenho encontrado"
-              descricao={`Sem resultado para “${credor.trim()}” em ${anoCredor}.`}
+              descricao={`Sem resultado para “${credor.trim()}” em ${ano}.`}
             />
           )}
 
@@ -636,9 +633,24 @@ export default function TransparenciaPA({ portal }: Props) {
         </Card>
       )}
 
+      {/* ── Panorama por ÓRGÃO: quanto cada órgão empenhou no ano, com os
+          números do próprio portal (Extração oficial no Pará; planilha nos
+          demais). É outro assunto que a busca por credor acima — e sem
+          título, depois de um resultado real e mostrando zeros, parecia um
+          bloco sem finalidade (print de 22/09). Agora tem nome, e sem dado
+          mostra só o convite, compacto. */}
+      <div className="flex flex-col gap-1">
+        <h2 className="text-lg font-semibold leading-6 text-foreground">Empenhos por órgão — {portal.nome}</h2>
+        <p className="text-sm leading-5 text-muted-foreground">
+          Quanto cada órgão empenhou em {ano}, com os números do portal: ranking, participação e evolução anual.
+        </p>
+      </div>
+
       {/* KPIs — cartão do Design System v3 (FaixaIndicadores). A contagem
           não informada continua sendo "—" com a razão, nunca zero; e o
-          volume vai EXATO, com centavos: dentro de um processo eles importam. */}
+          volume vai EXATO, com centavos: dentro de um processo eles importam.
+          Só com dado do ano: R$ 0,00 antes de qualquer importação era ruído. */}
+      {dadosDoAno.length > 0 && (
       <FaixaIndicadores
         itens={[
           { rotulo: 'Órgãos', icone: Building2, valor: orgaosUnicos, detalhe: 'identificados' },
@@ -658,22 +670,38 @@ export default function TransparenciaPA({ portal }: Props) {
           },
         ]}
       />
+      )}
 
       {dados.length === 0 ? (
         <Card>
           <EstadoVazio
+            tamanho="compacto"
             icone={<Building2 />}
             titulo="Nenhum dado importado"
-            descricao={
+            descricao={ehParaEstado ? (
+              <>
+                Clique em <strong>“Extração oficial”</strong> para trazer da API oficial do Estado o total
+                empenhado por órgão em {ano}. Os números são sempre os do próprio portal, nunca estimativas.
+              </>
+            ) : (
               <>
                 Abra o portal de {portal.nome} pelo botão <strong>“Abrir portal”</strong>, baixe a planilha
-                de empenhos/despesas e envie por <strong>“Importar planilha”</strong> — os números aqui
-                são sempre os do próprio portal, nunca estimativas.
+                de empenhos/despesas e envie por <strong>“Importar planilha”</strong>. Os números são sempre
+                os do próprio portal, nunca estimativas.
                 <span className="mt-2 block text-xs">
                   Formatos aceitos: .xlsx, .xls, .csv · Colunas esperadas: Órgão, Valor, Ano, Quantidade
                 </span>
               </>
-            }
+            )}
+          />
+        </Card>
+      ) : dadosDoAno.length === 0 ? (
+        <Card>
+          <EstadoVazio
+            tamanho="compacto"
+            icone={<Building2 />}
+            titulo={`Nenhum órgão em ${ano}`}
+            descricao={`Há dados de ${anosComDado.join(', ')}. Troque o ano no seletor, ou traga ${ano} por ${ehParaEstado ? '“Extração oficial”' : '“Importar planilha”'}.`}
           />
         </Card>
       ) : (
