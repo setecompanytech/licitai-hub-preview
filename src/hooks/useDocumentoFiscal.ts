@@ -147,9 +147,14 @@ export function useDocumentosPorNumeroNota() {
     queryFn: async (): Promise<Record<string, DocumentoPorNumero>> => {
       const { data, error } = await supabase
         .from('financeiro_documentos_fiscais' as never)
-        .select('id, numero, storage_path, arquivo_nome, lancamento:financeiro_lancamentos(numero_documento)')
+        .select('id, numero, storage_path, arquivo_nome, lancamento:financeiro_lancamentos!financeiro_documentos_fiscais_lancamento_id_fkey(numero_documento)')
         .eq('empresa_id', empresaAtiva!.id)
         .not('storage_path', 'is', null);
+      // Há DUAS chaves entre as tabelas (documento → lançamento por
+      // `lancamento_id`; lançamento → documento por `documento_fiscal_id`).
+      // Sem nomear a chave, o PostgREST recusava a consulta como ambígua, o
+      // índice ficava vazio e a coluna NF-e da Gestão dizia "sem arquivo" para
+      // toda nota que só existia pelo número (22/09).
       if (error) throw error;
 
       const mapa: Record<string, DocumentoPorNumero> = {};

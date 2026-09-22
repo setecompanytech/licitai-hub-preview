@@ -28,7 +28,7 @@ export async function buscarRecebimentoDaNota(
   const numero = numeroDaNota(nota.numero);
   const chave = (nota.chave ?? '').replace(/\D+/g, '');
   const cnpj = (nota.cnpj ?? '').replace(/\D+/g, '');
-  const colunas = 'id, descricao, numero_documento, chave_acesso_nfe, valor, data_realizado, data_competencia, status, contrato_pedido_id, pessoa:financeiro_pessoas(documento), notas:financeiro_documentos_fiscais(valor_total)';
+  const colunas = 'id, descricao, numero_documento, chave_acesso_nfe, valor, data_realizado, data_competencia, status, contrato_pedido_id, pessoa:financeiro_pessoas(documento), notas:financeiro_documentos_fiscais!financeiro_documentos_fiscais_lancamento_id_fkey(valor_total)';
   const base = () => supabase
     .from('financeiro_lancamentos')
     .select(colunas)
