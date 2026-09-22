@@ -2664,14 +2664,17 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                       <TableHead className="whitespace-nowrap text-right">Quantidade</TableHead>
                       <TableHead className="whitespace-nowrap text-center">Prazo</TableHead>
                       <TableHead className="whitespace-nowrap text-center">Situação</TableHead>
-                      <TableHead className="min-w-[15rem] whitespace-nowrap">NF-e</TableHead>
+                      <TableHead className="min-w-[12rem] whitespace-nowrap">NF-e</TableHead>
                       {podeVerCustos && (
-                        <TableHead className="min-w-[10rem] whitespace-nowrap text-right"
+                        <TableHead className="min-w-[8.5rem] whitespace-nowrap text-right"
                           title="Custo de compra declarado no pedido e a situação do cruzamento com as contas a pagar atribuídas a ele.">
                           Custo
                         </TableHead>
                       )}
-                      <TableHead className="whitespace-nowrap text-center"
+                      {/* Só em tela larga (22/09): abaixo de 1536 px a tabela não
+                          cabia e a coluna fixa de Ações cobria "Custo". A etapa
+                          vive no painel do pedido e no Kanban de Compras. */}
+                      <TableHead className="hidden 2xl:table-cell whitespace-nowrap text-center"
                         title="Em que etapa o pedido está no quadro de operação: aguardando faturamento, separar estoque, faturar, faturado, em entrega. Só os pedidos criados pelo Kanban têm esta etapa.">
                         Etapa operacional
                       </TableHead>
@@ -2722,7 +2725,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                               </div>
                             )}
                           </TableCell>
-                          <TableCell className="min-w-[16rem] max-w-[22rem]">
+                          <TableCell className="min-w-[13rem] max-w-[18rem]">
                             {/* ── Quebrar em duas linhas, não cortar na primeira ────
                                 Em 200px cabia "FORN. NFE N° 000.00…" — o corte caía
                                 exatamente no número, que é a parte que identifica o
@@ -2779,7 +2782,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                           <TableCell className="text-center whitespace-nowrap">
                             <SeloSituacao tom={tomDoStatus(p.status)}>{cfg.label}</SeloSituacao>
                           </TableCell>
-                          <TableCell className="min-w-[15rem]">
+                          <TableCell className="min-w-[12rem]">
                             <div className="space-y-1">
                               {/* ── A coluna da NOTA: número, estado e o documento ──
                                   Aqui é onde a nota vive. O número identifica; a
@@ -2945,7 +2948,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                             </div>
                           </TableCell>
                           {podeVerCustos && (
-                            <TableCell className="min-w-[10rem] whitespace-nowrap text-right tabular-nums">
+                            <TableCell className="min-w-[8.5rem] whitespace-nowrap text-right tabular-nums">
                               {(() => {
                                 const cx = custosPedidos[p.id];
                                 const c = { declarado: Number(p.custo_total) || 0, pago: Number(cx?.comprovado_pago) || 0, aberto: Number(cx?.comprovado_aberto) || 0 };
@@ -2959,7 +2962,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                               })()}
                             </TableCell>
                           )}
-                          <TableCell className="text-center whitespace-nowrap">
+                          <TableCell className="hidden 2xl:table-cell text-center whitespace-nowrap">
                             {p.pedido_id ? (
                               updatingKanban[p.pedido_id] ? (
                                 <Loader2 aria-hidden="true" className="mx-auto h-4 w-4 animate-spin text-muted-foreground" />
