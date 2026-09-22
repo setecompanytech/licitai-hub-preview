@@ -2725,7 +2725,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                               </div>
                             )}
                           </TableCell>
-                          <TableCell className="min-w-[13rem] max-w-[18rem]">
+                          <TableCell className="min-w-[12rem] max-w-[17rem]">
                             {/* ── Quebrar em duas linhas, não cortar na primeira ────
                                 Em 200px cabia "FORN. NFE N° 000.00…" — o corte caía
                                 exatamente no número, que é a parte que identifica o
@@ -2764,7 +2764,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                               10/05/2026" — travava a coluna nessa largura e empurrava
                               a NF-e para baixo da coluna fixa de ações. A DATA
                               continua numa linha só; o aviso quebra. */}
-                          <TableCell className="min-w-[9rem] max-w-[11rem] text-center">
+                          <TableCell className="min-w-[8rem] max-w-[10rem] text-center">
                             <div className="whitespace-nowrap">{p.data_pedido ? new Date(p.data_pedido + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</div>
                             {/* O prazo que começou a correr quando este pedido foi
                                 lançado. `dataDeEntrega` só é passada quando o STATUS
@@ -2883,14 +2883,14 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                                         <span className="ml-1 text-muted-foreground font-normal">• sem arquivo</span>
                                       </Badge>
                                       {((p.nf_quitada && p.data_quitacao) || porRateio) && (
-                                        <p className="g-meta whitespace-nowrap">
+                                        <p className="g-meta">
                                           {p.nf_quitada && p.data_quitacao && (
-                                            <span className="text-success-ink">Quitada {new Date(p.data_quitacao + 'T00:00:00').toLocaleDateString('pt-BR')}</span>
+                                            <span className="whitespace-nowrap text-success-ink">Quitada {new Date(p.data_quitacao + 'T00:00:00').toLocaleDateString('pt-BR')}</span>
                                           )}
                                           {porRateio && (
                                             <>
                                               {p.nf_quitada && p.data_quitacao ? ' · ' : ''}
-                                              <Link to="/financeiro/a_receber" className="text-primary hover:underline">anexar pela Extração</Link>
+                                              <Link to="/financeiro/a_receber" className="whitespace-nowrap text-primary hover:underline">anexar pela Extração</Link>
                                             </>
                                           )}
                                         </p>
@@ -3009,14 +3009,18 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                               />
                               {/* Só a AÇÃO fica aqui. O ESTADO "quitada" mudou para a
                                   coluna NF-e, junto da nota a que ele se refere. */}
+                              {/* Ícone na linha (22/09): com o texto, a coluna de ações
+                                  passava da tela e cobria "Custo". O botão com texto
+                                  continua no painel do pedido. */}
                               {!p.nf_quitada && p.status === 'entregue' && (isFinanceiro || isAdmin) && (
                                 <Button
-                                  size="sm" variant="outline"
+                                  size="icon-sm" variant="outline"
                                   className="border-success-line text-success-ink hover:bg-success-tint hover:text-success-ink"
                                   onClick={() => openNfDialog(p)}
-                                  title="Registrar pagamento da NF-e e gerar bonificação"
+                                  title="Quitar NF — registrar o pagamento da NF-e e gerar a bonificação"
+                                  aria-label="Quitar NF"
                                 >
-                                  <DollarSign aria-hidden="true" /> Quitar NF
+                                  <DollarSign aria-hidden="true" />
                                 </Button>
                               )}
                               {(isFinanceiro || isAdmin) && (

@@ -8,6 +8,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { deduplicarAnexos, descricaoDaOrdem, type AnexoOrdenavel } from '@/lib/financeiro/ordem-dos-anexos';
+import { juntarEmUmPdf } from '@/lib/financeiro/juntar-pdfs';
 
 /**
  * O clipe que abre o documento original do lançamento.
@@ -25,7 +27,7 @@ import { cn } from '@/lib/utils';
  * centenas de lançamentos e uma requisição por linha derrubaria a rolagem.
  */
 
-type DocumentoLinha = { id: string; lancamento_id: string; storage_path: string; arquivo_nome: string };
+type DocumentoLinha = { id: string; lancamento_id: string; storage_path: string; arquivo_nome: string; /** Quantos anexos o lançamento tem (22/09): mais de um abre num PDF só. */ total?: number };
 
 export function useDocumentosPorLancamento() {
   const { empresaAtiva } = useEmpresa();
@@ -42,7 +44,9 @@ export function useDocumentosPorLancamento() {
         .not('storage_path', 'is', null);
       if (error) throw error;
       const mapa: Record<string, DocumentoLinha> = {};
-      for (const d of (data ?? []) as unknown as DocumentoLinha[]) mapa[d.lancamento_id] = d;
+      for (const d of (data ?? []) as unknown as DocumentoLinha[]) {
+        mapa[d.lancamento_id] = { ...d, total: (mapa[d.lancamento_id]?.total ?? 0) + 1 };
+      }
       return mapa;
     },
   });
@@ -155,8 +159,50 @@ export default function DocumentoDoLancamento({
     );
   }
 
+  /**
+   * Mais de um anexo (22/09): a TED de 27/05 tem as seis DANFEs que pagou.
+   * O clipe abria só uma — a que o mapa guardou por último. Agora junta
+   * todas num PDF só, em ordem numérica (725, 726, …), um por número.
+   */
+  const abrirTodosNumPdf = async (): Promise<boolean> => {
+    const { data, error } = await supabase
+      .from('financeiro_documentos_fiscais' as never)
+      .select('id, numero, arquivo_nome, storage_path, created_at')
+      .eq('lancamento_id', lancamentoId)
+      .not('storage_path', 'is', null);
+    if (error || !data) return false;
+    const anexos = deduplicarAnexos((data as unknown) as AnexoOrdenavel[]);
+    if (anexos.length <= 1) return false;
+    const partes: Array<{ nome: string; bytes: ArrayBuffer; tipo?: string | null }> = [];
+    for (const a of anexos) {
+      const url = await abrirArquivo(a.storage_path);
+      if (!url) { toast.error(`Não foi possível abrir ${a.arquivo_nome ?? 'um dos documentos'}.`); return true; }
+      const resposta = await fetch(url);
+      if (!resposta.ok) { toast.error(`Não foi possível baixar ${a.arquivo_nome ?? 'um dos documentos'}.`); return true; }
+      partes.push({ nome: a.arquivo_nome ?? 'documento', bytes: await resposta.arrayBuffer(), tipo: resposta.headers.get('content-type') });
+    }
+    const { pdf, paginas, ignorados } = await juntarEmUmPdf(partes);
+    if (paginas === 0) { toast.error('Nenhum dos anexos é PDF ou imagem; abra cada um pela Extração.'); return true; }
+    const blob = new Blob([pdf as BlobPart], { type: 'application/pdf' });
+    window.open(URL.createObjectURL(blob), '_blank', 'noopener,noreferrer');
+    toast.success(`${anexos.length - ignorados.length} documentos num PDF só, em ordem: ${descricaoDaOrdem(anexos.filter((a) => !ignorados.includes(a.arquivo_nome ?? 'documento')))}.`, {
+      description: ignorados.length > 0 ? `Fora do PDF (não é PDF nem imagem): ${ignorados.join(', ')}.` : undefined,
+      duration: 8000,
+    });
+    return true;
+  };
+
   const abrir = async () => {
     setAbrindo(true);
+    if ((doc.total ?? 1) > 1) {
+      try {
+        if (await abrirTodosNumPdf()) { setAbrindo(false); return; }
+      } catch (e) {
+        toast.error('Não foi possível juntar os documentos.', { description: e instanceof Error ? e.message : String(e) });
+        setAbrindo(false);
+        return;
+      }
+    }
     const url = await abrirArquivo(doc.storage_path);
     setAbrindo(false);
     if (!url) {
@@ -181,7 +227,7 @@ export default function DocumentoDoLancamento({
             onClick={abrir}
             disabled={abrindo}
             className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
-            aria-label={`Abrir documento ${doc.arquivo_nome}`}
+            aria-label={(doc.total ?? 1) > 1 ? `Abrir os ${doc.total} documentos num PDF só, em ordem` : `Abrir documento ${doc.arquivo_nome}`}
           >
             {abrindo
               ? <Loader2 className="w-4 h-4 animate-spin" />
@@ -189,7 +235,7 @@ export default function DocumentoDoLancamento({
           </Button>
         </TooltipTrigger>
         <TooltipContent side="left">
-          <p className="text-xs">{doc.arquivo_nome}</p>
+          <p className="text-xs">{(doc.total ?? 1) > 1 ? `${doc.total} documentos — abre um PDF só, em ordem numérica` : doc.arquivo_nome}</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
