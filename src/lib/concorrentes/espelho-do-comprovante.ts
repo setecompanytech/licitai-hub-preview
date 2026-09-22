@@ -149,15 +149,6 @@ export function siglaDoPorte(porte: unknown): string {
   return p;
 }
 
-export function nomeDaFonte(fonte: unknown): string {
-  switch (String(fonte ?? '')) {
-    case 'cnpj.ws': return 'CNPJ.ws';
-    case 'cnpja': return 'CNPJA';
-    case 'receitaws': return 'ReceitaWS';
-    default: return 'BrasilAPI';
-  }
-}
-
 /** "4712100 - Comércio…" (formato antigo da edge) ou código + descrição separados. */
 function codigoEDescricao(codigo: unknown, descricao: unknown, junto: unknown, formatar: (c: unknown) => string): string {
   if (String(codigo ?? '').trim() || String(descricao ?? '').trim()) {
@@ -292,10 +283,14 @@ export function linhasDoQsa(d: DadosDoEspelho): LinhaDoQsa[] {
 
 export const qsaTemRepresentante = (linhas: LinhaDoQsa[]): boolean => linhas.some((l) => l.representante);
 
-/** O rodapé que separa espelho de comprovante — sempre presente. */
+/**
+ * O rodapé que separa espelho de comprovante — sempre presente. Nomeia a
+ * base (a pública da Receita, republicada mensalmente), não o redistribuidor
+ * que a serve: o nome da ferramenta é detalhe técnico (pedido de 22/09).
+ */
 export function rodapeDoEspelho(d: DadosDoEspelho): string {
   const quando = dataHoraBr(d.consultadoEm);
-  return `Consultado ${quando ? `em ${quando} ` : ''}pela ${nomeDaFonte(d.fonte)}, que redistribui a base pública de CNPJ da Receita Federal, republicada mensalmente. `
+  return `Consultado ${quando ? `em ${quando} ` : ''}na base pública de CNPJ da Receita Federal, republicada mensalmente. `
     + `Espelho para consulta: não substitui o comprovante oficial, emitido em ${URL_COMPROVANTE_OFICIAL}.`;
 }
 

@@ -102,8 +102,9 @@ describe('espelho do comprovante — formatos da Receita', () => {
     const rodape = rodapeDoEspelho(santaRosa);
     expect(rodape).toContain('não substitui o comprovante oficial');
     expect(rodape).toContain(URL_COMPROVANTE_OFICIAL);
-    expect(rodape).toContain('BrasilAPI');
-    expect(rodapeDoEspelho({ ...santaRosa, consultadoEm: undefined, fonte: 'cnpj.ws' })).toContain('Consultado pela CNPJ.ws');
+    expect(rodape).toContain('base pública de CNPJ da Receita Federal');
+    expect(rodape).not.toContain('BrasilAPI');
+    expect(rodapeDoEspelho({ ...santaRosa, consultadoEm: undefined, fonte: 'cnpj.ws' })).toContain('Consultado na base pública');
   });
 
   it('o HTML de impressão nasce das mesmas caixas, traz o QSA com o capital e escapa o que vier da fonte', () => {

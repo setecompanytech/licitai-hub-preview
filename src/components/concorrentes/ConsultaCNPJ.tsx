@@ -63,7 +63,7 @@ export default function ConsultaCNPJ() {
       <Card className="p-5">
         <h2 className="flex items-center gap-2 text-lg font-semibold leading-6 text-foreground">
           <Search className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-          Consulta de CNPJ — Receita Federal (BrasilAPI)
+          Consulta de CNPJ — Receita Federal
         </h2>
 
         <div className="mt-4 flex flex-wrap items-end gap-3">
@@ -92,10 +92,9 @@ export default function ConsultaCNPJ() {
           </Alert>
         )}
 
+        {/* Só o órgão de origem (22/09): o nome do redistribuidor da base é
+            detalhe técnico, não referência para quem consulta. */}
         <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-          <a href="https://brasilapi.com.br" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-primary hover:underline">
-            <ExternalLink className="h-3 w-3" aria-hidden="true" /> BrasilAPI
-          </a>
           <a href="https://servicos.receita.fazenda.gov.br/servicos/cnpjreva/cnpjreva_solicitacao.asp" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-primary hover:underline">
             <ExternalLink className="h-3 w-3" aria-hidden="true" /> Receita Federal
           </a>
