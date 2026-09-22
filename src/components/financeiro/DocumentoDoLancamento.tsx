@@ -8,7 +8,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { deduplicarAnexos, descricaoDaOrdem, type AnexoOrdenavel } from '@/lib/financeiro/ordem-dos-anexos';
+import { deduplicarAnexos, descricaoDaOrdem, numeroDoAnexo, type AnexoOrdenavel } from '@/lib/financeiro/ordem-dos-anexos';
 import { juntarEmUmPdf } from '@/lib/financeiro/juntar-pdfs';
 
 /**
@@ -96,9 +96,12 @@ export default function DocumentoDoLancamento({
     }
     setEnviando(true);
     const ehXml = /\.xml$/i.test(file.name);
+    // Lançamento sem número próprio (a TED que pagou várias notas): o número
+    // vem do nome do arquivo — é por ele que a aba Pedidos acha a DANFE.
+    const doNome = numeroDoAnexo({ numero: null, arquivo_nome: file.name });
     const salvo = await guardarArquivo(file, {
       tipo: tipoDocumento ?? 'outro',
-      numero: numeroDocumento ?? null,
+      numero: numeroDocumento ?? (doNome !== null ? String(doNome) : null),
       data_emissao: dataEmissao ?? null,
       valor_total: valorTotal ?? 0,
       lancamento_id: lancamentoId,
@@ -218,6 +221,8 @@ export default function DocumentoDoLancamento({
 
   return (
     <TooltipProvider>
+      <input ref={entrada} type="file" className="hidden" onChange={anexar}
+        accept=".pdf,.xml,.jpg,.jpeg,.png" />
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
@@ -236,6 +241,28 @@ export default function DocumentoDoLancamento({
         </TooltipTrigger>
         <TooltipContent side="left">
           <p className="text-xs">{(doc.total ?? 1) > 1 ? `${doc.total} documentos — abre um PDF só, em ordem numérica` : doc.arquivo_nome}</p>
+        </TooltipContent>
+      </Tooltip>
+      {/* Anexar MAIS UM (22/09): a TED que pagou seis notas tinha só o clipe
+          de abrir; apagada uma DANFE, não havia como devolvê-la à linha. */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            onClick={() => entrada.current?.click()}
+            disabled={enviando}
+            className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
+            aria-label="Anexar outro documento a este lançamento"
+          >
+            {enviando
+              ? <Loader2 className="w-4 h-4 animate-spin" />
+              : <Upload className="w-4 h-4" />}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="left">
+          <p className="text-xs">Anexar outro documento a este lançamento</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
