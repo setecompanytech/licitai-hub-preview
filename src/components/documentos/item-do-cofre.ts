@@ -3,6 +3,7 @@ import {
   AlertTriangle, CalendarOff, CheckCircle2, Clock, FileX, HelpCircle,
 } from 'lucide-react';
 import type { TomSituacao } from '@/components/gestao/SeloSituacao';
+import { autenticidadeGravada, type Autenticidade } from '@/lib/documentos/autenticidade';
 import { VAGAS_PREVISTAS, type CategoriaPrevista } from '@/lib/documentos/previstos';
 import {
   ROTULO_DO_DOCUMENTO, contaComoRegular, ehRegularMasVencendo, situacaoDoDocumento,
@@ -29,6 +30,8 @@ export interface LinhaGravada {
   created_at: string | null;
   updated_at: string | null;
   descricao: string | null;
+  /** JSON livre da coluna; o cofre guarda ali o código de autenticidade lido do PDF. */
+  dados_extraidos?: unknown;
 }
 
 export interface ItemDoCofre {
@@ -54,6 +57,10 @@ export interface ItemDoCofre {
   empresaIdGravado?: string | null;
   /** Linha anterior à conversão para empresa: só o dono vê, até compartilhar. */
   legadoPrivado?: boolean;
+  /** O código de autenticidade lido do PDF, com o link de conferência do emissor. */
+  autenticidade?: Autenticidade;
+  /** `dados_extraidos` como está gravado — a substituição preserva o que não é dela. */
+  dadosExtraidos?: unknown;
 }
 
 /**
@@ -95,6 +102,8 @@ export function montarItensDoCofre(
       atualizadoEm: casada?.updated_at ?? undefined,
       empresaIdGravado: casada ? casada.empresa_id : undefined,
       legadoPrivado: casada ? !casada.empresa_id : undefined,
+      autenticidade: autenticidadeGravada(casada?.dados_extraidos) ?? undefined,
+      dadosExtraidos: casada?.dados_extraidos,
     } satisfies ItemDoCofre;
   });
 }

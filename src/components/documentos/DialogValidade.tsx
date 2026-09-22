@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Bot, CalendarDays, CheckCircle2, Loader2 } from 'lucide-react';
+import { Bot, CalendarDays, CheckCircle2, ExternalLink, Loader2, ShieldCheck } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -18,6 +18,9 @@ import { toast } from 'sonner';
 // traz emissão, hora e prazo juntos, e a errada manda renovar o que está bom —
 // ou leva a empresa à sessão com certidão vencida.
 import { extrairValidadeDoTexto, montarData, normalizarEspacos } from '@/lib/documentos/validade';
+// O código de autenticidade sai do MESMO texto — por padrão do emissor, sem
+// IA: sem padrão reconhecido, nada é mostrado, nunca inventado.
+import { extrairAutenticidade, type Autenticidade } from '@/lib/documentos/autenticidade';
 
 type VisionImage = { name: string; dataUrl: string };
 type DocumentAnalysisPayload = { images: VisionImage[]; supportText: string };
@@ -93,27 +96,39 @@ const renderPdfToVisionImages = async (pdf: any, fileName: string, maxPages: num
   return images;
 };
 
+/** Abre o PDF com o pdf.js, sem tirar nada dele ainda. */
+const abrirPdf = async (file: File): Promise<any> => {
+  const pdfjsLib = await import('pdfjs-dist');
+  // O worker entra por import DINÂMICO, e não no topo do módulo: ele é um
+  // `?url` de um bundle de ~1MB que era carregado por toda pessoa que abria a
+  // tela — inclusive quem nunca anexou um PDF.
+  const { default: pdfjsWorker } = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
+  pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+
+  const arrayBuffer = await file.arrayBuffer();
+  try {
+    return await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  } catch {
+    return await pdfjsLib.getDocument({ data: arrayBuffer, disableWorker: true } as any).promise;
+  }
+};
+
+/**
+ * Só o TEXTO do PDF, localmente — o que basta para ler o código de
+ * autenticidade ao abrir o diálogo. Nenhuma imagem, nenhuma chamada fora.
+ */
+const lerTextoDoPdf = async (file: File): Promise<string> => {
+  const pdf = await abrirPdf(file);
+  return extractPdfSupportText(pdf, Math.min(pdf.numPages, 3));
+};
+
 const buildDocumentAnalysisPayload = async (file: File): Promise<DocumentAnalysisPayload> => {
   if (file.type.startsWith('image/')) {
     return { images: await imageFileToVisionPayload(file), supportText: '' };
   }
 
   if (file.type === 'application/pdf') {
-    const pdfjsLib = await import('pdfjs-dist');
-    // O worker entra por import DINÂMICO, e não no topo do módulo: ele é um
-    // `?url` de um bundle de ~1MB que era carregado por toda pessoa que abria a
-    // tela — inclusive quem nunca clicou em "Sugerir validade por IA".
-    const { default: pdfjsWorker } = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
-    pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
-
-    const arrayBuffer = await file.arrayBuffer();
-    let pdf: any;
-    try {
-      pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    } catch {
-      pdf = await pdfjsLib.getDocument({ data: arrayBuffer, disableWorker: true } as any).promise;
-    }
-
+    const pdf = await abrirPdf(file);
     const maxPages = Math.min(pdf.numPages, 3);
     const [supportText, images] = await Promise.all([
       extractPdfSupportText(pdf, maxPages),
@@ -141,8 +156,12 @@ interface Props {
   /** Validade já gravada (`AAAA-MM-DD`), para o campo nascer preenchido. */
   validadeInicial?: string;
   salvando: boolean;
-  /** `undefined` = seguir sem validade. */
-  aoConfirmar: (validade?: string) => void;
+  /**
+   * `validade` `undefined` = seguir sem validade. `autenticidade` é o código
+   * lido do PDF (ou `null` quando o PDF não tem padrão reconhecido); no modo
+   * de edição de metadados não há arquivo em mãos e ela vem `undefined`.
+   */
+  aoConfirmar: (validade?: string, autenticidade?: Autenticidade | null) => void;
 }
 
 /**
@@ -169,6 +188,11 @@ export default function DialogValidade({
   const [dataEscolhida, setDataEscolhida] = useState<Date | undefined>(undefined);
   const [textoDigitado, setTextoDigitado] = useState('');
   const [analisando, setAnalisando] = useState(false);
+  // O código de autenticidade lido do PDF ao abrir — `null` = sem padrão
+  // reconhecido (nada a mostrar); `falhaNaLeitura` = o PDF não pôde ser lido.
+  const [autenticidade, setAutenticidade] = useState<Autenticidade | null>(null);
+  const [lendoCodigo, setLendoCodigo] = useState(false);
+  const [falhaNaLeitura, setFalhaNaLeitura] = useState(false);
 
   // Reabre sempre com a validade do documento CLICADO. Sem isto, a data do
   // documento anterior ficava no campo e era gravada no seguinte.
@@ -181,14 +205,35 @@ export default function DialogValidade({
     setAnalisando(false);
   }, [aberto, validadeInicial]);
 
+  // O código de autenticidade se lê ao abrir, do texto do PDF, localmente.
+  // Imagem não tem texto; edição de metadados não tem arquivo em mãos.
+  useEffect(() => {
+    setAutenticidade(null);
+    setFalhaNaLeitura(false);
+    if (!aberto || !arquivo || arquivo.type !== 'application/pdf') return;
+    let vivo = true;
+    setLendoCodigo(true);
+    lerTextoDoPdf(arquivo)
+      .then((texto) => { if (vivo) setAutenticidade(extrairAutenticidade(texto)); })
+      .catch((erro) => {
+        // Não é a operação que a pessoa pediu (ela pediu anexar), mas também
+        // não pode sumir: a linha abaixo diz que o código não foi buscado.
+        console.warn('Leitura do PDF para o código de autenticidade falhou', erro);
+        if (vivo) setFalhaNaLeitura(true);
+      })
+      .finally(() => { if (vivo) setLendoCodigo(false); });
+    return () => { vivo = false; };
+  }, [aberto, arquivo]);
+
   const modoEdicao = arquivo === null;
 
   const confirmar = (comValidade: boolean) => {
-    if (!comValidade) { aoConfirmar(undefined); return; }
+    const codigo = modoEdicao ? undefined : autenticidade;
+    if (!comValidade) { aoConfirmar(undefined, codigo); return; }
     const valor = dataEscolhida
       ? format(dataEscolhida, 'yyyy-MM-dd')
       : textoDigitado || undefined;
-    aoConfirmar(valor);
+    aoConfirmar(valor, codigo);
   };
 
   const analisarPorIA = async () => {
@@ -353,6 +398,40 @@ export default function DialogValidade({
                 Validade: <strong>{format(dataEscolhida, 'dd/MM/yyyy')}</strong>
               </AlertDescription>
             </Alert>
+          )}
+
+          {/* O código de autenticidade, quando o PDF traz um padrão conhecido.
+              É o que prova a certidão — e vai gravado com o documento. */}
+          {lendoCodigo && (
+            <p className="g-meta flex items-center gap-1.5 text-muted-foreground">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> Lendo o código de autenticidade do PDF…
+            </p>
+          )}
+          {autenticidade && (
+            <Alert>
+              <ShieldCheck className="h-4 w-4" aria-hidden="true" />
+              <AlertDescription className="flex flex-col gap-1">
+                <span>
+                  Código de autenticidade: <strong className="tabular-nums">{autenticidade.codigo}</strong>
+                </span>
+                <span className="text-muted-foreground">{autenticidade.emissor}</span>
+                {autenticidade.conferirEm && (
+                  <a
+                    href={autenticidade.conferirEm}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex w-fit items-center gap-1 text-primary hover:underline"
+                  >
+                    <ExternalLink className="h-3 w-3" aria-hidden="true" /> Conferir no órgão
+                  </a>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
+          {falhaNaLeitura && (
+            <p className="g-meta text-warning-ink">
+              Não foi possível ler o PDF para buscar o código de autenticidade. O envio segue normalmente.
+            </p>
           )}
         </div>
 

@@ -62,7 +62,7 @@ vi.mock('@/lib/navegacao/abrir-email', () => ({
   abrirEmail: (mailto: string) => { emails.abertos.push(mailto); },
 }));
 
-function linha(nome: string, validade: string | null) {
+function linha(nome: string, validade: string | null, extra: Record<string, unknown> = {}) {
   return {
     id: `id-${nome.slice(0, 8)}`,
     nome,
@@ -74,6 +74,8 @@ function linha(nome: string, validade: string | null) {
     created_at: '2026-09-01T10:00:00Z',
     updated_at: '2026-09-02T10:00:00Z',
     descricao: null,
+    dados_extraidos: null,
+    ...extra,
   };
 }
 
@@ -710,6 +712,57 @@ describe('Controle de Documentos — órgão municipal cadastrado pela empresa',
     const dialogo = await screen.findByRole('dialog');
     expect(within(dialogo).getByText(/disponível após a atualização do banco/)).toBeInTheDocument();
     expect(within(dialogo).getByRole('button', { name: 'Salvar órgão' })).toBeDisabled();
+  });
+});
+
+describe('Controle de Documentos — código de autenticidade lido do PDF', () => {
+  beforeEach(() => {
+    dados.erro = null;
+    janelaLarga();
+    sessao.autorizacao.isCompanyAdmin = true;
+    dados.linhas = [
+      linha(NOMES.crf, diaISO(20), {
+        dados_extraidos: {
+          autenticidade: {
+            emissor: 'Caixa Econômica Federal',
+            codigo: '2026092303334570826430',
+            // Link gravado antigo: o catálogo é quem manda no link atual.
+            conferirEm: 'https://antigo.caixa.gov.br/',
+            lidoEm: '2026-09-23T11:00:00Z',
+          },
+        },
+      }),
+      linha(NOMES.cnd, diaISO(300)),
+    ];
+  });
+
+  it('a vaga com código mostra "Código: … · Conferir no órgão", com o link oficial do emissor; sem código, nada', async () => {
+    montar();
+    await screen.findByText(NOMES.crf);
+
+    const linhaCrf = linhaDaTabela(NOMES.crf);
+    expect(within(linhaCrf).getByText('2026092303334570826430')).toBeInTheDocument();
+    expect(within(linhaCrf).getByText(/Código:/)).toBeInTheDocument();
+    expect(within(linhaCrf).getByRole('link', { name: /Conferir no órgão/ }))
+      .toHaveAttribute('href', 'https://consulta-crf.caixa.gov.br/consultacrf/pages/consultaEmpregador.jsf');
+
+    // A CND sem código gravado não ganha código inventado.
+    const linhaCnd = linhaDaTabela(NOMES.cnd);
+    expect(within(linhaCnd).queryByText(/Código:/)).toBeNull();
+    expect(within(linhaCnd).queryByRole('link', { name: /Conferir no órgão/ })).toBeNull();
+  });
+
+  it('o painel traz o código, o emissor e o link na Conferência', async () => {
+    montar();
+    await screen.findByText(NOMES.crf);
+    fireEvent.click(screen.getAllByText(NOMES.crf)[0]);
+    const painel = oPainel(NOMES.crf);
+
+    expect(within(painel).getByText('Código de autenticidade')).toBeInTheDocument();
+    expect(within(painel).getByText('2026092303334570826430')).toBeInTheDocument();
+    expect(within(painel).getAllByText('Caixa Econômica Federal').length).toBeGreaterThan(0);
+    expect(within(painel).getByRole('link', { name: /Conferir no órgão/ }))
+      .toHaveAttribute('href', 'https://consulta-crf.caixa.gov.br/consultacrf/pages/consultaEmpregador.jsf');
   });
 });
 

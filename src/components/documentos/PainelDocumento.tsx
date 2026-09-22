@@ -1,5 +1,6 @@
 import {
   Download,
+  ExternalLink,
   Eye,
   History,
   Loader2,
@@ -209,6 +210,34 @@ export default function PainelDocumento({
 
       {temArquivo && (
         <BlocoDoPainel titulo="Conferência">
+          {/* O código de autenticidade lido do PDF, com o link oficial do
+              emissor: é lá que a certidão se prova — não aqui. */}
+          {item.autenticidade && (
+            <ListaDeCampos
+              campos={[
+                {
+                  rotulo: 'Código de autenticidade',
+                  largo: true,
+                  valor: (
+                    <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <span className="tabular-nums">{item.autenticidade.codigo}</span>
+                      {item.autenticidade.conferirEm && (
+                        <a
+                          href={item.autenticidade.conferirEm}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 font-normal text-primary hover:underline"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" /> Conferir no órgão
+                        </a>
+                      )}
+                    </span>
+                  ),
+                },
+                { rotulo: 'Emissor', largo: true, valor: item.autenticidade.emissor },
+              ]}
+            />
+          )}
           {podeVisualizar(item.arquivoPath) ? (
             <p className="g-meta text-muted-foreground">
               Abre em tela cheia dentro do sistema — não precisa baixar para conferir validade e

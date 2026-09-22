@@ -57,6 +57,7 @@ import {
   AVISO_SOLICITACOES_INDISPONIVEIS, abertasPorVaga, linhaParaGravar, type DadosDaSolicitacao,
 } from '@/lib/documentos/solicitacoes';
 import { AVISO_ORGAOS_INDISPONIVEIS, linhaDoOrgao, type DadosDoOrgao } from '@/lib/documentos/orgaos-da-empresa';
+import { comAutenticidade, type Autenticidade } from '@/lib/documentos/autenticidade';
 import { orgaoCadastradoDoMunicipio } from '@/data/certidoes-catalogo';
 import { formatCNPJ } from '@/lib/financeiro/formatters';
 import { useAbaNaUrl } from '@/lib/navegacao/aba-na-url';
@@ -252,7 +253,7 @@ export default function Documentos() {
     // dono — compartilhar é decisão dele, na tela.
     let consulta = supabase
       .from('documentos')
-      .select('id, nome, validade, arquivo_path, empresa_id, user_id, tamanho_bytes, created_at, updated_at, descricao');
+      .select('id, nome, validade, arquivo_path, empresa_id, user_id, tamanho_bytes, created_at, updated_at, descricao, dados_extraidos');
     consulta = empresaAtiva
       ? consulta.or(`empresa_id.eq.${empresaAtiva.id},and(user_id.eq.${user.id},empresa_id.is.null)`)
       : consulta.eq('user_id', user.id);
@@ -409,7 +410,13 @@ export default function Documentos() {
     setDialogo({ item, arquivo });
   };
 
-  const enviarArquivo = async (item: ItemDoCofre, arquivo: File, validade?: string) => {
+  /**
+   * `autenticidade` é o código lido do PDF no diálogo (ou `null` quando o
+   * arquivo não tem padrão reconhecido). Vai em `dados_extraidos` — JSON já
+   * existente na tabela, sem coluna nova —, e a substituição TROCA o código:
+   * o do arquivo anterior não prova o arquivo novo.
+   */
+  const enviarArquivo = async (item: ItemDoCofre, arquivo: File, validade?: string, autenticidade?: Autenticidade | null) => {
     if (!user) return;
     setDialogo(null);
     setEnviandoNome(item.nome);
@@ -457,6 +464,7 @@ export default function Documentos() {
           validade: validade ?? null,
           tamanho_bytes: arquivo.size,
           empresa_id: empresaAtiva?.id ?? item.empresaIdGravado ?? null,
+          dados_extraidos: comAutenticidade(item.dadosExtraidos, autenticidade ?? null),
         } as never)
         .eq('id', item.dbId)
         .select('id');
@@ -478,6 +486,7 @@ export default function Documentos() {
           arquivo_path: caminho,
           validade,
           tamanho_bytes: arquivo.size,
+          dados_extraidos: comAutenticidade(null, autenticidade ?? null),
         } as never);
       if (erroInsert) {
         toast.error('Erro ao salvar metadados do documento: ' + erroInsert.message);
@@ -740,6 +749,26 @@ export default function Documentos() {
             )}
             {i.legadoPrivado && <Badge variant="muted">Só você vê</Badge>}
           </span>
+          {/* O código de autenticidade lido do PDF — o que prova a certidão —
+              com o link de conferência do emissor. Sem código, nada aparece. */}
+          {i.autenticidade && (
+            <span className="g-meta flex flex-wrap items-center gap-x-1 text-muted-foreground" onClick={(e) => e.stopPropagation()}>
+              Código: <span className="tabular-nums text-foreground">{i.autenticidade.codigo}</span>
+              {i.autenticidade.conferirEm && (
+                <>
+                  <span aria-hidden="true">·</span>
+                  <a
+                    href={i.autenticidade.conferirEm}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-primary hover:underline"
+                  >
+                    <ExternalLink className="h-3 w-3" aria-hidden="true" /> Conferir no órgão
+                  </a>
+                </>
+              )}
+            </span>
+          )}
         </div>
       ),
     },
@@ -1160,8 +1189,8 @@ export default function Documentos() {
             arquivo={dialogo.arquivo}
             validadeInicial={dialogo.item.validade}
             salvando={salvandoValidade || enviandoNome === dialogo.item.nome}
-            aoConfirmar={(validade) => {
-              if (dialogo.arquivo) enviarArquivo(dialogo.item, dialogo.arquivo, validade);
+            aoConfirmar={(validade, autenticidade) => {
+              if (dialogo.arquivo) enviarArquivo(dialogo.item, dialogo.arquivo, validade, autenticidade);
               else salvarValidade(dialogo.item, validade);
             }}
           />
