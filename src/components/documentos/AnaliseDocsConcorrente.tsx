@@ -12,6 +12,7 @@ import { streamAIChat, type ChatMessage } from '@/lib/ai-stream';
 import ReactMarkdown from 'react-markdown';
 import { supabase } from '@/integrations/supabase/client';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ordenarProcessos, processoValidoParaAnalise, rotuloDoProcesso } from '@/lib/licitacao/rotulo-do-processo';
 import {
   buildConcorrenteAnalysisContext,
   buildConcorrenteAnalysisUserMessage,
@@ -32,6 +33,12 @@ type Licitacao = {
   objeto: string;
   orgao: string;
   modalidade: string;
+  status?: string | null;
+  resultado?: string | null;
+  arquivado_em?: string | null;
+  data_abertura?: string | null;
+  ano_compra?: string | null;
+  created_at?: string | null;
 };
 
 const SUPPORTED_COMPETITOR_EXTENSIONS = ['.pdf', '.zip', '.doc', '.docx', '.jpg', '.jpeg', '.png', '.webp', '.xlsx', '.xls'];
@@ -51,11 +58,15 @@ export default function AnaliseDocsConcorrente() {
 
   useEffect(() => {
     const fetchLicitacoes = async () => {
+      // Só processo válido para a análise (22/09): fora cancelado, anulado,
+      // revogado, suspenso, perdido, arquivado, deserto e fracassado; ordem
+      // pela abertura mais recente; rótulo na norma da casa ("Pregão
+      // Eletrônico nº 44/2025 — Município de Rondon do Pará").
       const { data } = await supabase
         .from('licitacoes')
-        .select('id, numero, objeto, orgao, modalidade')
+        .select('id, numero, objeto, orgao, modalidade, status, resultado, arquivado_em, data_abertura, ano_compra, created_at')
         .order('created_at', { ascending: false });
-      if (data) setLicitacoes(data);
+      if (data) setLicitacoes(ordenarProcessos(data.filter(processoValidoParaAnalise)));
     };
     fetchLicitacoes();
   }, []);
@@ -367,7 +378,7 @@ Este relatório possui finalidade meramente informativa e não substitui parecer
             <SelectItem value="none">Nenhuma — análise avulsa</SelectItem>
             {licitacoes.map((lic) => (
               <SelectItem key={lic.id} value={lic.id}>
-                {lic.numero} — {lic.modalidade} — {lic.orgao}
+                {rotuloDoProcesso(lic)}
               </SelectItem>
             ))}
           </SelectContent>
