@@ -134,7 +134,6 @@ export default function FinLancamentos() {
     [lancsAtivos]
   );
   const regime = filtro.status && filtro.status !== "todos" ? filtro.status : "previsto e realizado";
-  const limiteAtingido = lancs.length >= 500;
 
   const sortedLancs = useMemo(() => {
     const lista = [...lancs];
@@ -396,7 +395,7 @@ export default function FinLancamentos() {
             value={formatBRL(resultado)}
             sub={totalMovimentacao > 0
               ? `Fora: ${formatBRL(totalMovimentacao)} de movimentação (aporte, aplicação, transferência)`
-              : limiteAtingido ? "Sobre os 500 lançamentos carregados" : "Sobre os lançamentos carregados"}
+              : "Sobre todos os lançamentos do recorte"}
             tone={resultado >= 0 ? "success" : "danger"}
           />
           <StatCell
@@ -414,9 +413,7 @@ export default function FinLancamentos() {
         <p className="text-sm text-muted-foreground">
           {isLoading
             ? "Carregando…"
-            : limiteAtingido
-              ? "500 lançamentos carregados — há mais; refine os filtros para ver e somar o restante"
-              : `${lancs.length} lançamento${lancs.length !== 1 ? "s" : ""} encontrado${lancs.length !== 1 ? "s" : ""}`}
+            : `${lancs.length} lançamento${lancs.length !== 1 ? "s" : ""} encontrado${lancs.length !== 1 ? "s" : ""}`}
         </p>
         {temAlgumFiltro && (
           <Button variant="outline" size="sm" onClick={limparTodosFiltros}>

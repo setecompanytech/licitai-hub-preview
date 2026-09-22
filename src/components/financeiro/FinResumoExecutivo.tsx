@@ -27,6 +27,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { formatBRL, formatDocumento } from "@/lib/financeiro/formatters";
+import { buscarTodos } from "@/lib/financeiro/paginar";
 
 type LancDetalhe = {
   id: string;
@@ -69,18 +70,27 @@ export default function FinResumoExecutivo() {
       const mes = hoje.getMonth() + 1;
       const inicioMes = `${ano}-${String(mes).padStart(2, "0")}-01`;
 
-      const [contasRes, lancsRes, pessoasRes] = await Promise.all([
+      const [contasRes, lancs, pessoasRes] = await Promise.all([
         supabase
           .from("financeiro_contas")
           .select("id, nome, banco, agencia, conta, tipo, saldo_atual, limite")
           .eq("empresa_id", empresaId!)
           .eq("ativa", true)
           .order("nome"),
-        supabase
-          .from("financeiro_lancamentos")
-          .select("id, tipo, status, valor, descricao, pessoa_id, data_competencia, data_vencimento")
-          .eq("empresa_id", empresaId!)
-          .gte("data_competencia", `${ano}-01-01`),
+        // O ano inteiro, página a página: sem `.range` o PostgREST devolve no
+        // máximo 1000 linhas e o resumo para a diretoria somava uma amostra.
+        buscarTodos<{
+          id: string; tipo: string; status: string; valor: number; descricao: string | null;
+          pessoa_id: string | null; data_competencia: string; data_vencimento: string | null;
+        }>((de, ate) =>
+          supabase
+            .from("financeiro_lancamentos")
+            .select("id, tipo, status, valor, descricao, pessoa_id, data_competencia, data_vencimento")
+            .eq("empresa_id", empresaId!)
+            .gte("data_competencia", `${ano}-01-01`)
+            .order("data_competencia")
+            .order("id")
+            .range(de, ate)),
         supabase
           .from("financeiro_pessoas")
           .select("id, nome, documento")
@@ -88,7 +98,6 @@ export default function FinResumoExecutivo() {
       ]);
 
       const contas = (contasRes.data ?? []) as any as ContaSaldo[];
-      const lancs = lancsRes.data ?? [];
       const pessoaMap = new Map<string, { nome: string; documento: string | null }>();
       (pessoasRes.data ?? []).forEach((p: any) => pessoaMap.set(p.id, { nome: p.nome, documento: p.documento }));
 

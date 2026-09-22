@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import EstadoVazio from '@/components/shared/EstadoVazio';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
+import { buscarTodos } from '@/lib/financeiro/paginar';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
 import { Link2, Loader2, Search } from 'lucide-react';
@@ -70,16 +71,20 @@ export default function FinVincularDespesasLote({
     (async () => {
       setCarregando(true);
       setSelecionadas(new Set());
-      const [despRes, contrRes] = await Promise.all([
-        supabase
-          .from('financeiro_lancamentos')
-          .select('id, data_vencimento, data_competencia, descricao, valor, status, categoria:financeiro_categorias!financeiro_lancamentos_categoria_id_fkey(nome, natureza), pessoa:financeiro_pessoas(nome)')
-          .eq('empresa_id', empresaAtiva.id)
-          .eq('tipo', 'a_pagar')
-          .is('contrato_id', null)
-          .neq('status', 'cancelado')
-          .order('valor', { ascending: false })
-          .limit(500),
+      const [despesasSoltas, contrRes] = await Promise.all([
+        // Todas as despesas sem contrato — o `.limit(500)` escondia as menores
+        // do rateio sem dizer nada (21/09).
+        buscarTodos<Despesa>((de, ate) =>
+          supabase
+            .from('financeiro_lancamentos')
+            .select('id, data_vencimento, data_competencia, descricao, valor, status, categoria:financeiro_categorias!financeiro_lancamentos_categoria_id_fkey(nome, natureza), pessoa:financeiro_pessoas(nome)')
+            .eq('empresa_id', empresaAtiva.id)
+            .eq('tipo', 'a_pagar')
+            .is('contrato_id', null)
+            .neq('status', 'cancelado')
+            .order('valor', { ascending: false })
+            .order('id')
+            .range(de, ate)),
         supabase
           .from('contratos')
           .select('id, numero_contrato, orgao_contratante, data_fim')
@@ -88,7 +93,7 @@ export default function FinVincularDespesasLote({
           .order('data_fim', { ascending: false, nullsFirst: false }),
       ]);
       if (cancelado) return;
-      const todas = ((despRes.data as unknown as Despesa[]) || []).map(d => ({ ...d, valor: Number(d.valor) || 0 }));
+      const todas = despesasSoltas.map(d => ({ ...d, valor: Number(d.valor) || 0 }));
       // Movimentação não é custo — fora da lista, pela mesma regra do rateio.
       setDespesas(todas.filter(d => d.categoria?.natureza !== 'movimentacao'));
       const cs = ((contrRes.data as unknown as ContratoOpcao[]) || []);

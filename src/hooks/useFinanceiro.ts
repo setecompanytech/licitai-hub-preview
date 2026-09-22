@@ -400,43 +400,48 @@ export function useLancamentos(filtro: LancamentoFiltro = {}) {
     queryKey: ["fin-lancamentos", empresaId, filtro],
     enabled: !!empresaId,
     queryFn: async () => {
-      let q = supabase
-        .from("financeiro_lancamentos")
-        .select("*, conta:financeiro_contas!financeiro_lancamentos_conta_id_fkey(id,nome), categoria:financeiro_categorias!financeiro_lancamentos_categoria_id_fkey(id,nome,natureza,grupo_dre), pessoa:financeiro_pessoas(id,nome)")
-        .eq("empresa_id", empresaId!)
-        .order("data_competencia", { ascending: false })
-        .limit(500);
-      if (filtro.tipo && filtro.tipo !== "todos") q = q.eq("tipo", filtro.tipo);
-      if (filtro.status && filtro.status !== "todos") q = q.eq("status", filtro.status);
-      if (filtro.contaId && filtro.contaId !== "todos") q = q.eq("conta_id", filtro.contaId);
-      if (filtro.origemTipo && filtro.origemTipo !== "todos") q = q.eq("origem_tipo", filtro.origemTipo);
-      if (filtro.origemLoteId) q = q.eq("origem_lote_id", filtro.origemLoteId);
-      const campo = filtro.campoData ?? "competencia";
-      if (campo === "ambos") {
-        // Retorna registros cujo vencimento OU competência caia no intervalo.
-        if (filtro.dataInicio && filtro.dataFim) {
-          q = q.or(
-            `and(data_vencimento.gte.${filtro.dataInicio},data_vencimento.lte.${filtro.dataFim}),` +
-              `and(data_competencia.gte.${filtro.dataInicio},data_competencia.lte.${filtro.dataFim})`
-          );
-        } else if (filtro.dataInicio) {
-          q = q.or(`data_vencimento.gte.${filtro.dataInicio},data_competencia.gte.${filtro.dataInicio}`);
-        } else if (filtro.dataFim) {
-          q = q.or(`data_vencimento.lte.${filtro.dataFim},data_competencia.lte.${filtro.dataFim}`);
+      // A lista INTEIRA, página a página (`paginar.ts`). O `.limit(500)` que
+      // vivia aqui cortava a carteira em silêncio, por competência decrescente:
+      // na ETHOS, com 714 títulos a pagar, a coluna "Concluído" do Kanban
+      // omitia 214 pagos de janeiro a março e o painel somava menos (21/09).
+      const montar = (de: number, ate: number) => {
+        let q = supabase
+          .from("financeiro_lancamentos")
+          .select("*, conta:financeiro_contas!financeiro_lancamentos_conta_id_fkey(id,nome), categoria:financeiro_categorias!financeiro_lancamentos_categoria_id_fkey(id,nome,natureza,grupo_dre), pessoa:financeiro_pessoas(id,nome)")
+          .eq("empresa_id", empresaId!);
+        if (filtro.tipo && filtro.tipo !== "todos") q = q.eq("tipo", filtro.tipo);
+        if (filtro.status && filtro.status !== "todos") q = q.eq("status", filtro.status);
+        if (filtro.contaId && filtro.contaId !== "todos") q = q.eq("conta_id", filtro.contaId);
+        if (filtro.origemTipo && filtro.origemTipo !== "todos") q = q.eq("origem_tipo", filtro.origemTipo);
+        if (filtro.origemLoteId) q = q.eq("origem_lote_id", filtro.origemLoteId);
+        const campo = filtro.campoData ?? "competencia";
+        if (campo === "ambos") {
+          // Retorna registros cujo vencimento OU competência caia no intervalo.
+          if (filtro.dataInicio && filtro.dataFim) {
+            q = q.or(
+              `and(data_vencimento.gte.${filtro.dataInicio},data_vencimento.lte.${filtro.dataFim}),` +
+                `and(data_competencia.gte.${filtro.dataInicio},data_competencia.lte.${filtro.dataFim})`
+            );
+          } else if (filtro.dataInicio) {
+            q = q.or(`data_vencimento.gte.${filtro.dataInicio},data_competencia.gte.${filtro.dataInicio}`);
+          } else if (filtro.dataFim) {
+            q = q.or(`data_vencimento.lte.${filtro.dataFim},data_competencia.lte.${filtro.dataFim}`);
+          }
+        } else {
+          const coluna = campo === "vencimento" ? "data_vencimento" : "data_competencia";
+          if (filtro.dataInicio) q = q.gte(coluna, filtro.dataInicio);
+          if (filtro.dataFim) q = q.lte(coluna, filtro.dataFim);
         }
-      } else {
-        const coluna = campo === "vencimento" ? "data_vencimento" : "data_competencia";
-        if (filtro.dataInicio) q = q.gte(coluna, filtro.dataInicio);
-        if (filtro.dataFim) q = q.lte(coluna, filtro.dataFim);
-      }
-      if (filtro.busca) q = q.ilike("descricao", `%${filtro.busca}%`);
-      const { data, error } = await q;
-      if (error) throw error;
-      return data as (Lancamento & {
+        if (filtro.busca) q = q.ilike("descricao", `%${filtro.busca}%`);
+        // `id` como desempate: sem ordem estável, a mesma linha pode cair em
+        // duas páginas e outra em nenhuma.
+        return q.order("data_competencia", { ascending: false }).order("id").range(de, ate);
+      };
+      return buscarTodos<Lancamento & {
         conta: { id: string; nome: string } | null;
         categoria: { id: string; nome: string; natureza: string } | null;
         pessoa: { id: string; nome: string } | null;
-      })[];
+      }>(montar);
     },
   });
 }
@@ -935,21 +940,22 @@ export function useMovimentosExtrato(
     queryKey: ["fin-movimentos", empresaId, filtros],
     enabled: !!empresaId && options.enabled !== false,
     queryFn: async () => {
-      let q = supabase
-        .from("financeiro_extrato_movimentos")
-        .select("*, conta:financeiro_contas(id,nome), lancamento:financeiro_lancamentos(id,descricao,valor)")
-        .eq("empresa_id", empresaId!)
-        .order("data_movimento", { ascending: false })
-        .limit(500);
-      if (filtros.extrato_id) q = q.eq("extrato_id", filtros.extrato_id);
-      if (filtros.conta_id) q = q.eq("conta_id", filtros.conta_id);
-      if (typeof filtros.conciliado === "boolean") q = q.eq("conciliado", filtros.conciliado);
-      const { data, error } = await q;
-      if (error) throw error;
-      return data as (ExtratoMovimento & {
+      // Sem teto: um extrato de conta movimentada passa de 500 linhas num
+      // trimestre, e o que ficava de fora sumia da conciliação sem aviso.
+      const montar = (de: number, ate: number) => {
+        let q = supabase
+          .from("financeiro_extrato_movimentos")
+          .select("*, conta:financeiro_contas(id,nome), lancamento:financeiro_lancamentos(id,descricao,valor)")
+          .eq("empresa_id", empresaId!);
+        if (filtros.extrato_id) q = q.eq("extrato_id", filtros.extrato_id);
+        if (filtros.conta_id) q = q.eq("conta_id", filtros.conta_id);
+        if (typeof filtros.conciliado === "boolean") q = q.eq("conciliado", filtros.conciliado);
+        return q.order("data_movimento", { ascending: false }).order("id").range(de, ate);
+      };
+      return buscarTodos<ExtratoMovimento & {
         conta: { id: string; nome: string } | null;
         lancamento: { id: string; descricao: string; valor: number } | null;
-      })[];
+      }>(montar);
     },
   });
 }
@@ -1417,13 +1423,6 @@ export type ResumoVisor = {
   topAtrasosReceber: Array<{ id: string; descricao: string; pessoa: string; diasAtraso: number; valor: number; vencimento: string }>;
   inadimplenciaMesPct: number;
   runwayDias: number | null;
-  /**
-   * Recortes que bateram no teto da consulta e saíram incompletos. Vazio é o
-   * caso normal. Não vazio significa que inadimplência e runway foram apurados
-   * sobre uma amostra — e a tela precisa dizer isso em vez de exibir o número
-   * com a mesma confiança de sempre.
-   */
-  truncado: string[];
 };
 
 export function useResumoVisorFinanceiro() {
@@ -1441,52 +1440,46 @@ export function useResumoVisorFinanceiro() {
       const inicio30Str = somarDiasLocal(-30);
       const mesAtual = mesLocal();
 
-      const [contasRes, futurosRes, atrasosRes, mesRes] = await Promise.all([
+      type TituloAberto = {
+        id: string; descricao: string | null; valor: number | null; tipo: string | null; status: string | null;
+        data_vencimento: string | null; pessoa: { nome?: string | null } | null;
+      };
+      type LinhaDoMes = {
+        valor: number | null; tipo: string | null; status: string | null; natureza: string | null;
+        data_realizado: string | null; data_competencia: string | null;
+      };
+
+      // A carteira em aberto vem INTEIRA, uma vez, página a página — e os
+      // recortes (próximos 10 dias, hoje, atrasos) saem dela no cliente. Antes
+      // eram três consultas com teto (2000, 500, 2000): batendo no teto, a
+      // inadimplência e o runway saíam calculados sobre uma amostra, com a
+      // mesma cara de número exato, e só um `console.warn` sabia (21/09).
+      const [contasRes, abertos, doMes] = await Promise.all([
         supabase.from("financeiro_contas").select("id, nome, tipo, banco_nome, agencia, conta, cor, saldo_atual, ativa, ordem").eq("empresa_id", empresaId!).order("ordem", { ascending: true }),
-        supabase
-          .from("financeiro_lancamentos")
-          .select("id, valor, tipo, status, data_vencimento")
-          .eq("empresa_id", empresaId!)
-          .in("status", ["previsto", "em_atraso"])
-          .gte("data_vencimento", hojeStr)
-          .lte("data_vencimento", fim10Str)
-          .limit(2000),
-        supabase
-          .from("financeiro_lancamentos")
-          .select("id, descricao, valor, tipo, status, data_vencimento, pessoa:financeiro_pessoas(nome)")
-          .eq("empresa_id", empresaId!)
-          .in("status", ["previsto", "em_atraso"])
-          .lt("data_vencimento", hojeStr)
-          .order("data_vencimento", { ascending: true })
-          .limit(500),
-        supabase
-          .from("financeiro_lancamentos")
-          .select("valor, tipo, status, natureza, data_realizado, data_competencia")
-          .eq("empresa_id", empresaId!)
-          .gte("data_competencia", inicio30Str)
-          .limit(2000),
+        buscarTodos<TituloAberto>((de, ate) =>
+          supabase
+            .from("financeiro_lancamentos")
+            .select("id, descricao, valor, tipo, status, data_vencimento, pessoa:financeiro_pessoas(nome)")
+            .eq("empresa_id", empresaId!)
+            .in("tipo", ["a_pagar", "a_receber"])
+            .in("status", ["previsto", "em_atraso"])
+            .order("data_vencimento", { ascending: true, nullsFirst: false })
+            .order("id")
+            .range(de, ate)),
+        buscarTodos<LinhaDoMes>((de, ate) =>
+          supabase
+            .from("financeiro_lancamentos")
+            .select("valor, tipo, status, natureza, data_realizado, data_competencia")
+            .eq("empresa_id", empresaId!)
+            .gte("data_competencia", inicio30Str)
+            .order("data_competencia")
+            .order("id")
+            .range(de, ate)),
       ]);
       if (contasRes.error) throw contasRes.error;
-      if (futurosRes.error) throw futurosRes.error;
-      if (atrasosRes.error) throw atrasosRes.error;
-      if (mesRes.error) throw mesRes.error;
 
-      /**
-       * Truncar em silêncio é pior do que falhar.
-       *
-       * As três consultas acima têm teto (2000, 500, 2000). Batendo no teto, a
-       * inadimplência do mês e o runway saem calculados sobre uma AMOSTRA — e
-       * saem com a mesma cara de número exato que teriam se estivessem certos.
-       * Quem lê não tem como saber. Aqui o corte deixa rastro, e a tela pode
-       * dizer que o número está incompleto.
-       */
-      const truncou: string[] = [];
-      if ((futurosRes.data?.length ?? 0) >= 2000) truncou.push('vencimentos dos próximos 10 dias');
-      if ((atrasosRes.data?.length ?? 0) >= 500) truncou.push('atrasos');
-      if ((mesRes.data?.length ?? 0) >= 2000) truncou.push('movimento dos últimos 30 dias');
-      if (truncou.length) {
-        console.warn('[financeiro] resumo truncado por limite de consulta:', truncou.join(', '));
-      }
+      const futuros = abertos.filter((l) => !!l.data_vencimento && l.data_vencimento >= hojeStr && l.data_vencimento <= fim10Str);
+      const atrasos = abertos.filter((l) => !!l.data_vencimento && l.data_vencimento < hojeStr);
 
       const contasRows = (contasRes.data ?? []) as Array<{ id: string; nome: string; tipo: string | null; banco_nome: string | null; agencia: string | null; conta: string | null; cor: string | null; saldo_atual: number | null; ativa: boolean }>;
       const contasSaldo = contasRows.map((c) => ({
@@ -1507,7 +1500,7 @@ export function useResumoVisorFinanceiro() {
       for (let i = 0; i < 10; i++) {
         buckets.set(somarDiasLocal(i), { previstoPagar: 0, previstoReceber: 0 });
       }
-      (futurosRes.data ?? []).forEach((l) => {
+      futuros.forEach((l) => {
         const k = (l.data_vencimento ?? "").slice(0, 10);
         const b = buckets.get(k);
         if (!b) return;
@@ -1522,8 +1515,6 @@ export function useResumoVisorFinanceiro() {
       });
 
       // Hoje (a pagar / a receber)
-      const futuros = futurosRes.data ?? [];
-      const atrasos = atrasosRes.data ?? [];
       const hojePagarLancs = futuros.filter((l) => l.data_vencimento === hojeStr && l.tipo === "a_pagar");
       const hojeReceberLancs = futuros.filter((l) => l.data_vencimento === hojeStr && l.tipo === "a_receber");
       const atrasoPagarTot = atrasos.filter((l) => l.tipo === "a_pagar").reduce((s, l) => s + Number(l.valor ?? 0), 0);
@@ -1557,14 +1548,14 @@ export function useResumoVisorFinanceiro() {
       const topAtrasosReceber = atrasos.filter((l) => l.tipo === "a_receber").map(mapAtraso).sort((a, b) => b.diasAtraso - a.diasAtraso).slice(0, 5);
 
       // Inadimplência mês = atraso a receber / (recebido + atraso) do mês
-      const lancsMes = (mesRes.data ?? []).filter((l) => (l.data_competencia ?? "").startsWith(mesAtual));
+      const lancsMes = doMes.filter((l) => (l.data_competencia ?? "").startsWith(mesAtual));
       const recebidoMes = lancsMes.filter((l) => l.tipo === "a_receber" && (l.status === "realizado" || l.status === "conciliado")).reduce((s, l) => s + Number(l.valor ?? 0), 0);
       const atrasoReceberMes = lancsMes.filter((l) => l.tipo === "a_receber" && l.status === "em_atraso").reduce((s, l) => s + Number(l.valor ?? 0), 0);
       const baseInad = recebidoMes + atrasoReceberMes;
       const inadimplenciaMesPct = baseInad > 0 ? (atrasoReceberMes / baseInad) * 100 : 0;
 
       // Runway = saldo / (despesa média diária dos últimos 30 dias)
-      const despesa30 = (mesRes.data ?? [])
+      const despesa30 = doMes
         .filter((l) => l.natureza === "despesa" && (l.status === "realizado" || l.status === "conciliado"))
         .reduce((s, l) => s + Number(l.valor ?? 0), 0);
       const despDiaria = despesa30 / 30;
@@ -1580,8 +1571,6 @@ export function useResumoVisorFinanceiro() {
         topAtrasosReceber,
         inadimplenciaMesPct,
         runwayDias,
-        // Quais recortes bateram no teto da consulta. Vazio = número completo.
-        truncado: truncou,
       };
     },
   });

@@ -42,6 +42,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { motivoDoDescarte, ehLinhaInformativa } from "@/lib/financeiro/linha-informativa";
+import { buscarTodos } from "@/lib/financeiro/paginar";
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { BancoLogo, findBanco } from "./BancoSelectorLogos";
@@ -303,15 +304,19 @@ export default function FinImportarOFX() {
       const datas = movs.map((m) => m.data);
       const dataMin = datas.reduce((a, b) => (a < b ? a : b));
       const dataMax = datas.reduce((a, b) => (a > b ? a : b));
-      const { data: pendentes } = await supabase
-        .from("financeiro_lancamentos")
-        .select("id, descricao, valor, tipo")
-        .eq("empresa_id", empresaId!)
-        .in("status", ["previsto", "em_atraso"])
-        .gte("data_vencimento", dataMin)
-        .lte("data_vencimento", dataMax)
-        .limit(500);
-      const pool = pendentes ?? [];
+      // Todos os títulos em aberto do período do extrato — o `.limit(500)`
+      // deixava título sem sugestão de conciliação sem dizer nada (21/09).
+      const pool = await buscarTodos<{ id: string; descricao: string; valor: number; tipo: string }>((de, ate) =>
+        supabase
+          .from("financeiro_lancamentos")
+          .select("id, descricao, valor, tipo")
+          .eq("empresa_id", empresaId!)
+          .in("status", ["previsto", "em_atraso"])
+          .gte("data_vencimento", dataMin)
+          .lte("data_vencimento", dataMax)
+          .order("data_vencimento")
+          .order("id")
+          .range(de, ate));
       const usados = new Set<string>();
       const novos = movs.map((mov) => {
         const valorAbs = Math.abs(mov.valor);

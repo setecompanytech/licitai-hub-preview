@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import EstadoVazio from "@/components/shared/EstadoVazio";
 import { ExternalLink, Search, RefreshCw, History } from "lucide-react";
 import { formatBRL, formatDate } from "@/lib/financeiro/formatters";
+import { buscarTodos } from "@/lib/financeiro/paginar";
 import { toast } from "sonner";
 
 type Lote = {
@@ -36,16 +37,16 @@ export default function FinLotesAuditoria() {
   const { data: lotes = [], isLoading, refetch } = useQuery({
     queryKey: ["fin-lotes", empresaId],
     enabled: !!empresaId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("financeiro_origem_lotes")
-        .select("*")
-        .eq("empresa_id", empresaId!)
-        .order("created_at", { ascending: false })
-        .limit(500);
-      if (error) throw error;
-      return (data ?? []) as Lote[];
-    },
+    queryFn: async () =>
+      // Todos os lotes: o `.limit(500)` escondia os mais antigos da auditoria.
+      buscarTodos<Lote>((de, ate) =>
+        supabase
+          .from("financeiro_origem_lotes")
+          .select("*")
+          .eq("empresa_id", empresaId!)
+          .order("created_at", { ascending: false })
+          .order("id")
+          .range(de, ate)),
   });
 
   const filtrados = lotes.filter((l) => {

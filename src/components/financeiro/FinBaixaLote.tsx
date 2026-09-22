@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { hojeLocal } from "@/lib/financeiro/data-local";
 import { formatBRL } from "@/lib/financeiro/formatters";
+import { buscarTodos } from "@/lib/financeiro/paginar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,18 +37,22 @@ export default function FinBaixaLote() {
   const { data: pendentes = [], isLoading } = useQuery({
     queryKey: ["fin-baixa-lote-pendentes", empresaId, tipo],
     enabled: !!empresaId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("financeiro_lancamentos")
-        .select("id, descricao, valor, data_vencimento, data_competencia, status, pessoa_id")
-        .eq("empresa_id", empresaId!)
-        .eq("tipo", tipo)
-        .in("status", ["previsto", "em_atraso"])
-        .order("data_vencimento", { ascending: true })
-        .limit(500);
-      if (error) throw error;
-      return data ?? [];
-    },
+    queryFn: async () =>
+      // A carteira em aberto inteira: o `.limit(500)` deixava título de fora
+      // da baixa em lote sem dizer nada (21/09).
+      buscarTodos<{
+        id: string; descricao: string; valor: number; data_vencimento: string | null;
+        data_competencia: string; status: string; pessoa_id: string | null;
+      }>((de, ate) =>
+        supabase
+          .from("financeiro_lancamentos")
+          .select("id, descricao, valor, data_vencimento, data_competencia, status, pessoa_id")
+          .eq("empresa_id", empresaId!)
+          .eq("tipo", tipo)
+          .in("status", ["previsto", "em_atraso"])
+          .order("data_vencimento", { ascending: true, nullsFirst: false })
+          .order("id")
+          .range(de, ate)),
   });
 
   const filtrados = useMemo(() => {

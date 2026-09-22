@@ -23,6 +23,7 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresaId } from "@/hooks/useFinanceiro";
 import { formatBRL } from "@/lib/financeiro/formatters";
+import { buscarTodos } from "@/lib/financeiro/paginar";
 import ValorDeCartao from "./ValorDeCartao";
 
 // O número grande de cada cartão do quadro: KPI 28/36 em peso 600, numa
@@ -46,18 +47,23 @@ function useQuadroFinanceiro() {
       const hoje = new Date();
       const ini12m = dataLocal(new Date(hoje.getFullYear(), hoje.getMonth() - 11, 1));
 
-      const [pessoasRes, lancsRes, contasRes, comissoesRes] = await Promise.all([
+      const [pessoasRes, lancs, contasRes, comissoesRes] = await Promise.all([
         supabase.from("financeiro_pessoas").select("id, tipo").eq("empresa_id", empresaId!).eq("ativo", true),
-        supabase.from("financeiro_lancamentos")
-          .select("tipo, status, valor, data_competencia, data_vencimento")
-          .eq("empresa_id", empresaId!)
-          .gte("data_competencia", ini12m),
+        // Doze meses inteiros, página a página: sem `.range` o PostgREST
+        // devolve no máximo 1000 linhas e o quadro somava uma amostra (21/09).
+        buscarTodos<{ tipo: string; status: string; valor: number; data_competencia: string; data_vencimento: string | null }>((de, ate) =>
+          supabase.from("financeiro_lancamentos")
+            .select("tipo, status, valor, data_competencia, data_vencimento")
+            .eq("empresa_id", empresaId!)
+            .gte("data_competencia", ini12m)
+            .order("data_competencia")
+            .order("id")
+            .range(de, ate)),
         supabase.from("financeiro_contas").select("id, nome, saldo_atual, ativa").eq("empresa_id", empresaId!).eq("ativa", true),
         supabase.from("financeiro_comissoes_calculadas").select("valor, status").eq("empresa_id", empresaId!).limit(1000),
       ]);
 
       const pessoas = pessoasRes.data ?? [];
-      const lancs = lancsRes.data ?? [];
       const contas = contasRes.data ?? [];
       const comissoes = comissoesRes.data ?? [];
 
