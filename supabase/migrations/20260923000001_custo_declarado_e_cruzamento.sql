@@ -653,7 +653,10 @@ BEGIN
          count(*) FILTER (WHERE ped.situacao = 'parcial')::int,
          count(*) FILTER (WHERE ped.situacao = 'conferido')::int,
          count(*) FILTER (WHERE ped.situacao = 'divergente')::int
-    FROM ped, fin, livres
+    FROM fin
+    CROSS JOIN livres
+    -- Contrato sem pedido ainda devolve UMA linha (zeros), não nenhuma.
+    LEFT JOIN ped ON true
    GROUP BY fin.pago, fin.aberto, livres.valor, livres.n;
 END;
 $$;
