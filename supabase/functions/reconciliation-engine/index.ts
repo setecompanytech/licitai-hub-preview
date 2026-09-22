@@ -53,6 +53,30 @@ interface Lancamento {
   status: string;
 }
 
+/**
+ * Baixa em partes (22/09): quais destes valores, de 2 a `max`, somam o alvo
+ * (± R$ 0,02)? Devolve os índices, ou null. Busca em profundidade sobre
+ * grupos pequenos (movimentos do mesmo dia, conta e sentido).
+ */
+function acharCombinacao(valores: number[], alvo: number, max = 4): number[] | null {
+  const n = valores.length;
+  const idx = valores.map((_, i) => i).sort((a, b) => valores[b] - valores[a]);
+  const escolha: number[] = [];
+  const dfs = (pos: number, soma: number): boolean => {
+    if (escolha.length >= 2 && Math.abs(soma - alvo) <= 0.02) return true;
+    if (escolha.length >= max || pos >= n || soma > alvo + 0.02) return false;
+    for (let i = pos; i < n; i++) {
+      const v = valores[idx[i]];
+      if (soma + v > alvo + 0.02) continue;
+      escolha.push(idx[i]);
+      if (dfs(i + 1, soma + v)) return true;
+      escolha.pop();
+    }
+    return false;
+  };
+  return dfs(0, 0) ? [...escolha] : null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -221,6 +245,55 @@ Deno.serve(async (req) => {
     // ===== Camada IA (Lovable AI Gateway) =====
     // Para cada movimento ainda sem match, monta candidatos relaxados (±15 dias, valor ±5%)
     // e pede ao Gemini Flash que escolha o melhor (ou nenhum) com justificativa.
+    // ── Baixa em partes (22/09, decisão do dono): o empenho de R$ 10.000
+    // pago em dois PIX de R$ 5.000 no mesmo dia nunca casava — o motor exige
+    // valor igual. Aqui: 2 a 4 movimentos livres do mesmo dia, conta e
+    // sentido que somam um título em aberto viram SUGESTÃO de dividir e
+    // conciliar (`dividir_lancamento`). Nunca automática.
+    const divisoes: Array<{ lancamento_id: string; movimento_ids: string[]; partes: number[]; data: string; valor: number }> = [];
+    {
+      const movsLivres = ((movimentos || []) as Movimento[]).filter(
+        (m) => !matches.find((x) => x.movimento_id === m.id),
+      );
+      const grupos = new Map<string, Movimento[]>();
+      for (const m of movsLivres) {
+        const k = `${m.conta_id}|${m.data_movimento}|${m.valor >= 0 ? "c" : "d"}`;
+        const g = grupos.get(k) ?? [];
+        g.push(m);
+        grupos.set(k, g);
+      }
+      const usados = new Set<string>();
+      const titulosAbertos = ((lancamentos || []) as Lancamento[]).filter(
+        (l) => l.status === "previsto" && !lancUsados.has(l.id),
+      );
+      for (const [k, grupoTodo] of grupos) {
+        if (grupoTodo.length < 2) continue;
+        const [conta, data, sinal] = k.split("|");
+        const natureza = sinal === "c" ? "receita" : "despesa";
+        const candidatos = titulosAbertos.filter((l) => {
+          if (l.natureza !== natureza) return false;
+          if (l.conta_id && l.conta_id !== conta) return false;
+          return daysBetween(l.data_vencimento || l.data_competencia, data) <= 5;
+        });
+        for (const l of candidatos) {
+          if (lancUsados.has(l.id)) continue;
+          const grupo = grupoTodo.filter((m) => !usados.has(m.id)).slice(0, 12);
+          if (grupo.length < 2) break;
+          const combo = acharCombinacao(grupo.map((m) => Math.abs(m.valor)), Number(l.valor), 4);
+          if (!combo) continue;
+          divisoes.push({
+            lancamento_id: l.id,
+            movimento_ids: combo.map((i) => grupo[i].id),
+            partes: combo.map((i) => Math.round(Math.abs(grupo[i].valor) * 100) / 100),
+            data,
+            valor: Number(l.valor),
+          });
+          lancUsados.add(l.id);
+          for (const i of combo) usados.add(grupo[i].id);
+        }
+      }
+    }
+
     let ia_consultados = 0;
     let ia_sugeridos = 0;
     if (usar_ia) {
@@ -390,6 +463,8 @@ Responda em JSON estrito: {"escolha_id": "<o ID exato do candidato escolhido, ou
         ia_consultados,
         ia_sugeridos,
         matches: auto_aplicar ? [] : matches,
+        sugestoes_divisao: divisoes.length,
+        divisoes: auto_aplicar ? [] : divisoes,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
