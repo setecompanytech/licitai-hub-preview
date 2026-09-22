@@ -31,3 +31,6 @@ supabase/.temp/
 # imagem em git nao se apaga depois sem reescrever o historico.
 # O README da pasta explica como atualizar e o que cada nome significa.
 capturas-robo/*.png
+
+# worktrees temporárias dos agentes do Claude Code
+.claude/worktrees/
