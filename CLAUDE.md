@@ -308,6 +308,33 @@ do ITEM vem dos itens do PNCP. Regras que valem no código:
   com código, sem faixa etária). A ficha federal só vale se for do CNPJ
   pedido (`fichaDaPessoaJuridica`).
 
+## Certidões — cada uma no seu órgão emissor (22/09/2026, tarde)
+
+O dono: "quem atua dentro da administração pública busca por veracidade,
+documentos probatórios reais". A aba Certidões "emitia" por raspagem com
+IA, resumia por IA e misturava entes (a prefeitura de São Paulo para um
+CNPJ de Belém). Regras que valem no código:
+
+- **O Praefectus não emite, não raspa nem resume certidão por IA.** A
+  certidão válida é o PDF do órgão emissor, com código de autenticidade. O
+  cofre de Documentos (`lib/documentos/previstos.ts`, vagas por nome exato)
+  guarda o PDF, lê a validade (`lib/documentos/validade.ts`) e avisa.
+- **Catálogo único** em `data/certidoes-catalogo.ts`: para cada certidão da
+  Lei 14.133 (arts. 66 a 69), quem emite, onde, como se obtém (emissão
+  on-line com "sou humano" / login da empresa / solicitação ao órgão /
+  documento próprio), validade usual e se terceiro consulta. Federais fixas;
+  estaduais e municipais de `certidoes-estaduais-municipais.ts` (27 UFs,
+  capitais); município fora do mapa vira "órgão a cadastrar" com o NOME
+  dele, nunca outra cidade. Belém: solicitação por e-mail (modelo pronto).
+- **O domicílio fiscal vem do cadastro do CNPJ** (BrasilAPI: UF e
+  município), nunca de seleção solta; a seleção só troca o domicílio.
+- **Edge `certidoes-negativas` = cadastro + sanções pela API** (CEIS, CNEP,
+  CEPIM, leniência via `verificarIdoneidade`). Sem OpenAI, sem Firecrawl.
+  `emitir-certidoes` (Firecrawl + IA nos sites do TST/Caixa/Receita, todos
+  com verificação humana) saiu do repo em 22/09.
+- Nada de rótulo técnico na tela: "APIs públicas", "Firecrawl", "IA
+  (extração)", "via API" não aparecem ao usuário.
+
 ## Permissões — o que é da plataforma não aparece ao cliente (pedido do Rafael em 14/09, decidido em 19/09/2026)
 
 O Rafael quer que parte do sistema deixe de ficar exposta às contas das

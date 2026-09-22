@@ -33,8 +33,6 @@ project_id = "uwtyuwktxalnpgrcbbgk"
     verify_jwt = false
   [functions.consulta-sintegra]
     verify_jwt = false
-  [functions.emitir-certidoes]
-    verify_jwt = false
   [functions.envio-boletim]
     verify_jwt = false
   # Como está no ar desde 09/09 (versão 30). Sem esta linha, um deploy pela

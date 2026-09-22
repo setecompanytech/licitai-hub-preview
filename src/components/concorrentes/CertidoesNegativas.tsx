@@ -1,260 +1,215 @@
-import { useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
-import SeloPraefectusIA from '@/components/shared/SeloPraefectusIA';
-import FaixaIndicadores from '@/components/gestao/FaixaIndicadores';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  Search, Shield, ExternalLink, Loader2, AlertTriangle,
-  CheckCircle2, AlertCircle, HelpCircle, Download, FileSpreadsheet, FileDown, FileText,
-  Wifi, WifiOff, Bot, Globe, Clock, Zap, ShieldAlert, MapPin, Building2, Landmark, Lock
+  Search, Shield, ExternalLink, Loader2, AlertTriangle, CheckCircle2, AlertCircle, HelpCircle, MapPin, Building2,
+  Landmark, FolderLock, Mail, Download, FileCheck2,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { downloadCSV, downloadTextReport, downloadPDF } from '@/lib/download-utils';
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CERTIDOES_POR_ESTADO, getPortaisCertidoes, getMunicipiosCadastrados } from '@/data/certidoes-estaduais-municipais';
+import { downloadCSV } from '@/lib/download-utils';
 import { REGIOES_ESTADOS } from '@/data/regioes-brasil';
-
-// ── Types for Verification mode ──
-type Certidao = {
-  nome: string; orgao: string; url: string; validadeDias: number;
-  documentosNecessarios: string[]; statusProvavel: 'regular' | 'pendente' | 'verificar';
-  observacoes: string; verificacaoReal?: boolean; dataVerificacao?: string; fonteVerificacao?: string;
-};
-type VerificacaoReal = {
-  fonte: string; status: 'regular' | 'irregular' | 'erro' | 'verificando';
-  detalhes: string; dataConsulta: string; url?: string;
-};
-type ResultadoCertidoes = {
-  verificacoesReais?: VerificacaoReal[]; certidoes: Certidao[];
-  resumo: string; recomendacoes: string[]; alertas?: string[];
-};
-
-// ── Types for Emission mode ──
-type EmissaoResult = {
-  certidao: string; status: 'emitida' | 'pendente' | 'erro' | 'captcha';
-  conteudo?: string; codigo?: string; validade?: string; dataEmissao?: string;
-  url?: string; detalhes: string; screenshot?: string;
-};
-type EmissaoResponse = {
-  resultados: EmissaoResult[];
-  resumo: { total: number; emitidas: number; captcha: number; pendentes: number; erros: number };
-  dataConsulta: string;
-};
+import {
+  checklistDeCertidoes, cidadeDaLista, modeloDeSolicitacao, porEsfera, ROTULO_DA_ESFERA, ROTULO_DA_OBTENCAO, validadeLegivel,
+  type CertidaoDoCatalogo,
+} from '@/data/certidoes-catalogo';
 
 /**
- * Certidões negativas — componente interno da aba "Certidões" da tela
- * Concorrentes: começa direto no conteúdo, sem cabeçalho de página.
+ * Certidões — cada uma no seu órgão emissor (22/09/2026, tarde).
  *
- * Cor de estado (identidade 12/09) vem SEMPRE das famílias em tinta
- * (`*-tint` / `*-ink` / `*-line`), via variante do Badge ou da caixa — nunca
- * de alfa composto à mão; e todo estado carrega TEXTO, não só cor.
+ * O que esta aba fazia: "emitia" certidões por raspagem com IA nos sites do
+ * TST, da Caixa e da Receita (todos com verificação humana, logo nada saía),
+ * pedia à IA uma lista genérica de certidões estaduais e municipais sem
+ * saber onde a empresa está (a prefeitura de São Paulo para um CNPJ de
+ * Belém), e resumia tudo em prosa. O dono: "quem atua dentro da
+ * administração pública busca por veracidade, documentos probatórios reais".
+ *
+ * O que ela faz agora, e só:
+ *  1. lê o CADASTRO do CNPJ na base da Receita — o domicílio fiscal decide os
+ *     órgãos estadual e municipal, não uma seleção solta;
+ *  2. consulta as SANÇÕES nos quatro cadastros do Portal da Transparência,
+ *     pela API oficial, com o filtro conferido;
+ *  3. mostra o CHECKLIST do domicílio: para cada certidão da Lei 14.133,
+ *     quem emite, onde, como se obtém, quanto tempo vale e se um terceiro
+ *     consegue consultar. Nenhuma certidão é gerada aqui: a válida é o PDF do
+ *     órgão, e o cofre de Documentos guarda, lê a validade e avisa.
  */
-const statusConfig = {
-  regular: { label: 'Regular', icon: CheckCircle2, variante: 'success' as const },
-  pendente: { label: 'Irregular', icon: AlertCircle, variante: 'danger' as const },
-  verificar: { label: 'Verificar', icon: HelpCircle, variante: 'warning' as const },
+type ResultadoCadastro = {
+  nome: string; status: 'limpo' | 'encontrado' | 'erro'; registros: Array<Record<string, unknown>>; total: number; erro?: string; url: string;
 };
-const verificacaoStatusConfig = {
-  regular: { label: 'Regular', icon: CheckCircle2, tinta: 'text-success-ink', caixa: 'border-success-line bg-success-tint' },
-  irregular: { label: 'Irregular', icon: AlertCircle, tinta: 'text-destructive-ink', caixa: 'border-destructive-line bg-destructive-tint' },
-  erro: { label: 'Erro', icon: WifiOff, tinta: 'text-muted-foreground', caixa: 'border-border bg-muted' },
-  verificando: { label: 'Verificando', icon: Loader2, tinta: 'text-muted-foreground', caixa: 'border-border bg-muted' },
+type Idoneidade = {
+  ceis: ResultadoCadastro; cnep: ResultadoCadastro; cepim: ResultadoCadastro; leniencia: ResultadoCadastro;
+  idonea: boolean; inconclusiva: boolean; divergencias: string[];
 };
-const emissaoStatusConfig = {
-  emitida: { label: 'Emitida', icon: CheckCircle2, variante: 'success' as const, caixa: 'border-success-line bg-success-tint' },
-  pendente: { label: 'Pendente', icon: HelpCircle, variante: 'warning' as const, caixa: 'border-warning-line bg-warning-tint' },
-  erro: { label: 'Irregular', icon: AlertCircle, variante: 'danger' as const, caixa: 'border-destructive-line bg-destructive-tint' },
-  captcha: { label: 'CAPTCHA', icon: ShieldAlert, variante: 'muted' as const, caixa: 'border-border bg-muted' },
+type Cadastro = {
+  razaoSocial: string; nomeFantasia: string; situacao: string; motivoSituacao: string; dataAbertura: string;
+  uf: string; municipio: string; cnaePrincipal: string; porte: string;
 };
+type Resultado = {
+  cnpj: string; cadastro: Cadastro | null; cadastroErro?: string; idoneidade: Idoneidade | null; idoneidadeErro?: string; consultadoEm: string;
+};
+
+const s = (v: unknown) => (typeof v === 'string' || typeof v === 'number' ? String(v) : '');
+const obj = (v: unknown) => (v && typeof v === 'object' ? (v as Record<string, unknown>) : {});
+
+/** Uma linha por registro de sanção: tipo · órgão · processo · período. */
+function resumoDoRegistro(reg: Record<string, unknown>): string {
+  const orgao = s(obj(reg.orgaoSancionador).nome) || s(obj(reg.orgaoSuperior).nome) || s(reg.orgaoResponsavel);
+  const tipo = s(obj(reg.tipoSancao).descricaoResumida) || s(obj(reg.tipoSancao).descricaoPortal) || s(reg.tipoSancao);
+  const processo = s(reg.numeroProcesso);
+  const inicio = s(reg.dataInicioSancao);
+  const fim = s(reg.dataFimSancao);
+  return [tipo, orgao, processo ? `processo ${processo}` : '', inicio ? `de ${inicio}${fim ? ` a ${fim}` : ''}` : ''].filter(Boolean).join(' · ');
+}
+
+const formatarCnpj = (d: string) => d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+
+const ESTADO_DO_CADASTRO = {
+  limpo: { rotulo: 'Nenhum registro', icone: CheckCircle2, tinta: 'text-success-ink', caixa: 'border-success-line bg-success-tint' },
+  encontrado: { rotulo: 'Registro encontrado', icone: AlertCircle, tinta: 'text-destructive-ink', caixa: 'border-destructive-line bg-destructive-tint' },
+  erro: { rotulo: 'Sem resposta', icone: HelpCircle, tinta: 'text-warning-ink', caixa: 'border-warning-line bg-warning-tint' },
+} as const;
 
 export default function CertidoesNegativas() {
   const [cnpjInput, setCnpjInput] = useState('');
-  const [razaoSocial, setRazaoSocial] = useState('');
-  const [ufSelecionada, setUfSelecionada] = useState('');
-  const [municipioSelecionado, setMunicipioSelecionado] = useState('');
+  const [uf, setUf] = useState('');
+  const [municipio, setMunicipio] = useState('');
   const [loading, setLoading] = useState(false);
-  const [loadingEmissao, setLoadingEmissao] = useState(false);
-  const [resultado, setResultado] = useState<ResultadoCertidoes | null>(null);
-  const [emissaoResult, setEmissaoResult] = useState<EmissaoResponse | null>(null);
   const [erro, setErro] = useState('');
-  const [activeTab, setActiveTab] = useState('verificar');
+  const [resultado, setResultado] = useState<Resultado | null>(null);
 
-  // Build list of all UFs sorted
-  const ufsDisponiveis = useMemo(() => {
-    const ufs: { uf: string; nome: string }[] = [];
-    Object.values(REGIOES_ESTADOS).forEach(regiao => {
-      regiao.estados.forEach(e => ufs.push({ uf: e.uf, nome: e.nome }));
-    });
-    return ufs.sort((a, b) => a.nome.localeCompare(b.nome));
+  const ufs = useMemo(() => {
+    const lista: { uf: string; nome: string }[] = [];
+    Object.values(REGIOES_ESTADOS).forEach((r) => r.estados.forEach((e) => lista.push({ uf: e.uf, nome: e.nome })));
+    return lista.sort((a, b) => a.nome.localeCompare(b.nome));
   }, []);
+  const cidades = useMemo(() => {
+    if (!uf) return [];
+    for (const r of Object.values(REGIOES_ESTADOS)) {
+      const e = r.estados.find((x) => x.uf === uf);
+      if (e) return [...(e.cidades ?? [])].sort();
+    }
+    return [];
+  }, [uf]);
 
-  // Build list of municipalities for selected UF
-  const municipiosDisponiveis = useMemo(() => {
-    if (!ufSelecionada) return [];
-    // Get municipalities from regioes-brasil (comprehensive list)
-    const regiao = Object.values(REGIOES_ESTADOS).find(r => r.estados.some(e => e.uf === ufSelecionada));
-    const estado = regiao?.estados.find(e => e.uf === ufSelecionada);
-    return estado?.cidades?.sort() || [];
-  }, [ufSelecionada]);
+  const checklist = useMemo(() => checklistDeCertidoes(uf || null, municipio || null), [uf, municipio]);
+  const grupos = useMemo(() => porEsfera(checklist), [checklist]);
+  const razaoSocial = resultado?.cadastro?.razaoSocial || '';
+  const cnpjLegivel = formatarCnpj(cnpjInput.replace(/\D/g, ''));
 
-  // Get regional portals for selected UF/municipality
-  const portaisRegionais = useMemo(() => {
-    if (!ufSelecionada) return [];
-    return getPortaisCertidoes(ufSelecionada, municipioSelecionado || undefined);
-  }, [ufSelecionada, municipioSelecionado]);
-
-  const handleConsultar = async () => {
-    const cnpjLimpo = cnpjInput.replace(/\D/g, '');
-    if (cnpjLimpo.length !== 14) { setErro('CNPJ deve conter 14 dígitos'); return; }
-    setErro(''); setLoading(true); setResultado(null);
+  const consultar = async () => {
+    const cnpj = cnpjInput.replace(/\D/g, '');
+    if (cnpj.length !== 14) { setErro('CNPJ deve conter 14 dígitos'); return; }
+    setErro('');
+    setLoading(true);
+    setResultado(null);
     try {
-      const { data, error } = await supabase.functions.invoke('certidoes-negativas', { body: { cnpj: cnpjLimpo, razaoSocial } });
+      const { data, error } = await supabase.functions.invoke('certidoes-negativas', { body: { cnpj } });
       if (error) throw error;
-      if (data.error) { setErro(data.error); } else {
-        setResultado(data);
-        const reaisOk = (data.verificacoesReais || []).filter((v: VerificacaoReal) => v.status === 'regular').length;
-        const reaisIrreg = (data.verificacoesReais || []).filter((v: VerificacaoReal) => v.status === 'irregular').length;
-        toast.success(`Análise concluída! ${reaisOk} verificações OK, ${reaisIrreg} alertas.`);
+      if (data?.error) { setErro(String(data.error)); return; }
+      const r = data as Resultado;
+      setResultado(r);
+      // O domicílio fiscal vem do cadastro: a UF e o município da Receita,
+      // escritos como o seletor escreve. Quem quiser outro (filial) troca.
+      if (r.cadastro?.uf) {
+        setUf(r.cadastro.uf);
+        setMunicipio(cidadeDaLista(r.cadastro.uf, r.cadastro.municipio) ?? r.cadastro.municipio);
       }
-    } catch (e: any) { setErro(e.message || 'Erro ao consultar certidões'); }
-    finally { setLoading(false); }
+      const idon = r.idoneidade;
+      if (idon) toast.success(idon.inconclusiva ? 'Consulta feita; uma fonte não respondeu.' : idon.idonea ? 'Sem sanções nos quatro cadastros.' : 'Há registro de sanção: veja abaixo.');
+    } catch (e: unknown) {
+      setErro(e instanceof Error ? e.message : 'Erro ao consultar');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleEmitir = async () => {
-    const cnpjLimpo = cnpjInput.replace(/\D/g, '');
-    if (cnpjLimpo.length !== 14) { setErro('CNPJ deve conter 14 dígitos'); return; }
-    setErro(''); setLoadingEmissao(true); setEmissaoResult(null);
-    try {
-      const { data, error } = await supabase.functions.invoke('emitir-certidoes', {
-        body: {
-          cnpj: cnpjLimpo,
-          uf: ufSelecionada || undefined,
-          municipio: municipioSelecionado || undefined,
-          portaisRegionais: portaisRegionais.map(p => ({
-            nome: p.nome,
-            url: p.url,
-            tipo: p.tipo,
-            descricao: p.descricao,
-            requerLogin: p.requerLogin,
-          })),
-        },
-      });
-      if (error) throw error;
-      if (data.error) { setErro(data.error); } else {
-        setEmissaoResult(data);
-        const r = data.resumo;
-        toast.success(`Emissão: ${r.emitidas} emitidas, ${r.captcha} requerem CAPTCHA, ${r.pendentes} pendentes.`);
-      }
-    } catch (e: any) { setErro(e.message || 'Erro ao emitir certidões'); }
-    finally { setLoadingEmissao(false); }
+  const exportar = () => {
+    downloadCSV(
+      `certidoes-${uf || 'federal'}${municipio ? `-${municipio}` : ''}`,
+      ['Esfera', 'Certidão', 'Vaga no cofre', 'Emissor', 'Fundamento', 'Validade usual', 'Como se obtém', 'Terceiro consulta', 'Endereço'],
+      checklist.map((c) => [ROTULO_DA_ESFERA[c.esfera], c.nome, c.vaga ?? '', c.emissor, c.fundamento, validadeLegivel(c.validadeDias), ROTULO_DA_OBTENCAO[c.obtencao], c.terceiroConsulta ? 'sim' : 'não', c.urlEmissao ?? '']),
+    );
+    toast.success('Checklist exportado.');
   };
 
-  const certidoesReais = resultado?.certidoes.filter(c => c.verificacaoReal) || [];
-  const certidoesIA = resultado?.certidoes.filter(c => !c.verificacaoReal) || [];
-  const isLoading = loading || loadingEmissao;
+  const idon = resultado?.idoneidade ?? null;
+  const cadastros: Array<{ chave: keyof Pick<Idoneidade, 'ceis' | 'cnep' | 'cepim' | 'leniencia'>; nome: string }> = [
+    { chave: 'ceis', nome: 'CEIS — inidôneas e suspensas' },
+    { chave: 'cnep', nome: 'CNEP — empresas punidas' },
+    { chave: 'cepim', nome: 'CEPIM — entidades impedidas' },
+    { chave: 'leniencia', nome: 'Acordos de leniência' },
+  ];
 
   return (
     <div className="space-y-4">
-      {/* Header */}
       <Card className="p-5">
         <h2 className="flex items-center gap-2 text-lg font-semibold leading-6 text-foreground">
           <Shield className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-          Certidões negativas — verificação e emissão automática
+          Certidões — cada uma no seu órgão emissor
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Consulta em APIs públicas + emissão automática via scraping nos portais oficiais
+          As sanções são consultadas na fonte, pelo Portal da Transparência. As certidões de regularidade saem nos órgãos
+          que as emitem, para o domicílio fiscal do CNPJ; o Praefectus não gera certidão. O PDF do órgão vai para o cofre
+          de Documentos, que lê a validade e avisa antes de vencer.
         </p>
 
-        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div className="flex flex-col gap-1.5">
+        <div className="mt-4 flex flex-wrap items-end gap-3">
+          <div className="flex min-w-0 flex-1 flex-col gap-1.5 sm:max-w-xs">
             <Label htmlFor="certidoes-cnpj">CNPJ</Label>
-            <Input id="certidoes-cnpj" placeholder="Ex.: 12.345.678/0001-01" value={cnpjInput}
-              inputMode="numeric" aria-invalid={erro ? true : undefined}
-              onChange={(e) => setCnpjInput(e.target.value)} />
+            <Input id="certidoes-cnpj" placeholder="Ex.: 12.345.678/0001-01" value={cnpjInput} inputMode="numeric"
+              aria-invalid={erro ? true : undefined} onChange={(e) => setCnpjInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && consultar()} />
           </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="certidoes-razao">Razão social (opcional)</Label>
-            <Input id="certidoes-razao" placeholder="Razão social da empresa" value={razaoSocial}
-              onChange={(e) => setRazaoSocial(e.target.value)} />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="certidoes-uf">UF (estado)</Label>
-            <Select value={ufSelecionada} onValueChange={(v) => { setUfSelecionada(v); setMunicipioSelecionado(''); }}>
-              <SelectTrigger id="certidoes-uf" className="w-full">
-                <MapPin className="mr-1 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                <SelectValue placeholder="Selecione a UF" />
-              </SelectTrigger>
-              <SelectContent className="max-h-80">
-                {ufsDisponiveis.map(e => (
-                  <SelectItem key={e.uf} value={e.uf}>{e.uf} — {e.nome}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="certidoes-municipio">Município</Label>
-            <Select value={municipioSelecionado} onValueChange={setMunicipioSelecionado} disabled={!ufSelecionada}>
-              <SelectTrigger id="certidoes-municipio" className="w-full">
-                <Building2 className="mr-1 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                <SelectValue placeholder={ufSelecionada ? 'Selecione o município' : 'Selecione a UF primeiro'} />
-              </SelectTrigger>
-              <SelectContent className="max-h-80">
-                {municipiosDisponiveis.map(c => (
-                  <SelectItem key={c} value={c}>{c}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        {portaisRegionais.length > 0 && (
-          <div className="mt-4 rounded-md border border-border bg-muted p-3">
-            <p className="flex items-center gap-1 text-sm font-medium text-foreground">
-              <MapPin className="h-4 w-4" aria-hidden="true" /> Portais regionais identificados ({portaisRegionais.length}):
-            </p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {/* Ícones Lucide no lugar dos emojis (ícone multicolorido não
-                  entra no design system); o cadeado ganha nome acessível. */}
-              {portaisRegionais.map((p, i) => (
-                <Badge key={i} variant="muted" className="gap-1">
-                  {p.tipo === 'estadual'
-                    ? <Landmark className="h-3 w-3 shrink-0" aria-hidden="true" />
-                    : <Building2 className="h-3 w-3 shrink-0" aria-hidden="true" />}
-                  {p.nome.split(' - ')[0]}
-                  {p.requerLogin && <Lock className="h-3 w-3 shrink-0" aria-label="Requer login" />}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Button onClick={handleConsultar} disabled={isLoading}>
+          <Button onClick={consultar} disabled={loading}>
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-            {loading ? 'Verificando…' : 'Verificar status'}
-          </Button>
-          <Button onClick={handleEmitir} disabled={isLoading} variant="outline">
-            {loadingEmissao ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
-            {loadingEmissao ? 'Emitindo…' : 'Emitir certidões'}
+            {loading ? 'Consultando…' : 'Consultar'}
           </Button>
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Badge variant="success" className="gap-1"><Wifi className="h-3 w-3" aria-hidden="true" /> APIs públicas</Badge>
-          <Badge variant="muted" className="gap-1"><Globe className="h-3 w-3" aria-hidden="true" /> Firecrawl (scraping)</Badge>
-          <Badge variant="muted" className="gap-1"><Bot className="h-3 w-3" aria-hidden="true" /> IA (extração)</Badge>
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="certidoes-uf">Domicílio fiscal — UF</Label>
+            <Select value={uf} onValueChange={(v) => { setUf(v); setMunicipio(''); }}>
+              <SelectTrigger id="certidoes-uf">
+                <MapPin className="mr-1 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <SelectValue placeholder="Vem do cadastro do CNPJ, ou escolha" />
+              </SelectTrigger>
+              <SelectContent className="max-h-80">
+                {ufs.map((e) => <SelectItem key={e.uf} value={e.uf}>{e.uf} — {e.nome}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="certidoes-municipio">Domicílio fiscal — município</Label>
+            <Select value={municipio} onValueChange={setMunicipio} disabled={!uf}>
+              <SelectTrigger id="certidoes-municipio">
+                <Building2 className="mr-1 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <SelectValue placeholder={uf ? 'Escolha o município' : 'Escolha a UF primeiro'} />
+              </SelectTrigger>
+              <SelectContent className="max-h-80">
+                {cidades.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                {municipio && !cidades.includes(municipio) && <SelectItem value={municipio}>{municipio}</SelectItem>}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
+
+        {resultado?.cadastro && (
+          <p className="mt-3 text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">{resultado.cadastro.razaoSocial}</span>
+            {' · '}situação cadastral {resultado.cadastro.situacao || '—'}
+            {' · '}domicílio {resultado.cadastro.municipio}/{resultado.cadastro.uf} (Receita Federal)
+          </p>
+        )}
+        {resultado?.cadastroErro && <p className="mt-3 text-sm text-warning-ink">{resultado.cadastroErro}</p>}
 
         {erro && (
           <Alert variant="destructive" className="mt-4">
@@ -264,332 +219,150 @@ export default function CertidoesNegativas() {
         )}
       </Card>
 
-      {/* Espera — a mensagem à esquerda, com o giro pequeno em linha, e um
-          esqueleto na forma das caixas de verificação que vão chegar: nada de
-          spinner grande centralizado. */}
       {loading && (
         <Card role="status" aria-busy="true" className="p-5">
           <p className="flex items-center gap-2 text-base text-muted-foreground">
             <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden="true" />
-            Consultando APIs públicas em tempo real…
+            Lendo o cadastro na Receita e os cadastros de sanções no Portal da Transparência…
           </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {['CEIS', 'CNEP', 'CEPIM', 'Receita', 'TST', 'FGTS'].map(f => (
-              <Badge key={f} variant="muted">{f}</Badge>
-            ))}
-          </div>
-          <div aria-hidden="true" className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            {Array.from({ length: 6 }, (_, i) => (
-              <Skeleton key={i} className="h-14 w-full" />
-            ))}
+          <div aria-hidden="true" className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+            {Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="h-16 w-full" />)}
           </div>
         </Card>
       )}
 
-      {loadingEmissao && (
-        <Card role="status" aria-busy="true" className="p-5">
-          <p className="flex items-center gap-2 text-base font-medium text-foreground">
-            <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" aria-hidden="true" />
-            Emitindo certidões nos portais oficiais…
-          </p>
-          <p className="mt-1 text-sm text-muted-foreground">Preenchendo formulários e extraindo resultados via scraping</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {['Receita Federal', 'TST', 'Caixa/FGTS', 'Transparência'].map(f => (
-              <Badge key={f} variant="muted">{f}</Badge>
-            ))}
+      {resultado && !loading && (
+        <Card className="p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="flex items-center gap-2 text-lg font-semibold leading-6 text-foreground">
+              <Landmark className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+              Sanções e impedimentos — Portal da Transparência
+            </h3>
+            {idon && (
+              <Badge variant={idon.inconclusiva ? 'warning' : idon.idonea ? 'success' : 'danger'}>
+                {idon.inconclusiva ? 'Inconclusiva' : idon.idonea ? 'Sem sanções' : 'Com restrições'}
+              </Badge>
+            )}
           </div>
-          <div aria-hidden="true" className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 3 }, (_, i) => (
-              <Skeleton key={i} className="h-28 w-full" />
-            ))}
-          </div>
-        </Card>
-      )}
-
-      {/* Tabs for results */}
-      {(resultado || emissaoResult) && (
-        <Tabs value={emissaoResult ? 'emissao' : activeTab} onValueChange={setActiveTab}>
-          <TabsList>
-            {resultado && <TabsTrigger value="verificar"><Search className="mr-1 h-4 w-4" aria-hidden="true" /> Verificação</TabsTrigger>}
-            {emissaoResult && <TabsTrigger value="emissao"><Zap className="mr-1 h-4 w-4" aria-hidden="true" /> Emissão</TabsTrigger>}
-          </TabsList>
-
-          {/* ══ Emission Results ══ */}
-          {emissaoResult && (
-            <TabsContent value="emissao" className="space-y-4 animate-fade-in">
-              {/* Resumo da emissão nos cartões KPI do Design System v3 — o
-                  estado vai no ladrilho do ícone, não no fundo do cartão. */}
-              <FaixaIndicadores
-                itens={[
-                  { rotulo: 'Total', icone: FileText, valor: emissaoResult.resumo.total },
-                  { rotulo: 'Emitidas', icone: CheckCircle2, tom: 'ok', valor: emissaoResult.resumo.emitidas },
-                  { rotulo: 'CAPTCHA', icone: ShieldAlert, valor: emissaoResult.resumo.captcha },
-                  { rotulo: 'Irregulares', icone: AlertCircle, tom: 'critico', valor: emissaoResult.resumo.erros },
-                ]}
-              />
-
-              {/* Export button for emissions */}
-              <div className="flex justify-end">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button size="sm" variant="outline"><Download className="h-4 w-4" /> Exportar emissão</Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => {
-                      downloadPDF(
-                        `emissao-certidoes-${cnpjInput.replace(/\D/g, '')}`,
-                        `Emissão de Certidões – ${cnpjInput}`,
-                        ['Certidão', 'Status', 'Código', 'Validade', 'Data Emissão', 'Detalhes'],
-                        emissaoResult.resultados.map(r => [
-                          r.certidao,
-                          emissaoStatusConfig[r.status]?.label || r.status,
-                          r.codigo || '—',
-                          r.validade ? new Date(r.validade).toLocaleDateString('pt-BR') : '—',
-                          r.dataEmissao ? new Date(r.dataEmissao).toLocaleString('pt-BR') : '—',
-                          r.detalhes,
-                        ])
-                      );
-                      toast.success('PDF exportado!');
-                    }}><FileText aria-hidden="true" /> PDF</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => {
-                      downloadCSV(
-                        `emissao-certidoes-${cnpjInput.replace(/\D/g, '')}`,
-                        ['Certidão', 'Status', 'Código', 'Validade', 'Data Emissão', 'Detalhes', 'URL'],
-                        emissaoResult.resultados.map(r => [
-                          r.certidao, emissaoStatusConfig[r.status]?.label || r.status,
-                          r.codigo || '', r.validade || '', r.dataEmissao || '', r.detalhes, r.url || '',
-                        ])
-                      );
-                      toast.success('CSV exportado!');
-                    }}><FileSpreadsheet aria-hidden="true" /> CSV</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => {
-                      const txt = [
-                        `EMISSÃO DE CERTIDÕES – ${cnpjInput}`,
-                        `Data: ${new Date(emissaoResult.dataConsulta).toLocaleString('pt-BR')}`,
-                        '='.repeat(60), '',
-                        `Resumo: ${emissaoResult.resumo.emitidas} emitidas, ${emissaoResult.resumo.captcha} CAPTCHA, ${emissaoResult.resumo.erros} irregulares`, '',
-                        ...emissaoResult.resultados.map(r =>
-                          `[${emissaoStatusConfig[r.status]?.label}] ${r.certidao}\n  ${r.detalhes}${r.codigo ? `\n  Código: ${r.codigo}` : ''}${r.validade ? `\n  Validade: ${new Date(r.validade).toLocaleDateString('pt-BR')}` : ''}\n`
-                        ),
-                      ].join('\n');
-                      downloadTextReport(`emissao-certidoes-${cnpjInput.replace(/\D/g, '')}`, txt);
-                      toast.success('TXT exportado!');
-                    }}><FileDown aria-hidden="true" /> TXT</DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-
-              {/* Results grid */}
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {emissaoResult.resultados.map((r, i) => {
-                  const cfg = emissaoStatusConfig[r.status];
-                  const Icon = cfg.icon;
+          {resultado.idoneidadeErro && !idon && (
+            <p className="mt-2 text-sm text-warning-ink">Sem resposta do Portal da Transparência: {resultado.idoneidadeErro}</p>
+          )}
+          {idon && (
+            <>
+              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {cadastros.map(({ chave, nome }) => {
+                  const r = idon[chave];
+                  const cfg = ESTADO_DO_CADASTRO[r.status] ?? ESTADO_DO_CADASTRO.erro;
+                  const Icone = cfg.icone;
                   return (
-                    <div key={i} className={`rounded-lg border p-5 shadow-sm ${cfg.caixa}`}>
-                      <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
-                        <h3 className="min-w-0 text-lg font-semibold leading-6 text-foreground">{r.certidao}</h3>
-                        <Badge variant={cfg.variante} className="gap-1">
-                          <Icon className="h-3 w-3" aria-hidden="true" /> {cfg.label}
-                        </Badge>
+                    <div key={chave} className={`rounded-md border p-3 ${cfg.caixa}`}>
+                      <div className="flex items-center gap-2">
+                        <Icone className={`h-4 w-4 shrink-0 ${cfg.tinta}`} aria-hidden="true" />
+                        <p className="min-w-0 truncate text-sm font-semibold text-foreground">{nome}</p>
                       </div>
-                      <p className="line-clamp-3 text-sm text-muted-foreground">{r.detalhes}</p>
-                      {r.codigo && (
-                        <p className="mt-2 text-sm text-foreground">
-                          Código: <span className="font-mono font-medium">{r.codigo}</span>
-                        </p>
+                      <p className={`mt-1 text-xs font-medium ${cfg.tinta}`}>{cfg.rotulo}{r.status === 'encontrado' ? ` (${r.total})` : ''}</p>
+                      {r.status === 'encontrado' && (
+                        <ul className="mt-1 space-y-1 text-xs text-foreground">
+                          {r.registros.slice(0, 3).map((reg, i) => <li key={i}>{resumoDoRegistro(reg) || 'registro sem detalhe legível'}</li>)}
+                        </ul>
                       )}
-                      {r.validade && (
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          Válida até: <span className="font-medium text-foreground">{new Date(r.validade).toLocaleDateString('pt-BR')}</span>
-                        </p>
-                      )}
-                      {r.dataEmissao && (
-                        <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                          <Clock className="h-3 w-3" aria-hidden="true" />
-                          Emitida: {new Date(r.dataEmissao).toLocaleString('pt-BR')}
-                        </p>
-                      )}
-                      {r.url && (
-                        <a href={r.url} target="_blank" rel="noopener noreferrer"
-                          className="mt-3 flex items-center gap-1 text-sm text-primary hover:underline">
-                          <ExternalLink className="h-3 w-3" aria-hidden="true" /> {r.status === 'captcha' ? 'Emitir manualmente' : 'Acessar portal'}
-                        </a>
-                      )}
+                      {r.status === 'erro' && <p className="mt-1 text-xs text-muted-foreground">{r.erro}</p>}
+                      <a href={r.url} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                        <ExternalLink className="h-3 w-3" aria-hidden="true" /> Conferir no portal
+                      </a>
                     </div>
                   );
                 })}
               </div>
-            </TabsContent>
+              {idon.divergencias.length > 0 && (
+                <ul className="mt-3 space-y-1 text-xs text-warning-ink">
+                  {idon.divergencias.map((d, i) => <li key={i}>{d}</li>)}
+                </ul>
+              )}
+              <p className="mt-3 text-xs text-muted-foreground">
+                Fonte: API do Portal da Transparência (CGU), consultada em {new Date(resultado.consultadoEm).toLocaleString('pt-BR')}. O detalhe de cada registro está na aba Idoneidade.
+              </p>
+            </>
           )}
-
-          {/* ══ Verification Results (existing) ══ */}
-          {resultado && (
-            <TabsContent value="verificar" className="space-y-4 animate-fade-in">
-              {resultado.verificacoesReais && resultado.verificacoesReais.length > 0 && (
-                <Card className="p-5">
-                  <h3 className="mb-3 flex flex-wrap items-center gap-2 text-lg font-semibold leading-6 text-foreground">
-                    <Wifi className="h-5 w-5 text-muted-foreground" aria-hidden="true" /> Verificações em tempo real
-                    <Badge variant="muted" className="ml-auto gap-1">
-                      <Clock className="h-3 w-3" aria-hidden="true" />{new Date().toLocaleTimeString('pt-BR')}
-                    </Badge>
-                  </h3>
-                  {/* Caixas de estado alinhadas à esquerda: ícone, fonte e o
-                      TEXTO do estado na tinta da família — a cor só reforça. */}
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
-                    {resultado.verificacoesReais.map((v, i) => {
-                      const cfg = verificacaoStatusConfig[v.status] || verificacaoStatusConfig.erro;
-                      const Icon = cfg.icon;
-                      return (
-                        <TooltipProvider key={i}><Tooltip><TooltipTrigger asChild>
-                          <div className={`flex cursor-help items-center gap-2.5 rounded-md border p-3 ${cfg.caixa}`}>
-                            <Icon className={`h-4 w-4 shrink-0 ${cfg.tinta} ${v.status === 'verificando' ? 'animate-spin' : ''}`} aria-hidden="true" />
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-semibold text-foreground">{v.fonte}</p>
-                              <p className={`text-xs font-medium ${cfg.tinta}`}>{cfg.label}</p>
-                            </div>
-                          </div>
-                        </TooltipTrigger><TooltipContent side="bottom" className="max-w-xs">
-                          <p className="text-sm font-semibold">{v.fonte}</p>
-                          <p className="mt-1 text-sm text-muted-foreground">{v.detalhes}</p>
-                          {v.url && <p className="mt-1 break-all text-xs text-muted-foreground">{v.url}</p>}
-                        </TooltipContent></Tooltip></TooltipProvider>
-                      );
-                    })}
-                  </div>
-                </Card>
-              )}
-
-              {resultado.alertas && resultado.alertas.length > 0 && (
-                <Alert variant="destructive">
-                  <AlertTriangle className="h-4 w-4" aria-hidden="true" />
-                  <AlertDescription>
-                    <p className="font-semibold">Alertas</p>
-                    <ul className="mt-1 list-inside list-disc space-y-1">
-                      {resultado.alertas.map((a, i) => <li key={i}>{a}</li>)}
-                    </ul>
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              <Card className="p-5">
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <h3 className="text-lg font-semibold leading-6 text-foreground">Resumo da análise</h3>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button size="sm" variant="outline"><Download className="h-4 w-4" /> Exportar</Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => {
-                        downloadCSV('certidoes-negativas', ['Certidão', 'Órgão', 'Validade', 'Status', 'Fonte', 'URL', 'Observações'],
-                          resultado.certidoes.map(c => [c.nome, c.orgao, String(c.validadeDias), statusConfig[c.statusProvavel]?.label || 'Verificar', c.verificacaoReal ? 'API' : 'IA', c.url, c.observacoes]));
-                        toast.success('CSV exportado!');
-                      }}><FileSpreadsheet aria-hidden="true" /> CSV</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => {
-                        const txt = [`CERTIDÕES – ${cnpjInput}`, `Gerado: ${new Date().toLocaleString('pt-BR')}`, '='.repeat(60), '',
-                          ...(resultado.verificacoesReais || []).map(v => `[${v.status.toUpperCase()}] ${v.fonte}: ${v.detalhes}`),
-                          '', resultado.resumo, '',
-                          ...resultado.certidoes.map(c => `${c.verificacaoReal ? '[API]' : '[IA]'} ${c.nome}\n  Status: ${statusConfig[c.statusProvavel]?.label}\n  URL: ${c.url}\n`),
-                          '', ...resultado.recomendacoes.map(r => `→ ${r}`),
-                        ].join('\n');
-                        downloadTextReport('certidoes-negativas', txt); toast.success('TXT exportado!');
-                      }}><FileDown aria-hidden="true" /> TXT</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => {
-                        downloadPDF('certidoes-negativas', `Certidões – ${cnpjInput}`,
-                          ['Certidão', 'Órgão', 'Validade', 'Status', 'Fonte'],
-                          resultado.certidoes.map(c => [c.nome, c.orgao, `${c.validadeDias}d`, statusConfig[c.statusProvavel]?.label || 'Verificar', c.verificacaoReal ? 'API' : 'IA']));
-                        toast.success('PDF exportado!');
-                      }}><FileText aria-hidden="true" /> PDF</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-                <p className="text-base text-muted-foreground">{resultado.resumo}</p>
-                {resultado.recomendacoes.length > 0 && (
-                  <div className="mt-4 border-t border-border pt-4">
-                    <p className="text-sm font-semibold text-foreground">Recomendações:</p>
-                    <ul className="mt-2 space-y-1">{resultado.recomendacoes.map((r, i) => (
-                      <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground"><span aria-hidden="true" className="mt-0.5">→</span> {r}</li>
-                    ))}</ul>
-                  </div>
-                )}
-              </Card>
-
-              {certidoesReais.length > 0 && (
-                <div>
-                  <h3 className="mb-3 flex items-center gap-2 text-lg font-semibold leading-6 text-foreground">
-                    <Wifi className="h-5 w-5 text-muted-foreground" aria-hidden="true" /> Verificadas via API ({certidoesReais.length})
-                  </h3>
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {certidoesReais.map((cert, i) => {
-                      const st = statusConfig[cert.statusProvavel] || statusConfig.verificar;
-                      const Icon = st.icon;
-                      return (
-                        <Card key={i} className="p-5">
-                          <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
-                            <h4 className="min-w-0 text-lg font-semibold leading-6 text-foreground">{cert.nome}</h4>
-                            <Badge variant="muted" className="gap-1"><Wifi className="h-3 w-3" aria-hidden="true" /> Verificação real</Badge>
-                          </div>
-                          <Badge variant={st.variante} className="mb-2 gap-1"><Icon className="h-3 w-3" aria-hidden="true" /> {st.label}</Badge>
-                          <p className="text-sm text-muted-foreground">{cert.orgao}</p>
-                          <div className="mt-2 space-y-1 text-sm text-muted-foreground">
-                            {cert.validadeDias > 0 && <p>Validade: <span className="font-medium text-foreground">{cert.validadeDias} dias</span></p>}
-                            <p className="line-clamp-3">{cert.observacoes}</p>
-                            {cert.dataVerificacao && (
-                              <p className="flex items-center gap-1 text-xs">
-                                <Clock className="h-3 w-3" aria-hidden="true" />Verificado: {new Date(cert.dataVerificacao).toLocaleString('pt-BR')}
-                              </p>
-                            )}
-                          </div>
-                          {cert.url && cert.url !== '#' && (
-                            <a href={cert.url} target="_blank" rel="noopener noreferrer" className="mt-3 flex items-center gap-1 text-sm text-primary hover:underline">
-                              <ExternalLink className="h-3 w-3" aria-hidden="true" /> Acessar portal
-                            </a>
-                          )}
-                        </Card>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* As certidões complementares são geradas por IA: selo
-                  Praefectus IA e cartões na tinta da ação (§5 "IA"). */}
-              {certidoesIA.length > 0 && (
-                <div>
-                  <h3 className="mb-3 flex flex-wrap items-center gap-2 text-lg font-semibold leading-6 text-foreground">
-                    Complementar — IA ({certidoesIA.length})
-                    <SeloPraefectusIA />
-                  </h3>
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {certidoesIA.map((cert, i) => {
-                      const st = statusConfig[cert.statusProvavel] || statusConfig.verificar;
-                      const Icon = st.icon;
-                      return (
-                        <Card key={i} className="border-primary-line bg-primary-tint p-5">
-                          <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
-                            <h4 className="min-w-0 text-lg font-semibold leading-6 text-foreground">{cert.nome}</h4>
-                            <SeloPraefectusIA />
-                          </div>
-                          <Badge variant={st.variante} className="mb-2 gap-1"><Icon className="h-3 w-3" aria-hidden="true" /> {st.label}</Badge>
-                          <p className="text-sm text-muted-foreground">{cert.orgao}</p>
-                          <div className="mt-2 space-y-1 text-sm text-muted-foreground">
-                            {cert.validadeDias > 0 && <p>Validade: <span className="font-medium text-foreground">{cert.validadeDias} dias</span></p>}
-                            <p className="line-clamp-2">{cert.observacoes}</p>
-                          </div>
-                          {cert.url && cert.url !== '#' && (
-                            <a href={cert.url} target="_blank" rel="noopener noreferrer" className="mt-3 flex items-center gap-1 text-sm text-primary hover:underline">
-                              <ExternalLink className="h-3 w-3" aria-hidden="true" /> Emitir certidão
-                            </a>
-                          )}
-                        </Card>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </TabsContent>
-          )}
-        </Tabs>
+        </Card>
       )}
+
+      <Card className="p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 grow basis-56">
+            <h3 className="flex items-center gap-2 text-lg font-semibold leading-6 text-foreground">
+              <FileCheck2 className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+              Certidões de regularidade — onde cada uma se emite
+            </h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {uf
+                ? `Federais, ${uf}${municipio ? ` e ${municipio}` : ''}: quem emite, como se obtém e quanto vale. Guarde o PDF do órgão em Documentos.`
+                : 'Federais valem para qualquer CNPJ. Consulte o CNPJ ou escolha a UF e o município para ver as estaduais e municipais.'}
+            </p>
+          </div>
+          <div className="flex shrink-0 flex-wrap gap-2">
+            <Button asChild variant="outline" size="sm">
+              <Link to="/documentos"><FolderLock className="h-4 w-4" aria-hidden="true" /> Cofre de Documentos</Link>
+            </Button>
+            <Button variant="ghost" size="sm" onClick={exportar}><Download className="h-4 w-4" aria-hidden="true" /> Exportar checklist</Button>
+          </div>
+        </div>
+
+        <div className="mt-4 space-y-5">
+          {grupos.map((g) => (
+            <section key={g.esfera} aria-labelledby={`esfera-${g.esfera}`}>
+              <h4 id={`esfera-${g.esfera}`} className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                {ROTULO_DA_ESFERA[g.esfera]}{g.esfera === 'estadual' && uf ? ` — ${uf}` : ''}{g.esfera === 'municipal' && municipio ? ` — ${municipio}` : ''}
+              </h4>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {g.certidoes.map((c) => <CartaoDaCertidao key={c.id} c={c} razaoSocial={razaoSocial} cnpj={cnpjLegivel} />)}
+              </div>
+            </section>
+          ))}
+        </div>
+
+        <p className="mt-4 text-xs text-muted-foreground">
+          A validade "usual" é a regra geral do órgão; a que vale é a impressa no documento, que o cofre lê do PDF.
+          Os sites dos órgãos exigem a verificação "sou humano": a emissão é feita por quem consulta, nunca por robô.
+        </p>
+      </Card>
     </div>
+  );
+}
+
+function CartaoDaCertidao({ c, razaoSocial, cnpj }: { c: CertidaoDoCatalogo; razaoSocial: string; cnpj: string }) {
+  const solicitacao = c.obtencao === 'solicitacao'
+    ? modeloDeSolicitacao({ certidao: c.nome, orgao: c.emissor, razaoSocial: razaoSocial || '(razão social)', cnpj: cnpj || '(CNPJ)' })
+    : null;
+  return (
+    <article className="flex flex-col rounded-md border border-border p-4">
+      <h5 className="text-sm font-semibold leading-5 text-foreground">{c.sigla && c.sigla !== c.nome ? `${c.sigla} · ` : ''}{c.nome}</h5>
+      <p className="mt-1 text-xs text-muted-foreground">{c.emissor}</p>
+      <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-xs">
+        <dt className="text-muted-foreground">Fundamento</dt><dd className="text-foreground">{c.fundamento}</dd>
+        <dt className="text-muted-foreground">Validade usual</dt><dd className="text-foreground">{validadeLegivel(c.validadeDias)}</dd>
+        <dt className="text-muted-foreground">Como se obtém</dt><dd className="text-foreground">{ROTULO_DA_OBTENCAO[c.obtencao]}</dd>
+        <dt className="text-muted-foreground">Terceiro consulta</dt><dd className="text-foreground">{c.terceiroConsulta ? 'sim, só com o CNPJ' : 'não'}</dd>
+      </dl>
+      {c.observacao && <p className="mt-2 text-xs text-muted-foreground">{c.observacao}</p>}
+      {c.pendenteDeCadastro && <Badge variant="warning" className="mt-2 w-fit">Órgão a cadastrar</Badge>}
+      <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs">
+        {c.urlEmissao && (
+          <a href={c.urlEmissao} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
+            <ExternalLink className="h-3 w-3" aria-hidden="true" /> {c.obtencao === 'consulta_api' ? 'Consultar no portal' : 'Emitir no órgão'}
+          </a>
+        )}
+        {c.urlAutenticidade && c.urlAutenticidade !== c.urlEmissao && (
+          <a href={c.urlAutenticidade} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
+            <ExternalLink className="h-3 w-3" aria-hidden="true" /> Conferir autenticidade
+          </a>
+        )}
+        {solicitacao && (
+          <a href={solicitacao.mailto} className="inline-flex items-center gap-1 text-primary hover:underline">
+            <Mail className="h-3 w-3" aria-hidden="true" /> Preparar e-mail de solicitação
+          </a>
+        )}
+      </div>
+    </article>
   );
 }

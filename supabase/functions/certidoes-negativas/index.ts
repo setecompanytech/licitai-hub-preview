@@ -1,313 +1,115 @@
-﻿// @ts-nocheck
+// ═══════════════════════════════════════════════════════════════════════════
+// Certidões — o que se confere na fonte, e só isso (22/09/2026, tarde)
+//
+// Antes, esta função "verificava" CNDT e CRF por busca na web com IA ("não
+// foram encontrados indícios…"), pedia à IA uma lista genérica de certidões
+// estaduais e municipais sem saber onde a empresa está, e resumia tudo em
+// prosa. Nada disso é documento probatório. O dono: "quem atua dentro da
+// administração pública busca por veracidade".
+//
+// Agora a função devolve dois fatos, cada um da sua fonte:
+//  · o CADASTRO do CNPJ na base pública da Receita (razão social, situação,
+//    UF e município — o domicílio fiscal que decide quais são os órgãos
+//    estadual e municipal, em vez de uma seleção solta);
+//  · as SANÇÕES nos quatro cadastros do Portal da Transparência (CEIS, CNEP,
+//    CEPIM, leniência), pela API oficial, com o filtro conferido
+//    (`_shared/portal-transparencia.ts`).
+// As certidões de regularidade (CND federal, CRF, CNDT, estadual, municipal,
+// falência, junta) NÃO se emitem aqui: cada uma sai no seu órgão emissor, e o
+// catálogo do front (`data/certidoes-catalogo.ts`) diz onde. Sem OpenAI, sem
+// Firecrawl.
+// ═══════════════════════════════════════════════════════════════════════════
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { requireAuth } from "../_shared/auth-rate-limit.ts";
-import { consultarCadastro, PAGINA_DO_PORTAL, URL_CADASTRO_CHAVE, type Cadastro } from "../_shared/portal-transparencia.ts";
+import { URL_CADASTRO_CHAVE, verificarIdoneidade } from "../_shared/portal-transparencia.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-type VerificacaoReal = {
-  fonte: string;
-  status: "regular" | "irregular" | "erro" | "verificando";
-  detalhes: string;
-  dataConsulta: string;
-  url?: string;
-};
-
-function formatCnpj(cnpj: string) {
-  return cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5");
+interface Cadastro {
+  razaoSocial: string;
+  nomeFantasia: string;
+  situacao: string;
+  situacaoCodigo: number | null;
+  motivoSituacao: string;
+  dataAbertura: string;
+  uf: string;
+  municipio: string;
+  cnaePrincipal: string;
+  naturezaJuridica: string;
+  porte: string;
+  fonte: "brasilapi";
 }
 
-// Helper: Firecrawl search
-async function firecrawlSearch(query: string, limit = 3): Promise<any[]> {
-  const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY");
-  if (!FIRECRAWL_API_KEY) return [];
-  try {
-    const resp = await fetch("https://api.firecrawl.dev/v1/search", {
-      method: "POST",
-      headers: { "Authorization": `Bearer ${FIRECRAWL_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ query, limit, lang: "pt-br", country: "BR" }),
-    });
-    if (!resp.ok) { await resp.text(); return []; }
-    const data = await resp.json();
-    return data?.data || [];
-  } catch { return []; }
-}
+const s = (v: unknown): string => (typeof v === "string" || typeof v === "number" ? String(v).trim() : "");
 
-// Helper: AI analysis of search results
-async function aiAnalyze(systemPrompt: string, userContent: string): Promise<{ status: string; detalhes: string } | null> {
-  const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-  if (!OPENAI_API_KEY || userContent.length < 80) return null;
-  try {
-    const resp = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: { "Authorization": `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userContent.slice(0, 4000) },
-        ],
-      }),
-    });
-    if (!resp.ok) { await resp.text(); return null; }
-    const aiData = await resp.json();
-    const content = (aiData.choices?.[0]?.message?.content || "").replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    return JSON.parse(content);
-  } catch { return null; }
-}
-
-// Portal da Transparência (CEIS/CNEP/CEPIM) — pela API oficial (22/09). Antes
-// era busca na web: "regular" significava "a pesquisa não achou o CNPJ num
-// resultado". A API devolve o registro, com órgão, processo e datas — ou a
-// ausência dele — e o módulo compartilhado confere que o filtro por CNPJ foi
-// aplicado antes de dizer qualquer coisa.
-async function consultarSancao(cadastro: Cadastro, nomeFonte: string, cnpj: string): Promise<VerificacaoReal> {
-  const dataConsulta = new Date().toISOString();
-  const chave = Deno.env.get("PORTAL_TRANSPARENCIA_API_KEY");
-  if (!chave) {
-    return { fonte: nomeFonte, status: "erro", detalhes: `Chave da API do Portal da Transparência não configurada (${URL_CADASTRO_CHAVE}).`, dataConsulta, url: PAGINA_DO_PORTAL[cadastro] };
-  }
-  const r = await consultarCadastro(cadastro, cnpj, chave);
-  if (r.status === "erro") {
-    return { fonte: nomeFonte, status: "erro", detalhes: r.erro ?? "Falha na consulta à API do Portal da Transparência.", dataConsulta, url: r.url };
-  }
-  if (r.status === "encontrado") {
-    const primeiro = (r.registros[0] ?? {}) as Record<string, any>;
-    const orgao = primeiro?.orgaoSancionador?.nome ?? primeiro?.orgaoSuperior?.nome ?? primeiro?.orgaoResponsavel ?? "";
-    const processo = primeiro?.numeroProcesso ? ` · processo ${primeiro.numeroProcesso}` : "";
-    return {
-      fonte: nomeFonte, status: "irregular",
-      detalhes: `${r.total} registro(s) no ${nomeFonte} pela API do Portal da Transparência${orgao ? ` · ${orgao}` : ""}${processo}.`,
-      dataConsulta, url: r.url,
-    };
-  }
-  return { fonte: nomeFonte, status: "regular", detalhes: `Nenhum registro no ${nomeFonte} para este CNPJ, pela API do Portal da Transparência.`, dataConsulta, url: r.url };
-}
-
-async function consultarCEIS(cnpj: string): Promise<VerificacaoReal> { return consultarSancao("ceis", "CEIS", cnpj); }
-async function consultarCNEP(cnpj: string): Promise<VerificacaoReal> { return consultarSancao("cnep", "CNEP", cnpj); }
-async function consultarCEPIM(cnpj: string): Promise<VerificacaoReal> { return consultarSancao("cepim", "CEPIM", cnpj); }
-
-// CNDT (TST) – busca por débitos trabalhistas em fontes públicas + IA
-async function consultarCNDT(cnpj: string): Promise<VerificacaoReal> {
-  const cnpjFmt = formatCnpj(cnpj);
-  const urlPortal = "https://cndt-certidao.tst.jus.br/inicio.faces";
-  try {
-    const [r1, r2] = await Promise.all([
-      firecrawlSearch(`"${cnpjFmt}" débitos trabalhistas OR "execução trabalhista" OR "certidão positiva"`, 3),
-      firecrawlSearch(`"${cnpjFmt}" TST OR TRT "processo trabalhista"`, 3),
-    ]);
-    const combined = [...r1, ...r2].map((r: any) => `[${r.url}] ${(r.markdown || r.description || "").slice(0, 1500)}`).join("\n\n");
-
-    const parsed = await aiAnalyze(
-      "Analise os resultados e determine se há indícios de débitos trabalhistas ou execuções ativas contra o CNPJ. Responda APENAS com JSON: {\"status\": \"regular\"|\"irregular\"|\"inconclusivo\", \"detalhes\": \"explicação breve\"}",
-      `CNPJ: ${cnpjFmt}\n\nResultados:\n${combined}`
-    );
-
-    if (parsed?.status === "irregular") {
-      return { fonte: "CNDT/TST", status: "irregular", detalhes: parsed.detalhes || "Possíveis débitos trabalhistas identificados", dataConsulta: new Date().toISOString(), url: urlPortal };
-    }
-    return { fonte: "CNDT/TST", status: "regular", detalhes: parsed?.detalhes || "Nenhum débito trabalhista encontrado em fontes públicas. Para certidão oficial, acesse o portal do TST.", dataConsulta: new Date().toISOString(), url: urlPortal };
-  } catch (e) {
-    console.error("Erro CNDT:", e);
-    return { fonte: "CNDT/TST", status: "erro", detalhes: `Falha na consulta: ${e.message}`, dataConsulta: new Date().toISOString(), url: urlPortal };
-  }
-}
-
-// CRF/FGTS – busca por irregularidades FGTS em fontes públicas + IA
-async function consultarCRF(cnpj: string): Promise<VerificacaoReal> {
-  const cnpjFmt = formatCnpj(cnpj);
-  const urlPortal = "https://consulta-crf.caixa.gov.br/consultacrf/pages/consultaEmpregador.jsf";
-  try {
-    const [r1, r2] = await Promise.all([
-      firecrawlSearch(`"${cnpjFmt}" FGTS regularidade OR CRF OR "débito FGTS"`, 3),
-      firecrawlSearch(`"${cnpjFmt}" "Caixa Econômica" FGTS irregularidade`, 3),
-    ]);
-    const combined = [...r1, ...r2].map((r: any) => `[${r.url}] ${(r.markdown || r.description || "").slice(0, 1500)}`).join("\n\n");
-
-    const parsed = await aiAnalyze(
-      "Analise os resultados e determine se há indícios de irregularidade com FGTS para o CNPJ. Responda APENAS com JSON: {\"status\": \"regular\"|\"irregular\"|\"inconclusivo\", \"detalhes\": \"explicação breve\"}",
-      `CNPJ: ${cnpjFmt}\n\nResultados:\n${combined}`
-    );
-
-    if (parsed?.status === "irregular") {
-      return { fonte: "CRF/FGTS", status: "irregular", detalhes: parsed.detalhes || "Possível irregularidade FGTS identificada", dataConsulta: new Date().toISOString(), url: urlPortal };
-    }
-    return { fonte: "CRF/FGTS", status: "regular", detalhes: parsed?.detalhes || "Nenhuma irregularidade FGTS encontrada em fontes públicas. Para CRF oficial, acesse o portal da Caixa.", dataConsulta: new Date().toISOString(), url: urlPortal };
-  } catch (e) {
-    console.error("Erro CRF:", e);
-    return { fonte: "CRF/FGTS", status: "erro", detalhes: `Falha na consulta: ${e.message}`, dataConsulta: new Date().toISOString(), url: urlPortal };
-  }
-}
-
-// CND Conjunta (Tributos Federais e Dívida Ativa da União) – via BrasilAPI
-async function consultarCNDConjunta(cnpj: string): Promise<VerificacaoReal> {
-  const certNome = "CND Conjunta";
-  try {
-    const resp = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`);
-    if (!resp.ok) {
-      return { fonte: certNome, status: "erro", detalhes: "Não foi possível consultar dados cadastrais", dataConsulta: new Date().toISOString(), url: "https://servicos.receitafederal.gov.br/servico/certidoes/#/home" };
-    }
-    const data = await resp.json();
-    if (data.situacao_cadastral === 2) {
-      // Situação cadastral ATIVA não é certidão negativa: a CND só se emite no
-      // site da Receita/PGFN. O rótulo diz o que foi conferido (22/09).
-      return { fonte: certNome, status: "regular", detalhes: `Cadastro ATIVO na Receita (${data.razao_social}). Isto não é a CND: a certidão de débitos federais e dívida ativa só se emite no site da Receita/PGFN.`, dataConsulta: new Date().toISOString(), url: "https://servicos.receitafederal.gov.br/servico/certidoes/#/home" };
-    }
-    const situacoes: Record<number, string> = { 1: "NULA", 3: "SUSPENSA", 4: "INAPTA", 8: "BAIXADA" };
-    return { fonte: certNome, status: "irregular", detalhes: `Situação cadastral: ${situacoes[data.situacao_cadastral] || data.descricao_situacao_cadastral || "IRREGULAR"}. ${data.motivo_situacao_cadastral || ""}`, dataConsulta: new Date().toISOString(), url: "https://servicos.receitafederal.gov.br/servico/certidoes/#/home" };
-  } catch (e) {
-    console.error("Erro CND Conjunta:", e);
-    return { fonte: certNome, status: "erro", detalhes: `Erro: ${e.message}`, dataConsulta: new Date().toISOString() };
-  }
+/** O cadastro do CNPJ na base pública da Receita, redistribuída pela BrasilAPI. */
+async function cadastroDoCnpj(cnpj: string): Promise<{ cadastro: Cadastro | null; erro?: string }> {
+  const r = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`, {
+    headers: { Accept: "application/json" },
+    signal: AbortSignal.timeout(12_000),
+  });
+  if (r.status === 404) return { cadastro: null, erro: "CNPJ não encontrado na base pública da Receita Federal." };
+  if (!r.ok) return { cadastro: null, erro: `Base pública da Receita indisponível (HTTP ${r.status}).` };
+  const d = await r.json();
+  return {
+    cadastro: {
+      razaoSocial: s(d.razao_social),
+      nomeFantasia: s(d.nome_fantasia),
+      situacao: s(d.descricao_situacao_cadastral),
+      situacaoCodigo: Number(d.situacao_cadastral) || null,
+      motivoSituacao: s(d.descricao_motivo_situacao_cadastral),
+      dataAbertura: s(d.data_inicio_atividade),
+      uf: s(d.uf).toUpperCase(),
+      municipio: s(d.municipio),
+      cnaePrincipal: s(d.cnae_fiscal_descricao),
+      naturezaJuridica: s(d.natureza_juridica),
+      porte: s(d.porte),
+      fonte: "brasilapi",
+    },
+  };
 }
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   try {
-    try {
-      await requireAuth(req, { functionName: "certidoes-negativas", maxRequests: 10, windowMinutes: 5 });
-    } catch (authResp) {
-      if (authResp instanceof Response) return authResp;
-      throw authResp;
-    }
-    const { cnpj, razaoSocial } = await req.json();
-    if (!cnpj) {
-      return new Response(JSON.stringify({ error: "CNPJ é obrigatório" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    await requireAuth(req, { functionName: "certidoes-negativas", maxRequests: 10, windowMinutes: 5 });
+  } catch (authResp) {
+    if (authResp instanceof Response) return authResp;
+    throw authResp;
+  }
 
-    const cnpjLimpo = cnpj.replace(/\D/g, "");
+  try {
+    const body = await req.json().catch(() => ({}));
+    const cnpj = String(body.cnpj ?? "").replace(/\D/g, "");
+    if (cnpj.length !== 14) return json({ error: "CNPJ é obrigatório (14 dígitos)." }, 400);
 
-    // 1. Verificações reais em paralelo
-    console.log(`Iniciando verificações reais para CNPJ: ${cnpjLimpo}`);
-    const [ceis, cnep, cepim, cndt, crf, cndConjunta] = await Promise.all([
-      consultarCEIS(cnpjLimpo), consultarCNEP(cnpjLimpo), consultarCEPIM(cnpjLimpo),
-      consultarCNDT(cnpjLimpo), consultarCRF(cnpjLimpo), consultarCNDConjunta(cnpjLimpo),
+    const chave = Deno.env.get("PORTAL_TRANSPARENCIA_API_KEY");
+
+    const [cad, idon] = await Promise.all([
+      cadastroDoCnpj(cnpj).catch((e: unknown) => ({ cadastro: null, erro: e instanceof Error ? e.message : String(e) })),
+      chave
+        ? verificarIdoneidade(cnpj, chave)
+          .then((idoneidade) => ({ idoneidade, erro: undefined as string | undefined }))
+          .catch((e: unknown) => ({ idoneidade: null, erro: e instanceof Error ? e.message : String(e) }))
+        : Promise.resolve({ idoneidade: null, erro: `Chave da API do Portal da Transparência não configurada (${URL_CADASTRO_CHAVE}).` }),
     ]);
 
-    const verificacoesReais: VerificacaoReal[] = [ceis, cnep, cepim, cndt, crf, cndConjunta];
-    console.log("Verificações reais concluídas:", verificacoesReais.map(v => `${v.fonte}: ${v.status}`));
-
-    // 2. Análise complementar com IA
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY não configurada");
-
-    const verificacoesTexto = verificacoesReais.map(v => `${v.fonte}: ${v.status} - ${v.detalhes}`).join("\n");
-
-    const prompt = `Você é um especialista em licitações públicas brasileiras (Lei 14.133/2021).
-Para a empresa com CNPJ ${cnpj}${razaoSocial ? ` (${razaoSocial})` : ''}, já realizamos verificações automáticas com os seguintes resultados:
-
-${verificacoesTexto}
-
-Com base nesses resultados REAIS, gere uma análise complementar das certidões negativas necessárias para participação em licitações.
-
-Para cada certidão que NÃO foi verificada automaticamente (Certidão Estadual, Certidão Municipal, Certidão de Falência), informe:
-1. Nome da certidão
-2. Órgão emissor
-3. URL oficial para emissão
-4. Validade padrão (em dias)
-5. Status como "verificar" (já que não foi verificada automaticamente)
-6. Observações e documentos necessários
-
-NÃO repita as certidões já verificadas automaticamente (CEIS, CNEP, CEPIM, CNDT, CRF, CND Conjunta).
-
-Responda APENAS com JSON válido:
-{
-  "certidoes_complementares": [
-    {
-      "nome": "string",
-      "orgao": "string",
-      "url": "string",
-      "validadeDias": number,
-      "documentosNecessarios": ["string"],
-      "statusProvavel": "verificar",
-      "observacoes": "string"
-    }
-  ],
-  "resumo": "string - análise geral considerando os resultados reais",
-  "recomendacoes": ["string"],
-  "alertas": ["string - alertas baseados nos resultados reais"]
-}`;
-
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: "Você é um assistente jurídico especializado em licitações brasileiras. Responda apenas com JSON válido." },
-          { role: "user", content: prompt },
-        ],
-      }),
-    });
-
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({
-          verificacoesReais,
-          certidoes: [],
-          resumo: "Limite de requisições excedido para análise IA. Resultados parciais (verificações reais) disponíveis.",
-          recomendacoes: [],
-          alertas: verificacoesReais.filter(v => v.status === "irregular").map(v => `⚠️ ${v.fonte}: ${v.detalhes}`),
-        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      }
-      throw new Error(`AI gateway error: ${response.status}`);
-    }
-
-    const aiData = await response.json();
-    let content = aiData.choices?.[0]?.message?.content || "";
-    content = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    const parsed = JSON.parse(content);
-
-    // 3. Combinar resultados
-    const certidoesReais = verificacoesReais.map(v => ({
-      nome: v.fonte === "CEIS" ? "Certidão CEIS (Empresas Inidôneas)" :
-            v.fonte === "CNEP" ? "Certidão CNEP (Empresas Punidas)" :
-            v.fonte === "CEPIM" ? "Certidão CEPIM (Entidades Impedidas)" :
-            v.fonte === "CNDT/TST" ? "CNDT – Certidão Negativa de Débitos Trabalhistas" :
-            v.fonte === "CRF/FGTS" ? "CRF – Certificado de Regularidade do FGTS" :
-            "CND Conjunta de Débitos Relativos a Tributos Federais e à Dívida Ativa da União",
-      orgao: v.fonte === "CEIS" || v.fonte === "CNEP" || v.fonte === "CEPIM" ? "Portal da Transparência" :
-             v.fonte === "CNDT/TST" ? "Tribunal Superior do Trabalho" :
-             v.fonte === "CRF/FGTS" ? "Caixa Econômica Federal" :
-             "Receita Federal do Brasil / PGFN",
-      url: v.url || "#",
-      validadeDias: v.fonte === "CNDT/TST" ? 180 : v.fonte === "CRF/FGTS" ? 30 : 0,
-      documentosNecessarios: ["CNPJ"],
-      statusProvavel: v.status === "regular" ? "regular" : v.status === "irregular" ? "pendente" : "verificar",
-      observacoes: v.detalhes,
-      verificacaoReal: true,
-      dataVerificacao: v.dataConsulta,
-      fonteVerificacao: v.fonte,
-    }));
-
-    const certidoesComplementares = (parsed.certidoes_complementares || []).map((c: any) => ({
-      ...c,
-      verificacaoReal: false,
-    }));
-
-    return new Response(JSON.stringify({
-      verificacoesReais,
-      certidoes: [...certidoesReais, ...certidoesComplementares],
-      resumo: parsed.resumo || "Análise concluída com verificações reais e complemento IA.",
-      recomendacoes: parsed.recomendacoes || [],
-      alertas: [
-        ...verificacoesReais.filter(v => v.status === "irregular").map(v => `⚠️ ${v.fonte}: ${v.detalhes}`),
-        ...(parsed.alertas || []),
-      ],
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    return json({
+      cnpj,
+      cadastro: cad.cadastro,
+      ...(cad.erro ? { cadastroErro: cad.erro } : {}),
+      idoneidade: idon.idoneidade,
+      ...(idon.erro ? { idoneidadeErro: idon.erro } : {}),
+      consultadoEm: new Date().toISOString(),
     });
   } catch (e) {
-    console.error("Erro certidões:", e);
-    return new Response(JSON.stringify({ error: e.message || "Erro ao consultar certidões" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    console.error("[certidoes-negativas]", e);
+    return json({ error: e instanceof Error ? e.message : "Erro ao consultar" }, 500);
   }
 });
