@@ -32,7 +32,10 @@ export default function ContratosAguardandoDecisao() {
         <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-warning-tint text-warning-ink" aria-hidden="true">
           <FileSignature className="h-[18px] w-[18px]" />
         </span>
-        <div className="min-w-0 flex-1">
+        {/* Base de 14rem, não zero — mesma razão do cartão de criticidade
+            documental: no celular o título virava uma coluna de uma palavra
+            para caber o selo e o botão ao lado. Com a base, eles descem. */}
+        <div className="min-w-0 grow basis-56">
           <p className="text-base font-semibold leading-6 text-foreground">
             {data.length === 1 ? '1 contrato espera uma decisão' : `${data.length} contratos esperam uma decisão`}
           </p>
@@ -69,9 +72,12 @@ export default function ContratosAguardandoDecisao() {
                 <p className="truncate text-sm font-semibold text-foreground">
                   {c.instrumento === 'ata' ? 'Ata' : 'Contrato'} {c.numero}
                 </p>
-                <p className="mt-0.5 truncate text-xs text-muted-foreground">{c.sugestao.titulo}</p>
+                <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground sm:line-clamp-none sm:truncate">{c.sugestao.titulo}</p>
+                {/* No celular o sinal desce para baixo do título: ao lado ele
+                    tomava metade da linha e a pergunta virava "o contrato cheg…". */}
+                <p className="mt-0.5 text-xs font-medium text-muted-foreground sm:hidden">{rotuloDoMotivo(c.sugestao.motivo)}</p>
               </div>
-              <p className="shrink-0 text-xs font-medium text-muted-foreground">{rotuloDoMotivo(c.sugestao.motivo)}</p>
+              <p className="hidden shrink-0 text-xs font-medium text-muted-foreground sm:block">{rotuloDoMotivo(c.sugestao.motivo)}</p>
               <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
             </Link>
           </li>

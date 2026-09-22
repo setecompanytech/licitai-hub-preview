@@ -73,7 +73,11 @@ export default function PendenciasPrioritarias() {
         <span className="brand-mark-badge" aria-hidden="true">
           <BrandLogo variant="dark" mode="symbol" width={22} />
         </span>
-        <div className="min-w-0 flex-1">
+        {/* Base de 14rem, não zero: com base zero o texto encolhia até caber
+            os contadores e o botão na mesma linha, e no celular o título
+            virava uma coluna de uma palavra ("Central / de / criticidad / e").
+            Com a base, o que não cabe — contadores e botão — desce de linha. */}
+        <div className="min-w-0 grow basis-56">
           <p className="text-base font-semibold leading-6 text-foreground">Central de criticidade documental</p>
           <p className="text-xs text-muted-foreground">
             {total} pendência{total > 1 ? 's' : ''} pode{total > 1 ? 'm' : ''} afetar sua participação em licitações

@@ -83,7 +83,7 @@ usa `bg-muted`, não `bg-accent`.
 | Secundário / célula de tabela | `text-sm` | 13/18 |
 | Rótulo de campo | `Label` (`text-sm font-medium`) | 13 · 500 |
 | Metadado, badge, rótulo de coluna | `text-xs` | 12/16 |
-| KPI | `text-[1.75rem] leading-9 font-semibold tabular-nums` (28, painel/LinhaKpis/StatCard) ou `text-3xl leading-8` (24, FaixaIndicadores das telas de Gestão); `text-2xl` é 20px — só no `ValorDeCartao compacto` | 650–700 |
+| KPI | `text-[1.75rem] leading-9 font-semibold tabular-nums` (28, painel/LinhaKpis/StatCard) ou `.valor-kpi` (24 que encolhe até caber, FaixaIndicadores das telas de Gestão); `text-2xl` é 20px — só no `ValorDeCartao compacto` | 650–700 |
 
 Escala Tailwind: xs 12 · sm 13 · base 14 · lg 16 · xl 18 · 2xl 20 · 3xl 24 ·
 4xl 28 · 5xl 32. `text-[Npx]` arbitrário só quando a escala não tem o degrau.
@@ -124,6 +124,12 @@ fora de KPI, `bg-*/10` composto na mão (use o trio `tint/ink/line`).
 em cima · valor `text-[1.75rem] leading-9 font-semibold tabular-nums` · ícone
 32px num ladrilho `rounded-md` tingido no canto superior direito · linha de
 contexto `text-xs text-muted-foreground`. Nunca cartão gigante nem centralizado.
+**O número nunca vira reticência (22/09):** em `FaixaIndicadores` o valor leva
+`.valor-kpi` com o próprio tamanho em `--chars` (`estilo-do-valor.ts`), e o
+invólucro do texto é contêiner de consulta (`.envoltorio-kpi`); a fonte desce
+de 1.5rem até 0.875rem conforme a largura do cartão, antes de qualquer corte —
+"R$ 22.581.888,00" com cinco cartões na tela era "R$ 22.581.888…". Cartão KPI
+local que mostre dinheiro usa o mesmo par de classes em vez de `truncate` solto.
 
 **Tabela:** `thead` em `bg-secondary`; `th` `h-11 px-4 text-xs font-semibold
 tracking-wide text-muted-foreground` (sem caixa alta); `td` `h-12 px-4 text-sm`;

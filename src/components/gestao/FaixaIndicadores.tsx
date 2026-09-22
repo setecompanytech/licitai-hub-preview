@@ -1,5 +1,6 @@
 import type { ElementType, ReactNode } from 'react';
 import { cn } from '@/lib/utils';
+import { estiloDoValor } from './estilo-do-valor';
 
 /**
  * FaixaIndicadores — os números do topo das telas de Gestão (cartão KPI).
@@ -93,7 +94,9 @@ export default function FaixaIndicadores({
                 <Icone className="h-4 w-4" />
               </span>
             )}
-            <span className="flex min-w-0 flex-1 flex-col gap-1 sm:pr-9">
+            {/* `envoltorio-kpi` faz deste invólucro o contêiner de consulta
+                que o `.valor-kpi` mede para caber (index.css). */}
+            <span className="envoltorio-kpi flex min-w-0 flex-1 flex-col gap-1 sm:pr-9">
               <span className="g-meta block truncate font-medium text-muted-foreground">{item.rotulo}</span>
               {/* Valor ausente: o travessão fica na linha do número e a RAZÃO
                   desce para a linha de baixo, inteira. */}
@@ -105,7 +108,10 @@ export default function FaixaIndicadores({
                   </span>
                 </>
               ) : (
-                <span className="valor-kpi block truncate text-3xl font-semibold leading-8 tabular-nums text-foreground">
+                <span
+                  className="valor-kpi block truncate font-semibold tabular-nums text-foreground"
+                  style={estiloDoValor(item.valor)}
+                >
                   {item.valor}
                 </span>
               )}

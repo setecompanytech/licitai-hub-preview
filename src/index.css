@@ -824,6 +824,26 @@
     box-shadow: var(--shadow-sm);
   }
 
+  /* Valor do KPI que cabe no cartão (22/09). O invólucro do texto
+     (`envoltorio-kpi`, em FaixaIndicadores) é o contêiner de consulta e o
+     valor recebe o próprio número de caracteres em `--chars`. A fonte é o
+     menor entre 1.5rem (text-3xl da escala) e a largura útil dividida pela
+     largura estimada do texto — 0,6em por caractere, com folga sobre a Inter
+     600 de dígitos tabulares. Com cinco cartões de ~270px, "R$ 22.581.888,00"
+     virava "R$ 22.581.888…", e reticência num KPI de dinheiro é número
+     errado, não número resumido. No celular, dois cartões de 170px levam o
+     valor a ~0.9rem antes de qualquer corte. Navegador sem unidade `cqi`
+     ignora a segunda declaração e fica no tamanho cheio. */
+  .envoltorio-kpi {
+    container-type: inline-size;
+  }
+  .valor-kpi {
+    font-size: 1.5rem;
+    font-size: clamp(0.875rem, calc(100cqi / (var(--chars, 1) * 0.6)), 1.5rem);
+    line-height: 1.3;
+    letter-spacing: -0.012em;
+  }
+
   /* Alvo de toque e densidade dos controles. O piso de 16px no celular evita
      o zoom automático do iOS ao focar um campo. */
   .g-controle {
