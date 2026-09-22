@@ -4,6 +4,7 @@ import { hojeLocal } from "@/lib/financeiro/data-local";
 import { normalizarChaveNfe, chaveNfeSuspeita } from "@/lib/financeiro/chave-nfe";
 import { mensagemDeErro } from "@/lib/financeiro/erro-do-banco";
 import { buscarRecebimentoDaNota } from "@/lib/financeiro/buscar-recebimento-da-nota";
+import { vencimentoDoTitulo } from "@/lib/financeiro/vencimento-do-titulo";
 import { useDocumentoFiscal } from "@/hooks/useDocumentoFiscal";
 import { useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -296,6 +297,14 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
     // ia para as observações enquanto valor e vencimento entravam da leitura
     // sem conferência. Mesma precedência do LancamentoDialog: o DV manda.
     const boleto = d.codigo_barras ? lerLinhaDigitavel(String(d.codigo_barras), hojeLocal()) : null;
+    // Todo título nasce com vencimento (`vencimento-do-titulo.ts`): sem
+    // duplicata nem boleto, a emissão entra no lugar e a nota diz que foi
+    // assumido — a pessoa vê e corrige no diálogo.
+    const vencimento = vencimentoDoTitulo({
+      informado: boleto?.vencimento ?? d.data_vencimento ?? null,
+      emissao: d.data_emissao ?? null,
+      hoje: hojeLocal(),
+    });
     const obsContrato = item.vinculo?.contrato_id
       ? `Vínculo: contrato ${item.vinculo.contrato_id}${
           item.vinculo.contrato_item_ids?.length
@@ -312,7 +321,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
         || item.file.name,
       valor: boleto?.valor ?? Number(d.valor_total ?? 0),
       data_competencia: d.data_emissao ?? hojeLocal(),
-      data_vencimento: boleto?.vencimento ?? d.data_vencimento ?? null,
+      data_vencimento: vencimento.data,
       data_emissao: d.data_emissao ?? null,
       tipo_documento: tipoDocBruto ? (tipoDocMap[tipoDocBruto] ?? "outro") : "outro",
       numero_documento: d.numero_documento ?? null,
@@ -325,6 +334,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
         d.codigo_barras ? `Código de barras: ${d.codigo_barras}` : null,
         item.motor ? `Extraído via ${item.motor}` : null,
         obsContrato,
+        vencimento.nota,
       ].filter(Boolean).join("\n") || null,
     };
     setEditor({ open: true, initial, docId: item.id });
@@ -434,6 +444,16 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
 
         let lancId: string | null = null;
         let restante = valorTotal;
+        // Todo título nasce com vencimento (`vencimento-do-titulo.ts`). A RPC
+        // gravava nulo quando a NF-e não trazia duplicata, e o título sumia do
+        // fluxo de caixa e do "Em atraso" (NF 736 da ETHOS, 21/09). O que foi
+        // assumido vai dito nas observações; a RPC repete a escada para quem
+        // a chamar sem passar por aqui.
+        const vencimento = vencimentoDoTitulo({
+          informado: d.data_vencimento ?? null,
+          emissao: d.data_emissao ?? null,
+          hoje: hojeLocal(),
+        });
         const tipoLabels: Record<string, string> = { nfe: "NF-e", nfse: "NFS-e", nfce: "NF-Ce" };
         const tipoFormatado = tipoLabels[(d.tipo_documento as string)?.toLowerCase()] ?? (d.tipo_documento ?? "Doc").toString().toUpperCase();
         // Quando numero_documento está presente (PDF/OCR), compõe "NF-e 718 · PRODUTO" para diferenciar visualmente
@@ -480,7 +500,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
               p_natureza: tipo === "a_receber" ? "receita" : "despesa",
               p_status: "previsto",
               p_data_competencia: d.data_emissao ?? hojeLocal(),
-              p_data_vencimento: d.data_vencimento ?? null,
+              p_data_vencimento: vencimento.data,
               p_data_emissao: d.data_emissao ?? null,
               p_tipo_documento: (d.tipo_documento as any) ?? "outro",
               p_numero_documento: d.numero_documento ?? null,
@@ -502,6 +522,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                   ? `Vinculado a ${itemIds.length} itens do contrato (cota principal + reservada — Lei 14.133/21).`
                   : null,
                 "Pedido criado automaticamente a partir de documento financeiro.",
+                vencimento.nota,
               ]
                 .filter(Boolean)
                 .join("\n"),
@@ -655,7 +676,13 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
         }
       }
 
-      // Caminho sem vínculo: lançamento simples
+      // Caminho sem vínculo: lançamento simples — com vencimento sempre, pela
+      // mesma escada da RPC (`vencimento-do-titulo.ts`), e a nota do que foi assumido.
+      const vencimento = vencimentoDoTitulo({
+        informado: d.data_vencimento ?? null,
+        emissao: d.data_emissao ?? null,
+        hoje: hojeLocal(),
+      });
       const r = await upsert.mutateAsync({
         tipo,
         natureza: tipo === "a_receber" ? "receita" : "despesa",
@@ -666,11 +693,12 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
           item.file.name,
         valor: Number(d.valor_total),
         data_competencia: d.data_emissao ?? hojeLocal(),
-        data_vencimento: d.data_vencimento ?? d.data_emissao ?? null,
+        data_vencimento: vencimento.data,
         data_emissao: d.data_emissao ?? null,
         tipo_documento: (d.tipo_documento as any) ?? "outro",
         numero_documento: d.numero_documento ?? null,
         chave_acesso_nfe: normalizarChaveNfe(d.chave_nfe),
+        observacoes: vencimento.nota,
       } as any);
       const novoId = (r as any)?.id ?? null;
       if (item.documentoId && novoId) await vincularLancamento(item.documentoId, novoId);
