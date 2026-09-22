@@ -62,6 +62,8 @@ interface Props extends AcoesDoPainel {
   aoSolicitar?: () => void;
   /** Cadastrar o órgão do município fora do mapa (fase 2, entrega c). */
   aoCadastrarOrgao?: () => void;
+  /** Corrigir o órgão que a própria empresa cadastrou. */
+  aoEditarOrgao?: () => void;
   /** O pedido ABERTO desta vaga, se houver — mostra o bloco "Solicitação ao órgão". */
   solicitacao?: SolicitacaoDeDocumento | null;
   /** Texto discreto quando o registro de solicitações ainda não está no banco. */
@@ -94,6 +96,7 @@ export default function PainelDocumento({
   cnpj,
   aoSolicitar,
   aoCadastrarOrgao,
+  aoEditarOrgao,
   solicitacao,
   avisoDeSolicitacoes,
   salvandoSolicitacao = false,
@@ -186,6 +189,7 @@ export default function PainelDocumento({
           cnpj={cnpj || '(CNPJ)'}
           aoSolicitar={aoSolicitar}
           aoCadastrarOrgao={aoCadastrarOrgao}
+          aoEditarOrgao={aoEditarOrgao}
         />
       )}
 

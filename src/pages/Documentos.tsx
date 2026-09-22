@@ -29,7 +29,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import {
-  Download, ExternalLink, Eye, FolderOpen, Loader2, Mail, MoreHorizontal, PencilLine, Plus,
+  Building2, Download, ExternalLink, Eye, FolderOpen, Loader2, Mail, MoreHorizontal, PencilLine, Plus,
   Repeat, Trash2, Upload, Users,
 } from 'lucide-react';
 import MergeDocumentos from '@/components/documentos/MergeDocumentos';
@@ -41,6 +41,7 @@ import IndicadoresCofre, { ConformidadeDocumental } from '@/components/documento
 import PainelDocumento from '@/components/documentos/PainelDocumento';
 import SeloDocumento, { ValidadeDoDocumento } from '@/components/documentos/SeloDocumento';
 import DialogSolicitacao from '@/components/documentos/DialogSolicitacao';
+import DialogOrgaoEmissor from '@/components/documentos/DialogOrgaoEmissor';
 import { SeloDeSolicitacao } from '@/components/documentos/SolicitacaoDaVaga';
 import {
   FILTROS_DE_SITUACAO, ORDEM_NA_TELA, ROTULO_DO_FILTRO, casaComFiltro, contarCofre,
@@ -55,6 +56,8 @@ import { ROTULO_DA_ACAO, orgaosPorVaga } from '@/lib/documentos/orgao-emissor';
 import {
   AVISO_SOLICITACOES_INDISPONIVEIS, abertasPorVaga, linhaParaGravar, type DadosDaSolicitacao,
 } from '@/lib/documentos/solicitacoes';
+import { AVISO_ORGAOS_INDISPONIVEIS, linhaDoOrgao, type DadosDoOrgao } from '@/lib/documentos/orgaos-da-empresa';
+import { orgaoCadastradoDoMunicipio } from '@/data/certidoes-catalogo';
 import { formatCNPJ } from '@/lib/financeiro/formatters';
 import { useAbaNaUrl } from '@/lib/navegacao/aba-na-url';
 import { abrirEmail } from '@/lib/navegacao/abrir-email';
@@ -64,6 +67,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useAuthorization } from '@/hooks/useAuthorization';
 import { useSolicitacoesDeDocumentos } from '@/hooks/useSolicitacoesDeDocumentos';
+import { useOrgaosDaEmpresa } from '@/hooks/useOrgaosDaEmpresa';
 
 /* ═══════════════════════════════════════════════════════════════════════════
    O COFRE DE HABILITAÇÃO — reestruturação de 14/09.
@@ -160,6 +164,11 @@ export default function Documentos() {
   const [salvandoSolicitacao, setSalvandoSolicitacao] = useState(false);
   const [erroSolicitacao, setErroSolicitacao] = useState<string | null>(null);
 
+  // Órgão municipal cadastrado pela empresa (município fora do mapa).
+  const [dialogoOrgao, setDialogoOrgao] = useState(false);
+  const [salvandoOrgao, setSalvandoOrgao] = useState(false);
+  const [erroOrgao, setErroOrgao] = useState<string | null>(null);
+
   const inputArquivo = useRef<HTMLInputElement>(null);
   const vagaPendente = useRef<ItemDoCofre | null>(null);
   const controleDeCarga = useRef<AbortController | null>(null);
@@ -209,6 +218,13 @@ export default function Documentos() {
   } = useSolicitacoesDeDocumentos(modoTodasEmpresas ? null : empresaAtiva?.id ?? null);
   const solicitacoesAbertas = useMemo(() => abertasPorVaga(solicitacoes), [solicitacoes]);
   const avisoDeSolicitacoes = solicitacoesIndisponiveis ? AVISO_SOLICITACOES_INDISPONIVEIS : null;
+
+  /* O órgão municipal que a empresa cadastrou para município fora do mapa:
+     entra na mescla do catálogo (mapa → cadastro → "a cadastrar"). */
+  const {
+    orgaos: orgaosDaEmpresa, erro: erroDosOrgaos, indisponivel: orgaosIndisponiveis,
+    recarregar: recarregarOrgaos, salvar: salvarOrgao, remover: removerOrgao,
+  } = useOrgaosDaEmpresa(modoTodasEmpresas ? null : empresaAtiva?.id ?? null);
 
   const carregar = useCallback(async () => {
     if (!user) return;
@@ -297,8 +313,13 @@ export default function Documentos() {
     [empresaAtiva?.uf, empresaAtiva?.municipio],
   );
   const orgaoPorVaga = useMemo(
-    () => orgaosPorVaga(VAGAS_PREVISTAS.map((v) => v.nome), domicilio),
-    [domicilio],
+    () => orgaosPorVaga(VAGAS_PREVISTAS.map((v) => v.nome), domicilio, orgaosDaEmpresa),
+    [domicilio, orgaosDaEmpresa],
+  );
+  /** O cadastro da empresa para o município do domicílio, se houver — para corrigir. */
+  const orgaoCadastradoDoDomicilio = useMemo(
+    () => (domicilio.uf && domicilio.municipio ? orgaoCadastradoDoMunicipio(domicilio.uf, domicilio.municipio, orgaosDaEmpresa) : null),
+    [domicilio, orgaosDaEmpresa],
   );
   const razaoSocial = empresaAtiva?.razao_social ?? '';
   const cnpjLegivel = empresaAtiva?.cnpj ? formatCNPJ(empresaAtiva.cnpj) : '';
@@ -543,6 +564,38 @@ export default function Documentos() {
     toast.success('Solicitação encerrada.');
   };
 
+  // ── Órgão municipal cadastrado pela empresa ───────────────────────────────
+
+  const abrirCadastroDoOrgao = () => {
+    setErroOrgao(null);
+    setDialogoOrgao(true);
+  };
+
+  /** Grava (ou corrige) o órgão do município do domicílio. Erro fica no diálogo, com retry. */
+  const confirmarOrgao = async (dados: DadosDoOrgao) => {
+    if (!user || !empresaAtiva || !domicilio.uf || !domicilio.municipio) return;
+    setSalvandoOrgao(true);
+    setErroOrgao(null);
+    const r = await salvarOrgao(
+      linhaDoOrgao(dados, { empresaId: empresaAtiva.id, userId: user.id, uf: domicilio.uf, municipio: domicilio.municipio }),
+      orgaoCadastradoDoDomicilio?.id,
+    );
+    setSalvandoOrgao(false);
+    if (!r.ok) { setErroOrgao(r.erro ?? 'erro desconhecido'); return; }
+    setDialogoOrgao(false);
+    toast.success(`Órgão de ${domicilio.municipio}/${domicilio.uf} ${orgaoCadastradoDoDomicilio ? 'corrigido' : 'cadastrado'}. As vagas municipais já apontam para ele.`);
+  };
+
+  const removerCadastroDoOrgao = async () => {
+    if (!orgaoCadastradoDoDomicilio?.id) return;
+    setSalvandoOrgao(true);
+    const r = await removerOrgao(orgaoCadastradoDoDomicilio.id);
+    setSalvandoOrgao(false);
+    if (!r.ok) { setErroOrgao(r.erro ?? 'erro desconhecido'); return; }
+    setDialogoOrgao(false);
+    toast.success('Cadastro do órgão removido. As vagas municipais voltam a "órgão a cadastrar".');
+  };
+
   /** Editar metadados = editar a VALIDADE, sem tocar no arquivo. */
   const salvarValidade = async (item: ItemDoCofre, validade?: string) => {
     if (!item.dbId) return;
@@ -735,6 +788,7 @@ export default function Documentos() {
         const certidao = orgao?.certidao ?? null;
         const linkDeEmissao = certidao && orgao.acoes.includes('emitir') ? certidao.urlEmissao : undefined;
         const podeSolicitar = Boolean(certidao && orgao.acoes.includes('solicitar'));
+        const podeCadastrarOrgao = Boolean(certidao && orgao.acoes.includes('cadastrar') && empresaAtiva);
         return (
           <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
             {i.arquivoPath ? (
@@ -795,6 +849,11 @@ export default function Documentos() {
                     <Mail aria-hidden="true" className="mr-2 h-4 w-4" /> {ROTULO_DA_ACAO.solicitar}
                   </DropdownMenuItem>
                 )}
+                {podeCadastrarOrgao && (
+                  <DropdownMenuItem onSelect={abrirCadastroDoOrgao}>
+                    <Building2 aria-hidden="true" className="mr-2 h-4 w-4" /> {ROTULO_DA_ACAO.cadastrar}
+                  </DropdownMenuItem>
+                )}
                 {i.legadoPrivado && empresaAtiva && (
                   <DropdownMenuItem onSelect={() => compartilhar(i)}>
                     <Users aria-hidden="true" className="mr-2 h-4 w-4" /> Compartilhar com a equipe
@@ -840,6 +899,8 @@ export default function Documentos() {
       razaoSocial={razaoSocial}
       cnpj={cnpjLegivel}
       aoSolicitar={orgaoPorVaga[selecionado.nome]?.acoes.includes('solicitar') ? () => solicitar(selecionado) : undefined}
+      aoCadastrarOrgao={orgaoPorVaga[selecionado.nome]?.acoes.includes('cadastrar') && empresaAtiva ? abrirCadastroDoOrgao : undefined}
+      aoEditarOrgao={orgaoPorVaga[selecionado.nome]?.certidao?.cadastradoPelaEmpresa && empresaAtiva ? abrirCadastroDoOrgao : undefined}
       solicitacao={solicitacoesAbertas[selecionado.nome] ?? null}
       avisoDeSolicitacoes={avisoDeSolicitacoes}
       salvandoSolicitacao={salvandoSolicitacao}
@@ -883,6 +944,11 @@ export default function Documentos() {
             {erroDasSolicitacoes && (
               <AvisoDeFalha aoTentarNovamente={recarregarSolicitacoes}>
                 Não foi possível ler as solicitações ao órgão: {erroDasSolicitacoes}
+              </AvisoDeFalha>
+            )}
+            {erroDosOrgaos && (
+              <AvisoDeFalha aoTentarNovamente={recarregarOrgaos}>
+                Não foi possível ler os órgãos cadastrados pela empresa: {erroDosOrgaos}
               </AvisoDeFalha>
             )}
 
@@ -1113,6 +1179,21 @@ export default function Documentos() {
             salvando={salvandoSolicitacao}
             erro={erroSolicitacao}
             aoConfirmar={confirmarSolicitacao}
+          />
+        )}
+
+        {dialogoOrgao && domicilio.uf && domicilio.municipio && (
+          <DialogOrgaoEmissor
+            aberto
+            aoFechar={() => setDialogoOrgao(false)}
+            uf={domicilio.uf}
+            municipio={domicilio.municipio}
+            existente={orgaoCadastradoDoDomicilio}
+            salvando={salvandoOrgao}
+            erro={erroOrgao}
+            indisponivel={orgaosIndisponiveis ? AVISO_ORGAOS_INDISPONIVEIS : null}
+            aoConfirmar={confirmarOrgao}
+            aoRemover={isCompanyAdmin && orgaoCadastradoDoDomicilio ? removerCadastroDoOrgao : undefined}
           />
         )}
 

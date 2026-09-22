@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
-  CERTIDOES_FEDERAIS, certidoesEstaduais, certidoesMunicipais, checklistDeCertidoes, cidadeDaLista, modeloDeSolicitacao,
-  municipioDoMapa, porEsfera, validadeLegivel,
+  CERTIDOES_FEDERAIS, certidoesEstaduais, certidoesMunicipais, checklistDeCertidoes, cidadeDaLista, mesclarOrgaoDaEmpresa,
+  modeloDeSolicitacao, municipioDoMapa, orgaoCadastradoDoMunicipio, porEsfera, validadeLegivel,
+  type OrgaoCadastradoPelaEmpresa,
 } from '../certidoes-catalogo';
 import { VAGAS_PREVISTAS } from '@/lib/documentos/previstos';
 
@@ -72,5 +73,83 @@ describe('catálogo de certidões — cada uma no seu órgão emissor', () => {
     expect(m.corpo).toContain('exercício de 2026');
     expect(m.corpo).toContain('código de autenticidade');
     expect(m.mailto.startsWith('mailto:?subject=')).toBe(true);
+    // Com o e-mail do órgão conhecido, o mailto sai endereçado.
+    const endereçado = modeloDeSolicitacao({ certidao: 'x', orgao: 'y', razaoSocial: 'ETHOS', cnpj: '1', para: ' sefin@belem.pa.gov.br ' });
+    expect(endereçado.mailto.startsWith('mailto:sefin%40belem.pa.gov.br?subject=')).toBe(true);
+  });
+});
+
+describe('órgão municipal cadastrado pela empresa — a mescla com o mapa', () => {
+  const cumaru: OrgaoCadastradoPelaEmpresa = {
+    id: 'o1',
+    esfera: 'municipal',
+    uf: 'pa',
+    municipio: 'CUMARU DO NORTE',
+    nomeDoOrgao: 'Prefeitura Municipal de Cumaru do Norte · Setor de Tributos',
+    site: 'https://cumarudonorte.pa.gov.br/certidoes',
+    email: 'tributos@cumarudonorte.pa.gov.br',
+    instrucoes: 'Emissão on-line pelo CNPJ; a inscrição sai no balcão.',
+    validadeDias: 90,
+  };
+
+  it('encontra o cadastro sem acento e sem caixa, e só na esfera municipal', () => {
+    expect(orgaoCadastradoDoMunicipio('PA', 'Cumaru do Norte', [cumaru])?.id).toBe('o1');
+    expect(orgaoCadastradoDoMunicipio('PA', 'Cumarú do Norte', [cumaru])?.id).toBe('o1');
+    expect(orgaoCadastradoDoMunicipio('MA', 'Cumaru do Norte', [cumaru])).toBeNull();
+    expect(orgaoCadastradoDoMunicipio('PA', 'Belém', [cumaru])).toBeNull();
+    expect(orgaoCadastradoDoMunicipio('PA', '', [cumaru])).toBeNull();
+  });
+
+  it('fora do mapa, com cadastro: as duas vagas municipais passam a apontar o órgão da empresa', () => {
+    const lista = certidoesMunicipais('PA', 'Cumaru do Norte', [cumaru]);
+    expect(lista).toHaveLength(2);
+    for (const c of lista) {
+      expect(c.pendenteDeCadastro).toBe(false);
+      expect(c.cadastradoPelaEmpresa).toBe(true);
+      expect(c.orgaoCadastradoId).toBe('o1');
+      expect(c.emissor).toBe('Prefeitura Municipal de Cumaru do Norte · Setor de Tributos');
+      expect(c.urlEmissao).toBe('https://cumarudonorte.pa.gov.br/certidoes');
+      expect(c.obtencao).toBe('emissao_online');
+      expect(c.emailSolicitacao).toBe('tributos@cumarudonorte.pa.gov.br');
+      expect(c.observacao).toContain('balcão');
+    }
+    const cnd = lista.find((c) => c.vaga === 'Certidão Negativa de Débitos Municipais');
+    const inscricao = lista.find((c) => c.vaga === 'Inscrição Municipal (cadastro de contribuintes)');
+    expect(cnd?.validadeDias).toBe(90);
+    // A inscrição não vence, seja qual for a validade usual cadastrada.
+    expect(inscricao?.validadeDias).toBe(0);
+  });
+
+  it('sem site, a obtenção é solicitação, com o e-mail junto', () => {
+    const lista = mesclarOrgaoDaEmpresa(certidoesMunicipais('PA', 'Cumaru do Norte'), { ...cumaru, site: '  ' });
+    expect(lista[0].obtencao).toBe('solicitacao');
+    expect(lista[0].urlEmissao).toBeUndefined();
+    expect(lista[0].emailSolicitacao).toBe('tributos@cumarudonorte.pa.gov.br');
+  });
+
+  it('município no mapa: o mapa manda, mesmo com cadastro da empresa para ele', () => {
+    const belemCadastrada: OrgaoCadastradoPelaEmpresa = { ...cumaru, municipio: 'Belém', nomeDoOrgao: 'Outro órgão' };
+    const lista = certidoesMunicipais('PA', 'BELEM', [belemCadastrada]);
+    expect(JSON.stringify(lista)).not.toContain('Outro órgão');
+    expect(lista.find((c) => c.vaga === 'Certidão Negativa de Débitos Municipais')?.obtencao).toBe('solicitacao');
+    expect(lista.every((c) => !c.cadastradoPelaEmpresa)).toBe(true);
+  });
+
+  it('sem nenhum: segue "a cadastrar" com o nome do município — comportamento anterior', () => {
+    const lista = certidoesMunicipais('PA', 'Cumaru do Norte', [{ ...cumaru, municipio: 'Redenção' }]);
+    expect(lista[0].pendenteDeCadastro).toBe(true);
+    expect(lista[0].emissor).toContain('Cumaru do Norte');
+    expect(lista[0].cadastradoPelaEmpresa).toBeUndefined();
+    // Nome vazio não é cadastro.
+    expect(mesclarOrgaoDaEmpresa(lista, { ...cumaru, nomeDoOrgao: '  ' })[0].pendenteDeCadastro).toBe(true);
+  });
+
+  it('a mescla nunca toca nas federais nem nas estaduais', () => {
+    const tudo = checklistDeCertidoes('PA', 'Cumaru do Norte', [cumaru]);
+    for (const c of tudo.filter((x) => x.esfera !== 'municipal')) {
+      expect(c.cadastradoPelaEmpresa).toBeUndefined();
+      expect(c.emissor).not.toContain('Cumaru');
+    }
+    expect(tudo.filter((x) => x.cadastradoPelaEmpresa)).toHaveLength(2);
   });
 });

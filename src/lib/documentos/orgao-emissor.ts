@@ -1,6 +1,6 @@
 import {
   CERTIDOES_FEDERAIS, certidoesEstaduais, certidoesMunicipais, checklistDeCertidoes,
-  type CertidaoDoCatalogo, type Esfera,
+  type CertidaoDoCatalogo, type Esfera, type OrgaoCadastradoPelaEmpresa,
 } from '@/data/certidoes-catalogo';
 
 /**
@@ -94,8 +94,17 @@ function motivoSemAcao(c: CertidaoDoCatalogo): string | null {
   return null;
 }
 
-/** A certidão do catálogo que responde à vaga, para o domicílio da empresa. */
-export function orgaoDaVaga(nomeDaVaga: string, domicilio: Domicilio): OrgaoDaVaga {
+/**
+ * A certidão do catálogo que responde à vaga, para o domicílio da empresa.
+ *
+ * `orgaosDaEmpresa` são os órgãos municipais cadastrados pela própria empresa
+ * (fase 2, entrega c): valem só para município fora do mapa.
+ */
+export function orgaoDaVaga(
+  nomeDaVaga: string,
+  domicilio: Domicilio,
+  orgaosDaEmpresa: OrgaoCadastradoPelaEmpresa[] = [],
+): OrgaoDaVaga {
   const esfera = esferaDaVaga(nomeDaVaga);
   if (!esfera) return { esfera: null, certidao: null, acoes: [], motivo: null };
 
@@ -109,7 +118,8 @@ export function orgaoDaVaga(nomeDaVaga: string, domicilio: Domicilio): OrgaoDaVa
     return { esfera, certidao: null, acoes: [], motivo: MOTIVO_SEM_MUNICIPIO };
   }
 
-  const certidao = checklistDeCertidoes(uf, municipio).find((c) => c.vaga === nomeDaVaga) ?? null;
+  const certidao = checklistDeCertidoes(uf, municipio, orgaosDaEmpresa)
+    .find((c) => c.vaga === nomeDaVaga) ?? null;
   if (!certidao) return { esfera, certidao: null, acoes: [], motivo: null };
 
   const acoes = acoesDaCertidao(certidao);
@@ -117,6 +127,10 @@ export function orgaoDaVaga(nomeDaVaga: string, domicilio: Domicilio): OrgaoDaVa
 }
 
 /** O órgão de cada vaga do cofre, de uma vez — a tela consulta por nome. */
-export function orgaosPorVaga(vagas: string[], domicilio: Domicilio): Record<string, OrgaoDaVaga> {
-  return Object.fromEntries(vagas.map((v) => [v, orgaoDaVaga(v, domicilio)]));
+export function orgaosPorVaga(
+  vagas: string[],
+  domicilio: Domicilio,
+  orgaosDaEmpresa: OrgaoCadastradoPelaEmpresa[] = [],
+): Record<string, OrgaoDaVaga> {
+  return Object.fromEntries(vagas.map((v) => [v, orgaoDaVaga(v, domicilio, orgaosDaEmpresa)]));
 }

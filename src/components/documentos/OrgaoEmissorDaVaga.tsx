@@ -19,6 +19,8 @@ interface Props {
   aoSolicitar?: () => void;
   /** Município fora do mapa: abre o cadastro do órgão da empresa. Sem ele, o botão não aparece. */
   aoCadastrarOrgao?: () => void;
+  /** Órgão cadastrado pela própria empresa: permite corrigir o cadastro. */
+  aoEditarOrgao?: () => void;
 }
 
 /**
@@ -32,7 +34,7 @@ interface Props {
  * — não escolhe uma cidade.
  */
 export default function OrgaoEmissorDaVaga({
-  orgao, razaoSocial, cnpj, aoSolicitar, aoCadastrarOrgao,
+  orgao, razaoSocial, cnpj, aoSolicitar, aoCadastrarOrgao, aoEditarOrgao,
 }: Props) {
   // Vaga que o catálogo de certidões não cobre (CREA, balanço, declarações
   // próprias sem órgão): não há o que apontar, e inventar um órgão é pior que
@@ -64,7 +66,7 @@ export default function OrgaoEmissorDaVaga({
   ];
 
   const solicitacao = orgao.acoes.includes('solicitar')
-    ? modeloDeSolicitacao({ certidao: c.nome, orgao: c.emissor, razaoSocial, cnpj })
+    ? modeloDeSolicitacao({ certidao: c.nome, orgao: c.emissor, razaoSocial, cnpj, para: c.emailSolicitacao })
     : null;
 
   // A primeira ação que a tela consegue oferecer é a principal (botão cheio);
@@ -112,9 +114,19 @@ export default function OrgaoEmissorDaVaga({
       {acoesVisiveis.length > 0 ? (
         <div className="flex flex-wrap gap-2">
           {acoesVisiveis.map((a, i) => botao(a, i === 0))}
+          {c.cadastradoPelaEmpresa && aoEditarOrgao && (
+            <Button size="sm" variant="ghost" onClick={aoEditarOrgao}>
+              <Building2 aria-hidden="true" /> Editar órgão
+            </Button>
+          )}
         </div>
       ) : (
         orgao.motivo && <p className="g-meta text-warning-ink">{orgao.motivo}</p>
+      )}
+      {c.cadastradoPelaEmpresa && (
+        <p className="g-meta text-muted-foreground">
+          Órgão informado pela própria empresa, não pelo mapa do sistema — confira o endereço antes de usar.
+        </p>
       )}
     </BlocoDoPainel>
   );

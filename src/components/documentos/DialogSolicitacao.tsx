@@ -53,7 +53,9 @@ export default function DialogSolicitacao({
   useEffect(() => {
     if (!aberto) return;
     setOrgao(certidao.emissor);
-    setEmail('');
+    // O e-mail do órgão vem do cadastro da empresa quando existe; o mapa do
+    // sistema não guarda e-mail — quem envia sabe o endereço.
+    setEmail(certidao.emailSolicitacao ?? '');
     setPrazo('');
     setObservacao('');
     setErros([]);

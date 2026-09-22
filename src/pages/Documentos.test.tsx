@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, within, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import type { ReactNode } from 'react';
@@ -49,6 +49,9 @@ const dados = vi.hoisted(() => ({
   solicitacoes: [] as Record<string, unknown>[],
   /** Erro na leitura das solicitações — tabela ausente ou falha de verdade. */
   erroSolicitacoes: null as { code?: string; message: string } | null,
+  /** Os órgãos municipais cadastrados pela empresa (`certidoes_orgaos_da_empresa`). */
+  orgaos: [] as Record<string, unknown>[],
+  erroOrgaos: null as { code?: string; message: string } | null,
   /** Toda escrita que a tela tentou, por tabela — para conferir o que foi gravado. */
   gravadas: [] as Array<{ tabela: string; op: string; valores: unknown }>,
 }));
@@ -95,6 +98,10 @@ vi.mock('@/integrations/supabase/client', () => {
       if (tabela === 'documentos_solicitacoes') {
         if (dados.erroSolicitacoes) return { data: null, error: dados.erroSolicitacoes };
         return { data: escrita ? [{ id: 'gravada' }] : dados.solicitacoes, error: null };
+      }
+      if (tabela === 'certidoes_orgaos_da_empresa') {
+        if (dados.erroOrgaos) return { data: null, error: dados.erroOrgaos };
+        return { data: escrita ? [{ id: 'gravada' }] : dados.orgaos, error: null };
       }
       if (tabela === 'documentos') return { data: dados.erro ? null : dados.linhas, error: dados.erro };
       return { data: [], error: null };
@@ -254,6 +261,8 @@ beforeEach(() => {
   // escrita.
   dados.solicitacoes = [];
   dados.erroSolicitacoes = null;
+  dados.orgaos = [];
+  dados.erroOrgaos = null;
   dados.gravadas = [];
   emails.abertos = [];
 });
@@ -601,6 +610,106 @@ describe('Controle de Documentos — solicitação ao órgão com protocolo e pr
     expect(within(alerta).getByRole('button', { name: /Tentar novamente/ })).toBeInTheDocument();
     // O cofre em si continua legível.
     expect(linhasDeRegistro().length).toBe(VAGAS_PREVISTAS.length);
+  });
+});
+
+describe('Controle de Documentos — órgão municipal cadastrado pela empresa', () => {
+  const NOME_MUNICIPAL = 'Certidão Negativa de Débitos Municipais';
+  const orgaoDeCumaru = () => ({
+    id: 'o1', empresa_id: 'e1', esfera: 'municipal', uf: 'PA', municipio: 'Cumaru do Norte',
+    nome_orgao: 'Prefeitura Municipal de Cumaru do Norte · Setor de Tributos',
+    site: 'https://cumarudonorte.pa.gov.br/certidoes', email: 'tributos@cumarudonorte.pa.gov.br',
+    instrucoes: 'Emissão on-line pelo CNPJ.', validade_dias: 90,
+    user_id: 'u1', created_at: '2026-09-23T12:00:00Z', updated_at: '2026-09-23T12:00:00Z',
+  });
+
+  beforeEach(() => {
+    dados.erro = null;
+    janelaLarga();
+    sessao.autorizacao.isCompanyAdmin = true;
+    sessao.empresa.empresaAtiva.uf = 'PA';
+    // Município FORA do mapa (o mapa cobre as capitais): o caso dos ~5.500.
+    sessao.empresa.empresaAtiva.municipio = 'Cumaru do Norte';
+    dados.linhas = [linha(NOMES.cnd, diaISO(300))];
+  });
+
+  afterEach(() => {
+    sessao.empresa.empresaAtiva.municipio = 'Belém';
+  });
+
+  it('sem cadastro: a vaga diz "a cadastrar" com o nome do município e oferece o formulário, que grava o órgão da empresa', async () => {
+    montar();
+    await screen.findByText(NOMES.cnd);
+    fireEvent.click(screen.getAllByText(NOME_MUNICIPAL)[0]);
+    const painel = oPainel(NOME_MUNICIPAL);
+
+    expect(within(painel).getByText(/Prefeitura Municipal de Cumaru do Norte/)).toBeInTheDocument();
+    expect(within(painel).queryByText(/Belém|São Paulo/)).toBeNull();
+
+    fireEvent.click(within(painel).getByRole('button', { name: /Cadastrar órgão/ }));
+    const dialogo = await screen.findByRole('dialog');
+    expect(within(dialogo).getByText(/Cumaru do Norte\/PA/)).toBeInTheDocument();
+    fireEvent.change(within(dialogo).getByLabelText('Nome do órgão'), { target: { value: 'Prefeitura de Cumaru do Norte · Tributos' } });
+    fireEvent.change(within(dialogo).getByLabelText('E-mail para solicitação'), { target: { value: 'tributos@cumarudonorte.pa.gov.br' } });
+    fireEvent.change(within(dialogo).getByLabelText('Validade usual (dias)'), { target: { value: '90' } });
+    fireEvent.click(within(dialogo).getByRole('button', { name: 'Salvar órgão' }));
+
+    await waitFor(() => expect(dados.gravadas.some((g) => g.tabela === 'certidoes_orgaos_da_empresa')).toBe(true));
+    const gravada = dados.gravadas.find((g) => g.tabela === 'certidoes_orgaos_da_empresa');
+    expect(gravada?.op).toBe('insert');
+    expect(gravada?.valores).toEqual(expect.objectContaining({
+      empresa_id: 'e1', user_id: 'u1', esfera: 'municipal', uf: 'PA', municipio: 'Cumaru do Norte',
+      nome_orgao: 'Prefeitura de Cumaru do Norte · Tributos', site: null,
+      email: 'tributos@cumarudonorte.pa.gov.br', validade_dias: 90,
+    }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
+  it('o formulário exige nome e um canal (site ou e-mail) antes de gravar', async () => {
+    montar();
+    await screen.findByText(NOMES.cnd);
+    fireEvent.click(screen.getAllByText(NOME_MUNICIPAL)[0]);
+    fireEvent.click(within(oPainel(NOME_MUNICIPAL)).getByRole('button', { name: /Cadastrar órgão/ }));
+    const dialogo = await screen.findByRole('dialog');
+    fireEvent.click(within(dialogo).getByRole('button', { name: 'Salvar órgão' }));
+
+    expect(await within(dialogo).findByText(/nome do órgão/)).toBeInTheDocument();
+    expect(within(dialogo).getByText(/ao menos um canal/)).toBeInTheDocument();
+    expect(dados.gravadas).toHaveLength(0);
+  });
+
+  it('com o cadastro: as vagas municipais apontam o órgão da empresa, com o site, a validade e "Editar órgão"', async () => {
+    dados.orgaos = [orgaoDeCumaru()];
+    montar();
+    await screen.findByText(NOMES.cnd);
+    fireEvent.click(screen.getAllByText(NOME_MUNICIPAL)[0]);
+    const painel = oPainel(NOME_MUNICIPAL);
+
+    expect(await within(painel).findByText('Prefeitura Municipal de Cumaru do Norte · Setor de Tributos')).toBeInTheDocument();
+    expect(within(painel).getByRole('link', { name: /Emitir no órgão/ })).toHaveAttribute('href', 'https://cumarudonorte.pa.gov.br/certidoes');
+    expect(within(painel).getByText('90 dias')).toBeInTheDocument();
+    expect(within(painel).getByText(/Órgão informado pela própria empresa/)).toBeInTheDocument();
+    expect(within(painel).queryByRole('button', { name: /Cadastrar órgão/ })).toBeNull();
+    expect(within(painel).getByRole('button', { name: /Editar órgão/ })).toBeInTheDocument();
+
+    // A inscrição municipal sai da mesma prefeitura — e continua sem vencimento.
+    fireEvent.click(screen.getAllByText('Inscrição Municipal (cadastro de contribuintes)')[0]);
+    const painelInscricao = oPainel('Inscrição Municipal (cadastro de contribuintes)');
+    expect(within(painelInscricao).getByText('Prefeitura Municipal de Cumaru do Norte · Setor de Tributos')).toBeInTheDocument();
+    expect(within(painelInscricao).getByText('não vence')).toBeInTheDocument();
+  });
+
+  it('sem a tabela (migration ainda não colada), o cofre segue de pé e o formulário diz o que falta', async () => {
+    dados.erroOrgaos = { code: 'PGRST205', message: "Could not find the table 'public.certidoes_orgaos_da_empresa' in the schema cache" };
+    montar();
+    await screen.findByText(NOMES.cnd);
+    expect(screen.queryByRole('alert')).toBeNull();
+
+    fireEvent.click(screen.getAllByText(NOME_MUNICIPAL)[0]);
+    fireEvent.click(within(oPainel(NOME_MUNICIPAL)).getByRole('button', { name: /Cadastrar órgão/ }));
+    const dialogo = await screen.findByRole('dialog');
+    expect(within(dialogo).getByText(/disponível após a atualização do banco/)).toBeInTheDocument();
+    expect(within(dialogo).getByRole('button', { name: 'Salvar órgão' })).toBeDisabled();
   });
 });
 

@@ -17,9 +17,15 @@ import { toast } from 'sonner';
 import { downloadCSV } from '@/lib/download-utils';
 import { REGIOES_ESTADOS } from '@/data/regioes-brasil';
 import {
-  checklistDeCertidoes, cidadeDaLista, modeloDeSolicitacao, porEsfera, ROTULO_DA_ESFERA, ROTULO_DA_OBTENCAO, validadeLegivel,
+  checklistDeCertidoes, cidadeDaLista, modeloDeSolicitacao, orgaoCadastradoDoMunicipio, porEsfera, ROTULO_DA_ESFERA,
+  ROTULO_DA_OBTENCAO, validadeLegivel,
   type CertidaoDoCatalogo,
 } from '@/data/certidoes-catalogo';
+import { useAuth } from '@/contexts/AuthContext';
+import { useEmpresa } from '@/contexts/EmpresaContext';
+import { useOrgaosDaEmpresa } from '@/hooks/useOrgaosDaEmpresa';
+import { AVISO_ORGAOS_INDISPONIVEIS, linhaDoOrgao, type DadosDoOrgao } from '@/lib/documentos/orgaos-da-empresa';
+import DialogOrgaoEmissor from '@/components/documentos/DialogOrgaoEmissor';
 
 /**
  * Certidões — cada uma no seu órgão emissor (22/09/2026, tarde).
@@ -78,12 +84,24 @@ const ESTADO_DO_CADASTRO = {
 } as const;
 
 export default function CertidoesNegativas() {
+  const { user } = useAuth();
+  const { empresaAtiva } = useEmpresa();
   const [cnpjInput, setCnpjInput] = useState('');
   const [uf, setUf] = useState('');
   const [municipio, setMunicipio] = useState('');
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState('');
   const [resultado, setResultado] = useState<Resultado | null>(null);
+
+  // O órgão municipal que a empresa ativa cadastrou para município fora do
+  // mapa (fase 2, entrega c): entra na mescla do catálogo. Tabela ausente é
+  // aviso discreto no diálogo, não alarme na aba.
+  const {
+    orgaos: orgaosDaEmpresa, erro: erroDosOrgaos, indisponivel: orgaosIndisponiveis, salvar: salvarOrgao,
+  } = useOrgaosDaEmpresa(empresaAtiva?.id ?? null);
+  const [dialogoOrgao, setDialogoOrgao] = useState(false);
+  const [salvandoOrgao, setSalvandoOrgao] = useState(false);
+  const [erroOrgao, setErroOrgao] = useState<string | null>(null);
 
   const ufs = useMemo(() => {
     const lista: { uf: string; nome: string }[] = [];
@@ -99,10 +117,38 @@ export default function CertidoesNegativas() {
     return [];
   }, [uf]);
 
-  const checklist = useMemo(() => checklistDeCertidoes(uf || null, municipio || null), [uf, municipio]);
+  const checklist = useMemo(
+    () => checklistDeCertidoes(uf || null, municipio || null, orgaosDaEmpresa),
+    [uf, municipio, orgaosDaEmpresa],
+  );
   const grupos = useMemo(() => porEsfera(checklist), [checklist]);
   const razaoSocial = resultado?.cadastro?.razaoSocial || '';
   const cnpjLegivel = formatarCnpj(cnpjInput.replace(/\D/g, ''));
+  /** O cadastro da empresa para o município escolhido, se houver — para corrigir. */
+  const orgaoCadastrado = useMemo(
+    () => (uf && municipio ? orgaoCadastradoDoMunicipio(uf, municipio, orgaosDaEmpresa) : null),
+    [uf, municipio, orgaosDaEmpresa],
+  );
+
+  const abrirCadastroDoOrgao = () => {
+    setErroOrgao(null);
+    setDialogoOrgao(true);
+  };
+
+  /** Grava (ou corrige) o órgão do município escolhido, para a empresa ativa. */
+  const confirmarOrgao = async (dados: DadosDoOrgao) => {
+    if (!user || !empresaAtiva || !uf || !municipio) return;
+    setSalvandoOrgao(true);
+    setErroOrgao(null);
+    const r = await salvarOrgao(
+      linhaDoOrgao(dados, { empresaId: empresaAtiva.id, userId: user.id, uf, municipio }),
+      orgaoCadastrado?.id,
+    );
+    setSalvandoOrgao(false);
+    if (!r.ok) { setErroOrgao(r.erro ?? 'erro desconhecido'); return; }
+    setDialogoOrgao(false);
+    toast.success(`Órgão de ${municipio}/${uf} ${orgaoCadastrado ? 'corrigido' : 'cadastrado'} para ${empresaAtiva.nome_fantasia || empresaAtiva.razao_social}.`);
+  };
 
   const consultar = async () => {
     const cnpj = cnpjInput.replace(/\D/g, '');
@@ -315,25 +361,61 @@ export default function CertidoesNegativas() {
                 {ROTULO_DA_ESFERA[g.esfera]}{g.esfera === 'estadual' && uf ? ` — ${uf}` : ''}{g.esfera === 'municipal' && municipio ? ` — ${municipio}` : ''}
               </h4>
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-                {g.certidoes.map((c) => <CartaoDaCertidao key={c.id} c={c} razaoSocial={razaoSocial} cnpj={cnpjLegivel} />)}
+                {g.certidoes.map((c) => (
+                  <CartaoDaCertidao
+                    key={c.id}
+                    c={c}
+                    razaoSocial={razaoSocial}
+                    cnpj={cnpjLegivel}
+                    aoCadastrarOrgao={empresaAtiva ? abrirCadastroDoOrgao : undefined}
+                  />
+                ))}
               </div>
             </section>
           ))}
         </div>
+
+        {erroDosOrgaos && (
+          <p className="mt-3 text-xs text-warning-ink">Não foi possível ler os órgãos cadastrados pela empresa: {erroDosOrgaos}</p>
+        )}
+        {!empresaAtiva && checklist.some((c) => c.pendenteDeCadastro && c.esfera === 'municipal') && (
+          <p className="mt-3 text-xs text-muted-foreground">
+            Município fora do mapa: escolha uma empresa na faixa superior para cadastrar o órgão dela.
+          </p>
+        )}
 
         <p className="mt-4 text-xs text-muted-foreground">
           A validade "usual" é a regra geral do órgão; a que vale é a impressa no documento, que o cofre lê do PDF.
           Os sites dos órgãos exigem a verificação "sou humano": a emissão é feita por quem consulta, nunca por robô.
         </p>
       </Card>
+
+      {dialogoOrgao && uf && municipio && (
+        <DialogOrgaoEmissor
+          aberto
+          aoFechar={() => setDialogoOrgao(false)}
+          uf={uf}
+          municipio={municipio}
+          existente={orgaoCadastrado}
+          salvando={salvandoOrgao}
+          erro={erroOrgao}
+          indisponivel={orgaosIndisponiveis ? AVISO_ORGAOS_INDISPONIVEIS : null}
+          aoConfirmar={confirmarOrgao}
+        />
+      )}
     </div>
   );
 }
 
-function CartaoDaCertidao({ c, razaoSocial, cnpj }: { c: CertidaoDoCatalogo; razaoSocial: string; cnpj: string }) {
+function CartaoDaCertidao({ c, razaoSocial, cnpj, aoCadastrarOrgao }: {
+  c: CertidaoDoCatalogo; razaoSocial: string; cnpj: string; aoCadastrarOrgao?: () => void;
+}) {
   const solicitacao = c.obtencao === 'solicitacao'
-    ? modeloDeSolicitacao({ certidao: c.nome, orgao: c.emissor, razaoSocial: razaoSocial || '(razão social)', cnpj: cnpj || '(CNPJ)' })
+    ? modeloDeSolicitacao({ certidao: c.nome, orgao: c.emissor, razaoSocial: razaoSocial || '(razão social)', cnpj: cnpj || '(CNPJ)', para: c.emailSolicitacao })
     : null;
+  // Município fora do mapa: a empresa cadastra o órgão dela; cadastrado, pode corrigir.
+  const podeCadastrar = c.esfera === 'municipal' && c.pendenteDeCadastro && Boolean(aoCadastrarOrgao);
+  const podeEditar = c.cadastradoPelaEmpresa && Boolean(aoCadastrarOrgao);
   return (
     <article className="flex flex-col rounded-md border border-border p-4">
       <h5 className="text-sm font-semibold leading-5 text-foreground">{c.sigla && c.sigla !== c.nome ? `${c.sigla} · ` : ''}{c.nome}</h5>
@@ -346,7 +428,18 @@ function CartaoDaCertidao({ c, razaoSocial, cnpj }: { c: CertidaoDoCatalogo; raz
       </dl>
       {c.observacao && <p className="mt-2 text-xs text-muted-foreground">{c.observacao}</p>}
       {c.pendenteDeCadastro && <Badge variant="warning" className="mt-2 w-fit">Órgão a cadastrar</Badge>}
+      {c.cadastradoPelaEmpresa && <Badge variant="info" className="mt-2 w-fit">Órgão informado pela empresa</Badge>}
       <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs">
+        {podeCadastrar && (
+          <button type="button" onClick={aoCadastrarOrgao} className="inline-flex items-center gap-1 text-primary hover:underline">
+            <Building2 className="h-3 w-3" aria-hidden="true" /> Cadastrar órgão
+          </button>
+        )}
+        {podeEditar && (
+          <button type="button" onClick={aoCadastrarOrgao} className="inline-flex items-center gap-1 text-primary hover:underline">
+            <Building2 className="h-3 w-3" aria-hidden="true" /> Editar órgão
+          </button>
+        )}
         {c.urlEmissao && (
           <a href={c.urlEmissao} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
             <ExternalLink className="h-3 w-3" aria-hidden="true" /> {c.obtencao === 'consulta_api' ? 'Consultar no portal' : 'Emitir no órgão'}

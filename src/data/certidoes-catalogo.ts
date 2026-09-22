@@ -66,6 +66,35 @@ export interface CertidaoDoCatalogo {
   observacao?: string;
   /** O órgão deste município não tem endereço ou contato cadastrado: a empresa informa. */
   pendenteDeCadastro?: boolean;
+  /** E-mail do órgão para a solicitação, quando se conhece (cadastro da empresa). */
+  emailSolicitacao?: string;
+  /** O órgão veio do cadastro da própria empresa (`certidoes_orgaos_da_empresa`), não do mapa. */
+  cadastradoPelaEmpresa?: boolean;
+  /** O id da linha do cadastro da empresa, para corrigir o cadastro. */
+  orgaoCadastradoId?: string;
+}
+
+/**
+ * O órgão municipal cadastrado pela própria empresa (fase 2, entrega c).
+ *
+ * O mapa cobre as 27 UFs e as capitais; os ~5.500 municípios de fora viram
+ * "órgão a cadastrar". Aqui a empresa diz qual é o dela: nome, site, e-mail,
+ * instruções e validade usual. Só esfera municipal: uma prefeitura serve às
+ * duas vagas municipais (débitos e inscrição). Abrir para a estadual exigiria
+ * dizer a qual vaga o cadastro responde — Fazenda, Junta e Tribunal são
+ * órgãos diferentes —, e isso é decisão para outra hora.
+ */
+export interface OrgaoCadastradoPelaEmpresa {
+  id?: string;
+  esfera: 'municipal';
+  uf: string;
+  municipio: string;
+  nomeDoOrgao: string;
+  site?: string | null;
+  email?: string | null;
+  instrucoes?: string | null;
+  /** Validade usual, em dias; `null` = conforme o documento ou o edital. */
+  validadeDias?: number | null;
 }
 
 export const URL_CERTIDOES_RFB = 'https://servicos.receitafederal.gov.br/servico/certidoes/#/home';
@@ -316,8 +345,68 @@ const MUNICIPIOS_COM_INSTRUCAO: Record<string, { obtencao: Obtencao; observacao:
   },
 };
 
-/** As municipais do domicílio: débitos e cadastro. Município fora do mapa recebe a vaga "a cadastrar", nunca outra cidade. */
-export function certidoesMunicipais(uf: string, municipio: string): CertidaoDoCatalogo[] {
+/** O cadastro da empresa para este município, se houver — comparado sem acento e sem caixa. */
+export function orgaoCadastradoDoMunicipio(
+  uf: string,
+  municipio: string,
+  orgaosDaEmpresa: OrgaoCadastradoPelaEmpresa[],
+): OrgaoCadastradoPelaEmpresa | null {
+  const sigla = uf.trim().toUpperCase();
+  const alvo = semAcento(municipio);
+  if (!sigla || !alvo) return null;
+  return orgaosDaEmpresa.find((o) =>
+    o.esfera === 'municipal' && o.uf.trim().toUpperCase() === sigla && semAcento(o.municipio) === alvo) ?? null;
+}
+
+/**
+ * Aplica o órgão cadastrado pela empresa às entradas municipais "a cadastrar".
+ *
+ * A mescla, em regra: município no mapa → o mapa (esta função nem é chamada);
+ * fora do mapa com cadastro → o cadastro, em TODAS as vagas municipais
+ * pendentes (débitos e inscrição saem da mesma prefeitura); sem nenhum → as
+ * entradas seguem "a cadastrar", com o nome do município. Com site, a
+ * obtenção é on-line; sem site, é solicitação (o e-mail vai junto quando há).
+ * O que não vence (inscrição) continua não vencendo, seja qual for a
+ * validade usual cadastrada.
+ */
+export function mesclarOrgaoDaEmpresa(
+  lista: CertidaoDoCatalogo[],
+  cadastro: OrgaoCadastradoPelaEmpresa | null,
+): CertidaoDoCatalogo[] {
+  if (!cadastro) return lista;
+  const site = cadastro.site?.trim() || undefined;
+  const email = cadastro.email?.trim() || undefined;
+  const nome = cadastro.nomeDoOrgao.trim();
+  if (!nome) return lista;
+  return lista.map((c) => {
+    if (c.esfera !== 'municipal' || !c.pendenteDeCadastro) return c;
+    const naoVence = c.validadeDias === 0;
+    return {
+      ...c,
+      emissor: nome,
+      urlEmissao: site,
+      urlAutenticidade: undefined,
+      obtencao: site ? 'emissao_online' : 'solicitacao',
+      emailSolicitacao: email,
+      validadeDias: naoVence ? 0 : (cadastro.validadeDias ?? c.validadeDias),
+      observacao: cadastro.instrucoes?.trim() || 'Órgão informado pela própria empresa.',
+      pendenteDeCadastro: false,
+      cadastradoPelaEmpresa: true,
+      orgaoCadastradoId: cadastro.id,
+    };
+  });
+}
+
+/**
+ * As municipais do domicílio: débitos e cadastro. Município fora do mapa
+ * recebe a vaga "a cadastrar", nunca outra cidade — ou o órgão que a própria
+ * empresa cadastrou (`orgaosDaEmpresa`), quando há.
+ */
+export function certidoesMunicipais(
+  uf: string,
+  municipio: string,
+  orgaosDaEmpresa: OrgaoCadastradoPelaEmpresa[] = [],
+): CertidaoDoCatalogo[] {
   const sigla = uf.toUpperCase();
   const nomeNoMapa = municipioDoMapa(sigla, municipio);
   const rotulo = nomeNoMapa ?? municipio.trim();
@@ -372,14 +461,24 @@ export function certidoesMunicipais(uf: string, municipio: string): CertidaoDoCa
     observacao: nomeNoMapa === 'Belém' ? 'Em Belém, a ficha cadastral (CISC) sai pelo mesmo canal da Secretaria de Finanças.' : 'Prova de inscrição, não de regularidade: não vence.',
   });
 
-  return lista;
+  // Município no mapa: o mapa manda, mesmo que a empresa tenha cadastrado
+  // algo. Fora do mapa: o cadastro da empresa, se houver.
+  if (nomeNoMapa) return lista;
+  return mesclarOrgaoDaEmpresa(lista, orgaoCadastradoDoMunicipio(sigla, rotulo, orgaosDaEmpresa));
 }
 
-/** O checklist do domicílio: federais sempre; estaduais e municipais quando se sabe onde a empresa está. */
-export function checklistDeCertidoes(uf?: string | null, municipio?: string | null): CertidaoDoCatalogo[] {
+/**
+ * O checklist do domicílio: federais sempre; estaduais e municipais quando se
+ * sabe onde a empresa está. `orgaosDaEmpresa` cobre o município fora do mapa.
+ */
+export function checklistDeCertidoes(
+  uf?: string | null,
+  municipio?: string | null,
+  orgaosDaEmpresa: OrgaoCadastradoPelaEmpresa[] = [],
+): CertidaoDoCatalogo[] {
   const lista = [...CERTIDOES_FEDERAIS];
   if (uf) lista.push(...certidoesEstaduais(uf));
-  if (uf && municipio) lista.push(...certidoesMunicipais(uf, municipio));
+  if (uf && municipio) lista.push(...certidoesMunicipais(uf, municipio, orgaosDaEmpresa));
   return lista;
 }
 

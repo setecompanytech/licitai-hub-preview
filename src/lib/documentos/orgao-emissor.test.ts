@@ -76,6 +76,22 @@ describe('orgaoDaVaga — o órgão de cada vaga pelo domicílio', () => {
     expect(JSON.stringify(r)).not.toContain('Belém');
   });
 
+  it('município fora do mapa COM órgão cadastrado pela empresa: emitir no site dela, sem "cadastrar"', () => {
+    const cadastro = {
+      id: 'o1', esfera: 'municipal' as const, uf: 'PA', municipio: 'Cumaru do Norte',
+      nomeDoOrgao: 'Prefeitura de Cumaru do Norte · Tributos', site: 'https://cumarudonorte.pa.gov.br/cnd',
+      email: 'tributos@cumarudonorte.pa.gov.br', validadeDias: 90,
+    };
+    const r = orgaoDaVaga(MUNICIPAL, { uf: 'PA', municipio: 'Cumaru do Norte' }, [cadastro]);
+    expect(r.certidao?.cadastradoPelaEmpresa).toBe(true);
+    expect(r.certidao?.emissor).toBe('Prefeitura de Cumaru do Norte · Tributos');
+    expect(r.acoes).toEqual(['emitir']);
+    // Sem site, o caminho é a solicitação — endereçada ao e-mail cadastrado.
+    const semSite = orgaoDaVaga(MUNICIPAL, { uf: 'PA', municipio: 'Cumaru do Norte' }, [{ ...cadastro, site: null }]);
+    expect(semSite.acoes).toEqual(['solicitar']);
+    expect(semSite.certidao?.emailSolicitacao).toBe('tributos@cumarudonorte.pa.gov.br');
+  });
+
   it('a municipal sem município no cadastro pede o domicílio em vez de adivinhar', () => {
     const r = orgaoDaVaga(MUNICIPAL, { uf: 'PA', municipio: '' });
     expect(r.certidao).toBeNull();
