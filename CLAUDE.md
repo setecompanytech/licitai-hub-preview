@@ -293,6 +293,29 @@ medida que os documentos chegam. Regras que valem no código (migration
 - **Aditivo de preço não entra no rateio de valor do saldo do item**
   (migration `20260923000003`, medida antes: um único item divergia).
 
+**Fracionado — nota e pagamento com valores diferentes não são erro (22/09):**
+- A régua da nota (`lib/financeiro/recebimento-da-nota.ts`) diz a RELAÇÃO
+  de cada sugestão: `igual`, `parte` (pagamento maior que a nota, com sobra
+  sem nota — R$ 400 mil que quitam duas notas de R$ 200 mil) ou `parcial`
+  (pagamento menor — nota paga em duas vezes), e o restante em reais. Parte
+  e parcial nunca são "certo": exigem citar o número da nota, ou o mesmo
+  CNPJ dentro de 90 dias da emissão (`dataEmissao`). CNPJ sozinho continua
+  não sendo indício. A busca traz `coberto_por_notas` (Σ das notas já
+  anexadas ao pagamento).
+- N notas → 1 pagamento: `financeiro_documentos_fiscais.lancamento_id`
+  (sem unicidade; a tela "anexa como parte"). 1 nota → N pagamentos:
+  `financeiro_lancamentos.documento_fiscal_id` na parcela do restante, e
+  `parcela_pai_id` apontando o pagamento que já entrou.
+- **Baixa em partes = dividir o título** (`dividir_lancamento`, migration
+  `20260923000006`): a parte fica no original, o restante nasce como parcela
+  em aberto, os dois com `parcela_pai_id`. Nenhum status novo. A quitação do
+  pedido continua exigindo todas as parcelas pagas. O motor
+  (`reconciliation-engine`) devolve `divisoes` quando 2 a 4 movimentos do
+  mesmo dia, conta e sentido somam um título em aberto — sugestão, nunca
+  automática.
+- Recebimento MAIOR que a nota do pedido é caso de RATEIO (22/09, manhã),
+  não de parte: a tela aponta o Ratear.
+
 ## Portal da Transparência — a API federal por uma porta só (22/09/2026)
 
 Mapa das 106 rotas × funções do produto em `~/Downloads/Mapa-API-Portal-
