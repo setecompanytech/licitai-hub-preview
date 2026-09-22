@@ -3,6 +3,7 @@ import { hojeLocal } from "@/lib/financeiro/data-local";
 import { supabase } from "@/integrations/supabase/client";
 import { casarDanfesComAsPartes, fraseDaSoma, reais, type DocumentoAnexado, type ParteDoRateio } from "@/lib/financeiro/partes-do-rateio";
 import { formatarNumeroNfe } from "@/lib/financeiro/chave-nfe";
+import { numeroDoAnexo } from "@/lib/financeiro/ordem-dos-anexos";
 import { useDocumentoFiscal } from "@/hooks/useDocumentoFiscal";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { parseNFeXML } from "@/lib/parseNFe";
@@ -931,9 +932,17 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
     const xmlTexto = arquivoXml ? await arquivoXml.text().catch(() => null) : null;
     // O PDF ou a foto é o que se abre; sem eles, o próprio XML ocupa o lugar.
     const paraGuardar = arquivoPdf ?? arquivoXml;
+    // O número do documento anexado (22/09): num recebimento que pagou várias
+    // notas (rateado), o número do título não é o da nota — a TED de 27/05
+    // carimbou duas DANFEs 728 como "727". Nesse caso, e quando o campo está
+    // vazio, o número vem do nome do arquivo; é por ele que a aba Pedidos acha a nota.
+    const numeroDoArquivo = numeroDoAnexo({ numero: null, arquivo_nome: paraGuardar!.name });
+    const numeroDoDocumento = partesDoRateio.length > 0 || !numeroDocumento.trim()
+      ? (numeroDoArquivo !== null ? String(numeroDoArquivo) : (numeroDocumento.trim() || null))
+      : numeroDocumento.trim();
     const salvo = await guardarArquivo(paraGuardar!, {
       tipo: tipoDocumento || "outro",
-      numero: numeroDocumento.trim() || null,
+      numero: numeroDoDocumento,
       serie: serieDocumento.trim() || null,
       chave_acesso: chaveAcessoNfe.replace(/\D/g, "") || null,
       data_emissao: dataEmissao || null,
@@ -1468,6 +1477,11 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
                 <div className="space-y-1.5">
                   <Label>Número do documento</Label>
                   <Input value={numeroDocumento} onChange={(e) => setNumeroDocumento(e.target.value)} placeholder="Ex.: 000123" />
+                  {partesDoRateio.length > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      Recebimento de várias notas: deixe o número em branco. Cada nota tem o seu número no anexo, e é por ele que a Gestão a encontra.
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-1.5">
                   <Label>Série</Label>

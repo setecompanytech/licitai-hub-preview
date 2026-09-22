@@ -265,6 +265,10 @@ export default function VincularLancamentoDialog({
             <p className="font-medium text-success-ink">
               Este pedido recebe {fmt(rateiosDoPedido.reduce((s, r) => s + Number(r.valor), 0))} por rateio de recebimento
             </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Pedido recebido por rateio não ganha título próprio — seria o mesmo dinheiro duas vezes. A nota dele anexa-se ao
+              recebimento que o pagou: Financeiro › Contas a Receber › Extração de documentos → "Anexar como parte".
+            </p>
             <ul className="mt-1 space-y-1">
               {rateiosDoPedido.map((r) => {
                 const lanc = candidatos.find((t) => t.id === r.lancamento_id);
@@ -335,7 +339,9 @@ export default function VincularLancamentoDialog({
                 <Checkbox
                   checked={escolhidos.has(t.id)}
                   onCheckedChange={() => alternar(t.id)}
-                  disabled={bloqueadoPorRateio}
+                  disabled={(bloqueadoPorRateio) || (rateiosDoPedido.length > 0 && t.contrato_pedido_id !== pedido.id)}
+                  // Pedido já recebido por rateio (22/09): título próprio duplicaria
+                  // o recebimento. O banco recusa; a tela nem oferece.
                   className="mt-0.5"
                 />
                 <div className="min-w-0 flex-1">
@@ -416,7 +422,7 @@ export default function VincularLancamentoDialog({
           <Button variant="outline" onClick={onFechar}>Cancelar</Button>
           <Button
             onClick={salvar}
-            disabled={salvando || (escolhidos.size === 0 && jaVinculados.length === 0)}
+            disabled={salvando || (escolhidos.size === 0 && jaVinculados.length === 0) || (rateiosDoPedido.length > 0 && escolhidos.size > 0)}
           >
             {salvando ? <Loader2 aria-hidden="true" className="animate-spin" />
               : escolhidos.size === 0 ? <Unlink aria-hidden="true" />
