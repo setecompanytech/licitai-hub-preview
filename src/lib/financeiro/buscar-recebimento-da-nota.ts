@@ -8,26 +8,28 @@ import {
 } from './recebimento-da-nota';
 
 /**
- * Traz do Financeiro os recebimentos que podem ser desta nota e aplica a
+ * Traz do Financeiro os lançamentos que podem ser desta nota e aplica a
  * régua de identidade (`procurarRecebimentoDaNota`).
  *
- * Candidatos: títulos a receber da empresa, já baixados (realizado ou
- * conciliado) e sem pedido. Dois recortes, unidos: os que citam o número da
- * nota (no número do documento ou na descrição) e os de valor igual, para a
- * sugestão fraca. Sem número e sem chave, só o valor — e aí nunca é "certo".
+ * Candidatos: lançamentos do tipo pedido (a receber para nota emitida, a
+ * pagar para nota de fornecedor), já baixados (realizado ou conciliado) e
+ * sem pedido. Dois recortes, unidos: os que citam o número da nota (no
+ * número do documento ou na descrição) e os de valor igual, para a sugestão
+ * fraca. Sem número e sem chave, só o valor — e aí nunca é "certo".
  */
 export async function buscarRecebimentoDaNota(
   empresaId: string,
   nota: NotaParaCasar,
+  tipo: 'a_receber' | 'a_pagar' = 'a_receber',
 ): Promise<ResultadoDaBusca> {
   const numero = numeroDaNota(nota.numero);
   const chave = (nota.chave ?? '').replace(/\D+/g, '');
-  const colunas = 'id, descricao, numero_documento, chave_acesso_nfe, valor, data_realizado, data_competencia, status, contrato_pedido_id';
+  const colunas = 'id, descricao, numero_documento, chave_acesso_nfe, valor, data_realizado, data_competencia, status, contrato_pedido_id, pessoa:financeiro_pessoas(documento)';
   const base = () => supabase
     .from('financeiro_lancamentos')
     .select(colunas)
     .eq('empresa_id', empresaId)
-    .eq('tipo', 'a_receber')
+    .eq('tipo', tipo)
     .in('status', ['realizado', 'conciliado'])
     .is('contrato_pedido_id', null)
     .limit(60);
@@ -44,10 +46,14 @@ export async function buscarRecebimentoDaNota(
   }
   if (consultas.length === 0) return { veredito: 'nenhum' };
 
+  type Linha = Omit<RecebimentoCandidato, 'pessoa_documento'> & { pessoa?: { documento?: string | null } | null };
   const vistos = new Map<string, RecebimentoCandidato>();
   for (const r of await Promise.all(consultas)) {
     if (r.error) throw new Error(r.error.message);
-    for (const c of (r.data as RecebimentoCandidato[]) ?? []) vistos.set(c.id, c);
+    for (const c of (r.data as Linha[]) ?? []) {
+      const { pessoa, ...resto } = c;
+      vistos.set(c.id, { ...resto, pessoa_documento: pessoa?.documento ?? null });
+    }
   }
   return procurarRecebimentoDaNota(nota, [...vistos.values()]);
 }

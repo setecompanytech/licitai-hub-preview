@@ -86,6 +86,25 @@ describe('procurarRecebimentoDaNota', () => {
     expect(r.veredito).toBe('nenhum');
   });
 
+  it('dois fortes e só um com o CNPJ da outra parte: o CNPJ desempata', () => {
+    const r = procurarRecebimentoDaNota({ numero: '129', valor: 11275, cnpj: '24.687.187/0001-01' }, [
+      recibo({ id: 'a', descricao: 'NFe N° 000.000.129', valor: 11275, pessoa_documento: '11111111000111' }),
+      recibo({ id: 'b', descricao: 'NFe 129', valor: 11275, pessoa_documento: '24687187000101' }),
+    ]);
+    expect(r.veredito).toBe('certo');
+    if (r.veredito === 'certo') {
+      expect(r.recebimento.id).toBe('b');
+      expect(r.motivos).toContain('mesmo CNPJ');
+    }
+  });
+
+  it('CNPJ igual sem número nem valor não é indício: a empresa paga o mesmo fornecedor várias vezes', () => {
+    const r = procurarRecebimentoDaNota({ numero: '105775', valor: 4500, cnpj: '24687187000101' }, [
+      recibo({ id: 'a', descricao: 'PIX FORNECEDOR', valor: 999, pessoa_documento: '24687187000101' }),
+    ]);
+    expect(r.veredito).toBe('nenhum');
+  });
+
   it('dois recebimentos fortes para a mesma nota: ambíguo, quem opera decide', () => {
     const r = procurarRecebimentoDaNota({ numero: '129', valor: 11275 }, [
       recibo({ id: 'a', descricao: 'NFe N° 000.000.129', valor: 11275 }),

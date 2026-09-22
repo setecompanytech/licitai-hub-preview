@@ -25,6 +25,12 @@ export type NotaParaCasar = {
   numero: string | null | undefined;
   chave?: string | null;
   valor: number;
+  /**
+   * CNPJ da outra parte — emitente na nota de fornecedor, destinatário na
+   * nota emitida. Não decide sozinho: desempata entre dois candidatos fortes
+   * e aparece como motivo.
+   */
+  cnpj?: string | null;
 };
 
 export type RecebimentoCandidato = {
@@ -37,6 +43,8 @@ export type RecebimentoCandidato = {
   data_competencia?: string | null;
   status: string;
   contrato_pedido_id: string | null;
+  /** CNPJ/CPF da pessoa do lançamento, quando a consulta trouxe. */
+  pessoa_documento?: string | null;
 };
 
 export type Sugestao = { recebimento: RecebimentoCandidato; motivos: string[] };
@@ -79,6 +87,7 @@ export function procurarRecebimentoDaNota(nota: NotaParaCasar, candidatos: Receb
     return { veredito: 'certo', recebimento: porChave[0], motivos: ['mesma chave de acesso'] };
   }
 
+  const cnpj = chaveLimpa(nota.cnpj);
   const sugestoes: Sugestao[] = [];
   const fortes: Sugestao[] = [];
   for (const c of livres) {
@@ -89,10 +98,14 @@ export function procurarRecebimentoDaNota(nota: NotaParaCasar, candidatos: Receb
       || textoCitaNota(c.numero_documento, numero)
     );
     const valorIgual = mesmoValor(c.valor, nota.valor);
+    const mesmoCnpj = cnpj.length >= 11 && chaveLimpa(c.pessoa_documento) === cnpj;
     if (citaNumero) motivos.push(`cita a nota ${numero}`);
     if (valorIgual) motivos.push('mesmo valor');
+    if (mesmoCnpj) motivos.push('mesmo CNPJ');
     if (citaNumero && !valorIgual) motivos.push('valor diferente do da nota');
-    if (motivos.length === 0) continue;
+    // CNPJ sozinho não é indício de NADA: a empresa paga o mesmo fornecedor
+    // muitas vezes. Só entra acompanhado de número ou de valor.
+    if (!citaNumero && !valorIgual) continue;
     const s = { recebimento: c, motivos };
     sugestoes.push(s);
     if (citaNumero && valorIgual) fortes.push(s);
@@ -100,6 +113,13 @@ export function procurarRecebimentoDaNota(nota: NotaParaCasar, candidatos: Receb
 
   if (fortes.length === 1) {
     return { veredito: 'certo', recebimento: fortes[0].recebimento, motivos: fortes[0].motivos };
+  }
+  // Dois fortes e só um com o CNPJ da outra parte: o CNPJ desempata.
+  if (fortes.length > 1 && cnpj.length >= 11) {
+    const comCnpj = fortes.filter((s) => s.motivos.includes('mesmo CNPJ'));
+    if (comCnpj.length === 1) {
+      return { veredito: 'certo', recebimento: comCnpj[0].recebimento, motivos: comCnpj[0].motivos };
+    }
   }
   if (sugestoes.length === 0) return { veredito: 'nenhum' };
   // Mais de um forte, ou só indícios (número sem valor, valor sem número):

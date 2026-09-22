@@ -225,7 +225,10 @@ chave, ou mesmo número E mesmo valor, um só) casa sem perguntar; `ambiguo`
 diálogo de casar; `nenhum` cria. Vale para a aba Pedidos
 (`gerarLancamentosFinanceiros`) e para a Extração de Documentos
 (`vincular_lancamento_a_pedido` com `p_lancamento_existente` /
-`p_criar_titulo`, migration `20260921000003`). Apagar um título ligado a
+`p_criar_titulo`, migration `20260921000003`). Desde 22/09 vale também
+para nota de FORNECEDOR (Extração aberta de Contas a Pagar, caminho sem
+contrato): nota já paga → o PDF é anexado ao pagamento existente e nenhum
+título nasce; o CNPJ da outra parte só desempata, nunca decide sozinho. Apagar um título ligado a
 pedido apaga o PEDIDO (gatilho `cleanup_contrato_pedido_on_lancamento_delete`):
 fusão de duplicado desliga o título antes de apagar. Um recebimento só
 aponta para um pedido; TED que paga várias notas ainda não tem rateio

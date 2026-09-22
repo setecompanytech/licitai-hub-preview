@@ -20,11 +20,19 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useImportacaoNotas } from "@/hooks/useImportacaoNotas";
-import { useUpsertLancamento, type Lancamento } from "@/hooks/useFinanceiro";
+import { useUpsertLancamento, useEmpresaId, type Lancamento } from "@/hooks/useFinanceiro";
+import { deDataLocal } from "@/lib/financeiro/data-local";
 import LancamentoDialog from "./LancamentoDialog";
 import VinculoContratoSelector, { type VinculoContratoValue } from "./VinculoContratoSelector";
 
 type Tipo = "a_pagar" | "a_receber";
+
+/** O tipo fiscal que a leitura devolve → o enum do lançamento (mesma tabela do lote). */
+const TIPO_DOC_FISCAL: Record<string, string> = {
+  nfe: "nfe", nfse: "nfse", nfce: "nfce",
+  boleto: "boleto", recibo: "recibo", contrato: "contrato",
+  duplicata: "duplicata", fatura: "fatura",
+};
 
 type DocStatus = "pendente" | "processando" | "ok" | "erro";
 
@@ -123,6 +131,7 @@ interface Props {
 }
 
 export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Props) {
+  const empresaId = useEmpresaId();
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
   const [docs, setDocs] = useState<DocItem[]>([]);
@@ -523,6 +532,59 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
             : "Lançamento criado e pedido vinculado ao contrato.",
         );
         return;
+      }
+
+      // ── Nota já paga ou recebida? (regra do dono, 21/09) ────────────────
+      // A mesma régua do lado a receber, agora para nota de fornecedor:
+      // identidade pelo número da nota ou pela chave, com o CNPJ da outra
+      // parte como desempate; valor só confirma. Um lançamento certo → o PDF
+      // é anexado a ele e nenhum título nasce. Indício → nada é criado e
+      // quem opera decide (o Revisar continua lançando, se for o caso).
+      if (empresaId && (d.numero_documento || d.chave_nfe)) {
+        try {
+          const busca = await buscarRecebimentoDaNota(
+            empresaId,
+            {
+              numero: d.numero_documento ?? null,
+              chave: d.chave_nfe ?? null,
+              valor: numeroBr(d.valor_total),
+              cnpj: tipo === "a_pagar" ? (d.emitente_cnpj ?? null) : (d.destinatario_cnpj_cpf ?? null),
+            },
+            tipo,
+          );
+          const verbo = tipo === "a_receber" ? "recebida" : "paga";
+          if (busca.veredito === "certo") {
+            const existente = busca.recebimento;
+            const { error: erroCompletar } = await supabase
+              .from("financeiro_lancamentos")
+              .update({
+                numero_documento: existente.numero_documento ?? d.numero_documento ?? null,
+                chave_acesso_nfe: existente.chave_acesso_nfe ?? normalizarChaveNfe(d.chave_nfe) ?? null,
+                tipo_documento: (TIPO_DOC_FISCAL[(d.tipo_documento ?? "").toString().toLowerCase()] ?? "outro") as never,
+              } as never)
+              .eq("id", existente.id);
+            if (erroCompletar) throw new Error(erroCompletar.message);
+            if (item.documentoId) await vincularLancamento(item.documentoId, existente.id);
+            setDocs((prev) => prev.map((x) => (x.id === item.id ? { ...x, lancamentoId: existente.id } : x)));
+            invalidarFinanceiro();
+            const quando = existente.data_realizado ?? existente.data_competencia;
+            toast.success(
+              `NF ${d.numero_documento ?? ""}: já ${verbo}${quando ? ` em ${deDataLocal(String(quando).slice(0, 10)).toLocaleDateString("pt-BR")}` : ""}. O PDF foi anexado ao lançamento existente; nenhum título novo foi criado.`,
+              { description: busca.motivos.join(", "), duration: 10000 },
+            );
+            return;
+          }
+          if (busca.veredito === "ambiguo") {
+            const s = busca.sugestoes[0];
+            toast.info(`NF ${d.numero_documento ?? ""}: há lançamento parecido em Contas a ${tipo === "a_receber" ? "Receber" : "Pagar"} — nada foi criado.`, {
+              description: `${s.recebimento.descricao ?? "sem descrição"} · ${fmt(Number(s.recebimento.valor))} — ${s.motivos.join(", ")}. Anexe o PDF ao lançamento certo, ou use Revisar para lançar mesmo assim.`,
+              duration: 15000,
+            });
+            return;
+          }
+        } catch (e) {
+          toast.warning(`Não foi possível conferir se a nota já foi ${tipo === "a_receber" ? "recebida" : "paga"}.`, { description: mensagemDeErro(e) });
+        }
       }
 
       // Caminho sem vínculo: lançamento simples
