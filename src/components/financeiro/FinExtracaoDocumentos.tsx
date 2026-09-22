@@ -354,6 +354,25 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
   };
 
   /**
+   * Anexa o arquivo guardado ao lançamento e completa o NÚMERO da nota no
+   * documento. É pelo número que a aba Pedidos acha a DANFE de um pedido pago
+   * por rateio (o recebimento não tem número próprio): sem ele, as seis notas
+   * da TED de 27/05 ficaram no Financeiro e invisíveis na Gestão (22/09).
+   */
+  const anexarDocumento = async (item: DocItem, lancamentoId: string) => {
+    if (!item.documentoId) return;
+    await vincularLancamento(item.documentoId, lancamentoId);
+    const numero = item.dados?.numero_documento ? String(item.dados.numero_documento) : null;
+    if (numero) {
+      await supabase
+        .from("financeiro_documentos_fiscais" as never)
+        .update({ numero } as never)
+        .eq("id", item.documentoId)
+        .is("numero", null);
+    }
+  };
+
+  /**
    * A nota já é de um pedido do contrato? (22/09, decisão do dono)
    *
    * O fluxo da ETHOS é o Comercial registrar o pedido antes de a DANFE
@@ -403,7 +422,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
           chave_acesso_nfe: titulo.chave_acesso_nfe ?? normalizarChaveNfe(d.chave_nfe) ?? null,
         } as never)
         .eq("id", titulo.id);
-      if (item.documentoId) await vincularLancamento(item.documentoId, titulo.id);
+      await anexarDocumento(item, titulo.id);
       marcar(titulo.id);
       toast.success(`${rotulo}: já é o pedido ${pedido.numero_pedido} deste contrato. O PDF foi anexado ao recebimento dele; nenhum pedido ou título novo.`, { duration: 10000 });
       return true;
@@ -417,7 +436,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
       .limit(5);
     const rateio = ((rateios ?? []) as unknown as Array<{ lancamento_id: string; valor: number }>)[0];
     if (rateio) {
-      if (item.documentoId) await vincularLancamento(item.documentoId, rateio.lancamento_id);
+      await anexarDocumento(item, rateio.lancamento_id);
       marcar(rateio.lancamento_id);
       toast.success(`${rotulo}: o pedido ${pedido.numero_pedido} foi pago por rateio. O PDF foi anexado como parte do recebimento que o pagou (${fmt(Number(rateio.valor))}); nenhum pedido ou título novo.`, { duration: 10000 });
       return true;
@@ -441,7 +460,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
       contrato_item_id: pedido.contrato_item_id ?? null,
     } as never);
     const novoId = (r as { id?: string } | null)?.id ?? null;
-    if (item.documentoId && novoId) await vincularLancamento(item.documentoId, novoId);
+    if (novoId) await anexarDocumento(item, novoId);
     marcar(novoId ?? "ok");
     toast.success(`${rotulo}: o pedido ${pedido.numero_pedido} já existia sem recebimento. O título nasceu ligado a ele; nenhum pedido novo.`, { duration: 10000 });
     return true;
@@ -648,8 +667,8 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
         // O documento já está guardado; agora ele aponta para o lançamento
         // que nasceu dele. Sem esse elo, o arquivo fica no bucket sem que
         // ninguém saiba a que ele se refere.
-        if (item.documentoId && lancId && lancId !== "ok") {
-          await vincularLancamento(item.documentoId, lancId);
+        if (lancId && lancId !== "ok") {
+          await anexarDocumento(item, lancId);
         }
         setDocs((prev) =>
           prev.map((x) => (x.id === item.id ? { ...x, lancamentoId: lancId ?? "ok" } : x)),
@@ -694,7 +713,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
               } as never)
               .eq("id", existente.id);
             if (erroCompletar) throw new Error(erroCompletar.message);
-            if (item.documentoId) await vincularLancamento(item.documentoId, existente.id);
+            await anexarDocumento(item, existente.id);
             setDocs((prev) => prev.map((x) => (x.id === item.id ? { ...x, lancamentoId: existente.id } : x)));
             invalidarFinanceiro();
             const quando = existente.data_realizado ?? existente.data_competencia;
@@ -711,7 +730,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
             const quandoBr = quandoPg ? deDataLocal(String(quandoPg).slice(0, 10)).toLocaleDateString("pt-BR") : "";
             const anexarA = async (lancamentoId: string) => {
               if (!item.documentoId) return;
-              await vincularLancamento(item.documentoId, lancamentoId);
+              await anexarDocumento(item, lancamentoId);
               setDocs((prev) => prev.map((x) => (x.id === item.id ? { ...x, lancamentoId } : x)));
               invalidarFinanceiro();
             };
@@ -805,7 +824,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
         observacoes: vencimento.nota,
       } as any);
       const novoId = (r as any)?.id ?? null;
-      if (item.documentoId && novoId) await vincularLancamento(item.documentoId, novoId);
+      if (novoId) await anexarDocumento(item, novoId);
       setDocs((prev) => prev.map((x) => (x.id === item.id ? { ...x, lancamentoId: novoId ?? "ok" } : x)));
       invalidarFinanceiro();
     } catch {
