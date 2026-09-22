@@ -13,6 +13,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import EspelhoDoComprovante from './EspelhoDoComprovante';
+import PresencaFederal from './PresencaFederal';
 import type { DadosDoEspelho } from '@/lib/concorrentes/espelho-do-comprovante';
 
 /**
@@ -267,6 +268,9 @@ export default function ConsultaCNPJ() {
 
       {/* O formulário da Receita, com tudo que a fonte entrega (22/09). */}
       {resultado && <EspelhoDoComprovante dados={resultado} />}
+
+      {/* A ficha do CNPJ no governo federal, pelo Portal da Transparência. */}
+      {resultado && <PresencaFederal cnpj={resultado.cnpj} />}
     </div>
   );
 }

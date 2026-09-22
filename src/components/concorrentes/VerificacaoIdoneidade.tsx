@@ -16,6 +16,7 @@ import { downloadPDF, downloadCSV } from '@/lib/download-utils';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { presencasDaFicha } from '@/lib/concorrentes/portal-federal';
 
 /**
  * Verificação de idoneidade — componente interno da aba "Idoneidade" da tela
@@ -68,15 +69,6 @@ const DESCRICAO: Record<string, string> = {
   CEPIM: 'Entidades Privadas sem Fins Lucrativos Impedidas',
   Leniência: 'Acordos de leniência da Lei Anticorrupção',
 };
-
-const PRESENCA: Array<{ chave: keyof Ficha; rotulo: string }> = [
-  { chave: 'possuiContratacao', rotulo: 'Tem contrato federal' },
-  { chave: 'participanteLicitacao', rotulo: 'Participou de licitação federal' },
-  { chave: 'favorecidoDespesas', rotulo: 'Recebeu pagamento da União' },
-  { chave: 'emitiuNFe', rotulo: 'Emitiu NF-e a órgão federal' },
-  { chave: 'convenios', rotulo: 'Tem convênio' },
-  { chave: 'favorecidoTransferencias', rotulo: 'Recebeu transferência' },
-];
 
 const texto = (v: unknown): string => (typeof v === 'string' || typeof v === 'number' ? String(v) : '');
 const nomeDe = (v: unknown): string => {
@@ -152,7 +144,7 @@ export default function VerificacaoIdoneidade() {
     ? [resultado.ceis, resultado.cnep, resultado.cepim, ...(resultado.leniencia ? [resultado.leniencia] : [])]
     : [];
   const inconclusiva = Boolean(resultado?.inconclusiva);
-  const presencas = resultado?.ficha ? PRESENCA.filter((p) => resultado.ficha?.[p.chave] === true) : [];
+  const presencas = presencasDaFicha(resultado?.ficha).presencas;
   const situacao = (c: Cadastro) => (c.status === 'erro' ? 'Sem resposta' : c.status === 'limpo' ? 'Limpo' : `${c.total} registro(s)`);
 
   return (
@@ -299,7 +291,7 @@ export default function VerificacaoIdoneidade() {
                 <p className="mt-1 text-sm text-muted-foreground">Sem contrato, pagamento, licitação, NF-e ou convênio federal na ficha.</p>
               ) : (
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {presencas.map((p) => <Badge key={p.chave} variant="info">{p.rotulo}</Badge>)}
+                  {presencas.map((p) => <Badge key={p} variant="info">{p}</Badge>)}
                 </div>
               )}
             </Card>

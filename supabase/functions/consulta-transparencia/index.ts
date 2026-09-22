@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import {
-  dataBr, janelasMensais, mensagemDaApi, mesAnoDe, registrosDoCnpj, verificarIdoneidade,
+  dataBr, fichaDaPessoaJuridica, janelasMensais, mensagemDaApi, mesAnoDe, registrosDoCnpj, verificarIdoneidade,
 } from '../_shared/portal-transparencia.ts';
 
 const corsHeaders = {
@@ -41,7 +41,11 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { tipo, cnpj, pagina = 1, termo, dataInicio, dataFim, orgao, uf } = await req.json();
+    const {
+      tipo, cnpj, pagina = 1, termo, dataInicio, dataFim, orgao, uf,
+      // Detalhes de licitação e contrato, notas fiscais (Onda 2, 22/09).
+      id, codigoUG, numero, codigoModalidade, chave,
+    } = await req.json();
 
     const API_KEY = Deno.env.get('PORTAL_TRANSPARENCIA_API_KEY');
     // Sem a chave a API devolve 401 — e a tela mostrava um erro genérico que
@@ -194,6 +198,103 @@ Deno.serve(async (req) => {
           return responder({ error: 'CNPJ é obrigatório para verificação de idoneidade' }, 400);
         }
         return responder(await verificarIdoneidade(cnpjLimpo, API_KEY));
+      }
+      // ── Onda 2 (22/09): órgão por nome, licitação e contrato em detalhe,
+      //    ficha da pessoa jurídica e notas fiscais por produto ────────────
+      case 'orgaos': {
+        // O código SIAFI que licitações e contratos exigem, buscado pelo nome.
+        url = `${BASE_URL}/orgaos-siafi`;
+        if (termo) params.set('descricao', termo);
+        if (orgao) params.set('codigo', orgao);
+        break;
+      }
+      case 'pessoa-juridica': {
+        const c = cnpj?.replace(/\D/g, '') || '';
+        if (c.length !== 14) return responder({ error: 'CNPJ é obrigatório' }, 400);
+        return responder({ ...(await fichaDaPessoaJuridica(c, API_KEY)), consultadoEm: new Date().toISOString() });
+      }
+      case 'licitacao-itens': {
+        if (!id) return responder({ error: 'Informe o id da licitação' }, 400);
+        url = `${BASE_URL}/licitacoes/itens-licitados`;
+        params.set('id', String(id));
+        break;
+      }
+      case 'licitacao-participantes':
+      case 'licitacao-empenhos':
+      case 'licitacao-contratos': {
+        // A API identifica a licitação por UG + número (só dígitos) + modalidade.
+        if (!codigoUG || !numero || !codigoModalidade) {
+          return responder({ error: 'Informe a unidade gestora, o número e a modalidade da licitação' }, 400);
+        }
+        const rota = tipo === 'licitacao-participantes' ? 'participantes'
+          : tipo === 'licitacao-empenhos' ? 'empenhos' : 'contratos-relacionados-licitacao';
+        url = `${BASE_URL}/licitacoes/${rota}`;
+        params.set('codigoUG', String(codigoUG));
+        params.set('numero', String(numero).replace(/\D/g, ''));
+        params.set('codigoModalidade', String(codigoModalidade));
+        if (tipo === 'licitacao-contratos') params.delete('pagina');
+        break;
+      }
+      case 'contrato-itens':
+      case 'contrato-aditivos':
+      case 'contrato-apostilamentos':
+      case 'contrato-empenhos': {
+        if (!id) return responder({ error: 'Informe o id do contrato' }, 400);
+        const rota = tipo === 'contrato-itens' ? 'itens-contratados'
+          : tipo === 'contrato-aditivos' ? 'termo-aditivo'
+          : tipo === 'contrato-apostilamentos' ? 'apostilamento' : 'documentos-relacionados';
+        url = `${BASE_URL}/contratos/${rota}`;
+        params.set('id', String(id));
+        if (tipo !== 'contrato-itens') params.delete('pagina');
+        break;
+      }
+      case 'notas-fiscais': {
+        url = `${BASE_URL}/notas-fiscais`;
+        if (termo) params.set('nomeProduto', termo);
+        if (cnpj) params.set('cnpjEmitente', cnpj.replace(/\D/g, ''));
+        if (orgao) params.set('codigoOrgao', orgao);
+        break;
+      }
+      case 'nota-fiscal': {
+        if (!chave) return responder({ error: 'Informe a chave da nota fiscal' }, 400);
+        url = `${BASE_URL}/notas-fiscais-por-chave`;
+        params.delete('pagina');
+        params.set('chaveUnicaNotaFiscal', String(chave).replace(/\D/g, ''));
+        break;
+      }
+      case 'notas-fiscais-itens': {
+        // Preço por item (22/09): as notas fiscais eletrônicas emitidas ao
+        // governo federal que citam o produto, e os itens de cada uma — a única
+        // fonte pública com valor unitário, NCM e quantidade. Uma página de
+        // notas por consulta (até 15), itens buscados em paralelo.
+        const produto = String(termo ?? '').trim();
+        if (produto.length < 3) return responder({ error: 'Informe o produto com ao menos 3 letras.' }, 400);
+        const q = new URLSearchParams({ nomeProduto: produto, pagina: String(pagina) });
+        if (cnpj) q.set('cnpjEmitente', cnpj.replace(/\D/g, ''));
+        if (orgao) q.set('codigoOrgao', orgao);
+        const r = await fetch(`${BASE_URL}/notas-fiscais?${q.toString()}`, { headers });
+        if (!r.ok) {
+          return responder({ error: `A API do Portal da Transparência recusou a consulta: ${mensagemDaApi(await r.text())}` });
+        }
+        const notas = await r.json();
+        const lista = (Array.isArray(notas) ? notas : []).slice(0, 15) as Record<string, unknown>[];
+        const comItens = await Promise.all(lista.map(async (n) => {
+          const chaveNota = String(n.chaveNotaFiscal ?? '').replace(/\D/g, '');
+          if (!chaveNota) return { ...n, itens: [] };
+          try {
+            const d = await fetch(`${BASE_URL}/notas-fiscais-por-chave?chaveUnicaNotaFiscal=${chaveNota}`, { headers });
+            if (!d.ok) { await d.text(); return { ...n, itens: [], erroItens: `HTTP ${d.status}` }; }
+            const det = await d.json();
+            return {
+              ...n,
+              itens: Array.isArray(det?.itensNotaFiscal) ? det.itensNotaFiscal : [],
+              eventos: Array.isArray(det?.eventosNotaFiscal) ? det.eventosNotaFiscal : [],
+            };
+          } catch (e) {
+            return { ...n, itens: [], erroItens: e instanceof Error ? e.message : String(e) };
+          }
+        }));
+        return responder({ notas: comItens, total: comItens.length, pagina, produto, consultadoEm: new Date().toISOString() });
       }
       default:
         return new Response(JSON.stringify({ error: `Tipo de consulta inválido: ${tipo}` }), {

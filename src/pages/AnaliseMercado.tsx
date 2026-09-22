@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import FaixaIndicadores from '@/components/gestao/FaixaIndicadores';
+import NotasFiscaisFederais from '@/components/analise-mercado/NotasFiscaisFederais';
 import {
   MODOS_DE_BUSCA, MODO_PADRAO, descricaoDaTentativa, ehModoDeBusca, proximosPassos, rotuloDoProvedor,
   type ModoDeBusca, type TentativaDeBusca,
@@ -584,6 +585,11 @@ export default function AnaliseMercado() {
                 </Card>
               </>
             )}
+
+            {/* Preço por ITEM (22/09): as notas fiscais emitidas ao governo
+                federal, com valor unitário. O acervo acima responde por
+                objeto de edital; para um produto, a resposta está aqui. */}
+            <NotasFiscaisFederais termo={termoPreco} />
 
             {/* Sem objeto pesquisado: o panorama geral de antes, rotulado como tal. */}
             {!buscouPreco && (
