@@ -1,8 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
   pareceTransferencia, diasEntre, acharContrapartida, decidirAcao, classificarTitulo,
+  categoriasDeTransferencia, montarParDeTransferencia,
   type MovimentoExtrato, type Contrapartida, type TransferenciaExistente,
 } from '@/lib/financeiro/transferencia-propria';
+import { ehMovimentacao, ehTransferenciaEntreContasProprias } from '@/lib/financeiro/movimentacao';
 
 /**
  * Os casos vêm da base real da ETHOS, auditada em 25/08/2026:
@@ -218,5 +220,66 @@ describe('título já gravado que na verdade é transferência', () => {
     };
     expect(classificarTitulo(venda, [transferenciaCorrespondente]).classificacao).toBe('nenhum');
     expect(classificarTitulo(venda, []).classificacao).toBe('nenhum');
+  });
+});
+
+describe('o par nasce marcado como transferência (21/09, defeito 7)', () => {
+  const ENVIADA = { id: 'cat-env', nome: 'Transferências Enviadas Entre Contas Próprias', natureza: 'movimentacao', grupo_dre: 'movimentacao' };
+  const RECEBIDA = { id: 'cat-rec', nome: 'Transferências Recebidas Entre Contas Próprias', natureza: 'movimentacao', grupo_dre: 'movimentacao' };
+  const VENDA = { id: 'cat-venda', nome: 'Vendas de Mercadorias', natureza: 'receita', grupo_dre: 'receita_bruta' };
+  const TRANSF_DE_TERCEIRO = { id: 'cat-ted', nome: 'Transferências recebidas de clientes', natureza: 'receita', grupo_dre: 'receita_bruta' };
+
+  it('acha "enviada" e "recebida" entre as categorias de movimentação, ignorando receita com "transferência" no nome', () => {
+    const { enviada, recebida } = categoriasDeTransferencia([VENDA, TRANSF_DE_TERCEIRO, RECEBIDA, ENVIADA]);
+    expect(enviada?.id).toBe('cat-env');
+    expect(recebida?.id).toBe('cat-rec');
+  });
+
+  it('só a genérica cadastrada: serve aos dois lados; nenhuma: fica nula', () => {
+    const generica = { id: 'cat-gen', nome: 'Transferência entre contas', natureza: 'movimentacao' };
+    expect(categoriasDeTransferencia([generica, VENDA])).toEqual({ enviada: generica, recebida: generica });
+    expect(categoriasDeTransferencia([VENDA])).toEqual({ enviada: null, recebida: null });
+  });
+
+  it('categoria inativa não é escolhida', () => {
+    expect(categoriasDeTransferencia([{ ...ENVIADA, ativa: false }]).enviada).toBeNull();
+  });
+
+  it('cada perna leva tipo transferencia, a outra conta como destino e a categoria do seu lado', () => {
+    const par = montarParDeTransferencia({
+      contaOrigem: BANPARA, contaDestino: ITAU, loteId: 'lote-1',
+      categorias: [ENVIADA, RECEBIDA, VENDA], categoriaEscolhida: RECEBIDA.id,
+    });
+    expect(par.saida).toEqual({
+      tipo: 'transferencia', natureza: 'despesa', conta_id: BANPARA, conta_destino_id: ITAU,
+      categoria_id: 'cat-env', origem_lote_id: 'lote-1',
+    });
+    expect(par.entrada).toEqual({
+      tipo: 'transferencia', natureza: 'receita', conta_id: ITAU, conta_destino_id: BANPARA,
+      categoria_id: 'cat-rec', origem_lote_id: 'lote-1',
+    });
+    // A categoria escolhida na tela ("Recebidas" nos dois lados, o defeito)
+    // não vence a do lado.
+    expect(par.saida.categoria_id).not.toBe(par.entrada.categoria_id);
+  });
+
+  it('sem "enviada"/"recebida" cadastradas, fica a escolhida na tela; sem nada, nula', () => {
+    const comEscolhida = montarParDeTransferencia({ contaOrigem: BANPARA, contaDestino: ITAU, loteId: 'l', categorias: [VENDA], categoriaEscolhida: 'x' });
+    expect(comEscolhida.saida.categoria_id).toBe('x');
+    const semNada = montarParDeTransferencia({ contaOrigem: BANPARA, contaDestino: ITAU, loteId: 'l' });
+    expect(semNada.entrada.categoria_id).toBeNull();
+  });
+
+  it('as duas pernas são reconhecidas pela régua do caixa E pela régua do DRE', () => {
+    const par = montarParDeTransferencia({ contaOrigem: BANPARA, contaDestino: ITAU, loteId: 'l', categorias: [ENVIADA, RECEBIDA] });
+    for (const perna of [par.saida, par.entrada]) {
+      expect(ehTransferenciaEntreContasProprias(perna)).toBe(true);
+      expect(ehMovimentacao({ ...perna, categoria: perna.categoria_id === 'cat-env' ? ENVIADA : RECEBIDA })).toBe(true);
+    }
+  });
+
+  it('recusa origem igual ao destino e conta faltando', () => {
+    expect(() => montarParDeTransferencia({ contaOrigem: ITAU, contaDestino: ITAU, loteId: 'l' })).toThrow(/mesma conta/);
+    expect(() => montarParDeTransferencia({ contaOrigem: null, contaDestino: ITAU, loteId: 'l' })).toThrow(/origem e da conta de destino/);
   });
 });

@@ -12,6 +12,7 @@ import { chaveDeAcessoValida, dadosDaChave } from "@/lib/financeiro/danfe";
 import { hojeLocal as hojeISO } from "@/lib/financeiro/data-local";
 import { lerDanfeEmPdf, consolidar } from "@/lib/financeiro/ler-danfe";
 import { abrirEspelho } from "@/lib/financeiro/espelho-da-nfe";
+import { montarParDeTransferencia } from "@/lib/financeiro/transferencia-propria";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -717,30 +718,33 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
     };
 
     // ── Transferência entre contas: cria dois lançamentos espelhados ──────────
+    //
+    // O par nasce marcado como transferência (`montarParDeTransferencia`):
+    // tipo `transferencia`, a outra conta como destino em cada perna, e a
+    // categoria do LADO — "enviada" na saída, "recebida" na entrada. Antes as
+    // duas pernas levavam a mesma categoria escolhida na tela ("Transferências
+    // Recebidas" também no remetente), e o par parecia receita e despesa
+    // (auditoria de 21/09, defeito 7).
     if (isTransferencia && !editando) {
-      const loteId = crypto.randomUUID();
-      const sharedBase = {
-        ...baseBody,
-        tipo: "transferencia" as const,
-        origem_lote_id: loteId,
-        // conta_destino_id e natureza serão sobrepostos abaixo por lançamento
-      };
+      let par: ReturnType<typeof montarParDeTransferencia>;
+      try {
+        par = montarParDeTransferencia({
+          contaOrigem: contaId || null,
+          contaDestino: contaDestinoId || null,
+          loteId: crypto.randomUUID(),
+          categorias,
+          categoriaEscolhida: categoriaId || null,
+        });
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Não foi possível montar a transferência.");
+        return;
+      }
 
       // Lançamento A: saída da conta de origem
-      const savedA = await upsert.mutateAsync({
-        ...sharedBase,
-        conta_id: contaId || null,
-        natureza: "despesa" as const,
-        conta_destino_id: contaDestinoId || null,
-      } as any);
+      const savedA = await upsert.mutateAsync({ ...baseBody, ...par.saida });
 
       // Lançamento B: entrada na conta de destino
-      await upsert.mutateAsync({
-        ...sharedBase,
-        conta_id: contaDestinoId || null,
-        natureza: "receita" as const,
-        conta_destino_id: contaId || null,
-      } as any);
+      await upsert.mutateAsync({ ...baseBody, ...par.entrada });
 
       // O saldo das duas contas sai do gatilho, que agora entende a
       // transferência espelhada. Ajustar aqui somava o valor uma segunda vez.

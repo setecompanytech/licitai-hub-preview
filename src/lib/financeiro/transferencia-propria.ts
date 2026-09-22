@@ -184,6 +184,98 @@ export function decidirAcao(
 }
 
 
+// ─── O par nasce marcado como transferência ──────────────────────────────────
+
+/**
+ * O que identifica o par para o CAIXA e para o DRE.
+ *
+ * A tela de lançamento criava a transferência como duas pernas com a MESMA
+ * categoria dos dois lados ("Transferências Recebidas" na saída e na
+ * entrada — natureza despesa no remetente), e sem nada na linha dizendo que
+ * as duas são uma operação só além do lote (auditoria de 21/09, defeito 7).
+ * Funcionava para o saldo; quebrava o significado e permitia a perna sem
+ * contrapartida.
+ *
+ * Aqui o par nasce com o que o schema já tem: `tipo = transferencia` (enum
+ * `financeiro_tipo_lancamento`), `conta_destino_id` apontando a outra conta
+ * em cada perna, e a categoria de cada LADO — "enviada" na perna que sai da
+ * origem, "recebida" na que entra no destino. É isso que a régua do caixa
+ * (`ehTransferenciaEntreContasProprias`) e a do DRE (`ehMovimentacao`)
+ * reconhecem.
+ */
+export type CategoriaClassificavel = {
+  id: string;
+  nome: string;
+  natureza?: string | null;
+  grupo_dre?: string | null;
+  ativa?: boolean | null;
+};
+
+export function categoriasDeTransferencia(categorias: CategoriaClassificavel[]): {
+  enviada: CategoriaClassificavel | null;
+  recebida: CategoriaClassificavel | null;
+} {
+  const candidatas = categorias.filter((c) => {
+    if (c.ativa === false) return false;
+    const movimentacao = c.natureza === 'movimentacao' || c.grupo_dre === 'movimentacao';
+    return movimentacao && /transf/.test(chave(c.nome));
+  });
+  const acha = (re: RegExp) => candidatas.find((c) => re.test(chave(c.nome))) ?? null;
+  const enviada = acha(/enviad|saida|remetid/);
+  const recebida = acha(/recebid|entrada/);
+  // Só existe a genérica ("Transferência entre contas"): serve aos dois
+  // lados — o tipo e a conta de destino já dizem qual perna é qual.
+  const generica = candidatas.find((c) => !/enviad|saida|remetid|recebid|entrada/.test(chave(c.nome))) ?? null;
+  return { enviada: enviada ?? generica, recebida: recebida ?? generica };
+}
+
+export type PernaDeTransferencia = {
+  tipo: 'transferencia';
+  natureza: 'despesa' | 'receita';
+  conta_id: string;
+  conta_destino_id: string;
+  categoria_id: string | null;
+  origem_lote_id: string;
+};
+
+export function montarParDeTransferencia(input: {
+  contaOrigem: string | null | undefined;
+  contaDestino: string | null | undefined;
+  /** O lote que amarra as duas pernas (a edição de uma sincroniza a outra). */
+  loteId: string;
+  categorias?: CategoriaClassificavel[];
+  /** A categoria escolhida na tela, usada só quando não há "enviada"/"recebida". */
+  categoriaEscolhida?: string | null;
+}): { saida: PernaDeTransferencia; entrada: PernaDeTransferencia } {
+  const { contaOrigem, contaDestino, loteId } = input;
+  if (!contaOrigem || !contaDestino) {
+    throw new Error('Transferência precisa da conta de origem e da conta de destino.');
+  }
+  if (contaOrigem === contaDestino) {
+    throw new Error('Origem e destino são a mesma conta — isso não é transferência.');
+  }
+  const { enviada, recebida } = categoriasDeTransferencia(input.categorias ?? []);
+  const escolhida = input.categoriaEscolhida || null;
+  return {
+    saida: {
+      tipo: 'transferencia',
+      natureza: 'despesa',
+      conta_id: contaOrigem,
+      conta_destino_id: contaDestino,
+      categoria_id: enviada?.id ?? escolhida,
+      origem_lote_id: loteId,
+    },
+    entrada: {
+      tipo: 'transferencia',
+      natureza: 'receita',
+      conta_id: contaDestino,
+      conta_destino_id: contaOrigem,
+      categoria_id: recebida?.id ?? escolhida,
+      origem_lote_id: loteId,
+    },
+  };
+}
+
 // ─── Títulos que já nasceram errados ─────────────────────────────────────────
 
 /**

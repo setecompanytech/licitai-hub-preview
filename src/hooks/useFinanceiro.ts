@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { montarDRE, type DRELinhaRaw, type DREResumo } from "@/lib/financeiro/dre";
 import { hojeLocal, somarDiasLocal, mesLocal, dataLocal } from "@/lib/financeiro/data-local";
-import { ehMovimentacao } from "@/lib/financeiro/movimentacao";
+import { ehMovimentacao, ehTransferenciaEntreContasProprias } from "@/lib/financeiro/movimentacao";
 import { condicaoDeAtrasoNoBanco, diasDeAtraso, estaEmAtraso } from "@/lib/financeiro/atraso";
 import { buscarTodos } from "@/lib/financeiro/paginar";
 import { acumularProjecao, type DiaProjetado, type LinhaDoFluxo } from "@/lib/financeiro/projecao-de-caixa";
@@ -835,11 +835,11 @@ export function useResumoFinanceiro() {
       const inicio6m = dataLocal(new Date(hoje.getFullYear(), hoje.getMonth() - 5, 1));
       type LinhaResumo = {
         valor: number | null; tipo: string | null; status: string | null; natureza: string | null;
-        data_competencia: string | null; data_realizado: string | null;
+        data_competencia: string | null; data_realizado: string | null; conta_destino_id: string | null;
         categoria: { nome?: string | null; natureza?: string | null; grupo_dre?: string | null } | null;
       };
       const COLUNAS =
-        "valor, tipo, status, natureza, data_competencia, data_realizado, " +
+        "valor, tipo, status, natureza, data_competencia, data_realizado, conta_destino_id, " +
         "categoria:financeiro_categorias!financeiro_lancamentos_categoria_id_fkey(nome, natureza, grupo_dre)";
 
       // Dois universos, de propósito (19/09): a carteira em ABERTO é a carteira
@@ -847,8 +847,15 @@ export function useResumoFinanceiro() {
       // baixado —, e a série de realizado é a janela de seis meses. Um só
       // `.gte(competência)` com `.limit(2000)` cortava os dois, e "A receber"
       // dava 6,17 mi aqui e 8,28 mi na aba Executivo para a mesma carteira de
-      // 9,07 mi. A movimentação (transferência, aplicação, aporte) sai pela
-      // régua do DRE, `ehMovimentacao`.
+      // 9,07 mi.
+      //
+      // Duas réguas, de propósito (21/09): o que é CAIXA ("A pagar", "A
+      // receber", saldo projetado, o gráfico de entradas e saídas) só exclui
+      // transferência entre contas próprias de verdade
+      // (`ehTransferenciaEntreContasProprias`); o que é RESULTADO ("Resultado
+      // no mês", top despesas) exclui toda movimentação (`ehMovimentacao`, a
+      // régua do DRE). A régua do DRE aplicada ao caixa tirava de "A pagar"
+      // 56 parcelas de consórcio categorizadas como transferência.
       const [contasRes, lancs, abertos] = await Promise.all([
         supabase.from("financeiro_contas").select("saldo_atual").eq("empresa_id", empresaId!).eq("ativa", true),
         buscarTodos<LinhaResumo>((de, ate) =>
@@ -864,12 +871,11 @@ export function useResumoFinanceiro() {
       const saldoTotal = (contasRes.data ?? []).reduce((s, c) => s + Number(c.saldo_atual ?? 0), 0);
       const soma = (ls: LinhaResumo[]) => ls.reduce((s, l) => s + Number(l.valor ?? 0), 0);
 
-      const titulos = abertos.filter((l) => !ehMovimentacao(l));
+      const titulos = abertos.filter((l) => !ehTransferenciaEntreContasProprias(l));
       const aPagar = soma(titulos.filter((l) => l.tipo === "a_pagar"));
       const aReceber = soma(titulos.filter((l) => l.tipo === "a_receber"));
-      const realizados = lancs.filter(
-        (l) => (l.status === "realizado" || l.status === "conciliado") && !ehMovimentacao(l),
-      );
+      const baixados = lancs.filter((l) => l.status === "realizado" || l.status === "conciliado");
+      const realizados = baixados.filter((l) => !ehMovimentacao(l));
       const realizadoMes = realizados
         .filter((l) => ((l.data_realizado || l.data_competencia) ?? "").startsWith(mesAtual))
         // Movimentação já saiu acima; o que não é receita nem despesa não conta.
@@ -895,8 +901,10 @@ export function useResumoFinanceiro() {
         const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
         fluxoMap.set(dataLocal(d).slice(0, 7), { entrada: 0, saida: 0 });
       }
-      realizados.forEach((l) => {
-        // "Fluxo de caixa" é o que aconteceu: previsto, cancelado e movimentação ficam fora.
+      baixados.filter((l) => !ehTransferenciaEntreContasProprias(l)).forEach((l) => {
+        // "Fluxo de caixa" é o que aconteceu no BANCO: previsto e cancelado
+        // ficam fora, e só a transferência entre contas próprias não conta —
+        // a parcela do consórcio saiu da conta, mesmo sem ser despesa do DRE.
         const mes = (l.data_competencia ?? "").slice(0, 7);
         const bucket = fluxoMap.get(mes);
         if (!bucket) return;

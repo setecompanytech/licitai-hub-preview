@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ehMovimentacao, sinalEconomico } from './movimentacao';
+import { ehMovimentacao, ehTransferenciaEntreContasProprias, sinalEconomico } from './movimentacao';
 
 describe('ehMovimentacao — a régua única dos painéis', () => {
   it('a perna a_pagar de uma transferência entre contas próprias não é despesa', () => {
@@ -34,5 +34,36 @@ describe('ehMovimentacao — a régua única dos painéis', () => {
     expect(sinalEconomico({ natureza: 'receita' })).toBe(1);
     expect(sinalEconomico({ natureza: 'despesa' })).toBe(-1);
     expect(sinalEconomico({ natureza: 'receita', categoria: { natureza: 'movimentacao' } })).toBe(0);
+  });
+});
+
+describe('ehTransferenciaEntreContasProprias — a régua do CAIXA, que não é a do DRE', () => {
+  // O caso de 21/09 (ETHOS): 56 parcelas "PAGAMENTO ACORDO - BRADESCO"
+  // (consórcio), a_pagar com a categoria "Transferências Enviadas Entre
+  // Contas Próprias" (natureza movimentacao). Não é resultado — mas o
+  // dinheiro sai da conta para um terceiro.
+  const parcelaDoConsorcio = {
+    tipo: 'a_pagar', natureza: 'despesa', conta_destino_id: null,
+    categoria: { natureza: 'movimentacao', grupo_dre: 'movimentacao' },
+  };
+
+  it('dívida com terceiro categorizada como movimentação fica FORA do DRE e DENTRO do caixa', () => {
+    expect(ehMovimentacao(parcelaDoConsorcio)).toBe(true);
+    expect(ehTransferenciaEntreContasProprias(parcelaDoConsorcio)).toBe(false);
+  });
+
+  it('a perna de um par (tipo transferencia) sai do caixa, com ou sem categoria', () => {
+    expect(ehTransferenciaEntreContasProprias({ tipo: 'transferencia', conta_destino_id: 'itau' })).toBe(true);
+    expect(ehTransferenciaEntreContasProprias({ tipo: 'transferencia', conta_destino_id: null })).toBe(true);
+  });
+
+  it('linha com conta de destino é transferência própria, seja qual for o tipo gravado', () => {
+    // Legado: a_pagar com conta_destino_id apontando a outra conta da empresa.
+    expect(ehTransferenciaEntreContasProprias({ tipo: 'a_pagar', conta_destino_id: 'banpara' })).toBe(true);
+  });
+
+  it('título comum e resgate lançado como a_receber sem destino continuam no caixa', () => {
+    expect(ehTransferenciaEntreContasProprias({ tipo: 'a_receber', conta_destino_id: null })).toBe(false);
+    expect(ehTransferenciaEntreContasProprias({ tipo: 'a_pagar' })).toBe(false);
   });
 });

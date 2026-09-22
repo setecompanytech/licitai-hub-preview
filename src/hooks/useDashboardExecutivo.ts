@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresaId } from "@/hooks/useFinanceiro";
 import { dataLocal, hojeLocal, mesLocal } from "@/lib/financeiro/data-local";
-import { ehMovimentacao } from "@/lib/financeiro/movimentacao";
+import { ehMovimentacao, ehTransferenciaEntreContasProprias } from "@/lib/financeiro/movimentacao";
 import { estaEmAtraso } from "@/lib/financeiro/atraso";
 import { buscarTodos } from "@/lib/financeiro/paginar";
 
@@ -64,12 +64,13 @@ type Linha = {
   data_competencia: string | null;
   data_vencimento: string | null;
   data_realizado: string | null;
+  conta_destino_id: string | null;
   pessoa: { nome?: string | null } | null;
   categoria: { natureza?: string | null; grupo_dre?: string | null } | null;
 };
 
 const COLUNAS =
-  "valor, tipo, status, natureza, data_competencia, data_vencimento, data_realizado, " +
+  "valor, tipo, status, natureza, data_competencia, data_vencimento, data_realizado, conta_destino_id, " +
   "pessoa:financeiro_pessoas(nome), categoria:financeiro_categorias!financeiro_lancamentos_categoria_id_fkey(natureza, grupo_dre)";
 
 const REALIZADO = new Set(["realizado", "conciliado"]);
@@ -143,9 +144,11 @@ export function useDashboardExecutivo() {
       const saldoDisponivel = contas.filter((c) => c.ativa).reduce((s, c) => s + Number(c.saldo_atual ?? 0), 0);
       const saldoBloqueado = saldoTotal - saldoDisponivel;
 
-      // ----- Recebíveis/Pagáveis (sem movimentação: resgate de aplicação
-      // lançado como conta a receber não é recebível) -----
-      const titulos = abertos.filter((l) => !ehMovimentacao(l));
+      // ----- Recebíveis/Pagáveis: régua do CAIXA (21/09). Só a transferência
+      // entre contas próprias de verdade sai; a parcela do consórcio
+      // categorizada como "transferência" continua a pagar — o dinheiro vai
+      // sair da conta. A régua do DRE aqui escondia 56 parcelas da ETHOS.
+      const titulos = abertos.filter((l) => !ehTransferenciaEntreContasProprias(l));
       // A régua única do atraso (`atraso.ts`): a mesma do cartão, do Kanban e das listas.
       const isVencido = (l: Linha) => estaEmAtraso(l, hojeStr);
       const receberAbertos = titulos.filter((l) => l.tipo === "a_receber");
