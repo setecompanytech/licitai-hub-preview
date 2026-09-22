@@ -198,6 +198,14 @@ export default function Precificacao() {
   const AbaAtual = ABAS.find((a) => a.id === abaAtiva) ?? ABAS[0];
   const { addItem, hasPending, pendingItems } = usePropostaCart();
   const abortRef = useRef(false);
+
+  // "Cotar na Precificação", em Análise de mercado, chega com `?objeto=` (22/09):
+  // o campo já vem preenchido; a pesquisa, que consome API, fica no clique.
+  useEffect(() => {
+    const objeto = searchParams.get('objeto')?.trim();
+    if (objeto) setSearch(objeto);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const { user } = useAuth();
   const { processoId } = useProcessoAtivo();
   const [processoMeta, setProcessoMeta] = useState({ numero: '', orgao: '' });

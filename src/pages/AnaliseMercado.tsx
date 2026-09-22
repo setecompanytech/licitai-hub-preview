@@ -14,6 +14,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import FaixaIndicadores from '@/components/gestao/FaixaIndicadores';
 import {
+  MODOS_DE_BUSCA, MODO_PADRAO, descricaoDaTentativa, ehModoDeBusca, proximosPassos, rotuloDoProvedor,
+  type ModoDeBusca, type TentativaDeBusca,
+} from '@/lib/mercado/busca-por-objeto';
+import {
   TrendingUp, DollarSign, Package,
   Building2, PieChart, Activity, Landmark, FileText, Shield, ExternalLink, Loader2,
   Search, Calculator, Inbox, AlertTriangle,
@@ -98,12 +102,18 @@ export default function AnaliseMercado() {
   // estatística honesta sai deles: mediana, faixa, quartis, lastro auditável.
   const [termoPreco, setTermoPreco] = useState('');
   // Filtros inteligentes (08/09): UF herda a da página; município parcial;
-  // período em janelas ou ano exato; rigor = piso de similaridade — o
-  // antídoto para "papel A4" trazer fita crepe a 50% para dentro da mediana.
+  // período em janelas ou ano exato. O "rigor" deixou de ser um piso de
+  // similaridade (22/09): "CARNE MOIDA PATINHO" no Pará voltava vazio com
+  // três editais de carne moída no acervo, porque três palavras contra a
+  // descrição de um edital raramente passam de 45%. Agora é o MODO: palavras
+  // decidem quem entra, o significado decide a ordem.
   const [ufPreco, setUfPreco] = useState<string>('herdar');
   const [municipioPreco, setMunicipioPreco] = useState('');
   const [periodoPreco, setPeriodoPreco] = useState('36m');
-  const [rigorPreco, setRigorPreco] = useState('0.45');
+  const [rigorPreco, setRigorPreco] = useState<ModoDeBusca>(MODO_PADRAO);
+  // O que a última busca tentou — para o vazio dizer o que foi tentado e
+  // oferecer o próximo passo, em vez de afirmar "nenhum edital similar".
+  const [tentativaPreco, setTentativaPreco] = useState<(TentativaDeBusca & { provedor: string }) | null>(null);
   const [buscandoPreco, setBuscandoPreco] = useState(false);
   const [buscouPreco, setBuscouPreco] = useState(false);
   const [erroPreco, setErroPreco] = useState('');
@@ -113,27 +123,32 @@ export default function AnaliseMercado() {
     data_publicacao_pncp: string | null; url_pncp: string | null; similaridade?: number;
   }>>([]);
 
-  const buscarPrecos = async () => {
+  const buscarPrecos = async (opcoes?: { modo?: ModoDeBusca; uf?: string }) => {
     if (termoPreco.trim().length < 8) {
       setErroPreco('Descreva o objeto com pelo menos 8 caracteres (ex.: "carne bovina congelada").');
       setBuscouPreco(true);
       return;
     }
+    // O próximo passo do vazio chega por aqui, e a tela acompanha a escolha.
+    const modo = opcoes?.modo ?? rigorPreco;
+    const ufEscolhida = opcoes?.uf ?? ufPreco;
+    if (opcoes?.modo) setRigorPreco(opcoes.modo);
+    if (opcoes?.uf) setUfPreco(opcoes.uf);
     setBuscandoPreco(true);
     setErroPreco('');
     try {
-      const ufEfetiva = ufPreco === 'herdar' ? (uf === 'todos' ? null : uf) : ufPreco === 'todas' ? null : ufPreco;
+      const ufEfetiva = ufEscolhida === 'herdar' ? (uf === 'todos' ? null : uf) : ufEscolhida === 'todas' ? null : ufEscolhida;
       const anoExato = /^\d{4}$/.test(periodoPreco) ? Number(periodoPreco) : null;
-      const anos = anoExato ? 3 : Number(periodoPreco.replace('m', '')) / 12;
+      const anos = Math.max(anoExato ? 3 : Number(periodoPreco.replace('m', '')) / 12, 1);
       const { data, error } = await supabase.functions.invoke('historico-orgao-pncp', {
         body: {
           objeto: termoPreco.trim(),
-          anos: Math.max(anos, 1),
+          anos,
           limite: 30,
           uf: ufEfetiva ?? undefined,
           municipio: municipioPreco.trim() || undefined,
           anoExato: anoExato ?? undefined,
-          similaridadeMin: Number(rigorPreco),
+          modo,
         },
       });
       if (error || data?.error) {
@@ -141,6 +156,10 @@ export default function AnaliseMercado() {
         setEditaisPreco([]);
       } else {
         setEditaisPreco(data?.resultados ?? []);
+        setTentativaPreco({
+          modo, provedor: String(data?.provedor ?? ''), uf: ufEfetiva,
+          municipio: municipioPreco.trim() || null, anos, anoExato,
+        });
       }
     } catch (e) {
       setErroPreco(e instanceof Error ? e.message : 'Erro na consulta.');
@@ -390,8 +409,8 @@ export default function AnaliseMercado() {
             <Card className="p-5">
               <h2 className="text-lg font-semibold leading-6 text-foreground">Preço praticado por objeto</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Digite o objeto que você fornece; a comparação usa a descrição dos editais do acervo
-                (últimos 3 anos, os 30 mais similares).
+                Digite o objeto que você fornece. A busca cruza as palavras com a descrição dos editais
+                do acervo e ordena os mais parecidos primeiro (últimos 3 anos, até 30 editais).
               </p>
 
               <div className="mt-4 flex flex-wrap items-end gap-3">
@@ -402,12 +421,14 @@ export default function AnaliseMercado() {
                     aria-invalid={erroPreco ? true : undefined}
                     onKeyDown={(e) => { if (e.key === 'Enter') buscarPrecos(); }} />
                 </div>
-                <Button onClick={buscarPrecos} disabled={buscandoPreco}>
+                <Button onClick={() => buscarPrecos()} disabled={buscandoPreco}>
                   {buscandoPreco ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                   Buscar
                 </Button>
+                {/* O objeto digitado vai junto (22/09): chegar na Precificação
+                    com o campo vazio era digitar duas vezes a mesma coisa. */}
                 <Button asChild variant="outline">
-                  <Link to="/precificacao">
+                  <Link to={termoPreco.trim() ? `/precificacao?objeto=${encodeURIComponent(termoPreco.trim())}` : '/precificacao'}>
                     <Calculator className="h-4 w-4" /> Cotar na Precificação
                   </Link>
                 </Button>
@@ -446,16 +467,17 @@ export default function AnaliseMercado() {
                     </SelectContent>
                   </Select>
                 </div>
-                {/* Rigor: quanto o edital precisa PARECER com o objeto para
-                    entrar na conta. Alto = amostra menor e mais fiel. */}
+                {/* Como comparar (22/09): as palavras decidem quem entra, o
+                    significado decide a ordem. "Todas" = amostra menor e mais
+                    fiel; "qualquer" = o padrão; "só significado" = vizinhos. */}
                 <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="preco-rigor">Rigor da similaridade</Label>
-                  <Select value={rigorPreco} onValueChange={setRigorPreco}>
-                    <SelectTrigger id="preco-rigor" className="w-64"><SelectValue /></SelectTrigger>
+                  <Label htmlFor="preco-rigor">Como comparar</Label>
+                  <Select value={rigorPreco} onValueChange={(v) => { if (ehModoDeBusca(v)) setRigorPreco(v); }}>
+                    <SelectTrigger id="preco-rigor" className="w-80 max-w-full"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="0.55">Rigor alto — só muito similares</SelectItem>
-                      <SelectItem value="0.45">Rigor médio (recomendado)</SelectItem>
-                      <SelectItem value="0.35">Rigor amplo — inclui vizinhos</SelectItem>
+                      {MODOS_DE_BUSCA.map((m) => (
+                        <SelectItem key={m.valor} value={m.valor} title={m.explicacao}>{m.rotulo}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -469,12 +491,25 @@ export default function AnaliseMercado() {
               )}
             </Card>
 
+            {/* O vazio diz o que tentou e oferece o passo mais largo: "nenhum
+                edital similar" era falso e não dava para onde ir (22/09). */}
             {buscouPreco && !buscandoPreco && !erroPreco && editaisPreco.length === 0 && (
               <Card>
                 <EstadoVazio
                   icone={<Search />}
-                  titulo="Nenhum edital similar no acervo"
-                  descricao="O acervo cresce a cada busca e pela semeadura; ausência aqui não prova inexistência no PNCP."
+                  titulo="Nenhum edital com esse objeto no acervo"
+                  descricao={tentativaPreco
+                    ? `Tentei ${descricaoDaTentativa(tentativaPreco)}. O acervo cresce a cada busca e pela semeadura; ausência aqui não prova inexistência no PNCP.`
+                    : 'O acervo cresce a cada busca e pela semeadura; ausência aqui não prova inexistência no PNCP.'}
+                  acao={tentativaPreco && (
+                    <div className="flex flex-wrap justify-center gap-2">
+                      {proximosPassos(tentativaPreco.modo, tentativaPreco.uf).map((p) => (
+                        <Button key={p.rotulo} variant="outline" size="sm" onClick={() => buscarPrecos({ modo: p.modo, uf: p.uf })}>
+                          {p.rotulo}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
                 />
               </Card>
             )}
@@ -505,7 +540,7 @@ export default function AnaliseMercado() {
                         </>
                       ),
                     },
-                    { rotulo: 'Amostra', valor: valoresPreco.length, detalhe: `editais com valor, de ${editaisPreco.length} similares` },
+                    { rotulo: 'Amostra', valor: valoresPreco.length, detalhe: `editais com valor, de ${editaisPreco.length} encontrados` },
                   ]}
                 />
 
@@ -537,9 +572,14 @@ export default function AnaliseMercado() {
                       </li>
                     ))}
                   </ul>
-                  <p className="mt-3 text-xs text-muted-foreground">
-                    Valores = total ESTIMADO declarado pelo órgão no edital. Para o preço homologado
-                    item a item (quem ganhou e por quanto), use "Cotar na Precificação".
+                  {tentativaPreco && (
+                    <p className="mt-3 text-xs text-muted-foreground">
+                      Busca por {descricaoDaTentativa(tentativaPreco)}; ordem: {rotuloDoProvedor(tentativaPreco.provedor)}.
+                    </p>
+                  )}
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Valores = total ESTIMADO declarado pelo órgão no edital, não o preço do item. Para o
+                    preço homologado item a item (quem ganhou e por quanto), use "Cotar na Precificação".
                   </p>
                 </Card>
               </>
