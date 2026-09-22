@@ -16,6 +16,10 @@ import FaixaIndicadores from '@/components/gestao/FaixaIndicadores';
 import NotasFiscaisFederais from '@/components/analise-mercado/NotasFiscaisFederais';
 import MinhaEmpresaFederal from '@/components/analise-mercado/MinhaEmpresaFederal';
 import ProspeccaoFederal from '@/components/analise-mercado/ProspeccaoFederal';
+import EtiquetaDoValor from '@/components/analise-mercado/EtiquetaDoValor';
+import PrecoUnitarioDoAcervo from '@/components/analise-mercado/PrecoUnitarioDoAcervo';
+import { useItensDoAcervo } from '@/hooks/useItensDoAcervo';
+import { itensPorEdital, unidadeLegivel, type EditalDoAcervo } from '@/lib/mercado/preco-observado';
 import {
   MODOS_DE_BUSCA, MODO_PADRAO, descricaoDaTentativa, ehModoDeBusca, proximosPassos, rotuloDoProvedor,
   type ModoDeBusca, type TentativaDeBusca,
@@ -95,6 +99,12 @@ const mesCurto = (yyyymm: string) => {
   return `${['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'][Number(m) - 1]}/${a.slice(2)}`;
 };
 
+/** O edital como a busca por objeto devolve: o global do processo mais as coordenadas que os itens pedem. */
+type EditalDaBusca = EditalDoAcervo & {
+  id: string; objeto: string | null; uf: string | null; municipio: string | null;
+  valor_total_estimado: number | null; similaridade?: number;
+};
+
 export default function AnaliseMercado() {
   const [portalSelecionado, setPortalSelecionado] = useState<string>(PORTAL_PADRAO);
   const [abaAtiva, setAbaAtiva] = useState('panorama');
@@ -120,11 +130,10 @@ export default function AnaliseMercado() {
   const [buscandoPreco, setBuscandoPreco] = useState(false);
   const [buscouPreco, setBuscouPreco] = useState(false);
   const [erroPreco, setErroPreco] = useState('');
-  const [editaisPreco, setEditaisPreco] = useState<Array<{
-    id: string; orgao: string | null; objeto: string | null; uf: string | null;
-    municipio: string | null; valor_total_estimado: number | null;
-    data_publicacao_pncp: string | null; url_pncp: string | null; similaridade?: number;
-  }>>([]);
+  const [editaisPreco, setEditaisPreco] = useState<EditalDaBusca[]>([]);
+  // O objeto da ÚLTIMA busca feita, não o do campo: os itens do PNCP se casam
+  // com o que foi pesquisado, e o campo muda enquanto se digita.
+  const [termoBuscado, setTermoBuscado] = useState('');
 
   const buscarPrecos = async (opcoes?: { modo?: ModoDeBusca; uf?: string }) => {
     if (termoPreco.trim().length < 8) {
@@ -159,6 +168,7 @@ export default function AnaliseMercado() {
         setEditaisPreco([]);
       } else {
         setEditaisPreco(data?.resultados ?? []);
+        setTermoBuscado(termoPreco.trim());
         setTentativaPreco({
           modo, provedor: String(data?.provedor ?? ''), uf: ufEfetiva,
           municipio: municipioPreco.trim() || null, anos, anoExato,
@@ -187,6 +197,9 @@ export default function AnaliseMercado() {
   };
   const brlExato = (v: number | null | undefined) =>
     v == null ? '—' : v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  // O preço UNITÁRIO: os itens desses editais no PNCP, lidos pela edge com cache (22/09).
+  const itensDoAcervo = useItensDoAcervo(termoBuscado, editaisPreco);
+  const itensDoEdital = itensPorEdital(itensDoAcervo.itens);
   const [uf, setUf] = useState<string>('PA');
   // '7d'/'30d' = dias corridos (o pedido de 08/09: janela menor que 3 meses);
   // números puros = meses. O RPC recebe p_dias OU p_meses.
@@ -517,63 +530,108 @@ export default function AnaliseMercado() {
               </Card>
             )}
 
-            {valoresPreco.length > 0 && (
+            {editaisPreco.length > 0 && (
               <>
-                {/* A estatística da amostra nos cartões KPI do Design System
-                    v3. Faixas (Q1–Q3 e mínimo–máximo) ocupam duas linhas do
-                    valor, cada extremo na sua. */}
-                <FaixaIndicadores
-                  itens={[
-                    { rotulo: 'Mediana do edital', valor: brlExato(quantil(0.5)), detalhe: 'o valor típico da amostra' },
-                    {
-                      rotulo: 'Miolo (Q1–Q3)',
-                      valor: (
-                        <>
-                          <span className="block">{brlExato(quantil(0.25))}</span>
-                          <span className="block">a {brlExato(quantil(0.75))}</span>
-                        </>
-                      ),
-                    },
-                    {
-                      rotulo: 'Faixa completa',
-                      valor: (
-                        <>
-                          <span className="block">{brlExato(valoresPreco[0])}</span>
-                          <span className="block">a {brlExato(valoresPreco[valoresPreco.length - 1])}</span>
-                        </>
-                      ),
-                    },
-                    { rotulo: 'Amostra', valor: valoresPreco.length, detalhe: `editais com valor, de ${editaisPreco.length} encontrados` },
-                  ]}
-                />
+                {/* Dois blocos que nunca se misturam (22/09): o valor GLOBAL do
+                    processo (o edital inteiro, todos os itens) e o preço
+                    UNITÁRIO do item. A tela dizia "mediana do edital" e o
+                    leitor lia preço: para carne moída, R$ 11.941,25 contra
+                    R$ 35,00 por kg nos itens. Cada valor leva a etiqueta. */}
+                {valoresPreco.length > 0 && (
+                  <>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="text-lg font-semibold leading-6 text-foreground">Valor global do processo — o edital inteiro (PNCP)</h2>
+                      <EtiquetaDoValor natureza="global" estagio="estimado" />
+                    </div>
+                    {/* A estatística da amostra nos cartões KPI do Design System
+                        v3. Faixas (Q1–Q3 e mínimo–máximo) ocupam duas linhas do
+                        valor, cada extremo na sua. */}
+                    <FaixaIndicadores
+                      itens={[
+                        { rotulo: 'Mediana do valor global', valor: brlExato(quantil(0.5)), detalhe: 'total estimado do edital, todos os itens juntos' },
+                        {
+                          rotulo: 'Miolo (Q1–Q3)',
+                          valor: (
+                            <>
+                              <span className="block">{brlExato(quantil(0.25))}</span>
+                              <span className="block">a {brlExato(quantil(0.75))}</span>
+                            </>
+                          ),
+                        },
+                        {
+                          rotulo: 'Faixa completa',
+                          valor: (
+                            <>
+                              <span className="block">{brlExato(valoresPreco[0])}</span>
+                              <span className="block">a {brlExato(valoresPreco[valoresPreco.length - 1])}</span>
+                            </>
+                          ),
+                        },
+                        { rotulo: 'Amostra', valor: valoresPreco.length, detalhe: `editais com valor global, de ${editaisPreco.length} encontrados` },
+                      ]}
+                    />
+                  </>
+                )}
+
+                <PrecoUnitarioDoAcervo termo={termoBuscado} estado={itensDoAcervo} />
 
                 <Card className="p-5">
-                  <h2 className="mb-3 text-lg font-semibold leading-6 text-foreground">Editais que sustentam o número</h2>
-                  <ul className="max-h-[380px] divide-y divide-border overflow-y-auto rounded-md border border-border">
-                    {editaisPreco.map((e) => (
-                      <li key={e.id} className="flex items-start justify-between gap-3 px-4 py-3 text-sm">
-                        <div className="min-w-0">
-                          <p className="line-clamp-2 font-medium text-foreground">{e.objeto ?? '—'}</p>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            {[e.orgao, e.municipio && e.uf ? `${e.municipio}/${e.uf}` : e.uf,
-                              e.data_publicacao_pncp ? new Date(e.data_publicacao_pncp.slice(0, 10) + 'T12:00:00').toLocaleDateString('pt-BR') : null,
-                            ].filter(Boolean).join(' · ')}
-                          </p>
-                        </div>
-                        <div className="shrink-0 space-y-1 text-right">
-                          <p className="font-semibold tabular-nums text-foreground">{brlExato(e.valor_total_estimado)}</p>
-                          {typeof e.similaridade === 'number' && (
-                            <Badge variant="muted">{Math.round(e.similaridade * 100)}% similar</Badge>
+                  <div className="mb-3 flex flex-wrap items-center gap-2">
+                    <h2 className="text-lg font-semibold leading-6 text-foreground">Editais que sustentam o número</h2>
+                    <EtiquetaDoValor natureza="global" estagio="estimado" />
+                  </div>
+                  <ul className="max-h-[480px] divide-y divide-border overflow-y-auto rounded-md border border-border">
+                    {editaisPreco.map((e) => {
+                      const itens = itensDoEdital.get(e.pncp_id) ?? [];
+                      return (
+                        <li key={e.id} className="px-4 py-3 text-sm">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="line-clamp-2 font-medium text-foreground">{e.objeto ?? '—'}</p>
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                {[e.orgao, e.municipio && e.uf ? `${e.municipio}/${e.uf}` : e.uf,
+                                  e.data_publicacao_pncp ? new Date(e.data_publicacao_pncp.slice(0, 10) + 'T12:00:00').toLocaleDateString('pt-BR') : null,
+                                ].filter(Boolean).join(' · ')}
+                              </p>
+                            </div>
+                            <div className="shrink-0 space-y-1 text-right">
+                              <p className="font-semibold tabular-nums text-foreground">{brlExato(e.valor_total_estimado)}</p>
+                              <p className="text-[0.6875rem] leading-4 text-muted-foreground">global · estimado</p>
+                              {typeof e.similaridade === 'number' && (
+                                <Badge variant="muted">{Math.round(e.similaridade * 100)}% similar</Badge>
+                              )}
+                              {e.url_pncp && (
+                                <a href={e.url_pncp} target="_blank" rel="noreferrer"
+                                  className="flex items-center justify-end gap-1 text-xs text-primary hover:underline">
+                                  PNCP <ExternalLink className="h-3 w-3" aria-hidden="true" />
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                          {/* Os itens deste edital que falam do objeto: o unitário, embaixo do global. */}
+                          {itens.length > 0 && (
+                            <ul className="mt-2 space-y-1 border-l-2 border-primary-line pl-3 text-xs">
+                              {itens.slice(0, 4).map((i) => (
+                                <li key={i.numeroItem} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                                  <span className="text-muted-foreground">Item {i.numeroItem}</span>
+                                  <span className="min-w-0 grow basis-56 font-medium text-foreground">{i.descricao}</span>
+                                  <span className="tabular-nums text-muted-foreground">
+                                    {i.quantidade === null ? '—' : i.quantidade.toLocaleString('pt-BR')} {unidadeLegivel(i.unidade) || i.unidade}
+                                  </span>
+                                  <span className="tabular-nums">unit. estimado {brlExato(i.estimado)}</span>
+                                  {i.homologado !== null && (
+                                    <span className="tabular-nums font-semibold text-success-ink">
+                                      homologado {brlExato(i.homologado)}{i.fornecedor ? ` · ${i.fornecedor}` : ''}
+                                    </span>
+                                  )}
+                                </li>
+                              ))}
+                              {itens.length > 4 && <li className="text-muted-foreground">+ {itens.length - 4} item(ns) na tabela acima</li>}
+                            </ul>
                           )}
-                          {e.url_pncp && (
-                            <a href={e.url_pncp} target="_blank" rel="noreferrer"
-                              className="flex items-center justify-end gap-1 text-xs text-primary hover:underline">
-                              PNCP <ExternalLink className="h-3 w-3" aria-hidden="true" />
-                            </a>
-                          )}
-                        </div>
-                      </li>
-                    ))}
+                        </li>
+                      );
+                    })}
                   </ul>
                   {tentativaPreco && (
                     <p className="mt-3 text-xs text-muted-foreground">
@@ -581,8 +639,8 @@ export default function AnaliseMercado() {
                     </p>
                   )}
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Valores = total ESTIMADO declarado pelo órgão no edital, não o preço do item. Para o
-                    preço homologado item a item (quem ganhou e por quanto), use "Cotar na Precificação".
+                    O valor de cada edital é o GLOBAL estimado pelo órgão (todos os itens juntos). Embaixo dele, os itens
+                    que falam do objeto, com o unitário estimado e o homologado; o bloco "Preço unitário do item" resume esses.
                   </p>
                 </Card>
               </>

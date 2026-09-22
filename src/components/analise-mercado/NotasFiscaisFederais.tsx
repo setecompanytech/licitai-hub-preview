@@ -9,6 +9,7 @@ import EstadoVazio from '@/components/shared/EstadoVazio';
 import FaixaIndicadores from '@/components/gestao/FaixaIndicadores';
 import { supabase } from '@/integrations/supabase/client';
 import { estatisticaDeItens, itemDeNota, type ItemDeNota } from '@/lib/concorrentes/portal-federal';
+import EtiquetaDoValor from './EtiquetaDoValor';
 
 /**
  * Preço por item nas notas fiscais eletrônicas emitidas ao governo federal
@@ -83,9 +84,10 @@ export default function NotasFiscaisFederais({ termo }: { termo: string }) {
     <Card className="p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 grow basis-56">
-          <h2 className="flex items-center gap-2 text-lg font-semibold leading-6 text-foreground">
+          <h2 className="flex flex-wrap items-center gap-2 text-lg font-semibold leading-6 text-foreground">
             <FileText className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
             Preço por item em notas fiscais ao governo federal
+            <EtiquetaDoValor natureza="unitario" estagio="faturado" className="font-normal" />
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
             O que fornecedores entregaram a órgãos federais, nota a nota: descrição, NCM, quantidade e valor

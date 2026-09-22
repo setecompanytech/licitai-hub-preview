@@ -8,6 +8,7 @@ import EstadoVazio from '@/components/shared/EstadoVazio';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import FaixaIndicadores from '@/components/gestao/FaixaIndicadores';
+import EtiquetaDoValor from './EtiquetaDoValor';
 import {
   Search, Loader2, Building2, FileText, ExternalLink, Download, AlertTriangle,
 } from 'lucide-react';
@@ -127,9 +128,10 @@ export default function ContratosGov() {
   return (
     <div className="space-y-4">
       <Card className="p-5">
-        <h2 className="flex items-center gap-2 text-lg font-semibold leading-6 text-foreground">
+        <h2 className="flex flex-wrap items-center gap-2 text-lg font-semibold leading-6 text-foreground">
           <FileText className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
           Atas de registro de preços — Compras.gov.br
+          <EtiquetaDoValor natureza="unitario" estagio="registrado" className="font-normal" />
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
           As atas em que o CNPJ consultado é o FORNECEDOR: itens, quantidade homologada, quanto já

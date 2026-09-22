@@ -277,6 +277,37 @@ Transparencia-2026-09-22.html` (dono). Regras que valem no código:
   emendas pagas na UF) em Análise de mercado › Consultas só consultam ao
   clicar. Um monitor diário com aviso exige tabela e cron — decisão do dono.
 
+## Preço de mercado — global × unitário (22/09/2026)
+
+A aba Preços de Análise de mercado resumia o `valor_total_estimado` dos
+editais e chamava de "mediana do edital": para carne moída no Pará, R$
+11.941,25, quando os itens dos mesmos editais no PNCP dizem R$ 35,00 por kg
+homologado. O acervo guarda o EDITAL (valor global, todos os itens); o preço
+do ITEM vem dos itens do PNCP. Regras que valem no código:
+
+- **Todo valor de mercado leva etiqueta** natureza · estágio
+  (`lib/mercado/preco-observado.ts`, `EtiquetaDoValor`): "Global ·
+  estimado", "Unitário · homologado", "Unitário · faturado em NF-e". Blocos de
+  natureza diferente não se somam nem se comparam; o KPI unitário ancora no
+  homologado (IN 65/2021, art. 5º, I), com o estimado à parte.
+- **Itens do PNCP por uma porta só:** `functions/_shared/pncp-itens.ts`
+  (rotas `/itens` e `/itens/{n}/resultados`, DTOs, casamento do item com o
+  objeto), edge `itens-do-acervo-pncp`, cache `pncp_editais_itens`
+  (migration `20260922000003`), lidos SOB DEMANDA para os editais que a
+  busca devolve; lotes pequenos e espaçados (regra do portal). Os coletores
+  `/contratacoes/itens?q=` e `/itensContrato?codigoItem=` do `price-search`
+  respondem 404 desde 22/09 — não copiar.
+- **Nome de órgão e rótulo de processo na norma da casa:**
+  `lib/texto/nome-de-orgao.ts` (caixa de nome próprio, acento por dicionário,
+  sigla preservada; caixa mista passa intacta) e
+  `lib/licitacao/rotulo-do-processo.ts` ("Pregão Eletrônico nº 44/2025 —
+  Município de Rondon do Pará"; `processoValidoParaAnalise` tira cancelado,
+  anulado, revogado, suspenso, perdido, arquivado, deserto e fracassado).
+- **Consulta CNPJ é UM quadro:** o espelho do comprovante, fiel ao da Receita
+  (campo vazio "********", QSA com capital social por extenso e qualificação
+  com código, sem faixa etária). A ficha federal só vale se for do CNPJ
+  pedido (`fichaDaPessoaJuridica`).
+
 ## Permissões — o que é da plataforma não aparece ao cliente (pedido do Rafael em 14/09, decidido em 19/09/2026)
 
 O Rafael quer que parte do sistema deixe de ficar exposta às contas das
