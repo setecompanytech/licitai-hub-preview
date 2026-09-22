@@ -1,3 +1,4 @@
+import { Table } from '@/components/ui/table';
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
@@ -428,7 +429,7 @@ export default function FinLancamentos() {
       <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px] text-sm">
+            <Table className="w-full min-w-[900px] text-sm">
               {/* Cabeçalho na anatomia do Design System v3: superfície
                   rebaixada, rótulo 12/600 sem caixa alta, 44px de altura. */}
               <thead className="bg-secondary">
@@ -673,7 +674,7 @@ export default function FinLancamentos() {
                   })
                 )}
               </tbody>
-            </table>
+            </Table>
           </div>
 
           {sortedLancs.length > TAMANHO_PAGINA && (

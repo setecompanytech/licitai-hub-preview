@@ -1,3 +1,4 @@
+import { Table } from '@/components/ui/table';
 import { ArrowLeft, FileText, Shield, Globe, Server, Lock, UserCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -72,7 +73,7 @@ export default function DpaPage() {
             <h2 className="text-xl font-bold m-0">3. Categorias de Dados Tratados</h2>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <Table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
                   <th className="text-left py-2 pr-4">Categoria</th>
@@ -107,7 +108,7 @@ export default function DpaPage() {
                   <td className="py-2">Art. 7º, I (consentimento)</td>
                 </tr>
               </tbody>
-            </table>
+            </Table>
           </div>
         </section>
 
@@ -119,7 +120,7 @@ export default function DpaPage() {
           </div>
           <p>O Controlador autoriza a Operadora a utilizar os seguintes suboperadores:</p>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <Table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
                   <th className="text-left py-2 pr-4">Suboperador</th>
@@ -154,7 +155,7 @@ export default function DpaPage() {
                   <td className="py-2">EUA</td>
                 </tr>
               </tbody>
-            </table>
+            </Table>
           </div>
           <p className="text-xs text-muted-foreground mt-2">
             Transferências internacionais são realizadas com base no Art. 33, II da LGPD (cláusulas contratuais padrão) e na adequação das políticas de privacidade dos suboperadores.

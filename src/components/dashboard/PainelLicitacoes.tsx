@@ -1,3 +1,4 @@
+import { Table } from '@/components/ui/table';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -551,7 +552,7 @@ export default function PainelLicitacoes() {
           />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <Table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-secondary">
                   <th scope="col" className="h-11 px-3 text-left text-xs font-semibold tracking-wide text-muted-foreground">Nº / Objeto</th>
@@ -732,7 +733,7 @@ export default function PainelLicitacoes() {
                   })}
                 </AnimatePresence>
               </tbody>
-            </table>
+            </Table>
           </div>
         )}
 

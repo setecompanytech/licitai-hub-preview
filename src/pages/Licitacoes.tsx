@@ -1,3 +1,4 @@
+import { Table } from '@/components/ui/table';
 import { useState, useEffect } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { Badge } from '@/components/ui/badge';
@@ -185,7 +186,7 @@ export default function Licitacoes() {
         {/* Table */}
         <div className="bg-card rounded-xl border border-border/50 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <Table className="w-full">
               <thead>
                 <tr className="border-b border-border/50 bg-muted/30">
                   <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Nº / Objeto</th>
@@ -240,7 +241,7 @@ export default function Licitacoes() {
                   );
                 })}
               </tbody>
-            </table>
+            </Table>
           </div>
         </div>
       </div>

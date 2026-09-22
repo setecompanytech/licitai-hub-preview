@@ -1,19 +1,42 @@
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
+import { useSombraDeRolagem } from "@/hooks/useSombraDeRolagem";
+import { useTabelaEmpilhada } from "@/hooks/useTabelaEmpilhada";
+import { CLASSE_TABELA_EMPILHADA } from "@/lib/ui/tabela-empilhada";
+import { SombrasDeRolagem } from "./sombras-de-rolagem";
 
 /**
  * Tabela — a peça central do Praefectus. Cabeçalho em superfície rebaixada
  * (`secondary`), rótulos de 12px em peso 600, linhas de 48px, corpo em 13px,
  * hover discreto e seleção na tinta verde. A rolagem horizontal fica presa
- * ao contêiner, nunca na página.
+ * ao contêiner, nunca na página — e as sombras nas bordas dizem que há coluna
+ * escondida (`useSombraDeRolagem`, o mesmo sinal da `TabelaGestao`).
+ *
+ * Até 22/09 o invólucro levava `contain-text`, cuja regra `overflow: hidden`
+ * vencia o `overflow-auto` no CSS compilado: a tabela mais larga que a tela
+ * era CORTADA, não rolável, em todas as telas ("Ações" virava "Aç…" em
+ * Editais, 17/09; "FUNDA / ESTAD" no celular, 22/09).
+ *
+ * No celular, a tabela que não cabe vira uma pilha de registros, cada célula
+ * com o título da própria coluna (`useTabelaEmpilhada` + `.tabela-empilhada`
+ * em index.css). A que cabe continua tabela. A tela pode fixar o rótulo de
+ * uma célula com `data-rotulo`; célula vazia some da pilha.
  */
 const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableElement>>(
-  ({ className, ...props }, ref) => (
-    <div className="relative w-full overflow-auto contain-text">
-      <table ref={ref} className={cn("w-full caption-bottom text-sm", className)} {...props} />
-    </div>
-  ),
+  ({ className, ...props }, ref) => {
+    const caixa = React.useRef<HTMLDivElement>(null);
+    const empilhada = useTabelaEmpilhada(caixa);
+    const sombra = useSombraDeRolagem(caixa, [empilhada]);
+    return (
+      <div className="relative w-full min-w-0 max-w-full">
+        <div ref={caixa} className={cn("w-full overflow-auto", empilhada && CLASSE_TABELA_EMPILHADA)}>
+          <table ref={ref} className={cn("w-full caption-bottom text-sm", className)} {...props} />
+        </div>
+        <SombrasDeRolagem sombra={sombra} />
+      </div>
+    );
+  },
 );
 Table.displayName = "Table";
 

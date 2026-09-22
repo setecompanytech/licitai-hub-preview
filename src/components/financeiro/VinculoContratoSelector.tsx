@@ -534,7 +534,9 @@ export default function VinculoContratoSelector({
               </Button>
             </PopoverTrigger>
             <PopoverContent
-              className="p-0 w-[--radix-popover-trigger-width] min-w-[420px] max-w-[calc(100vw-2rem)] overflow-hidden"
+              // `min-width` vence `max-width` no CSS: em 390px o mínimo de 420px
+              // estourava a tela (22/09). O mínimo só vale a partir de `sm`.
+              className="p-0 w-[--radix-popover-trigger-width] sm:min-w-[420px] max-w-[calc(100vw-2rem)] overflow-hidden"
               align="start"
               sideOffset={4}
               // avoidCollisions VOLTOU a valer (08/09): desligado, a lista

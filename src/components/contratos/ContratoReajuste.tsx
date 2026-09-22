@@ -1,3 +1,4 @@
+import { Table } from '@/components/ui/table';
 import { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -454,7 +455,7 @@ Central do Brasil — apuração do índice pelo ${calculo.fonte.split('·')[0].
                     </div>
                     {memoriaAberta && (
                       <div className="overflow-x-auto">
-                        <table className="w-full text-xs">
+                        <Table className="w-full text-xs">
                           <thead>
                             <tr className="text-muted-foreground">
                               <th className="text-left py-0.5">Competência</th>
@@ -471,7 +472,7 @@ Central do Brasil — apuração do índice pelo ${calculo.fonte.split('·')[0].
                               </tr>
                             ))}
                           </tbody>
-                        </table>
+                        </Table>
                       </div>
                     )}
                   </>

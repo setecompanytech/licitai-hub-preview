@@ -390,7 +390,9 @@ ${truncated}`
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md border border-border bg-card">
               <FileText className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
             </div>
-            <div className="min-w-0 flex-1">
+            {/* Base de 12rem, não zero: no celular os botões desciam de linha só
+                depois de espremer o nome do arquivo a uma coluna de letras. */}
+            <div className="min-w-0 grow basis-48">
               <p className="truncate text-sm font-semibold text-foreground">{editalFile.name}</p>
               <p className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                 <span className="tabular-nums">{(editalFile.size / 1024).toFixed(0)} KB</span>

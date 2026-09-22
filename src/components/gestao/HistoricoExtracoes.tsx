@@ -241,7 +241,9 @@ export default function HistoricoExtracoes() {
             >
               <AccordionTrigger className="py-3 hover:no-underline">
                 <div className="flex w-full flex-wrap items-start justify-between gap-3 pr-2">
-                  <div className="min-w-0 flex-1 text-left">
+                  {/* Base de 12rem, não zero: no celular os contadores desciam
+                      de linha só depois de espremer o objeto a uma coluna. */}
+                  <div className="min-w-0 grow basis-48 text-left">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="g-meta text-muted-foreground tabular-nums">{p.numero || '—'}</span>
                       {p.possivel_inconsistencia && (

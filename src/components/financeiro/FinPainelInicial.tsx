@@ -1,3 +1,4 @@
+import { Table } from '@/components/ui/table';
 import { useMemo, useState } from 'react';
 import {
   Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis,
@@ -274,7 +275,7 @@ export default function FinPainelInicial({ onNavigate }: Props) {
             <p className="px-4 py-8 text-center text-sm text-muted-foreground">Nenhuma movimentação prevista.</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <Table className="w-full text-sm">
                 <thead className="bg-secondary">
                   <tr className="border-b border-border text-left text-xs font-semibold tracking-wide text-muted-foreground">
                     <th className="h-11 px-4 font-semibold">Data</th>
@@ -302,7 +303,7 @@ export default function FinPainelInicial({ onNavigate }: Props) {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </Table>
             </div>
           )}
         </div>

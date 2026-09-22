@@ -357,7 +357,12 @@
     max-width: 100%;
   }
   td, th {
-    overflow-wrap: anywhere;
+    /* break-word, não anywhere (22/09): `anywhere` deixava a coluna encolher
+       até um caractere e partia "Valor" e "R$ 20.740,00" no meio em tabela
+       espremida (celular, papel). Com break-word a coluna nunca fica mais
+       estreita que a palavra mais longa; se o conjunto não cabe, a tabela
+       rola presa ao contêiner — ou empilha no celular (`.tabela-empilhada`). */
+    overflow-wrap: break-word;
     word-break: normal;
   }
 
@@ -861,6 +866,71 @@
       font-size: 1rem;
       min-height: 44px;
     }
+  }
+}
+
+/* Tabela empilhada no celular (22/09): a `ui/table` que não cabe em 390px
+   deixa de ser uma barra de rolagem com colunas escondidas e vira uma pilha
+   de registros — cada célula com o título da própria coluna à esquerda
+   (`data-rotulo`, preenchido por `useTabelaEmpilhada` a partir do cabeçalho).
+   A classe só existe no celular, posta pelo hook quando a tabela não cabe;
+   fora dele nada muda. Seletor dobrado para vencer as utilitárias das telas
+   (`[&_td]:px-3`, `min-w-[900px]`, `text-right`) sem !important. Fora de
+   @layer de propósito: regra em @layer some do CSS se a classe não aparecer
+   nos fontes, e esta nasce no DOM. */
+@media (max-width: 767px) {
+  .tabela-empilhada.tabela-empilhada {
+    overflow: visible;
+  }
+  .tabela-empilhada.tabela-empilhada table {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+  .tabela-empilhada.tabela-empilhada thead,
+  .tabela-empilhada.tabela-empilhada tr[data-cabecalho-empilhado] {
+    display: none;
+  }
+  .tabela-empilhada.tabela-empilhada tbody,
+  .tabela-empilhada.tabela-empilhada tfoot {
+    display: block;
+    width: 100%;
+  }
+  .tabela-empilhada.tabela-empilhada tr {
+    display: block;
+    height: auto;
+    padding: 0.625rem 1rem;
+  }
+  .tabela-empilhada.tabela-empilhada td,
+  .tabela-empilhada.tabela-empilhada tbody th,
+  .tabela-empilhada.tabela-empilhada tfoot th {
+    display: block;
+    position: relative;
+    height: auto;
+    min-height: 0;
+    max-width: none;
+    padding: 0.125rem 0;
+    text-align: left;
+  }
+  .tabela-empilhada.tabela-empilhada td[data-rotulo] {
+    padding-left: 42%;
+    min-height: 1.5rem;
+  }
+  .tabela-empilhada.tabela-empilhada td[data-rotulo]::before {
+    content: attr(data-rotulo);
+    position: absolute;
+    left: 0;
+    top: 0.125rem;
+    width: 38%;
+    font-size: 0.75rem;
+    line-height: 1.25rem;
+    font-weight: 500;
+    color: hsl(var(--muted-foreground));
+    white-space: normal;
+    overflow-wrap: break-word;
+  }
+  .tabela-empilhada.tabela-empilhada td:empty {
+    display: none;
   }
 }
 

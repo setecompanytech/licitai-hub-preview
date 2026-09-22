@@ -569,7 +569,9 @@ Responda APENAS em JSON válido:
         <div className="space-y-2">
           {filtered.map((item, i) => (
             <div key={i} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card p-3 shadow-sm transition-[border-color,box-shadow] duration-150 hover:border-primary/40 hover:shadow-md">
-              <div className="min-w-0 flex-1">
+              {/* Base de 12rem, não zero: no celular a diferença e o botão
+                  desciam de linha só depois de espremer a descrição. */}
+              <div className="min-w-0 grow basis-48">
                 <p className="line-clamp-1 text-sm font-medium text-foreground">{item.descricao}</p>
                 <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground tabular-nums">
                   <span>Meu: <b className="text-foreground">{formatCurrency(item.meuPreco)}</b></span>

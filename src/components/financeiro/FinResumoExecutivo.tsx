@@ -12,6 +12,7 @@
  * Estrutura inspirada no anexo "11.9 RESUMO EXECUTIVO DE FINANÇAS" do INTERFACE
  * FINANCEIRO 2 — destinado à diretoria, com botão Imprimir / Salvar PDF.
  */
+import { Table } from '@/components/ui/table';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -192,13 +193,13 @@ export default function FinResumoExecutivo() {
         <section>
           <h3 className={SECAO}>Resultado do mês corrente</h3>
           <div className="overflow-x-auto rounded-lg border border-border">
-            <table className="w-full text-sm">
+            <Table className="w-full text-sm">
               <tbody>
                 <tr className="border-b border-border"><td className={TD}>(+) Receitas realizadas</td><td className={`${TD} text-right tabular-nums text-success-ink`}>{formatBRL(data.receitaMes)}</td></tr>
                 <tr className="border-b border-border"><td className={TD}>(−) Despesas realizadas</td><td className={`${TD} text-right tabular-nums text-destructive-ink`}>({formatBRL(data.despesaMes)})</td></tr>
                 <tr className={TOTAL}><td className={TD}>(=) Resultado líquido do mês</td><td className={`${TD} text-right tabular-nums ${data.resultadoMes >= 0 ? "text-success-ink" : "text-destructive-ink"}`}>{formatBRL(data.resultadoMes)}</td></tr>
               </tbody>
-            </table>
+            </Table>
           </div>
         </section>
 
@@ -221,7 +222,7 @@ export default function FinResumoExecutivo() {
           <h3 className="mb-1 text-lg font-semibold leading-6 text-foreground">Resumo das Contas Correntes</h3>
           <p className="mb-3 text-sm leading-5 text-muted-foreground">Saldo atual das contas correntes (consideradas no Resumo Financeiro)</p>
           <div className="overflow-x-auto rounded-lg border border-border">
-            <table className="w-full text-sm">
+            <Table className="w-full text-sm">
               <thead className="bg-secondary">
                 <tr className="border-b border-border">
                   <th className={`${TH} text-left`}>Tipo de Conta</th>
@@ -268,7 +269,7 @@ export default function FinResumoExecutivo() {
                   <td className={`${TD} text-right tabular-nums`}>{formatBRL(data.saldoTotal + data.limiteTotal)}</td>
                 </tr>
               </tbody>
-            </table>
+            </Table>
           </div>
         </section>
 
@@ -359,7 +360,7 @@ function TabelaLancamentos({ lancs, tipo, total }: { lancs: LancDetalhe[]; tipo:
 
   return (
     <div className="overflow-x-auto rounded-lg border border-border">
-      <table className="w-full text-sm">
+      <Table className="w-full text-sm">
         <thead className="bg-secondary">
           <tr className="border-b border-border">
             <th className={`${TH} w-32 text-left`}>Situação</th>
@@ -401,7 +402,7 @@ function TabelaLancamentos({ lancs, tipo, total }: { lancs: LancDetalhe[]; tipo:
             <td className={`${TD} text-right tabular-nums ${corValor}`}>{formatBRL(total)}</td>
           </tr>
         </tbody>
-      </table>
+      </Table>
     </div>
   );
 }

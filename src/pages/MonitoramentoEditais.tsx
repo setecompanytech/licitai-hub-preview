@@ -2502,7 +2502,7 @@ function EditalLinha({ edital, favoritado, onFavoritar, licitacaoId, compromisso
                     </div>
                   ) : (
                     <div className="overflow-x-auto rounded-md border border-border bg-card">
-                      <table className="w-full text-sm">
+                      <Table className="w-full text-sm">
                         <thead>
                           <tr className="border-b border-border bg-secondary">
                             <th className="h-11 w-10 whitespace-nowrap px-3 text-left text-xs font-semibold tracking-wide text-muted-foreground">Nº</th>
@@ -2540,7 +2540,7 @@ function EditalLinha({ edital, favoritado, onFavoritar, licitacaoId, compromisso
                             );
                           })}
                         </tbody>
-                      </table>
+                      </Table>
                     </div>
                   )
                 )}

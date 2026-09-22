@@ -12,7 +12,7 @@ exclusivamente na camada de apresentação. Este manual é o que qualquer pessoa
 | Moldura | `AppLayout` = `AppSidebar` (navy, 248/72px) + `AppHeader` (topbar branca, 60px) + conteúdo (teto 1520px) |
 | Páginas | `CabecalhoPagina` (telas de menu) · `TelaGestao` (registro) · `SecaoGestao` |
 | Indicadores | `StatCard` (painel) · `FaixaIndicadores` (Gestão) · `LinhaKpis` · `KpiStrip` (faixa densa) |
-| Tabelas | `TabelaGestao` (com versão de celular) · `ui/table` (Financeiro, Admin) |
+| Tabelas | `TabelaGestao` (cartões no celular) · `ui/table` (Financeiro, Admin, listas; pilha no celular quando não cabe) |
 | Filtros | `BarraFiltros` |
 | Estados | `SeloSituacao` · `Badge` (variantes `success/info/warning/danger/muted/ia`) · `StatusBadge` |
 | IA | `SeloPraefectusIA` (Badge `ia` + `Sparkles` em teal) |
@@ -136,6 +136,18 @@ tracking-wide text-muted-foreground` (sem caixa alta); `td` `h-12 px-4 text-sm`;
 `tr` `border-b border-border hover:bg-muted/60`; números à direita com
 `tabular-nums`; ações secundárias num menu "⋯" (`DropdownMenu`) quando houver
 mais de três; rolagem horizontal presa ao contêiner (`overflow-x-auto`).
+**No celular (22/09):** `TabelaGestao` vira cartões (`prioridade: 'sempre'`);
+a `ui/table` que não cabe em 390px vira PILHA de registros — cada célula com o
+título da própria coluna à esquerda (`useTabelaEmpilhada` lê o cabeçalho e
+grava `data-rotulo`; CSS em `.tabela-empilhada`, index.css). Tabela que cabe
+continua tabela; célula vazia some; rótulo pode ser fixado à mão com
+`data-rotulo` na `TableCell`. Nas duas, as sombras nas bordas
+(`useSombraDeRolagem`) dizem que há coluna escondida. Tabela crua (`<table>`)
+não ganha nada disto: tela de dados usa `Table` da `ui/table` ou `TabelaGestao`
+— só HTML de impressão/PDF e tabela com cabeçalho `sticky` dentro de caixa
+vertical ficam cruas (o invólucro da `ui/table` prenderia o `sticky` no
+contêiner errado). Em célula, `overflow-wrap` é `break-word`, nunca `anywhere`:
+a coluna não fica mais estreita que a palavra mais longa, e número não parte.
 
 **Status:** `Badge` com variante semântica (`success` ganha/ativo, `info` em
 disputa/andamento, `warning` pendente/aguardando, `danger` perdida/vencida,

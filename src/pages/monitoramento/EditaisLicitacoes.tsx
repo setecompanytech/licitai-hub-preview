@@ -1,3 +1,4 @@
+import { Table } from '@/components/ui/table';
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -184,7 +185,7 @@ const CardEdital = ({
 
         {/* Campos estruturados */}
         <div className="mb-4 overflow-x-auto">
-          <table className="w-full border-collapse text-sm">
+          <Table className="w-full border-collapse text-sm">
             <tbody>
               <tr>
                 <th scope="row" className="w-[30%] py-1 text-left align-top font-semibold text-foreground">
@@ -233,7 +234,7 @@ const CardEdital = ({
                 </td>
               </tr>
             </tbody>
-          </table>
+          </Table>
         </div>
 
         {/* Linha de ações */}
@@ -297,7 +298,7 @@ const ModalItensDownload = ({
 
         {/* Dados do processo */}
         <div className="overflow-x-auto rounded-lg border border-border">
-          <table className="w-full border-collapse text-sm">
+          <Table className="w-full border-collapse text-sm">
             <thead>
               <tr className="bg-muted">
                 <th colSpan={2} className="border-b border-border px-3 py-2 text-left text-sm font-semibold text-foreground">
@@ -329,7 +330,7 @@ const ModalItensDownload = ({
                 </tr>
               ))}
             </tbody>
-          </table>
+          </Table>
         </div>
 
         {/* Seção de downloads */}

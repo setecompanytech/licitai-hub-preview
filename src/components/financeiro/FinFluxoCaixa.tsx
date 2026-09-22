@@ -1,3 +1,4 @@
+import { Table } from '@/components/ui/table';
 import { useState, useMemo } from "react";
 import { hojeLocal } from "@/lib/financeiro/data-local";
 import { acumularProjecao, type DiaProjetado } from "@/lib/financeiro/projecao-de-caixa";
@@ -424,7 +425,7 @@ export default function FinFluxoCaixa() {
               <Skeleton className="w-full h-48" />
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <Table className="w-full text-sm">
                   <thead className="border-b border-border bg-secondary text-xs font-semibold tracking-wide text-muted-foreground">
                     <tr className="text-left">
                       <th className="h-10 px-3 font-semibold">Competência</th>
@@ -477,7 +478,7 @@ export default function FinFluxoCaixa() {
                       <td></td>
                     </tr>
                   </tbody>
-                </table>
+                </Table>
               </div>
             )}
             <p className="text-xs text-muted-foreground mt-3">

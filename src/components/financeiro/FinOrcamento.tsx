@@ -1,3 +1,4 @@
+import { Table } from '@/components/ui/table';
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
@@ -323,7 +324,7 @@ export default function FinOrcamento() {
 
               <TabsContent value="realizado">
                 <div className="overflow-x-auto rounded-lg border border-border">
-                <table className="w-full text-sm">
+                <Table className="w-full text-sm">
                   <thead className="bg-secondary">
                     <tr className="border-b border-border">
                       <th className={`${TH} text-left min-w-[260px]`}>Conta</th>
@@ -351,13 +352,13 @@ export default function FinOrcamento() {
                       );
                     })}
                   </tbody>
-                </table>
+                </Table>
                 </div>
               </TabsContent>
 
               <TabsContent value="variacao_abs">
                 <div className="overflow-x-auto rounded-lg border border-border">
-                <table className="w-full text-sm">
+                <Table className="w-full text-sm">
                   <thead className="bg-secondary">
                     <tr className="border-b border-border">
                       <th className={`${TH} text-left min-w-[260px]`}>Conta</th>
@@ -393,13 +394,13 @@ export default function FinOrcamento() {
                       );
                     })}
                   </tbody>
-                </table>
+                </Table>
                 </div>
               </TabsContent>
 
               <TabsContent value="variacao_pct">
                 <div className="overflow-x-auto rounded-lg border border-border">
-                <table className="w-full text-sm">
+                <Table className="w-full text-sm">
                   <thead className="bg-secondary">
                     <tr className="border-b border-border">
                       <th className={`${TH} text-left min-w-[260px]`}>Conta</th>
@@ -436,7 +437,7 @@ export default function FinOrcamento() {
                       );
                     })}
                   </tbody>
-                </table>
+                </Table>
                 </div>
               </TabsContent>
             </Tabs>

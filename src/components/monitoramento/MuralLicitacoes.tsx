@@ -1,3 +1,4 @@
+import { Table } from '@/components/ui/table';
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -1280,7 +1281,7 @@ export default function MuralLicitacoes() {
                 </h3>
                 <div className="border border-border/50 rounded-lg overflow-hidden">
                   <div className="overflow-x-auto">
-                    <table className="w-full text-xs">
+                    <Table className="w-full text-xs">
                       <thead>
                         <tr className="bg-muted/50 border-b border-border/50">
                           <th className="px-3 py-2 text-left font-semibold text-muted-foreground">#</th>
@@ -1313,7 +1314,7 @@ export default function MuralLicitacoes() {
                           </tr>
                         ))}
                       </tbody>
-                    </table>
+                    </Table>
                   </div>
                 </div>
               </div>

@@ -1,3 +1,4 @@
+import { Table } from '@/components/ui/table';
 import { useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { Badge } from '@/components/ui/badge';
@@ -139,7 +140,7 @@ export default function ComprasGovEnvio() {
           <TabsContent value="preparar" className="space-y-4">
             <Card className="overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <Table className="w-full">
                   <thead>
                     <tr className="bg-muted/30 border-b border-border/50">
                       <th className="text-left text-xs font-semibold text-muted-foreground px-3 py-2 w-12">Item</th>
@@ -191,7 +192,7 @@ export default function ComprasGovEnvio() {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </Table>
               </div>
               <div className="p-3 border-t border-border/50 flex items-center justify-between">
                 <Button size="sm" variant="outline" onClick={addItem}>

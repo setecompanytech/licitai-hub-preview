@@ -1,3 +1,4 @@
+import { Table } from '@/components/ui/table';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -1235,7 +1236,7 @@ Formate em Markdown. Use ⚠️ para alertas e ✅ para pontos positivos confirm
       <TooltipProvider delayDuration={300}>
         <div className="bg-card rounded-xl border border-border/50 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full table-fixed">
+            <Table className="w-full table-fixed">
               <thead>
                 <tr className="border-b border-border/50 bg-muted/30">
                   <th className="text-center text-xs font-semibold text-muted-foreground px-2 py-3 w-[40px]">
@@ -1478,7 +1479,7 @@ Formate em Markdown. Use ⚠️ para alertas e ✅ para pontos positivos confirm
                   );
                 })}
               </tbody>
-            </table>
+            </Table>
           </div>
         </div>
       </TooltipProvider>
