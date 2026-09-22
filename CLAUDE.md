@@ -268,7 +268,14 @@ Transparencia-2026-09-22.html` (dono). Regras que valem no código:
   da API, não do Firecrawl com IA. As demais certidões (Receita, FGTS, TST)
   não estão nesta API e ficam rotuladas pela fonte.
 - **Janelas da API:** licitações, 1 mês por consulta (a edge varre mês a
-  mês); recursos recebidos, `MM/AAAA` inicial e final obrigatórios.
+  mês); recursos recebidos, `MM/AAAA` inicial e final obrigatórios;
+  convênios com liberação, 1 dia por consulta (a edge faz uma chamada por
+  dia, no máximo 10); documentos por favorecido, `fase` (1 empenho, 2
+  liquidação, 3 pagamento) e `ano` obrigatórios.
+- **Sob demanda, não por rotina.** "Minha empresa — federal" (a empresa
+  como credora da União) e "Prospecção — federal" (convênios liberados e
+  emendas pagas na UF) em Análise de mercado › Consultas só consultam ao
+  clicar. Um monitor diário com aviso exige tabela e cron — decisão do dono.
 
 ## Permissões — o que é da plataforma não aparece ao cliente (pedido do Rafael em 14/09, decidido em 19/09/2026)
 

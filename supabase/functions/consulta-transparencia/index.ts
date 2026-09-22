@@ -45,6 +45,8 @@ Deno.serve(async (req) => {
       tipo, cnpj, pagina = 1, termo, dataInicio, dataFim, orgao, uf,
       // Detalhes de licitação e contrato, notas fiscais (Onda 2, 22/09).
       id, codigoUG, numero, codigoModalidade, chave,
+      // A empresa como credora da União e prospecção (Onda 3, 22/09).
+      fase, ano, dias, funcao,
     } = await req.json();
 
     const API_KEY = Deno.env.get('PORTAL_TRANSPARENCIA_API_KEY');
@@ -295,6 +297,56 @@ Deno.serve(async (req) => {
           }
         }));
         return responder({ notas: comItens, total: comItens.length, pagina, produto, consultadoEm: new Date().toISOString() });
+      }
+      // ── Onda 3 (22/09): a empresa como credora da União e prospecção ─────
+      case 'despesas-favorecido': {
+        // Empenhos (fase 1), liquidações (2) e pagamentos (3) emitidos para o
+        // CNPJ num ano — o "Empenhos por credor" da União.
+        const c = cnpj?.replace(/\D/g, '') || '';
+        if (c.length !== 14) return responder({ error: 'CNPJ é obrigatório' }, 400);
+        const faseNum = Number(fase) || 3;
+        const anoNum = Number(ano) || new Date().getUTCFullYear();
+        url = `${BASE_URL}/despesas/documentos-por-favorecido`;
+        params.set('codigoPessoa', c);
+        params.set('fase', String(faseNum));
+        params.set('ano', String(anoNum));
+        params.set('ordenacaoResultado', '4');
+        if (orgao) params.set('ug', orgao);
+        break;
+      }
+      case 'convenios-liberados': {
+        // Convênios com liberação de recurso nos últimos dias, por UF — o
+        // sinal de compra futura. A API aceita um dia por consulta: uma
+        // chamada por dia, até 10 dias, primeira página de cada.
+        const diasNum = Math.min(Math.max(Number(dias) || 7, 1), 10);
+        const ufAlvo = String(uf || '').trim().toUpperCase();
+        if (!ufAlvo) return responder({ error: 'Informe a UF' }, 400);
+        const hoje = new Date();
+        const vistos = new Set<string>();
+        const dados: Record<string, unknown>[] = [];
+        for (let i = 0; i < diasNum; i++) {
+          const dia = dataBr(new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth(), hoje.getUTCDate() - i)));
+          const q = new URLSearchParams({ uf: ufAlvo, dataUltimaLiberacaoInicial: dia, dataUltimaLiberacaoFinal: dia, pagina: '1' });
+          if (funcao) q.set('funcao', String(funcao));
+          const r = await fetch(`${BASE_URL}/convenios?${q.toString()}`, { headers });
+          if (!r.ok) {
+            const t = await r.text();
+            return responder({ error: `A API do Portal da Transparência recusou a consulta de ${dia}: ${mensagemDaApi(t)}` });
+          }
+          const lista = await r.json();
+          for (const l of Array.isArray(lista) ? lista : []) {
+            const id = String((l as Record<string, unknown>).id ?? JSON.stringify(l));
+            if (!vistos.has(id)) { vistos.add(id); dados.push(l as Record<string, unknown>); }
+          }
+        }
+        return responder({ dados, total: dados.length, pagina: 1, dias: diasNum, uf: ufAlvo, consultadoEm: new Date().toISOString() });
+      }
+      case 'emendas': {
+        url = `${BASE_URL}/emendas`;
+        if (ano) params.set('ano', String(Number(ano)));
+        if (funcao) params.set('codigoFuncao', String(funcao));
+        if (termo) params.set('nomeAutor', termo);
+        break;
       }
       default:
         return new Response(JSON.stringify({ error: `Tipo de consulta inválido: ${tipo}` }), {

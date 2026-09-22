@@ -14,6 +14,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import FaixaIndicadores from '@/components/gestao/FaixaIndicadores';
 import NotasFiscaisFederais from '@/components/analise-mercado/NotasFiscaisFederais';
+import MinhaEmpresaFederal from '@/components/analise-mercado/MinhaEmpresaFederal';
+import ProspeccaoFederal from '@/components/analise-mercado/ProspeccaoFederal';
 import {
   MODOS_DE_BUSCA, MODO_PADRAO, descricaoDaTentativa, ehModoDeBusca, proximosPassos, rotuloDoProvedor,
   type ModoDeBusca, type TentativaDeBusca,
@@ -96,7 +98,7 @@ const mesCurto = (yyyymm: string) => {
 export default function AnaliseMercado() {
   const [portalSelecionado, setPortalSelecionado] = useState<string>(PORTAL_PADRAO);
   const [abaAtiva, setAbaAtiva] = useState('panorama');
-  const [fonteConsulta, setFonteConsulta] = useState<'estadual' | 'arp' | 'federal'>('estadual');
+  const [fonteConsulta, setFonteConsulta] = useState<'estadual' | 'arp' | 'federal' | 'credora' | 'prospeccao'>('estadual');
   // ── Preços Praticados por OBJETO (08/09): a média solta de editais
   // heterogêneos era decorativa. A busca semântica no acervo (o motor da
   // Recorrência) devolve os editais mais similares ao objeto digitado, e a
@@ -699,6 +701,18 @@ export default function AnaliseMercado() {
                 onClick={() => setFonteConsulta('federal')}>
                 <Shield className="h-4 w-4" /> Contratos e licitações — federal
               </Button>
+              {/* Onda 3 (22/09): a própria empresa como credora da União, e a
+                  prospecção pelo dinheiro liberado. */}
+              <Button size="sm" variant={fonteConsulta === 'credora' ? 'default' : 'outline'}
+                aria-pressed={fonteConsulta === 'credora'}
+                onClick={() => setFonteConsulta('credora')}>
+                <Building2 className="h-4 w-4" /> Minha empresa — federal
+              </Button>
+              <Button size="sm" variant={fonteConsulta === 'prospeccao' ? 'default' : 'outline'}
+                aria-pressed={fonteConsulta === 'prospeccao'}
+                onClick={() => setFonteConsulta('prospeccao')}>
+                <TrendingUp className="h-4 w-4" /> Prospecção — federal
+              </Button>
             </div>
 
             {fonteConsulta === 'estadual' && (
@@ -734,6 +748,8 @@ export default function AnaliseMercado() {
             {fonteConsulta === 'estadual' && <TransparenciaPA key={portalSelecionado} portal={portalAtual} />}
             {fonteConsulta === 'arp' && <ContratosGov />}
             {fonteConsulta === 'federal' && <ContratosTransparencia />}
+            {fonteConsulta === 'credora' && <MinhaEmpresaFederal />}
+            {fonteConsulta === 'prospeccao' && <ProspeccaoFederal ufInicial={uf === 'todos' ? 'PA' : uf} />}
           </TabsContent>
         </Tabs>
       </div>
