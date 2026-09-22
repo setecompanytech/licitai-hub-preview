@@ -1,6 +1,7 @@
 ﻿// @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { requireAuth } from "../_shared/auth-rate-limit.ts";
+import { consultarCadastro, PAGINA_DO_PORTAL, URL_CADASTRO_CHAVE, type Cadastro } from "../_shared/portal-transparencia.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -270,65 +271,48 @@ async function emitirCNDConjunta(cnpj: string, FIRECRAWL_API_KEY: string, OPENAI
 }
 
 // ══════════════════════════════════════════════════════════════
-// CEIS/CNEP/CEPIM – Portal da Transparência (consulta direta)
+// CEIS/CNEP/CEPIM – Portal da Transparência, pela API oficial (22/09)
+// Antes: busca na web pelo Firecrawl, e "regular" era "não achou o CNPJ num
+// resultado de pesquisa". Agora: a API responde o registro ou a ausência
+// dele, e o módulo compartilhado confere que o filtro por CNPJ foi aplicado.
+// A assinatura fica, para quem chama; as chaves de busca e de IA não são
+// mais usadas aqui.
 // ══════════════════════════════════════════════════════════════
-async function consultarTransparencia(cnpj: string, FIRECRAWL_API_KEY: string, OPENAI_API_KEY: string): Promise<EmissaoResult[]> {
-  const cnpjFmt = formatCnpj(cnpj);
+async function consultarTransparencia(cnpj: string, _FIRECRAWL_API_KEY: string, _OPENAI_API_KEY: string): Promise<EmissaoResult[]> {
   const results: EmissaoResult[] = [];
-
-  const portais = [
-    { nome: "CEIS", endpoint: "ceis", descricao: "Empresas Inidôneas e Suspensas" },
-    { nome: "CNEP", endpoint: "cnep", descricao: "Empresas Punidas" },
-    { nome: "CEPIM", endpoint: "cepim", descricao: "Entidades Privadas Impedidas" },
+  const chave = Deno.env.get("PORTAL_TRANSPARENCIA_API_KEY");
+  const portais: Array<{ nome: string; cadastro: Cadastro; descricao: string }> = [
+    { nome: "CEIS", cadastro: "ceis", descricao: "Empresas Inidôneas e Suspensas" },
+    { nome: "CNEP", cadastro: "cnep", descricao: "Empresas Punidas" },
+    { nome: "CEPIM", cadastro: "cepim", descricao: "Entidades Privadas Impedidas" },
   ];
 
   for (const portal of portais) {
-    try {
-      const searchResp = await fetch("https://api.firecrawl.dev/v1/search", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${FIRECRAWL_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          query: `"${cnpj}" ${portal.endpoint} site:portaldatransparencia.gov.br`,
-          limit: 3,
-          lang: "pt-br",
-          country: "BR",
-        }),
-      });
-
-      if (searchResp.ok) {
-        const data = await searchResp.json();
-        const found = (data?.data || []).some((r: any) => {
-          const text = (r.description || r.markdown || "").toLowerCase();
-          return text.includes(cnpj) && (text.includes("sanção") || text.includes("punição") || text.includes("impedid"));
-        });
-
-        results.push({
-          certidao: `${portal.nome} (${portal.descricao})`,
-          status: found ? "erro" : "emitida",
-          detalhes: found
-            ? `⚠️ Possível registro encontrado no ${portal.nome}`
-            : `✅ Nenhum registro no ${portal.nome} – situação REGULAR`,
-          dataEmissao: new Date().toISOString(),
-          url: `https://portaldatransparencia.gov.br/sancoes/${portal.endpoint}`,
-        });
-      } else {
-        await searchResp.text();
-        results.push({
-          certidao: `${portal.nome} (${portal.descricao})`,
-          status: "pendente",
-          detalhes: "Não foi possível consultar. Verifique manualmente.",
-          url: `https://portaldatransparencia.gov.br/sancoes/${portal.endpoint}`,
-        });
-      }
-    } catch {
+    const url = PAGINA_DO_PORTAL[portal.cadastro];
+    if (!chave) {
+      results.push({ certidao: `${portal.nome} (${portal.descricao})`, status: "pendente", detalhes: `Chave da API do Portal da Transparência não configurada (${URL_CADASTRO_CHAVE}).`, url });
+      continue;
+    }
+    const r = await consultarCadastro(portal.cadastro, cnpj, chave);
+    if (r.status === "erro") {
+      results.push({ certidao: `${portal.nome} (${portal.descricao})`, status: "pendente", detalhes: `Não foi possível consultar: ${r.erro ?? "falha na API"}. Verifique no portal.`, url });
+    } else if (r.status === "encontrado") {
+      const primeiro = (r.registros[0] ?? {}) as Record<string, any>;
+      const orgao = primeiro?.orgaoSancionador?.nome ?? primeiro?.orgaoSuperior?.nome ?? "";
       results.push({
         certidao: `${portal.nome} (${portal.descricao})`,
         status: "erro",
-        detalhes: "Falha na consulta",
-        url: `https://portaldatransparencia.gov.br/sancoes/${portal.endpoint}`,
+        detalhes: `⚠️ ${r.total} registro(s) no ${portal.nome} pela API do Portal da Transparência${orgao ? ` · ${orgao}` : ""}`,
+        dataEmissao: new Date().toISOString(),
+        url,
+      });
+    } else {
+      results.push({
+        certidao: `${portal.nome} (${portal.descricao})`,
+        status: "emitida",
+        detalhes: `✅ Nenhum registro no ${portal.nome} – situação REGULAR (API do Portal da Transparência)`,
+        dataEmissao: new Date().toISOString(),
+        url,
       });
     }
   }

@@ -1,11 +1,17 @@
 // @ts-nocheck
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import {
+  dataBr, janelasMensais, mensagemDaApi, mesAnoDe, registrosDoCnpj, verificarIdoneidade,
+} from '../_shared/portal-transparencia.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Portal da Transparência do Governo Federal — os nomes de parâmetro, a
+// conferência do filtro por CNPJ e a idoneidade vivem em
+// `_shared/portal-transparencia.ts` (22/09); aqui fica o roteamento por tipo.
 const BASE_URL = 'https://api.portaldatransparencia.gov.br/api-de-dados';
 
 Deno.serve(async (req) => {
@@ -51,32 +57,47 @@ Deno.serve(async (req) => {
       'Accept': 'application/json',
       'chave-api-dados': API_KEY,
     };
+    const responder = (body: unknown, status = 200) =>
+      new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
     let url = '';
     const params = new URLSearchParams();
     params.set('pagina', String(pagina));
 
     switch (tipo) {
-      case 'ceis': {
-        // Cadastro de Empresas Inidôneas e Suspensas
-        url = `${BASE_URL}/ceis`;
-        if (cnpj) params.set('cnpjSancionado', cnpj.replace(/\D/g, ''));
-        if (termo) params.set('nomeSancionado', termo);
-        if (uf) params.set('ufSancionado', uf);
-        break;
-      }
+      case 'ceis':
       case 'cnep': {
-        // Cadastro Nacional de Empresas Punidas
-        url = `${BASE_URL}/cnep`;
-        if (cnpj) params.set('cnpjSancionado', cnpj.replace(/\D/g, ''));
+        // CEIS e CNEP filtram por `codigoSancionado` na especificação atual
+        // (22/09); o nome antigo `cnpjSancionado` vai junto — parâmetro
+        // desconhecido é ignorado, o conhecido filtra. `ufSancionado` só
+        // existe no CEPIM. A conferência do filtro vem depois da resposta.
+        url = `${BASE_URL}/${tipo}`;
+        if (cnpj) {
+          const c = cnpj.replace(/\D/g, '');
+          params.set('codigoSancionado', c);
+          params.set('cnpjSancionado', c);
+        }
         if (termo) params.set('nomeSancionado', termo);
-        if (uf) params.set('ufSancionado', uf);
+        if (orgao) params.set('orgaoSancionador', orgao);
+        if (dataInicio) params.set('dataInicialSancao', dataInicio);
+        if (dataFim) params.set('dataFinalSancao', dataFim);
         break;
       }
       case 'cepim': {
         // Cadastro de Entidades Privadas sem Fins Lucrativos Impedidas
         url = `${BASE_URL}/cepim`;
         if (cnpj) params.set('cnpjSancionado', cnpj.replace(/\D/g, ''));
+        if (termo) params.set('nomeSancionado', termo);
+        if (uf) params.set('ufSancionado', uf);
+        break;
+      }
+      case 'leniencia': {
+        // Acordos de leniência (Lei 12.846/2013) — o quarto cadastro (22/09).
+        url = `${BASE_URL}/acordos-leniencia`;
+        if (cnpj) params.set('cnpjSancionado', cnpj.replace(/\D/g, ''));
+        if (termo) params.set('nomeSancionado', termo);
+        if (dataInicio) params.set('dataInicialSancao', dataInicio);
+        if (dataFim) params.set('dataFinalSancao', dataFim);
         break;
       }
       case 'licitacoes': {
@@ -84,17 +105,43 @@ Deno.serve(async (req) => {
         // 08/09). Sem ele, devolver a exigência com instrução — o 400 cru da
         // API não diz onde achar o código.
         if (!orgao) {
-          return new Response(JSON.stringify({
+          return responder({
             error: 'Para licitações federais a API exige o código SIAFI do órgão. '
               + 'Informe-o no campo "Código do órgão" (ex.: 26403 — IFPA; '
               + 'a lista completa está no Portal da Transparência, em Órgãos).',
-          }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+          });
         }
-        url = `${BASE_URL}/licitacoes`;
-        params.set('codigoOrgao', orgao);
-        if (dataInicio) params.set('dataInicial', dataInicio);
-        if (dataFim) params.set('dataFinal', dataFim);
-        break;
+        // A API aceita no máximo UM MÊS por consulta; a tela pede seis. Varre
+        // mês a mês, página a página, e junta sem repetir (22/09). Antes a
+        // API recusava a janela e a tela mostrava a recusa como erro.
+        const hoje = new Date();
+        const fim = dataFim || dataBr(hoje);
+        const inicio = dataInicio || dataBr(new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth() - 1, hoje.getUTCDate())));
+        const janelas = janelasMensais(inicio, fim, 12);
+        const vistos = new Set<string>();
+        const dados: Record<string, unknown>[] = [];
+        for (const janela of janelas) {
+          for (let pg = 1; pg <= 5; pg++) {
+            const q = new URLSearchParams({ codigoOrgao: orgao, dataInicial: janela.de, dataFinal: janela.ate, pagina: String(pg) });
+            const r = await fetch(`${BASE_URL}/licitacoes?${q.toString()}`, { headers });
+            if (!r.ok) {
+              const t = await r.text();
+              return responder({ error: `A API do Portal da Transparência recusou a consulta de ${janela.de} a ${janela.ate}: ${mensagemDaApi(t)}` });
+            }
+            const lista = await r.json();
+            if (!Array.isArray(lista) || lista.length === 0) break;
+            for (const l of lista) {
+              const id = String((l as Record<string, unknown>).id ?? JSON.stringify(l));
+              if (!vistos.has(id)) { vistos.add(id); dados.push(l as Record<string, unknown>); }
+            }
+            if (lista.length < 15) break;
+          }
+        }
+        return responder({
+          dados, total: dados.length, pagina: 1,
+          janelas: janelas.length, periodo: { de: inicio, ate: fim },
+          consultadoEm: new Date().toISOString(),
+        });
       }
       case 'contratos': {
         // Dois caminhos oficiais: por CNPJ do contratado (/contratos/cpf-cnpj,
@@ -124,53 +171,29 @@ Deno.serve(async (req) => {
         break;
       }
       case 'despesas': {
-        // Despesas do Poder Executivo Federal
+        // Recebimento de recursos por favorecido: a rota exige o mês inicial
+        // e o final (MM/AAAA) e chama o CNPJ de `codigoFavorecido` (spec de
+        // 22/09; antes ia `cpfCnpjFavorecido` sem mês, e a API recusava).
         url = `${BASE_URL}/despesas/recursos-recebidos`;
-        if (cnpj) params.set('cpfCnpjFavorecido', cnpj.replace(/\D/g, ''));
+        const hoje = new Date();
+        const mesAno = (d: Date) => `${String(d.getUTCMonth() + 1).padStart(2, '0')}/${d.getUTCFullYear()}`;
+        params.set('mesAnoInicio', mesAnoDe(dataInicio) ?? mesAno(new Date(Date.UTC(hoje.getUTCFullYear() - 1, hoje.getUTCMonth(), 1))));
+        params.set('mesAnoFim', mesAnoDe(dataFim) ?? mesAno(hoje));
+        if (cnpj) params.set('codigoFavorecido', cnpj.replace(/\D/g, ''));
+        if (termo) params.set('nomeFavorecido', termo);
+        if (uf) params.set('uf', uf);
+        if (orgao) params.set('orgao', orgao);
         break;
       }
       case 'idoneidade': {
-        // Verificação completa: CEIS + CNEP + CEPIM
+        // Verificação completa (22/09): CEIS + CNEP + CEPIM + acordos de
+        // leniência, com a conferência do filtro por CNPJ e a ficha da pessoa
+        // jurídica cruzada. Tudo em `_shared/portal-transparencia.ts`.
         const cnpjLimpo = cnpj?.replace(/\D/g, '') || '';
-        if (!cnpjLimpo) {
-          return new Response(JSON.stringify({ error: 'CNPJ é obrigatório para verificação de idoneidade' }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
+        if (cnpjLimpo.length !== 14) {
+          return responder({ error: 'CNPJ é obrigatório para verificação de idoneidade' }, 400);
         }
-
-        const [ceisRes, cnepRes, cepimRes] = await Promise.allSettled([
-          fetch(`${BASE_URL}/ceis?cnpjSancionado=${cnpjLimpo}&pagina=1`, { headers }),
-          fetch(`${BASE_URL}/cnep?cnpjSancionado=${cnpjLimpo}&pagina=1`, { headers }),
-          fetch(`${BASE_URL}/cepim?cnpjSancionado=${cnpjLimpo}&pagina=1`, { headers }),
-        ]);
-
-        const parseResult = async (res: PromiseSettledResult<Response>, nome: string) => {
-          if (res.status === 'rejected') return { nome, status: 'erro', registros: [], total: 0, erro: res.reason?.message };
-          const r = res.value;
-          if (!r.ok) {
-            const text = await r.text();
-            return { nome, status: 'erro', registros: [], total: 0, erro: `HTTP ${r.status}: ${text.substring(0, 200)}` };
-          }
-          const data = await r.json();
-          const registros = Array.isArray(data) ? data : [];
-          return { nome, status: registros.length > 0 ? 'encontrado' : 'limpo', registros, total: registros.length };
-        };
-
-        const resultados = {
-          ceis: await parseResult(ceisRes, 'CEIS'),
-          cnep: await parseResult(cnepRes, 'CNEP'),
-          cepim: await parseResult(cepimRes, 'CEPIM'),
-          cnpj: cnpjLimpo,
-          idonea: true,
-          consultadoEm: new Date().toISOString(),
-        };
-
-        resultados.idonea = resultados.ceis.status === 'limpo' && resultados.cnep.status === 'limpo' && resultados.cepim.status === 'limpo';
-
-        return new Response(JSON.stringify(resultados), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        return responder(await verificarIdoneidade(cnpjLimpo, API_KEY));
       }
       default:
         return new Response(JSON.stringify({ error: `Tipo de consulta inválido: ${tipo}` }), {
@@ -204,14 +227,27 @@ Deno.serve(async (req) => {
     }
 
     const data = await response.json();
+    let dados: Record<string, unknown>[] = Array.isArray(data) ? data : [];
+    let aviso: string | undefined;
 
-    return new Response(JSON.stringify({
-      dados: Array.isArray(data) ? data : [],
-      total: Array.isArray(data) ? data.length : 0,
+    // Conferência do filtro (22/09): consulta por CNPJ só devolve registros
+    // deste CNPJ. Se a API ignorou o parâmetro e mandou o cadastro inteiro,
+    // isso é erro, não resultado.
+    if (cnpj && ['ceis', 'cnep', 'cepim', 'leniencia'].includes(tipo)) {
+      const { proprios, alheios } = registrosDoCnpj(dados, cnpj);
+      if (alheios > 0 && proprios.length === 0) {
+        return responder({ error: `A API devolveu ${alheios} registro(s) de outros CNPJs e nenhum deste: o filtro por CNPJ não foi aplicado. Confira no portal.` });
+      }
+      if (alheios > 0) aviso = `${alheios} registro(s) de outros CNPJs vieram junto e foram descartados.`;
+      dados = proprios;
+    }
+
+    return responder({
+      dados,
+      total: dados.length,
       pagina,
+      ...(aviso ? { aviso } : {}),
       consultadoEm: new Date().toISOString(),
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
     console.error('Erro:', error);

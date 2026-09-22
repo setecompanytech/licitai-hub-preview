@@ -247,6 +247,29 @@ motivo, em Vincular lançamento (botão "Ratear" no recebimento maior que o
 pedido; contas puras em `lib/contratos/rateio.ts`). Lançamento rateado não
 ganha pedido próprio por nenhum caminho (gatilho).
 
+## Portal da Transparência — a API federal por uma porta só (22/09/2026)
+
+Mapa das 106 rotas × funções do produto em `~/Downloads/Mapa-API-Portal-
+Transparencia-2026-09-22.html` (dono). Regras que valem no código:
+
+- **Uma porta:** `functions/_shared/portal-transparencia.ts` guarda os nomes
+  de parâmetro da especificação (CEIS e CNEP filtram por `codigoSancionado`;
+  CEPIM e leniência por `cnpjSancionado`; o nome antigo vai junto), a
+  conferência do filtro por CNPJ e a idoneidade. Testado pelo vitest em
+  `src/lib/concorrentes/__tests__/portal-transparencia.test.ts` — o módulo
+  não usa `Deno.*` de propósito.
+- **Filtro ignorado é ERRO, nunca "encontrado".** Registro devolvido de
+  outro CNPJ prova que a API não filtrou; a Idoneidade fica "inconclusiva"
+  e manda conferir no portal. Cadastro sem resposta também não vira "limpo".
+- **Sanção não é CADIN nem Dívida Ativa.** As edges `consulta-cadin` e
+  `consulta-divida-ativa` saíram em 22/09 por dizerem o contrário. Essas
+  fontes são da PGFN e do Conecta gov.br, com credenciamento.
+- **Onde há API, não há raspagem:** CEIS, CNEP e CEPIM em Certidões saem
+  da API, não do Firecrawl com IA. As demais certidões (Receita, FGTS, TST)
+  não estão nesta API e ficam rotuladas pela fonte.
+- **Janelas da API:** licitações, 1 mês por consulta (a edge varre mês a
+  mês); recursos recebidos, `MM/AAAA` inicial e final obrigatórios.
+
 ## Permissões — o que é da plataforma não aparece ao cliente (pedido do Rafael em 14/09, decidido em 19/09/2026)
 
 O Rafael quer que parte do sistema deixe de ficar exposta às contas das

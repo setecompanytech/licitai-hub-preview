@@ -1,6 +1,7 @@
 ﻿// @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { requireAuth } from "../_shared/auth-rate-limit.ts";
+import { consultarCadastro, PAGINA_DO_PORTAL, URL_CADASTRO_CHAVE, type Cadastro } from "../_shared/portal-transparencia.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -58,33 +59,37 @@ async function aiAnalyze(systemPrompt: string, userContent: string): Promise<{ s
   } catch { return null; }
 }
 
-// Portal da Transparência (CEIS/CNEP/CEPIM)
-async function consultarTransparencia(endpoint: string, cnpj: string, nomeFonte: string, descSingular: string): Promise<VerificacaoReal> {
-  const url = `https://portaldatransparencia.gov.br/sancoes/${endpoint.toLowerCase()}`;
-  try {
-    const results = await firecrawlSearch(`"${cnpj}" ${endpoint} site:portaldatransparencia.gov.br`);
-    if (results.length === 0) {
-      return { fonte: nomeFonte, status: "regular", detalhes: `Nenhuma ${descSingular} encontrada em busca pública`, dataConsulta: new Date().toISOString(), url };
-    }
-    const found = results.some((r: any) => {
-      const text = (r.description || r.markdown || r.title || "").toLowerCase();
-      return text.includes(cnpj) && (text.includes("sanção") || text.includes("punição") || text.includes("impedid"));
-    });
-    return {
-      fonte: nomeFonte,
-      status: found ? "irregular" : "regular",
-      detalhes: found ? `Possível ${descSingular} encontrada via busca pública` : `Nenhuma ${descSingular} encontrada em busca pública`,
-      dataConsulta: new Date().toISOString(), url,
-    };
-  } catch (e) {
-    console.error(`Erro ${nomeFonte}:`, e);
-    return { fonte: nomeFonte, status: "erro", detalhes: `Falha: ${e.message}`, dataConsulta: new Date().toISOString() };
+// Portal da Transparência (CEIS/CNEP/CEPIM) — pela API oficial (22/09). Antes
+// era busca na web: "regular" significava "a pesquisa não achou o CNPJ num
+// resultado". A API devolve o registro, com órgão, processo e datas — ou a
+// ausência dele — e o módulo compartilhado confere que o filtro por CNPJ foi
+// aplicado antes de dizer qualquer coisa.
+async function consultarSancao(cadastro: Cadastro, nomeFonte: string, cnpj: string): Promise<VerificacaoReal> {
+  const dataConsulta = new Date().toISOString();
+  const chave = Deno.env.get("PORTAL_TRANSPARENCIA_API_KEY");
+  if (!chave) {
+    return { fonte: nomeFonte, status: "erro", detalhes: `Chave da API do Portal da Transparência não configurada (${URL_CADASTRO_CHAVE}).`, dataConsulta, url: PAGINA_DO_PORTAL[cadastro] };
   }
+  const r = await consultarCadastro(cadastro, cnpj, chave);
+  if (r.status === "erro") {
+    return { fonte: nomeFonte, status: "erro", detalhes: r.erro ?? "Falha na consulta à API do Portal da Transparência.", dataConsulta, url: r.url };
+  }
+  if (r.status === "encontrado") {
+    const primeiro = (r.registros[0] ?? {}) as Record<string, any>;
+    const orgao = primeiro?.orgaoSancionador?.nome ?? primeiro?.orgaoSuperior?.nome ?? primeiro?.orgaoResponsavel ?? "";
+    const processo = primeiro?.numeroProcesso ? ` · processo ${primeiro.numeroProcesso}` : "";
+    return {
+      fonte: nomeFonte, status: "irregular",
+      detalhes: `${r.total} registro(s) no ${nomeFonte} pela API do Portal da Transparência${orgao ? ` · ${orgao}` : ""}${processo}.`,
+      dataConsulta, url: r.url,
+    };
+  }
+  return { fonte: nomeFonte, status: "regular", detalhes: `Nenhum registro no ${nomeFonte} para este CNPJ, pela API do Portal da Transparência.`, dataConsulta, url: r.url };
 }
 
-async function consultarCEIS(cnpj: string): Promise<VerificacaoReal> { return consultarTransparencia("CEIS", cnpj, "CEIS", "sanção"); }
-async function consultarCNEP(cnpj: string): Promise<VerificacaoReal> { return consultarTransparencia("CNEP", cnpj, "CNEP", "punição"); }
-async function consultarCEPIM(cnpj: string): Promise<VerificacaoReal> { return consultarTransparencia("CEPIM", cnpj, "CEPIM", "impedimento"); }
+async function consultarCEIS(cnpj: string): Promise<VerificacaoReal> { return consultarSancao("ceis", "CEIS", cnpj); }
+async function consultarCNEP(cnpj: string): Promise<VerificacaoReal> { return consultarSancao("cnep", "CNEP", cnpj); }
+async function consultarCEPIM(cnpj: string): Promise<VerificacaoReal> { return consultarSancao("cepim", "CEPIM", cnpj); }
 
 // CNDT (TST) – busca por débitos trabalhistas em fontes públicas + IA
 async function consultarCNDT(cnpj: string): Promise<VerificacaoReal> {
@@ -148,7 +153,9 @@ async function consultarCNDConjunta(cnpj: string): Promise<VerificacaoReal> {
     }
     const data = await resp.json();
     if (data.situacao_cadastral === 2) {
-      return { fonte: certNome, status: "regular", detalhes: `Situação cadastral: ATIVA. Razão Social: ${data.razao_social}. CNAE: ${data.cnae_fiscal_descricao}`, dataConsulta: new Date().toISOString(), url: "https://servicos.receitafederal.gov.br/servico/certidoes/#/home" };
+      // Situação cadastral ATIVA não é certidão negativa: a CND só se emite no
+      // site da Receita/PGFN. O rótulo diz o que foi conferido (22/09).
+      return { fonte: certNome, status: "regular", detalhes: `Cadastro ATIVO na Receita (${data.razao_social}). Isto não é a CND: a certidão de débitos federais e dívida ativa só se emite no site da Receita/PGFN.`, dataConsulta: new Date().toISOString(), url: "https://servicos.receitafederal.gov.br/servico/certidoes/#/home" };
     }
     const situacoes: Record<number, string> = { 1: "NULA", 3: "SUSPENSA", 4: "INAPTA", 8: "BAIXADA" };
     return { fonte: certNome, status: "irregular", detalhes: `Situação cadastral: ${situacoes[data.situacao_cadastral] || data.descricao_situacao_cadastral || "IRREGULAR"}. ${data.motivo_situacao_cadastral || ""}`, dataConsulta: new Date().toISOString(), url: "https://servicos.receitafederal.gov.br/servico/certidoes/#/home" };

@@ -21,13 +21,11 @@ project_id = "uwtyuwktxalnpgrcbbgk"
     verify_jwt = false
   [functions.certidoes-negativas]
     verify_jwt = false
-  [functions.consulta-cadin]
-    verify_jwt = false
+  # consulta-cadin e consulta-divida-ativa saíram em 22/09: devolviam CEIS e
+  # CNEP com o nome de CADIN e de Dívida Ativa, que não existem nesta API.
   [functions.consulta-cnpj]
     verify_jwt = false
   [functions.consulta-cep]
-    verify_jwt = false
-  [functions.consulta-divida-ativa]
     verify_jwt = false
   [functions.consulta-ncm]
     verify_jwt = false
