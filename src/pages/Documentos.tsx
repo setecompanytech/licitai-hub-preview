@@ -40,6 +40,8 @@ import HistoricoDocumentos from '@/components/documentos/HistoricoDocumentos';
 import IndicadoresCofre, { ConformidadeDocumental } from '@/components/documentos/IndicadoresCofre';
 import PainelDocumento from '@/components/documentos/PainelDocumento';
 import SeloDocumento, { ValidadeDoDocumento } from '@/components/documentos/SeloDocumento';
+import DialogSolicitacao from '@/components/documentos/DialogSolicitacao';
+import { SeloDeSolicitacao } from '@/components/documentos/SolicitacaoDaVaga';
 import {
   FILTROS_DE_SITUACAO, ORDEM_NA_TELA, ROTULO_DO_FILTRO, casaComFiltro, contarCofre,
   montarItensDoCofre, nomeDoArquivo,
@@ -50,14 +52,18 @@ import {
 } from '@/lib/documentos/previstos';
 import { diaDaValidade } from '@/lib/documentos/situacao';
 import { ROTULO_DA_ACAO, orgaosPorVaga } from '@/lib/documentos/orgao-emissor';
-import { modeloDeSolicitacao } from '@/data/certidoes-catalogo';
+import {
+  AVISO_SOLICITACOES_INDISPONIVEIS, abertasPorVaga, linhaParaGravar, type DadosDaSolicitacao,
+} from '@/lib/documentos/solicitacoes';
 import { formatCNPJ } from '@/lib/financeiro/formatters';
 import { useAbaNaUrl } from '@/lib/navegacao/aba-na-url';
+import { abrirEmail } from '@/lib/navegacao/abrir-email';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useAuthorization } from '@/hooks/useAuthorization';
+import { useSolicitacoesDeDocumentos } from '@/hooks/useSolicitacoesDeDocumentos';
 
 /* ═══════════════════════════════════════════════════════════════════════════
    O COFRE DE HABILITAÇÃO — reestruturação de 14/09.
@@ -148,6 +154,12 @@ export default function Documentos() {
   const [aExcluir, setAExcluir] = useState<ItemDoCofre | null>(null);
   const [dialogo, setDialogo] = useState<{ item: ItemDoCofre; arquivo: File | null } | null>(null);
 
+  // Solicitação ao órgão (fase 2 das Certidões): o diálogo, a gravação em
+  // curso e o erro da última tentativa — que fica no diálogo, com retry.
+  const [dialogoSolicitacao, setDialogoSolicitacao] = useState<ItemDoCofre | null>(null);
+  const [salvandoSolicitacao, setSalvandoSolicitacao] = useState(false);
+  const [erroSolicitacao, setErroSolicitacao] = useState<string | null>(null);
+
   const inputArquivo = useRef<HTMLInputElement>(null);
   const vagaPendente = useRef<ItemDoCofre | null>(null);
   const controleDeCarga = useRef<AbortController | null>(null);
@@ -185,6 +197,18 @@ export default function Documentos() {
 
   /** Identidade da carga atual: muda quando a empresa muda. */
   const chaveDaEmpresa = modoTodasEmpresas ? 'todas' : (empresaAtiva?.id ?? 'pessoal');
+
+  /* As solicitações ao órgão são DA EMPRESA (a tabela exige `empresa_id`):
+     sem empresa ativa, não há o que ler nem gravar — o e-mail ainda abre. A
+     tabela nasce em migration colada à mão; ausente, o hook diz
+     `indisponivel` e a tela avisa em vez de quebrar. */
+  const {
+    solicitacoes, erro: erroDasSolicitacoes, indisponivel: solicitacoesIndisponiveis,
+    recarregar: recarregarSolicitacoes, registrar: registrarSolicitacao,
+    atualizar: atualizarSolicitacao, encerrarAbertas: encerrarSolicitacoesAbertas,
+  } = useSolicitacoesDeDocumentos(modoTodasEmpresas ? null : empresaAtiva?.id ?? null);
+  const solicitacoesAbertas = useMemo(() => abertasPorVaga(solicitacoes), [solicitacoes]);
+  const avisoDeSolicitacoes = solicitacoesIndisponiveis ? AVISO_SOLICITACOES_INDISPONIVEIS : null;
 
   const carregar = useCallback(async () => {
     if (!user) return;
@@ -444,6 +468,79 @@ export default function Documentos() {
     toast.success(`"${item.nome}" enviado com sucesso!`);
     setEnviandoNome(null);
     await carregar();
+
+    // O PDF chegou: o pedido aberto desta vaga se encerra. Falha aqui não
+    // desfaz o envio — mas é dita, porque a vaga continuaria "solicitada".
+    const encerramento = await encerrarSolicitacoesAbertas(item.nome);
+    if (encerramento.erro) {
+      toast.warning('PDF salvo, mas a solicitação ao órgão não foi encerrada: ' + encerramento.erro);
+    } else if (encerramento.encerradas > 0) {
+      toast.success('Solicitação ao órgão encerrada: o PDF chegou.');
+    }
+  };
+
+  // ── Solicitação ao órgão ──────────────────────────────────────────────────
+
+  const solicitar = (item: ItemDoCofre) => {
+    if (!orgaoPorVaga[item.nome]?.certidao) return;
+    setErroSolicitacao(null);
+    setDialogoSolicitacao(item);
+  };
+
+  /**
+   * Grava primeiro, abre o e-mail depois. Se a gravação falhar, o e-mail NÃO
+   * abre: o erro fica no diálogo com "tentar novamente", e repetir não pode
+   * mandar dois pedidos ao órgão. Sem empresa ativa ou sem a tabela, não há
+   * onde registrar — o e-mail abre e a tela diz o que não aconteceu.
+   */
+  const confirmarSolicitacao = async (dados: DadosDaSolicitacao, mailto: string) => {
+    const item = dialogoSolicitacao;
+    if (!item) return;
+    if (!user || !empresaAtiva) {
+      setDialogoSolicitacao(null);
+      abrirEmail(mailto);
+      toast.info('E-mail aberto. Sem empresa ativa, a solicitação não fica registrada.');
+      return;
+    }
+    if (solicitacoesIndisponiveis) {
+      setDialogoSolicitacao(null);
+      abrirEmail(mailto);
+      toast.info(AVISO_SOLICITACOES_INDISPONIVEIS);
+      return;
+    }
+    setSalvandoSolicitacao(true);
+    setErroSolicitacao(null);
+    const r = await registrarSolicitacao(
+      linhaParaGravar(dados, { empresaId: empresaAtiva.id, userId: user.id, documentoNome: item.nome }),
+    );
+    setSalvandoSolicitacao(false);
+    if (!r.ok) {
+      setErroSolicitacao(r.erro);
+      return;
+    }
+    setDialogoSolicitacao(null);
+    abrirEmail(mailto);
+    toast.success('Solicitação registrada — o e-mail abriu no seu programa de e-mail.');
+  };
+
+  const salvarProtocolo = async (item: ItemDoCofre, protocolo: string) => {
+    const aberta = solicitacoesAbertas[item.nome];
+    if (!aberta) return;
+    setSalvandoSolicitacao(true);
+    const r = await atualizarSolicitacao(aberta.id, { protocolo: protocolo.trim() || null });
+    setSalvandoSolicitacao(false);
+    if (!r.ok) { toast.error('Não foi possível salvar o protocolo: ' + r.erro); return; }
+    toast.success('Protocolo salvo.');
+  };
+
+  const encerrarSolicitacao = async (item: ItemDoCofre) => {
+    const aberta = solicitacoesAbertas[item.nome];
+    if (!aberta) return;
+    setSalvandoSolicitacao(true);
+    const r = await atualizarSolicitacao(aberta.id, { encerrada_em: new Date().toISOString() });
+    setSalvandoSolicitacao(false);
+    if (!r.ok) { toast.error('Não foi possível encerrar a solicitação: ' + r.erro); return; }
+    toast.success('Solicitação encerrada.');
   };
 
   /** Editar metadados = editar a VALIDADE, sem tocar no arquivo. */
@@ -614,7 +711,14 @@ export default function Documentos() {
       prioridade: 'sempre',
       ordenavel: true,
       largura: '13rem',
-      render: (i) => <SeloDocumento situacao={i.situacao} />,
+      // O pedido em aberto aparece junto da situação: a vaga continua
+      // "Ausente" (não há PDF), mas alguém já pediu — e até quando esperar.
+      render: (i) => (
+        <div className="flex flex-col items-start gap-1">
+          <SeloDocumento situacao={i.situacao} />
+          {solicitacoesAbertas[i.nome] && <SeloDeSolicitacao solicitacao={solicitacoesAbertas[i.nome]} />}
+        </div>
+      ),
     },
     {
       chave: 'acoes',
@@ -630,14 +734,7 @@ export default function Documentos() {
         const orgao = orgaoPorVaga[i.nome];
         const certidao = orgao?.certidao ?? null;
         const linkDeEmissao = certidao && orgao.acoes.includes('emitir') ? certidao.urlEmissao : undefined;
-        const mailtoDeSolicitacao = certidao && orgao.acoes.includes('solicitar')
-          ? modeloDeSolicitacao({
-            certidao: certidao.nome,
-            orgao: certidao.emissor,
-            razaoSocial: razaoSocial || '(razão social)',
-            cnpj: cnpjLegivel || '(CNPJ)',
-          }).mailto
-          : undefined;
+        const podeSolicitar = Boolean(certidao && orgao.acoes.includes('solicitar'));
         return (
           <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
             {i.arquivoPath ? (
@@ -693,11 +790,9 @@ export default function Documentos() {
                     </a>
                   </DropdownMenuItem>
                 )}
-                {mailtoDeSolicitacao && (
-                  <DropdownMenuItem asChild>
-                    <a href={mailtoDeSolicitacao}>
-                      <Mail aria-hidden="true" className="mr-2 h-4 w-4" /> {ROTULO_DA_ACAO.solicitar}
-                    </a>
+                {podeSolicitar && (
+                  <DropdownMenuItem onSelect={() => solicitar(i)}>
+                    <Mail aria-hidden="true" className="mr-2 h-4 w-4" /> {ROTULO_DA_ACAO.solicitar}
                   </DropdownMenuItem>
                 )}
                 {i.legadoPrivado && empresaAtiva && (
@@ -726,6 +821,11 @@ export default function Documentos() {
     },
   ];
 
+  /** A certidão do catálogo a que o diálogo de solicitação se refere. */
+  const certidaoDaSolicitacao = dialogoSolicitacao
+    ? orgaoPorVaga[dialogoSolicitacao.nome]?.certidao ?? null
+    : null;
+
   const painel = selecionado ? (
     <PainelDocumento
       item={selecionado}
@@ -739,6 +839,12 @@ export default function Documentos() {
       orgao={orgaoPorVaga[selecionado.nome] ?? null}
       razaoSocial={razaoSocial}
       cnpj={cnpjLegivel}
+      aoSolicitar={orgaoPorVaga[selecionado.nome]?.acoes.includes('solicitar') ? () => solicitar(selecionado) : undefined}
+      solicitacao={solicitacoesAbertas[selecionado.nome] ?? null}
+      avisoDeSolicitacoes={avisoDeSolicitacoes}
+      salvandoSolicitacao={salvandoSolicitacao}
+      aoSalvarProtocolo={(protocolo) => salvarProtocolo(selecionado, protocolo)}
+      aoEncerrarSolicitacao={() => encerrarSolicitacao(selecionado)}
       aoVisualizar={() => visualizar(selecionado)}
       aoBaixar={() => baixar(selecionado)}
       aoAnexar={() => escolherArquivo(selecionado)}
@@ -769,6 +875,14 @@ export default function Documentos() {
             {erro && (
               <AvisoDeFalha aoTentarNovamente={carregar}>
                 Não foi possível carregar os documentos: {erro}
+              </AvisoDeFalha>
+            )}
+            {/* Tabela ausente NÃO cai aqui (é aviso discreto no painel);
+                qualquer outro erro de leitura das solicitações é dito, com
+                a mensagem real e o caminho de volta. */}
+            {erroDasSolicitacoes && (
+              <AvisoDeFalha aoTentarNovamente={recarregarSolicitacoes}>
+                Não foi possível ler as solicitações ao órgão: {erroDasSolicitacoes}
               </AvisoDeFalha>
             )}
 
@@ -984,6 +1098,21 @@ export default function Documentos() {
               if (dialogo.arquivo) enviarArquivo(dialogo.item, dialogo.arquivo, validade);
               else salvarValidade(dialogo.item, validade);
             }}
+          />
+        )}
+
+        {dialogoSolicitacao && certidaoDaSolicitacao && (
+          <DialogSolicitacao
+            aberto
+            aoFechar={() => setDialogoSolicitacao(null)}
+            nomeDoDocumento={dialogoSolicitacao.nome}
+            certidao={certidaoDaSolicitacao}
+            razaoSocial={razaoSocial || '(razão social)'}
+            cnpj={cnpjLegivel || '(CNPJ)'}
+            indisponivel={avisoDeSolicitacoes}
+            salvando={salvandoSolicitacao}
+            erro={erroSolicitacao}
+            aoConfirmar={confirmarSolicitacao}
           />
         )}
 

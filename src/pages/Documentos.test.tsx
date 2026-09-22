@@ -45,6 +45,18 @@ const dados = vi.hoisted(() => ({
   linhas: [] as Record<string, unknown>[],
   /** Quando preenchido, a consulta falha — como o banco falhando de verdade. */
   erro: null as { message: string } | null,
+  /** As solicitações ao órgão (`documentos_solicitacoes`) da empresa. */
+  solicitacoes: [] as Record<string, unknown>[],
+  /** Erro na leitura das solicitações — tabela ausente ou falha de verdade. */
+  erroSolicitacoes: null as { code?: string; message: string } | null,
+  /** Toda escrita que a tela tentou, por tabela — para conferir o que foi gravado. */
+  gravadas: [] as Array<{ tabela: string; op: string; valores: unknown }>,
+}));
+
+/** Os `mailto:` que a tela entregou ao programa de e-mail. */
+const emails = vi.hoisted(() => ({ abertos: [] as string[] }));
+vi.mock('@/lib/navegacao/abrir-email', () => ({
+  abrirEmail: (mailto: string) => { emails.abertos.push(mailto); },
 }));
 
 function linha(nome: string, validade: string | null) {
@@ -63,14 +75,31 @@ function linha(nome: string, validade: string | null) {
 }
 
 vi.mock('@/integrations/supabase/client', () => {
-  const consulta = () => {
+  const consulta = (tabela: string) => {
     const elo: Record<string, unknown> = {};
+    let escrita = false;
     // A cadeia real da tela: `.select(...).or(...).abortSignal(signal)`, e só
     // então o `await`. O dublê precisa aceitar exatamente esses elos.
-    ['select', 'or', 'eq', 'order', 'limit', 'abortSignal', 'insert', 'update', 'delete']
+    ['select', 'or', 'eq', 'is', 'order', 'limit', 'abortSignal']
       .forEach((m) => { elo[m] = () => elo; });
-    elo.then = (ok: (v: unknown) => unknown) =>
-      Promise.resolve({ data: dados.erro ? null : dados.linhas, error: dados.erro }).then(ok);
+    ['insert', 'update', 'delete'].forEach((op) => {
+      elo[op] = (valores?: unknown) => {
+        escrita = true;
+        dados.gravadas.push({ tabela, op, valores });
+        return elo;
+      };
+    });
+    // Cada tabela responde com os SEUS dados: as solicitações não podem vir
+    // do dublê dos documentos, nem o contrário.
+    const resposta = () => {
+      if (tabela === 'documentos_solicitacoes') {
+        if (dados.erroSolicitacoes) return { data: null, error: dados.erroSolicitacoes };
+        return { data: escrita ? [{ id: 'gravada' }] : dados.solicitacoes, error: null };
+      }
+      if (tabela === 'documentos') return { data: dados.erro ? null : dados.linhas, error: dados.erro };
+      return { data: [], error: null };
+    };
+    elo.then = (ok: (v: unknown) => unknown) => Promise.resolve(resposta()).then(ok);
     return elo;
   };
   const canal: Record<string, unknown> = {};
@@ -78,7 +107,7 @@ vi.mock('@/integrations/supabase/client', () => {
   canal.subscribe = () => canal;
   return {
     supabase: {
-      from: () => consulta(),
+      from: (tabela: string) => consulta(tabela),
       channel: () => canal,
       removeChannel: () => undefined,
       storage: {
@@ -119,7 +148,7 @@ vi.mock('@/contexts/EmpresaContext', () => ({ useEmpresa: () => sessao.empresa }
 vi.mock('@/hooks/useAuthorization', () => ({
   useAuthorization: () => sessao.autorizacao,
 }));
-vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }));
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() } }));
 
 // A moldura e os conteúdos das outras abas não são o objeto deste teste — e
 // carregá-los traria consulta, worker de PDF e upload para dentro do jsdom.
@@ -200,10 +229,37 @@ const linhasDeRegistro = () => aTabela().querySelectorAll('tbody tr');
 const oPainel = (nome: string) =>
   screen.getByRole('complementary', { name: nome });
 
+/** Um pedido ao órgão, aberto, para a vaga. */
+function pedido(nome: string, prazo: string | null, extra: Record<string, unknown> = {}) {
+  return {
+    id: `sol-${nome.slice(0, 6)}`,
+    empresa_id: 'e1',
+    documento_nome: nome,
+    orgao: 'Prefeitura Municipal de Belém · Secretaria de Finanças',
+    email_destino: 'sefin@belem.pa.gov.br',
+    solicitada_em: new Date().toISOString(),
+    protocolo: null,
+    prazo_resposta: prazo,
+    observacao: null,
+    user_id: 'u1',
+    created_at: new Date().toISOString(),
+    encerrada_em: null,
+    ...extra,
+  };
+}
+
+beforeEach(() => {
+  // Tudo opt-in por teste: plantar um erro ou um pedido num caso não pode
+  // contaminar os seguintes, senão a suíte passa a medir a ordem em que foi
+  // escrita.
+  dados.solicitacoes = [];
+  dados.erroSolicitacoes = null;
+  dados.gravadas = [];
+  emails.abertos = [];
+});
+
 describe('Controle de Documentos — abas, indicadores e tabela', () => {
   beforeEach(() => {
-    // O erro é opt-in por teste: sem isto, plantá-lo num caso contaminaria os
-    // seguintes, e a suíte passaria a medir a ordem em que foi escrita.
     dados.erro = null;
     janelaLarga();
     sessao.autorizacao.isCompanyAdmin = true;
@@ -409,11 +465,10 @@ describe('Controle de Documentos — o órgão emissor de cada vaga', () => {
     const painel = oPainel(NOME_MUNICIPAL);
 
     expect(within(painel).getByText(/Prefeitura Municipal de Belém/)).toBeInTheDocument();
-    const email = within(painel).getByRole('link', { name: /Solicitar por e-mail/ });
-    const href = decodeURIComponent(email.getAttribute('href') ?? '');
-    expect(href.startsWith('mailto:')).toBe(true);
-    expect(href).toContain('Empresa de Teste');
-    expect(href).toContain('24.687.187/0001-01');
+    expect(within(painel).getByText(/Solicitação ao órgão, com resposta em prazo/)).toBeInTheDocument();
+    // O pedido é um botão (abre o diálogo que registra e endereça o e-mail —
+    // o conteúdo do e-mail é conferido no bloco de solicitação, abaixo).
+    expect(within(painel).getByRole('button', { name: /Solicitar por e-mail/ })).toBeInTheDocument();
     expect(within(painel).queryByText(/São Paulo/)).toBeNull();
     // O site do órgão (Agiliza, com login) fica como alternativa, não como o caminho principal.
     expect(within(painel).getByRole('link', { name: /Emitir no órgão/ })).toHaveAttribute('href', expect.stringContaining('belem.pa.gov.br'));
@@ -433,6 +488,119 @@ describe('Controle de Documentos — o órgão emissor de cada vaga', () => {
     // A federal continua apontando a Receita: a União não depende do domicílio.
     fireEvent.click(screen.getAllByText(NOMES.cnd)[0]);
     expect(within(oPainel(NOMES.cnd)).getByRole('link', { name: /Emitir no órgão/ })).toBeInTheDocument();
+  });
+});
+
+describe('Controle de Documentos — solicitação ao órgão com protocolo e prazo', () => {
+  const NOME_MUNICIPAL = 'Certidão Negativa de Débitos Municipais';
+
+  beforeEach(() => {
+    dados.erro = null;
+    janelaLarga();
+    sessao.autorizacao.isCompanyAdmin = true;
+    sessao.empresa.empresaAtiva.uf = 'PA';
+    sessao.empresa.empresaAtiva.municipio = 'Belém';
+    dados.linhas = [linha(NOMES.cnd, diaISO(300))];
+  });
+
+  it('a vaga com pedido aberto mostra "Solicitada em …, prazo …" na tabela, e o painel traz o pedido com o protocolo a informar', async () => {
+    dados.solicitacoes = [pedido(NOME_MUNICIPAL, diaISO(15))];
+    montar();
+    await screen.findByText(NOMES.cnd);
+
+    const linhaMunicipal = linhaDaTabela(NOME_MUNICIPAL);
+    // Continua "Ausente" — não há PDF —, mas alguém já pediu, e até quando esperar.
+    expect(within(linhaMunicipal).getByText('Ausente')).toBeInTheDocument();
+    expect(within(linhaMunicipal).getByText(/Solicitada em \d{2}\/\d{2}, prazo \d{2}\/\d{2}/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByText(NOME_MUNICIPAL)[0]);
+    const painel = oPainel(NOME_MUNICIPAL);
+    expect(within(painel).getByText('Solicitação ao órgão')).toBeInTheDocument();
+    expect(within(painel).getByText('sefin@belem.pa.gov.br')).toBeInTheDocument();
+
+    // O protocolo é digitado DEPOIS, quando o órgão responde — e grava na linha do pedido.
+    const salvar = within(painel).getByRole('button', { name: 'Salvar protocolo' });
+    expect(salvar).toBeDisabled();
+    fireEvent.change(within(painel).getByLabelText(/Protocolo/), { target: { value: '2026/77' } });
+    fireEvent.click(salvar);
+    await waitFor(() => expect(dados.gravadas.some((g) => g.tabela === 'documentos_solicitacoes' && g.op === 'update')).toBe(true));
+    const gravada = dados.gravadas.find((g) => g.tabela === 'documentos_solicitacoes' && g.op === 'update');
+    expect(gravada?.valores).toEqual({ protocolo: '2026/77' });
+  });
+
+  it('"Solicitar por e-mail" grava o pedido (órgão, e-mail, prazo) e só então abre o e-mail endereçado', async () => {
+    montar();
+    await screen.findByText(NOMES.cnd);
+    fireEvent.click(screen.getAllByText(NOME_MUNICIPAL)[0]);
+    const painel = oPainel(NOME_MUNICIPAL);
+
+    fireEvent.click(within(painel).getByRole('button', { name: /Solicitar por e-mail/ }));
+    const dialogo = await screen.findByRole('dialog');
+    expect(within(dialogo).getByText('Solicitar ao órgão')).toBeInTheDocument();
+    fireEvent.change(within(dialogo).getByLabelText('E-mail do órgão'), { target: { value: 'sefin@belem.pa.gov.br' } });
+    fireEvent.change(within(dialogo).getByLabelText('Prazo de resposta'), { target: { value: diaISO(15) } });
+    fireEvent.click(within(dialogo).getByRole('button', { name: 'Abrir e-mail e registrar' }));
+
+    await waitFor(() => expect(emails.abertos).toHaveLength(1));
+    const insercao = dados.gravadas.find((g) => g.tabela === 'documentos_solicitacoes' && g.op === 'insert');
+    expect(insercao?.valores).toEqual(expect.objectContaining({
+      empresa_id: 'e1',
+      user_id: 'u1',
+      documento_nome: NOME_MUNICIPAL,
+      orgao: expect.stringContaining('Belém'),
+      email_destino: 'sefin@belem.pa.gov.br',
+      prazo_resposta: diaISO(15),
+    }));
+    // O e-mail sai endereçado ao órgão, em nome da empresa.
+    expect(emails.abertos[0]).toMatch(/^mailto:sefin%40belem\.pa\.gov\.br\?subject=/);
+    expect(decodeURIComponent(emails.abertos[0])).toContain('Empresa de Teste');
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
+  it('o diálogo recusa prazo no passado antes de gravar, e diz por quê', async () => {
+    montar();
+    await screen.findByText(NOMES.cnd);
+    fireEvent.click(screen.getAllByText(NOME_MUNICIPAL)[0]);
+    fireEvent.click(within(oPainel(NOME_MUNICIPAL)).getByRole('button', { name: /Solicitar por e-mail/ }));
+    const dialogo = await screen.findByRole('dialog');
+    fireEvent.change(within(dialogo).getByLabelText('Prazo de resposta'), { target: { value: diaISO(-2) } });
+    fireEvent.click(within(dialogo).getByRole('button', { name: 'Abrir e-mail e registrar' }));
+
+    expect(await within(dialogo).findByText(/não pode ser anterior a hoje/)).toBeInTheDocument();
+    expect(dados.gravadas).toHaveLength(0);
+    expect(emails.abertos).toHaveLength(0);
+  });
+
+  it('sem a tabela (migration ainda não colada), o cofre segue de pé, avisa, e o e-mail continua funcionando', async () => {
+    dados.erroSolicitacoes = { code: 'PGRST205', message: "Could not find the table 'public.documentos_solicitacoes' in the schema cache" };
+    montar();
+    await screen.findByText(NOMES.cnd);
+
+    // Nada de alarme vermelho: é atualização nossa, não falha da empresa.
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(linhasDeRegistro().length).toBe(VAGAS_PREVISTAS.length);
+
+    fireEvent.click(screen.getAllByText(NOME_MUNICIPAL)[0]);
+    const painel = oPainel(NOME_MUNICIPAL);
+    expect(within(painel).getByText(/disponível após a atualização do banco/)).toBeInTheDocument();
+
+    fireEvent.click(within(painel).getByRole('button', { name: /Solicitar por e-mail/ }));
+    const dialogo = await screen.findByRole('dialog');
+    fireEvent.click(within(dialogo).getByRole('button', { name: 'Abrir e-mail' }));
+    await waitFor(() => expect(emails.abertos).toHaveLength(1));
+    expect(dados.gravadas.filter((g) => g.op === 'insert')).toHaveLength(0);
+  });
+
+  it('erro de verdade na leitura dos pedidos é dito, com a mensagem real e o caminho de volta', async () => {
+    dados.erroSolicitacoes = { message: 'permission denied for table documentos_solicitacoes' };
+    montar();
+    await screen.findByText(NOMES.cnd);
+
+    const alerta = await screen.findByRole('alert');
+    expect(alerta).toHaveTextContent(/permission denied for table documentos_solicitacoes/);
+    expect(within(alerta).getByRole('button', { name: /Tentar novamente/ })).toBeInTheDocument();
+    // O cofre em si continua legível.
+    expect(linhasDeRegistro().length).toBe(VAGAS_PREVISTAS.length);
   });
 });
 

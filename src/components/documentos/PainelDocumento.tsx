@@ -13,7 +13,9 @@ import { Button } from '@/components/ui/button';
 import ListaDeCampos, { BlocoDoPainel, type Campo } from '@/components/gestao/ListaDeCampos';
 import { ValorIndisponivel } from '@/components/gestao/SeloSituacao';
 import type { OrgaoDaVaga } from '@/lib/documentos/orgao-emissor';
+import type { SolicitacaoDeDocumento } from '@/lib/documentos/solicitacoes';
 import OrgaoEmissorDaVaga from './OrgaoEmissorDaVaga';
+import { BlocoDaSolicitacao } from './SolicitacaoDaVaga';
 import SeloDocumento, { ValidadeDoDocumento } from './SeloDocumento';
 import { nomeDoArquivo, tamanhoLegivel, type ItemDoCofre } from './item-do-cofre';
 
@@ -60,6 +62,13 @@ interface Props extends AcoesDoPainel {
   aoSolicitar?: () => void;
   /** Cadastrar o órgão do município fora do mapa (fase 2, entrega c). */
   aoCadastrarOrgao?: () => void;
+  /** O pedido ABERTO desta vaga, se houver — mostra o bloco "Solicitação ao órgão". */
+  solicitacao?: SolicitacaoDeDocumento | null;
+  /** Texto discreto quando o registro de solicitações ainda não está no banco. */
+  avisoDeSolicitacoes?: string | null;
+  salvandoSolicitacao?: boolean;
+  aoSalvarProtocolo?: (protocolo: string) => void;
+  aoEncerrarSolicitacao?: () => void;
 }
 
 /**
@@ -85,6 +94,11 @@ export default function PainelDocumento({
   cnpj,
   aoSolicitar,
   aoCadastrarOrgao,
+  solicitacao,
+  avisoDeSolicitacoes,
+  salvandoSolicitacao = false,
+  aoSalvarProtocolo,
+  aoEncerrarSolicitacao,
   aoVisualizar,
   aoBaixar,
   aoAnexar,
@@ -173,6 +187,20 @@ export default function PainelDocumento({
           aoSolicitar={aoSolicitar}
           aoCadastrarOrgao={aoCadastrarOrgao}
         />
+      )}
+
+      {/* O pedido em aberto: a quem se pediu, quando, até quando, e o
+          protocolo quando o órgão responde. Some sozinho quando o PDF chega. */}
+      {solicitacao && aoSalvarProtocolo && aoEncerrarSolicitacao && (
+        <BlocoDaSolicitacao
+          solicitacao={solicitacao}
+          salvando={salvandoSolicitacao}
+          aoSalvarProtocolo={aoSalvarProtocolo}
+          aoEncerrar={aoEncerrarSolicitacao}
+        />
+      )}
+      {!solicitacao && avisoDeSolicitacoes && orgao?.acoes.includes('solicitar') && (
+        <p className="g-meta text-warning-ink">{avisoDeSolicitacoes}</p>
       )}
 
       {temArquivo && (
