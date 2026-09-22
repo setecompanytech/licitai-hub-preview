@@ -6,12 +6,24 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Link2, Loader2, AlertTriangle, CheckCircle2, Unlink } from 'lucide-react';
+import { Link2, Loader2, AlertTriangle, CheckCircle2, Unlink, Split, Undo2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import {
   ordenarCandidatos, conferirSoma, quitacaoDoPedido,
   type PedidoParaCasar, type TituloCandidato,
 } from '@/lib/contratos/casar-pedido';
+import { podeRatear, disponivelParaRatear } from '@/lib/contratos/rateio';
 import { deDataLocal } from '@/lib/financeiro/data-local';
+
+/** Uma linha de rateio, como o banco guarda (tabela fora do types.ts gerado). */
+type Rateio = { id: string; lancamento_id: string; contrato_pedido_id: string; valor: number; observacao: string | null };
+type ConsultaRateios = {
+  select: (c: string) => {
+    in: (col: string, v: string[]) => Promise<{ data: Rateio[] | null; error: { message: string } | null }>;
+    eq: (col: string, v: string) => Promise<{ data: Rateio[] | null; error: { message: string } | null }>;
+  };
+};
+const tabelaRateios = () => supabase.from('financeiro_lancamento_rateios' as never) as unknown as ConsultaRateios;
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
@@ -47,6 +59,12 @@ export default function VincularLancamentoDialog({
   const [escolhidos, setEscolhidos] = useState<Set<string>>(new Set());
   const [carregando, setCarregando] = useState(false);
   const [salvando, setSalvando] = useState(false);
+  // Rateio (22/09): o que cada candidato já distribuiu a outros pedidos, e o
+  // que ESTE pedido já recebe por rateio — para a parte sair certa e para
+  // dar como desfazer sem sair da tela.
+  const [rateadoPorLancamento, setRateadoPorLancamento] = useState<Record<string, number>>({});
+  const [rateiosDoPedido, setRateiosDoPedido] = useState<Rateio[]>([]);
+  const [desfazendo, setDesfazendo] = useState<{ id: string; motivo: string } | null>(null);
 
   const carregar = useCallback(async () => {
     if (!pedido || !empresaId) return;
@@ -62,15 +80,69 @@ export default function VincularLancamentoDialog({
       .or(`contrato_pedido_id.is.null,contrato_pedido_id.eq.${pedido.id}`)
       .order('data_competencia', { ascending: false })
       .limit(400);
-    setCarregando(false);
-    if (error) { toast.error('Não foi possível buscar os lançamentos', { description: error.message }); return; }
+    if (error) { setCarregando(false); toast.error('Não foi possível buscar os lançamentos', { description: error.message }); return; }
 
     const lista = (data ?? []) as unknown as TituloCandidato[];
+    // Os rateios existentes. A tabela nasce de migration colada à mão: sem
+    // ela a consulta falha, e a tela segue sem a função de ratear — não quebra.
+    try {
+      const colunas = 'id, lancamento_id, contrato_pedido_id, valor, observacao';
+      const [dosCandidatos, doPedido] = await Promise.all([
+        lista.length > 0
+          ? tabelaRateios().select(colunas).in('lancamento_id', lista.map((t) => t.id))
+          : Promise.resolve({ data: [] as Rateio[], error: null }),
+        tabelaRateios().select(colunas).eq('contrato_pedido_id', pedido.id),
+      ]);
+      const soma: Record<string, number> = {};
+      for (const r of dosCandidatos.data ?? []) soma[r.lancamento_id] = (soma[r.lancamento_id] ?? 0) + Number(r.valor);
+      setRateadoPorLancamento(soma);
+      setRateiosDoPedido(doPedido.data ?? []);
+    } catch {
+      setRateadoPorLancamento({});
+      setRateiosDoPedido([]);
+    }
+    setCarregando(false);
     setCandidatos(lista);
     // Já vinculados começam marcados: a tela abre mostrando o estado atual,
     // não uma folha em branco que sugere que nada foi feito.
     setEscolhidos(new Set(lista.filter((t) => t.contrato_pedido_id === pedido.id).map((t) => t.id)));
   }, [pedido, empresaId]);
+
+  /** Ratear: a parte deste recebimento que cabe neste pedido, pela RPC. */
+  const ratear = async (t: TituloCandidato, parte: number) => {
+    if (!pedido) return;
+    setSalvando(true);
+    const { data, error } = await supabase.rpc('ratear_lancamento_em_pedidos' as never, {
+      p_lancamento_id: t.id,
+      p_rateios: [{ pedido_id: pedido.id, valor: parte }],
+      p_observacao: null,
+    } as never);
+    setSalvando(false);
+    if (error) { toast.error('Não foi possível ratear', { description: error.message }); return; }
+    const r = (data ?? {}) as { sobra?: number };
+    toast.success(`${fmt(parte)} deste recebimento destinados ao pedido ${pedido.numero_pedido}.`, {
+      description: Number(r.sobra) > 0
+        ? `Sobram ${fmt(Number(r.sobra))} no recebimento para outros pedidos.`
+        : 'O recebimento ficou todo distribuído.',
+    });
+    aoVincular();
+    onFechar();
+  };
+
+  const confirmarDesfazer = async () => {
+    if (!desfazendo) return;
+    setSalvando(true);
+    const { error } = await supabase.rpc('desfazer_rateio' as never, {
+      p_rateio_id: desfazendo.id,
+      p_motivo: desfazendo.motivo.trim(),
+    } as never);
+    setSalvando(false);
+    if (error) { toast.error('Não foi possível desfazer o rateio', { description: error.message }); return; }
+    toast.success('Rateio desfeito. A quitação do pedido foi recalculada.');
+    setDesfazendo(null);
+    aoVincular();
+    void carregar();
+  };
 
   useEffect(() => { if (aberto) void carregar(); }, [aberto, carregar]);
 
@@ -112,12 +184,15 @@ export default function VincularLancamentoDialog({
     }
 
     // A quitação volta do título para o pedido. Sem isto o vínculo conserta o
-    // relatório do contrato e deixa a meta de quitação cega.
+    // relatório do contrato e deixa a meta de quitação cega. Com rateio no
+    // pedido, quem manda é o gatilho do banco, que enxerga os dois caminhos.
     const q = quitacaoDoPedido(selecionados);
-    const { error: errPedido } = await supabase
-      .from('contrato_pedidos')
-      .update({ nf_quitada: q.nf_quitada, data_quitacao: q.data_quitacao } as never)
-      .eq('id', pedido.id);
+    const { error: errPedido } = rateiosDoPedido.length > 0
+      ? { error: null }
+      : await supabase
+          .from('contrato_pedidos')
+          .update({ nf_quitada: q.nf_quitada, data_quitacao: q.data_quitacao } as never)
+          .eq('id', pedido.id);
 
     setSalvando(false);
     if (errPedido) { toast.error('Vínculo salvo, mas a quitação não voltou ao pedido', { description: errPedido.message }); }
@@ -156,6 +231,44 @@ export default function VincularLancamentoDialog({
         </DialogHeader>
 
         <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+        {/* O que este pedido já recebe por rateio — e como desfazer, com motivo. */}
+        {!carregando && rateiosDoPedido.length > 0 && (
+          <div className="mb-2 rounded-lg border border-success-line bg-success-tint p-3 text-sm">
+            <p className="font-medium text-success-ink">
+              Este pedido recebe {fmt(rateiosDoPedido.reduce((s, r) => s + Number(r.valor), 0))} por rateio de recebimento
+            </p>
+            <ul className="mt-1 space-y-1">
+              {rateiosDoPedido.map((r) => {
+                const lanc = candidatos.find((t) => t.id === r.lancamento_id);
+                return (
+                  <li key={r.id} className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                    <span className="tabular-nums font-medium text-foreground">{fmt(Number(r.valor))}</span>
+                    <span className="truncate">{lanc?.descricao ?? `lançamento ${r.lancamento_id.slice(0, 8)}`}</span>
+                    {desfazendo?.id === r.id ? (
+                      <span className="flex flex-wrap items-center gap-1">
+                        <Input
+                          value={desfazendo.motivo}
+                          onChange={(e) => setDesfazendo({ id: r.id, motivo: e.target.value })}
+                          placeholder="Motivo (mínimo 5 caracteres)"
+                          className="h-8 w-56"
+                          aria-label="Motivo para desfazer o rateio"
+                        />
+                        <Button size="sm" variant="outline" disabled={salvando || desfazendo.motivo.trim().length < 5} onClick={() => void confirmarDesfazer()}>
+                          Confirmar
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => setDesfazendo(null)}>Cancelar</Button>
+                      </span>
+                    ) : (
+                      <Button size="sm" variant="ghost" className="h-7 gap-1 px-2" onClick={() => setDesfazendo({ id: r.id, motivo: '' })}>
+                        <Undo2 aria-hidden="true" className="h-3.5 w-3.5" /> Desfazer rateio
+                      </Button>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
         {carregando ? (
           <div className="space-y-2 py-2" aria-busy="true" aria-label="Procurando lançamentos">
             <Skeleton className="h-16 w-full" />
@@ -170,14 +283,33 @@ export default function VincularLancamentoDialog({
           </div>
         ) : (
           <div className="space-y-1.5">
-            {ordenados.map((t) => (
+            {ordenados.map((t) => {
+              // Rateio (22/09): recebimento MAIOR que o pedido, baixado e sem
+              // dono, entrega só a parte deste pedido e continua inteiro no
+              // banco. Recebimento já rateado a alguém não vira vínculo 1↔1.
+              const rateado = rateadoPorLancamento[t.id] ?? 0;
+              const recebimento = { id: t.id, status: t.status, valor: Number(t.valor), contrato_pedido_id: t.contrato_pedido_id, rateado };
+              const pedidoRateavel = {
+                id: pedido.id,
+                valor_total: pedido.valor_total,
+                recebidoPorRateio: rateiosDoPedido.reduce((s, r) => s + Number(r.valor), 0),
+                temTituloProprio: jaVinculados.length > 0,
+              };
+              const rateio = Number(t.valor) > pedido.valor_total + 0.005 ? podeRatear(recebimento, pedidoRateavel) : null;
+              const bloqueadoPorRateio = rateado > 0;
+              return (
               <label
                 key={t.id}
                 className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors duration-150 ${
                   escolhidos.has(t.id) ? 'border-primary bg-primary-tint' : 'border-border hover:bg-muted'
                 }`}
               >
-                <Checkbox checked={escolhidos.has(t.id)} onCheckedChange={() => alternar(t.id)} className="mt-0.5" />
+                <Checkbox
+                  checked={escolhidos.has(t.id)}
+                  onCheckedChange={() => alternar(t.id)}
+                  disabled={bloqueadoPorRateio}
+                  className="mt-0.5"
+                />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="truncate text-sm font-medium text-foreground" title={t.descricao}>{t.descricao}</span>
@@ -185,6 +317,9 @@ export default function VincularLancamentoDialog({
                     <Badge variant="muted">{t.status}</Badge>
                     {t.contrato_pedido_id === pedido.id && (
                       <Badge variant="success">já vinculado</Badge>
+                    )}
+                    {bloqueadoPorRateio && (
+                      <Badge variant="info">rateado · disponível {fmt(disponivelParaRatear(recebimento))}</Badge>
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
@@ -194,9 +329,29 @@ export default function VincularLancamentoDialog({
                         discordar com base em algo. */}
                     {t.motivos.length > 0 && <> · {t.motivos.join(' · ')}</>}
                   </p>
+                  {rateio && (
+                    <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                      {rateio.pode === false ? (
+                        <span className="text-xs text-muted-foreground">Não rateia: {rateio.motivo}.</span>
+                      ) : (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-7 gap-1 px-2"
+                          disabled={salvando}
+                          onClick={(e) => { e.preventDefault(); void ratear(t, rateio.parte); }}
+                          title="O recebimento é maior que o pedido: destina só a parte deste pedido e continua inteiro na conciliação"
+                        >
+                          <Split aria-hidden="true" className="h-3.5 w-3.5" /> Ratear {fmt(rateio.parte)} para este pedido
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </label>
-            ))}
+              );
+            })}
           </div>
         )}
         </div>

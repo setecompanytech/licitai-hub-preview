@@ -230,9 +230,22 @@ para nota de FORNECEDOR (Extração aberta de Contas a Pagar, caminho sem
 contrato): nota já paga → o PDF é anexado ao pagamento existente e nenhum
 título nasce; o CNPJ da outra parte só desempata, nunca decide sozinho. Apagar um título ligado a
 pedido apaga o PEDIDO (gatilho `cleanup_contrato_pedido_on_lancamento_delete`):
-fusão de duplicado desliga o título antes de apagar. Um recebimento só
-aponta para um pedido; TED que paga várias notas ainda não tem rateio
-(pendência: tabela de rateio).
+fusão de duplicado desliga o título antes de apagar.
+
+**Um recebimento é de um pedido OU rateado entre vários, nunca os dois
+(22/09).** TED que paga várias notas (SEDUC, 27/05: R$ 1.819.739,36 pelas
+NFs 725 a 730) vira RATEIO: `financeiro_lancamento_rateios`, uma linha por
+recebimento × pedido × valor, gravada só pelas RPCs
+`ratear_lancamento_em_pedidos` / `desfazer_rateio` (migration
+`20260922000001`). Só recebimento baixado e sem pedido próprio se rateia;
+pedido com título próprio não entra; a parte não passa do valor do pedido
+nem a soma do valor do recebimento. A quitação do pedido enxerga os dois
+caminhos no banco (`recalcular_quitacao_do_pedido`): título próprio manda
+quando existe; sem título, rateio pago que cobre o valor quita. "Desfazer
+quitação" recusa quitação que vem de rateio — desfaz-se o rateio, com
+motivo, em Vincular lançamento (botão "Ratear" no recebimento maior que o
+pedido; contas puras em `lib/contratos/rateio.ts`). Lançamento rateado não
+ganha pedido próprio por nenhum caminho (gatilho).
 
 ## Permissões — o que é da plataforma não aparece ao cliente (pedido do Rafael em 14/09, decidido em 19/09/2026)
 
