@@ -31,7 +31,7 @@ interface Fornecedor {
   emEstoque: boolean;
   avaliacao: number;
   url: string;
-  fonte: string; // "ML" | "Serper" | "IA"
+  fonte: string; // "ML" | "Serper"
 }
 
 interface TabelaCotacao {
@@ -86,49 +86,6 @@ Certo! Buscando cotações para 10 notebooks Dell 8GB...
 [BUSCAR: "notebook Dell 8GB 256GB" QTD: 10]
 
 Para outras perguntas, responda normalmente sem o marcador.`;
-
-// ─── Prompt do fallback IA (gera cotações realistas) ─────────────────────────
-
-function promptCotacao(termo: string, qtd: number): string {
-  return `Você é um especialista em pesquisa de preços para licitações brasileiras.
-
-Gere EXATAMENTE 10 cotações realistas de mercado para o item abaixo, em formato JSON.
-Os preços DEVEM refletir o mercado brasileiro de 2024-2025 em R$.
-
-ITEM: ${termo}
-QUANTIDADE: ${qtd} unidades
-
-FAIXAS DE PREÇO POR CATEGORIA (use como referência):
-- Notebooks/Computadores: R$ 1.800 – R$ 12.000
-- Tablets/Celulares: R$ 600 – R$ 5.000
-- Impressoras: R$ 400 – R$ 8.000
-- Material de escritório (resmas, canetas, pastas): R$ 5 – R$ 200
-- Produtos de limpeza e higiene: R$ 8 – R$ 150
-- Móveis (cadeiras, mesas): R$ 200 – R$ 3.000
-- Equipamentos médicos/hospitalares: R$ 50 – R$ 50.000
-- Alimentos e gêneros: R$ 3 – R$ 300
-- Ferramentas e equipamentos: R$ 50 – R$ 5.000
-- Uniformes e EPIs: R$ 20 – R$ 500
-
-Responda APENAS com o JSON abaixo, sem texto antes ou depois:
-{
-  "cotacoes": [
-    {
-      "id": "c1",
-      "vendedor": "Nome da Loja (Mercado Livre / Amazon / Magazine Luiza / KaBuM / Shopee / etc.)",
-      "produto": "Título exato como aparece no marketplace",
-      "preco": 1234.56,
-      "frete_gratis": true,
-      "parcelas": "10x de R$ 123,45",
-      "avaliacao": 4.6,
-      "emEstoque": true,
-      "prazoEntrega": "3 dias úteis"
-    }
-  ]
-}
-
-Gere 10 itens com preços variados e realistas. Varie as lojas (Mercado Livre, Amazon, Magazine Luiza, KaBuM, Shopee, Americanas). Os preços devem ser diferentes entre si (variação de 5% a 30%).`;
-}
 
 // ─── Busca em cascata ─────────────────────────────────────────────────────────
 
@@ -201,49 +158,6 @@ function mapML(items: any[], qtd: number): Fornecedor[] {
   });
 }
 
-async function gerarCotacoesIA(termo: string, qtd: number): Promise<Fornecedor[]> {
-  return new Promise((resolve) => {
-    let raw = "";
-    const timeout = setTimeout(() => resolve([]), 20000);
-
-    streamAIChat({
-      messages: [{ role: "user", content: `Gere cotações para: ${termo}, quantidade: ${qtd}` }],
-      action: "precificacao-cotacao-ia",
-      context: promptCotacao(termo, qtd),
-      onDelta: (c) => { raw += c; },
-      onDone: () => {
-        clearTimeout(timeout);
-        try {
-          const jsonMatch = raw.match(/\{[\s\S]*"cotacoes"[\s\S]*\}/);
-          if (!jsonMatch) return resolve([]);
-          const parsed = JSON.parse(jsonMatch[0]);
-          const cotacoes: any[] = parsed.cotacoes ?? [];
-          const precos = cotacoes.map((c: any) => c.preco as number).filter(Boolean);
-          resolve(cotacoes.slice(0, 10).map((c: any, i: number): Fornecedor => ({
-            id: `ia${i}`,
-            nome: c.vendedor || "Marketplace",
-            modelo: c.produto || termo,
-            aderencia: Math.max(65, 99 - i * 3),
-            valorUnit: c.preco,
-            qtd,
-            margem: calcMargem(c.preco, precos),
-            prazoEntrega: c.prazoEntrega || "5-12 dias úteis",
-            pagamento: c.parcelas || "À vista",
-            frete: c.frete_gratis ? "Grátis" : "A calcular",
-            emEstoque: c.emEstoque ?? true,
-            avaliacao: c.avaliacao ?? 4.3,
-            url: mlSearchUrl(termo),
-            fonte: "IA",
-          })));
-        } catch {
-          resolve([]);
-        }
-      },
-      onError: () => { clearTimeout(timeout); resolve([]); },
-    });
-  });
-}
-
 async function buscarFornecedores(termo: string, qtd: number): Promise<{ fornecedores: Fornecedor[]; fonte: string }> {
   // 1ª tentativa: Serper (Google Shopping real)
   const serper = await trySerper(termo);
@@ -253,9 +167,10 @@ async function buscarFornecedores(termo: string, qtd: number): Promise<{ fornece
   const ml = await tryML(termo);
   if (ml) return { fornecedores: mapML(ml, qtd), fonte: "Mercado Livre" };
 
-  // 3ª tentativa: IA gera cotações realistas
-  const ia = await gerarCotacoesIA(termo, qtd);
-  return { fornecedores: ia, fonte: "Estimativa de mercado (IA)" };
+  // Sem fonte real, sem cotação. Até 22/09 uma terceira tentativa pedia à
+  // IA "dez cotações realistas" — preço inventado com cara de pesquisa, que
+  // ia parar em proposta. Decisão do dono: sai; a tela diz o que tentou.
+  return { fornecedores: [], fonte: "nenhuma" };
 }
 
 // ─── Parser do marcador ───────────────────────────────────────────────────────
@@ -424,9 +339,7 @@ function TabelaCotacaoUI({
       <div className="flex flex-wrap items-center gap-1.5 border-t border-border bg-secondary px-4 py-2 text-xs text-muted-foreground">
         <Search className="h-3 w-3" aria-hidden="true" />
         Selecione os itens para incluir na proposta comercial.
-        {fonte === "Estimativa de mercado (IA)" && (
-          <span className="ml-1 text-warning-ink">· Valores estimados — confirme com fornecedores antes de submeter.</span>
-        )}
+        <span className="ml-1">· Fonte: {fonte}</span>
       </div>
     </div>
   );
@@ -509,7 +422,7 @@ export default function AureliaPrecificacaoChat() {
           setMessages((prev) => [
             ...prev.slice(0, -1),
             { role: "assistant", content: textoLimpo },
-            { role: "assistant", content: `Não consegui obter cotações para **"${sinal.termo}"**. Tente reformular a descrição do item.` },
+            { role: "assistant", content: `Não encontrei preços reais para **"${sinal.termo}"** nas fontes disponíveis (Google Shopping e Mercado Livre). Tente outra descrição do item, ou use Precificação › Preços de referência.` },
           ]);
         } else {
           setMessages((prev) => prev.map((m, i) =>
