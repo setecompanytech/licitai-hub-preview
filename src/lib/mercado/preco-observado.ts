@@ -177,6 +177,42 @@ export function unidadeLegivel(unidade: string): string {
   return u;
 }
 
+// ── O filtro dos itens: só o homologado, e o ano ────────────────────────────
+
+export type SituacaoDoFiltro = 'homologados' | 'todos';
+
+export interface FiltroDeItens {
+  /** `homologados` (padrão): só item com resultado publicado — nem "em andamento", nem orçamento sigiloso. */
+  situacao: SituacaoDoFiltro;
+  /** 'todos' ou o ano com quatro dígitos, entre os três últimos. */
+  ano: string;
+}
+
+export const FILTRO_PADRAO: FiltroDeItens = { situacao: 'homologados', ano: 'todos' };
+
+/** Os três últimos anos, do atual para trás — o recorte que o dono pediu (22/09). */
+export function anosDoFiltro(hoje = new Date()): string[] {
+  const a = hoje.getFullYear();
+  return [String(a), String(a - 1), String(a - 2)];
+}
+
+/** O ano do item: o da compra; sem ele, o da publicação; sem ela, o do resultado. */
+export function anoDoItem(i: ItemUnitario): string {
+  return i.anoCompra.slice(0, 4) || i.dataPublicacao.slice(0, 4) || i.dataResultado.slice(0, 4);
+}
+
+/** Homologado: há preço do vencedor publicado. */
+export const itemHomologado = (i: ItemUnitario): boolean => typeof i.homologado === 'number' && i.homologado > 0;
+
+/** Orçamento sigiloso: o órgão não publicou a estimativa (a API manda zero) e ainda não há resultado. */
+export const itemSigiloso = (i: ItemUnitario): boolean => !itemHomologado(i) && !(typeof i.estimado === 'number' && i.estimado > 0);
+
+export function filtrarItens(itens: ItemUnitario[], filtro: FiltroDeItens): ItemUnitario[] {
+  return itens.filter((i) =>
+    (filtro.situacao === 'todos' || itemHomologado(i))
+    && (filtro.ano === 'todos' || anoDoItem(i) === filtro.ano));
+}
+
 /** Os itens agrupados pelo edital, na ordem em que os editais vieram. */
 export function itensPorEdital(itens: ItemUnitario[]): Map<string, ItemUnitario[]> {
   const mapa = new Map<string, ItemUnitario[]>();

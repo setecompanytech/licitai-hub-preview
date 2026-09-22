@@ -15,7 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cn } from '@/lib/utils';
 import {
   DollarSign, Search, ShoppingCart, TrendingDown,
-  ExternalLink, RefreshCw, Package, Plus, FileText, Loader2, Bot,
+  ExternalLink, RefreshCw, Package, Plus, FileText, Loader2,
   Save, History, Trash2, Eye, CalendarIcon,
   MapPin, Globe, ChevronRight, Tag, X, Truck, CheckSquare, Square, Store, Award,
   Building2, Sparkles, Calculator, FileSpreadsheet, ChevronDown
@@ -37,14 +37,14 @@ import CalculadoraUnificada from '@/components/precificacao/CalculadoraUnificada
 import CatalogoPrecificados from '@/components/precificacao/CatalogoPrecificados';
 import FontesManager from '@/components/precificacao/FontesManager';
 import CotacoesUnificado from '@/components/precificacao/CotacoesUnificado';
-import InteligenciaUnificada from '@/components/precificacao/InteligenciaUnificada';
+import InteligenciaPrecos from '@/components/precificacao/InteligenciaPrecos';
+import PrecoDeReferencia from '@/components/precificacao/PrecoDeReferencia';
 import RevisaoItensExtraidos, { type ItemExtraido } from '@/components/precificacao/RevisaoItensExtraidos';
 import EditalItensViewer from '@/components/precificacao/EditalItensViewer';
 import PlanilhaCustosEdital, { type EstatisticasPlanilha } from '@/components/precificacao/PlanilhaCustosEdital';
 import PrecoGraficos from '@/components/precificacao/PrecoGraficos';
 
 import { useProcessoAtivo } from '@/hooks/useProcessoAtivo';
-import AureliaPrecificacaoChat from '@/components/precificacao/AureliaPrecificacaoChat';
 
 type FontePreco = {
   fonte: string;
@@ -117,10 +117,12 @@ const ABAS = [
     usaLocalizacao: true,
   },
   {
-    id: 'govbr',
-    label: 'Preços gov',
+    // A fonte única de preço de referência (22/09, tarde): vivia também na aba
+    // Preços da Análise de mercado e aqui como "Preços gov", por outro caminho.
+    id: 'referencias',
+    label: 'Preços de referência',
     icone: Building2,
-    subtitulo: 'Preços homologados em compras públicas — a referência que o pregoeiro consulta',
+    subtitulo: 'O que o governo paga pelo objeto: valor global dos editais e preço unitário homologado item a item, no acervo PNCP e nas NF-e federais',
     usaLocalizacao: true,
   },
   {
@@ -144,20 +146,10 @@ const ABAS = [
     subtitulo: 'O que já foi precificado, pronto para reaproveitar no próximo processo',
     usaLocalizacao: false,
   },
-  {
-    id: 'inteligencia',
-    label: 'Inteligência',
-    icone: Bot,
-    subtitulo: 'Comparativo entre fontes e recomendações de precificação por IA',
-    usaLocalizacao: false,
-  },
-  {
-    id: 'aurelia-cotar',
-    label: 'Nova precificação',
-    icone: Sparkles,
-    subtitulo: 'Descreva o item do edital e a AURÉLIA busca cotações comparadas em tempo real',
-    usaLocalizacao: false,
-  },
+  // "Inteligência" e "Nova precificação" saíram em 22/09: a primeira virou o
+  // bloco "Meu catálogo × mercado" dentro de Catálogo e o "Comparativo de
+  // fontes" dentro de Cotações; a segunda repetia a pesquisa de Marketplaces
+  // e, quando as fontes falhavam, INVENTAVA dez cotações por IA.
 ] as const;
 
 export default function Precificacao() {
@@ -1115,10 +1107,22 @@ export default function Precificacao() {
           </details>
           </TabsContent>
 
-          <TabsContent value="govbr">
-            <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
-              <PainelPrecosGov ufInicial={selectedEstado} municipioInicial={selectedCidade} />
-            </div>
+          <TabsContent value="referencias" className="space-y-4">
+            <PrecoDeReferencia
+              termoInicial={searchParams.get('objeto')?.trim() ?? ''}
+              ufInicial={selectedEstado !== 'todos' ? selectedEstado : searchParams.get('uf')?.toUpperCase() ?? undefined}
+              municipioInicial={selectedCidade !== 'todos' ? selectedCidade : ''}
+            />
+            {/* A busca ao vivo no PNCP (todo o Brasil, mais lenta) fica como
+                complemento do acervo, dobrada, para a UF que o acervo não cobre. */}
+            <details className="rounded-lg border border-border bg-card p-5 shadow-sm">
+              <summary className="cursor-pointer text-sm font-medium text-foreground">
+                Busca ao vivo no PNCP, todo o Brasil — para a UF que o acervo não cobre (mais lenta)
+              </summary>
+              <div className="mt-4">
+                <PainelPrecosGov ufInicial={selectedEstado} municipioInicial={selectedCidade} />
+              </div>
+            </details>
           </TabsContent>
 
 
@@ -1140,7 +1144,7 @@ export default function Precificacao() {
             </div>
           </TabsContent>
 
-          <TabsContent value="catalogo">
+          <TabsContent value="catalogo" className="space-y-4">
             <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
               <CatalogoPrecificados
                 licitacaoId={processoId}
@@ -1148,18 +1152,16 @@ export default function Precificacao() {
                 licitacaoOrgao={processoMeta.orgao}
               />
             </div>
-          </TabsContent>
-
-          <TabsContent value="inteligencia">
-            <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
-              <InteligenciaUnificada />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="aurelia-cotar" className="flex-1 min-h-0">
-            <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden" style={{ height: 'calc(100vh - 240px)', minHeight: 500 }}>
-              <AureliaPrecificacaoChat />
-            </div>
+            {/* A antiga aba "Inteligência": compara o que já foi precificado com
+                mercado e governo e sugere margem. Compara o catálogo, mora com ele. */}
+            <details className="rounded-lg border border-border bg-card p-5 shadow-sm">
+              <summary className="cursor-pointer text-sm font-medium text-foreground">
+                Meu catálogo × mercado — comparação de fontes e recomendações de margem
+              </summary>
+              <div className="mt-4">
+                <InteligenciaPrecos />
+              </div>
+            </details>
           </TabsContent>
 
           {/* Itens & Planilha: uma aba só para `licitacao_itens`.

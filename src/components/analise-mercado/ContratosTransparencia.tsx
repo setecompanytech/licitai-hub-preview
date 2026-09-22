@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import EstadoVazio from '@/components/shared/EstadoVazio';
+import TextoRecolhido from '@/components/shared/TextoRecolhido';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -96,7 +97,7 @@ function DetalheDaLicitacao({ lic, consulta }: { lic: LicitacaoFederal; consulta
                   <TableBody>
                     {estado.itens.slice(0, 40).map((it, i) => (
                       <TableRow key={`${s(it.codigoItemCompra)}-${i}`}>
-                        <TableCell className="max-w-[360px]">{s(it.numero) ? `${s(it.numero)} · ` : ''}{s(it.descricao) || '—'}</TableCell>
+                        <TableCell className="max-w-[360px] align-top"><TextoRecolhido texto={`${s(it.numero) ? `${s(it.numero)} · ` : ''}${s(it.descricao)}`} /></TableCell>
                         <TableCell className="text-right tabular-nums">{s(it.quantidade) || '—'}</TableCell>
                         <TableCell className="text-right tabular-nums font-semibold">{brl(num(it.valor))}</TableCell>
                         <TableCell>{s(it.nome) || '—'}{s(it.cpfCnpjVencedor) ? <span className="block text-xs text-muted-foreground">{s(it.cpfCnpjVencedor)}</span> : null}</TableCell>
@@ -170,7 +171,7 @@ function DetalheDoContrato({ contrato, consulta }: { contrato: ContratoFederal; 
                   <TableBody>
                     {estado.itens.slice(0, 40).map((it, i) => (
                       <TableRow key={i}>
-                        <TableCell className="max-w-[420px]">{s(it.numero) ? `${s(it.numero)} · ` : ''}{s(it.descricao) || '—'}{s(it.descComplementarItemCompra) ? <span className="block text-xs text-muted-foreground">{s(it.descComplementarItemCompra)}</span> : null}</TableCell>
+                        <TableCell className="max-w-[420px] align-top"><TextoRecolhido texto={`${s(it.numero) ? `${s(it.numero)} · ` : ''}${s(it.descricao)}`} />{s(it.descComplementarItemCompra) ? <TextoRecolhido texto={s(it.descComplementarItemCompra)} className="text-xs text-muted-foreground" /> : null}</TableCell>
                         <TableCell className="text-right tabular-nums">{s(it.quantidade) || '—'}</TableCell>
                         <TableCell className="text-right tabular-nums font-semibold">{brl(num(it.valor))}</TableCell>
                       </TableRow>

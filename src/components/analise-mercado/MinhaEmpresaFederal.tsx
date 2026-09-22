@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import EstadoVazio from '@/components/shared/EstadoVazio';
+import TextoRecolhido from '@/components/shared/TextoRecolhido';
 import FaixaIndicadores from '@/components/gestao/FaixaIndicadores';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmpresa } from '@/contexts/EmpresaContext';
@@ -215,7 +216,7 @@ export default function MinhaEmpresaFederal() {
                     <TableRow key={c.id || i}>
                       <TableCell className="font-medium">{c.numero || '—'}{c.situacao ? <span className="block text-xs text-muted-foreground">{c.situacao}</span> : null}</TableCell>
                       <TableCell>{c.orgao || '—'}</TableCell>
-                      <TableCell className="max-w-[360px]">{c.objeto || '—'}</TableCell>
+                      <TableCell className="max-w-[360px] align-top"><TextoRecolhido texto={c.objeto} /></TableCell>
                       <TableCell>{c.vigenciaDe}{c.vigenciaAte ? ` a ${c.vigenciaAte}` : ''}</TableCell>
                       <TableCell className="text-right tabular-nums font-semibold">{brl(c.valorFinal ?? c.valorInicial)}</TableCell>
                     </TableRow>

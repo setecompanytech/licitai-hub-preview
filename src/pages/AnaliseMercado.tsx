@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import AppLayout from '@/components/layout/AppLayout';
 import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import EstadoVazio from '@/components/shared/EstadoVazio';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -13,21 +12,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import FaixaIndicadores from '@/components/gestao/FaixaIndicadores';
-import NotasFiscaisFederais from '@/components/analise-mercado/NotasFiscaisFederais';
 import MinhaEmpresaFederal from '@/components/analise-mercado/MinhaEmpresaFederal';
 import ProspeccaoFederal from '@/components/analise-mercado/ProspeccaoFederal';
-import EtiquetaDoValor from '@/components/analise-mercado/EtiquetaDoValor';
-import PrecoUnitarioDoAcervo from '@/components/analise-mercado/PrecoUnitarioDoAcervo';
-import { useItensDoAcervo } from '@/hooks/useItensDoAcervo';
-import { itensPorEdital, unidadeLegivel, type EditalDoAcervo } from '@/lib/mercado/preco-observado';
-import {
-  MODOS_DE_BUSCA, MODO_PADRAO, descricaoDaTentativa, ehModoDeBusca, proximosPassos, rotuloDoProvedor,
-  type ModoDeBusca, type TentativaDeBusca,
-} from '@/lib/mercado/busca-por-objeto';
 import {
   TrendingUp, DollarSign, Package,
-  Building2, PieChart, Activity, Landmark, FileText, Shield, ExternalLink, Loader2,
-  Search, Calculator, Inbox, AlertTriangle,
+  Building2, PieChart, Activity, Landmark, FileText, Shield, ExternalLink,
+  Search, Inbox, AlertTriangle,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import TransparenciaPA from '@/components/analise-mercado/TransparenciaPA';
@@ -53,7 +43,12 @@ import {
  *
  * Apresentação (identidade 12/09): título, descrição, ícone e trilha vêm do
  * registro `lib/navegacao/paginas.ts`; os dois recortes (UF e período) são os
- * filtros do cabeçalho, e as quatro abas são as declaradas no registro.
+ * filtros do cabeçalho, e as abas são as declaradas no registro.
+ *
+ * A aba Preços saiu em 22/09 (tarde): o preço de referência por objeto vive
+ * numa função só, em Precificação › Preços de referência
+ * (`components/precificacao/PrecoDeReferencia.tsx`). Aqui fica o atalho, no
+ * Panorama, com a UF da página.
  */
 
 type Resumo = {
@@ -99,107 +94,14 @@ const mesCurto = (yyyymm: string) => {
   return `${['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'][Number(m) - 1]}/${a.slice(2)}`;
 };
 
-/** O edital como a busca por objeto devolve: o global do processo mais as coordenadas que os itens pedem. */
-type EditalDaBusca = EditalDoAcervo & {
-  id: string; objeto: string | null; uf: string | null; municipio: string | null;
-  valor_total_estimado: number | null; similaridade?: number;
-};
-
 export default function AnaliseMercado() {
+  const navigate = useNavigate();
   const [portalSelecionado, setPortalSelecionado] = useState<string>(PORTAL_PADRAO);
   const [abaAtiva, setAbaAtiva] = useState('panorama');
   const [fonteConsulta, setFonteConsulta] = useState<'estadual' | 'arp' | 'federal' | 'credora' | 'prospeccao'>('estadual');
-  // ── Preços Praticados por OBJETO (08/09): a média solta de editais
-  // heterogêneos era decorativa. A busca semântica no acervo (o motor da
-  // Recorrência) devolve os editais mais similares ao objeto digitado, e a
-  // estatística honesta sai deles: mediana, faixa, quartis, lastro auditável.
-  const [termoPreco, setTermoPreco] = useState('');
-  // Filtros inteligentes (08/09): UF herda a da página; município parcial;
-  // período em janelas ou ano exato. O "rigor" deixou de ser um piso de
-  // similaridade (22/09): "CARNE MOIDA PATINHO" no Pará voltava vazio com
-  // três editais de carne moída no acervo, porque três palavras contra a
-  // descrição de um edital raramente passam de 45%. Agora é o MODO: palavras
-  // decidem quem entra, o significado decide a ordem.
-  const [ufPreco, setUfPreco] = useState<string>('herdar');
-  const [municipioPreco, setMunicipioPreco] = useState('');
-  const [periodoPreco, setPeriodoPreco] = useState('36m');
-  const [rigorPreco, setRigorPreco] = useState<ModoDeBusca>(MODO_PADRAO);
-  // O que a última busca tentou — para o vazio dizer o que foi tentado e
-  // oferecer o próximo passo, em vez de afirmar "nenhum edital similar".
-  const [tentativaPreco, setTentativaPreco] = useState<(TentativaDeBusca & { provedor: string }) | null>(null);
-  const [buscandoPreco, setBuscandoPreco] = useState(false);
-  const [buscouPreco, setBuscouPreco] = useState(false);
-  const [erroPreco, setErroPreco] = useState('');
-  const [editaisPreco, setEditaisPreco] = useState<EditalDaBusca[]>([]);
-  // O objeto da ÚLTIMA busca feita, não o do campo: os itens do PNCP se casam
-  // com o que foi pesquisado, e o campo muda enquanto se digita.
-  const [termoBuscado, setTermoBuscado] = useState('');
-
-  const buscarPrecos = async (opcoes?: { modo?: ModoDeBusca; uf?: string }) => {
-    if (termoPreco.trim().length < 8) {
-      setErroPreco('Descreva o objeto com pelo menos 8 caracteres (ex.: "carne bovina congelada").');
-      setBuscouPreco(true);
-      return;
-    }
-    // O próximo passo do vazio chega por aqui, e a tela acompanha a escolha.
-    const modo = opcoes?.modo ?? rigorPreco;
-    const ufEscolhida = opcoes?.uf ?? ufPreco;
-    if (opcoes?.modo) setRigorPreco(opcoes.modo);
-    if (opcoes?.uf) setUfPreco(opcoes.uf);
-    setBuscandoPreco(true);
-    setErroPreco('');
-    try {
-      const ufEfetiva = ufEscolhida === 'herdar' ? (uf === 'todos' ? null : uf) : ufEscolhida === 'todas' ? null : ufEscolhida;
-      const anoExato = /^\d{4}$/.test(periodoPreco) ? Number(periodoPreco) : null;
-      const anos = Math.max(anoExato ? 3 : Number(periodoPreco.replace('m', '')) / 12, 1);
-      const { data, error } = await supabase.functions.invoke('historico-orgao-pncp', {
-        body: {
-          objeto: termoPreco.trim(),
-          anos,
-          limite: 30,
-          uf: ufEfetiva ?? undefined,
-          municipio: municipioPreco.trim() || undefined,
-          anoExato: anoExato ?? undefined,
-          modo,
-        },
-      });
-      if (error || data?.error) {
-        setErroPreco(String(data?.error || 'Não foi possível consultar o acervo.'));
-        setEditaisPreco([]);
-      } else {
-        setEditaisPreco(data?.resultados ?? []);
-        setTermoBuscado(termoPreco.trim());
-        setTentativaPreco({
-          modo, provedor: String(data?.provedor ?? ''), uf: ufEfetiva,
-          municipio: municipioPreco.trim() || null, anos, anoExato,
-        });
-      }
-    } catch (e) {
-      setErroPreco(e instanceof Error ? e.message : 'Erro na consulta.');
-      setEditaisPreco([]);
-    } finally {
-      setBuscandoPreco(false);
-      setBuscouPreco(true);
-    }
-  };
-
-  // Estatística honesta da amostra: mediana e quartis resistem ao megaedital
-  // que arrasta a média; a faixa mostra a dispersão real.
-  const valoresPreco = editaisPreco
-    .map((e) => Number(e.valor_total_estimado))
-    .filter((v) => Number.isFinite(v) && v > 0 && v < 1e10)
-    .sort((a, b) => a - b);
-  const quantil = (p: number) => {
-    if (valoresPreco.length === 0) return null;
-    const i = (valoresPreco.length - 1) * p;
-    const lo = Math.floor(i); const hi = Math.ceil(i);
-    return valoresPreco[lo] + (valoresPreco[hi] - valoresPreco[lo]) * (i - lo);
-  };
-  const brlExato = (v: number | null | undefined) =>
-    v == null ? '—' : v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  // O preço UNITÁRIO: os itens desses editais no PNCP, lidos pela edge com cache (22/09).
-  const itensDoAcervo = useItensDoAcervo(termoBuscado, editaisPreco);
-  const itensDoEdital = itensPorEdital(itensDoAcervo.itens);
+  // O atalho para o preço de referência (22/09): o objeto vai para a
+  // Precificação com a UF da página; a pesquisa, que consome API, fica lá.
+  const [objetoDeReferencia, setObjetoDeReferencia] = useState('');
   const [uf, setUf] = useState<string>('PA');
   // '7d'/'30d' = dias corridos (o pedido de 08/09: janela menor que 3 meses);
   // números puros = meses. O RPC recebe p_dias OU p_meses.
@@ -227,6 +129,13 @@ export default function AnaliseMercado() {
     });
     return () => { vivo = false; };
   }, [uf, periodo, emDias]);
+
+  const irParaReferencia = () => {
+    const params = new URLSearchParams({ tab: 'referencias' });
+    if (objetoDeReferencia.trim()) params.set('objeto', objetoDeReferencia.trim());
+    if (uf !== 'todos') params.set('uf', uf);
+    navigate(`/precificacao?${params.toString()}`);
+  };
 
   // A mesma chave que o seletor oferece (`chaveDoPortal`): com formatos
   // diferentes, o campo abria vazio e o selo dizia Pará por um caminho paralelo.
@@ -325,12 +234,35 @@ export default function AnaliseMercado() {
         <Tabs value={abaAtiva} onValueChange={setAbaAtiva} className="space-y-4">
           <TabsList>
             <TabsTrigger value="panorama"><PieChart className="h-4 w-4" aria-hidden="true" /> Panorama</TabsTrigger>
-            <TabsTrigger value="precos"><TrendingUp className="h-4 w-4" aria-hidden="true" /> Preços</TabsTrigger>
             <TabsTrigger value="maiores"><Package className="h-4 w-4" aria-hidden="true" /> Maiores contratos</TabsTrigger>
             <TabsTrigger value="consultas"><Landmark className="h-4 w-4" aria-hidden="true" /> Consultas</TabsTrigger>
           </TabsList>
 
           <TabsContent value="panorama" className="space-y-4">
+            {/* O atalho para o preço de referência por objeto, que mora na
+                Precificação desde 22/09 (uma função só, dois lugares não). */}
+            <Card className="p-5">
+              <h2 className="flex items-center gap-2 text-lg font-semibold leading-6 text-foreground">
+                <TrendingUp className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+                Preço de referência por objeto
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Valor global dos editais e preço unitário homologado item a item, no acervo PNCP e nas NF-e federais.
+                A pesquisa vive em Precificação › Preços de referência; daqui ela parte com a UF da página.
+              </p>
+              <div className="mt-4 flex flex-wrap items-end gap-3">
+                <div className="flex min-w-0 flex-1 flex-col gap-1.5 sm:max-w-md">
+                  <Label htmlFor="objeto-referencia">Objeto</Label>
+                  <Input id="objeto-referencia" placeholder="Ex.: carne bovina congelada, notebook, material de expediente"
+                    value={objetoDeReferencia} onChange={(e) => setObjetoDeReferencia(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') irParaReferencia(); }} />
+                </div>
+                <Button onClick={irParaReferencia}>
+                  <Search className="h-4 w-4" aria-hidden="true" /> Pesquisar na Precificação
+                </Button>
+              </div>
+            </Card>
+
             {carregando ? (
               /* Espera na forma do conteúdo — dois cartões de gráfico, sem
                  spinner grande no centro. */
@@ -394,6 +326,29 @@ export default function AnaliseMercado() {
                     );
                   })()}
                 </Card>
+                {/* O valor médio por edital, mês a mês: contexto do mercado,
+                    não preço — por isso mora no Panorama, não na referência. */}
+                <Card className="p-5 lg:col-span-2">
+                  <h2 className="mb-4 text-lg font-semibold leading-6 text-foreground">Valor médio por edital, mês a mês</h2>
+                  {resumo.por_mes.length === 0 ? (
+                    <EstadoVazio tamanho="compacto" titulo="Sem dados para este recorte" />
+                  ) : (
+                    <ResponsiveContainer width="100%" height={260}>
+                      <LineChart data={resumo.por_mes.map(m => ({ ...m, rotulo: mesCurto(m.mes) }))}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                        <XAxis dataKey="rotulo" tick={TICK} axisLine={EIXO} tickLine={false} />
+                        <YAxis tickFormatter={(v: number) => brlCompacto(v)} tick={TICK} axisLine={false} tickLine={false} width={80} />
+                        <Tooltip contentStyle={ESTILO_TOOLTIP} formatter={(v: number, nome: string) => [brlCompacto(v), nome === 'valor_medio' ? 'Valor médio' : 'Volume']} />
+                        <Legend wrapperStyle={{ fontSize: 12 }} formatter={(v) => v === 'valor_medio' ? 'Valor médio do edital' : v} />
+                        <Line type="monotone" dataKey="valor_medio" stroke="hsl(var(--chart-1))" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  )}
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    Média de editais heterogêneos — serve de contexto, não de preço. Para o preço de um objeto, use o
+                    cartão acima.
+                  </p>
+                </Card>
                 <Card className="p-5 lg:col-span-2">
                   <h2 className="mb-3 text-lg font-semibold leading-6 text-foreground">Órgãos que mais publicaram</h2>
                   {/* Lista dividida por fios, linhas de 48px — não uma pilha
@@ -412,275 +367,6 @@ export default function AnaliseMercado() {
                   </ul>
                 </Card>
               </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="precos" className="space-y-4">
-            {/* ── O balcão de preço por OBJETO ──────────────────────────────
-                O comercial digita o que vende e sai com mediana, faixa e o
-                lastro auditável. Busca semântica no acervo (motor da
-                Recorrência); valores = total ESTIMADO declarado no edital.
-                Preço homologado item a item é papel da Precificação — a
-                ponte está no botão. */}
-            <Card className="p-5">
-              <h2 className="text-lg font-semibold leading-6 text-foreground">Preço praticado por objeto</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Digite o objeto que você fornece. A busca cruza as palavras com a descrição dos editais
-                do acervo e ordena os mais parecidos primeiro (últimos 3 anos, até 30 editais).
-              </p>
-
-              <div className="mt-4 flex flex-wrap items-end gap-3">
-                <div className="flex min-w-0 flex-1 flex-col gap-1.5 sm:max-w-md">
-                  <Label htmlFor="preco-objeto">Objeto</Label>
-                  <Input id="preco-objeto" placeholder='Ex.: carne bovina congelada, notebook, material de expediente'
-                    value={termoPreco} onChange={(e) => setTermoPreco(e.target.value)}
-                    aria-invalid={erroPreco ? true : undefined}
-                    onKeyDown={(e) => { if (e.key === 'Enter') buscarPrecos(); }} />
-                </div>
-                <Button onClick={() => buscarPrecos()} disabled={buscandoPreco}>
-                  {buscandoPreco ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                  Buscar
-                </Button>
-                {/* O objeto digitado vai junto (22/09): chegar na Precificação
-                    com o campo vazio era digitar duas vezes a mesma coisa. */}
-                <Button asChild variant="outline">
-                  <Link to={termoPreco.trim() ? `/precificacao?objeto=${encodeURIComponent(termoPreco.trim())}` : '/precificacao'}>
-                    <Calculator className="h-4 w-4" /> Cotar na Precificação
-                  </Link>
-                </Button>
-              </div>
-
-              <div className="mt-3 flex flex-wrap items-end gap-3">
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="preco-uf">UF</Label>
-                  <Select value={ufPreco} onValueChange={setUfPreco}>
-                    <SelectTrigger id="preco-uf" className="w-56"><SelectValue /></SelectTrigger>
-                    <SelectContent className="max-h-80">
-                      <SelectItem value="herdar">UF da página ({uf === 'todos' ? 'todas' : uf})</SelectItem>
-                      <SelectItem value="todas">Todas as UFs</SelectItem>
-                      {UFS.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="preco-municipio">Município</Label>
-                  <Input id="preco-municipio" placeholder="Opcional" value={municipioPreco}
-                    onChange={(e) => setMunicipioPreco(e.target.value)} className="w-48" />
-                </div>
-                {/* Sem sobreposição (08/09): "últimos 12 meses" e "ano de
-                    2026" diziam quase o mesmo por dois nomes. Fica UM padrão
-                    (a janela cheia de 3 anos) e os anos exatos. */}
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="preco-periodo">Período</Label>
-                  <Select value={periodoPreco} onValueChange={setPeriodoPreco}>
-                    <SelectTrigger id="preco-periodo" className="w-52"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="36m">Últimos 3 anos (padrão)</SelectItem>
-                      {[0, 1, 2, 3].map((i) => {
-                        const a = new Date().getFullYear() - i;
-                        return <SelectItem key={a} value={String(a)}>Ano de {a}</SelectItem>;
-                      })}
-                    </SelectContent>
-                  </Select>
-                </div>
-                {/* Como comparar (22/09): as palavras decidem quem entra, o
-                    significado decide a ordem. "Todas" = amostra menor e mais
-                    fiel; "qualquer" = o padrão; "só significado" = vizinhos. */}
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="preco-rigor">Como comparar</Label>
-                  <Select value={rigorPreco} onValueChange={(v) => { if (ehModoDeBusca(v)) setRigorPreco(v); }}>
-                    <SelectTrigger id="preco-rigor" className="w-80 max-w-full"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {MODOS_DE_BUSCA.map((m) => (
-                        <SelectItem key={m.valor} value={m.valor} title={m.explicacao}>{m.rotulo}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {erroPreco && (
-                <Alert variant="destructive" className="mt-4">
-                  <AlertTriangle className="h-4 w-4" aria-hidden="true" />
-                  <AlertDescription>{erroPreco}</AlertDescription>
-                </Alert>
-              )}
-            </Card>
-
-            {/* O vazio diz o que tentou e oferece o passo mais largo: "nenhum
-                edital similar" era falso e não dava para onde ir (22/09). */}
-            {buscouPreco && !buscandoPreco && !erroPreco && editaisPreco.length === 0 && (
-              <Card>
-                <EstadoVazio
-                  icone={<Search />}
-                  titulo="Nenhum edital com esse objeto no acervo"
-                  descricao={tentativaPreco
-                    ? `Tentei ${descricaoDaTentativa(tentativaPreco)}. O acervo cresce a cada busca e pela semeadura; ausência aqui não prova inexistência no PNCP.`
-                    : 'O acervo cresce a cada busca e pela semeadura; ausência aqui não prova inexistência no PNCP.'}
-                  acao={tentativaPreco && (
-                    <div className="flex flex-wrap justify-center gap-2">
-                      {proximosPassos(tentativaPreco.modo, tentativaPreco.uf).map((p) => (
-                        <Button key={p.rotulo} variant="outline" size="sm" onClick={() => buscarPrecos({ modo: p.modo, uf: p.uf })}>
-                          {p.rotulo}
-                        </Button>
-                      ))}
-                    </div>
-                  )}
-                />
-              </Card>
-            )}
-
-            {editaisPreco.length > 0 && (
-              <>
-                {/* Dois blocos que nunca se misturam (22/09): o valor GLOBAL do
-                    processo (o edital inteiro, todos os itens) e o preço
-                    UNITÁRIO do item. A tela dizia "mediana do edital" e o
-                    leitor lia preço: para carne moída, R$ 11.941,25 contra
-                    R$ 35,00 por kg nos itens. Cada valor leva a etiqueta. */}
-                {valoresPreco.length > 0 && (
-                  <>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="text-lg font-semibold leading-6 text-foreground">Valor global do processo — o edital inteiro (PNCP)</h2>
-                      <EtiquetaDoValor natureza="global" estagio="estimado" />
-                    </div>
-                    {/* A estatística da amostra nos cartões KPI do Design System
-                        v3. Faixas (Q1–Q3 e mínimo–máximo) ocupam duas linhas do
-                        valor, cada extremo na sua. */}
-                    <FaixaIndicadores
-                      itens={[
-                        { rotulo: 'Mediana do valor global', valor: brlExato(quantil(0.5)), detalhe: 'total estimado do edital, todos os itens juntos' },
-                        {
-                          rotulo: 'Miolo (Q1–Q3)',
-                          valor: (
-                            <>
-                              <span className="block">{brlExato(quantil(0.25))}</span>
-                              <span className="block">a {brlExato(quantil(0.75))}</span>
-                            </>
-                          ),
-                        },
-                        {
-                          rotulo: 'Faixa completa',
-                          valor: (
-                            <>
-                              <span className="block">{brlExato(valoresPreco[0])}</span>
-                              <span className="block">a {brlExato(valoresPreco[valoresPreco.length - 1])}</span>
-                            </>
-                          ),
-                        },
-                        { rotulo: 'Amostra', valor: valoresPreco.length, detalhe: `editais com valor global, de ${editaisPreco.length} encontrados` },
-                      ]}
-                    />
-                  </>
-                )}
-
-                <PrecoUnitarioDoAcervo termo={termoBuscado} estado={itensDoAcervo} />
-
-                <Card className="p-5">
-                  <div className="mb-3 flex flex-wrap items-center gap-2">
-                    <h2 className="text-lg font-semibold leading-6 text-foreground">Editais que sustentam o número</h2>
-                    <EtiquetaDoValor natureza="global" estagio="estimado" />
-                  </div>
-                  <ul className="max-h-[480px] divide-y divide-border overflow-y-auto rounded-md border border-border">
-                    {editaisPreco.map((e) => {
-                      const itens = itensDoEdital.get(e.pncp_id) ?? [];
-                      return (
-                        <li key={e.id} className="px-4 py-3 text-sm">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <p className="line-clamp-2 font-medium text-foreground">{e.objeto ?? '—'}</p>
-                              <p className="mt-1 text-xs text-muted-foreground">
-                                {[e.orgao, e.municipio && e.uf ? `${e.municipio}/${e.uf}` : e.uf,
-                                  e.data_publicacao_pncp ? new Date(e.data_publicacao_pncp.slice(0, 10) + 'T12:00:00').toLocaleDateString('pt-BR') : null,
-                                ].filter(Boolean).join(' · ')}
-                              </p>
-                            </div>
-                            <div className="shrink-0 space-y-1 text-right">
-                              <p className="font-semibold tabular-nums text-foreground">{brlExato(e.valor_total_estimado)}</p>
-                              <p className="text-[0.6875rem] leading-4 text-muted-foreground">global · estimado</p>
-                              {typeof e.similaridade === 'number' && (
-                                <Badge variant="muted">{Math.round(e.similaridade * 100)}% similar</Badge>
-                              )}
-                              {e.url_pncp && (
-                                <a href={e.url_pncp} target="_blank" rel="noreferrer"
-                                  className="flex items-center justify-end gap-1 text-xs text-primary hover:underline">
-                                  PNCP <ExternalLink className="h-3 w-3" aria-hidden="true" />
-                                </a>
-                              )}
-                            </div>
-                          </div>
-                          {/* Os itens deste edital que falam do objeto: o unitário, embaixo do global. */}
-                          {itens.length > 0 && (
-                            <ul className="mt-2 space-y-1 border-l-2 border-primary-line pl-3 text-xs">
-                              {itens.slice(0, 4).map((i) => (
-                                <li key={i.numeroItem} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                                  <span className="text-muted-foreground">Item {i.numeroItem}</span>
-                                  <span className="min-w-0 grow basis-56 font-medium text-foreground">{i.descricao}</span>
-                                  <span className="tabular-nums text-muted-foreground">
-                                    {i.quantidade === null ? '—' : i.quantidade.toLocaleString('pt-BR')} {unidadeLegivel(i.unidade) || i.unidade}
-                                  </span>
-                                  <span className="tabular-nums">unit. estimado {brlExato(i.estimado)}</span>
-                                  {i.homologado !== null && (
-                                    <span className="tabular-nums font-semibold text-success-ink">
-                                      homologado {brlExato(i.homologado)}{i.fornecedor ? ` · ${i.fornecedor}` : ''}
-                                    </span>
-                                  )}
-                                </li>
-                              ))}
-                              {itens.length > 4 && <li className="text-muted-foreground">+ {itens.length - 4} item(ns) na tabela acima</li>}
-                            </ul>
-                          )}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                  {tentativaPreco && (
-                    <p className="mt-3 text-xs text-muted-foreground">
-                      Busca por {descricaoDaTentativa(tentativaPreco)}; ordem: {rotuloDoProvedor(tentativaPreco.provedor)}.
-                    </p>
-                  )}
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    O valor de cada edital é o GLOBAL estimado pelo órgão (todos os itens juntos). Embaixo dele, os itens
-                    que falam do objeto, com o unitário estimado e o homologado; o bloco "Preço unitário do item" resume esses.
-                  </p>
-                </Card>
-              </>
-            )}
-
-            {/* Preço por ITEM (22/09): as notas fiscais emitidas ao governo
-                federal, com valor unitário. O acervo acima responde por
-                objeto de edital; para um produto, a resposta está aqui. */}
-            <NotasFiscaisFederais termo={termoPreco} />
-
-            {/* Sem objeto pesquisado: o panorama geral de antes, rotulado como tal. */}
-            {!buscouPreco && (
-              <Card className="p-5">
-                <h2 className="mb-4 text-lg font-semibold leading-6 text-foreground">
-                  Panorama geral — valor médio por edital, mês a mês (sem objeto pesquisado)
-                </h2>
-                {carregando ? (
-                  <div role="status" aria-busy="true">
-                    <span className="sr-only">Carregando</span>
-                    <Skeleton className="h-[300px] w-full" />
-                  </div>
-                ) : !resumo || resumo.por_mes.length === 0 ? (
-                  <EstadoVazio tamanho="compacto" titulo="Sem dados para este recorte" />
-                ) : (
-                  <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={resumo.por_mes.map(m => ({ ...m, rotulo: mesCurto(m.mes) }))}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                      <XAxis dataKey="rotulo" tick={TICK} axisLine={EIXO} tickLine={false} />
-                      <YAxis tickFormatter={(v: number) => brlCompacto(v)} tick={TICK} axisLine={false} tickLine={false} width={80} />
-                      <Tooltip contentStyle={ESTILO_TOOLTIP} formatter={(v: number, nome: string) => [brlCompacto(v), nome === 'valor_medio' ? 'Valor médio' : 'Volume']} />
-                      <Legend wrapperStyle={{ fontSize: 12 }} formatter={(v) => v === 'valor_medio' ? 'Valor médio do edital' : v} />
-                      <Line type="monotone" dataKey="valor_medio" stroke="hsl(var(--chart-1))" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                )}
-                <p className="mt-3 text-xs text-muted-foreground">
-                  Média de editais heterogêneos — serve de contexto, não de preço. Pesquise um objeto
-                  acima para a estatística que importa.
-                </p>
-              </Card>
             )}
           </TabsContent>
 
@@ -734,14 +420,12 @@ export default function AnaliseMercado() {
             </Card>
           </TabsContent>
 
-          {/* ── Consultas: as três fontes federativas numa aba só (pedido de
-              08/09). Nada foi perdido: os três painéis são os mesmos; o que
-              mudou é a porta — um seletor de fonte no lugar de três abas que
-              pareciam a mesma coisa. Cada ente, sua fonte: estadual/municipal
-              (portais de transparência), União-atas (Compras.gov.br) e
-              União-contratos (Portal da Transparência).
-              O seletor de portais só governa a fonte estadual — fora dela,
-              parecia um filtro global que não filtrava nada (print de 08/09). */}
+          {/* ── Consultas: as fontes federativas numa aba só (pedido de
+              08/09). Cada ente, sua fonte: estadual/municipal (portais de
+              transparência), União-atas (Compras.gov.br) e União-contratos
+              (Portal da Transparência). O seletor de portais só governa a
+              fonte estadual — fora dela, parecia um filtro global que não
+              filtrava nada (print de 08/09). */}
           <TabsContent value="consultas" className="space-y-4">
             <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Fonte da consulta">
               <Button size="sm" variant={fonteConsulta === 'estadual' ? 'default' : 'outline'}

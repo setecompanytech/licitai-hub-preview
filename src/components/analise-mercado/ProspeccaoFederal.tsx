@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import EstadoVazio from '@/components/shared/EstadoVazio';
+import TextoRecolhido from '@/components/shared/TextoRecolhido';
 import { supabase } from '@/integrations/supabase/client';
 import {
   convenioFederal, emendaEhDaUf, emendaFederal, FUNCOES_DE_GOVERNO, NOMES_DAS_UFS, type ConvenioFederal, type EmendaFederal,
@@ -162,7 +163,7 @@ export default function ProspeccaoFederal({ ufInicial = 'PA' }: { ufInicial?: st
                   {convenios.slice(0, 60).map((c) => (
                     <TableRow key={c.id || c.numero}>
                       <TableCell className="font-medium">{c.convenente || '—'}<span className="block text-xs text-muted-foreground">{[c.municipio, c.uf].filter(Boolean).join('/')}{c.numero ? ` · ${c.numero}` : ''}</span></TableCell>
-                      <TableCell className="max-w-[360px]">{c.objeto || '—'}</TableCell>
+                      <TableCell className="max-w-[360px] align-top"><TextoRecolhido texto={c.objeto} /></TableCell>
                       <TableCell>{c.orgao || '—'}</TableCell>
                       <TableCell className="text-right tabular-nums font-semibold">{brl(c.valorUltimaLiberacao)}<span className="block text-xs font-normal text-muted-foreground">{c.dataUltimaLiberacao}</span></TableCell>
                       <TableCell className="text-right tabular-nums">{brl(c.valorLiberado)}<span className="block text-xs text-muted-foreground">de {brl(c.valor)}</span></TableCell>

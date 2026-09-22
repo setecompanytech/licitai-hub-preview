@@ -77,7 +77,7 @@ export const paginasPadrao: PaginaPadrao[] = [
     rota: '/precificacao', grupo: 'Inteligência', titulo: 'Precificação', icone: DollarSign,
     descricao: 'Do item do edital ao preço final, com custos, tributos e margem',
     acao: 'Nova composição', padrao: 'abas',
-    abas: ['Itens do edital', 'Marketplaces', 'Preços gov', 'Cotações', 'Calculadora', 'Catálogo', 'Inteligência', 'Nova precificação'],
+    abas: ['Itens do edital', 'Preços de referência', 'Marketplaces', 'Cotações', 'Calculadora', 'Catálogo'],
   },
   {
     rota: '/proposta-tecnica', grupo: 'Inteligência', titulo: 'Proposta comercial', icone: FileBarChart,
@@ -87,7 +87,7 @@ export const paginasPadrao: PaginaPadrao[] = [
   {
     rota: '/analise-mercado', grupo: 'Inteligência', titulo: 'Análise de mercado', icone: TrendingUp,
     descricao: 'Preços praticados e contratos publicados por órgão e região',
-    padrao: 'abas', abas: ['Panorama', 'Preços', 'Maiores contratos', 'Consultas'],
+    padrao: 'abas', abas: ['Panorama', 'Maiores contratos', 'Consultas'],
   },
   {
     rota: '/concorrentes', grupo: 'Inteligência', titulo: 'Concorrentes', icone: Users,

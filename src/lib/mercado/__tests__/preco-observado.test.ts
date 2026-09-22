@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
-  estatisticaUnitaria, etiquetaDoValor, explicacaoDoValor, itemUnitario, itensPorEdital, unidadeLegivel,
+  anoDoItem, anosDoFiltro, estatisticaUnitaria, etiquetaDoValor, explicacaoDoValor, filtrarItens, itemHomologado, itemSigiloso,
+  itemUnitario, itensPorEdital, unidadeLegivel,
 } from '../preco-observado';
 
 const linha = (extra: Record<string, unknown>) => ({
@@ -43,5 +44,19 @@ describe('preço observado — natureza e estágio em todo valor', () => {
     expect(unidadeLegivel('QUILOGRAMAS')).toBe('kg');
     expect(unidadeLegivel('Litro')).toBe('l');
     expect(unidadeLegivel('Metro')).toBe('metro');
+  });
+
+  it('o filtro: só homologado por padrão (fora em andamento e sigiloso), e o ano entre os três últimos', () => {
+    const homologado2025 = itemUnitario(linha({ pncp_id: 'a', valor_unitario_homologado: 19.96, tem_resultado: true }), { pncp_id: 'a', cnpj_orgao: '', ano_compra: '2025', sequencial_compra: '1' });
+    const sigiloso = itemUnitario(linha({ pncp_id: 'b', valor_unitario_estimado: 0, tem_resultado: false }), { pncp_id: 'b', cnpj_orgao: '', ano_compra: '2024', sequencial_compra: '2' });
+    const emAndamento = itemUnitario(linha({ pncp_id: 'c', valor_unitario_estimado: 32.5, tem_resultado: false }), { pncp_id: 'c', cnpj_orgao: '', ano_compra: '', sequencial_compra: '3', data_publicacao_pncp: '2026-05-27' });
+    expect(itemHomologado(homologado2025)).toBe(true);
+    expect(itemSigiloso(sigiloso)).toBe(true);
+    expect(itemSigiloso(emAndamento)).toBe(false);
+    expect(anoDoItem(emAndamento)).toBe('2026');
+    expect(filtrarItens([homologado2025, sigiloso, emAndamento], { situacao: 'homologados', ano: 'todos' }).map((i) => i.pncpId)).toEqual(['a']);
+    expect(filtrarItens([homologado2025, sigiloso, emAndamento], { situacao: 'todos', ano: 'todos' })).toHaveLength(3);
+    expect(filtrarItens([homologado2025, sigiloso, emAndamento], { situacao: 'todos', ano: '2026' }).map((i) => i.pncpId)).toEqual(['c']);
+    expect(anosDoFiltro(new Date('2026-09-22'))).toEqual(['2026', '2025', '2024']);
   });
 });

@@ -308,6 +308,33 @@ do ITEM vem dos itens do PNCP. Regras que valem no código:
   com código, sem faixa etária). A ficha federal só vale se for do CNPJ
   pedido (`fichaDaPessoaJuridica`).
 
+## Precificação × Análise de mercado — uma referência de preço só (22/09/2026, tarde)
+
+O dono pediu para tirar a duplicidade entre as abas da Precificação e a aba
+Preços da Análise de mercado. O mapa que ficou:
+
+- **Preço de referência por objeto** mora em Precificação › "Preços de
+  referência" (`components/precificacao/PrecoDeReferencia.tsx`): acervo PNCP
+  (global do edital) + itens do PNCP (unitário, só homologado por padrão, três
+  últimos anos) + NF-e federais. A Análise de mercado não tem mais aba Preços:
+  o Panorama traz o atalho, que leva o objeto e a UF (`?tab=referencias&objeto=&uf=`).
+  A busca ao vivo no PNCP (`PainelPrecosGov`, todo o Brasil) fica dobrada
+  embaixo, como complemento para UF que o acervo não cobre.
+- **Precificação tem seis abas:** Itens do edital, Preços de referência,
+  Marketplaces (varejo), Cotações, Calculadora, Catálogo. "Inteligência" virou
+  o bloco "Meu catálogo × mercado" dentro de Catálogo (`InteligenciaPrecos`) e o
+  "Comparativo de fontes" virou sub-aba de Cotações. "Nova precificação"
+  (chat Aurélia) saiu: repetia a pesquisa de Marketplaces e, quando as fontes
+  falhavam, gerava dez cotações inventadas por IA — o chat ainda existe na
+  pasta do processo (`ProcessoWorkspace`), decisão do dono.
+- **Uma função, um lugar.** Fonte de preço nova entra na referência, não em
+  aba nova; o registro de abas é `lib/navegacao/paginas.ts`.
+- **Tabela de resultado:** texto longo em célula usa `TextoRecolhido`
+  (`shared/`): duas linhas e "ver mais", nunca a especificação inteira
+  derrubando a coluna; número em `whitespace-nowrap tabular-nums` à direita;
+  célula `align-top`. Faixa (mínimo a máximo) no KPI é texto numa linha só —
+  o cartão encolhe a fonte; nunca dois `<span>` empilhados.
+
 ## Certidões — cada uma no seu órgão emissor (22/09/2026, tarde)
 
 O dono: "quem atua dentro da administração pública busca por veracidade,

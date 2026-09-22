@@ -10,6 +10,7 @@ import FaixaIndicadores from '@/components/gestao/FaixaIndicadores';
 import { supabase } from '@/integrations/supabase/client';
 import { estatisticaDeItens, itemDeNota, type ItemDeNota } from '@/lib/concorrentes/portal-federal';
 import EtiquetaDoValor from './EtiquetaDoValor';
+import TextoRecolhido from '@/components/shared/TextoRecolhido';
 
 /**
  * Preço por item nas notas fiscais eletrônicas emitidas ao governo federal
@@ -153,7 +154,7 @@ export default function NotasFiscaisFederais({ termo }: { termo: string }) {
               <TableBody>
                 {itensDoProduto.slice(0, 60).map((item, i) => (
                   <TableRow key={`${item.nota.chaveNotaFiscal ?? i}-${i}`}>
-                    <TableCell className="max-w-[320px] font-medium">{item.descricao || '—'}</TableCell>
+                    <TableCell className="max-w-[320px] align-top font-medium"><TextoRecolhido texto={item.descricao} /></TableCell>
                     <TableCell>{item.ncm || '—'}</TableCell>
                     <TableCell className="text-right tabular-nums">{item.quantidade ?? '—'} {item.unidade}</TableCell>
                     <TableCell className="text-right tabular-nums font-semibold">{brl(item.valorUnitario)}</TableCell>
