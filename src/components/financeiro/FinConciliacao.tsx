@@ -86,6 +86,7 @@ import {
   Pencil,
   Filter,
   ArrowRightLeft,
+  Split,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatBRL, formatDate, statusLabel } from "@/lib/financeiro/formatters";
@@ -106,6 +107,8 @@ type MatchSugestao = {
   metodo?: string;
   justificativa_ia?: string;
 };
+/** Baixa em partes sugerida pelo motor (22/09): movimentos do mesmo dia que somam um título em aberto. */
+type Divisao = { lancamento_id: string; movimento_ids: string[]; partes: number[]; data: string; valor: number };
 
 export default function FinConciliacao() {
   // ─── Refs ─────────────────────────────────────────────────────────────────
@@ -138,6 +141,8 @@ export default function FinConciliacao() {
   >("pendente");
   const [scoreMinimo, setScoreMinimo] = useState<number>(75);
   const [sugestoes, setSugestoes] = useState<MatchSugestao[]>([]);
+  const [divisoes, setDivisoes] = useState<Divisao[]>([]);
+  const [dividindo, setDividindo] = useState<string | null>(null);
   const [selecionadas, setSelecionadas] = useState<Set<string>>(new Set());
   const [dialogManual, setDialogManual] = useState<{
     movimento_id: string;
@@ -192,6 +197,7 @@ export default function FinConciliacao() {
     setExtratoAberto(ex.id);
     setContaSelecionada(ex.conta_id);
     setSugestoes([]);
+    setDivisoes([]);
     setSelecionadas(new Set());
     setMovsSelecionados(new Set());
     setFiltroConciliado("pendente");
@@ -200,6 +206,7 @@ export default function FinConciliacao() {
   function voltarParaLista() {
     setExtratoAberto(null);
     setSugestoes([]);
+    setDivisoes([]);
     setSelecionadas(new Set());
     setMovsSelecionados(new Set());
   }
@@ -545,6 +552,7 @@ export default function FinConciliacao() {
       {
         onSuccess: (data) => {
           setSugestoes(data.matches ?? []);
+          setDivisoes(((data as { divisoes?: Divisao[] }).divisoes ?? []));
           setSelecionadas(new Set((data.matches ?? []).map((m) => m.movimento_id)));
           const iaSug = (data as { ia_sugeridos?: number }).ia_sugeridos;
           if (usar_ia && iaSug) toast.success(`IA sugeriu ${iaSug} novos matches.`);
@@ -576,6 +584,62 @@ export default function FinConciliacao() {
       setSugestoes((curr) => curr.filter((s) => !selecionadas.has(s.movimento_id)));
       setSelecionadas(new Set());
     });
+  }
+
+  /**
+   * Baixa em partes (22/09, decisão do dono): divide o título na parte que o
+   * movimento paga (`dividir_lancamento`, migration 20260923000006) e concilia
+   * essa parte; o restante fica em aberto como parcela do mesmo título.
+   */
+  async function baixarEmParte(movimento_id: string, lancamento_id: string, valorDaParte: number) {
+    setDividindo(lancamento_id);
+    try {
+      const { data, error } = await supabase.rpc("dividir_lancamento" as never, {
+        p_lancamento_id: lancamento_id,
+        p_valor_parte: valorDaParte,
+        p_motivo: "Baixa em parte pela conciliação",
+      } as never);
+      if (error) throw new Error(error.message);
+      const r = data as { parte_id?: string; restante_id?: string; restante?: number } | null;
+      await conciliarManual.mutateAsync({ movimento_id, lancamento_id: r?.parte_id ?? lancamento_id });
+      toast.success(`${formatBRL(valorDaParte)} baixados em parte; ${formatBRL(Number(r?.restante) || 0)} ficam em aberto como parcela.`);
+      return r;
+    } catch (e) {
+      toast.error("Não foi possível baixar em parte", { description: e instanceof Error ? e.message : String(e) });
+      return null;
+    } finally {
+      setDividindo(null);
+    }
+  }
+
+  /** A sugestão do motor: N movimentos do mesmo dia que somam um título — divide e concilia parte a parte. */
+  async function dividirEConciliar(d: Divisao) {
+    setDividindo(d.lancamento_id);
+    try {
+      let atual = d.lancamento_id;
+      for (let i = 0; i < d.movimento_ids.length; i++) {
+        const ultimo = i === d.movimento_ids.length - 1;
+        if (ultimo) {
+          await conciliarManual.mutateAsync({ movimento_id: d.movimento_ids[i], lancamento_id: atual });
+          break;
+        }
+        const { data, error } = await supabase.rpc("dividir_lancamento" as never, {
+          p_lancamento_id: atual,
+          p_valor_parte: d.partes[i],
+          p_motivo: "Baixa em partes sugerida pela conciliação",
+        } as never);
+        if (error) throw new Error(error.message);
+        const r = data as { parte_id?: string; restante_id?: string } | null;
+        await conciliarManual.mutateAsync({ movimento_id: d.movimento_ids[i], lancamento_id: r?.parte_id ?? atual });
+        atual = r?.restante_id ?? atual;
+      }
+      toast.success(`Título dividido em ${d.movimento_ids.length} partes e conciliado.`);
+      setDivisoes((curr) => curr.filter((x) => x.lancamento_id !== d.lancamento_id));
+    } catch (e) {
+      toast.error("Não foi possível dividir e conciliar", { description: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setDividindo(null);
+    }
   }
 
   function aplicarTodasAlta() {
@@ -1173,6 +1237,40 @@ export default function FinConciliacao() {
           </CardHeader>
 
           <CardContent className="p-0">
+            {/* Baixa em partes (22/09): o motor achou movimentos do mesmo dia,
+                conta e sentido que somam um título em aberto. Nunca automático:
+                um clique divide o título e concilia cada parte. */}
+            {divisoes.length > 0 && (
+              <div className="border-b border-border px-5 py-4">
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <Split className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                  <p className="text-sm font-semibold text-foreground">Baixa em partes sugerida</p>
+                  <Badge variant="muted" className="tabular-nums">{divisoes.length}</Badge>
+                  <span className="text-xs text-muted-foreground">movimentos do mesmo dia que somam um título em aberto — o título é dividido e cada parte conciliada</span>
+                </div>
+                <ul className="space-y-2">
+                  {divisoes.map((d) => {
+                    const lanc = lancMap.get(d.lancamento_id);
+                    return (
+                      <li key={d.lancamento_id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-card p-3 text-sm">
+                        <div className="min-w-0">
+                          <div className="font-medium truncate max-w-[320px]" title={lanc?.descricao ?? d.lancamento_id}>
+                            {lanc?.descricao ?? "Lançamento fora da página atual"}
+                          </div>
+                          <div className="text-xs text-muted-foreground tabular-nums mt-1">
+                            {formatBRL(d.valor)} = {d.partes.map((p) => formatBRL(p)).join(" + ")} · {formatDate(d.data)}
+                          </div>
+                        </div>
+                        <Button size="sm" variant="outline" disabled={dividindo === d.lancamento_id} onClick={() => void dividirEConciliar(d)}>
+                          {dividindo === d.lancamento_id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Split className="w-4 h-4" />}
+                          Dividir e conciliar
+                        </Button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
             {sugestoes.length === 0 ? (
               <EstadoVazio
                 icone={<Search />}
@@ -1928,6 +2026,10 @@ export default function FinConciliacao() {
               { onSuccess: () => setDialogManual(null) }
             );
           }}
+          onConfirmParte={(lancamento_id, valor) => {
+            if (!dialogManual) return;
+            void baixarEmParte(dialogManual.movimento_id, lancamento_id, valor).then((r) => { if (r) setDialogManual(null); });
+          }}
         />
 
         {novoLanc && (
@@ -2038,10 +2140,13 @@ function DialogVincularManual({
   info,
   onClose,
   onConfirm,
+  onConfirmParte,
 }: {
   info: { movimento_id: string; valor: number; natureza: "receita" | "despesa" } | null;
   onClose: () => void;
   onConfirm: (lancamentoId: string) => void;
+  /** Baixa em parte (22/09): o título maior que o movimento é dividido e só a parte concilia. */
+  onConfirmParte?: (lancamentoId: string, valorDaParte: number) => void;
 }) {
   const { data: lancamentos } = useLancamentos({ status: "todos" });
 
@@ -2120,6 +2225,17 @@ function DialogVincularManual({
           </span>
         </div>
       </button>
+      {onConfirmParte && l.status === "previsto" && Number(l.valor) > info.valor + 0.02 && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onConfirmParte(l.id, info.valor)}
+          className="h-auto shrink-0 whitespace-normal text-left"
+          title={`Divide o título: ${formatBRL(info.valor)} ficam conciliados com este movimento e ${formatBRL(Number(l.valor) - info.valor)} em aberto como parcela`}
+        >
+          <Split aria-hidden="true" /> Baixar {formatBRL(info.valor)} em parte
+        </Button>
+      )}
       <Button
         variant="outline"
         size="icon"
