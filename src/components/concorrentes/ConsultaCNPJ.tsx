@@ -12,13 +12,16 @@ import { downloadCSV, downloadTextReport, downloadPDF } from '@/lib/download-uti
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import EspelhoDoComprovante from './EspelhoDoComprovante';
+import type { DadosDoEspelho } from '@/lib/concorrentes/espelho-do-comprovante';
 
 /**
  * Consulta de CNPJ — componente interno da aba "Consulta CNPJ" da tela
  * Concorrentes: começa direto no conteúdo, sem cabeçalho de página.
  */
 
-type DadosCNPJ = {
+/** O resumo de sempre, mais os campos do comprovante (opcionais até a edge nova estar no ar). */
+type DadosCNPJ = DadosDoEspelho & {
   razaoSocial: string;
   nomeFantasia: string;
   cnpj: string;
@@ -70,7 +73,9 @@ export default function ConsultaCNPJ() {
       if (data.error) {
         setErro(data.error);
       } else {
-        setResultado(data);
+        // A hora da consulta vai para o rodapé do espelho; a edge nova já a
+        // manda, a antiga não.
+        setResultado({ ...data, consultadoEm: data.consultadoEm ?? new Date().toISOString() });
         toast.success('CNPJ consultado com sucesso!');
       }
     } catch (e: any) {
@@ -259,6 +264,9 @@ export default function ConsultaCNPJ() {
           )}
         </Card>
       )}
+
+      {/* O formulário da Receita, com tudo que a fonte entrega (22/09). */}
+      {resultado && <EspelhoDoComprovante dados={resultado} />}
     </div>
   );
 }

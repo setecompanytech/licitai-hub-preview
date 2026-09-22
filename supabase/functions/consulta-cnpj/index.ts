@@ -110,6 +110,22 @@ serve(async (req) => {
       ddd_telefone_1: d.estabelecimento?.ddd1 && d.estabelecimento?.telefone1
         ? `${d.estabelecimento.ddd1}${d.estabelecimento.telefone1}` : "",
       opcao_pelo_simples: !!d.simples?.simples,
+      // Campos do comprovante (22/09) — o que o provedor tiver.
+      descricao_identificador_matriz_filial: d.estabelecimento?.tipo,
+      data_situacao_cadastral: d.estabelecimento?.data_situacao_cadastral,
+      descricao_motivo_situacao_cadastral: d.estabelecimento?.motivo_situacao_cadastral?.descricao,
+      situacao_especial: d.estabelecimento?.situacao_especial,
+      data_situacao_especial: d.estabelecimento?.data_situacao_especial,
+      ente_federativo_responsavel: "",
+      opcao_pelo_mei: !!d.simples?.mei,
+      data_opcao_pelo_simples: d.simples?.data_opcao_simples,
+      qsa: (d.socios || []).map((s: any) => ({
+        nome_socio: s.nome,
+        qualificacao_socio: s.qualificacao_socio?.descricao,
+        data_entrada_sociedade: s.data_entrada,
+        faixa_etaria: s.faixa_etaria,
+        cnpj_cpf_do_socio: s.cpf_cnpj_socio,
+      })),
     });
 
     const normalizeFromCnpja = (d: any) => ({
@@ -134,6 +150,22 @@ serve(async (req) => {
       email: d.emails?.[0]?.address,
       ddd_telefone_1: d.phones?.[0] ? `${d.phones[0].area}${d.phones[0].number}` : "",
       opcao_pelo_simples: !!d.company?.simples?.optant,
+      // Campos do comprovante (22/09) — o que o provedor tiver.
+      descricao_identificador_matriz_filial: d.head === false ? "FILIAL" : d.head === true ? "MATRIZ" : "",
+      data_situacao_cadastral: d.statusDate,
+      descricao_motivo_situacao_cadastral: d.reason?.text,
+      situacao_especial: d.specialStatus?.text ?? "",
+      data_situacao_especial: d.specialStatusDate ?? null,
+      ente_federativo_responsavel: "",
+      opcao_pelo_mei: !!d.company?.simei?.optant,
+      data_opcao_pelo_simples: d.company?.simples?.since,
+      qsa: (d.company?.members || []).map((m: any) => ({
+        nome_socio: m.person?.name,
+        qualificacao_socio: m.role?.text,
+        data_entrada_sociedade: m.since,
+        faixa_etaria: m.person?.age,
+        cnpj_cpf_do_socio: m.person?.taxId,
+      })),
     });
 
     // ── Cadeia de provedores: BrasilAPI → CNPJ.ws → CNPJA → Receitaws ──
@@ -218,6 +250,22 @@ serve(async (req) => {
                 email: j.email,
                 ddd_telefone_1: j.telefone,
                 opcao_pelo_simples: !!j.simples?.optante,
+                // Campos do comprovante (22/09) — o que o provedor tiver.
+                descricao_identificador_matriz_filial: j.tipo,
+                data_situacao_cadastral: j.data_situacao,
+                descricao_motivo_situacao_cadastral: j.motivo_situacao,
+                situacao_especial: j.situacao_especial,
+                data_situacao_especial: j.data_situacao_especial,
+                ente_federativo_responsavel: j.efr,
+                opcao_pelo_mei: !!j.simei?.optante,
+                data_opcao_pelo_simples: j.simples?.data_opcao,
+                qsa: (j.qsa || []).map((s: any) => ({
+                  nome_socio: s.nome,
+                  qualificacao_socio: s.qual,
+                  data_entrada_sociedade: "",
+                  faixa_etaria: "",
+                  cnpj_cpf_do_socio: "",
+                })),
               };
               providerUsed = "receitaws";
             }
@@ -315,6 +363,36 @@ serve(async (req) => {
       telefone: telefoneFormatado,
       inscricaoEstadual: finalIE,
       simples: data.opcao_pelo_simples || false,
+      // ── Campos do comprovante (22/09) ─────────────────────────────────
+      // A fonte já entregava tudo isto e a função descartava; a tela desenha o
+      // formulário da Receita com eles (EspelhoDoComprovante). Código e
+      // descrição vão separados para a tela formatar como o comprovante
+      // (47.12-1-00, 206-2).
+      matrizFilial: data.descricao_identificador_matriz_filial || "",
+      dataSituacaoCadastral: data.data_situacao_cadastral || "",
+      motivoSituacaoCadastral: data.descricao_motivo_situacao_cadastral || "",
+      situacaoEspecial: data.situacao_especial || "",
+      dataSituacaoEspecial: data.data_situacao_especial || "",
+      enteFederativoResponsavel: data.ente_federativo_responsavel || "",
+      naturezaJuridicaCodigo: String(data.codigo_natureza_juridica || ""),
+      naturezaJuridicaDescricao: data.natureza_juridica || "",
+      cnaePrincipalCodigo: String(data.cnae_fiscal || ""),
+      cnaePrincipalDescricao: data.cnae_fiscal_descricao || "",
+      cnaesSecundariosDetalhados: (data.cnaes_secundarios || []).map((c: any) => ({
+        codigo: String(c.codigo || ""),
+        descricao: c.descricao || "",
+      })),
+      qsa: (data.qsa || []).map((s: any) => ({
+        nome: s.nome_socio || "",
+        qualificacao: s.qualificacao_socio || "",
+        dataEntrada: s.data_entrada_sociedade || "",
+        faixaEtaria: s.faixa_etaria || "",
+        cnpjCpf: s.cnpj_cpf_do_socio || "",
+      })),
+      mei: !!data.opcao_pelo_mei,
+      dataOpcaoSimples: data.data_opcao_pelo_simples || "",
+      fonte: providerUsed,
+      consultadoEm: new Date().toISOString(),
     };
 
     console.log("FINAL RESULT:", JSON.stringify({ 
