@@ -405,6 +405,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                 numero: d.numero_documento ?? null,
                 chave: d.chave_nfe ?? null,
                 valor: valorTotal,
+                dataEmissao: d.data_emissao ?? null,
               });
               if (busca.veredito === "certo" && itemIds.length === 1) {
                 lancamentoExistente = busca.recebimento.id;
@@ -416,7 +417,10 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                 criarTitulo = false;
                 const s = busca.veredito === "certo" ? null : busca.sugestoes[0];
                 toast.info(`NF ${d.numero_documento ?? ""}: há recebimento parecido no Financeiro — o pedido será criado sem título.`, {
-                  description: `${s ? `${s.recebimento.descricao ?? "sem descrição"} — ${s.motivos.join(", ")}. ` : "Nota rateada em vários itens. "}Case em Gestão de Contratos → Pedidos.`,
+                  description: `${s ? `${s.recebimento.descricao ?? "sem descrição"} · ${fmt(Number(s.recebimento.valor))} — ${s.motivos.join(", ")}. ` : "Nota rateada em vários itens. "}${
+                    s?.relacao === "parcial" ? "Case em Gestão de Contratos → Pedidos → Vincular lançamento e lance o restante como parcela." :
+                    s?.relacao === "parte" ? "Recebimento maior que a nota: use Ratear em Gestão de Contratos → Pedidos → Vincular lançamento." :
+                    "Case em Gestão de Contratos → Pedidos."}`,
                   duration: 15000,
                 });
               }
@@ -549,6 +553,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
               chave: d.chave_nfe ?? null,
               valor: numeroBr(d.valor_total),
               cnpj: tipo === "a_pagar" ? (d.emitente_cnpj ?? null) : (d.destinatario_cnpj_cpf ?? null),
+              dataEmissao: d.data_emissao ?? null,
             },
             tipo,
           );
@@ -576,8 +581,71 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
           }
           if (busca.veredito === "ambiguo") {
             const s = busca.sugestoes[0];
+            const existente = s.recebimento;
+            const quandoPg = existente.data_realizado ?? existente.data_competencia;
+            const quandoBr = quandoPg ? deDataLocal(String(quandoPg).slice(0, 10)).toLocaleDateString("pt-BR") : "";
+            const anexarA = async (lancamentoId: string) => {
+              if (!item.documentoId) return;
+              await vincularLancamento(item.documentoId, lancamentoId);
+              setDocs((prev) => prev.map((x) => (x.id === item.id ? { ...x, lancamentoId } : x)));
+              invalidarFinanceiro();
+            };
+            // ── Fracionado (22/09): a nota é PARTE de um pagamento maior ────
+            // (R$ 400 mil que quita duas notas de R$ 200 mil): o PDF anexa-se
+            // ao pagamento e nenhum título nasce.
+            if (s.relacao === "parte" && item.documentoId) {
+              toast.info(`NF ${d.numero_documento ?? ""}: o pagamento de ${fmt(Number(existente.valor))}${quandoBr ? ` (${quandoBr})` : ""} pode cobrir esta nota como PARTE.`, {
+                description: `${existente.descricao ?? "sem descrição"} — ${s.motivos.join(", ")}. Depois desta nota, ${fmt(s.restante)} do pagamento seguem sem nota.`,
+                action: {
+                  label: "Anexar como parte",
+                  onClick: () => {
+                    void anexarA(existente.id).then(() =>
+                      toast.success(`NF ${d.numero_documento ?? ""} anexada ao pagamento de ${fmt(Number(existente.valor))} como parte. Nenhum título novo.`),
+                    );
+                  },
+                },
+                duration: 30000,
+              });
+              return;
+            }
+            // ── Fracionado: o pagamento é MENOR que a nota (nota paga em duas
+            // vezes): anexa-se ao que já foi pago e o restante vira parcela
+            // em aberto, apontando a mesma nota.
+            if (s.relacao === "parcial" && item.documentoId) {
+              toast.info(`NF ${d.numero_documento ?? ""}: o pagamento de ${fmt(Number(existente.valor))}${quandoBr ? ` (${quandoBr})` : ""} é MENOR que a nota (${fmt(numeroBr(d.valor_total))}).`, {
+                description: `${existente.descricao ?? "sem descrição"} — ${s.motivos.join(", ")}. ${fmt(s.restante)} ficam em aberto.`,
+                action: {
+                  label: "Anexar e lançar o restante",
+                  onClick: () => {
+                    void (async () => {
+                      await anexarA(existente.id);
+                      const r = await upsert.mutateAsync({
+                        tipo,
+                        natureza: tipo === "a_receber" ? "receita" : "despesa",
+                        status: "previsto",
+                        descricao: `${d.descricao || `${(d.tipo_documento ?? "Documento").toString().toUpperCase()} ${d.numero_documento ?? ""}`.trim()} (restante)`,
+                        valor: s.restante,
+                        data_competencia: d.data_emissao ?? hojeLocal(),
+                        data_vencimento: d.data_vencimento ?? d.data_emissao ?? null,
+                        data_emissao: d.data_emissao ?? null,
+                        tipo_documento: (d.tipo_documento ?? "outro") as never,
+                        numero_documento: d.numero_documento ?? null,
+                        chave_acesso_nfe: normalizarChaveNfe(d.chave_nfe),
+                        documento_fiscal_id: item.documentoId,
+                        parcela_pai_id: existente.id,
+                      } as never);
+                      const novoId = (r as { id?: string } | null)?.id ?? null;
+                      invalidarFinanceiro();
+                      toast.success(`NF ${d.numero_documento ?? ""}: PDF anexado ao pagamento de ${fmt(Number(existente.valor))}; restante de ${fmt(s.restante)} lançado em aberto${novoId ? "" : " (confira em Contas a Pagar)"}.`);
+                    })();
+                  },
+                },
+                duration: 30000,
+              });
+              return;
+            }
             toast.info(`NF ${d.numero_documento ?? ""}: há lançamento parecido em Contas a ${tipo === "a_receber" ? "Receber" : "Pagar"} — nada foi criado.`, {
-              description: `${s.recebimento.descricao ?? "sem descrição"} · ${fmt(Number(s.recebimento.valor))} — ${s.motivos.join(", ")}. Anexe o PDF ao lançamento certo, ou use Revisar para lançar mesmo assim.`,
+              description: `${existente.descricao ?? "sem descrição"} · ${fmt(Number(existente.valor))} — ${s.motivos.join(", ")}. Anexe o PDF ao lançamento certo, ou use Revisar para lançar mesmo assim.`,
               duration: 15000,
             });
             return;

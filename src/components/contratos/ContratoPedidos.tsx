@@ -1190,7 +1190,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       for (const p of pedidosCriados) {
         const nf = p.nota_fiscal ?? null;
         const busca = nf
-          ? await buscarRecebimentoDaNota(empresaId, { numero: nf, valor: Number(p.valor_total) || 0 })
+          ? await buscarRecebimentoDaNota(empresaId, { numero: nf, valor: Number(p.valor_total) || 0, dataEmissao: p.data_pedido ?? null })
           : ({ veredito: 'nenhum' } as const);
         if (busca.veredito === 'certo') {
           const { error: erroCasar } = await supabase
@@ -1217,9 +1217,59 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
         }
         if (busca.veredito === 'ambiguo') {
           const s = busca.sugestoes[0];
+          const abrirVincular = () => setVinculando({ id: p.id, numero_pedido: p.numero_pedido, valor_total: Number(p.valor_total) || 0, data_pedido: p.data_pedido, nota_fiscal: nf });
+          // ── Fracionado (22/09): recebimento MENOR que a nota (empenho pago
+          // em duas vezes). Casa o que já entrou e lança o restante como
+          // parcela em aberto do mesmo pedido: a quitação, que exige todas as
+          // parcelas pagas, quita no segundo pagamento — e não antes.
+          if (s.relacao === 'parcial') {
+            toast.info(`NF ${nf}: o recebimento de ${fmt(Number(s.recebimento.valor))} é MENOR que a nota (${fmt(Number(p.valor_total) || 0)}).`, {
+              description: `${s.recebimento.descricao ?? 'sem descrição'} — ${s.motivos.join(', ')}. ${fmt(s.restante)} ficam em aberto.`,
+              action: {
+                label: 'Casar e lançar o restante',
+                onClick: () => {
+                  void (async () => {
+                    const { error: erroCasar } = await supabase
+                      .from('financeiro_lancamentos')
+                      .update({ contrato_pedido_id: p.id, contrato_id: contratoId, contrato_item_id: p.contrato_item_id ?? null, numero_documento: s.recebimento.numero_documento ?? nf } as never)
+                      .eq('id', s.recebimento.id);
+                    if (erroCasar) { toast.error('Não foi possível casar o recebimento', { description: erroCasar.message }); return; }
+                    const { error: erroRestante } = await supabase.from('financeiro_lancamentos').insert({
+                      empresa_id: empresaId,
+                      tipo: 'a_receber', natureza: 'receita', status: 'previsto',
+                      descricao: `${(contratoInfo as { numero_contrato?: string | null } | null)?.numero_contrato ?? 'Contrato'} · Pedido ${p.numero_pedido} — restante da NF ${nf}`,
+                      valor: s.restante,
+                      data_competencia: p.data_pedido ?? new Date().toISOString().slice(0, 10),
+                      data_emissao: p.data_pedido ?? null,
+                      numero_documento: nf,
+                      contrato_id: contratoId, contrato_pedido_id: p.id, contrato_item_id: p.contrato_item_id ?? null,
+                      parcela_pai_id: s.recebimento.id,
+                      origem: 'manual', origem_tipo: 'manual', origem_job: 'ContratoPedidos.gerarLancamentosFinanceiros.restante',
+                      origem_usuario_id: user?.id ?? null, origem_timestamp: new Date().toISOString(),
+                      observacoes: `Restante da NF ${nf}: ${fmt(Number(s.recebimento.valor))} já recebidos em outro título; ${fmt(s.restante)} em aberto.`,
+                      created_by: user?.id ?? null,
+                    } as never);
+                    if (erroRestante) { toast.error('Recebimento casado, mas o restante não foi lançado', { description: erroRestante.message }); }
+                    else toast.success(`NF ${nf}: recebimento casado e ${fmt(s.restante)} lançados em aberto como parcela do pedido.`);
+                    load();
+                  })();
+                },
+              },
+              duration: 30000,
+            });
+            continue;
+          }
+          if (s.relacao === 'parte') {
+            toast.info(`NF ${nf}: o recebimento de ${fmt(Number(s.recebimento.valor))} é MAIOR que a nota — pode pagar mais de uma.`, {
+              description: `${s.recebimento.descricao ?? 'sem descrição'} — ${s.motivos.join(', ')}. Use Ratear em Vincular lançamento para destinar ${fmt(Number(p.valor_total) || 0)} a este pedido.`,
+              action: { label: 'Ratear', onClick: abrirVincular },
+              duration: 30000,
+            });
+            continue;
+          }
           toast.info(`NF ${nf}: há recebimento parecido no Financeiro — nenhum título foi criado.`, {
             description: `${s.recebimento.descricao ?? 'sem descrição'} · ${fmt(Number(s.recebimento.valor))} — ${s.motivos.join(', ')}. Confira e case, ou crie o título pelo diálogo.`,
-            action: { label: 'Casar', onClick: () => setVinculando({ id: p.id, numero_pedido: p.numero_pedido, valor_total: Number(p.valor_total) || 0, data_pedido: p.data_pedido, nota_fiscal: nf }) },
+            action: { label: 'Casar', onClick: abrirVincular },
             duration: 20000,
           });
           continue;

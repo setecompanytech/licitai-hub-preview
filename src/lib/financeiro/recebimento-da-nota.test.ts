@@ -113,3 +113,76 @@ describe('procurarRecebimentoDaNota', () => {
     expect(r.veredito).toBe('ambiguo');
   });
 });
+
+describe('fracionado (22/09): parte e parcial', () => {
+  it('pagamento MAIOR que a nota, citando-a: parte, com a sobra dita', () => {
+    const r = procurarRecebimentoDaNota({ numero: '883379', valor: 200000 }, [
+      recibo({ id: 'pg', descricao: 'PAGTO NF 883379 E 889491', valor: 440000, coberto_por_notas: 0 }),
+    ]);
+    expect(r.veredito).toBe('ambiguo');
+    if (r.veredito === 'ambiguo') {
+      expect(r.sugestoes[0].relacao).toBe('parte');
+      expect(r.sugestoes[0].restante).toBe(240000);
+      expect(r.sugestoes[0].motivos).toContain('pagamento maior que a nota — pode cobrir mais de uma');
+    }
+  });
+
+  it('pagamento MENOR que a nota, citando-a: parcial, com o que fica em aberto', () => {
+    const r = procurarRecebimentoDaNota({ numero: '895461', valor: 400080 }, [
+      recibo({ id: 'pg', descricao: 'NF 895461 1/2', valor: 200040 }),
+    ]);
+    expect(r.veredito).toBe('ambiguo');
+    if (r.veredito === 'ambiguo') {
+      expect(r.sugestoes[0].relacao).toBe('parcial');
+      expect(r.sugestoes[0].restante).toBe(200040);
+    }
+  });
+
+  it('mesmo CNPJ na janela de 90 dias: parte só se a sobra sem nota cobre a nota inteira', () => {
+    const cnpj = '24687187000101';
+    const nota = { numero: '5', valor: 200000, cnpj, dataEmissao: '2026-07-10' };
+    const comSobra = procurarRecebimentoDaNota(nota, [
+      recibo({ id: 'pg', descricao: 'TED FORNECEDOR', valor: 400000, pessoa_documento: cnpj, data_realizado: '2026-07-15', coberto_por_notas: 200000 }),
+    ]);
+    expect(comSobra.veredito).toBe('ambiguo');
+    if (comSobra.veredito === 'ambiguo') {
+      expect(comSobra.sugestoes[0].relacao).toBe('parte');
+      expect(comSobra.sugestoes[0].restante).toBe(0);
+    }
+    const semSobra = procurarRecebimentoDaNota(nota, [
+      recibo({ id: 'pg', descricao: 'TED FORNECEDOR', valor: 400000, pessoa_documento: cnpj, data_realizado: '2026-07-15', coberto_por_notas: 300000 }),
+    ]);
+    expect(semSobra.veredito).toBe('nenhum');
+  });
+
+  it('mesmo CNPJ com pagamento menor na janela: parcial; fora da janela ou sem data de emissão: nada', () => {
+    const cnpj = '24687187000101';
+    const dentro = procurarRecebimentoDaNota({ numero: '5', valor: 400000, cnpj, dataEmissao: '2026-07-10' }, [
+      recibo({ id: 'pg', descricao: 'PIX FORNECEDOR', valor: 200000, pessoa_documento: cnpj, data_realizado: '2026-08-01' }),
+    ]);
+    expect(dentro.veredito).toBe('ambiguo');
+    if (dentro.veredito === 'ambiguo') expect(dentro.sugestoes[0].relacao).toBe('parcial');
+    const fora = procurarRecebimentoDaNota({ numero: '5', valor: 400000, cnpj, dataEmissao: '2026-01-10' }, [
+      recibo({ id: 'pg', descricao: 'PIX FORNECEDOR', valor: 200000, pessoa_documento: cnpj, data_realizado: '2026-08-01' }),
+    ]);
+    expect(fora.veredito).toBe('nenhum');
+    const semData = procurarRecebimentoDaNota({ numero: '5', valor: 400000, cnpj }, [
+      recibo({ id: 'pg', descricao: 'PIX FORNECEDOR', valor: 200000, pessoa_documento: cnpj, data_realizado: '2026-08-01' }),
+    ]);
+    expect(semData.veredito).toBe('nenhum');
+  });
+
+  it('quem cita a nota vem antes de quem só tem CNPJ e janela; igual continua certo', () => {
+    const cnpj = '24687187000101';
+    const r = procurarRecebimentoDaNota({ numero: '7', valor: 100, cnpj, dataEmissao: '2026-07-10' }, [
+      recibo({ id: 'janela', descricao: 'PIX', valor: 50, pessoa_documento: cnpj, data_realizado: '2026-07-12' }),
+      recibo({ id: 'cita', descricao: 'NF 7 parte 1', valor: 60 }),
+    ]);
+    expect(r.veredito).toBe('ambiguo');
+    if (r.veredito === 'ambiguo') expect(r.sugestoes[0].recebimento.id).toBe('cita');
+    const igual = procurarRecebimentoDaNota({ numero: '7', valor: 100, cnpj, dataEmissao: '2026-07-10' }, [
+      recibo({ id: 'ok', descricao: 'NF 7', valor: 100 }),
+    ]);
+    expect(igual.veredito).toBe('certo');
+  });
+});

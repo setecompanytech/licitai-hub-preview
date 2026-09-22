@@ -160,6 +160,34 @@ export default function VincularLancamentoDialog({
       return n;
     });
 
+  /**
+   * O restante da nota, quando os recebimentos selecionados não a cobrem:
+   * nasce como título em aberto do pedido (parcela), apontando o primeiro
+   * recebimento como origem — e os selecionados são vinculados em seguida.
+   */
+  const lancarRestante = async () => {
+    if (!pedido || !empresaId || selecionados.length === 0 || soma.diferenca >= -0.005) return;
+    const restante = Math.round(-soma.diferenca * 100) / 100;
+    const nota = (pedido as { nota_fiscal?: string | null }).nota_fiscal ?? null;
+    setSalvando(true);
+    const { error } = await supabase.from('financeiro_lancamentos').insert({
+      empresa_id: empresaId,
+      tipo: 'a_receber', natureza: 'receita', status: 'previsto',
+      descricao: `Pedido ${pedido.numero_pedido}${nota ? ` — restante da NF ${nota}` : ' — restante'}`,
+      valor: restante,
+      data_competencia: pedido.data_pedido ?? new Date().toISOString().slice(0, 10),
+      numero_documento: nota,
+      contrato_id: contratoId, contrato_pedido_id: pedido.id,
+      parcela_pai_id: selecionados[0].id,
+      origem: 'manual', origem_tipo: 'manual', origem_job: 'VincularLancamentoDialog.lancarRestante',
+      origem_timestamp: new Date().toISOString(),
+      observacoes: `Restante do pedido ${pedido.numero_pedido}: ${fmt(soma.soma)} já recebidos em ${selecionados.length} título(s); ${fmt(restante)} em aberto.`,
+    } as never);
+    if (error) { setSalvando(false); toast.error('Não foi possível lançar o restante', { description: error.message }); return; }
+    toast.success(`${fmt(restante)} lançados em aberto como parcela do pedido ${pedido.numero_pedido}.`);
+    await salvar();
+  };
+
   const salvar = async () => {
     setSalvando(true);
     const paraLigar = [...escolhidos];
@@ -372,6 +400,14 @@ export default function VincularLancamentoDialog({
               <p className="text-xs text-muted-foreground mt-0.5 tabular-nums">
                 Selecionado {fmt(soma.soma)} · pedido {fmt(pedido.valor_total)}
               </p>
+            )}
+            {/* Fracionado (22/09): a nota paga em duas vezes. O que já entrou
+                casa agora; o que falta vira parcela em aberto do mesmo pedido,
+                e a quitação só fecha quando ela também for paga. */}
+            {!soma.fecha && soma.diferenca < -0.005 && selecionados.length > 0 && (
+              <Button size="sm" variant="outline" className="mt-2" disabled={salvando} onClick={() => void lancarRestante()}>
+                <Split aria-hidden="true" /> Lançar {fmt(-soma.diferenca)} como parcela em aberto e vincular
+              </Button>
             )}
           </div>
         </div>
