@@ -1,17 +1,12 @@
 import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Search, FileText, CheckCircle2, AlertTriangle, Loader2, ExternalLink, Download, FileSpreadsheet, FileDown } from 'lucide-react';
+import { Search, AlertTriangle, Loader2, ExternalLink } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { downloadCSV, downloadTextReport, downloadPDF } from '@/lib/download-utils';
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import EspelhoDoComprovante from './EspelhoDoComprovante';
 import PresencaFederal from './PresencaFederal';
 import type { DadosDoEspelho } from '@/lib/concorrentes/espelho-do-comprovante';
@@ -19,40 +14,17 @@ import type { DadosDoEspelho } from '@/lib/concorrentes/espelho-do-comprovante';
 /**
  * Consulta de CNPJ — componente interno da aba "Consulta CNPJ" da tela
  * Concorrentes: começa direto no conteúdo, sem cabeçalho de página.
+ *
+ * Um quadro só (22/09, tarde): o espelho do comprovante da Receita. O cartão
+ * de resumo que vinha antes dele repetia os mesmos campos noutra ordem, e o
+ * dono pediu fidelidade ao documento oficial, não duas leituras da mesma
+ * consulta. A impressão e o PDF saem do próprio espelho. Abaixo, a ficha do
+ * CNPJ no governo federal, que é outra fonte (Portal da Transparência).
  */
-
-/** O resumo de sempre, mais os campos do comprovante (opcionais até a edge nova estar no ar). */
-type DadosCNPJ = DadosDoEspelho & {
-  razaoSocial: string;
-  nomeFantasia: string;
-  cnpj: string;
-  situacao: string;
-  dataAbertura: string;
-  naturezaJuridica: string;
-  cnaePrincipal: string;
-  cnaesSecundarios: string[];
-  endereco: string;
-  municipio: string;
-  uf: string;
-  porte: string;
-  capitalSocial: string;
-  email: string;
-  telefone: string;
-};
-
-function InfoField({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
-  return (
-    <div>
-      <dt className="text-sm text-muted-foreground">{label}</dt>
-      <dd className={`mt-0.5 text-base text-foreground ${highlight ? 'font-semibold' : ''}`}>{value || '—'}</dd>
-    </div>
-  );
-}
-
 export default function ConsultaCNPJ() {
   const [cnpjInput, setCnpjInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [resultado, setResultado] = useState<DadosCNPJ | null>(null);
+  const [resultado, setResultado] = useState<DadosDoEspelho | null>(null);
   const [erro, setErro] = useState('');
 
   const handleConsultar = async () => {
@@ -79,17 +51,12 @@ export default function ConsultaCNPJ() {
         setResultado({ ...data, consultadoEm: data.consultadoEm ?? new Date().toISOString() });
         toast.success('CNPJ consultado com sucesso!');
       }
-    } catch (e: any) {
-      setErro(e.message || 'Erro ao consultar CNPJ');
+    } catch (e: unknown) {
+      setErro(e instanceof Error ? e.message : 'Erro ao consultar CNPJ');
     } finally {
       setLoading(false);
     }
   };
-
-  // Situação cadastral: a tinta e o ícone do badge saem juntos do mesmo dado —
-  // um CNPJ "BAIXADA"/"SUSPENSA" não pode exibir visto de confirmação.
-  const situacaoAtiva = resultado?.situacao === 'ATIVA';
-  const IconeSituacao = situacaoAtiva ? CheckCircle2 : AlertTriangle;
 
   return (
     <div className="space-y-4">
@@ -135,138 +102,7 @@ export default function ConsultaCNPJ() {
         </div>
       </Card>
 
-      {resultado && (
-        <Card className="animate-fade-in space-y-4 p-5">
-          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-            <h2 className="flex items-center gap-2 text-lg font-semibold leading-6 text-foreground">
-              <FileText className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-              Resultado da consulta
-            </h2>
-            <div className="flex flex-wrap items-center gap-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button size="sm" variant="outline">
-                    <Download className="h-4 w-4" /> Exportar
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => {
-                    downloadCSV(
-                      `cnpj-${resultado.cnpj.replace(/\D/g, '')}`,
-                      ['Campo', 'Valor'],
-                      [
-                        ['Razão Social', resultado.razaoSocial],
-                        ['Nome Fantasia', resultado.nomeFantasia],
-                        ['CNPJ', resultado.cnpj],
-                        ['Situação', resultado.situacao],
-                        ['Data Abertura', resultado.dataAbertura],
-                        ['Natureza Jurídica', resultado.naturezaJuridica],
-                        ['CNAE Principal', resultado.cnaePrincipal],
-                        ['Porte', resultado.porte],
-                        ['Capital Social', resultado.capitalSocial],
-                        ['Endereço', resultado.endereco],
-                        ['Município/UF', `${resultado.municipio}/${resultado.uf}`],
-                        ['E-mail', resultado.email],
-                        ['Telefone', resultado.telefone],
-                        ...resultado.cnaesSecundarios.map((c, i) => [`CNAE Secundário ${i + 1}`, c]),
-                      ]
-                    );
-                    toast.success('CSV exportado!');
-                  }}>
-                    <FileSpreadsheet aria-hidden="true" /> Exportar CSV
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => {
-                    const report = [
-                      `CONSULTA CNPJ – ${resultado.cnpj}`,
-                      `Gerado em: ${new Date().toLocaleString('pt-BR')}`,
-                      '='.repeat(50),
-                      '',
-                      `Razão Social: ${resultado.razaoSocial}`,
-                      `Nome Fantasia: ${resultado.nomeFantasia}`,
-                      `Situação: ${resultado.situacao}`,
-                      `Data Abertura: ${resultado.dataAbertura}`,
-                      `Natureza Jurídica: ${resultado.naturezaJuridica}`,
-                      `CNAE Principal: ${resultado.cnaePrincipal}`,
-                      `Porte: ${resultado.porte}`,
-                      `Capital Social: ${resultado.capitalSocial}`,
-                      `Endereço: ${resultado.endereco}`,
-                      `Município/UF: ${resultado.municipio}/${resultado.uf}`,
-                      `E-mail: ${resultado.email}`,
-                      `Telefone: ${resultado.telefone}`,
-                      '',
-                      `CNAEs Secundários (${resultado.cnaesSecundarios.length}):`,
-                      ...resultado.cnaesSecundarios.map(c => `  • ${c}`),
-                    ].join('\n');
-                    downloadTextReport(`cnpj-${resultado.cnpj.replace(/\D/g, '')}`, report);
-                    toast.success('Relatório exportado!');
-                  }}>
-                    <FileDown aria-hidden="true" /> Exportar Relatório TXT
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => {
-                    downloadPDF(
-                      `cnpj-${resultado.cnpj.replace(/\D/g, '')}`,
-                      `Consulta CNPJ – ${resultado.razaoSocial}`,
-                      ['Campo', 'Valor'],
-                      [
-                        ['Razão Social', resultado.razaoSocial],
-                        ['Nome Fantasia', resultado.nomeFantasia],
-                        ['CNPJ', resultado.cnpj],
-                        ['Situação', resultado.situacao],
-                        ['Data Abertura', resultado.dataAbertura],
-                        ['CNAE Principal', resultado.cnaePrincipal],
-                        ['Porte', resultado.porte],
-                        ['Capital Social', resultado.capitalSocial],
-                        ['Endereço', resultado.endereco],
-                        ['Município/UF', `${resultado.municipio}/${resultado.uf}`],
-                        ['E-mail', resultado.email],
-                        ['Telefone', resultado.telefone],
-                        ...resultado.cnaesSecundarios.map((c, i) => [`CNAE Secundário ${i + 1}`, c]),
-                      ]
-                    );
-                    toast.success('PDF exportado!');
-                  }}>
-                    <FileText aria-hidden="true" /> Exportar PDF
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <Badge variant={situacaoAtiva ? 'success' : 'danger'}>
-                <IconeSituacao className="mr-1 h-3 w-3" aria-hidden="true" /> {resultado.situacao || 'Situação não informada'}
-              </Badge>
-            </div>
-          </div>
-
-          <dl className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <InfoField label="Razão Social" value={resultado.razaoSocial} />
-            <InfoField label="Nome Fantasia" value={resultado.nomeFantasia} />
-            <InfoField label="CNPJ" value={resultado.cnpj} />
-            <InfoField label="Situação Cadastral" value={resultado.situacao} highlight />
-            <InfoField label="Data de Abertura" value={resultado.dataAbertura} />
-            <InfoField label="Natureza Jurídica" value={resultado.naturezaJuridica} />
-            <InfoField label="Porte" value={resultado.porte} />
-            <InfoField label="Capital Social" value={resultado.capitalSocial} />
-            <InfoField label="CNAE Principal" value={resultado.cnaePrincipal} highlight />
-            <InfoField label="Endereço" value={resultado.endereco} />
-            <InfoField label="Município/UF" value={`${resultado.municipio} / ${resultado.uf}`} />
-            <InfoField label="E-mail" value={resultado.email} />
-            <InfoField label="Telefone" value={resultado.telefone} />
-          </dl>
-
-          {resultado.cnaesSecundarios.length > 0 && (
-            <div className="border-t border-border pt-4">
-              <h3 className="mb-3 text-lg font-semibold leading-6 text-foreground">
-                CNAEs secundários ({resultado.cnaesSecundarios.length})
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                {resultado.cnaesSecundarios.map((cnae, i) => (
-                  <Badge key={i} variant="muted">{cnae}</Badge>
-                ))}
-              </div>
-            </div>
-          )}
-        </Card>
-      )}
-
-      {/* O formulário da Receita, com tudo que a fonte entrega (22/09). */}
+      {/* O formulário da Receita, com tudo que a fonte entrega (22/09) — o único quadro da consulta. */}
       {resultado && <EspelhoDoComprovante dados={resultado} />}
 
       {/* A ficha do CNPJ no governo federal, pelo Portal da Transparência. */}

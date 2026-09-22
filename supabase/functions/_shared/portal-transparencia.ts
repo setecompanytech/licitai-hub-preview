@@ -223,8 +223,18 @@ export async function fichaDaPessoaJuridica(
     if (r.status === 404) return { ficha: null };
     if (!r.ok) return { ficha: null, erro: `HTTP ${r.status}: ${mensagemDaApi(await r.text())}` };
     const j = await r.json();
-    const ficha = Array.isArray(j) ? (j[0] ?? null) : (j && typeof j === "object" ? j : null);
-    return { ficha: ficha as FichaFederal | null };
+    const lista = (Array.isArray(j) ? j : j && typeof j === "object" ? [j] : [])
+      .filter((f: unknown): f is Registro => !!f && typeof f === "object");
+    // A ficha só vale se for DESTE CNPJ — a mesma regra dos cadastros: uma
+    // ficha de outro CNPJ acusaria sanção alheia (o selo "Sanção no CEIS" da
+    // Consulta CNPJ nasce daqui). Sem o campo cnpj não há como conferir, e a
+    // ficha passa; com o campo e outro número, é erro, nunca ficha.
+    const pedido = digitos(cnpj);
+    const propria = lista.find((f) => f.cnpj == null || digitos(f.cnpj) === pedido) ?? null;
+    if (!propria && lista.length > 0) {
+      return { ficha: null, erro: `A API devolveu a ficha de outro CNPJ (${String(lista[0].cnpj ?? "")}); confira no portal.` };
+    }
+    return { ficha: propria as FichaFederal | null };
   } catch (e) {
     return { ficha: null, erro: e instanceof Error ? e.message : String(e) };
   }

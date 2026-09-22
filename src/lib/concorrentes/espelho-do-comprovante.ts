@@ -8,16 +8,32 @@
  * estrutura do formulário — as caixas, na ordem e com os rótulos do
  * comprovante — que a tela e a impressão desenham a partir de uma fonte só.
  *
+ * Na tarde de 22/09 o dono pediu UM quadro só, fiel ao da Receita: o campo
+ * sem valor sai como o comprovante imprime ("********"); o quadro de sócios
+ * segue a consulta oficial de QSA (capital social, nome e qualificação com o
+ * código da tabela da Receita, representante legal quando há); e nada de
+ * estimativa — a faixa etária do sócio, que é intervalo da base pública e não
+ * consta de documento oficial, saiu.
+ *
  * O que o espelho NÃO é: o comprovante oficial. A base pública é republicada
  * mensalmente e não carrega hora de emissão; o oficial sai só no site da
  * Receita, atrás do "Sou humano". O rodapé diz isso, sempre.
  */
+import { valorPorExtenso } from '@/lib/numero-extenso';
+
 export const URL_COMPROVANTE_OFICIAL = 'https://solucoes.receita.fazenda.gov.br/Servicos/cnpjreva/';
+export const URL_QSA_OFICIAL = 'https://solucoes.receita.fazenda.gov.br/Servicos/cnpjreva/Cnpjreva_qsa.asp';
 
 export interface SocioDoEspelho {
   nome: string;
   qualificacao: string;
+  /** O código da qualificação na tabela da Receita (49 = Sócio-Administrador). */
+  qualificacaoCodigo?: string;
+  representanteLegal?: string;
+  qualificacaoRepresentante?: string;
+  qualificacaoRepresentanteCodigo?: string;
   dataEntrada?: string;
+  /** Intervalo estimado pela base pública; não entra no espelho (22/09). */
   faixaEtaria?: string;
   cnpjCpf?: string;
 }
@@ -52,7 +68,7 @@ export interface DadosDoEspelho {
   email?: string;
   telefone?: string;
   porte?: string;
-  capitalSocial?: string;
+  capitalSocial?: string | number;
   matrizFilial?: string;
   dataSituacaoCadastral?: string;
   motivoSituacaoCadastral?: string;
@@ -80,11 +96,13 @@ export interface CaixaDoEspelho {
 export type LinhaDoEspelho = CaixaDoEspelho[];
 
 export const VAZIO = '—';
+/** O comprovante da Receita imprime asteriscos no campo sem valor. */
+export const VAZIO_DO_COMPROVANTE = '********';
 
 const digitos = (v: unknown) => String(v ?? '').replace(/\D/g, '');
 const ou = (v: unknown) => {
   const s = String(v ?? '').trim();
-  return s ? s : VAZIO;
+  return s ? s : VAZIO_DO_COMPROVANTE;
 };
 
 /** 4712100 → 47.12-1-00; já formatado passa como veio. */
@@ -125,7 +143,7 @@ export function dataHoraBr(iso: unknown): string {
 /** O comprovante escreve a sigla: ME, EPP, DEMAIS. */
 export function siglaDoPorte(porte: unknown): string {
   const p = String(porte ?? '').trim().toUpperCase();
-  if (!p) return VAZIO;
+  if (!p) return VAZIO_DO_COMPROVANTE;
   if (p === 'ME' || p.startsWith('MICRO')) return 'ME';
   if (p === 'EPP' || p.includes('PEQUENO PORTE')) return 'EPP';
   return p;
@@ -146,7 +164,7 @@ function codigoEDescricao(codigo: unknown, descricao: unknown, junto: unknown, f
     return `${formatar(codigo)} - ${String(descricao ?? '').trim()}`.replace(/^ - /, '').replace(/ - $/, '');
   }
   const s = String(junto ?? '').trim();
-  if (!s || s === ' - ' || s === '-') return VAZIO;
+  if (!s || s === ' - ' || s === '-') return VAZIO_DO_COMPROVANTE;
   const [cod, ...resto] = s.split(' - ');
   return resto.length > 0 ? `${formatar(cod)} - ${resto.join(' - ')}` : s;
 }
@@ -194,7 +212,7 @@ export function caixasDoEspelho(d: DadosDoEspelho): LinhaDoEspelho[] {
       { rotulo: 'Complemento', valor: ou(d.complemento), largura: 4 },
     ],
     [
-      { rotulo: 'CEP', valor: d.cep ? formatarCep(d.cep) : VAZIO, largura: 2 },
+      { rotulo: 'CEP', valor: d.cep ? formatarCep(d.cep) : VAZIO_DO_COMPROVANTE, largura: 2 },
       { rotulo: 'Bairro/Distrito', valor: ou(d.bairro), largura: 4 },
       { rotulo: 'Município', valor: ou(d.municipio), largura: 4 },
       { rotulo: 'UF', valor: ou(d.uf), largura: 2 },
@@ -216,9 +234,63 @@ export function caixasDoEspelho(d: DadosDoEspelho): LinhaDoEspelho[] {
   ];
 }
 
+// ── O quadro de sócios e administradores, como a consulta oficial de QSA ────
+
 export function sociosDoEspelho(d: DadosDoEspelho): SocioDoEspelho[] {
   return (d.qsa ?? []).filter((s) => String(s?.nome ?? '').trim());
 }
+
+/** "49-Sócio-Administrador": o código da tabela da Receita e a descrição, como a consulta de QSA escreve. */
+export function qualificacaoDoSocio(s: Pick<SocioDoEspelho, 'qualificacao' | 'qualificacaoCodigo'>): string {
+  const descricao = String(s.qualificacao ?? '').trim();
+  const codigo = digitos(s.qualificacaoCodigo);
+  if (codigo && descricao) return `${codigo}-${descricao}`;
+  return descricao || codigo || VAZIO_DO_COMPROVANTE;
+}
+
+/** O capital social como número: "R$ 500.000,00", "500000", 500000 → 500000; sem valor legível, null. */
+export function numeroDoCapital(v: unknown): number | null {
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+  const limpo = String(v ?? '').replace(/[^\d,.-]/g, '');
+  if (!/\d/.test(limpo)) return null;
+  const normalizado = limpo.includes(',')
+    ? limpo.replace(/\./g, '').replace(',', '.')
+    : /\.\d{3}$/.test(limpo) ? limpo.replace(/\./g, '') : limpo;
+  const n = Number(normalizado);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** "R$ 500.000,00 (Quinhentos mil reais)", como a consulta de QSA da Receita escreve; sem valor, vazio. */
+export function capitalSocialLegivel(capital: unknown): string {
+  const valor = numeroDoCapital(capital);
+  if (valor === null) return '';
+  // Espaço comum entre "R$" e o número, como a consulta da Receita escreve
+  // (o formatador põe espaço inseparável).
+  const moeda = valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }).replace(/\s/g, ' ');
+  const extenso = valorPorExtenso(valor);
+  return extenso ? `${moeda} (${extenso.charAt(0).toUpperCase()}${extenso.slice(1)})` : moeda;
+}
+
+export interface LinhaDoQsa {
+  nome: string;
+  qualificacao: string;
+  representante: string;
+  qualificacaoRepresentante: string;
+}
+
+/** As linhas do QSA: nome, qualificação com código, representante legal quando há. Nada de faixa etária. */
+export function linhasDoQsa(d: DadosDoEspelho): LinhaDoQsa[] {
+  return sociosDoEspelho(d).map((s) => ({
+    nome: String(s.nome).trim(),
+    qualificacao: qualificacaoDoSocio(s),
+    representante: String(s.representanteLegal ?? '').trim(),
+    qualificacaoRepresentante: String(s.representanteLegal ?? '').trim()
+      ? qualificacaoDoSocio({ qualificacao: s.qualificacaoRepresentante ?? '', qualificacaoCodigo: s.qualificacaoRepresentanteCodigo })
+      : '',
+  }));
+}
+
+export const qsaTemRepresentante = (linhas: LinhaDoQsa[]): boolean => linhas.some((l) => l.representante);
 
 /** O rodapé que separa espelho de comprovante — sempre presente. */
 export function rodapeDoEspelho(d: DadosDoEspelho): string {
@@ -242,11 +314,17 @@ export function htmlDoEspelho(d: DadosDoEspelho): string {
         + miolo + '</div>';
     }).join('')}</div>`,
   ).join('');
-  const socios = sociosDoEspelho(d);
+  const socios = linhasDoQsa(d);
+  const capital = capitalSocialLegivel(d.capitalSocial);
+  const comRepresentante = qsaTemRepresentante(socios);
   const qsa = socios.length > 0
-    ? `<h2>Quadro de sócios e administradores</h2><table><tr><th>Nome</th><th>Qualificação</th><th>Entrada</th></tr>${
-      socios.map((s) => `<tr><td>${escapar(s.nome)}</td><td>${escapar(ou(s.qualificacao))}</td><td>${escapar(ou(dataBr(s.dataEntrada)))}</td></tr>`).join('')
-    }</table>`
+    ? `<h2>Quadro de sócios e administradores</h2>`
+      + (capital ? `<p class="capital">CAPITAL SOCIAL: ${escapar(capital)}</p>` : '')
+      + `<table><tr><th>Nome/Nome empresarial</th><th>Qualificação</th>${comRepresentante ? '<th>Representante legal</th><th>Qualificação do representante</th>' : ''}</tr>${
+        socios.map((s) => `<tr><td>${escapar(s.nome)}</td><td>${escapar(s.qualificacao)}</td>${
+          comRepresentante ? `<td>${escapar(s.representante || VAZIO_DO_COMPROVANTE)}</td><td>${escapar(s.qualificacaoRepresentante || VAZIO_DO_COMPROVANTE)}</td>` : ''
+        }</tr>`).join('')
+      }</table>`
     : '';
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Espelho do comprovante — ${escapar(d.cnpj)}</title><style>
   body{font-family:Arial,Helvetica,sans-serif;color:#111;max-width:760px;margin:2rem auto;padding:0 1.5rem;font-size:12px;line-height:1.4}
@@ -260,6 +338,7 @@ export function htmlDoEspelho(d: DadosDoEspelho): string {
   .valor{font-weight:700;font-size:11px;word-break:break-word}
   ul{margin:2px 0 0;padding-left:0;list-style:none} li{font-weight:700;font-size:11px}
   h2{font-size:12px;text-transform:uppercase;margin:16px 0 6px;border-bottom:1px solid #999;padding-bottom:2px}
+  .capital{font-weight:700;font-size:11px;margin:0 0 6px}
   table{width:100%;border-collapse:collapse} th,td{border:1px solid #bbb;padding:3px 6px;text-align:left;font-size:11px} th{background:#f0f0f0}
   .rodape{margin-top:14px;font-size:10px;color:#444}
   @media print{body{margin:0 auto}}

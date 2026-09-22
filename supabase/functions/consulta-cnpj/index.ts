@@ -122,6 +122,7 @@ serve(async (req) => {
       qsa: (d.socios || []).map((s: any) => ({
         nome_socio: s.nome,
         qualificacao_socio: s.qualificacao_socio?.descricao,
+        codigo_qualificacao_socio: s.qualificacao_socio?.id,
         data_entrada_sociedade: s.data_entrada,
         faixa_etaria: s.faixa_etaria,
         cnpj_cpf_do_socio: s.cpf_cnpj_socio,
@@ -382,11 +383,18 @@ serve(async (req) => {
         codigo: String(c.codigo || ""),
         descricao: c.descricao || "",
       })),
+      // O QSA como a consulta oficial da Receita escreve (22/09, tarde): a
+      // qualificação com o código da tabela, o representante legal quando há.
+      // A faixa etária NÃO vai: é intervalo estimado da base pública, não
+      // consta de documento oficial, e o dono pediu o espelho sem suposição.
       qsa: (data.qsa || []).map((s: any) => ({
         nome: s.nome_socio || "",
         qualificacao: s.qualificacao_socio || "",
+        qualificacaoCodigo: s.codigo_qualificacao_socio != null ? String(s.codigo_qualificacao_socio) : "",
+        representanteLegal: s.nome_representante_legal || "",
+        qualificacaoRepresentante: s.qualificacao_representante_legal || "",
+        qualificacaoRepresentanteCodigo: s.codigo_qualificacao_representante_legal != null ? String(s.codigo_qualificacao_representante_legal) : "",
         dataEntrada: s.data_entrada_sociedade || "",
-        faixaEtaria: s.faixa_etaria || "",
         cnpjCpf: s.cnpj_cpf_do_socio || "",
       })),
       mei: !!data.opcao_pelo_mei,

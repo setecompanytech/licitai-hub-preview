@@ -82,6 +82,18 @@ describe('portal da transparência — a porta única', () => {
     expect(fetcher).toHaveBeenCalledTimes(5);
   });
 
+  it('a ficha de OUTRO CNPJ não vale: vira erro, nunca sanção alheia', async () => {
+    const fetcher = vi.fn(async (url: string) => {
+      if (url.includes('/pessoa-juridica')) return resposta([{ cnpj: '11.222.333/0001-81', sancionadoCEIS: true }]);
+      return resposta([]);
+    });
+    const r = await verificarIdoneidade(SANTA_ROSA, 'k', fetcher);
+    expect(r.ficha).toBeNull();
+    expect((r as { fichaErro?: string }).fichaErro).toContain('outro CNPJ');
+    expect(r.idonea).toBe(true);
+    expect(r.divergencias).toEqual([]);
+  });
+
   it('as janelas mensais das licitações: seis meses viram seis consultas de até um mês', () => {
     const j = janelasMensais('22/03/2026', '22/09/2026');
     expect(j).toHaveLength(7);

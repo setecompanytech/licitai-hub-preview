@@ -4,15 +4,17 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import {
-  caixasDoEspelho, dataBr, htmlDoEspelho, rodapeDoEspelho, sociosDoEspelho, URL_COMPROVANTE_OFICIAL, VAZIO,
-  type DadosDoEspelho,
+  caixasDoEspelho, capitalSocialLegivel, htmlDoEspelho, linhasDoQsa, qsaTemRepresentante, rodapeDoEspelho,
+  URL_COMPROVANTE_OFICIAL, URL_QSA_OFICIAL, VAZIO_DO_COMPROVANTE, type DadosDoEspelho,
 } from '@/lib/concorrentes/espelho-do-comprovante';
 
 /**
  * O espelho do comprovante da Receita, no formulário dela: as mesmas caixas,
  * na mesma ordem, com os mesmos rótulos — e todos os campos que a fonte
- * pública entrega, inclusive os que o cartão de resumo não mostra (matriz,
- * data e motivo da situação, situação especial, EFR, sócios).
+ * pública entrega, inclusive os que o antigo cartão de resumo não mostrava
+ * (matriz, data e motivo da situação, situação especial, EFR). O quadro de
+ * sócios segue a consulta oficial de QSA: capital social, nome e
+ * qualificação com código, representante legal quando há.
  *
  * Sem brasão nem cabeçalho da República: é espelho, e o rodapé diz que não
  * substitui o comprovante oficial, com o link para emiti-lo. A impressão
@@ -26,7 +28,9 @@ const LARGURA: Record<number, string> = {
 
 export default function EspelhoDoComprovante({ dados }: { dados: DadosDoEspelho }) {
   const linhas = caixasDoEspelho(dados);
-  const socios = sociosDoEspelho(dados);
+  const socios = linhasDoQsa(dados);
+  const capital = capitalSocialLegivel(dados.capitalSocial);
+  const comRepresentante = qsaTemRepresentante(socios);
 
   const imprimir = () => {
     const janela = window.open('', '_blank');
@@ -44,7 +48,7 @@ export default function EspelhoDoComprovante({ dados }: { dados: DadosDoEspelho 
         <div className="min-w-0 grow basis-56">
           <h2 id="espelho-titulo" className="text-lg font-semibold leading-6 text-foreground">Espelho do comprovante</h2>
           <p className="text-sm text-muted-foreground">
-            O formulário da Receita, com todos os campos que a base pública entrega. Não é o comprovante oficial.
+            O formulário da Receita, com os campos que a base pública entrega. Não é o comprovante oficial.
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
@@ -94,24 +98,42 @@ export default function EspelhoDoComprovante({ dados }: { dados: DadosDoEspelho 
 
       {socios.length > 0 && (
         <div className="mt-4">
-          <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-foreground">Quadro de sócios e administradores</h3>
+          <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-foreground">Quadro de sócios e administradores</h3>
+            <a href={URL_QSA_OFICIAL} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-primary hover:underline">
+              <ExternalLink className="h-3 w-3" aria-hidden="true" /> Consulta de QSA na Receita
+            </a>
+          </div>
+          {capital && (
+            <p className="mb-2 text-xs font-semibold text-foreground">
+              <span className="uppercase tracking-wide">Capital social:</span> {capital}
+            </p>
+          )}
           <div className="rounded-md border border-border">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nome</TableHead>
+                  <TableHead>Nome/Nome empresarial</TableHead>
                   <TableHead>Qualificação</TableHead>
-                  <TableHead>Entrada</TableHead>
-                  <TableHead>Faixa etária</TableHead>
+                  {comRepresentante && (
+                    <>
+                      <TableHead>Representante legal</TableHead>
+                      <TableHead>Qualificação do representante</TableHead>
+                    </>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {socios.map((s) => (
-                  <TableRow key={`${s.nome}-${s.dataEntrada ?? ''}`}>
+                {socios.map((s, i) => (
+                  <TableRow key={`${s.nome}-${i}`}>
                     <TableCell className="font-medium">{s.nome}</TableCell>
-                    <TableCell>{s.qualificacao || VAZIO}</TableCell>
-                    <TableCell>{s.dataEntrada ? dataBr(s.dataEntrada) : VAZIO}</TableCell>
-                    <TableCell>{s.faixaEtaria || VAZIO}</TableCell>
+                    <TableCell>{s.qualificacao}</TableCell>
+                    {comRepresentante && (
+                      <>
+                        <TableCell>{s.representante || VAZIO_DO_COMPROVANTE}</TableCell>
+                        <TableCell>{s.qualificacaoRepresentante || VAZIO_DO_COMPROVANTE}</TableCell>
+                      </>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
