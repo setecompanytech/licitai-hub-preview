@@ -39,9 +39,11 @@ export default function SeloDoContrato({ vinculo, statusFuturo }: Props) {
     <p className="mt-0.5 flex items-start gap-1 text-xs text-info-ink">
       <FileSignature className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
       <span>
-        {vinculo.numero_pedido
-          ? <>{quita ? 'Quita o' : 'Do'} pedido <b>{vinculo.numero_pedido}</b> do contrato <b>{contrato}</b></>
-          : <>Do contrato <b>{contrato}</b> — sem pedido vinculado</>}
+        {vinculo.rateios && vinculo.rateios.length > 0
+          ? <>{quita ? 'Quita' : 'Rateado entre'} <b>{vinculo.rateios.length}</b> pedido{vinculo.rateios.length === 1 ? '' : 's'} do contrato <b>{contrato}</b> ({vinculo.rateios.map((r) => r.numero_pedido ?? '?').join(', ')})</>
+          : vinculo.numero_pedido
+            ? <>{quita ? 'Quita o' : 'Do'} pedido <b>{vinculo.numero_pedido}</b> do contrato <b>{contrato}</b></>
+            : <>Do contrato <b>{contrato}</b> — sem pedido vinculado</>}
       </span>
     </p>
   );

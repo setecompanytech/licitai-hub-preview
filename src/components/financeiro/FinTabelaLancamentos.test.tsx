@@ -28,6 +28,8 @@ vi.mock('./DocumentoDoLancamento', () => ({
 vi.mock('./LancamentoDialog', () => ({ default: () => null }));
 vi.mock('./VincularContratoDialog', () => ({ default: () => null }));
 vi.mock('./DataDaBaixaDialog', () => ({ DataDaBaixaDialog: () => null }));
+// O mapa de vínculos (22/09) lê a empresa ativa; a suíte não monta o provedor.
+vi.mock('@/hooks/useVinculosDeContrato', () => ({ useVinculosDeContrato: () => ({ data: {} }) }));
 
 import FinTabelaLancamentos from './FinTabelaLancamentos';
 

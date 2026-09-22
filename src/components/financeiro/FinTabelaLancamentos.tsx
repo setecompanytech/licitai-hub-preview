@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import DocumentoDoLancamento, { useDocumentosPorLancamento } from "./DocumentoDoLancamento";
+import { useVinculosDeContrato } from "@/hooks/useVinculosDeContrato";
 import VincularContratoDialog from "./VincularContratoDialog";
 import type { LancamentoParaVincular } from "@/lib/contratos/pedido-do-lancamento";
 import { exigeDocumento } from "@/lib/financeiro/anexo-do-lancamento";
@@ -114,6 +115,8 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
   const { data = [], isLoading } = useLancamentos({ tipo });
   // Mesmo mapa batched do clipe — nenhuma consulta nova por linha.
   const { data: docsPorLancamento } = useDocumentosPorLancamento();
+  // Rateio (22/09): o recebimento que pagou várias notas não tem pedido próprio; o mapa diz em quantos ele está.
+  const { data: vinculosDeContrato } = useVinculosDeContrato();
   const { data: membros = [] } = useMembrosEmpresa();
   const upsert = useUpsertLancamento();
 
@@ -462,13 +465,17 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
                   const venc = dataRefVenc(l);
                   const vendedor = nomeVendedor((l as any).vendedor_responsavel_id);
                   const podePagar = !["realizado", "conciliado", "cancelado"].includes(l.status);
+                  const rateios = vinculosDeContrato?.[l.id]?.rateios ?? [];
+                  const pedidosDoRateio = rateios.map((r) => r.numero_pedido ?? "?").join(", ");
                   const rotuloVinculo = tipo === "a_pagar"
                     ? (l.contrato_id
                         ? "Despesa atribuída a um contrato — clique para trocar"
                         : "Atribuir esta despesa a um contrato")
                     : (l.contrato_pedido_id
                         ? "Vinculado a um pedido — clique para trocar"
-                        : "Vincular a um contrato/pedido em Gestão");
+                        : rateios.length > 0
+                          ? `Rateado entre ${rateios.length} pedidos (${pedidosDoRateio}) — desfaz-se em Gestão de Contratos › Pedidos › Vincular lançamento`
+                          : "Vincular a um contrato/pedido em Gestão");
                   return (
                     <TableRow key={l.id}>
                       <TableCell className="tabular-nums whitespace-nowrap">
@@ -499,7 +506,12 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
                               `badgeVariants`, e não de um Badge aninhado —
                               Badge renderiza uma div, e button só aceita
                               conteúdo de frase. */}
-                          {tipo === "a_receber" && !l.contrato_pedido_id && !!docsPorLancamento?.[l.id] && (
+                          {tipo === "a_receber" && !l.contrato_pedido_id && rateios.length > 0 && (
+                            <Badge variant="info" className="shrink-0" title={`Este recebimento paga ${rateios.length} pedidos do contrato: ${pedidosDoRateio}. Cada nota entra como parte dele pela Extração de documentos.`}>
+                              rateado · {rateios.length} pedidos
+                            </Badge>
+                          )}
+                          {tipo === "a_receber" && !l.contrato_pedido_id && rateios.length === 0 && !!docsPorLancamento?.[l.id] && (
                             <button
                               type="button"
                               className={cn(
@@ -575,7 +587,7 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
                             size="icon"
                             variant="ghost"
                             className={cn("h-9 w-9",
-                              (tipo === "a_pagar" ? l.contrato_id : l.contrato_pedido_id) && "text-primary")}
+                              (tipo === "a_pagar" ? l.contrato_id : (l.contrato_pedido_id || rateios.length > 0)) && "text-primary")}
                             onClick={() => setVinculando({ ...(l as unknown as LancamentoParaVincular), pessoa_nome: (l as { pessoa?: { nome?: string } }).pessoa?.nome ?? null })}
                             title={rotuloVinculo}
                             aria-label={rotuloVinculo}
