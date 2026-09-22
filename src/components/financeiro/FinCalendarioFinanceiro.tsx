@@ -33,10 +33,10 @@ import {
   isSameMonth,
   isToday,
   parseISO,
-  differenceInDays,
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useLancamentos, type Lancamento } from "@/hooks/useFinanceiro";
+import { estaEmAtraso, situacaoDoTitulo } from "@/lib/financeiro/atraso";
 import { formatBRL } from "@/lib/financeiro/formatters";
 import { cn } from "@/lib/utils";
 import LancamentoDialog from "./LancamentoDialog";
@@ -56,10 +56,10 @@ function ehPago(l: LancamentoCal) {
   return l.status === "realizado" || l.status === "conciliado";
 }
 
+// A régua única do atraso (`atraso.ts`): título sem vencimento é posicionado
+// pela competência no calendário, mas não é "vencido" por ela.
 function estaAtrasado(l: LancamentoCal) {
-  const venc = l.data_vencimento ?? l.data_competencia;
-  const dias = differenceInDays(parseISO(venc), new Date());
-  return !ehPago(l) && dias < 0;
+  return estaEmAtraso(l);
 }
 
 /**
@@ -115,14 +115,12 @@ export default function FinCalendarioFinanceiro() {
   const lancamentos = useMemo(() => {
     const buscaLow = busca.trim().toLowerCase();
     return todos.filter((l) => {
-      // Filtro por status (interpretado dinamicamente)
+      // Filtro por situação, pela régua única (`atraso.ts`).
       if (filtroStatus !== "todos") {
-        const venc = l.data_vencimento ?? l.data_competencia;
-        const dias = differenceInDays(parseISO(venc), new Date());
-        const pago = ehPago(l);
-        if (filtroStatus === "realizado" && !pago) return false;
-        if (filtroStatus === "previsto" && (pago || l.status === "cancelado" || dias < 0)) return false;
-        if (filtroStatus === "atrasado" && (pago || l.status === "cancelado" || dias >= 0)) return false;
+        const s = situacaoDoTitulo(l);
+        if (filtroStatus === "realizado" && s !== "pago") return false;
+        if (filtroStatus === "previsto" && s !== "em_aberto" && s !== "vence_em_7_dias" && s !== "sem_vencimento") return false;
+        if (filtroStatus === "atrasado" && s !== "em_atraso") return false;
       }
       if (buscaLow) {
         const alvo = `${l.descricao ?? ""} ${l.pessoa?.nome ?? ""} ${l.categoria?.nome ?? ""}`.toLowerCase();

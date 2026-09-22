@@ -39,14 +39,13 @@ import {
   subMonths,
   isSameMonth,
   isToday,
-  parseISO,
-  differenceInDays,
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   useLancamentos,
   type Lancamento,
 } from "@/hooks/useFinanceiro";
+import { situacaoDoTitulo } from "@/lib/financeiro/atraso";
 import LancamentoDialog from "./LancamentoDialog";
 import ValorDeCartao from "./ValorDeCartao";
 import { cn } from "@/lib/utils";
@@ -64,14 +63,17 @@ const NOMES_DIAS = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
 
 type TomStatus = "success" | "muted" | "danger" | "warning" | "info";
 
+// O tom sai da régua única do atraso (`atraso.ts`), a mesma do Kanban e do
+// cartão "Em atraso". Sem vencimento: posicionado pela competência, mas em
+// aberto — não vencido.
 function tomStatus(l: LancamentoCal): TomStatus {
-  if (l.status === "realizado" || l.status === "conciliado") return "success";
-  if (l.status === "cancelado") return "muted";
-  const venc = l.data_vencimento ?? l.data_competencia;
-  const dias = differenceInDays(parseISO(venc), new Date());
-  if (dias < 0) return "danger";
-  if (dias <= 7) return "warning";
-  return "info";
+  switch (situacaoDoTitulo(l)) {
+    case "pago": return "success";
+    case "cancelado": return "muted";
+    case "em_atraso": return "danger";
+    case "vence_em_7_dias": return "warning";
+    default: return "info";
+  }
 }
 
 const CHIP_STATUS: Record<TomStatus, string> = {
@@ -110,15 +112,12 @@ export default function FinCalendarioLancamentos({ tipo }: Props) {
   const lancamentos = useMemo(() => {
     const buscaLow = busca.trim().toLowerCase();
     return todos.filter((l) => {
-      // Filtro de status
+      // Filtro de situação, pela régua única (`atraso.ts`).
       if (filtroStatus !== "todos") {
-        const venc = l.data_vencimento ?? l.data_competencia;
-        const dias = differenceInDays(parseISO(venc), new Date());
-        const ehPago = l.status === "realizado" || l.status === "conciliado";
-        if (filtroStatus === "pago" && !ehPago) return false;
-        if (filtroStatus === "realizado" && !ehPago) return false;
-        if (filtroStatus === "previsto" && (ehPago || l.status === "cancelado" || dias < 0)) return false;
-        if (filtroStatus === "atrasado" && (ehPago || l.status === "cancelado" || dias >= 0)) return false;
+        const s = situacaoDoTitulo(l);
+        if ((filtroStatus === "pago" || filtroStatus === "realizado") && s !== "pago") return false;
+        if (filtroStatus === "previsto" && s !== "em_aberto" && s !== "vence_em_7_dias" && s !== "sem_vencimento") return false;
+        if (filtroStatus === "atrasado" && s !== "em_atraso") return false;
       }
       // Filtro de busca
       if (buscaLow) {

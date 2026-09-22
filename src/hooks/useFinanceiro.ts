@@ -1,7 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { montarDRE, type DRELinhaRaw, type DREResumo } from "@/lib/financeiro/dre";
-import { hojeLocal, somarDiasLocal, mesLocal, dataLocal, deDataLocal } from "@/lib/financeiro/data-local";
+import { hojeLocal, somarDiasLocal, mesLocal, dataLocal } from "@/lib/financeiro/data-local";
 import { ehMovimentacao } from "@/lib/financeiro/movimentacao";
+import { condicaoDeAtrasoNoBanco, diasDeAtraso, estaEmAtraso } from "@/lib/financeiro/atraso";
 import { buscarTodos } from "@/lib/financeiro/paginar";
 import { acumularProjecao, type DiaProjetado, type LinhaDoFluxo } from "@/lib/financeiro/projecao-de-caixa";
 import { supabase } from "@/integrations/supabase/client";
@@ -410,7 +411,15 @@ export function useLancamentos(filtro: LancamentoFiltro = {}) {
           .select("*, conta:financeiro_contas!financeiro_lancamentos_conta_id_fkey(id,nome), categoria:financeiro_categorias!financeiro_lancamentos_categoria_id_fkey(id,nome,natureza,grupo_dre), pessoa:financeiro_pessoas(id,nome)")
           .eq("empresa_id", empresaId!);
         if (filtro.tipo && filtro.tipo !== "todos") q = q.eq("tipo", filtro.tipo);
-        if (filtro.status && filtro.status !== "todos") q = q.eq("status", filtro.status);
+        if (filtro.status === "em_atraso") {
+          // Atraso é derivado, nunca gravado (`atraso.ts`): `status =
+          // 'em_atraso'` não casa com nada — o filtro "Em atraso" devolvia
+          // vazio para uma carteira com meses de atraso (21/09).
+          const atraso = condicaoDeAtrasoNoBanco();
+          q = q.in("status", [...atraso.status]).lt("data_vencimento", atraso.vencimentoAntesDe);
+        } else if (filtro.status && filtro.status !== "todos") {
+          q = q.eq("status", filtro.status);
+        }
         if (filtro.contaId && filtro.contaId !== "todos") q = q.eq("conta_id", filtro.contaId);
         if (filtro.origemTipo && filtro.origemTipo !== "todos") q = q.eq("origem_tipo", filtro.origemTipo);
         if (filtro.origemLoteId) q = q.eq("origem_lote_id", filtro.origemLoteId);
@@ -1434,7 +1443,6 @@ export function useResumoVisorFinanceiro() {
     queryFn: async (): Promise<ResumoVisor> => {
       // Datas pelo relógio de quem olha a tela, não por UTC: às 21h em Belém
       // o UTC já virou o dia, e "hoje" passava a ser amanhã. Ver data-local.ts.
-      const hoje = new Date();
       const hojeStr = hojeLocal();
       const fim10Str = somarDiasLocal(10);
       const inicio30Str = somarDiasLocal(-30);
@@ -1446,7 +1454,7 @@ export function useResumoVisorFinanceiro() {
       };
       type LinhaDoMes = {
         valor: number | null; tipo: string | null; status: string | null; natureza: string | null;
-        data_realizado: string | null; data_competencia: string | null;
+        data_realizado: string | null; data_competencia: string | null; data_vencimento: string | null;
       };
 
       // A carteira em aberto vem INTEIRA, uma vez, página a página — e os
@@ -1469,7 +1477,7 @@ export function useResumoVisorFinanceiro() {
         buscarTodos<LinhaDoMes>((de, ate) =>
           supabase
             .from("financeiro_lancamentos")
-            .select("valor, tipo, status, natureza, data_realizado, data_competencia")
+            .select("valor, tipo, status, natureza, data_realizado, data_competencia, data_vencimento")
             .eq("empresa_id", empresaId!)
             .gte("data_competencia", inicio30Str)
             .order("data_competencia")
@@ -1479,7 +1487,8 @@ export function useResumoVisorFinanceiro() {
       if (contasRes.error) throw contasRes.error;
 
       const futuros = abertos.filter((l) => !!l.data_vencimento && l.data_vencimento >= hojeStr && l.data_vencimento <= fim10Str);
-      const atrasos = abertos.filter((l) => !!l.data_vencimento && l.data_vencimento < hojeStr);
+      // A MESMA régua do Kanban e das listas (`atraso.ts`), não uma cópia.
+      const atrasos = abertos.filter((l) => estaEmAtraso(l, hojeStr));
 
       const contasRows = (contasRes.data ?? []) as Array<{ id: string; nome: string; tipo: string | null; banco_nome: string | null; agencia: string | null; conta: string | null; cor: string | null; saldo_atual: number | null; ativa: boolean }>;
       const contasSaldo = contasRows.map((c) => ({
@@ -1533,13 +1542,11 @@ export function useResumoVisorFinanceiro() {
 
       // Top atrasos
       const mapAtraso = (l: typeof atrasos[number]) => {
-        const venc = deDataLocal(l.data_vencimento ?? hojeStr);
-        const dias = Math.max(0, Math.floor((deDataLocal(hojeLocal()).getTime() - venc.getTime()) / 86400000));
         return {
           id: l.id,
           descricao: l.descricao ?? "Sem descrição",
           pessoa: (l.pessoa as { nome?: string } | null)?.nome ?? "—",
-          diasAtraso: dias,
+          diasAtraso: diasDeAtraso(l, hojeStr),
           valor: Number(l.valor ?? 0),
           vencimento: l.data_vencimento ?? "",
         };
@@ -1550,7 +1557,8 @@ export function useResumoVisorFinanceiro() {
       // Inadimplência mês = atraso a receber / (recebido + atraso) do mês
       const lancsMes = doMes.filter((l) => (l.data_competencia ?? "").startsWith(mesAtual));
       const recebidoMes = lancsMes.filter((l) => l.tipo === "a_receber" && (l.status === "realizado" || l.status === "conciliado")).reduce((s, l) => s + Number(l.valor ?? 0), 0);
-      const atrasoReceberMes = lancsMes.filter((l) => l.tipo === "a_receber" && l.status === "em_atraso").reduce((s, l) => s + Number(l.valor ?? 0), 0);
+      // `status === 'em_atraso'` dava sempre zero: o status nunca é gravado.
+      const atrasoReceberMes = lancsMes.filter((l) => l.tipo === "a_receber" && estaEmAtraso(l, hojeStr)).reduce((s, l) => s + Number(l.valor ?? 0), 0);
       const baseInad = recebidoMes + atrasoReceberMes;
       const inadimplenciaMesPct = baseInad > 0 ? (atrasoReceberMes / baseInad) * 100 : 0;
 

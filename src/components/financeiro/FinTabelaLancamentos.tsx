@@ -34,8 +34,9 @@ import {
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { downloadCSV, downloadPDF } from "@/lib/download-utils";
-import { format, differenceInDays, parseISO } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { situacaoDoTitulo } from "@/lib/financeiro/atraso";
 import {
   useLancamentos,
   useUpsertLancamento,
@@ -77,12 +78,13 @@ type VarianteBadge = "success" | "warning" | "danger" | "info" | "muted";
  * texto continua sendo a pista principal.
  */
 const STATUS_LABEL: Record<string, { label: string; variante: VarianteBadge; icone: typeof Clock }> = {
-  previsto:   { label: "Em aberto",  variante: "info",    icone: FileText },
-  vence_7d:   { label: "Vence 7d",   variante: "warning", icone: Clock },
-  em_atraso:  { label: "Vencido",    variante: "danger",  icone: AlertCircle },
-  realizado:  { label: "Pago",       variante: "success", icone: CheckCircle2 },
-  conciliado: { label: "Conciliado", variante: "success", icone: CheckCircle2 },
-  cancelado:  { label: "Cancelado",  variante: "muted",   icone: FileText },
+  previsto:       { label: "Em aberto",      variante: "info",    icone: FileText },
+  vence_7d:       { label: "Vence 7d",       variante: "warning", icone: Clock },
+  em_atraso:      { label: "Vencido",        variante: "danger",  icone: AlertCircle },
+  sem_vencimento: { label: "Sem vencimento", variante: "warning", icone: AlertCircle },
+  realizado:      { label: "Pago",           variante: "success", icone: CheckCircle2 },
+  conciliado:     { label: "Conciliado",     variante: "success", icone: CheckCircle2 },
+  cancelado:      { label: "Cancelado",      variante: "muted",   icone: FileText },
 };
 
 /**
@@ -120,14 +122,15 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
   const dataRefVenc = (l: LancamentoRow): string =>
     l.data_vencimento ?? l.data_competencia;
 
+  // A situação sai da régua única do atraso (`atraso.ts`) — a mesma do
+  // Kanban e do cartão "Em atraso". Título sem vencimento é dito assim, em
+  // vez de ser medido pela competência.
   const statusEfetivo = (l: LancamentoRow): string => {
-    if (l.status === "realizado" || l.status === "conciliado" || l.status === "cancelado") {
-      return l.status;
-    }
-    const dias = differenceInDays(parseISO(dataRefVenc(l)), new Date());
-    if (dias < 0) return "em_atraso";
-    if (dias <= 7) return "vence_7d";
-    return "previsto";
+    const s = situacaoDoTitulo(l);
+    if (s === "pago") return l.status; // realizado × conciliado: a tabela distingue os dois
+    if (s === "vence_em_7_dias") return "vence_7d";
+    if (s === "em_aberto") return "previsto";
+    return s;
   };
 
   const filtrados = useMemo(() => {
@@ -345,6 +348,7 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
             <SelectItem value="previsto">Em aberto</SelectItem>
             <SelectItem value="vence_7d">Vence em 7 dias</SelectItem>
             <SelectItem value="em_atraso">Vencido</SelectItem>
+            <SelectItem value="sem_vencimento">Sem vencimento</SelectItem>
             <SelectItem value="realizado">Pago</SelectItem>
             <SelectItem value="conciliado">Conciliado</SelectItem>
             <SelectItem value="cancelado">Cancelado</SelectItem>

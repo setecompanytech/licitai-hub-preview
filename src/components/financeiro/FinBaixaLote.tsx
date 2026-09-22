@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { hojeLocal } from "@/lib/financeiro/data-local";
 import { formatBRL } from "@/lib/financeiro/formatters";
 import { buscarTodos } from "@/lib/financeiro/paginar";
+import { estaEmAtraso } from "@/lib/financeiro/atraso";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -216,7 +217,7 @@ export default function FinBaixaLote() {
                 ) : (
                   filtrados.map((l) => {
                     const checked = selecionados.has(l.id);
-                    const atrasado = l.status === "em_atraso";
+                    const atrasado = estaEmAtraso(l);
                     return (
                       <TableRow key={l.id}>
                         <TableCell>

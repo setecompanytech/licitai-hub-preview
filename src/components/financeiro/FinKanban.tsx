@@ -25,8 +25,9 @@ import {
   Filter,
   CheckSquare,
 } from "lucide-react";
-import { format, differenceInDays, parseISO, isToday, isThisWeek, isThisMonth } from "date-fns";
+import { format, parseISO, isToday, isThisWeek, isThisMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { estaEmAtraso, situacaoDoTitulo } from "@/lib/financeiro/atraso";
 import {
   useLancamentos,
   useUpsertLancamento,
@@ -115,16 +116,23 @@ export default function FinKanban({ tipo }: Props) {
 
   const lancamentos = data as LancamentoCard[];
 
+  // A data de referência para PERÍODO e atalhos (hoje/semana/mês): sem
+  // vencimento, a competência posiciona o cartão no calendário. Ela NÃO
+  // decide atraso — isso é da régua única abaixo.
   const dataReferenciaVenc = (l: LancamentoCard): string =>
     l.data_vencimento ?? l.data_competencia;
 
+  // A coluna sai da régua única do atraso (`atraso.ts`), a mesma do cartão
+  // "Em atraso" e das listas. Título sem vencimento fica "Em aberto" com o
+  // selo "Sem vencimento" — antes caía em "Vencido" pela competência, e o
+  // painel o ignorava: as duas telas discordavam sobre o mesmo título (21/09).
   const classificar = (l: LancamentoCard): ColunaKanban => {
-    if (l.status === "realizado" || l.status === "conciliado") return "pago";
-    const ref = dataReferenciaVenc(l);
-    const dias = differenceInDays(parseISO(ref), new Date());
-    if (dias < 0) return "vencido";
-    if (dias <= 7) return "vence_7d";
-    return "aberto";
+    switch (situacaoDoTitulo(l)) {
+      case "pago": return "pago";
+      case "em_atraso": return "vencido";
+      case "vence_em_7_dias": return "vence_7d";
+      default: return "aberto";
+    }
   };
 
   /**
@@ -161,9 +169,7 @@ export default function FinKanban({ tipo }: Props) {
     if (filtroVenc === "hoje") return isToday(ref);
     if (filtroVenc === "semana") return isThisWeek(ref, { weekStartsOn: 1 });
     if (filtroVenc === "mes") return isThisMonth(ref);
-    if (filtroVenc === "atrasados") {
-      return l.status !== "realizado" && l.status !== "conciliado" && differenceInDays(ref, new Date()) < 0;
-    }
+    if (filtroVenc === "atrasados") return estaEmAtraso(l);
     return true;
   };
 
@@ -828,9 +834,15 @@ export default function FinKanban({ tipo }: Props) {
                                       >
                                         {partes || "—"}
                                       </p>
-                                      <span className="text-xs text-muted-foreground tabular-nums whitespace-nowrap shrink-0">
-                                        Venc {format(parseISO(venc), "dd/MM/yy", { locale: ptBR })}
-                                      </span>
+                                      {l.data_vencimento ? (
+                                        <span className="text-xs text-muted-foreground tabular-nums whitespace-nowrap shrink-0">
+                                          Venc {format(parseISO(venc), "dd/MM/yy", { locale: ptBR })}
+                                        </span>
+                                      ) : (
+                                        <Badge variant="warning" className="shrink-0" title="Título sem data de vencimento — informe-a para o atraso ser medido">
+                                          Sem vencimento
+                                        </Badge>
+                                      )}
                                       {col.id !== "pago" && (
                                         <Button
                                           size="icon"

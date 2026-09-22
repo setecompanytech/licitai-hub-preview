@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useEmpresaId } from "@/hooks/useFinanceiro";
 import { dataLocal, hojeLocal, mesLocal } from "@/lib/financeiro/data-local";
 import { ehMovimentacao } from "@/lib/financeiro/movimentacao";
+import { estaEmAtraso } from "@/lib/financeiro/atraso";
 import { buscarTodos } from "@/lib/financeiro/paginar";
 
 export type KpiExecutivo = {
@@ -145,7 +146,8 @@ export function useDashboardExecutivo() {
       // ----- Recebíveis/Pagáveis (sem movimentação: resgate de aplicação
       // lançado como conta a receber não é recebível) -----
       const titulos = abertos.filter((l) => !ehMovimentacao(l));
-      const isVencido = (l: Linha) => !!l.data_vencimento && l.data_vencimento < hojeStr;
+      // A régua única do atraso (`atraso.ts`): a mesma do cartão, do Kanban e das listas.
+      const isVencido = (l: Linha) => estaEmAtraso(l, hojeStr);
       const receberAbertos = titulos.filter((l) => l.tipo === "a_receber");
       const pagarAbertos = titulos.filter((l) => l.tipo === "a_pagar");
       const aReceberTotal = soma(receberAbertos);

@@ -28,6 +28,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { formatBRL, formatDocumento } from "@/lib/financeiro/formatters";
 import { buscarTodos } from "@/lib/financeiro/paginar";
+import { diasDeAtraso, estaEmAtraso } from "@/lib/financeiro/atraso";
 
 type LancDetalhe = {
   id: string;
@@ -36,7 +37,15 @@ type LancDetalhe = {
   data_vencimento: string;
   valor: number;
   status: string;
+  /** Pela régua única de `atraso.ts` — o status `em_atraso` nunca é gravado. */
+  emAtraso: boolean;
+  semVencimento: boolean;
   diasAtraso: number;
+};
+
+type LinhaDoAno = {
+  id: string; tipo: string; status: string; valor: number; descricao: string | null;
+  pessoa_id: string | null; data_competencia: string; data_vencimento: string | null;
 };
 
 type ContaSaldo = {
@@ -79,10 +88,7 @@ export default function FinResumoExecutivo() {
           .order("nome"),
         // O ano inteiro, página a página: sem `.range` o PostgREST devolve no
         // máximo 1000 linhas e o resumo para a diretoria somava uma amostra.
-        buscarTodos<{
-          id: string; tipo: string; status: string; valor: number; descricao: string | null;
-          pessoa_id: string | null; data_competencia: string; data_vencimento: string | null;
-        }>((de, ate) =>
+        buscarTodos<LinhaDoAno>((de, ate) =>
           supabase
             .from("financeiro_lancamentos")
             .select("id, tipo, status, valor, descricao, pessoa_id, data_competencia, data_vencimento")
@@ -111,24 +117,24 @@ export default function FinResumoExecutivo() {
       const receitaMes = noMes.filter((l) => l.tipo === "a_receber" && realizado(l)).reduce((s, l) => s + Number(l.valor), 0);
       const despesaMes = noMes.filter((l) => l.tipo === "a_pagar" && realizado(l)).reduce((s, l) => s + Number(l.valor), 0);
 
-      const buildDetalhe = (filtro: (l: any) => boolean): LancDetalhe[] =>
+      // A competência não entra no lugar do vencimento: a coluna "Previsão de
+      // pagamento" mostrava a competência como se fosse prazo, e o atraso saía
+      // de `status === 'em_atraso'`, que nunca é gravado — inadimplência zero
+      // para uma carteira com meses de atraso (21/09).
+      const buildDetalhe = (filtro: (l: LinhaDoAno) => boolean): LancDetalhe[] =>
         lancs
           .filter(filtro)
-          .map((l: any): LancDetalhe => {
-            const venc = l.data_vencimento ?? l.data_competencia;
-            const dias = venc
-              ? Math.floor((hoje.getTime() - new Date(venc + "T00:00:00").getTime()) / 86_400_000)
-              : 0;
-            return {
-              id: l.id,
-              descricao: l.descricao ?? "—",
-              pessoa: l.pessoa_id ? (pessoaMap.get(l.pessoa_id)?.nome ?? "—") : "—",
-              data_vencimento: venc ?? "",
-              valor: Number(l.valor),
-              status: l.status,
-              diasAtraso: Math.max(dias, 0),
-            };
-          })
+          .map((l): LancDetalhe => ({
+            id: l.id,
+            descricao: l.descricao ?? "—",
+            pessoa: l.pessoa_id ? (pessoaMap.get(l.pessoa_id)?.nome ?? "—") : "—",
+            data_vencimento: l.data_vencimento ?? "",
+            valor: Number(l.valor),
+            status: l.status,
+            emAtraso: estaEmAtraso(l),
+            semVencimento: !l.data_vencimento,
+            diasAtraso: diasDeAtraso(l),
+          }))
           .sort((a, b) => (a.data_vencimento < b.data_vencimento ? -1 : 1));
 
       const detalheCP = buildDetalhe((l) => l.tipo === "a_pagar" && aberto(l));
@@ -136,7 +142,7 @@ export default function FinResumoExecutivo() {
 
       const totalCP = detalheCP.reduce((s, l) => s + l.valor, 0);
       const totalCR = detalheCR.reduce((s, l) => s + l.valor, 0);
-      const inadimplencia = detalheCR.filter((l) => l.status === "em_atraso").reduce((s, l) => s + l.valor, 0);
+      const inadimplencia = detalheCR.filter((l) => l.emAtraso).reduce((s, l) => s + l.valor, 0);
 
       return {
         contas, saldoTotal, limiteTotal,
@@ -382,8 +388,10 @@ function TabelaLancamentos({ lancs, tipo, total }: { lancs: LancDetalhe[]; tipo:
           {lancs.slice(0, 30).map((l) => (
             <tr key={l.id} className="border-t border-border transition-colors duration-150 hover:bg-muted/60">
               <td className={`${TD} whitespace-nowrap`}>
-                {l.status === "em_atraso" ? (
+                {l.emAtraso ? (
                   <Badge variant="danger">Atrasado</Badge>
+                ) : l.semVencimento ? (
+                  <Badge variant="warning">Sem vencimento</Badge>
                 ) : (
                   <Badge variant="info">A vencer</Badge>
                 )}

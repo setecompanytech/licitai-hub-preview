@@ -4,6 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import ValorDeCartao from "./ValorDeCartao";
 import { ehMovimentacao } from "@/lib/financeiro/movimentacao";
+import { estaEmAtraso } from "@/lib/financeiro/atraso";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -502,7 +503,9 @@ export default function FinLancamentos() {
                     // Vencimento igual à competência é vencimento do mesmo jeito:
                     // o travessão fazia parcela prevista parecer sem prazo (19/09).
                     const vencDiferente = !!l.data_vencimento;
-                    const isAtrasado = l.status === "em_atraso";
+                    // Derivado pela régua única (`atraso.ts`): o status
+                    // `em_atraso` nunca é gravado, e o ícone nunca aparecia.
+                    const isAtrasado = estaEmAtraso(l);
                     return (
                       <tr
                         key={l.id}

@@ -24,6 +24,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useEmpresaId } from "@/hooks/useFinanceiro";
 import { formatBRL } from "@/lib/financeiro/formatters";
 import { buscarTodos } from "@/lib/financeiro/paginar";
+import { estaEmAtraso } from "@/lib/financeiro/atraso";
 import ValorDeCartao from "./ValorDeCartao";
 
 // O número grande de cada cartão do quadro: KPI 28/36 em peso 600, numa
@@ -74,8 +75,10 @@ function useQuadroFinanceiro() {
       const aReceber = lancs.filter((l) => l.tipo === "a_receber" && ["previsto", "em_atraso"].includes(l.status as string));
       const totalPagar = aPagar.reduce((s, l) => s + Number(l.valor), 0);
       const totalReceber = aReceber.reduce((s, l) => s + Number(l.valor), 0);
-      const atrasoPagar = aPagar.filter((l) => l.status === "em_atraso").reduce((s, l) => s + Number(l.valor), 0);
-      const atrasoReceber = aReceber.filter((l) => l.status === "em_atraso").reduce((s, l) => s + Number(l.valor), 0);
+      // Atraso derivado pela régua única (`atraso.ts`): `status === 'em_atraso'`
+      // nunca é gravado, e o selo "Em atraso" destes cartões nunca aparecia.
+      const atrasoPagar = aPagar.filter((l) => estaEmAtraso(l)).reduce((s, l) => s + Number(l.valor), 0);
+      const atrasoReceber = aReceber.filter((l) => estaEmAtraso(l)).reduce((s, l) => s + Number(l.valor), 0);
 
       const saldoTotal = contas.reduce((s, c) => s + Number(c.saldo_atual ?? 0), 0);
 
